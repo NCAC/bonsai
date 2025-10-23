@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# --- Initialisation ---
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+DRY_RUN=false
+FINAL_TAG=""
+
+# --- Analyse des arguments ---
+for arg in "$@"; do
+  case $arg in
+    --dry-run)
+      DRY_RUN=true
+      ;;
+    -h|--help)
+      echo "ℹ️  Usage: finish-release [--dry-run] <final-version>"
+      echo "  Must be run from a 'release/X.x' branch"
+      echo "  Example: finish-release 9.0"
+      exit 0
+      ;;
+    *)
+      FINAL_TAG=$arg
+      ;;
+  esac
+done
+
+# --- Vérifications de base ---
+if [[ -z "$FINAL_TAG" ]]; then
+  echo "❌ Missing final version tag. Usage: finish-release <X.Y>"
+  exit 1
+fi
+
+if [[ ! "$CURRENT_BRANCH" =~ ^release\/[0-9]+\.x$ ]]; then
+  echo "❌ You must be on a 'release/X.x' branch to finish a release."
+  exit 1
+fi
+
+if ! [[ "$FINAL_TAG" =~ ^[0-9]+\.[0-9]+$ ]]; then
+  echo "❌ Invalid version format '$FINAL_TAG'. Expected format: X.Y"
+  exit 1
+fi
+
+# --- Vérifie que le dépôt est valide ---
+if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  echo "❌ Not a valid Git repository."
+  exit 1
+fi
+
+# --- Mode dry-run ---
+if $DRY_RUN; then
+  echo "🧪 [DRY-RUN] Would merge '$CURRENT_BRANCH' into 'master'"
+  echo "🧪 [DRY-RUN] Would tag: $FINAL_TAG on master"
+  echo "🧪 [DRY-RUN] Would merge '$CURRENT_BRANCH' into 'develop'"
+  echo "🧪 [DRY-RUN] Would delete branch '$CURRENT_BRANCH'"
+  exit 0
+fi
+
+# --- Fusion dans master ---
+echo "🔁 Checking out 'master'..."
+git checkout master || exit 1
+
+echo "🔀 Merging '$CURRENT_BRANCH' into 'master'..."
+HUSKY=0 git merge --no-ff "$CURRENT_BRANCH" -m "🔀 Final merge of $CURRENT_BRANCH into master" || exit 1
+
+echo "🏷️  Tagging 'master' with '$FINAL_TAG'..."
+HUSKY=0 git tag -a "$FINAL_TAG" -m "Release $FINAL_TAG"
+
+# --- Fusion dans develop ---
+echo "🔁 Checking out 'develop'..."
+git checkout develop || exit 1
+
+echo "🔀 Merging '$CURRENT_BRANCH' into 'develop'..."
+HUSKY=0 git merge --no-ff "$CURRENT_BRANCH" -m "🔀 Merge $CURRENT_BRANCH into develop (post-release)" || exit 1
+
+# --- Push branches et tag ---
+echo "🚀 Pushing 'master', 'develop' and tag '$FINAL_TAG' to origin..."
+HUSKY=0 git push origin master develop || exit 1
+HUSKY=0 git push origin "$FINAL_TAG" || exit 1
+
+# --- Suppression de la branche locale ---
+echo "🧹 Deleting local branch '$CURRENT_BRANCH'..."
+git branch -d "$CURRENT_BRANCH" || echo "⚠️  Could not delete local branch."
+
+# --- Suppression de la branche distante ---
+echo "🧹 Deleting remote branch '$CURRENT_BRANCH'..."
+git push origin --delete "$CURRENT_BRANCH" || echo "⚠️  Could not delete remote branch."
+
+# --- Résumé final ---
+echo "🎉 Release '$FINAL_TAG' successfully completed!"
+echo "   - Merged into master and develop"
+echo "   - Tagged on master: $FINAL_TAG"

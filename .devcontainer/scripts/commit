@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Vérifie s'il y a des fichiers en staging
+if git diff --cached --quiet; then
+  echo "⚠️  Aucun fichier en staging. Ajoutez des fichiers avec 'git add' avant de lancer le commit."
+  exit 1
+fi
+
+# Dialogue interactif pour sélectionner le type de commit
+echo "Sélectionnez le type de changement que vous êtes en train de committer:"
+echo "1) feat:     Une nouvelle fonctionnalité"
+echo "2) fix:      Correction d'un bug"
+echo "3) docs:     Changements de documentation uniquement"
+echo "4) refacto:  Refactoring ou améliorations du code existant"
+echo "5) chore:    Maintenance, configuration, dépendances..."
+
+read -p "Entrez le numéro (1-5): " type_num
+
+case $type_num in
+  1) commit_type="feat" ;;
+  2) commit_type="fix" ;;
+  3) commit_type="docs" ;;
+  4) commit_type="refacto" ;;
+  5) commit_type="chore" ;;
+  *) echo "Option invalide. Sortie." && exit 1 ;;
+esac
+
+# Demande le message de commit
+read -p "Écrivez un message concis et descriptif: " commit_message
+
+# Vérifie que le message n'est pas vide
+if [ -z "$commit_message" ]; then
+  echo "⚠️  Le message de commit ne peut pas être vide."
+  exit 1
+fi
+
+# Crée le commit avec le format type: message
+git commit -m "$commit_type: $commit_message"

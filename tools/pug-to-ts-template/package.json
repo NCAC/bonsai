@@ -1,0 +1,31 @@
+{
+  "name": "@bonsai/pug-ts",
+  "version": "0.1.0",
+  "description": "Build tool to transform .pug file into typescript for bonsai framework",
+  "type": "module",
+  "author": {
+    "name": "NCAC",
+    "email": "dev.ncac@gmail.com"
+  },
+  "scripts": {
+    "test": "ts-node ./test.ts",
+    "bundle:tool": "ts-node ./bundle.ts"
+  },
+  "main": "./dist/bonsai-pug-ts.js",
+  "types": "./dist/bonsai-pug-ts.d.ts",
+  "src": "./src/bonsai-pug-ts.ts",
+  "dependencies": {
+    "@babel/parser": "^7.21.4",
+    "camelcase": "^7.0.0",
+    "character-parser": "^4.0.0",
+    "fs-extra": "^10.1.0",
+    "is-expression": "^4.0.0",
+    "lodash-es": "^4.17.21",
+    "prettier": "^2.8.7",
+    "pug-error": "^2.0.0",
+    "pug-lexer": "^5.0.1",
+    "pug-load": "^3.0.0",
+    "pug-parser": "^6.0.0",
+    "token-stream": "^1.0.0"
+  }
+}

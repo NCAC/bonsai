@@ -1,0 +1,33 @@
+#ignore everything
+/*
+#except for these files :
+!.gitignore
+!README.md
+!LICENSE
+!package.json
+!tsconfig.json
+!tsconfig.base.json
+!pnpm-workspace.yaml
+!bonsai-components.yaml
+!bonsai.code-workspace
+
+!/.devcontainer
+
+!/tools
+!/lib
+
+!/core
+/core/node_modules
+
+!/packages
+/packages/*/node_modules
+
+!/.history
+
+!/docs
+/docs/*
+!/docs/dts-memory-analysis.md
+!/docs/CODING_STYLE.md
+!/docs/BUILD_BONSAI_RXJS_OBJET_VS_NAMESPACE.md
+!/docs/TODO.md
+!/docs/CACHE_WORK_IN_PROGRESS.md

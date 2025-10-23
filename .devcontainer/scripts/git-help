@@ -1,0 +1,26 @@
+#!/bin/bash
+cat << EOF
+🚀 Git Workflow Helper 🚀
+
+Commandes disponibles:
+  🌱 start-feature <nom>   : Démarrer une nouvelle fonctionnalité
+  ✅ finish-feature        : Terminer et fusionner une fonctionnalité
+  🐛 start-bugfix <nom>    : Démarrer une correction de bug
+  ✅ finish-bugfix         : Terminer et fusionner une correction
+  🔄 sync-feature          : Synchroniser votre branche avec develop
+  📝 commit               : Lancer le processus de commit standardisé
+  
+🔍 Statut actuel:
+$(git status -s)
+
+📋 Branche actuelle: $(git rev-parse --abbrev-ref HEAD)
+
+📚 Documentation:
+  - Guide complet: /app/docs/workflow-dev-guide.md
+  - Guide des commits: /app/docs/commit-guide.md
+  - Types de commits: /app/docs/commit-types.md
+  - Aide-mémoire: /app/docs/workflow-cheatsheet.md
+
+❓ Besoin d'aide? Contactez le tech-lead ou exécutez:
+   <commande> --help (exemple: start-feature --help)
+EOF

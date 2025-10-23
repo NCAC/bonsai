@@ -1,0 +1,15 @@
+{
+  "name": "@bonsai/remeda",
+  "version": "0.1.0",
+  "description": "exposes remeda",
+  "type": "module",
+  "author": {
+    "name": "NCAC",
+    "email": "dev.ncac@gmail.com"
+  },
+  "main": "./dist/remeda.js",
+  "types": "./dist/remeda.d.ts",
+  "src": "./src/remeda.ts",
+  "namespace": "R",
+  "bonsaiUpstream": "remeda"
+}

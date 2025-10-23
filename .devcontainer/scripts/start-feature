@@ -1,0 +1,103 @@
+#!/bin/bash
+set -euo pipefail
+
+# --- Initialisation ---
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+DRY_RUN=false
+FEATURE_NAME=""
+
+# --- Analyse des arguments ---
+for arg in "$@"; do
+  case $arg in
+    --dry-run)
+      DRY_RUN=true
+      ;;
+    -h|--help)
+      echo "ℹ️  Usage: start-feature [--dry-run] <name>"
+      echo "  Example: start-feature my-feature"
+      echo "  Example: start-feature --dry-run my-feature"
+      exit 0
+      ;;
+    *)
+      FEATURE_NAME=$arg
+      ;;
+  esac
+done
+
+# --- Vérifications de base ---
+if [ -z "$FEATURE_NAME" ]; then
+  echo "❌ Usage : start-feature <name>"
+  echo "   Example: start-feature [--dry-run] my-feature"
+  exit 1
+fi
+
+if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  echo "❌ Not a valid Git repository."
+  exit 1
+fi
+
+if [[ "$CURRENT_BRANCH" != "develop" ]]; then
+  echo "❌ You must be on 'develop' branch to create a 'feature' branch."
+  exit 1
+fi
+
+# --- Met à jour les références distantes ---
+echo "🔄 Fetching latest changes from origin..."
+git fetch origin
+
+FEATURE_BRANCH="feature/${FEATURE_NAME}"
+
+# --- Vérifie que la branche n'existe pas déjà ---
+if git rev-parse --verify --quiet "$FEATURE_BRANCH" > /dev/null; then
+  echo "❌ Branch '$FEATURE_BRANCH' already exists."
+  exit 1
+fi
+
+# --- Vérifie le nom de la branche ---
+if [[ ! "$FEATURE_NAME" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+  echo "❌ Invalid branch name '$FEATURE_NAME'. Only letters, numbers, dots, dashes and underscores are allowed."
+  exit 1
+fi
+
+if [[ ${#FEATURE_NAME} -lt 4 ]]; then
+  echo "❌ Branch name '$FEATURE_NAME' must be at least 4 characters long."
+  exit 1
+fi
+
+# --- Vérifie si develop est à jour avec origin/develop ---
+LOCAL_HASH=$(git rev-parse develop)
+REMOTE_HASH=$(git rev-parse origin/develop)
+
+if [[ "$LOCAL_HASH" != "$REMOTE_HASH" ]]; then
+  echo "⚠️  Local 'develop' is behind 'origin/develop'. Attempting to pull..."
+  git pull origin develop
+  echo "✅ 'develop' successfully updated."
+fi
+
+# --- Vérifie les modifications locales ---
+if ! git diff-index --quiet HEAD --; then
+  echo "⚠️  You have uncommitted changes. They will be carried into the new branch."
+fi
+
+if [[ -n $(git ls-files --others --exclude-standard) ]]; then
+  echo "⚠️  You have untracked files. They will be visible in the new branch."
+fi
+
+# --- Mode dry-run ---
+if $DRY_RUN; then
+  echo "🧪 [DRY-RUN] Would create branch: $FEATURE_BRANCH from $CURRENT_BRANCH"
+  exit 0
+fi
+
+# --- Création de la branche ---
+git checkout -b "$FEATURE_BRANCH"
+
+echo "✅ Branch '$FEATURE_BRANCH' created from '$CURRENT_BRANCH'."
+
+# --- Push de la branche ---
+HUSKY=0 git push origin "$FEATURE_BRANCH" || {
+  echo "⚠️ Failed to push '$FEATURE_BRANCH' to origin. Please check your network or remote permissions."
+  exit 1
+}
+
+echo "🚀 Branch '$FEATURE_BRANCH' pushed to origin and ready to use."

@@ -1,0 +1,109 @@
+{
+  "folders": [
+    {
+      "path": ".",
+      "name": "Root"
+    },
+    {
+      "path": "core",
+      "name": "Framework"
+    },
+    {
+      "path": "packages",
+      "name": "Packages"
+    },
+    {
+      "path": "lib",
+      "name": "Library"
+    },
+    // {
+    //   "path": "tests",
+    //   "name": "Tests"
+    // },
+    {
+      "path": "tools",
+      "name": "Tools"
+    }
+  ],
+  "settings": {
+    // # auto open .code-workspace file
+    "autoOpenWorkspace.enableAutoOpenIfSingleWorkspace": true,
+    // # GIT
+    "scm.alwaysShowActions": true,
+    "git.alwaysShowStagedChangesResourceGroup": true,
+    "git.ignoreLimitWarning": true,
+    "git.openRepositoryInParentFolders": "always",
+    //
+    // files & editor for common
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.foldingStrategy": "indentation",
+    // The number of spaces a tab is equal to. This setting is overridden
+    // based on the file contents when `editor.detectIndentation` is true.
+    "editor.tabSize": 2,
+
+    // Insert spaces when pressing Tab. This setting is overriden
+    // based on the file contents when `editor.detectIndentation` is true.
+    "editor.insertSpaces": true,
+    // When opening a file, `editor.tabSize` and `editor.insertSpaces`
+    // will be detected based on the file contents. Set to false to keep
+    // the values you've explicitly set, above.
+    "editor.detectIndentation": false,
+    // typescript
+    "typescript.tsserver.log": "off",
+    "typescript.tsserver.enableTracing": false,
+    "typescript.tsserver.maxTsServerMemory": 999999,
+    "typescript.preferences.quoteStyle": "double",
+    "typescript.tsdk": "./node_modules/typescript/bin",
+    "files.watcherExclude": {
+      "**/.git/objects/**": true,
+      "**/.git/subtree-cache/**": true,
+      "**/node_modules/**": true
+    },
+    "typescript.tsserver.watchOptions.excludeDirectories": [
+      "**/.git",
+      "**/node_modules"
+    ],
+
+    "files.associations": {
+      "*.json": "jsonc"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "esbenp.prettier-vscode",
+      "jannisx11.batch-rename-extension",
+      "zoma.vscode-auto-open-workspace",
+      "github.copilot-chat",
+      "github.copilot",
+      "gxl.git-graph-3"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "node",
+        "request": "launch",
+        "name": "Debug Build No-Watch (tsx)",
+        "skipFiles": ["<node_internals>/**"],
+        "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+        "program": "${workspaceFolder}/lib/build.ts",
+        "args": ["--no-watch"],
+        "runtimeArgs": ["--expose-gc"],
+        "sourceMaps": true,
+        "resolveSourceMapLocations": [
+          "${workspaceFolder}/**",
+          "!**/node_modules/**"
+        ],
+        "env": {
+          "NODE_OPTIONS": "--max-old-space-size=8192 --inspect"
+        },
+        "console": "integratedTerminal",
+        "internalConsoleOptions": "neverOpen"
+      }
+    ]
+  }
+}

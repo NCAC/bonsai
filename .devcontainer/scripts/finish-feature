@@ -1,0 +1,146 @@
+#!/bin/bash
+
+# --- Initialisation ---
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+DRY_RUN=false
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+HISTORY_DIR="$REPO_ROOT/.history"
+
+# --- Analyse des arguments ---
+for arg in "$@"; do
+  case $arg in
+    --dry-run)
+      DRY_RUN=true
+      ;;
+    -h|--help)
+      echo "ℹ️  Usage: finish-feature [--dry-run]"
+      echo "  Must be run from a 'feature/<name>' branch"
+      exit 0
+      ;;
+    *)
+      echo "❌ Unknown argument: $arg"
+      exit 1
+      ;;
+  esac
+done
+
+# --- Vérifie qu'on est bien sur une branche feature ---
+if [[ ! "$CURRENT_BRANCH" =~ ^feature\/.+$ ]]; then
+  echo "❌ You must be on a 'feature/<name>' branch to use this command."
+  exit 1
+fi
+
+FEATURE_NAME="${CURRENT_BRANCH#feature/}"
+TAG="dev.feature.$FEATURE_NAME"
+
+# --- Mode dry-run ---
+if $DRY_RUN; then
+  echo "🧪 [DRY-RUN] Would merge '$CURRENT_BRANCH' into 'develop'"
+  echo "🧪 [DRY-RUN] Would tag: $TAG"
+  echo "🧪 [DRY-RUN] Would generate file: .history/$TAG.md"
+  echo "🧪 [DRY-RUN] Would push develop and tag to origin"
+  echo "🧪 [DRY-RUN] Would delete branch '$CURRENT_BRANCH'"
+  exit 0
+fi
+
+# --- Vérifie que le dépôt est valide ---
+if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  echo "❌ Not a valid Git repository."
+  exit 1
+fi
+
+# --- Met à jour develop ---
+echo "🔄 Fetching latest changes from origin..."
+git fetch origin
+
+if ! git show-ref --verify --quiet refs/heads/develop; then
+  echo "❌ Branch 'develop' does not exist locally."
+  exit 1
+fi
+
+echo "🔁 Checking out 'develop' to update..."
+if ! git checkout develop; then
+  echo "❌ Failed to checkout 'develop'."
+  exit 1
+fi
+
+if ! git pull origin develop; then
+  echo "❌ Failed to pull latest changes from origin/develop."
+  exit 1
+fi
+
+# --- Vérifie que develop est déjà mergé dans la feature ---
+echo "🔍 Checking if 'develop' is already merged into '$CURRENT_BRANCH'..."
+if ! git merge-base --is-ancestor develop "$CURRENT_BRANCH"; then
+  echo "❌ Branch '$CURRENT_BRANCH' does not contain the latest 'develop'."
+  echo "👉 Please merge 'develop' into '$CURRENT_BRANCH' before proceeding."
+  echo "👉 Run: git merge origin/develop into your feature branch and resolve conflicts if needed."
+  exit 1
+fi
+
+# --- Génère le fichier d'historique ---
+echo "📝 Generating merge history..."
+
+mkdir -p $HISTORY_DIR
+FILENAME="$HISTORY_DIR/${TAG}.md"
+
+{
+  echo "# Merge of ${CURRENT_BRANCH} into develop"
+  echo ""
+  echo "## Date: $(date '+%Y-%m-%d %H:%M:%S')"
+  echo "## Commit messages"
+  echo "----------------"
+  git log develop.."$CURRENT_BRANCH" --pretty=format:"%h %s (%an, %ad)" --date=short
+} > "$FILENAME"
+
+echo "✅ Commit history saved to $FILENAME"
+
+# --- Ajoute et commit le fichier d'historique ---
+git add "$FILENAME"
+if ! HUSKY=0 git commit -m "📝 Merge log for feature/$FEATURE_NAME"; then
+  echo "❌ Failed to commit merge log."
+  exit 1
+fi
+
+# --- Fusion de la feature dans develop ---
+echo "🔀 Merging '$CURRENT_BRANCH' into 'develop'..."
+if ! HUSKY=0 git merge --no-ff "$CURRENT_BRANCH" -m "🔀 Merge feature/$FEATURE_NAME into develop"; then
+  echo "❌ Merge failed. Please resolve conflicts manually."
+  exit 1
+fi
+
+# --- Tag annoté sur develop ---
+echo "🏷️  Tagging develop with '$TAG'..."
+if ! HUSKY=0 git tag -a "$TAG" -m "Merge of feature/$FEATURE_NAME into develop"; then
+  echo "❌ Failed to create tag '$TAG'."
+  exit 1
+fi
+
+# --- Push develop et le tag ---
+echo "🚀 Pushing 'develop' and tag '$TAG' to origin..."
+if ! HUSKY=0 git push origin develop && HUSKY=0 git push origin "$TAG"; then
+  echo "❌ Failed to push to origin."
+  exit 1
+fi
+
+# --- Suppression de la branche locale ---
+echo "🧹 Deleting local branch '$CURRENT_BRANCH'..."
+if ! git branch -d "$CURRENT_BRANCH"; then
+  echo "⚠️  Could not delete branch '$CURRENT_BRANCH'. You may need to delete it manually."
+else
+  echo "✅ Branch '$CURRENT_BRANCH' deleted."
+fi
+
+# --- Suppression de la branche distante ---
+echo "🧹 Deleting remote branch '$CURRENT_BRANCH'..."
+if ! git push origin --delete "$CURRENT_BRANCH"; then
+  echo "⚠️  Could not delete remote branch '$CURRENT_BRANCH'. You may need to delete it manually."
+else
+  echo "✅ Remote branch '$CURRENT_BRANCH' deleted."
+fi
+
+# --- Résumé final ---
+echo "🎉 Merge complete! Feature '$FEATURE_NAME' is now part of 'develop'."
+echo "📄 Merge log: $FILENAME"
+echo "🏷️  Tag created: $TAG"

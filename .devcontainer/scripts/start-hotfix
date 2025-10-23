@@ -1,0 +1,94 @@
+#!/bin/bash
+
+# --- Initialisation ---
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+DRY_RUN=false
+HOTFIX_NAME=""
+RELEASE_BRANCH=""
+
+# --- Analyse des arguments ---
+for arg in "$@"; do
+  case $arg in
+    --dry-run)
+      DRY_RUN=true
+      ;;
+    -h|--help)
+      echo "ℹ️  Usage: start-hotfix [--dry-run] <hotfix-name>"
+      echo "  Must be run from a 'release/X.x' branch"
+      exit 0
+      ;;
+    *)
+      HOTFIX_NAME=$arg
+      ;;
+  esac
+done
+
+# --- Vérifications de base ---
+if [ -z "$HOTFIX_NAME" ]; then
+  echo "❌ Usage: start-hotfix <hotfix-name>"
+  echo "   Example: start-hotfix my-hotfix"
+  exit 1
+fi
+
+if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  echo "❌ Not a valid Git repository."
+  exit 1
+fi
+
+if [[ ! "$CURRENT_BRANCH" =~ ^release\/[0-9]+\.x$ ]]; then
+  echo "❌ You must be on a 'release/X.x' branch to create a hotfix."
+  exit 1
+fi
+
+RELEASE_BRANCH="$CURRENT_BRANCH"
+
+# --- Met à jour les références distantes ---
+echo "🔄 Fetching latest changes from origin..."
+git fetch origin
+
+if [ $? -ne 0 ]; then
+  echo "❌ Failed to fetch from origin."
+  exit 1
+fi
+
+# --- Vérifie que la branche n'existe pas déjà ---
+if git rev-parse --verify --quiet "hotfix/$HOTFIX_NAME" > /dev/null; then
+  echo "❌ Branch 'hotfix/$HOTFIX_NAME' already exists."
+  exit 1
+fi
+
+# --- Vérifie si la branche release est à jour ---
+LOCAL_HASH=$(git rev-parse "$RELEASE_BRANCH")
+REMOTE_HASH=$(git rev-parse "origin/$RELEASE_BRANCH")
+
+if [[ "$LOCAL_HASH" != "$REMOTE_HASH" ]]; then
+  echo "⚠️  Local '$RELEASE_BRANCH' is behind 'origin/$RELEASE_BRANCH'. Attempting to pull..."
+  git pull origin "$RELEASE_BRANCH"
+  if [ $? -ne 0 ]; then
+    echo "❌ Failed to pull latest changes from origin/$RELEASE_BRANCH."
+    exit 1
+  fi
+  echo "✅ '$RELEASE_BRANCH' successfully updated."
+fi
+
+# --- Vérifie les changements non commités ---
+if ! git diff-index --quiet HEAD --; then
+  echo "⚠️  You have uncommitted changes. They will be carried into the new branch."
+fi
+
+# --- Mode dry-run ---
+if $DRY_RUN; then
+  echo "🧪 [DRY-RUN] Would create branch: hotfix/$HOTFIX_NAME from $RELEASE_BRANCH"
+  exit 0
+fi
+
+# --- Création de la branche ---
+BRANCH="hotfix/${HOTFIX_NAME}"
+git checkout -b "$BRANCH"
+
+if [ $? -ne 0 ]; then
+  echo "❌ Failed to create and checkout branch '$BRANCH'."
+  exit 1
+fi
+
+echo "✅ Branch '$BRANCH' created from '$RELEASE_BRANCH' and checked out."

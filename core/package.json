@@ -1,0 +1,16 @@
+{
+  "name": "bonsai",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "main": "./dist/bonsai.js",
+  "types": "./dist/bonsai.d.ts",
+  "src": "./src/bonsai.ts",
+  "dependencies": {
+    "@bonsai/types": "workspace:^",
+    "@bonsai/rxjs": "workspace:^",
+    "@bonsai/remeda": "workspace:^",
+    "@bonsai/zod": "workspace:^",
+    "@bonsai/event": "workspace:^"
+  }
+}

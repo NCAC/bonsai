@@ -1,0 +1,100 @@
+#!/bin/bash
+set -euo pipefail
+
+# --- Initialisation ---
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+DRY_RUN=false
+
+# --- Analyse des arguments ---
+for arg in "$@"; do
+  case $arg in
+    --dry-run)
+      DRY_RUN=true
+      ;;
+    -h|--help)
+      echo "ℹ️  Usage: sync-feature [--dry-run]"
+      echo "  Synchronise la branche courante avec 'develop'"
+      echo "  Example: sync-feature"
+      echo "  Example: sync-feature --dry-run"
+      exit 0
+      ;;
+    *)
+      echo "❌ Unknown argument: $arg"
+      exit 1
+      ;;
+  esac
+done
+
+# --- Vérifications de base ---
+if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  echo "❌ Not a valid Git repository."
+  exit 1
+fi
+
+# --- Vérifie qu'on est sur une branche feature ou bugfix ---
+if [[ ! "$CURRENT_BRANCH" =~ ^feature\/.+$ && ! "$CURRENT_BRANCH" =~ ^bugfix\/.+$ ]]; then
+  echo "❌ You must be on a 'feature/<name>' or 'bugfix/<name>' branch to use this command."
+  exit 1
+fi
+
+# --- Vérifie les modifications locales non commitées ---
+if ! git diff-index --quiet HEAD --; then
+  echo "⚠️  You have uncommitted changes that might conflict with the sync."
+  echo "   Consider committing or stashing them first with:"
+  echo "   git add . && commit"
+  echo "   Or to stash: git stash"
+  
+  read -p "❓ Do you want to continue anyway? (y/N): " response
+  if [[ ! "$response" =~ ^[Yy]$ ]]; then
+    echo "🛑 Sync operation aborted."
+    exit 1
+  fi
+fi
+
+# --- Met à jour les références distantes ---
+echo "🔄 Fetching latest changes from origin..."
+git fetch origin
+
+# --- Mode dry-run ---
+if $DRY_RUN; then
+  echo "🧪 [DRY-RUN] Would merge 'origin/develop' into '$CURRENT_BRANCH'"
+  
+  # Vérification des conflits potentiels
+  CONFLICTS=$(git merge-tree $(git merge-base $CURRENT_BRANCH origin/develop) $CURRENT_BRANCH origin/develop | grep -c "^<<<<<<< ")
+  
+  if [ "$CONFLICTS" -gt 0 ]; then
+    echo "⚠️  [DRY-RUN] The merge would result in $CONFLICTS conflict(s)."
+  else
+    echo "✅ [DRY-RUN] No conflicts detected, the merge would succeed."
+  fi
+  
+  exit 0
+fi
+
+# --- Effectue la synchronisation ---
+echo "🔀 Merging 'origin/develop' into '$CURRENT_BRANCH'..."
+
+if git merge origin/develop; then
+  echo "✅ Branch '$CURRENT_BRANCH' successfully synchronized with 'develop'."
+else
+  echo "⚠️  Merge conflicts detected. Please resolve them manually:"
+  echo "1️⃣  Edit the conflicting files to resolve the conflicts"
+  echo "2️⃣  Mark them as resolved with: git add <file>"
+  echo "3️⃣  Complete the merge with: git merge --continue"
+  echo ""
+  echo "💡 If you want to abort the merge: git merge --abort"
+  exit 1
+fi
+
+# --- Push des changements ---
+echo "🚀 Pushing changes to origin..."
+
+if HUSKY=0 git push origin "$CURRENT_BRANCH"; then
+  echo "✅ Changes pushed to origin/$CURRENT_BRANCH."
+else
+  echo "❌ Failed to push changes to origin/$CURRENT_BRANCH."
+  echo "   You may need to push manually: git push origin $CURRENT_BRANCH"
+  exit 1
+fi
+
+echo "🎉 Sync complete! Your branch is now up-to-date with 'develop'."

@@ -1,0 +1,13 @@
+{
+  "name": "@bonsai/types",
+  "version": "0.1.0",
+  "description": "Types module for bonsai",
+  "type": "module",
+  "author": {
+    "name": "NCAC",
+    "email": "dev.ncac@gmail.com"
+  },
+  "main": "./dist/bonsai-types.js",
+  "types": "./dist/bonsai-types.d.ts",
+  "src": "./src/bonsai-types.ts"
+}

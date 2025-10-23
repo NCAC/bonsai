@@ -1,0 +1,13 @@
+# Configuration des phases de build pour les packages Bonsai
+
+# Libraries: Packages externes pouvant être buildés en parallèle
+libraries:
+  # - "@bonsai/remeda"
+  - "@bonsai/rxjs"
+  # - "@bonsai/zod"
+
+# Packages: Nos packages maison avec possibles interdépendances
+packages:
+  - "@bonsai/types"
+  - "@bonsai/event"
+  # Ajouter ici les autres packages qui viendront par la suite

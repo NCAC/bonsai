@@ -1,0 +1,50 @@
+include ./_include.pug
+
+_data
+  theme String
+  isLogged Boolean
+  hasHeader Boolean
+  testArray Array
+    element String
+
+#page-view
+  if data.hasHeader
+    #header-region
+  div#content(data-theme=data.theme)
+    if data.theme == "classic"
+      h2 Thème classique
+    else
+      h2 Thème autre
+    - var name = data.isLogged ? "Maître" : "Cher inconnu";
+    p Bonjour, #{name}
+    hr
+    h3 Voulez-vous de la région Header ?
+    +show_header_button(data.hasHeader)
+    +hide_header_button(data.hasHeader)
+    hr
+    h3(style="font-weight: bold") Voulez-vous vous connecter ?
+    h3(data-test="ok") Voulez-vous vous connecter ?
+    - const loginDisplay = data.isLogged ? "display: none" : "display: block";
+    - const unLoginDisplay = data.isLogged ? "display: block": "display: none";
+    button.Content-login(type="button" style=loginDisplay) Se connecter
+    button.Content-unLogin(type="button" style=unLoginDisplay) Se déconnecter
+    br
+    hr
+    +test()
+    case data.hasHeader
+      when true
+        p OK
+      when false
+        p NOK
+
+mixin show_header_button(hasHeader)
+  if hasHeader
+    button.Content-show-header(type="button" style="display:block") Oui !
+  else
+    button.Content-show-header(type="button" style="display:none") Oui !
+
+mixin hide_header_button(hasHeader)
+  if hasHeader
+    button.Content-hide-header(type="button" style="display: none") Non !
+  else
+    button.Content-hide-header(type="button" style="display: block") Non !

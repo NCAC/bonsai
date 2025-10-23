@@ -1,0 +1,15 @@
+packages:
+  - core
+  - packages/**
+  - .
+
+ignoredBuiltDependencies:
+  - esbuild
+
+link-workspace-packages: false
+
+prefer-workspace-packages: false
+
+save-workspace-protocol: true
+
+shared-workspace-lockfile: true

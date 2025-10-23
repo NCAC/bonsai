@@ -1,0 +1,53 @@
+{
+  "name": "bonsai",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/bonsai,type=bind",
+  "workspaceFolder": "/bonsai",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        // # auto open .code-workspace file
+        "autoOpenWorkspace.enableAutoOpenIfSingleWorkspace": true,
+        // # GIT
+        "scm.alwaysShowActions": true,
+        "git.alwaysShowStagedChangesResourceGroup": true,
+        "git.ignoreLimitWarning": true,
+        "git.openRepositoryInParentFolders": "always",
+
+        // files & editor for common
+        "files.insertFinalNewline": true,
+        "files.trimFinalNewlines": true,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.foldingStrategy": "indentation",
+        // The number of spaces a tab is equal to. This setting is overridden
+        // based on the file contents when `editor.detectIndentation` is true.
+        "editor.tabSize": 2,
+
+        // Insert spaces when pressing Tab. This setting is overriden
+        // based on the file contents when `editor.detectIndentation` is true.
+        "editor.insertSpaces": true,
+        // When opening a file, `editor.tabSize` and `editor.insertSpaces`
+        // will be detected based on the file contents. Set to false to keep
+        // the values you've explicitly set, above.
+        "editor.detectIndentation": false
+      },
+      "extensions": [
+        "esbenp.prettier-vscode",
+        "mhutchie.git-graph",
+        "sibiraj-s.vscode-scss-formatter",
+        "mrmlnc.vscode-scss",
+        "JannisX11.batch-rename-extension",
+        "zoma.vscode-auto-open-workspace",
+        "GitHub.copilot-chat",
+        "GitHub.copilot",
+        "Gxl.git-graph-3"
+      ]
+    }
+  },
+  "forwardPorts": [1979, 1980],
+  "postCreateCommand": "sh /bonsai/.devcontainer/post-create-command.sh"
+}
