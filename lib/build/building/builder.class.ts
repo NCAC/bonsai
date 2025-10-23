@@ -314,8 +314,104 @@ export class Builder {
       return false;
     }
   }
+
   public async buildFramework(framework: TFramework): Promise<boolean> {
-    return true; //@todo: implémenter la construction du framework
+    const frameworkName = framework.packageJson.name || "bonsai";
+    this.logger.info(`Building framework: ${frameworkName}`);
+
+    try {
+      // Nettoyer le dossier de sortie si demandé
+      if (this.buildOptions.all.clean) {
+        await this.cleanOutputDir(framework.distPath);
+      }
+
+      // S'assurer que le dossier de sortie existe
+      await this.ensureOutputDirExists(framework.outJsFile);
+
+      // Créer la configuration Rollup pour le framework
+      const jsRollupConfig: RollupOptions = {
+        input: framework.srcFile,
+        output: {
+          file: framework.outJsFile,
+          format: "es", // Format ES modules
+          sourcemap: false,
+          preserveModules: false,
+          // Banner pour documenter le bundle du framework
+          banner: `/**
+ * ${frameworkName} Framework - Version ${framework.packageJson.version}
+ * Bundled by Bonsai Build System
+ * Date: ${new Date().toISOString()}
+ */`
+        },
+        plugins: [
+          // Résoudre les dépendances externes
+          nodeResolve({
+            extensions: [".ts", ".js", ".json"],
+            preferBuiltins: true
+          }),
+          // Convertir CommonJS en ES modules
+          commonjs(),
+          // Compiler TypeScript avec génération des déclarations
+          typescript({
+            tsconfig: join(this.pathManager.rootPath, "tsconfig.json"),
+            tsconfigOverride: {
+              compilerOptions: {
+                declaration: true,
+                declarationDir: framework.distPath,
+                target: "es2020",
+                module: "esnext",
+                importHelpers: true
+              },
+              include: [`${framework.srcPath}/**/*`],
+              exclude: ["node_modules", "**/*.test.ts", "**/*.spec.ts"]
+            },
+            clean: true
+          })
+        ],
+        // Externaliser les dépendances du framework
+        external: framework.packages
+      };
+
+      // Effectuer le build JS et DTS
+      this.logger.info(`Génération du bundle pour le framework ${frameworkName}...`);
+      const bundle = await rollup(jsRollupConfig);
+      await bundle.write(jsRollupConfig.output as any);
+      await bundle.close();
+
+      // Bundling des types DTS pour le framework
+      try {
+        // Adapter bundlePackageDts pour le framework
+        const frameworkAsPackage: TPackage = {
+          rootPath: framework.rootPath,
+          name: frameworkName,
+          distPath: framework.distPath,
+          srcPath: framework.srcPath,
+          outJsFile: framework.outJsFile,
+          outDtsFile: framework.outDtsFile,
+          srcFile: framework.srcFile,
+          dependencies: framework.packages,
+          packageJson: framework.packageJson
+        };
+        
+        await bundlePackageDts(frameworkAsPackage);
+        this.logger.success(`Bundle DTS généré pour le framework ${frameworkName}`);
+      } catch (dtsError) {
+        this.logger.error(
+          `Erreur lors de la génération du bundle DTS pour le framework ${frameworkName}:`,
+          dtsError
+        );
+        return false;
+      }
+
+      this.logger.success(`Framework ${frameworkName} built successfully`);
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Erreur lors du build du framework ${frameworkName}:`,
+        error
+      );
+      return false;
+    }
   }
 }
 

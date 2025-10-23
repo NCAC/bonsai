@@ -11,6 +11,10 @@
 !bonsai-components.yaml
 !bonsai.code-workspace
 
+# tests
+!./tests
+
+
 !/.devcontainer
 
 !/tools
