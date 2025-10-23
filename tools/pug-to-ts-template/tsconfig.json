@@ -1,0 +1,25 @@
+{
+  "compileOnSave": true,
+  "declarationDir": "dist",
+  "compilerOptions": {
+    "declaration": true,
+    "module": "ESNext",
+    "extendedDiagnostics": true,
+    "moduleResolution": "node",
+    "target": "ES2018",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "lib": ["dom", "ES2018"],
+    "baseUrl": "./"
+  },
+  "ts-node": {
+    "esm": true,
+    "compilerOptions": {
+      "module": "ESNext",
+      "moduleResolution": "node",
+      "target": "ES2020",
+      "esModuleInterop": true
+    }
+  },
+  "include": ["lib"]
+}

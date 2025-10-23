@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "module": "ESNext",
+    "extendedDiagnostics": true,
+    "moduleResolution": "node",
+    "target": "ES2018",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "lib": ["dom", "ES2018"],
+    "baseUrl": "./"
+  }
+}

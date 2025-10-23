@@ -1,0 +1,164 @@
+#!/bin/bash
+
+# --- Initialisation ---
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+DRY_RUN=false
+
+# --- Analyse des arguments ---
+for arg in "$@"; do
+  case $arg in
+    --dry-run)
+      DRY_RUN=true
+      ;;
+    -h|--help)
+      echo "ℹ️  Usage: finish-hotfix [--dry-run]"
+      echo "  Must be run from a 'hotfix/<name>' branch"
+      exit 0
+      ;;
+    *)
+      echo "❌ Unknown argument: $arg"
+      exit 1
+      ;;
+  esac
+done
+
+# --- Vérifie qu'on est bien sur une branche hotfix ---
+if [[ ! "$CURRENT_BRANCH" =~ ^hotfix\/.+$ ]]; then
+  echo "❌ You must be on a 'hotfix/<name>' branch to use this command."
+  exit 1
+fi
+
+HOTFIX_NAME="${CURRENT_BRANCH#hotfix/}"
+
+# --- Mode dry-run ---
+if $DRY_RUN; then
+  echo "🧪 [DRY-RUN] Would merge '$CURRENT_BRANCH' into release/*"
+  echo "🧪 [DRY-RUN] Would tag: release.X.Y+1"
+  echo "🧪 [DRY-RUN] Would push tag and branches"
+  echo "🧪 [DRY-RUN] Would generate .history/release.X.Y+1.md"
+  echo "🧪 [DRY-RUN] Would delete branch '$CURRENT_BRANCH'"
+  exit 0
+fi
+
+# --- Vérifie que le dépôt est valide ---
+if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  echo "❌ Not a valid Git repository."
+  exit 1
+fi
+
+# --- Déduction de la branche release source ---
+RELEASE_BRANCH=$(git branch -r --contains "$CURRENT_BRANCH" | grep "origin/release/" | sed 's|origin/||' | head -n 1)
+
+if [[ -z "$RELEASE_BRANCH" ]]; then
+  echo "❌ Unable to determine the release branch containing this hotfix."
+  exit 1
+fi
+
+# --- Mise à jour de la branche release ---
+echo "🔁 Checking out '$RELEASE_BRANCH'..."
+if ! git checkout "$RELEASE_BRANCH"; then
+  echo "❌ Failed to checkout '$RELEASE_BRANCH'."
+  exit 1
+fi
+
+if ! git pull origin "$RELEASE_BRANCH"; then
+  echo "❌ Failed to pull latest changes from origin/$RELEASE_BRANCH."
+  exit 1
+fi
+
+# --- Fusion du hotfix dans release ---
+echo "🔧 Merging '$CURRENT_BRANCH' into '$RELEASE_BRANCH'..."
+if ! HUSKY=0 git merge --no-ff "$CURRENT_BRANCH" -m "🔧 Merge hotfix/$HOTFIX_NAME into $RELEASE_BRANCH"; then
+  echo "❌ Merge failed. Please resolve conflicts manually."
+  exit 1
+fi
+
+# --- Calcul du prochain tag release.X.Y+1 ---
+LAST_TAG=$(git tag --merged "$RELEASE_BRANCH" | grep "^release\." | grep "${RELEASE_BRANCH#release/}" | sort -V | tail -n 1)
+if [[ -z "$LAST_TAG" ]]; then
+  NEW_TAG="release.${RELEASE_BRANCH#release/}.1"
+else
+  LAST_MINOR=$(echo "$LAST_TAG" | awk -F. '{print $NF}')
+  NEXT_MINOR=$((LAST_MINOR + 1))
+  NEW_TAG="release.${RELEASE_BRANCH#release/}.$NEXT_MINOR"
+fi
+
+# --- Création du tag ---
+echo "🏷️  Tagging '$RELEASE_BRANCH' with '$NEW_TAG'..."
+HUSKY=0 git tag -a "$NEW_TAG" -m "Hotfix $HOTFIX_NAME merged into $RELEASE_BRANCH"
+
+# --- Push du tag ---
+echo "🚀 Pushing tag '$NEW_TAG' to origin..."
+HUSKY=0 git push origin "$NEW_TAG"
+
+# --- Mise à jour de develop ---
+echo "🔁 Checking out 'develop'..."
+if ! git checkout develop; then
+  echo "❌ Failed to checkout 'develop'."
+  exit 1
+fi
+
+if ! git pull origin develop; then
+  echo "❌ Failed to pull latest changes from origin/develop."
+  exit 1
+fi
+
+# --- Fusion de release dans develop ---
+echo "🔄 Merging '$RELEASE_BRANCH' into 'develop'..."
+echo "🔄 Merging '$RELEASE_BRANCH' into 'develop'..."
+if ! HUSKY=0 git merge --no-ff "$RELEASE_BRANCH" -m "🔄 Merge $RELEASE_BRANCH into develop (includes hotfix/$HOTFIX_NAME)"; then
+  echo "❌ Merge into develop failed."
+  exit 1
+fi
+
+# --- Push des branches ---
+echo "🚀 Pushing '$RELEASE_BRANCH' and 'develop' to origin..."
+if ! HUSKY=0 git push origin "$RELEASE_BRANCH" && HUSKY=0 git push origin develop; then
+  echo "❌ Failed to push branches to origin."
+  exit 1
+fi
+
+# --- Génération du fichier de package ---
+REPO_ROOT=$(git rev-parse --show-toplevel)
+mkdir -p "$REPO_ROOT/.history"
+PACKAGE_FILE="$REPO_ROOT/.history/${NEW_TAG}.md"
+
+COMMITS=$(git log "$RELEASE_BRANCH".."$CURRENT_BRANCH" --pretty=format:"%h %s (%an, %ad)" --date=short)
+
+{
+  echo "# Package de déploiement : $NEW_TAG"
+  echo ""
+  echo "**Date de génération :** $(date '+%Y-%m-%d %H:%M:%S')"
+  echo "**Branche de base :** $RELEASE_BRANCH"
+  echo ""
+  echo "## Liste des commits"
+  echo ""
+  if [[ -z "$COMMITS" ]]; then
+    echo "_Aucun commit détecté._"
+  else
+    echo "$COMMITS"
+  fi
+} > "$PACKAGE_FILE"
+
+echo "📦 Fichier de package généré : $PACKAGE_FILE"
+
+# --- Suppression de la branche hotfix ---
+echo "🧹 Deleting local branch '$CURRENT_BRANCH'..."
+if ! git branch -d "$CURRENT_BRANCH"; then
+  echo "⚠️  Could not delete local branch '$CURRENT_BRANCH'."
+else
+  echo "✅ Local branch '$CURRENT_BRANCH' deleted."
+fi
+
+echo "🧹 Deleting remote branch '$CURRENT_BRANCH'..."
+if ! git push origin --delete "$CURRENT_BRANCH"; then
+  echo "⚠️  Could not delete remote branch '$CURRENT_BRANCH'."
+else
+  echo "✅ Remote branch '$CURRENT_BRANCH' deleted."
+fi
+
+# --- Résumé final ---
+echo "🎉 Hotfix '$HOTFIX_NAME' successfully merged into:"
+echo "  - $RELEASE_BRANCH"
+echo "  - develop"
+echo "🏷️  Tag created: $NEW_TAG"

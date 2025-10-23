@@ -1,0 +1,13 @@
+# Build phase configuration for Bonsai packages
+
+# Libraries: External packages that can be built in parallel
+libraries:
+  - "@bonsai/rxjs"
+  - "@bonsai/valibot"
+  # @bonsai/remeda supprimé (ADR-0031 C3 — hors API publique Bonsai)
+
+# Packages: Our in-house packages with possible interdependencies
+packages:
+  - "@bonsai/types"
+  - "@bonsai/event"
+  # Add other packages here as needed

@@ -1,0 +1,49 @@
+#ignore everything
+/*
+#except for these files :
+!.gitignore
+!README.md
+!README.fr.md
+!LICENSE
+!package.json
+!tsconfig.json
+!tsconfig.base.json
+!pnpm-workspace.yaml
+!bonsai-components.yaml
+!bonsai.code-workspace
+!CONTRIBUTING.md
+!QUICK-START.md
+!README-EN.md
+!pnpm-lock.yaml
+
+# tests
+!/tests
+
+# Test configuration
+!jest.config.ts
+!tsconfig.test.json
+!tsconfig.framework.json
+
+
+!/.devcontainer
+
+!/tools
+!/lib
+
+!/core
+/core/node_modules
+
+!/packages
+/packages/*/node_modules
+
+!/.history
+
+!/docs
+/docs/*
+!/docs/README.md
+!/docs/rfc
+!/docs/TODO.md
+!/docs/CACHE_WORK_IN_PROGRESS.md
+!/docs/adr
+!/docs/guides
+!/docs/archive

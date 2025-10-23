@@ -1,0 +1,33 @@
+{
+  "name": "@bonsai/build-bonsai-package",
+  "version": "0.1.0",
+  "description": "Build tool for bonsai's packages",
+  "type": "module",
+  "author": {
+    "name": "NCAC",
+    "email": "dev.ncac@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": [
+    "typescript",
+    "types",
+    "bonsai"
+  ],
+  "prettier": {
+    "trailingComma": "none",
+    "semi": true,
+    "quoteProps": "as-needed",
+    "useTabs": false,
+    "singleQuote": false,
+    "bracketSpacing": true
+  },
+  "scripts": {
+    "build": "node ./lib/build.js"
+  },
+  "main": "./dist/bonsai-build.js",
+  "types": "./dist/bonsai-build.d.ts",
+  "files": [
+    "dist"
+  ],
+  "src": "./src/bonsai-build.ts"
+}

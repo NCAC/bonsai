@@ -1,0 +1,15 @@
+{
+  "name": "@bonsai/zod",
+  "version": "0.1.0",
+  "description": "external awesome libraries used for bonsai",
+  "type": "module",
+  "author": {
+    "name": "NCAC",
+    "email": "dev.ncac@gmail.com"
+  },
+  "main": "./dist/zod.js",
+  "types": "./dist/zod.d.ts",
+  "src": "./src/zod.ts",
+  "namespace": "Zod",
+  "bonsaiUpstream": "zod"
+}

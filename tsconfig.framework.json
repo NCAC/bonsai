@@ -1,0 +1,50 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": true,
+  "compilerOptions": {
+    "resolveJsonModule": true,
+    "paths": {
+      "@build/*": ["./lib/build/*"],
+      "bonsai/lib/*": ["./lib/*"],
+      "bonsai": ["./core/dist"],
+      "@bonsai/types*": ["./packages/types/dist"],
+      "@bonsai/remeda*": ["./packages/remeda/dist"],
+      "@bonsai/rxjs*": ["./packages/rxjs/dist"],
+      "@bonsai/zod*": ["./packages/zod/dist"],
+      "@bonsai/event*": ["./packages/event/dist"]
+      // "@bonsai/error*": ["packages/error/dist"],
+      // "@bonsai/dom*": ["packages/dom/dist"],
+      // "@bonsai/vdom*": ["packages/vdom/dist"],
+
+      // "@bonsai/entity*": ["packages/entity/dist"],
+      // "@bonsai/base-components*": ["packages/base-components/dist"],
+      // "@bonsai/manager*": ["packages/manager/dist"],
+      // "@bonsai/base-view*": ["packages/base-view/dist"],
+      // "@bonsai/behavior*": ["packages/behavior/dist"],
+      // "@bonsai/view*": ["packages/view/dist"],
+      // "@bonsai/region*": ["packages/region/dist"],
+      // "@bonsai/app-node*": ["packages/app-node/dist"],
+      // "bonsai-pug-ts*": ["tools/pug-ts/dist"]
+    }
+  },
+
+  "include": ["core/src", "tests"],
+  "references": [
+    { "path": "./packages/types" },
+    { "path": "./packages/remeda" },
+    { "path": "./packages/rxjs" },
+    { "path": "./packages/zod" },
+    { "path": "./packages/event" }
+    // { "path": "./packages/app-node" },
+    // { "path": "./packages/base-components" },
+    // { "path": "./packages/base-view" },
+    // { "path": "./packages/behavior" },
+    // { "path": "./packages/dom" },
+    // { "path": "./packages/entity" },
+    // { "path": "./packages/error" },
+    // { "path": "./packages/manager" },
+    // { "path": "./packages/region" },
+    // { "path": "./packages/vdom" },
+    // { "path": "./packages/base-view" }
+  ]
+}

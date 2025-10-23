@@ -1,0 +1,36 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "@jest/globals", "node"],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@bonsai/entity": ["./packages/entity/src/bonsai-entity.ts"],
+      "@bonsai/feature": ["./packages/feature/src/bonsai-feature.ts"],
+      "@bonsai/event": ["./packages/event/src/bonsai-event.ts"],
+      "@bonsai/view": ["./packages/view/src/bonsai-view.ts"],
+      "@bonsai/composer": ["./packages/composer/src/bonsai-composer.ts"],
+      "@bonsai/foundation": ["./packages/foundation/src/bonsai-foundation.ts"],
+      "@bonsai/behavior": ["./packages/behavior/src/bonsai-behavior.ts"],
+      "@bonsai/application": [
+        "./packages/application/src/bonsai-application.ts"
+      ],
+      "@bonsai/core": ["./core/src/bonsai.ts"],
+      "@bonsai/types": ["./packages/types/index.d.ts"],
+      "@bonsai/rxjs": ["./packages/rxjs/src/rxjs.ts"],
+      "@bonsai/remeda": ["./packages/remeda/src/remeda.ts"],
+      "@bonsai/zod": ["./packages/zod/src/zod.ts"]
+    }
+  },
+  "include": [
+    "tests/**/*",
+    "core/src/**/*.test.ts",
+    "packages/**/*.test.ts",
+    "lib/**/*.test.ts",
+    "tools/**/*.test.ts"
+  ],
+  "exclude": ["node_modules", "dist", "coverage"]
+}

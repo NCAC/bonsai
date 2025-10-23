@@ -1,0 +1,16 @@
+{
+  "name": "@bonsai/types",
+  "version": "0.1.0",
+  "description": "Types module for bonsai",
+  "type": "module",
+  "author": {
+    "name": "NCAC",
+    "email": "dev.ncac@gmail.com"
+  },
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "module": "esnext",
+    "target": "esnext",
+    "lib": ["esnext"],
+    "isolatedModules": true,
+    "sourceMap": true,
+    "allowJs": true,
+    "checkJs": true,
+    "composite": false,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "importHelpers": true, // For tree-shaking
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@lib/*": ["./lib/*"],
+      "@build/*": ["./lib/build/*"],
+      "@build/core/*": ["./lib/build/core/*"],
+      "@build/phases/*": ["./lib/build/phases/*"],
+      "@build/monitoring/*": ["./lib/build/monitoring/*"],
+      "@build/config/*": ["./lib/build/config/*"],
+      "@build/utils/*": ["./lib/build/utils/*"],
+      "@build/cache/*": ["./lib/build/cache/*"],
+      "@build/plugins/*": ["./lib/build/plugins/*"]
+    }
+  },
+  "include": ["lib/**/*.ts"],
+  "exclude": ["node_modules"]
+}

@@ -1,0 +1,164 @@
+#!/bin/bash
+
+# --- Initialisation ---
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+DRY_RUN=false
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+HISTORY_DIR="$REPO_ROOT/.history"
+
+# --- Analyse des arguments ---
+for arg in "$@"; do
+  case $arg in
+    --dry-run)
+      DRY_RUN=true
+      ;;
+    -h|--help)
+      echo "ℹ️  Usage: finish-bugfix [--dry-run]"
+      echo "  Must be run from a 'bugfix/<n>' branch"
+      echo "  Creates a Merge Request instead of directly merging"
+      exit 0
+      ;;
+    *)
+      echo "❌ Unknown argument: $arg"
+      exit 1
+      ;;
+  esac
+done
+
+# --- Vérifie qu'on est bien sur une branche bugfix ---
+if [[ ! "$CURRENT_BRANCH" =~ ^bugfix\/.+$ ]]; then
+  echo "❌ You must be on a 'bugfix/<n>' branch to use this command."
+  exit 1
+fi
+
+BUGFIX_NAME="${CURRENT_BRANCH#bugfix/}"
+TAG="dev.bugfix.$BUGFIX_NAME"
+
+# --- Mode dry-run ---
+if $DRY_RUN; then
+  echo "🧪 [DRY-RUN] Would create Merge Request from '$CURRENT_BRANCH' to 'develop'"
+  echo "🧪 [DRY-RUN] Would generate file: .history/$TAG.md"
+  exit 0
+fi
+
+# --- Vérifie que le dépôt est valide ---
+if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  echo "❌ Not a valid Git repository."
+  exit 1
+fi
+
+# --- Met à jour les références distantes ---
+echo "🔄 Fetching latest changes from origin..."
+git fetch origin
+
+# --- Vérifie que develop est déjà mergé dans la bugfix ---
+echo "🔍 Checking if 'develop' is up-to-date with your branch..."
+if ! git merge-base --is-ancestor origin/develop "$CURRENT_BRANCH"; then
+  echo "⚠️ Branch '$CURRENT_BRANCH' does not contain the latest 'develop'."
+  echo "👉 It's recommended to merge 'develop' into '$CURRENT_BRANCH' before proceeding."
+  
+  read -p "❓ Would you like to merge 'develop' into your branch now? (y/n): " merge_develop
+  if [[ "$merge_develop" == "y" ]]; then
+    echo "🔀 Merging 'develop' into '$CURRENT_BRANCH'..."
+    if ! git merge origin/develop; then
+      echo "❌ Merge conflicts detected. Please resolve them manually."
+      exit 1
+    fi
+  else
+    echo "⚠️ Proceeding without merging 'develop'. This might cause conflicts in the Merge Request."
+  fi
+fi
+
+# --- Génère le fichier d'historique ---
+echo "📝 Generating merge history..."
+
+mkdir -p $HISTORY_DIR
+FILENAME="$HISTORY_DIR/${TAG}.md"
+
+{
+  echo "# Bugfix: ${CURRENT_BRANCH} into develop"
+  echo ""
+  echo "## Date: $(date '+%Y-%m-%d %H:%M:%S')"
+  echo "## Commit messages"
+  echo "----------------"
+  git log origin/develop.."$CURRENT_BRANCH" --pretty=format:"%h %s (%an, %ad)" --date=short
+} > "$FILENAME"
+
+echo "✅ Commit history saved to $FILENAME"
+
+# --- Ajoute et commit le fichier d'historique ---
+git add "$FILENAME"
+if ! HUSKY=0 git commit -m "📝 Merge log for bugfix/$BUGFIX_NAME"; then
+  echo "❌ Failed to commit merge log."
+  exit 1
+fi
+
+# --- Push de la branche ---
+echo "🚀 Pushing '$CURRENT_BRANCH' to origin..."
+if ! HUSKY=0 git push origin "$CURRENT_BRANCH"; then
+  echo "❌ Failed to push to origin."
+  exit 1
+fi
+
+# --- Création de la Merge Request ---
+echo "📝 Creating Merge Request for '$CURRENT_BRANCH'..."
+DESCRIPTION="## Bugfix: $BUGFIX_NAME\n\n"
+DESCRIPTION+="## Description du problème\n*Veuillez décrire le bug et sa correction ici*\n\n"
+DESCRIPTION+="## Commits\n\`\`\`\n$(git log origin/develop.."$CURRENT_BRANCH" --pretty=format:"%h %s" --date=short)\n\`\`\`\n\n"
+DESCRIPTION+="## Checklist\n- [ ] Tests ajoutés\n- [ ] Documentation mise à jour\n- [ ] Code revu\n- [ ] Pas de régressions"
+
+# Récupération du token GitLab (à configurer une fois par utilisateur)
+GITLAB_TOKEN=$(git config --get gitlab.token || echo "")
+
+if [[ -n "$GITLAB_TOKEN" ]]; then
+  # Extraction de l'ID du projet depuis l'URL du dépôt
+  PROJECT_URL=$(git remote get-url origin)
+  
+  # Détection du format de l'URL (HTTP ou SSH)
+  if [[ "$PROJECT_URL" =~ ^https?:// ]]; then
+    # Format HTTP
+    PROJECT_ID=$(echo $PROJECT_URL | sed -E 's/.*[\/:]([^\/]+\/[^\/]+)(\.git)?$/\1/' | tr '/' '%2F')
+  else
+    # Format SSH
+    PROJECT_ID=$(echo $PROJECT_URL | sed -E 's/.*[:]([^\/]+\/[^\/]+)(\.git)?$/\1/' | tr '/' '%2F')
+  fi
+  
+  # Détermination de l'URL de base GitLab
+  if [[ "$PROJECT_URL" =~ gitlab\.com ]]; then
+    GITLAB_URL="https://gitlab.com"
+  else
+    # Pour les GitLab self-hosted, extrayez le domaine
+    GITLAB_URL=$(echo $PROJECT_URL | sed -E 's/^(git@|https?:\/\/)?([^:\/]+).*$/https:\/\/\2/')
+  fi
+  
+  # Création de la MR via l'API GitLab
+  MR_RESPONSE=$(curl -s -X POST \
+    -H "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+    -H "Content-Type: application/json" \
+    --data "{\"source_branch\":\"$CURRENT_BRANCH\",\"target_branch\":\"develop\",\"title\":\"Bugfix: $BUGFIX_NAME\",\"description\":\"$DESCRIPTION\",\"remove_source_branch\":true}" \
+    "$GITLAB_URL/api/v4/projects/$PROJECT_ID/merge_requests")
+  
+  # Vérification de la réponse
+  if echo "$MR_RESPONSE" | grep -q "\"iid\":[0-9]\+"; then
+    MR_IID=$(echo "$MR_RESPONSE" | grep -o '"iid":[0-9]\+' | cut -d':' -f2)
+    MR_URL="$GITLAB_URL/$(echo $PROJECT_ID | tr '%2F' '/')/merge_requests/$MR_IID"
+    echo "✅ Merge Request créée avec succès!"
+    echo "🔗 $MR_URL"
+  else
+    echo "⚠️ La création de la Merge Request a échoué. Erreur:"
+    echo "$MR_RESPONSE"
+    echo "Veuillez créer manuellement une Merge Request via l'interface GitLab."
+  fi
+else
+  echo "⚠️ Token GitLab non configuré. Pour configurer:"
+  echo "   git config --global gitlab.token 'votre_token_personnel'"
+  echo "   Créez ce token dans GitLab: Préférences > Jetons d'accès"
+  echo "   Permissions nécessaires: api, read_repository, write_repository"
+  echo ""
+  echo "👉 En attendant, veuillez créer manuellement une Merge Request via l'interface GitLab."
+fi
+
+# --- Résumé final ---
+echo "🎉 Bugfix branch '$CURRENT_BRANCH' is ready for review!"
+echo "📄 Merge log: $FILENAME"

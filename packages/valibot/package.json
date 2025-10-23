@@ -1,0 +1,15 @@
+{
+  "name": "@bonsai/valibot",
+  "version": "0.1.0",
+  "description": "Wrapper Valibot pour Bonsai — bibliothèque de validation imposée par ADR-0022",
+  "type": "module",
+  "author": {
+    "name": "NCAC",
+    "email": "dev.ncac@gmail.com"
+  },
+  "main": "./dist/valibot.js",
+  "types": "./dist/valibot.d.ts",
+  "src": "./src/valibot.ts",
+  "namespace": "VALIBOT",
+  "bonsaiUpstream": "valibot"
+}

@@ -1,0 +1,439 @@
+{
+  "type": "Block",
+  "nodes": [
+    {
+      "type": "Tag",
+      "name": "_data",
+      "selfClosing": false,
+      "block": {
+        "type": "Block",
+        "nodes": [
+          {
+            "type": "Tag",
+            "name": "title",
+            "selfClosing": false,
+            "block": {
+              "type": "Block",
+              "nodes": [
+                {
+                  "type": "Text",
+                  "val": "String",
+                  "line": 2,
+                  "column": 9,
+                  "filename": "pageView.template.test.ts"
+                }
+              ],
+              "line": 2,
+              "filename": "pageView.template.test.ts"
+            },
+            "attrs": [],
+            "attributeBlocks": [],
+            "isInline": false,
+            "line": 2,
+            "column": 3,
+            "filename": "pageView.template.test.ts"
+          },
+          {
+            "type": "Tag",
+            "name": "isLogged",
+            "selfClosing": false,
+            "block": {
+              "type": "Block",
+              "nodes": [
+                {
+                  "type": "Text",
+                  "val": "Boolean",
+                  "line": 3,
+                  "column": 12,
+                  "filename": "pageView.template.test.ts"
+                }
+              ],
+              "line": 3,
+              "filename": "pageView.template.test.ts"
+            },
+            "attrs": [],
+            "attributeBlocks": [],
+            "isInline": false,
+            "line": 3,
+            "column": 3,
+            "filename": "pageView.template.test.ts"
+          },
+          {
+            "type": "Tag",
+            "name": "userName",
+            "selfClosing": false,
+            "block": {
+              "type": "Block",
+              "nodes": [
+                {
+                  "type": "Text",
+                  "val": "String",
+                  "line": 4,
+                  "column": 12,
+                  "filename": "pageView.template.test.ts"
+                }
+              ],
+              "line": 4,
+              "filename": "pageView.template.test.ts"
+            },
+            "attrs": [],
+            "attributeBlocks": [],
+            "isInline": false,
+            "line": 4,
+            "column": 3,
+            "filename": "pageView.template.test.ts"
+          },
+          {
+            "type": "Tag",
+            "name": "products",
+            "selfClosing": false,
+            "block": {
+              "type": "Block",
+              "nodes": [
+                {
+                  "type": "Text",
+                  "val": "Array",
+                  "line": 5,
+                  "column": 12,
+                  "filename": "pageView.template.test.ts"
+                },
+                {
+                  "type": "Tag",
+                  "name": "element",
+                  "selfClosing": false,
+                  "block": {
+                    "type": "Block",
+                    "nodes": [
+                      {
+                        "type": "Text",
+                        "val": "String",
+                        "line": 6,
+                        "column": 13,
+                        "filename": "pageView.template.test.ts"
+                      }
+                    ],
+                    "line": 6,
+                    "filename": "pageView.template.test.ts"
+                  },
+                  "attrs": [],
+                  "attributeBlocks": [],
+                  "isInline": false,
+                  "line": 6,
+                  "column": 5,
+                  "filename": "pageView.template.test.ts"
+                }
+              ],
+              "line": 5,
+              "filename": "pageView.template.test.ts"
+            },
+            "attrs": [],
+            "attributeBlocks": [],
+            "isInline": false,
+            "line": 5,
+            "column": 3,
+            "filename": "pageView.template.test.ts"
+          }
+        ],
+        "line": 1,
+        "filename": "pageView.template.test.ts"
+      },
+      "attrs": [],
+      "attributeBlocks": [],
+      "isInline": false,
+      "line": 1,
+      "column": 1,
+      "filename": "pageView.template.test.ts"
+    },
+    {
+      "type": "Tag",
+      "name": "div",
+      "selfClosing": false,
+      "block": {
+        "type": "Block",
+        "nodes": [
+          {
+            "type": "Conditional",
+            "test": "data.isLogged",
+            "consequent": {
+              "type": "Block",
+              "nodes": [
+                {
+                  "type": "Tag",
+                  "name": "h1",
+                  "selfClosing": false,
+                  "block": {
+                    "type": "Block",
+                    "nodes": [
+                      {
+                        "type": "Text",
+                        "val": "Bienvenue ",
+                        "line": 11,
+                        "column": 41,
+                        "filename": "pageView.template.test.ts"
+                      },
+                      {
+                        "type": "Code",
+                        "val": "data.userName",
+                        "buffer": true,
+                        "mustEscape": true,
+                        "isInline": true,
+                        "line": 11,
+                        "column": 51,
+                        "filename": "pageView.template.test.ts"
+                      },
+                      {
+                        "type": "Text",
+                        "val": " sur ",
+                        "line": 11,
+                        "column": 67,
+                        "filename": "pageView.template.test.ts"
+                      },
+                      {
+                        "type": "Code",
+                        "val": "data.title",
+                        "buffer": true,
+                        "mustEscape": true,
+                        "isInline": true,
+                        "line": 11,
+                        "column": 72,
+                        "filename": "pageView.template.test.ts"
+                      }
+                    ],
+                    "line": 11,
+                    "filename": "pageView.template.test.ts"
+                  },
+                  "attrs": [
+                    {
+                      "name": "class",
+                      "val": "'Page-welcome'",
+                      "line": 11,
+                      "column": 7,
+                      "filename": "pageView.template.test.ts",
+                      "mustEscape": false
+                    },
+                    {
+                      "name": "data-logged",
+                      "val": "\"true\"",
+                      "line": 11,
+                      "column": 21,
+                      "filename": "pageView.template.test.ts",
+                      "mustEscape": true
+                    }
+                  ],
+                  "attributeBlocks": [],
+                  "isInline": false,
+                  "line": 11,
+                  "column": 5,
+                  "filename": "pageView.template.test.ts"
+                }
+              ],
+              "line": 11,
+              "filename": "pageView.template.test.ts"
+            },
+            "alternate": {
+              "type": "Block",
+              "nodes": [
+                {
+                  "type": "Tag",
+                  "name": "h1",
+                  "selfClosing": false,
+                  "block": {
+                    "type": "Block",
+                    "nodes": [
+                      {
+                        "type": "Text",
+                        "val": "Bienvenue sur ",
+                        "line": 13,
+                        "column": 42,
+                        "filename": "pageView.template.test.ts"
+                      },
+                      {
+                        "type": "Code",
+                        "val": "data.title",
+                        "buffer": true,
+                        "mustEscape": true,
+                        "isInline": true,
+                        "line": 13,
+                        "column": 56,
+                        "filename": "pageView.template.test.ts"
+                      }
+                    ],
+                    "line": 13,
+                    "filename": "pageView.template.test.ts"
+                  },
+                  "attrs": [
+                    {
+                      "name": "class",
+                      "val": "'Page-welcome'",
+                      "line": 13,
+                      "column": 7,
+                      "filename": "pageView.template.test.ts",
+                      "mustEscape": false
+                    },
+                    {
+                      "name": "data-logged",
+                      "val": "\"false\"",
+                      "line": 13,
+                      "column": 21,
+                      "filename": "pageView.template.test.ts",
+                      "mustEscape": true
+                    }
+                  ],
+                  "attributeBlocks": [],
+                  "isInline": false,
+                  "line": 13,
+                  "column": 5,
+                  "filename": "pageView.template.test.ts"
+                },
+                {
+                  "type": "Tag",
+                  "name": "button",
+                  "selfClosing": false,
+                  "block": {
+                    "type": "Block",
+                    "nodes": [
+                      {
+                        "type": "Text",
+                        "val": "S'identifier",
+                        "line": 14,
+                        "column": 23,
+                        "filename": "pageView.template.test.ts"
+                      }
+                    ],
+                    "line": 14,
+                    "filename": "pageView.template.test.ts"
+                  },
+                  "attrs": [
+                    {
+                      "name": "class",
+                      "val": "'Page-login'",
+                      "line": 14,
+                      "column": 11,
+                      "filename": "pageView.template.test.ts",
+                      "mustEscape": false
+                    }
+                  ],
+                  "attributeBlocks": [],
+                  "isInline": false,
+                  "line": 14,
+                  "column": 5,
+                  "filename": "pageView.template.test.ts"
+                }
+              ],
+              "line": 13,
+              "filename": "pageView.template.test.ts"
+            },
+            "line": 10,
+            "column": 3,
+            "filename": "pageView.template.test.ts"
+          },
+          {
+            "type": "Tag",
+            "name": "div",
+            "selfClosing": false,
+            "block": {
+              "type": "Block",
+              "nodes": [
+                {
+                  "type": "Each",
+                  "obj": "data.products",
+                  "val": "product",
+                  "key": null,
+                  "block": {
+                    "type": "Block",
+                    "nodes": [
+                      {
+                        "type": "Tag",
+                        "name": "p",
+                        "selfClosing": false,
+                        "block": {
+                          "type": "Block",
+                          "nodes": [
+                            {
+                              "type": "Text",
+                              "val": "Voici mon produit : ",
+                              "line": 17,
+                              "column": 9,
+                              "filename": "pageView.template.test.ts"
+                            },
+                            {
+                              "type": "Code",
+                              "val": "product",
+                              "buffer": true,
+                              "mustEscape": true,
+                              "isInline": true,
+                              "line": 17,
+                              "column": 29,
+                              "filename": "pageView.template.test.ts"
+                            }
+                          ],
+                          "line": 17,
+                          "filename": "pageView.template.test.ts"
+                        },
+                        "attrs": [],
+                        "attributeBlocks": [],
+                        "isInline": false,
+                        "line": 17,
+                        "column": 7,
+                        "filename": "pageView.template.test.ts"
+                      }
+                    ],
+                    "line": 17,
+                    "filename": "pageView.template.test.ts"
+                  },
+                  "line": 16,
+                  "column": 5,
+                  "filename": "pageView.template.test.ts"
+                }
+              ],
+              "line": 15,
+              "filename": "pageView.template.test.ts"
+            },
+            "attrs": [
+              {
+                "name": "class",
+                "val": "'Page-content'",
+                "line": 15,
+                "column": 3,
+                "filename": "pageView.template.test.ts",
+                "mustEscape": false
+              }
+            ],
+            "attributeBlocks": [],
+            "isInline": false,
+            "line": 15,
+            "column": 3,
+            "filename": "pageView.template.test.ts"
+          }
+        ],
+        "line": 9,
+        "filename": "pageView.template.test.ts"
+      },
+      "attrs": [
+        {
+          "name": "class",
+          "val": "'Page'",
+          "line": 9,
+          "column": 1,
+          "filename": "pageView.template.test.ts",
+          "mustEscape": false
+        },
+        {
+          "name": "id",
+          "val": "'page-view'",
+          "line": 9,
+          "column": 6,
+          "filename": "pageView.template.test.ts",
+          "mustEscape": false
+        }
+      ],
+      "attributeBlocks": [],
+      "isInline": false,
+      "line": 9,
+      "column": 1,
+      "filename": "pageView.template.test.ts"
+    }
+  ],
+  "line": 0,
+  "filename": "pageView.template.test.ts"
+}

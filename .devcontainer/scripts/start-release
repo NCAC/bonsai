@@ -1,0 +1,170 @@
+#!/bin/bash
+
+# --- Initialisation ---
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+DRY_RUN=false
+NAME=""
+
+# --- Analyse des arguments ---
+for arg in "$@"; do
+  case $arg in
+    --dry-run)
+      DRY_RUN=true
+      ;;
+    -h|--help)
+      echo "ℹ️  Usage: start-release [--dry-run] <name>"
+      echo "  Example: start-release 9.x"
+      echo "  Example: start-release --dry-run 12.x"
+      exit 0
+      ;;
+    *)
+      NAME=$arg
+      ;;
+  esac
+done
+
+# --- Vérifications de base ---
+if [ -z "$NAME" ]; then
+  echo "❌ Usage : start-release <name>"
+  echo "   Example: start-release [--dry-run] 7.x"
+  exit 1
+fi
+
+RELEASE_TAG="${NAME%x}.0"
+TAG="release.$RELEASE_TAG"
+BRANCH="release/$NAME"
+
+# --- Mode dry-run ---
+if $DRY_RUN; then
+  echo "🧪 [DRY-RUN] Would create branch: $BRANCH from master"
+  echo "🧪 [DRY-RUN] Would tag: dev.$NAME on develop"
+  echo "🧪 [DRY-RUN] Would merge develop into $BRANCH"
+  echo "🧪 [DRY-RUN] Would tag: $TAG on $BRANCH"
+  echo "🧪 [DRY-RUN] Would push tag $TAG to origin"
+  echo "🧪 [DRY-RUN] Would generate file: .history/$TAG.md"
+  exit 0
+fi
+
+if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+  echo "❌ Not a valid Git repository."
+  exit 1
+fi
+
+if ! git diff-index --quiet HEAD --; then
+  echo "❌ You have uncommitted changes. Please commit or stash them before creating a release."
+  exit 1
+fi
+
+if [[ "$CURRENT_BRANCH" != "master" ]]; then
+  echo "🔁 Switching to 'master' branch..."
+  if ! git checkout master; then
+    echo "❌ Failed to switch to 'master' branch."
+    exit 1
+  fi
+  CURRENT_BRANCH="master"
+fi
+
+echo "🔄 Fetching latest changes from origin..."
+if ! git fetch origin; then
+  echo "❌ Failed to fetch from origin."
+  exit 1
+fi
+
+LOCAL_HASH=$(git rev-parse master)
+REMOTE_HASH=$(git rev-parse origin/master)
+
+if [[ "$LOCAL_HASH" != "$REMOTE_HASH" ]]; then
+  echo "⚠️  Local 'master' is behind 'origin/master'. Attempting to pull..."
+  if ! git pull origin master; then
+    echo "❌ Failed to pull latest changes from origin/master."
+    exit 1
+  fi
+  echo "✅ 'master' successfully updated."
+fi
+
+if ! [[ "$NAME" =~ ^[0-9]+\.x$ ]]; then
+  echo "❌ Invalid release version '$NAME'. Must be in the format 'X.x' (e.g. 8.x)."
+  exit 1
+fi
+
+if git rev-parse --verify --quiet "$BRANCH" > /dev/null; then
+  echo "❌ Branch '$BRANCH' already exists."
+  exit 1
+fi
+
+git fetch origin --tags
+LAST_TAG=$(git tag --merged master --sort=-creatordate | head -n 1)
+
+if [[ -z "$LAST_TAG" ]]; then
+  echo "❌ No previous tags found. Please create a tag on master before creating a release branch."
+  exit 1
+fi
+
+LAST_VERSION=$(echo "$LAST_TAG" | grep -oE '[0-9]+\.[0-9]+')
+if [[ -z "$LAST_VERSION" ]]; then
+  echo "❌ Invalid last tag '$LAST_TAG'. Must be in the format 'X.Y' (e.g. 14.0)."
+  exit 1
+fi
+
+NEW_MAJOR=$(echo "$NAME" | cut -d. -f1)
+LAST_MAJOR=$(echo "$LAST_VERSION" | cut -d. -f1)
+EXPECTED_MAJOR=$((LAST_MAJOR + 1))
+
+if [[ "$NEW_MAJOR" -ne "$EXPECTED_MAJOR" ]]; then
+  echo "❌ Invalid release version '$NAME'. Expected major version: $EXPECTED_MAJOR.x (last was $LAST_VERSION)."
+  exit 1
+fi
+
+echo "🏷️  Tagging 'dev.$NAME' on develop..."
+if ! git tag "dev.$NAME" develop; then
+  echo "❌ Failed to tag 'dev.$NAME' on develop."
+  exit 1
+fi
+
+echo "🌱 Creating branch '$BRANCH' from master..."
+if ! git checkout -b "$BRANCH" master; then
+  echo "❌ Failed to create and checkout branch '$BRANCH'."
+  exit 1
+fi
+
+echo "🔀 Merging develop into $BRANCH..."
+if ! git merge --no-ff develop -m "🔀 Merge develop into $BRANCH"; then
+  echo "❌ Merge failed. Please resolve conflicts manually."
+  exit 1
+fi
+
+echo "🏷️  Tagging '$TAG' on '$BRANCH'..."
+if ! git tag -a "$TAG" -m "First delivery for release $RELEASE_TAG"; then
+  echo "❌ Failed to create tag '$TAG'."
+  exit 1
+fi
+
+echo "🚀 Pushing tag '$TAG' to origin..."
+if ! git push origin "$TAG"; then
+  echo "❌ Failed to push tag '$TAG'."
+  exit 1
+fi
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+mkdir -p "$REPO_ROOT/.history"
+PACKAGE_FILE="$REPO_ROOT/.history/$TAG.md"
+
+COMMITS=$(git log master..develop --pretty=format:"%h %s (%an, %ad)" --date=short)
+
+{
+  echo "# Package de déploiement : $BRANCH"
+  echo ""
+  echo "**Date de génération :** $(date '+%Y-%m-%d %H:%M:%S')"
+  echo "**Contenu :** commits entre master et develop"
+  echo ""
+  echo "## Liste des commits"
+  echo ""
+  if [[ -z "$COMMITS" ]]; then
+    echo "_Aucun commit détecté._"
+  else
+    echo "$COMMITS"
+  fi
+} > "$PACKAGE_FILE"
+
+echo "📦 Fichier de package généré : $PACKAGE_FILE"
+echo "✅ Branch '$BRANCH' created, tagged, and merged with develop."
