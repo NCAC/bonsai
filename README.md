@@ -1,44 +1,46 @@
-<<<<<<< HEAD
+[![🇫🇷 Documentation en français](https://img.shields.io/badge/docs-français-blue)](./README.fr.md)
 
 # Bonsai Framework
 
-Un framework JavaScript moderne pour le développement frontend.
+> ⚠️ **Work in Progress** - This framework is under active development. The API will very likely change before the stable release.
+
+Modern JavaScript framework for frontend development.
 
 ## Introduction
 
-**bonsai** est un framework front-end écrit en TypeScript, conçu pour offrir une base solide, typée et modulaire pour le développement d'applications web modernes. Il met l'accent sur la clarté, la robustesse et la réutilisabilité du code.
+**bonsai** is a frontend framework written in TypeScript, designed to provide a solid, type-safe, and modular foundation for modern web applications. It focuses on clarity, robustness, and code reusability.
 
-En plus, il intègre des bibliothèques externes populaires sous une API unifiée.
+It also integrates popular external libraries under a unified API.
 
-## Structure du projet
+## Project Structure
 
-Le projet est organisé en plusieurs sections principales:
+The project is organized into several main sections:
 
-- `core/`: Le cœur du framework
-- `packages/`: Modules individuels et bibliothèques encapsulées
-- `lib/`: Outils de build et de développement
-- `tools/`: Scripts utilitaires
-- `docs/`: Documentation technique
+- `core/`: The core of the framework
+- `packages/`: Individual modules and encapsulated libraries
+- `lib/`: Build and development tools
+- `tools/`: Utility scripts
+- `docs/`: Technical documentation
 
-## Bibliothèques externes intégrées
+## Integrated External Libraries
 
-Bonsai intègre plusieurs bibliothèques externes populaires, encapsulées pour une utilisation cohérente:
+Bonsai integrates several popular external libraries, encapsulated for consistent usage:
 
-- **RxJS**: Programmation réactive
-- **Remeda**: Utilitaires fonctionnels
-- **Zod**: Validation de schémas
+- **RxJS**: Reactive programming
+- **Remeda**: Functional utilities
+- **Zod**: Schema validation
 
-## Fonctionnalités principales
+## Main Features
 
-- Architecture modulaire (événements, types utilitaires, intégration RxJS, etc.)
-- Système d'événements inspiré de Backbone.Events/Radio (Pub/Sub, Request/Reply)
-- Large collection de types utilitaires stricts
-- Intégration transparente de librairies modernes (rxjs, zod, remeda)
-- 100% TypeScript, typage strict et documentation des API
+- Modular architecture (events, utility types, RxJS integration, etc.)
+- Event system inspired by Backbone.Events/Radio (Pub/Sub, Request/Reply)
+- Large collection of strict utility types
+- Seamless integration of modern libraries (rxjs, zod, remeda)
+- 100% TypeScript, strict typing and API documentation
 
-## Développement
+## Development
 
-### Prérequis
+### Prerequisites
 
 - Node.js 23+
 - pnpm
@@ -46,48 +48,46 @@ Bonsai intègre plusieurs bibliothèques externes populaires, encapsulées pour 
 ### Installation
 
 ```bash
-# Installer les dépendances
 pnpm install
 ```
 
-### Compilation
+### Build
 
 ```bash
-# Compiler tous les packages et le framework
 pnpm run build
-
-# Compiler sans watch
 pnpm run build:no-watch
-
-# Compiler et nettoyer tous les fichiers compilés avant
 pnpm run build:clean
 ```
 
 ---
 
-## Documentation du système de build
+## Build System Documentation
 
-Le framework Bonsai utilise un système de build intelligent qui gère automatiquement :
+Bonsai uses an intelligent build system that automatically handles:
 
-- **Packages réguliers** : Compilation TypeScript + Rollup
-- **Packages types-only** : Copie directe des fichiers `.d.ts` (optimisé)
-- **Détection automatique** : Aucune configuration manuelle requise
-- **Build incrémental** : Seuls les packages modifiés sont rebuildés
+- **Regular packages**: TypeScript compilation + Rollup
+- **Types-only packages**: Direct copy of `.d.ts` files (optimized)
+- **Automatic detection**: No manual configuration required
+- **Incremental build**: Only modified packages are rebuilt
 
-> 📖 **Documentation complète** : Consultez [`/lib/BUILD.md`](./lib/BUILD.md) pour les détails techniques du système de build (architecture, détection, optimisations, dépannage).
+> 📖 **Full documentation**:
+>
+> - **Overview**: [`/lib/BUILD-EN.md`](./lib/BUILD-EN.md) - Concepts and operation
+> - **Developer guide**: [`/lib/DEVELOPER-GUIDE-EN.md`](./lib/DEVELOPER-GUIDE-EN.md) - Practical usage
+> - **Architecture**: [`/lib/ARCHITECTURE.md`](./lib/ARCHITECTURE.md) - Technical details
+> - **Complete index**: [`/lib/README-EN.md`](./lib/README-EN.md) - Documentation navigation
 
-## Installation côté client
+## Client Installation
 
 ```bash
 pnpm add bonsai
 ```
 
-## Utilisation de base
+## Basic Usage
 
 ```ts
 import { EventTrigger, RXJS, zod } from "bonsai";
 
-// Exemple : création d'un émetteur d'événements
 type MyEvents = { update: string };
 class MyEmitter extends EventTrigger<MyEmitter, MyEvents> {}
 
@@ -96,14 +96,14 @@ emitter.on("update", (msg) => console.log(msg));
 emitter.trigger("update", "Hello world!");
 ```
 
-## Packages principaux
+## Main Packages
 
-- `@bonsai/event` : système d'événements
-- `@bonsai/types` : types utilitaires avancés
-- `@bonsai/rxjs` : intégration RxJS
-- `@bonsai/remeda` : utilitaires fonctionnels
-- `@bonsai/zod` : validation de schémas
+- `@bonsai/event`: event system
+- `@bonsai/types`: advanced utility types
+- `@bonsai/rxjs`: RxJS integration
+- `@bonsai/remeda`: functional utilities
+- `@bonsai/zod`: schema validation
 
 ## Documentation
 
-Pour plus d'exemples et la documentation complète de l'API, consultez les README de chaque package ou la documentation en ligne.
+For more examples and full API documentation, see each package's README or the online documentation.
