@@ -1,8 +1,8 @@
 /**
- * Bundle des fichiers de définition TypeScript (.d.ts) pour les packages internes
+ * Bundles TypeScript definition files (.d.ts) for internal packages
  *
- * Ce module génère un fichier .d.ts unique qui regroupe toutes les définitions
- * de types d'un package interne en préservant les exports nommés standards.
+ * This module generates a single .d.ts file that aggregates all type definitions
+ * of an internal package, preserving standard named exports.
  */
 
 import * as path from "node:path";
@@ -12,15 +12,15 @@ import { TPackage } from "@lib/build/build.type";
 import { Logger } from "@build/monitoring/logger.class";
 
 /**
- * Génère un fichier bundle de définitions TypeScript (.d.ts) pour un package interne
- * en regroupant toutes les définitions de types avec des exports nommés standards.
+ * Bundles all .d.ts files for a package into a single index.d.ts
+ * Handles type-only packages and ensures correct re-exports
  *
- * @param pkg - TPackage représentant le package source
+ * @param pkg - TPackage representing the source package
  */
 export async function bundlePackageDts(pkg: TPackage): Promise<void> {
   const logger = Logger.me();
 
-  logger.info(`🔄 Bundling des types pour le package ${pkg.name}`);
+  logger.info(`🔄 Bundling types for package ${pkg.name}`);
 
   const project = new Project({
     compilerOptions: {
@@ -30,28 +30,28 @@ export async function bundlePackageDts(pkg: TPackage): Promise<void> {
     }
   });
 
-  // Récupérer tous les fichiers .d.ts du package
+  // Retrieve all .d.ts files from the package
   const dtsFiles = getAllDtsFiles(pkg);
 
   if (dtsFiles.length === 0) {
-    throw new Error(`Aucun fichier .d.ts trouvé pour ${pkg.name}`);
+    throw new Error(`No .d.ts files found for ${pkg.name}`);
   }
 
-  // Ajouter les fichiers au projet
+  // Add files to the project
   project.addSourceFilesAtPaths(dtsFiles);
 
   const outputFilePath = pkg.outDtsFile;
-  logger.debug(`📝 Création du fichier de sortie: ${outputFilePath}`);
+  logger.debug(`📝 Creating output file: ${outputFilePath}`);
 
-  // Collections pour éviter les doublons
+  // Collections to avoid duplicates
   const declaredNames = new Set<string>();
   const importedModules = new Set<string>();
   const typeDeclarations: string[] = [];
   const importStatements: string[] = [];
   const exportsToInclude: string[] = [];
 
-  // Traiter chaque fichier source en deux passes
-  // Passe 1: traiter tous les fichiers non-entrée pour collecter les déclarations
+  // Process each source file in two passes
+  // Pass 1: process all non-entry files to collect declarations
   for (const sourceFile of project.getSourceFiles()) {
     const isEntryPoint = isEntryPointFile(sourceFile, pkg);
     if (!isEntryPoint) {
@@ -67,7 +67,7 @@ export async function bundlePackageDts(pkg: TPackage): Promise<void> {
     }
   }
 
-  // Passe 2: traiter le fichier d'entrée pour les re-exports
+  // Pass 2: process the entry file for re-exports
   for (const sourceFile of project.getSourceFiles()) {
     const isEntryPoint = isEntryPointFile(sourceFile, pkg);
     if (isEntryPoint) {
@@ -83,27 +83,29 @@ export async function bundlePackageDts(pkg: TPackage): Promise<void> {
     }
   }
 
-  // Générer le contenu du fichier bundle
+  // Generate the bundle file content
   const bundleContent = generateBundleContent(
     importStatements,
     typeDeclarations,
     exportsToInclude
   );
 
-  // Écrire le fichier
+  // Write the file
   await fileSystem.ensureDir(path.dirname(outputFilePath));
   await fileSystem.writeFile(outputFilePath, bundleContent, "utf-8");
+  logger.info(`✅ Bundled .d.ts file written: ${outputFilePath}`);
 
-  // Nettoyer les fichiers .d.ts individuels (sauf le bundle)
+  // Clean up individual .d.ts files (except the bundle)
   await cleanIndividualDtsFiles(pkg, outputFilePath);
 
-  logger.success(`✅ Bundle DTS généré pour ${pkg.name}: ${outputFilePath}`);
+  logger.success(`✅ DTS bundle generated for ${pkg.name}: ${outputFilePath}`);
 }
 
 /**
- * Récupère tous les fichiers .d.ts d'un package
+ * Reads and returns all .d.ts files in the package src directory
  */
 function getAllDtsFiles(pkg: TPackage): string[] {
+  const logger = Logger.me();
   const distPath = pkg.distPath;
 
   if (!fileSystem.existsSync(distPath)) {
@@ -113,11 +115,14 @@ function getAllDtsFiles(pkg: TPackage): string[] {
   const files = fileSystem.readdirSync(distPath, { recursive: true });
   return files
     .filter((file: any) => typeof file === "string" && file.endsWith(".d.ts"))
-    .map((file: any) => path.join(distPath, file));
+    .map((file: any) => {
+      logger.info(`📄 Found .d.ts file: ${file}`);
+      return path.join(distPath, file);
+    });
 }
 
 /**
- * Vérifie si un fichier source est le point d'entrée du package
+ * Checks if a source file is the package entry point
  */
 function isEntryPointFile(sourceFile: SourceFile, pkg: TPackage): boolean {
   const fileName = path.basename(sourceFile.getFilePath());
@@ -126,7 +131,7 @@ function isEntryPointFile(sourceFile: SourceFile, pkg: TPackage): boolean {
 }
 
 /**
- * Traite un fichier source pour extraire ses déclarations et exports
+ * Processes a source file to extract its declarations and exports
  */
 async function processSourceFile(
   sourceFile: SourceFile,
@@ -137,10 +142,10 @@ async function processSourceFile(
   importStatements: string[],
   exportsToInclude: string[]
 ): Promise<void> {
-  // Si c'est le fichier d'entrée, on traite les re-exports différemment
+  // If it's the entry file, handle re-exports differently
   const isEntryPoint = isEntryPointFile(sourceFile, pkg);
 
-  // Traiter les imports
+  // Handle imports
   sourceFile.getImportDeclarations().forEach((importDecl) => {
     const moduleSpecifier = importDecl.getModuleSpecifierValue();
     if (
@@ -154,9 +159,9 @@ async function processSourceFile(
   });
 
   if (!isEntryPoint) {
-    // Pour les fichiers non-entrée, extraire les déclarations
+    // For non-entry files, extract declarations
 
-    // Traiter les déclarations de types
+    // Handle type aliases
     sourceFile.getTypeAliases().forEach((typeAlias) => {
       const name = typeAlias.getName();
       if (!declaredNames.has(name)) {
@@ -165,7 +170,7 @@ async function processSourceFile(
       }
     });
 
-    // Traiter les interfaces
+    // Handle interfaces
     sourceFile.getInterfaces().forEach((iface) => {
       const name = iface.getName();
       if (!declaredNames.has(name)) {
@@ -174,24 +179,24 @@ async function processSourceFile(
       }
     });
 
-    // Traiter les classes
+    // Handle classes
     sourceFile.getClasses().forEach((cls) => {
       const name = cls.getName();
       if (name && !declaredNames.has(name)) {
         declaredNames.add(name);
-        // Vérifier si la classe a déjà un export dans sa déclaration
+        // Check if the class is already exported in its declaration
         const classText = cls.getText();
         if (classText.startsWith("export ")) {
-          // La classe est déjà exportée, on l'ajoute telle quelle
+          // Already exported, add as is
           typeDeclarations.push(classText);
         } else {
-          // Ajouter export à la déclaration
+          // Add export to the declaration
           typeDeclarations.push(`export ${classText}`);
         }
       }
     });
 
-    // Traiter les enums
+    // Handle enums
     sourceFile.getEnums().forEach((enumDecl) => {
       const name = enumDecl.getName();
       if (!declaredNames.has(name)) {
@@ -200,12 +205,12 @@ async function processSourceFile(
       }
     });
   } else {
-    // Pour le fichier d'entrée, collecter les exports qui ne sont pas déjà déclarés
+    // For the entry file, collect exports not already declared
     sourceFile.getExportDeclarations().forEach((exportDecl) => {
       const namedExports = exportDecl.getNamedExports();
       namedExports.forEach((namedExport) => {
         const exportName = namedExport.getName();
-        // Ne pas re-exporter si l'élément est déjà déclaré avec export
+        // Do not re-export if the item is already declared with export
         if (!declaredNames.has(exportName)) {
           exportsToInclude.push(exportName);
         }
@@ -215,7 +220,7 @@ async function processSourceFile(
 }
 
 /**
- * Génère le contenu du fichier bundle
+ * Generates correct re-exports for type-only packages
  */
 function generateBundleContent(
   importStatements: string[],
@@ -245,7 +250,7 @@ function generateBundleContent(
     parts.push("");
   }
 
-  // Exports (seulement pour les éléments non déjà exportés dans les déclarations)
+  // Exports (only for items not already exported in declarations)
   if (exportsToInclude.length > 0) {
     parts.push("// Re-exports");
     exportsToInclude.forEach((exportName) => {
@@ -257,12 +262,13 @@ function generateBundleContent(
 }
 
 /**
- * Nettoie les fichiers .d.ts individuels
+ * Cleans up individual .d.ts files
  */
 async function cleanIndividualDtsFiles(
   pkg: TPackage,
   bundleFilePath: string
 ): Promise<void> {
+  const logger = Logger.me();
   const distPath = pkg.distPath;
   const bundleFileName = path.basename(bundleFilePath);
 
@@ -275,7 +281,11 @@ async function cleanIndividualDtsFiles(
   for (const file of files) {
     if (file.endsWith(".d.ts") && file !== bundleFileName) {
       const filePath = path.join(distPath, file);
-      await fileSystem.unlink(filePath);
+      try {
+        await fileSystem.unlink(filePath);
+      } catch (error) {
+        logger.error(`❌ Error reading .d.ts file: ${filePath}`, error);
+      }
     }
   }
 }

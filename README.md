@@ -65,7 +65,16 @@ pnpm run build:clean
 
 ---
 
-> ℹ️ Les détails sur le process de build, l'optimisation et les scripts internes sont réservés à la documentation interne du projet (voir `/lib/BUILD.md`).
+## Documentation du système de build
+
+Le framework Bonsai utilise un système de build intelligent qui gère automatiquement :
+
+- **Packages réguliers** : Compilation TypeScript + Rollup
+- **Packages types-only** : Copie directe des fichiers `.d.ts` (optimisé)
+- **Détection automatique** : Aucune configuration manuelle requise
+- **Build incrémental** : Seuls les packages modifiés sont rebuildés
+
+> 📖 **Documentation complète** : Consultez [`/lib/BUILD.md`](./lib/BUILD.md) pour les détails techniques du système de build (architecture, détection, optimisations, dépannage).
 
 ## Installation côté client
 

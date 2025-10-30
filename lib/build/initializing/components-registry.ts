@@ -7,7 +7,7 @@ import { PathManager } from "@build/core/path-manager.class";
 import { TFramework, TPackage } from "@build/build.type";
 
 /**
- * Type représentant la structure du fichier bonsai-components.yaml
+ * Type representing the structure of the bonsai-components.yaml file
  */
 export type TComponentsConfig = {
   libraries: string[];
@@ -15,7 +15,7 @@ export type TComponentsConfig = {
 };
 
 /**
- * Type représentant les composants organisés après analyse
+ * Type representing the organized components after analysis
  */
 export type TOrganizedComponents = {
   framework: TFramework;
@@ -25,7 +25,7 @@ export type TOrganizedComponents = {
 };
 
 /**
- * Classe responsable de l'analyse des composants Bonsai
+ * Class responsible for analyzing Bonsai components
  */
 export class ComponentsRegistry {
   private static instance: ComponentsRegistry;
@@ -34,7 +34,7 @@ export class ComponentsRegistry {
   private _organizedComponents: TOrganizedComponents | null = null;
 
   /**
-   * Constructeur privé pour le singleton
+   * Private constructor for singleton
    */
   private constructor() {
     this.logger = Logger.me();
@@ -42,7 +42,7 @@ export class ComponentsRegistry {
   }
 
   /**
-   * Obtenir l'instance de l'analyseur
+   * Get the analyzer instance
    */
   public static me(): ComponentsRegistry {
     if (!ComponentsRegistry.instance) {
@@ -52,37 +52,37 @@ export class ComponentsRegistry {
   }
 
   /**
-   * Collecter tous les composants Bonsai
+   * Collect all Bonsai components
    */
   public async collect(): Promise<TOrganizedComponents> {
-    this.logger.info("Collecte des composants Bonsai...");
+    this.logger.info("Collecting Bonsai components...");
 
-    // Charger le fichier de configuration des composants
+    // Load component configuration file
     const componentsConfig = await this.loadComponentsConfig();
 
-    // Récupérer le framework
+    // Retrieve the framework
     const framework = await this.collectFramework();
 
-    // Récupérer les bibliothèques
+    // Retrieve libraries
     const libraries = await this.collectComponents(
       componentsConfig.libraries,
       true
     );
 
-    // Récupérer les packages internes
+    // Retrieve internal packages
     const packages = await this.collectComponents(
       componentsConfig.packages,
       false
     );
 
-    // Créer un Set avec tous les packages
+    // Create a Set with all packages
     const allPackages = new Set<TPackage>([...libraries, ...packages]);
 
     this.logger.info(
-      `Collecte terminée: 1 framework, ${libraries.length} bibliothèques, ${packages.length} packages`
+      `Collection completed: 1 framework, ${libraries.length} libraries, ${packages.length} packages`
     );
 
-    // Stocker le résultat organisé
+    // Store the organized result
     this._organizedComponents = {
       framework,
       libraries,
@@ -94,14 +94,14 @@ export class ComponentsRegistry {
   }
 
   /**
-   * Accès au dernier résultat de collecte organisé (null si non collecté)
+   * Access the last organized collection result (null if not collected)
    */
   public get organizedComponents(): TOrganizedComponents | null {
     return this._organizedComponents;
   }
 
   /**
-   * Charger la configuration des composants depuis le fichier YAML
+   * Load component configuration from YAML file
    */
   private async loadComponentsConfig(): Promise<TComponentsConfig> {
     const configPath = join(
@@ -110,17 +110,15 @@ export class ComponentsRegistry {
     );
 
     try {
-      // Vérifier que le fichier existe
+      // Check that the file exists
       await fileSystem.access(configPath);
-      this.logger.info(
-        `Fichier de configuration des composants trouvé: ${configPath}`
-      );
+      this.logger.info(`Component configuration file found: ${configPath}`);
 
-      // Lire et parser le fichier YAML
+      // Read and parse the YAML file
       const configContent = await fileSystem.readFile(configPath, "utf-8");
       const config = yamlLoad(configContent) as Partial<TComponentsConfig>;
 
-      // S'assurer que les sections libraries et packages existent, même si elles sont vides
+      // Ensure that the libraries and packages sections exist, even if they are empty
       const librariesList = Array.isArray(config.libraries)
         ? config.libraries
         : [];
@@ -128,37 +126,33 @@ export class ComponentsRegistry {
         ? config.packages
         : [];
 
-      // Retourner la configuration normalisée
+      // Return the normalized configuration
       const result: TComponentsConfig = {
         libraries: librariesList,
         packages: packagesList
       };
 
       this.logger.debug(
-        `Configuration chargée: ${librariesList.length} bibliothèques, ${packagesList.length} packages`
+        `Configuration loaded: ${librariesList.length} libraries, ${packagesList.length} packages`
       );
       return result;
     } catch (error) {
-      this.logger.error(
-        `Erreur lors du chargement de la configuration: ${error}`
-      );
-      throw new Error(
-        `Impossible de charger la configuration des composants: ${error}`
-      );
+      this.logger.error(`Error loading configuration: ${error}`);
+      throw new Error(`Unable to load component configuration: ${error}`);
     }
   }
 
   /**
-   * Récupérer le framework
+   * Retrieve the framework
    */
   private async collectFramework(): Promise<TFramework> {
     const frameworkPath = this.pathManager.frameworkPath;
 
     try {
-      // Vérifier que le dossier existe
+      // Check that the folder exists
       await fileSystem.access(frameworkPath);
 
-      // Lire le package.json
+      // Read the package.json
       const packageJsonPath = join(frameworkPath, "package.json");
       const packageJsonContent = await fileSystem.readFile(
         packageJsonPath,
@@ -166,12 +160,12 @@ export class ComponentsRegistry {
       );
       const packageJson: IPackageJson = JSON.parse(packageJsonContent);
 
-      // Valider le nom
+      // Validate the name
       if (!packageJson.name) {
-        throw new Error("Le framework n'a pas de nom dans son package.json");
+        throw new Error("The framework has no name in its package.json");
       }
 
-      // Extraire les dépendances
+      // Extract dependencies
       const packages: string[] = [];
       if (packageJson.dependencies) {
         Object.keys(packageJson.dependencies).forEach((dep) => {
@@ -179,14 +173,14 @@ export class ComponentsRegistry {
         });
       }
 
-      // Déterminer les chemins
+      // Determine paths
       const srcPath = join(frameworkPath, "src");
       const distPath = join(frameworkPath, "dist");
       const srcFile = join(srcPath, "bonsai.ts");
       const outJsFile = join(distPath, "bonsai.js");
       const outDtsFile = join(distPath, "bonsai.d.ts");
 
-      this.logger.info(`Framework analysé: ${packageJson.name}`);
+      this.logger.info(`Framework analyzed: ${packageJson.name}`);
 
       return {
         rootPath: frameworkPath,
@@ -199,41 +193,39 @@ export class ComponentsRegistry {
         packageJson
       };
     } catch (error) {
-      this.logger.error(`Erreur lors de l'analyse du framework: ${error}`);
-      throw new Error(`Impossible d'analyser le framework: ${error}`);
+      this.logger.error(`Error analyzing framework: ${error}`);
+      throw new Error(`Unable to analyze framework: ${error}`);
     }
   }
 
   /**
-   * Récupérer une liste de composants
+   * Retrieve a list of components
    */
   private async collectComponents(
     componentNames: string[],
     isLibrary: boolean
   ): Promise<TPackage[]> {
     const components: TPackage[] = [];
-    const componentType = isLibrary ? "bibliothèque" : "package";
+    const componentType = isLibrary ? "library" : "package";
 
     for (const name of componentNames) {
       try {
-        // Extraire le nom du package sans le préfixe @bonsai/
+        // Extract the package name without the @bonsai/ prefix
         const packageName = name.replace(/^@bonsai\//, "");
         const component = await this.collectComponent(packageName, isLibrary);
         components.push(component);
-        this.logger.debug(`${componentType} analysé(e): ${name}`);
+        this.logger.debug(`${componentType} analyzed: ${name}`);
       } catch (error) {
-        this.logger.warn(
-          `Erreur lors de l'analyse du ${componentType} ${name}: ${error}`
-        );
+        this.logger.warn(`Error analyzing ${componentType} ${name}: ${error}`);
       }
     }
 
-    this.logger.info(`${components.length} ${componentType}s analysé(e)s`);
+    this.logger.info(`${components.length} ${componentType}s analyzed`);
     return components;
   }
 
   /**
-   * Récupérer un composant spécifique
+   * Retrieve a specific component
    */
   private async collectComponent(
     packageName: string,
@@ -242,10 +234,10 @@ export class ComponentsRegistry {
     const packagePath = join(this.pathManager.packagesPath, packageName);
 
     try {
-      // Vérifier que le dossier existe
+      // Check that the folder exists
       await fileSystem.access(packagePath);
 
-      // Lire le package.json
+      // Read the package.json
       const packageJsonPath = join(packagePath, "package.json");
       const packageJsonContent = await fileSystem.readFile(
         packageJsonPath,
@@ -253,14 +245,14 @@ export class ComponentsRegistry {
       );
       const packageJson: IPackageJson = JSON.parse(packageJsonContent);
 
-      // Valider le nom
+      // Validate the name
       if (!packageJson.name) {
         throw new Error(
-          `Le composant ${packageName} n'a pas de nom dans son package.json`
+          `The component ${packageName} has no name in its package.json`
         );
       }
 
-      // Extraire les dépendances
+      // Extract dependencies
       const dependencies: string[] = [];
       if (packageJson.dependencies) {
         Object.keys(packageJson.dependencies).forEach((dep) => {
@@ -268,11 +260,11 @@ export class ComponentsRegistry {
         });
       }
 
-      // Déterminer les chemins
+      // Determine paths
       const srcPath = join(packagePath, "src");
       const distPath = join(packagePath, "dist");
 
-      // Déterminer les noms de fichiers en fonction du package.json si possible
+      // Determine file names based on package.json if possible
       const mainFile = packageJson.main
         ? packageJson.main.replace(/^\.\/dist\//, "").replace(/^\.\//, "")
         : `${packageName}.js`;
@@ -280,9 +272,9 @@ export class ComponentsRegistry {
         ? packageJson.types.replace(/^\.\/dist\//, "").replace(/^\.\//, "")
         : `${packageName}.d.ts`;
 
-      // Déterminer le fichier source
+      // Determine the source file
       let srcFileName = `${packageName}.ts`;
-      // Si src est spécifié dans package.json, l'utiliser
+      // If src is specified in package.json, use it
       if (packageJson.src) {
         srcFileName = packageJson.src.replace(/^\.\/src\//, "");
       }
@@ -291,12 +283,24 @@ export class ComponentsRegistry {
       const outJsFile = join(distPath, mainFile);
       const outDtsFile = join(distPath, typesFile);
 
-      // Extraire le namespace
+      // Extract the namespace
       const namespace = packageJson.namespace || null;
 
-      // Détecter la dépendance amont (upstream)
+      // Detect upstream dependency
       const upstreamDependency =
         ComponentsRegistry.detectUpstreamDependency(packageJson);
+
+      // Detect if this is a types-only package
+      const isTypesOnly = await ComponentsRegistry.detectTypesOnlyPackage(
+        packagePath,
+        packageJson
+      );
+
+      if (isTypesOnly) {
+        this.logger.info(
+          `📝 Package ${packageJson.name} detected as types-only`
+        );
+      }
 
       return {
         rootPath: packagePath,
@@ -310,59 +314,174 @@ export class ComponentsRegistry {
         packageJson,
         isLibrary,
         namespace,
-        upstreamDependency
+        upstreamDependency,
+        isTypesOnly
       };
     } catch (error) {
-      this.logger.error(
-        `Erreur lors de l'analyse du composant ${packageName}: ${error}`
-      );
-      throw new Error(
-        `Impossible d'analyser le composant ${packageName}: ${error}`
-      );
+      this.logger.error(`Error analyzing component ${packageName}: ${error}`);
+      throw new Error(`Unable to analyze component ${packageName}: ${error}`);
     }
   }
 
   /**
-   * Détecte le nom de la dépendance amont (upstream) d'un wrapper Bonsai.
+   * Detect the upstream dependency name of a Bonsai wrapper.
    *
-   * Priorité :
-   * 1. Champ custom "bonsaiUpstream" dans le package.json (string)
-   * 2. Première dépendance déclarée dans "dependencies"
-   * 3. Nom du package (champ "name")
+   * Priority:
+   * 1. Custom field "bonsaiUpstream" in package.json (string)
+   * 2. First declared dependency in "dependencies"
+   * 3. Package name ("name" field)
    *
-   * @param packageJson Le package.json du wrapper analysé
-   * @returns Le nom du package upstream à tracker pour la version
+   * @param packageJson The package.json of the analyzed wrapper
+   * @returns The upstream package name to track for versioning
    */
   public static detectUpstreamDependency(packageJson: IPackageJson): string {
-    // 1. Champ custom explicite
+    // 1. Custom field "bonsaiUpstream" in package.json (string)
     if (
       typeof (packageJson as any).bonsaiUpstream === "string" &&
       (packageJson as any).bonsaiUpstream.trim()
     ) {
       return (packageJson as any).bonsaiUpstream.trim();
     }
-    // 2. Première dépendance déclarée
+    // 2. First declared dependency in "dependencies"
     if (
       packageJson.dependencies &&
       Object.keys(packageJson.dependencies).length > 0
     ) {
       return Object.keys(packageJson.dependencies)[0];
     }
-    // 3. Fallback sur le nom du package
+    // 3. Fallback on package name
     if (packageJson.name) {
       return packageJson.name;
     }
     throw new Error(
-      "Impossible de détecter la dépendance amont du wrapper (package.json incomplet)"
+      "Unable to detect upstream dependency of the wrapper (incomplete package.json)"
     );
+  }
+
+  /**
+   * Detect if a package is types-only (no JavaScript code, only TypeScript declarations)
+   *
+   * A package is considered types-only if:
+   * 1. The package.json has only "types" in exports (no "import" or "require")
+   * 2. The package.json has no "main" field or main points to a .d.ts file
+   * 3. The src folder contains only .d.ts files (no .ts files with actual code)
+   * 4. The package.json has a "types" field pointing to an index.d.ts
+   *
+   * @param packagePath The absolute path to the package directory
+   * @param packageJson The package.json content
+   * @returns true if the package is types-only, false otherwise
+   */
+  public static async detectTypesOnlyPackage(
+    packagePath: string,
+    packageJson: IPackageJson
+  ): Promise<boolean> {
+    try {
+      // Check 1: exports field analysis
+      if (packageJson.exports) {
+        const exports = packageJson.exports as any;
+
+        // If exports is a string, check if it points to a .d.ts file
+        if (typeof exports === "string") {
+          return exports.endsWith(".d.ts");
+        }
+
+        // If exports is an object, check if it only has "types" field
+        if (typeof exports === "object" && exports !== null) {
+          const mainExport = exports["."] || exports;
+          if (typeof mainExport === "object" && mainExport !== null) {
+            const hasTypes = "types" in mainExport;
+            const hasImport = "import" in mainExport;
+            const hasRequire = "require" in mainExport;
+            const hasDefault = "default" in mainExport;
+
+            // Types-only if it only has "types" field
+            return hasTypes && !hasImport && !hasRequire && !hasDefault;
+          }
+        }
+      }
+
+      // Check 2: main field analysis
+      if (packageJson.main) {
+        // If main points to a .d.ts file, it's types-only
+        if (packageJson.main.endsWith(".d.ts")) {
+          return true;
+        }
+        // If main exists and doesn't point to .d.ts, it's not types-only
+        return false;
+      }
+
+      // Check 3: types field must exist
+      if (!packageJson.types) {
+        return false;
+      }
+
+      // Check 4: examine src folder content
+      const srcPath = join(packagePath, "src");
+      try {
+        await fileSystem.access(srcPath);
+        const srcFiles = await fileSystem.readdir(srcPath, {
+          withFileTypes: true
+        });
+
+        // Look for .ts files that are not .d.ts files
+        for (const file of srcFiles) {
+          if (
+            file.isFile() &&
+            file.name.endsWith(".ts") &&
+            !file.name.endsWith(".d.ts")
+          ) {
+            // Found a regular .ts file, check if it contains actual code
+            const filePath = join(srcPath, file.name);
+            const content = await fileSystem.readFile(filePath, "utf-8");
+
+            // Remove comments and whitespace
+            const cleanContent = content
+              .replace(/\/\*[\s\S]*?\*\//g, "") // Remove block comments
+              .replace(/\/\/.*$/gm, "") // Remove line comments
+              .replace(/\s+/g, " ") // Normalize whitespace
+              .trim();
+
+            // If there's substantial content beyond just type exports, it's not types-only
+            if (cleanContent && !this.isOnlyTypeExports(cleanContent)) {
+              return false;
+            }
+          }
+        }
+
+        return true; // Only .d.ts files or empty/export-only .ts files found
+      } catch {
+        // If src folder doesn't exist or can't be read, fall back to package.json analysis
+        return packageJson.types !== undefined && !packageJson.main;
+      }
+    } catch (error) {
+      // In case of any error, assume it's not types-only
+      return false;
+    }
+  }
+
+  /**
+   * Helper method to check if a TypeScript file content only contains type exports
+   */
+  private static isOnlyTypeExports(content: string): boolean {
+    // Remove import statements
+    const withoutImports = content.replace(
+      /import\s+.*?from\s+['"][^'"]*['"];?/g,
+      ""
+    );
+
+    // Check if remaining content only contains export type/interface statements
+    const exportOnlyPattern =
+      /^(export\s+(type|interface|declare)\s+.*?[;}]|\s)*$/;
+
+    return exportOnlyPattern.test(withoutImports.trim());
   }
 }
 
-// Exporter l'instance et les types
+// Export the instance and types
 export const componentsRegistry = ComponentsRegistry.me();
 
 /**
- * Fonction utilitaire pour collecter les composants Bonsai
+ * Utility function to collect Bonsai components
  */
 export async function collectComponents(): Promise<TOrganizedComponents> {
   return componentsRegistry.collect();

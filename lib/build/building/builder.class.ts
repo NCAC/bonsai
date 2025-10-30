@@ -11,6 +11,7 @@ import commonjs from "@rollup/plugin-commonjs";
 import typescript from "rollup-plugin-typescript2";
 import { bundleLibraryDts } from "@build/bundling/bundle-library-dts";
 import { bundlePackageDts } from "@build/bundling/bundle-package-dts";
+import { bundleFrameworkDts } from "@build/bundling/bundle-framework-dts";
 
 /**
  * Classe principale pour le build des composants
@@ -229,11 +230,86 @@ export class Builder {
     }
   }
 
+  /**
+   * Build a types-only package (no JavaScript compilation needed)
+   * Simply copies existing .d.ts files to the dist folder
+   */
+  public async buildTypesOnlyPackage(component: TPackage): Promise<boolean> {
+    const componentName = component.name;
+    this.logger.info(`📝 Building types-only package: ${componentName}`);
+
+    try {
+      // Nettoyer le dossier de sortie si demandé
+      if (this.buildOptions.all.clean) {
+        await this.cleanOutputDir(component.distPath);
+      }
+
+      // S'assurer que le dossier de sortie existe
+      await this.ensureOutputDirExists(component.outDtsFile);
+
+      // For types-only packages, we need to copy the existing index.d.ts
+      // The package should already have a properly structured index.d.ts file
+      const sourceIndexDts = join(component.rootPath, "index.d.ts");
+      const targetIndexDts = component.outDtsFile;
+
+      try {
+        // Check if the source index.d.ts exists
+        await fs.access(sourceIndexDts);
+        
+        // Copy the index.d.ts file to the dist folder
+        await fs.copyFile(sourceIndexDts, targetIndexDts);
+        
+        this.logger.success(`📄 Types file copied: ${sourceIndexDts} → ${targetIndexDts}`);
+      } catch (copyError) {
+        this.logger.error(
+          `Failed to copy types file from ${sourceIndexDts} to ${targetIndexDts}:`,
+          copyError
+        );
+        return false;
+      }
+
+      // Also copy any additional .d.ts files from src/ if they exist
+      const srcPath = component.srcPath;
+      try {
+        await fs.access(srcPath);
+        const srcFiles = await fs.readdir(srcPath, { withFileTypes: true });
+        
+        for (const file of srcFiles) {
+          if (file.isFile() && file.name.endsWith(".d.ts")) {
+            const sourcePath = join(srcPath, file.name);
+            const targetPath = join(component.distPath, file.name);
+            
+            await fs.copyFile(sourcePath, targetPath);
+            this.logger.debug(`📄 Additional types file copied: ${file.name}`);
+          }
+        }
+      } catch {
+        // src folder might not exist or be accessible, which is fine for types-only packages
+        this.logger.debug(`No src folder found for types-only package ${componentName}, which is normal`);
+      }
+
+      this.logger.success(`✅ Types-only package ${componentName} processed successfully`);
+      return true;
+      
+    } catch (error) {
+      this.logger.error(
+        `Erreur lors du build du package types-only ${componentName}:`,
+        error
+      );
+      return false;
+    }
+  }
+
   public async buildPackage(component: TPackage): Promise<boolean> {
     const componentName = component.name;
     this.logger.info(`Building package: ${componentName}`);
 
     try {
+      // Check if this is a types-only package
+      if (component.isTypesOnly) {
+        return await this.buildTypesOnlyPackage(component);
+      }
+
       // Nettoyer le dossier de sortie si demandé
       if (this.buildOptions.all.clean) {
         await this.cleanOutputDir(component.distPath);
@@ -347,7 +423,10 @@ export class Builder {
           // Résoudre les dépendances externes
           nodeResolve({
             extensions: [".ts", ".js", ".json"],
-            preferBuiltins: true
+            preferBuiltins: true,
+            // Pour le framework, on veut résoudre les dépendances internes
+            // pour créer un bundle plat
+            exportConditions: ["node", "default"]
           }),
           // Convertir CommonJS en ES modules
           commonjs(),
@@ -368,33 +447,32 @@ export class Builder {
             clean: true
           })
         ],
-        // Externaliser les dépendances du framework
-        external: framework.packages
+        // Pour le framework, ne pas externaliser les packages internes
+        // afin de créer un bundle plat avec tous les exports
+        external: (id) => {
+          // Garder externes seulement les vraies dépendances externes
+          return (
+            !id.startsWith("@bonsai/") &&
+            !id.startsWith(".") &&
+            !id.startsWith("/")
+          );
+        }
       };
 
       // Effectuer le build JS et DTS
-      this.logger.info(`Génération du bundle pour le framework ${frameworkName}...`);
+      this.logger.info(
+        `Génération du bundle pour le framework ${frameworkName}...`
+      );
       const bundle = await rollup(jsRollupConfig);
       await bundle.write(jsRollupConfig.output as any);
       await bundle.close();
 
       // Bundling des types DTS pour le framework
       try {
-        // Adapter bundlePackageDts pour le framework
-        const frameworkAsPackage: TPackage = {
-          rootPath: framework.rootPath,
-          name: frameworkName,
-          distPath: framework.distPath,
-          srcPath: framework.srcPath,
-          outJsFile: framework.outJsFile,
-          outDtsFile: framework.outDtsFile,
-          srcFile: framework.srcFile,
-          dependencies: framework.packages,
-          packageJson: framework.packageJson
-        };
-        
-        await bundlePackageDts(frameworkAsPackage);
-        this.logger.success(`Bundle DTS généré pour le framework ${frameworkName}`);
+        await bundleFrameworkDts(framework);
+        this.logger.success(
+          `Bundle DTS généré pour le framework ${frameworkName}`
+        );
       } catch (dtsError) {
         this.logger.error(
           `Erreur lors de la génération du bundle DTS pour le framework ${frameworkName}:`,

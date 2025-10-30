@@ -1,4 +1,4 @@
-import { TParameters, AnyFunction, TJsonValue } from "@bonsai/types";
+import type { TParameters, AnyFunction, TJsonValue } from "@bonsai/types";
 import { EventTrigger } from "./Event-trigger.class";
 import { RXJS } from "@bonsai/rxjs";
 

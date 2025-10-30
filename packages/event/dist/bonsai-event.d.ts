@@ -1,10 +1,10 @@
 /**
  * Bundled TypeScript definitions
- * Generated: 2025-10-23T15:13:53.708Z
+ * Generated: 2025-10-30T10:57:12.690Z
  */
 
 // External imports
-import { TJsonValue } from "@bonsai/types";
+import type { TJsonValue } from "@bonsai/types";
 import { RXJS } from "@bonsai/rxjs";
 
 // Type declarations

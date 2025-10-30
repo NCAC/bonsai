@@ -1,36 +1,35 @@
 /**
- * Bundle des fichiers de définition TypeScript (.d.ts) pour les bibliothèques Bonsai
+ * Bundles TypeScript definition files (.d.ts) for Bonsai libraries
  *
- * Ce module permet de générer un fichier .d.ts unique qui regroupe toutes les définitions
- * de types d'une bibliothèque externe (package cible) dans un namespace spécifique.
- * Le namespace est défini par la propriété 'namespace' du package source.
+ * This module generates a single .d.ts file that aggregates all type definitions
+ * of an external library (target package) into a specific namespace.
+ * The namespace is defined by the 'namespace' property of the source package.
  */
 
-import * as path from "node:path";
+import { join, resolve, dirname } from "node:path";
 import fileSystem from "fs-extra";
 import { Project, SyntaxKind, SourceFile, Node, Statement } from "ts-morph";
 import { PathManager } from "@build/core/path-manager.class";
 import { TPackage } from "@lib/build/build.type";
-import { Path } from "glob";
 
-// Type pour un namespace ts-morph
+// Type for a ts-morph namespace
 type NamespaceDeclaration = Node;
 
 /**
- * Génère un fichier bundle de définitions TypeScript (.d.ts) pour un package
- * en regroupant toutes les définitions de types à plat dans un objet exporté unique.
+ * Generates a bundled TypeScript definition file (.d.ts) for a package
+ * by aggregating all type definitions into a single exported object.
  *
- * @param pkg - TPackage représentant le package source
+ * @param pkg - TPackage representing the source package
  */
 async function generateBundledDts(pkg: TPackage): Promise<void> {
   const namespaceName = pkg.namespace;
   if (!namespaceName) {
     throw new Error(
-      `Le package ${pkg.name} n'a pas de namespace défini dans son package.json`
+      `Package ${pkg.name} does not have a namespace defined in its package.json`
     );
   }
   console.log(
-    `🔄 Traitement de la bibliothèque ${pkg.name} avec le namespace ${namespaceName}`
+    `🔄 Processing library ${pkg.name} with namespace ${namespaceName}`
   );
   const project = new Project({
     compilerOptions: {
@@ -41,12 +40,12 @@ async function generateBundledDts(pkg: TPackage): Promise<void> {
   });
   const dtsFiles = getAllDtsFiles(pkg);
   if (dtsFiles.length === 0) {
-    throw new Error(`Aucun fichier .d.ts trouvé pour ${pkg.name}`);
+    throw new Error(`No .d.ts files found for ${pkg.name}`);
   }
   project.addSourceFilesAtPaths(dtsFiles);
   const outputFilePath = pkg.outDtsFile;
-  console.log(`📝 Création du fichier de sortie: ${outputFilePath}`);
-  // Set global pour éviter les doublons de déclaration
+  console.log(`📝 Creating output file: ${outputFilePath}`);
+  // Global set to avoid duplicate declarations
   const declaredNames = new Set<string>();
   const exportNames = new Set<string>();
   const typeDeclarations: string[] = [];
@@ -71,7 +70,7 @@ async function generateBundledDts(pkg: TPackage): Promise<void> {
           }
         }
       }
-      // Fonctions exportées
+      // Exported functions
       if (Node.isFunctionDeclaration(statement)) {
         if (statement.getName) {
           const name = statement.getName();
@@ -84,7 +83,7 @@ async function generateBundledDts(pkg: TPackage): Promise<void> {
           }
         }
       }
-      // Variables exportées
+      // Exported variables
       if (Node.isVariableStatement(statement)) {
         const declList = statement.getDeclarationList();
         for (const decl of declList.getDeclarations()) {
@@ -102,7 +101,7 @@ async function generateBundledDts(pkg: TPackage): Promise<void> {
       }
     }
   }
-  // Générer le bloc namespace RXJS
+  // Generate the RXJS namespace block
   const cleanDeclaration = (line: string) =>
     line
       .replace(/^\s*export\s+(declare\s+)?/gm, "")
@@ -115,37 +114,37 @@ async function generateBundledDts(pkg: TPackage): Promise<void> {
     .split("\n")
     .map((l) => (l ? "  " + l : ""))
     .join("\n")}\n}`;
-  // Nettoyer les imports relatifs restants (../ ou ./)
+  // Clean up remaining relative imports (../ or ./)
   function removeRelativeImports(code: string): string {
     return code.replace(
-      /^\s*import[^;]+from\s+['\"](\.\.?\/[^'\"]+)['\"];?\s*$/gm,
+      /^\s*import[^;]+from\s+['"](\.\.?\/[^'"]+)['"];?\s*$/gm,
       ""
     );
   }
-  // Remplace les références importées par leur nom local (générique)
+  // Replace imported type references with their local name (generic)
   function fixInlineTypeImports(code: string): string {
-    // Remplace import("...").Type par Type, pour tous les chemins
+    // Replace import("...").Type with Type, for all paths
     return code.replace(/import\(["'][^"']+["']\)\.(\w+)/g, "$1");
   }
-  // Générer le contenu final
-  const header = `/**\n * Types pour ${pkg.name}\n * Générés automatiquement - NE PAS MODIFIER\n */\n`;
+  // Generate final content
+  const header = `/**\n * Types for ${pkg.name}\n * Automatically generated - DO NOT MODIFY\n */\n`;
   let content = [header, namespaceBlock, `export { ${namespaceName} };`].join(
     "\n\n"
   );
   content = removeRelativeImports(content);
   content = fixInlineTypeImports(content);
-  // Écrire le fichier de sortie
+  // Write the output file
   await fileSystem.outputFile(outputFilePath, content);
-  console.log(`💾 Fichier bundle sauvegardé: ${outputFilePath}`);
+  console.log(`💾 Bundle file saved: ${outputFilePath}`);
 }
 
 /**
- * Explore récursivement les exports d'un fichier pour extraire toutes les déclarations de types
+ * Recursively explores the exports of a file to extract all type declarations
  *
- * @param sourceFile - Fichier source à explorer
- * @param project - Projet TS-Morph
- * @param processedFiles - Fichiers déjà traités pour éviter les boucles infinies
- * @returns Un tableau des déclarations à ajouter
+ * @param sourceFile - Source file to explore
+ * @param project - TS-Morph project
+ * @param processedFiles - Already processed files to avoid infinite loops
+ * @returns An array of declarations to add
  */
 function extractDeclarationsRecursively(
   sourceFile: SourceFile,
@@ -154,18 +153,18 @@ function extractDeclarationsRecursively(
 ): Statement[] {
   const filePath = sourceFile.getFilePath();
 
-  // Éviter les boucles infinies
+  // Avoid infinite loops
   if (processedFiles.has(filePath)) {
     return [];
   }
 
-  // console.log(`🔄 Exploration récursive des exports de: ${filePath}`);
+  // console.log(`🔄 Recursively exploring exports of: ${filePath}`);
   processedFiles.add(filePath);
 
-  // Collecter toutes les déclarations locales
+  // Collect all local declarations
   const declarations: Statement[] = [...sourceFile.getStatements()];
 
-  // Chercher les déclarations d'export depuis d'autres modules
+  // Search for export declarations from other modules
   const exportDeclarations = sourceFile.getExportDeclarations();
 
   for (const exportDecl of exportDeclarations) {
@@ -173,40 +172,32 @@ function extractDeclarationsRecursively(
       const moduleSpecifier = exportDecl.getModuleSpecifierValue();
       if (!moduleSpecifier) continue;
 
-      // console.log(`📦 Export trouvé depuis le module: ${moduleSpecifier}`);
+      // console.log(`📦 Export found from module: ${moduleSpecifier}`);
 
-      // Tenter de résoudre le fichier source du module exporté
+      // Attempt to resolve the source file of the exported module
       try {
         const resolvedSourceFile = exportDecl.getModuleSpecifierSourceFile();
 
         if (resolvedSourceFile) {
-          // console.log(`✅ Module résolu: ${resolvedSourceFile.getFilePath()}`);
+          // console.log(`✅ Module resolved: ${resolvedSourceFile.getFilePath()}`);
 
-          // Extraire récursivement les déclarations du module importé
+          // Recursively extract declarations from the imported module
           const importedDeclarations = extractDeclarationsRecursively(
             resolvedSourceFile,
             project,
             processedFiles
           );
 
-          // Ajouter les déclarations importées à notre collection
+          // Add imported declarations to our collection
           declarations.push(...importedDeclarations);
         } else {
-          console.log(
-            `⚠️ Impossible de résoudre le module: ${moduleSpecifier}`
-          );
+          console.log(`⚠️ Unable to resolve module: ${moduleSpecifier}`);
         }
       } catch (error) {
-        console.warn(
-          `⚠️ Erreur lors de la résolution du module ${moduleSpecifier}:`,
-          error
-        );
+        console.warn(`⚠️ Error resolving module ${moduleSpecifier}:`, error);
       }
     } catch (error) {
-      console.warn(
-        `⚠️ Erreur lors du traitement d'une déclaration d'export:`,
-        error
-      );
+      console.warn(`⚠️ Error processing export declaration:`, error);
     }
   }
 
@@ -214,13 +205,13 @@ function extractDeclarationsRecursively(
 }
 
 /**
- * Copie les déclarations d'un fichier source vers un namespace cible
- * en évitant les doublons.
+ * Copies declarations from a source file to a target namespace
+ * while avoiding duplicates.
  *
- * @param sourceFile - Fichier source contenant les déclarations
- * @param namespace - Namespace cible où ajouter les déclarations
- * @param addedDeclarations - Ensemble des déclarations déjà ajoutées (pour éviter les doublons)
- * @returns Nombre de déclarations ajoutées
+ * @param sourceFile - Source file containing declarations
+ * @param namespace - Target namespace to add declarations to
+ * @param addedDeclarations - Set of already added declarations (to avoid duplicates)
+ * @returns Number of declarations added
  */
 function copyDeclarationsToNamespace(
   sourceFile: SourceFile,
@@ -228,19 +219,19 @@ function copyDeclarationsToNamespace(
   addedDeclarations: Set<string>
 ): number {
   // console.log(
-  //   `🔍 Extraction des déclarations du fichier: ${sourceFile.getFilePath()}`
+  //   `🔍 Extracting declarations from file: ${sourceFile.getFilePath()}`
   // );
 
-  // Récupérer toutes les déclarations du fichier source en explorant récursivement les exports
+  // Retrieve all declarations from the source file by recursively exploring exports
   const project = sourceFile.getProject();
   const declarations = extractDeclarationsRecursively(sourceFile, project);
   // console.log(
-  //   `📊 Nombre de déclarations trouvées (avec récursion): ${declarations.length}`
+  //   `📊 Number of declarations found (with recursion): ${declarations.length}`
   // );
 
   let addedCount = 0;
 
-  // Types de déclarations à inclure dans le namespace
+  // Types of declarations to include in the namespace
   const relevantDeclarationKinds = [
     SyntaxKind.InterfaceDeclaration,
     SyntaxKind.TypeAliasDeclaration,
@@ -251,36 +242,36 @@ function copyDeclarationsToNamespace(
     SyntaxKind.ModuleDeclaration
   ];
 
-  // Récupérer le corps du namespace
-  // Approche sécurisée pour récupérer le corps du namespace
+  // Retrieve the body of the namespace
+  // Secure approach to retrieve the body of the namespace
   let namespaceBody: any;
   try {
-    // Accès sécurisé en vérifiant chaque étape
+    // Secure access by checking each step
     if (
       namespace.getKind &&
       namespace.getKind() === SyntaxKind.ModuleDeclaration
     ) {
-      // Pour les ModuleDeclaration (qui représentent les namespaces dans TS)
+      // For ModuleDeclaration (which represent namespaces in TS)
       const moduleDecl = namespace as any;
       if (moduleDecl.getBody) {
         namespaceBody = moduleDecl.getBody();
       }
     } else {
-      // Fallback - essayer directement getBody() si disponible
-      // @ts-ignore - Accéder au corps du namespace qui est de type Block
+      // Fallback - try directly getBody() if available
+      // @ts-ignore - Access the body of the namespace which is of type Block
       namespaceBody = namespace.getBody && namespace.getBody();
     }
   } catch (error) {
-    console.error("Erreur lors de l'accès au corps du namespace:", error);
+    console.error("Error accessing namespace body:", error);
   }
 
   if (!namespaceBody) {
-    // Si nous n'avons pas pu obtenir le corps via getBody, essayons une approche alternative
+    // If we couldn't get the body via getBody, try an alternative approach
     try {
-      // Extraire le corps du namespace en analysant la structure
+      // Extract the body of the namespace by analyzing the structure
       const children = namespace.getChildren && namespace.getChildren();
       if (children && children.length > 0) {
-        // Le dernier enfant est généralement le bloc de code
+        // The last child is usually the code block
         const lastChild = children[children.length - 1];
         if (
           lastChild &&
@@ -291,31 +282,26 @@ function copyDeclarationsToNamespace(
         }
       }
     } catch (error) {
-      console.error(
-        "Erreur lors de l'extraction du corps du namespace via les enfants:",
-        error
-      );
+      console.error("Error extracting namespace body via children:", error);
     }
   }
 
   if (!namespaceBody) {
-    throw new Error(
-      `Impossible de récupérer le corps du namespace pour y ajouter des déclarations`
-    );
+    throw new Error(`Unable to retrieve namespace body to add declarations`);
   }
 
-  // Extraire également les importations locales pour les transformer en déclarations
+  // Extract local imports to transform into declarations
   const importMap = new Map<string, string>();
   for (const declaration of declarations) {
     if (declaration.getKind() === SyntaxKind.ImportDeclaration) {
       try {
-        // @ts-ignore - Accéder aux propriétés d'ImportDeclaration
+        // @ts-ignore - Access properties of ImportDeclaration
         const importClause = declaration.getImportClause();
-        // @ts-ignore - Accéder aux propriétés de ModuleSpecifier
+        // @ts-ignore - Access properties of ModuleSpecifier
         const moduleSpecifier = declaration.getModuleSpecifierValue();
 
         if (importClause && moduleSpecifier) {
-          // Ignorer les importations externes (commençant par des lettres)
+          // Ignore external imports (starting with letters)
           if (
             !moduleSpecifier.startsWith(".") &&
             !moduleSpecifier.startsWith("/")
@@ -323,54 +309,54 @@ function copyDeclarationsToNamespace(
             continue;
           }
 
-          // @ts-ignore - Accéder aux propriétés de NamedImports
+          // @ts-ignore - Access properties of NamedImports
           const namedImports = importClause.getNamedImports();
           if (namedImports && namedImports.length > 0) {
             for (const namedImport of namedImports) {
-              // @ts-ignore - Accéder au nom de l'importation
+              // @ts-ignore - Access import name
               const importName = namedImport.getName();
               importMap.set(importName, moduleSpecifier);
             }
           }
 
-          // @ts-ignore - Accéder à DefaultImport
+          // @ts-ignore - Access DefaultImport
           const defaultImport = importClause.getDefaultImport();
           if (defaultImport) {
-            // @ts-ignore - Accéder au nom de l'importation par défaut
+            // @ts-ignore - Access default import name
             const defaultName = defaultImport.getText();
             importMap.set(defaultName, moduleSpecifier);
           }
         }
       } catch (error) {
-        console.warn(`⚠️ Erreur lors de l'analyse de l'importation:`, error);
+        console.warn(`⚠️ Error analyzing import:`, error);
       }
     }
   }
 
   for (const declaration of declarations) {
-    // Ignorer explicitement les déclarations d'importation
+    // Explicitly ignore import declarations
     if (declaration.getKind() === SyntaxKind.ImportDeclaration) {
-      // console.log(`🔄 Ignoré: Déclaration d'importation`);
+      // console.log(`🔄 Ignored: Import declaration`);
       continue;
     }
 
     // console.log(
-    //   `🔍 Analyse de la déclaration de type: ${
+    //   `🔍 Analyzing type declaration: ${
     //     SyntaxKind[declaration.getKind()]
     //   }`
     // );
     // console.log(
-    //   `📝 Contenu de la déclaration:\n${declaration.getText().slice(0, 200)}${
+    //   `📝 Declaration content:\n${declaration.getText().slice(0, 200)}${
     //     declaration.getText().length > 200 ? "..." : ""
     //   }`
     // );
 
-    // Vérifier si la déclaration est d'un type pertinent
+    // Check if the declaration is of a relevant type
     if (relevantDeclarationKinds.includes(declaration.getKind())) {
-      // Obtenir le nom de la déclaration pour éviter les doublons
+      // Get the name of the declaration to avoid duplicates
       let declarationName = "";
       try {
-        // Pour les déclarations nommées, essayer d'obtenir le nom
+        // For named declarations, try to get the name
         if (
           declaration.getKind() === SyntaxKind.InterfaceDeclaration ||
           declaration.getKind() === SyntaxKind.TypeAliasDeclaration ||
@@ -378,12 +364,12 @@ function copyDeclarationsToNamespace(
           declaration.getKind() === SyntaxKind.ClassDeclaration ||
           declaration.getKind() === SyntaxKind.FunctionDeclaration
         ) {
-          // @ts-ignore - Nous savons que ces déclarations ont un nom
+          // @ts-ignore - We know these declarations have a name
           declarationName = declaration.getName();
         } else if (declaration.getKind() === SyntaxKind.VariableStatement) {
-          // Pour les déclarations de variables, extraire les noms des variables
+          // For variable declarations, extract variable names
           try {
-            // @ts-ignore - Accéder aux déclarations de variables
+            // @ts-ignore - Access variable declarations
             const variableDeclaration = declaration as any;
             if (
               variableDeclaration.getDeclarationList &&
@@ -398,71 +384,68 @@ function copyDeclarationsToNamespace(
               }
             }
           } catch (error) {
-            console.warn(
-              "Erreur lors de l'extraction du nom de variable:",
-              error
-            );
+            console.warn("Error extracting variable name:", error);
             declarationName = declaration.getText().slice(0, 100);
           }
         } else {
-          // Utiliser un hash du contenu pour les autres déclarations
-          declarationName = declaration.getText().slice(0, 100); // Limiter la longueur
+          // Use a hash of the content for other declarations
+          declarationName = declaration.getText().slice(0, 100); // Limit length
         }
       } catch {
-        // Fallback si getName() n'est pas disponible
+        // Fallback if getName() is not available
         declarationName = declaration.getText().slice(0, 100);
       }
 
-      // Vérifier si la déclaration a déjà été ajoutée
+      // Check if the declaration has already been added
       if (declarationName && addedDeclarations.has(declarationName)) {
-        continue; // Ignorer les déclarations déjà ajoutées
+        continue; // Ignore already added declarations
       }
 
-      // Ajouter au set pour éviter les doublons
+      // Add to set to avoid duplicates
       if (declarationName) {
         addedDeclarations.add(declarationName);
       }
 
-      // Récupérer le code de la déclaration et l'ajouter au corps du namespace
+      // Retrieve the declaration code and add it to the namespace body
       let text = declaration.getText();
 
-      // Remplacer les références aux types importés par leurs équivalents complets
+      // Replace references to imported types with their full equivalents
       for (const [importName, modulePath] of importMap.entries()) {
         const regex = new RegExp(`\\b${importName}\\b(?!\\.)`);
         if (regex.test(text)) {
           // console.log(
-          //   `🔄 Résolution de la référence: ${importName} -> ${modulePath}`
+          //   `🔄 Resolving reference: ${importName} -> ${modulePath}`
           // );
         }
       }
 
       try {
-        // Supprimer les préfixes export et export declare
+        // Remove export and export declare prefixes
         const cleanedText = text.replace(/^export\s+(declare\s+)?/gm, "");
 
-        // Gérer le cas des déclarations vides ou invalides
+        // Handle empty or invalid declarations
         if (!cleanedText.trim()) {
-          // console.log(`⚠️ Déclaration vide ignorée`);
+          // console.log(`⚠️ Ignored empty declaration`);
           continue;
         }
 
-        // Vérifier si la déclaration contient des éléments d'itérateur qui peuvent causer des erreurs
+        // Check if the declaration contains iterator elements that may cause errors
         const hasIteratorSyntax =
           /\s+next\(\s*\)/.test(cleanedText) ||
           /\s+Symbol\.iterator\s*\(/.test(cleanedText);
 
-        // Pour les déclarations contenant des itérateurs (comme dans RxJS), utiliser une approche alternative
+        // For declarations containing iterators (like in RxJS), use an alternative approach
         if (hasIteratorSyntax) {
           // console.log(
-          //   `🔄 Utilisation de l'approche alternative pour une déclaration d'itérateur`
+          //   `🔄 Using alternative approach for iterator declaration`
           // );
 
           try {
-            // Approche 1: Tentative d'ajout direct avec surveillance des erreurs
+            // Approach 1: Attempt direct addition with error monitoring
             try {
               namespaceBody.addStatements(cleanedText);
               // console.log(
-              //   `✓ Déclaration d'itérateur ajoutée via addStatements: ${declarationName.substring(
+              //   `✓ Iterator declaration added via addStatements: ${declarationName.substring(
               //     0,
               //     30
               //   )}...`
@@ -470,27 +453,25 @@ function copyDeclarationsToNamespace(
               addedCount++;
             } catch (addError) {
               console.warn(
-                `⚠️ Erreur lors de l'ajout direct de la déclaration d'itérateur: ${addError.message}. Tentative d'approche alternative...`
+                `⚠️ Error adding iterator declaration directly: ${addError.message}. Attempting alternative approach...`
               );
 
-              // Approche 2: Modification du texte du namespace (plus sécurisée)
-              // Récupérer le texte du namespace
+              // Approach 2: Modify namespace text (more secure)
+              // Retrieve namespace text
               const namespaceText = namespace.getText();
               if (!namespaceText) {
-                throw new Error(
-                  "Impossible de récupérer le texte du namespace"
-                );
+                throw new Error("Unable to retrieve namespace text");
               }
 
-              // Trouver la position juste avant l'accolade fermante
+              // Find position just before closing brace
               const insertPosition = namespaceText.lastIndexOf("}");
               if (insertPosition <= 0) {
                 throw new Error(
-                  "Structure de namespace invalide - accolade fermante non trouvée"
+                  "Invalid namespace structure - closing brace not found"
                 );
               }
 
-              // Construire le nouveau texte du namespace
+              // Construct new namespace text
               const newText =
                 namespaceText.substring(0, insertPosition) +
                 "\n  " +
@@ -498,18 +479,16 @@ function copyDeclarationsToNamespace(
                 "\n" +
                 namespaceText.substring(insertPosition);
 
-              // Vérifier que le nouveau texte est valide
+              // Ensure new text is valid
               if (!newText || newText === namespaceText) {
-                throw new Error(
-                  "Échec de la génération du nouveau texte pour le namespace"
-                );
+                throw new Error("Failed to generate new text for namespace");
               }
 
-              // Utiliser une approche sécurisée pour remplacer le texte
+              // Securely replace text
               try {
                 namespace.replaceWithText(newText);
                 // console.log(
-                //   `✓ Déclaration d'itérateur ajoutée via replaceWithText: ${declarationName.substring(
+                //   `✓ Iterator declaration added via replaceWithText: ${declarationName.substring(
                 //     0,
                 //     30
                 //   )}...`
@@ -517,39 +496,39 @@ function copyDeclarationsToNamespace(
                 addedCount++;
               } catch (replaceError) {
                 throw new Error(
-                  `Échec du remplacement du texte: ${replaceError.message}`
+                  `Failed to replace text: ${replaceError.message}`
                 );
               }
             }
           } catch (error) {
-            // Approche 3: Ajouter la déclaration en tant que commentaire si tout échoue
+            // Approach 3: Add declaration as comment if all else fails
             console.warn(
-              `⚠️ Échec de toutes les tentatives d'ajout de la déclaration d'itérateur. Ajout en commentaire pour référence: ${error.message}`
+              `⚠️ All attempts to add iterator declaration failed. Adding as comment for reference: ${error.message}`
             );
 
             try {
-              const commentText = `/* Déclaration problématique avec itérateur - ajoutée en commentaire:
+              const commentText = `/* Problematic iterator declaration - added as comment:
 ${cleanedText}
 */`;
               namespaceBody.addStatements(commentText);
               // console.log(
-              //   `✓ Déclaration d'itérateur ajoutée en commentaire: ${declarationName.substring(
+              //   `✓ Iterator declaration added as comment: ${declarationName.substring(
               //     0,
               //     30
               //   )}...`
               // );
-              // Ne pas incrémenter addedCount car nous n'avons pas vraiment ajouté la déclaration
+              // Do not increment addedCount as we didn't actually add the declaration
             } catch (commentError) {
               console.error(
-                `❌ Impossible d'ajouter même en commentaire: ${commentError.message}. La déclaration sera ignorée.`
+                `❌ Unable to add even as comment: ${commentError.message}. Declaration will be ignored.`
               );
             }
           }
         } else {
-          // Approche standard pour les déclarations normales
+          // Standard approach for normal declarations
           namespaceBody.addStatements(cleanedText);
           // console.log(
-          //   `✓ Déclaration ajoutée: ${declarationName.substring(0, 50)}${
+          //   `✓ Declaration added: ${declarationName.substring(0, 50)}${
           //     declarationName.length > 50 ? "..." : ""
           //   }`
           // );
@@ -557,72 +536,68 @@ ${cleanedText}
         }
       } catch (error) {
         console.warn(
-          `⚠️ Erreur lors de l'ajout de la déclaration "${declarationName.substring(
+          `⚠️ Error adding declaration "${declarationName.substring(
             0,
             50
           )}...": ${error.message}`
         );
 
-        // Approche de secours en cas d'erreur
+        // Fallback approach in case of error
         try {
-          console.log("Tentative de récupération suite à l'erreur...");
+          console.log("Attempting recovery after error...");
 
-          // Approche 1: Ajout comme commentaire
+          // Approach 1: Add as comment
           try {
-            const commentText = `/* Déclaration problématique - ajoutée en commentaire pour référence:
+            const commentText = `/* Problematic declaration - added as comment for reference:
 ${text.replace(/^export\s+(declare\s+)?/gm, "")}
 */`;
 
-            // Essayer d'ajouter directement comme commentaire
+            // Try adding directly as comment
             namespaceBody.addStatements(commentText);
             console.log(
-              `✓ Déclaration ajoutée en commentaire: ${declarationName.substring(
+              `✓ Declaration added as comment: ${declarationName.substring(
                 0,
                 30
               )}...`
             );
-            // Ne pas incrémenter addedCount car c'est juste un commentaire
+            // Do not increment addedCount as it's just a comment
           } catch (commentError) {
             console.warn(
-              `⚠️ Échec de l'ajout en commentaire: ${commentError.message}`
+              `⚠️ Failed to add as comment: ${commentError.message}`
             );
 
-            // Approche 2: Modification manuelle du texte (comme dernier recours)
+            // Approach 2: Manual text modification (as last resort)
             try {
-              // Récupérer le texte du namespace de manière sécurisée
+              // Securely retrieve namespace text
               let namespaceText: string | undefined;
               try {
                 namespaceText = namespace.getText();
               } catch (textError) {
                 console.warn(
-                  `⚠️ Impossible de récupérer le texte du namespace: ${textError.message}`
+                  `⚠️ Unable to retrieve namespace text: ${textError.message}`
                 );
 
-                // Si nous ne pouvons pas obtenir le texte, abandonner cette approche
-                throw new Error(
-                  "Impossible de récupérer le texte du namespace"
-                );
+                // If we can't get the text, abandon this approach
+                throw new Error("Unable to retrieve namespace text");
               }
 
               if (!namespaceText) {
-                throw new Error("Le texte du namespace est vide ou indéfini");
+                throw new Error("Namespace text is empty or undefined");
               }
 
-              // Trouver la position juste avant l'accolade fermante
+              // Find position just before closing brace
               const insertPosition = namespaceText.lastIndexOf("}");
               if (insertPosition <= 0) {
-                throw new Error(
-                  "Accolade fermante non trouvée dans le namespace"
-                );
+                throw new Error("Closing brace not found in namespace");
               }
 
-              // Créer un commentaire sécurisé pour éviter tout problème syntaxique
-              const safeComment = `// DÉCLARATION PROBLÉMATIQUE (ajoutée comme commentaire)
-  // Nom original: ${declarationName.substring(0, 30)}...
-  // Cette déclaration a été commentée pour éviter les erreurs de compilation
+              // Create a secure comment to avoid syntax issues
+              const safeComment = `// PROBLEMATIC DECLARATION (added as comment)
+  // Original name: ${declarationName.substring(0, 30)}...
+  // This declaration was commented out to avoid compilation errors
   `;
 
-              // Construire le nouveau texte avec le commentaire
+              // Construct new text with comment
               const newText =
                 namespaceText.substring(0, insertPosition) +
                 "\n  " +
@@ -630,30 +605,30 @@ ${text.replace(/^export\s+(declare\s+)?/gm, "")}
                 "\n" +
                 namespaceText.substring(insertPosition);
 
-              // Tenter de remplacer le texte
+              // Attempt to replace text
               namespace.replaceWithText(newText);
               console.log(
-                `✓ Commentaire de sécurité ajouté pour: ${declarationName.substring(
+                `✓ Security comment added for: ${declarationName.substring(
                   0,
                   30
                 )}...`
               );
             } catch (finalError) {
               console.error(
-                `❌ Toutes les tentatives de récupération ont échoué: ${finalError.message}`
+                `❌ All recovery attempts failed: ${finalError.message}`
               );
               console.warn(
-                `⚠️ La déclaration "${declarationName.substring(
+                `⚠️ Declaration "${declarationName.substring(
                   0,
                   30
-                )}..." sera ignorée complètement`
+                )}..." will be completely ignored`
               );
             }
           }
         } catch (alternativeError) {
-          console.error(`❌ Échec de la méthode de secours:`, alternativeError);
+          console.error(`❌ Fallback method failed:`, alternativeError);
           console.warn(
-            `⚠️ La déclaration sera ignorée pour éviter l'échec complet du build`
+            `⚠️ Declaration will be ignored to avoid complete build failure`
           );
         }
       }
@@ -664,13 +639,13 @@ ${text.replace(/^export\s+(declare\s+)?/gm, "")}
 }
 
 /**
- * Collecte récursivement tous les fichiers .d.ts dans un dossier et ses sous-dossiers.
- * Résout également les références (<reference path="...">) dans les fichiers.
+ * Recursively collects all .d.ts files in a folder and its subfolders.
+ * Also resolves <reference path="..."> references in files.
  *
- * @param dir - Dossier à parcourir
- * @param dtsFiles - Tableau où stocker les chemins des fichiers trouvés
- * @param ignoreDirs - Dossiers à ignorer lors de la recherche
- * @param processedFiles - Ensemble des fichiers déjà traités (pour éviter les doublons)
+ * @param dir - Directory to scan
+ * @param dtsFiles - Array to store found file paths
+ * @param ignoreDirs - Directories to ignore during search
+ * @param processedFiles - Set of already processed files (to avoid duplicates)
  */
 function collectDtsFiles(
   dir: string,
@@ -678,10 +653,10 @@ function collectDtsFiles(
   ignoreDirs: string[] = [".git"],
   processedFiles: Set<string> = new Set()
 ): void {
-  // console.log(`📂 Exploration du répertoire: ${dir}`);
+  // console.log(`📂 Scanning directory: ${dir}`);
 
   if (!fileSystem.existsSync(dir)) {
-    console.log(`⚠️ Le répertoire n'existe pas: ${dir}`);
+    console.log(`⚠️ Directory does not exist: ${dir}`);
     return;
   }
 
@@ -689,38 +664,35 @@ function collectDtsFiles(
     const files = fileSystem.readdirSync(dir);
 
     for (const file of files) {
-      const filePath = path.join(dir, file);
+      const filePath = join(dir, file);
 
       try {
         const stat = fileSystem.statSync(filePath);
 
         if (stat.isDirectory()) {
-          // Ignorer certains dossiers non pertinents
+          // Ignore certain non-relevant folders
           if (!ignoreDirs.includes(file)) {
             collectDtsFiles(filePath, dtsFiles, ignoreDirs, processedFiles);
           }
         } else if (file.endsWith(".d.ts") && !file.endsWith(".min.d.ts")) {
-          // Ignorer les fichiers minifiés
+          // Ignore minified files
           if (!processedFiles.has(filePath)) {
             dtsFiles.push(filePath);
             processedFiles.add(filePath);
-            // console.log(`📄 Fichier .d.ts trouvé: ${filePath}`);
+            // console.log(`📄 .d.ts file found: ${filePath}`);
 
-            // Afficher les premières lignes du fichier pour débug
+            // Display first lines of the file for debugging
             try {
               const content = fileSystem.readFileSync(filePath, "utf-8");
               const firstLines = content.split("\n").slice(0, 10).join("\n");
               // console.log(
-              //   `📝 Aperçu du fichier ${filePath}:\n${firstLines}\n[...]`
+              //   `📝 File preview ${filePath}:\n${firstLines}\n[...]`
               // );
             } catch (error) {
-              console.warn(
-                `⚠️ Impossible de lire le contenu de ${filePath}:`,
-                error
-              );
+              console.warn(`⚠️ Unable to read content of ${filePath}:`, error);
             }
 
-            // Traiter les références dans le fichier
+            // Process references in the file
             try {
               const content = fileSystem.readFileSync(filePath, "utf-8");
               const referenceRegex =
@@ -729,8 +701,8 @@ function collectDtsFiles(
 
               while ((match = referenceRegex.exec(content)) !== null) {
                 const referencePath = match[1];
-                const absoluteReferencePath = path.resolve(
-                  path.dirname(filePath),
+                const absoluteReferencePath = resolve(
+                  dirname(filePath),
                   referencePath
                 );
 
@@ -741,10 +713,10 @@ function collectDtsFiles(
                   dtsFiles.push(absoluteReferencePath);
                   processedFiles.add(absoluteReferencePath);
                   // console.log(
-                  //   `📄 Fichier référencé trouvé: ${absoluteReferencePath}`
+                  //   `📄 Referenced file found: ${absoluteReferencePath}`
                   // );
 
-                  // Si c'est un dossier, collecter tous les fichiers .d.ts
+                  // If it's a folder, collect all .d.ts files
                   if (
                     fileSystem.statSync(absoluteReferencePath).isDirectory()
                   ) {
@@ -759,45 +731,43 @@ function collectDtsFiles(
               }
             } catch (error) {
               console.warn(
-                `⚠️ Erreur lors de la lecture des références dans ${filePath}:`,
+                `⚠️ Error reading references in ${filePath}:`,
                 error
               );
             }
           }
         }
       } catch (error) {
-        console.warn(`⚠️ Erreur lors de l'accès à ${filePath}:`, error);
+        console.warn(`⚠️ Error accessing ${filePath}:`, error);
       }
     }
   } catch (error) {
-    console.warn(`⚠️ Erreur lors de la lecture du dossier ${dir}:`, error);
+    console.warn(`⚠️ Error reading directory ${dir}:`, error);
   }
 }
 
 /**
- * Récupère tous les fichiers .d.ts de la librairie cible.
- * La librairie cible est déterminée en analysant les importations dans le fichier source.
+ * Retrieves all .d.ts files from the target library.
+ * The target library is determined by analyzing imports in the source file.
  *
- * @param pkg - TPackage représentant le package source
- * @returns Liste des chemins absolus vers les fichiers .d.ts
+ * @param pkg - TPackage representing the source package
+ * @returns List of absolute paths to .d.ts files
  */
 function getAllDtsFiles(pkg: TPackage): string[] {
   const pathManager = PathManager.me();
-  // Récupérer le nom du package source
+  // Retrieve the name of the source package
   const packageName = pkg.name;
 
-  // Lire le contenu du fichier source pour identifier la librairie cible
+  // Read the content of the source file to identify the target library
   const srcContent = fileSystem.readFileSync(pkg.srcFile, "utf-8");
 
-  // Analyse pour trouver toutes les importations
+  // Analyze to find all imports
   const importMatches = srcContent.match(/from ['"]([^'"]+)['"]/g);
   if (!importMatches || importMatches.length === 0) {
-    throw new Error(
-      `Impossible de déterminer la librairie cible dans ${pkg.srcFile}`
-    );
+    throw new Error(`Unable to determine target library in ${pkg.srcFile}`);
   }
 
-  // Extraire les noms de toutes les librairies importées et leurs sous-packages
+  // Extract names of all imported libraries and their sub-packages
   const targetLibraries = new Set<string>();
   const subPackages = new Map<string, Set<string>>();
 
@@ -808,10 +778,10 @@ function getAllDtsFiles(pkg: TPackage): string[] {
       const pathParts = libraryPath.split("/");
       const mainLibrary = pathParts[0];
 
-      // Ajouter la bibliothèque principale
+      // Add the main library
       targetLibraries.add(mainLibrary);
 
-      // Si c'est un sous-package (comme rxjs/operators), l'enregistrer
+      // If it's a sub-package (like rxjs/operators), register it
       if (pathParts.length > 1) {
         if (!subPackages.has(mainLibrary)) {
           subPackages.set(mainLibrary, new Set<string>());
@@ -821,72 +791,68 @@ function getAllDtsFiles(pkg: TPackage): string[] {
     }
   }
   if (targetLibraries.size === 0) {
-    throw new Error(
-      `Impossible de déterminer la librairie cible dans ${pkg.srcFile}`
-    );
+    throw new Error(`Unable to determine target library in ${pkg.srcFile}`);
   }
 
   console.log(
-    `📦 Librairies cibles identifiées: ${Array.from(targetLibraries).join(
-      ", "
-    )}`
+    `📦 Identified target libraries: ${Array.from(targetLibraries).join(", ")}`
   );
 
-  // Ajouter tous les sous-packages aux cibles à traiter
+  // Add all sub-packages to the targets to process
   for (const [mainLib, subPkgs] of subPackages.entries()) {
     console.log(
-      `📦 Sous-packages de ${mainLib} détectés: ${Array.from(subPkgs).join(
+      `📦 Detected sub-packages of ${mainLib}: ${Array.from(subPkgs).join(
         ", "
       )}`
     );
-    // Ajouter chaque sous-package à la liste des bibliothèques cibles
+    // Add each sub-package to the list of target libraries
     subPkgs.forEach((subPkg) => targetLibraries.add(subPkg));
   }
 
-  // Collecter les fichiers .d.ts
+  // Collect .d.ts files
   const dtsFiles: string[] = [];
 
-  // const nodeModulesPath = path.join(buildStoreConfig.rootPath, "node_modules");
+  // const nodeModulesPath = join(buildStoreConfig.rootPath, "node_modules");
   // with PathManager
-  const nodeModulesPath = path.join(pathManager.rootPath, "node_modules");
+  const nodeModulesPath = join(pathManager.rootPath, "node_modules");
 
-  // Traiter chaque librairie cible
+  // Process each target library
   for (const targetLibrary of targetLibraries) {
-    console.log(`🔍 Recherche des fichiers .d.ts pour ${targetLibrary}...`);
+    console.log(`🔍 Searching for .d.ts files for ${targetLibrary}...`);
 
-    // Recherche dans PNPM puis dans le node_modules standard
-    const basePackageName = targetLibrary.split("/")[0]; // Prendre la partie avant le premier /
+    // Search in PNPM then in standard node_modules
+    const basePackageName = targetLibrary.split("/")[0]; // Take the part before the first /
 
-    // Rechercher d'abord dans la structure PNPM
-    const pnpmDir = path.join(nodeModulesPath, ".pnpm");
+    // First search in PNPM structure
+    const pnpmDir = join(nodeModulesPath, ".pnpm");
     let libraryPath = "";
 
     if (fileSystem.existsSync(pnpmDir)) {
       try {
-        // Trouver le dossier du package dans la structure PNPM
+        // Find the package folder in the PNPM structure
         const possibleDirs = fileSystem
           .readdirSync(pnpmDir)
           .filter((dir) => dir.startsWith(`${basePackageName}@`));
 
         if (possibleDirs.length > 0) {
-          // console.log(`📦 Package PNPM trouvé: ${possibleDirs[0]}`);
+          // console.log(`📦 PNPM package found: ${possibleDirs[0]}`);
 
-          // Pour le package principal (par exemple 'rxjs')
+          // For the main package (e.g., 'rxjs')
           if (targetLibrary === basePackageName) {
-            libraryPath = path.join(
+            libraryPath = join(
               pnpmDir,
               possibleDirs[0],
               "node_modules",
               basePackageName
             );
           }
-          // Pour les sous-packages (par exemple 'rxjs/operators')
+          // For sub-packages (e.g., 'rxjs/operators')
           else if (targetLibrary.includes("/")) {
-            // Construire le chemin vers le module dans .pnpm
+            // Construct the path to the module in .pnpm
             const subPackagePath = targetLibrary.substring(
               targetLibrary.indexOf("/") + 1
             );
-            libraryPath = path.join(
+            libraryPath = join(
               pnpmDir,
               possibleDirs[0],
               "node_modules",
@@ -895,32 +861,29 @@ function getAllDtsFiles(pkg: TPackage): string[] {
           }
         }
       } catch (error) {
-        console.warn(
-          `⚠️ Erreur lors de la recherche PNPM pour ${targetLibrary}:`,
-          error
-        );
+        console.warn(`⚠️ Error searching PNPM for ${targetLibrary}:`, error);
       }
     }
 
-    // Si PNPM a échoué, essayer dans node_modules standard
+    // If PNPM failed, try in standard node_modules
     if (!libraryPath || !fileSystem.existsSync(libraryPath)) {
-      const standardPath = path.join(nodeModulesPath, targetLibrary);
+      const standardPath = join(nodeModulesPath, targetLibrary);
       if (fileSystem.existsSync(standardPath)) {
         libraryPath = standardPath;
         console.log(
-          `📦 Package trouvé dans node_modules standard: ${libraryPath}`
+          `📦 Package found in standard node_modules: ${libraryPath}`
         );
       }
     }
 
     if (!libraryPath || !fileSystem.existsSync(libraryPath)) {
-      console.warn(`⚠️ Impossible de trouver le package ${targetLibrary}`);
+      console.warn(`⚠️ Unable to find package ${targetLibrary}`);
       continue;
     }
 
-    // Lire le package.json pour trouver le chemin des types
+    // Read package.json to find types path
     try {
-      const packageJsonPath = path.join(libraryPath, "package.json");
+      const packageJsonPath = join(libraryPath, "package.json");
       if (fileSystem.existsSync(packageJsonPath)) {
         const packageJson = JSON.parse(
           fileSystem.readFileSync(packageJsonPath, "utf-8")
@@ -928,19 +891,17 @@ function getAllDtsFiles(pkg: TPackage): string[] {
         const typesPath = packageJson.types || packageJson.typings;
 
         if (typesPath) {
-          console.log(
-            `📄 Chemin des types défini dans package.json: ${typesPath}`
-          );
-          const absoluteTypesPath = path.join(libraryPath, typesPath);
+          console.log(`📄 Types path defined in package.json: ${typesPath}`);
+          const absoluteTypesPath = join(libraryPath, typesPath);
 
-          // Vérifier si le chemin des types existe
+          // Check if types path exists
           if (fileSystem.existsSync(absoluteTypesPath)) {
-            // Si c'est un fichier .d.ts
+            // If it's a .d.ts file
             if (absoluteTypesPath.endsWith(".d.ts")) {
               dtsFiles.push(absoluteTypesPath);
-              console.log(`📄 Fichier de types trouvé: ${absoluteTypesPath}`);
+              console.log(`📄 Types file found: ${absoluteTypesPath}`);
             }
-            // Si c'est un dossier, chercher tous les .d.ts dedans
+            // If it's a folder, search all .d.ts files inside
             else if (fileSystem.statSync(absoluteTypesPath).isDirectory()) {
               collectDtsFiles(absoluteTypesPath, dtsFiles);
             }
@@ -948,71 +909,68 @@ function getAllDtsFiles(pkg: TPackage): string[] {
         }
       }
 
-      // Chercher dans les emplacements communs si aucun fichier n'a été trouvé
+      // Search common locations if no file found
       if (dtsFiles.length === 0 || targetLibrary.includes("/")) {
-        // Traiter le cas des sous-packages de façon générique
+        // Handle sub-packages generically
         if (targetLibrary.includes("/")) {
-          const typesDir = path.join(libraryPath, "dist", "types");
+          const typesDir = join(libraryPath, "dist", "types");
           if (fileSystem.existsSync(typesDir)) {
-            // Construire le chemin du sous-package (ex: operators pour rxjs/operators)
+            // Construct the path of the sub-package (e.g., operators for rxjs/operators)
             const subPackagePath = targetLibrary.substring(
               targetLibrary.indexOf("/") + 1
             );
-            const subPackageDir = path.join(typesDir, subPackagePath);
+            const subPackageDir = join(typesDir, subPackagePath);
 
             if (fileSystem.existsSync(subPackageDir)) {
               console.log(
-                `📁 Dossier de types pour sous-package trouvé: ${subPackageDir}`
+                `📁 Types folder for sub-package found: ${subPackageDir}`
               );
               collectDtsFiles(subPackageDir, dtsFiles);
             }
           }
         }
-        // Pour le package principal
+        // For the main package
         else {
-          const typesDir = path.join(libraryPath, "dist", "types");
+          const typesDir = join(libraryPath, "dist", "types");
           if (fileSystem.existsSync(typesDir)) {
-            console.log(`📁 Dossier de types principal trouvé: ${typesDir}`);
+            console.log(`📁 Main types folder found: ${typesDir}`);
             collectDtsFiles(typesDir, dtsFiles);
           }
         }
 
-        // Liste des chemins communs où chercher les .d.ts
+        // List of common paths to search for .d.ts files
         const commonPaths = [
-          path.join(libraryPath, "dist", "types"),
-          path.join(libraryPath, "dist"),
-          path.join(libraryPath, "lib"),
-          path.join(libraryPath, "esm"),
-          path.join(libraryPath, "@types"),
+          join(libraryPath, "dist", "types"),
+          join(libraryPath, "dist"),
+          join(libraryPath, "lib"),
+          join(libraryPath, "esm"),
+          join(libraryPath, "@types"),
           libraryPath
         ];
 
-        // Chercher dans tous les chemins communs
+        // Search all common paths
         for (const commonPath of commonPaths) {
           if (fileSystem.existsSync(commonPath)) {
-            // console.log(`🔍 Recherche dans ${commonPath}...`);
+            // console.log(`🔍 Searching in ${commonPath}...`);
             collectDtsFiles(commonPath, dtsFiles);
           }
         }
       }
     } catch (error) {
-      console.warn(
-        `⚠️ Erreur lors de la recherche des types pour ${targetLibrary}:`,
-        error
-      );
+      console.warn(`⚠️ Error searching types for ${targetLibrary}:`, error);
     }
   }
 
   if (dtsFiles.length === 0) {
     throw new Error(
-      `Aucun fichier .d.ts trouvé pour les librairies: ${Array.from(
-        targetLibraries
-      ).join(", ")}`
+      `No .d.ts files found for libraries: ${Array.from(targetLibraries).join(
+        ", "
+      )}`
     );
   }
 
   // console.log(
-  //   `✅ ${dtsFiles.length} fichiers .d.ts trouvés pour ${Array.from(
+  //   `✅ ${dtsFiles.length} .d.ts files found for ${Array.from(
   //     targetLibraries
   //   ).join(", ")}`
   // );
@@ -1020,20 +978,20 @@ function getAllDtsFiles(pkg: TPackage): string[] {
   return dtsFiles;
 }
 
-// Fonction principale exportée
+// Main exported function
 /**
- * Fonction principale exportée pour générer un bundle de définitions TypeScript.
+ * Main exported function to generate a TypeScript definitions bundle.
  *
- * @param packageDir - Chemin absolu vers le dossier du package source
+ * @param packageDir - Absolute path to the source package folder
  */
 export async function bundleLibraryDts(pkg: TPackage): Promise<void> {
-  console.log(`🔍 Génération du bundle DTS pour la bibliothèque: ${pkg.name}`);
+  console.log(`🔍 Generating DTS bundle for library: ${pkg.name}`);
 
   try {
     await generateBundledDts(pkg);
-    console.log(`✅ Bundle DTS généré avec succès pour: ${pkg.name}`);
+    console.log(`✅ DTS bundle successfully generated for: ${pkg.name}`);
   } catch (error) {
-    console.error(`❌ Erreur lors de la génération du bundle DTS:`, error);
+    console.error(`❌ Error generating DTS bundle:`, error);
     throw error;
   }
 }

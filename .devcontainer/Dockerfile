@@ -23,7 +23,7 @@ RUN chmod +x /usr/local/bin/commit \
   /usr/local/bin/finish-bugfix-with-mr
 
 
-# Download and install pnpm:
-RUN npm install -g pnpm
+# Download and install pnpm and tsx:
+RUN npm install -g pnpm tsx
 
-EXPOSE 1979 1980
+EXPOSE 1977 1978

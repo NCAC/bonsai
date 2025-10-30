@@ -1,11 +1,11 @@
 /**
  * Radio Singleton - Gestionnaire central des channels de communication
- * 
+ *
  * Le Radio est le point central de communication dans Bonsai.
  * Il gère les channels nommés et permet l'accès global aux communications.
  */
 
-import { Channel } from './channel.class';
+import { Channel } from "./channel.class";
 
 export class Radio {
   private static instance: Radio;

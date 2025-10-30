@@ -1,7 +1,7 @@
 /**
  * @bonsai/event - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2025-10-23T15:13:52.700Z
+ * Date: 2025-10-30T10:57:11.306Z
  */
 import { RXJS } from '@bonsai/rxjs';
 

@@ -1,7 +1,6 @@
-// Exporter à la fois @bonsai/types et @bonsai/rxjs
-export * from "@bonsai/types";
-
-// Export all types from @bonsai/types at top-level (flat)
+/**
+ * @packageDocumentation
+ */
 export type {
   TInstanceOrT,
   IfEquals,
@@ -17,13 +16,17 @@ export type {
   KeysOfUnion,
   StringDigit,
   Whitespace,
-  TObjectKeys,
+  TObjectKeys
+} from "./src/utils";
+export type {
   TPrimitive,
   TJsonPrimitive,
   TFalsy,
   TNullish,
   TPropertyName,
-  TNonUndefined,
+  TNonUndefined
+} from "./src/primitive-values";
+export type {
   TDictionary,
   TJsonDictionary,
   TNumericDictionary,
@@ -33,15 +36,18 @@ export type {
   TJsonArray,
   TJsonValue,
   TDictionaryArray,
-  TDictionaryValue,
-  TNonEmptyString,
-  TOneLetter,
+  TDictionaryValue
+} from "./src/dictionaries";
+export type { TNonEmptyString, TOneLetter } from "./src/string";
+export type {
   ArrayEntry,
   TMapEntry,
   TObjectEntry,
   TSetEntry,
   Entry,
-  TEntries,
+  TEntries
+} from "./src/entries";
+export type {
   EmptyObject,
   IsEmptyObject,
   TPropertyNameByType,
@@ -58,15 +64,13 @@ export type {
   OptionalKeys,
   ExcludeOptionalKeys,
   PickByValue,
-  PickByValueExact,
-  TClass,
-  TConstructor,
+  PickByValueExact
+} from "./src/object.ts";
+export type { TClass, TConstructor } from "./src/class";
+export type {
   AnyFunction,
   TParameters,
   AlwaysParameters
-} from "@bonsai/types";
+} from "./src/functions";
 
-export * from "@bonsai/rxjs";
-// export * from "@bonsai/remeda";
-// export * from "@bonsai/zod";
-export * from "@bonsai/event";
+export {};

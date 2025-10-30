@@ -51,6 +51,10 @@ export type TPackage = {
   isLibrary?: boolean;
   namespace?: string | null;
   /**
+   * Indique si le package ne contient que des types TypeScript (pas de code JS)
+   */
+  isTypesOnly?: boolean;
+  /**
    * Nom de la dépendance amont (upstream) à tracker pour la version (ex: 'rxjs' ou 'remeda')
    */
   upstreamDependency?: string;
