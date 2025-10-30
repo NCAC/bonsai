@@ -3,6 +3,7 @@
 #except for these files :
 !.gitignore
 !README.md
+!README.fr.md
 !LICENSE
 !package.json
 !tsconfig.json
