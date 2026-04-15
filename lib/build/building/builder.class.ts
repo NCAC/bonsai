@@ -1,17 +1,17 @@
-import { rollup, watch, RollupOptions, RollupWatchOptions } from "rollup";
+import { rollup, RollupOptions } from "rollup";
 import fs from "fs-extra";
-import { join, dirname } from "node:path";
+import { join, dirname, relative } from "node:path";
+import { execSync } from "node:child_process";
 import { Logger } from "@build/monitoring/logger.class";
 import { BuildOptions } from "@lib/build/initializing/build-options.class";
 import { PathManager } from "@build/core/path-manager.class";
 import { TFramework, TPackage } from "@build/build.type";
+import { ComponentsRegistry } from "@lib/build/initializing/components-registry";
 
 import nodeResolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import typescript from "rollup-plugin-typescript2";
-import { bundleLibraryDts } from "@build/bundling/bundle-library-dts";
-import { bundlePackageDts } from "@build/bundling/bundle-package-dts";
-import { bundleFrameworkDts } from "@build/bundling/bundle-framework-dts";
+import { createDtsRollupConfig, postProcessDts } from "./dts-config";
 
 /**
  * Classe principale pour le build des composants
@@ -97,14 +97,8 @@ export class Builder {
       // S'assurer que le dossier de sortie existe
       await this.ensureOutputDirExists(component.outJsFile);
 
-      // Définir le namespace (nom global pour l'export)
-      // Utiliser external_name du package.json ou tomber sur le namespace
-      const namespace =
-        component.packageJson.namespace ||
-        component.namespace ||
-        componentName.replace(/[^a-zA-Z0-9_]/g, "_");
-
-      // Créer la configuration Rollup pour le bundle JS
+      // Créer la configuration Rollup — passe JS uniquement (format ES)
+      // La passe DTS est effectuée globalement dans buildFramework (ADR-0032)
       const jsRollupConfig: RollupOptions = {
         input: component.srcFile,
         output: {
@@ -146,58 +140,8 @@ export class Builder {
               exclude: ["node_modules", "**/*.test.ts", "**/*.spec.ts"]
             },
             clean: true
-          }),
-          // Transformer le code pour exposer toutes les exportations selon le format souhaité
-          {
-            name: "flatten-exports",
-            renderChunk(code, chunk) {
-              if (chunk.isEntry) {
-                // Nettoyer tous les exports nommés et default
-                let cleaned = code
-                  .replace(/export\s+\{[^}]+\};?/g, "")
-                  .replace(/export\s+default\s+[^;]+;?/g, "")
-                  .replace(
-                    /export\s+(const|let|var|function|class)\s+/g,
-                    "$1 "
-                  );
-
-                // Générer dynamiquement la liste des objets d'agrégation explicitement exportés
-                // On cherche les objets (const/let/var) présents dans chunk.exports
-                const exportNames = chunk.exports.filter(
-                  (e) => e !== "default"
-                );
-                const exportObjects = [];
-                const declRegex =
-                  /(?:const|let|var)\s+([A-Za-z0-9_]+)\s*=\s*(?:Object\.freeze\()?\{/g;
-                let m;
-                while ((m = declRegex.exec(cleaned)) !== null) {
-                  if (exportNames.includes(m[1])) {
-                    exportObjects.push(m[1]);
-                  }
-                }
-                // Si aucun objet d'agrégation trouvé, fallback sur tous les exports à plat
-                let returnLine = "";
-                if (exportObjects.length > 0) {
-                  returnLine = `return { ${exportObjects
-                    .map((n) => `...${n}`)
-                    .join(", ")} };`;
-                } else if (exportNames.length > 0) {
-                  // Exports à plat (fonctions, classes, etc.)
-                  const objectProps = exportNames
-                    .map((name) => `${name}: ${name}`)
-                    .join(",\n  ");
-                  returnLine = `return {\n  ${objectProps}\n};`;
-                } else {
-                  returnLine = `return {};`;
-                }
-                // Export nommé, return à plat ou spread
-                return `export const ${namespace} = (function () {\n${cleaned}\n  ${returnLine}\n})();`;
-              }
-              return null;
-            }
-          }
+          })
         ],
-        // Externaliser les dépendances spécifiées
         external: component.dependencies
       };
 
@@ -206,18 +150,6 @@ export class Builder {
       const jsBundle = await rollup(jsRollupConfig);
       await jsBundle.write(jsRollupConfig.output as any);
       await jsBundle.close();
-
-      // Effectuer le build DTS plat (API plate, sans namespace)
-      try {
-        await bundleLibraryDts(component);
-        this.logger.success(`Bundle DTS plat généré pour ${componentName}`);
-      } catch (dtsError) {
-        this.logger.error(
-          `Erreur lors de la génération du bundle DTS plat pour ${componentName}:`,
-          dtsError
-        );
-        return false;
-      }
 
       this.logger.success(`Library ${componentName} built successfully`);
       return true;
@@ -255,11 +187,13 @@ export class Builder {
       try {
         // Check if the source index.d.ts exists
         await fs.access(sourceIndexDts);
-        
+
         // Copy the index.d.ts file to the dist folder
         await fs.copyFile(sourceIndexDts, targetIndexDts);
-        
-        this.logger.success(`📄 Types file copied: ${sourceIndexDts} → ${targetIndexDts}`);
+
+        this.logger.success(
+          `📄 Types file copied: ${sourceIndexDts} → ${targetIndexDts}`
+        );
       } catch (copyError) {
         this.logger.error(
           `Failed to copy types file from ${sourceIndexDts} to ${targetIndexDts}:`,
@@ -273,24 +207,27 @@ export class Builder {
       try {
         await fs.access(srcPath);
         const srcFiles = await fs.readdir(srcPath, { withFileTypes: true });
-        
+
         for (const file of srcFiles) {
           if (file.isFile() && file.name.endsWith(".d.ts")) {
             const sourcePath = join(srcPath, file.name);
             const targetPath = join(component.distPath, file.name);
-            
+
             await fs.copyFile(sourcePath, targetPath);
             this.logger.debug(`📄 Additional types file copied: ${file.name}`);
           }
         }
       } catch {
         // src folder might not exist or be accessible, which is fine for types-only packages
-        this.logger.debug(`No src folder found for types-only package ${componentName}, which is normal`);
+        this.logger.debug(
+          `No src folder found for types-only package ${componentName}, which is normal`
+        );
       }
 
-      this.logger.success(`✅ Types-only package ${componentName} processed successfully`);
+      this.logger.success(
+        `✅ Types-only package ${componentName} processed successfully`
+      );
       return true;
-      
     } catch (error) {
       this.logger.error(
         `Erreur lors du build du package types-only ${componentName}:`,
@@ -341,16 +278,13 @@ export class Builder {
           }),
           // Convertir CommonJS en ES modules
           commonjs(),
-          // Compiler TypeScript avec génération des déclarations
           typescript({
             tsconfig: join(this.pathManager.rootPath, "tsconfig.json"),
             tsconfigOverride: {
               compilerOptions: {
-                declaration: true,
-                declarationDir: component.distPath,
+                declaration: false,
                 target: "es2020",
-                module: "esnext",
-                importHelpers: true
+                module: "esnext"
               },
               include: [`${component.srcPath}/**/*`],
               exclude: ["node_modules", "**/*.test.ts", "**/*.spec.ts"]
@@ -358,27 +292,14 @@ export class Builder {
             clean: true
           })
         ],
-        // Externaliser les dépendances spécifiées
         external: component.dependencies
       };
 
-      // Effectuer le build JS et DTS
+      // Effectuer le build JS
       this.logger.info(`Génération du bundle pour ${componentName}...`);
       const bundle = await rollup(jsRollupConfig);
       await bundle.write(jsRollupConfig.output as any);
       await bundle.close();
-
-      // TODO: Effectuer le bundling des types DTS
-      try {
-        await bundlePackageDts(component);
-        this.logger.success(`Bundle DTS généré pour ${componentName}`);
-      } catch (dtsError) {
-        this.logger.error(
-          `Erreur lors de la génération du bundle DTS pour ${componentName}:`,
-          dtsError
-        );
-        return false;
-      }
 
       this.logger.success(`Package ${componentName} built successfully`);
       return true;
@@ -396,50 +317,33 @@ export class Builder {
     this.logger.info(`Building framework: ${frameworkName}`);
 
     try {
-      // Nettoyer le dossier de sortie si demandé
       if (this.buildOptions.all.clean) {
         await this.cleanOutputDir(framework.distPath);
       }
 
-      // S'assurer que le dossier de sortie existe
       await this.ensureOutputDirExists(framework.outJsFile);
 
-      // Créer la configuration Rollup pour le framework
+      // ── Passe 1 : JS — bundle ESM (ADR-0032) ──────────────
       const jsRollupConfig: RollupOptions = {
         input: framework.srcFile,
         output: {
           file: framework.outJsFile,
-          format: "es", // Format ES modules
-          sourcemap: false,
-          preserveModules: false,
-          // Banner pour documenter le bundle du framework
-          banner: `/**
- * ${frameworkName} Framework - Version ${framework.packageJson.version}
- * Bundled by Bonsai Build System
- * Date: ${new Date().toISOString()}
- */`
+          format: "es",
+          sourcemap: false
         },
         plugins: [
-          // Résoudre les dépendances externes
           nodeResolve({
             extensions: [".ts", ".js", ".json"],
-            preferBuiltins: true,
-            // Pour le framework, on veut résoudre les dépendances internes
-            // pour créer un bundle plat
-            exportConditions: ["node", "default"]
+            preferBuiltins: false
           }),
-          // Convertir CommonJS en ES modules
           commonjs(),
-          // Compiler TypeScript avec génération des déclarations
           typescript({
             tsconfig: join(this.pathManager.rootPath, "tsconfig.json"),
             tsconfigOverride: {
               compilerOptions: {
-                declaration: true,
-                declarationDir: framework.distPath,
+                declaration: false,
                 target: "es2020",
-                module: "esnext",
-                importHelpers: true
+                module: "esnext"
               },
               include: [`${framework.srcPath}/**/*`],
               exclude: ["node_modules", "**/*.test.ts", "**/*.spec.ts"]
@@ -447,39 +351,27 @@ export class Builder {
             clean: true
           })
         ],
-        // Pour le framework, ne pas externaliser les packages internes
-        // afin de créer un bundle plat avec tous les exports
-        external: (id) => {
-          // Garder externes seulement les vraies dépendances externes
-          return (
-            !id.startsWith("@bonsai/") &&
-            !id.startsWith(".") &&
-            !id.startsWith("/")
-          );
+        // ADR-0032 §3 : TOUT inliner — zéro dépendance transitive
+        // valibot (Tier 1), immer (Tier 2), rxjs (Tier 3) + tous les @bonsai/*
+        external: [],
+        onwarn(warning, defaultHandler) {
+          if (warning.code === "CIRCULAR_DEPENDENCY") return;
+          defaultHandler(warning);
         }
       };
 
-      // Effectuer le build JS et DTS
       this.logger.info(
-        `Génération du bundle pour le framework ${frameworkName}...`
+        `Passe JS — Génération du bundle ESM pour ${frameworkName}...`
       );
-      const bundle = await rollup(jsRollupConfig);
-      await bundle.write(jsRollupConfig.output as any);
-      await bundle.close();
+      const jsBundle = await rollup(jsRollupConfig);
+      await jsBundle.write(jsRollupConfig.output as any);
+      await jsBundle.close();
+      this.logger.success(`Passe JS terminée — ${framework.outJsFile}`);
 
-      // Bundling des types DTS pour le framework
-      try {
-        await bundleFrameworkDts(framework);
-        this.logger.success(
-          `Bundle DTS généré pour le framework ${frameworkName}`
-        );
-      } catch (dtsError) {
-        this.logger.error(
-          `Erreur lors de la génération du bundle DTS pour le framework ${frameworkName}:`,
-          dtsError
-        );
-        return false;
-      }
+      // ── Passe 2 : DTS — bundle des déclarations TypeScript ──
+      this.logger.info("Passe DTS — Bundling des déclarations TypeScript...");
+      await this.buildFrameworkDts(framework);
+      this.logger.success(`Passe DTS terminée — ${framework.outDtsFile}`);
 
       this.logger.success(`Framework ${frameworkName} built successfully`);
       return true;
@@ -489,6 +381,168 @@ export class Builder {
         error
       );
       return false;
+    }
+  }
+
+  /**
+   * Passe DTS du framework — génère un bonsai.d.ts flat via rollup-plugin-dts
+   *
+   * Flux (reproduit le PoC ADR-0032 §11) :
+   *   1. tsc --emitDeclarationOnly → .d.ts individuels dans .dts-temp/
+   *   2. rollup + rollup-plugin-dts → bonsai.d.ts (bundle unique, tout inliné)
+   *   3. Post-processing : suppression des /// <reference path> parasites
+   *   4. Nettoyage du répertoire temporaire
+   */
+  private async buildFrameworkDts(framework: TFramework): Promise<void> {
+    const rootPath = this.pathManager.rootPath;
+    const tempDir = join(rootPath, ".dts-temp");
+    const tempTsconfig = join(rootPath, ".dts-tsconfig.json");
+
+    try {
+      // Récupérer tous les composants depuis le registry
+      const components = ComponentsRegistry.me().organizedComponents;
+      if (!components) {
+        throw new Error(
+          "ComponentsRegistry non initialisé — appeler collect() d'abord"
+        );
+      }
+
+      const allPackages = [...components.libraries, ...components.packages];
+
+      // ── 1. Construire les paths tsc et les includes ───────
+      const tscPaths: Record<string, string[]> = {};
+      const includes: string[] = [
+        relative(rootPath, framework.srcPath) + "/**/*.ts"
+      ];
+
+      for (const pkg of allPackages) {
+        if (pkg.isTypesOnly) {
+          // Types-only : résolution vers l'index.d.ts original (convention)
+          const indexRel = relative(rootPath, join(pkg.rootPath, "index"));
+          tscPaths[pkg.name] = [`./${indexRel}`];
+        } else {
+          const srcRel = relative(rootPath, pkg.srcFile).replace(/\.ts$/, "");
+          tscPaths[pkg.name] = [`./${srcRel}`];
+          includes.push(relative(rootPath, pkg.srcPath) + "/**/*.ts");
+        }
+      }
+
+      // ── 2. Écrire le tsconfig temporaire ──────────────────
+      const tsconfigContent = {
+        compilerOptions: {
+          declaration: true,
+          emitDeclarationOnly: true,
+          outDir: "./.dts-temp",
+          rootDir: ".",
+          module: "ESNext",
+          moduleResolution: "node",
+          target: "ES2020",
+          esModuleInterop: true,
+          allowSyntheticDefaultImports: true,
+          skipLibCheck: true,
+          baseUrl: ".",
+          paths: tscPaths
+        },
+        include: includes
+      };
+
+      await fs.writeJson(tempTsconfig, tsconfigContent, { spaces: 2 });
+
+      // ── 3. tsc --emitDeclarationOnly ──────────────────────
+      this.logger.debug("Génération des .d.ts individuels (tsc)...");
+      try {
+        execSync(`npx tsc -p "${tempTsconfig}"`, {
+          cwd: rootPath,
+          stdio: "pipe",
+          encoding: "utf-8"
+        });
+      } catch (tscError: any) {
+        // tsc peut émettre des .d.ts même avec des erreurs non-bloquantes
+        const barrelDts = join(
+          tempDir,
+          relative(rootPath, framework.srcFile).replace(/\.ts$/, ".d.ts")
+        );
+        if (fs.existsSync(barrelDts)) {
+          this.logger.warn(
+            "tsc a émis des erreurs mais les .d.ts ont été générés — on continue"
+          );
+        } else {
+          throw new Error(
+            `tsc --emitDeclarationOnly a échoué sans produire de .d.ts : ${
+              tscError.stderr?.toString().slice(0, 500) || tscError.message
+            }`
+          );
+        }
+      }
+
+      // ── 4. Construire les paths rollup-plugin-dts ─────────
+      // Types-only : résolution originale (déjà .d.ts)
+      // Réguliers : pointer vers les .d.ts générés dans .dts-temp/
+      const dtsPaths: Record<string, string[]> = {};
+      for (const pkg of allPackages) {
+        if (pkg.isTypesOnly) {
+          const indexRel = relative(rootPath, join(pkg.rootPath, "index"));
+          dtsPaths[pkg.name] = [`./${indexRel}`];
+        } else {
+          const srcRel = relative(rootPath, pkg.srcFile).replace(/\.ts$/, "");
+          dtsPaths[pkg.name] = [`./.dts-temp/${srcRel}`];
+        }
+      }
+
+      // ── 5. rollup + rollup-plugin-dts ─────────────────────
+      const barrelDts = join(
+        tempDir,
+        relative(rootPath, framework.srcFile).replace(/\.ts$/, ".d.ts")
+      );
+
+      const { input, output } = createDtsRollupConfig({
+        inputDts: barrelDts,
+        outputDts: framework.outDtsFile,
+        tsconfig: tempTsconfig,
+        compilerOptions: {
+          baseUrl: rootPath,
+          paths: dtsPaths
+        },
+        external: [] // ADR-0032 §3 : tout inliner
+      });
+
+      const dtsBundle = await rollup(input);
+      await dtsBundle.write(output);
+      await dtsBundle.close();
+
+      // ── 6. Post-processing ────────────────────────────────
+      // Collecter les namespaces publics des wrappers (champ `namespace` du package.json)
+      // Ex : ["RXJS", "Valibot"] — utilisé pour renommer les alias rollup internes
+      const knownNamespaces = allPackages
+        .map((p) => p.namespace)
+        .filter((ns): ns is string => typeof ns === "string" && ns.length > 0);
+
+      const { removedRefs, renamedNamespaces } = postProcessDts(
+        framework.outDtsFile,
+        knownNamespaces
+      );
+      if (removedRefs > 0) {
+        this.logger.debug(
+          `Post-processing : ${removedRefs} triple-slash reference(s) supprimée(s)`
+        );
+      }
+      if (Object.keys(renamedNamespaces).length > 0) {
+        this.logger.info(
+          `Post-processing : namespaces renommés — ${Object.entries(
+            renamedNamespaces
+          )
+            .map(([k, v]) => `${k} → ${v}`)
+            .join(", ")}`
+        );
+      }
+
+      // ── 7. Statistiques ───────────────────────────────────
+      const stat = await fs.stat(framework.outDtsFile);
+      this.logger.info(`bonsai.d.ts — ${Math.round(stat.size / 1024)} KB`);
+    } finally {
+      // ── 8. Nettoyage ──────────────────────────────────────
+      await fs.remove(tempDir).catch(() => {});
+      await fs.remove(tempTsconfig).catch(() => {});
     }
   }
 }

@@ -10,6 +10,6 @@
   "main": "./dist/valibot.js",
   "types": "./src/valibot.ts",
   "src": "./src/valibot.ts",
-  "namespace": "VALIBOT",
+  "namespace": "Valibot",
   "bonsaiUpstream": "valibot"
 }

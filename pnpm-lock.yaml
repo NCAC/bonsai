@@ -11,6 +11,9 @@ importers:
       '@babel/code-frame':
         specifier: ^7.27.1
         version: 7.27.1
+      '@bonsai/core':
+        specifier: workspace:^
+        version: link:core
       '@bonsai/event':
         specifier: workspace:^
         version: link:packages/event
