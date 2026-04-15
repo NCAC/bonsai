@@ -1,40 +1,24 @@
-import { z } from "zod";
+import * as v from "valibot";
 import minimist from "minimist";
 import { Logger } from "@build/monitoring/logger.class";
 
 /**
  * Schéma de validation pour les options de build
  */
-export const buildOptionsSchema = z.object({
-  // Options de mode de build
-  watch: z
-    .boolean()
-    .default(true)
-    .describe("Surveiller les fichiers pour reconstruire automatiquement"),
-
-  // Options de nettoyage
-  clean: z
-    .boolean()
-    .default(false)
-    .describe("Nettoyer les dossiers dist avant la construction"),
-  forceRebuild: z
-    .boolean()
-    .default(false)
-    .describe("Forcer la reconstruction de tous les packages"),
-
-  // Options de verbosité
-  verbose: z.boolean().default(false).describe("Afficher plus d'informations"),
-  silent: z.boolean().default(false).describe("Réduire les messages de log"),
-
-  // Options de cache
-  useCache: z.boolean().default(true).describe("Utiliser le cache de build"),
-  clearCache: z.boolean().default(false).describe("Vider le cache de build")
+export const buildOptionsSchema = v.object({
+  watch: v.optional(v.boolean(), true),
+  clean: v.optional(v.boolean(), false),
+  forceRebuild: v.optional(v.boolean(), false),
+  verbose: v.optional(v.boolean(), false),
+  silent: v.optional(v.boolean(), false),
+  useCache: v.optional(v.boolean(), true),
+  clearCache: v.optional(v.boolean(), false)
 });
 
 /**
  * Type dérivé du schéma pour les options de build
  */
-export type TBuildOptions = z.infer<typeof buildOptionsSchema>;
+export type TBuildOptions = v.InferOutput<typeof buildOptionsSchema>;
 
 /**
  * Classe pour gérer les options de build
@@ -81,7 +65,7 @@ export class BuildOptions {
 
     try {
       // Validation du schéma
-      const validatedOptions = buildOptionsSchema.parse(rawOptions);
+      const validatedOptions = v.parse(buildOptionsSchema, rawOptions);
 
       if (validatedOptions.silent && validatedOptions.verbose) {
         this.logger.warn(
@@ -99,7 +83,7 @@ export class BuildOptions {
         error
       );
       // Retourner les options par défaut en cas d'erreur
-      return buildOptionsSchema.parse({});
+      return v.parse(buildOptionsSchema, {});
     }
   }
 
@@ -115,7 +99,7 @@ export class BuildOptions {
    */
   public update(newOptions: Partial<TBuildOptions>): void {
     try {
-      this.options = buildOptionsSchema.parse({
+      this.options = v.parse(buildOptionsSchema, {
         ...this.options,
         ...newOptions
       });

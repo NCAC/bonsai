@@ -9,7 +9,7 @@
     "email": "dev.ncac@gmail.com"
   },
   "main": "./dist/bonsai-event.js",
-  "types": "./dist/bonsai-event.d.ts",
+  "types": "./src/bonsai-event.ts",
   "src": "./src/bonsai-event.ts",
   "dependencies": {
     "@bonsai/types": "workspace:^",

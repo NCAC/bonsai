@@ -1,6 +1,6 @@
 import type { TParameters, AnyFunction, TJsonValue } from "@bonsai/types";
 import { EventTrigger } from "./Event-trigger.class";
-import { RXJS } from "@bonsai/rxjs";
+import type { RXJS } from "@bonsai/rxjs";
 
 export type EventHandlerParamObj = {
   [key: string]: TJsonValue;
