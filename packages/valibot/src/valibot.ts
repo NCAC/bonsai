@@ -1,11 +1,13 @@
-// Exporter toutes les fonctionnalités de valibot
-// ADR-0022 : Valibot imposé comme unique bibliothèque de validation de Bonsai
-import * as ValibotOriginal from "valibot";
-
-// Exposer l'API valibot complète sous un namespace VALIBOT
-const VALIBOT = {
-  ...ValibotOriginal
-};
-
-export { VALIBOT };
-export default VALIBOT;
+/**
+ * @bonsai/valibot — Wrapper Valibot pour le framework Bonsai
+ *
+ * Tier 1 — Dépendance intégrée (ADR-0022 + ADR-0032 §3) :
+ *   Le développeur utilise directement l'API Valibot pour définir
+ *   les schémas Entity. Valibot est ré-exporté sous un namespace
+ *   `Valibot` (PascalCase) pour éviter la pollution du top-level.
+ *
+ * Usage développeur :
+ *   import { Valibot } from "@bonsai/core";
+ *   const schema = Valibot.object({ name: Valibot.string() });
+ */
+export * as Valibot from "valibot";

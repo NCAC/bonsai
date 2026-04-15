@@ -8,7 +8,7 @@
     "email": "dev.ncac@gmail.com"
   },
   "main": "./dist/rxjs.js",
-  "types": "./dist/rxjs.d.ts",
+  "types": "./src/rxjs.ts",
   "src": "./src/rxjs.ts",
   "namespace": "RXJS",
   "bonsaiUpstream": "rxjs"
