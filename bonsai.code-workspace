@@ -16,10 +16,10 @@
       "path": "lib",
       "name": "Library"
     },
-    // {
-    //   "path": "tests",
-    //   "name": "Tests"
-    // },
+    {
+      "path": "tests",
+      "name": "Tests"
+    },
     {
       "path": "tools",
       "name": "Tools"
