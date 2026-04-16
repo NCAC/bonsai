@@ -40,6 +40,7 @@ const config: Config = {
     "^@bonsai/entity$": "<rootDir>/packages/entity/src/bonsai-entity.ts",
     "^@bonsai/feature$": "<rootDir>/packages/feature/src/bonsai-feature.ts",
     "^@bonsai/event$": "<rootDir>/packages/event/src/bonsai-event.ts",
+    "^@bonsai/error$": "<rootDir>/packages/error/src/bonsai-error.ts",
     "^@bonsai/view$": "<rootDir>/packages/view/src/bonsai-view.ts",
     "^@bonsai/composer$": "<rootDir>/packages/composer/src/bonsai-composer.ts",
     "^@bonsai/foundation$":

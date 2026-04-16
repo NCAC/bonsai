@@ -160,8 +160,17 @@ importers:
         specifier: workspace:^
         version: link:../packages/valibot
 
+  packages/error:
+    dependencies:
+      '@bonsai/types':
+        specifier: workspace:^
+        version: link:../types
+
   packages/event:
     dependencies:
+      '@bonsai/error':
+        specifier: workspace:^
+        version: link:../error
       '@bonsai/rxjs':
         specifier: workspace:^
         version: link:../rxjs

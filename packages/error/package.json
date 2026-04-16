@@ -1,0 +1,17 @@
+{
+  "name": "@bonsai/error",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Error infrastructure for Bonsai — BonsaiError taxonomy, invariant(), hardInvariant()",
+  "type": "module",
+  "author": {
+    "name": "NCAC",
+    "email": "dev.ncac@gmail.com"
+  },
+  "main": "./dist/bonsai-error.js",
+  "types": "./src/bonsai-error.ts",
+  "src": "./src/bonsai-error.ts",
+  "dependencies": {
+    "@bonsai/types": "workspace:^"
+  }
+}
