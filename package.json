@@ -27,7 +27,9 @@
     "test:ci": "npx jest --ci --coverage --watchAll=false",
     "test:unit": "npx jest tests/unit",
     "test:integration": "npx jest tests/integration",
-    "test:e2e": "npx jest tests/e2e"
+    "test:e2e": "npx jest tests/e2e",
+    "test:regression": "npx jest --testPathPattern='regression\\.test\\.ts$' --no-coverage",
+    "test:strate-0:regression": "npx jest tests/unit/strate-0/strate-0.regression.test.ts --no-coverage"
   },
   "license": "MIT",
   "workspaces": [

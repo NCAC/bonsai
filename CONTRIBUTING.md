@@ -184,6 +184,7 @@ Brève description des changements apportés.
 - [ ] Tests d'intégration ajoutés/modifiés
 - [ ] Couverture de code maintenue/améliorée
 - [ ] Tous les tests passent
+- [ ] Tests ajoutés au fichier de régression cumulatif (ADR-0034)
 
 ## Checklist
 - [ ] Code suit les standards du projet
@@ -428,6 +429,47 @@ pnpm run test:coverage -- --verbose
 
 ### Performance Testing
 
+> ### 🛡️ Gate de Non-Régression Cumulative (ADR-0034)
+>
+> Chaque PR mergée doit ajouter ses fichiers de test au **fichier de régression cumulatif**
+> de la strate correspondante. Ce fichier est exécuté en CI sur chaque push et chaque PR.
+>
+> **Pourquoi ?** S'assurer qu'aucun test précédemment validé ne casse lors d'un nouvel incrément.
+
+#### Protocole
+
+1. **Identifiez la strate** de votre PR (ex: `strate-0`)
+2. **Ouvrez le fichier** `tests/unit/strate-0/strate-0.regression.test.ts`
+3. **Ajoutez vos imports** avec le commentaire normalisé :
+
+```typescript
+// ── PR #N — Description courte ──────────────────────────
+import "./mon-nouveau.test";
+import "./mon-autre.test";
+```
+
+4. **Vérifiez localement** :
+
+```bash
+pnpm test:regression
+```
+
+#### Scripts disponibles
+
+| Script | Cible |
+|--------|-------|
+| `pnpm test:regression` | Tous les fichiers `*.regression.test.ts` (toutes strates) |
+| `pnpm test:strate-0:regression` | Strate 0 uniquement |
+
+#### CI
+
+Le workflow GitHub Actions `regression.yml` exécute `pnpm test:regression` automatiquement.
+Un échec **bloque le merge** de la PR.
+
+---
+
+### Performance Testing
+
 ```typescript
 describe('Channel Performance', () => {
   it('should handle 1000 events under 100ms', async () => {
@@ -515,6 +557,7 @@ channel.on('user:login', (data) => {
 - [ ] Tests unitaires ET d'intégration
 - [ ] Edge cases couverts
 - [ ] Tests de régression si bug fix
+- [ ] **Tests ajoutés au fichier de régression cumulatif** (voir ci-dessous)
 
 #### Documentation
 - [ ] JSDoc pour API publique

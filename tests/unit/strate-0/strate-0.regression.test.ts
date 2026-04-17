@@ -1,0 +1,28 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Strate 0 — Suite de non-régression cumulative
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Ce fichier est le point d'entrée cumulatif pour tous les tests validés
+ * de la Strate 0. Chaque PR mergée ajoute ses fichiers de test ici.
+ *
+ * Objectif : garantir qu'aucun test précédemment validé ne casse lors
+ * d'un nouvel incrément (PI).
+ *
+ * ── Historique des ajouts ──────────────────────────────────────────────
+ *
+ * | PR   | Date       | Tests ajoutés                                    |
+ * |------|------------|--------------------------------------------------|
+ * | #2   | 2026-04-17 | channel.basic, radio.singleton                   |
+ *
+ * ── Utilisation ────────────────────────────────────────────────────────
+ *
+ *   pnpm test:strate-0:regression
+ *   npx jest tests/unit/strate-0/strate-0.regression.test.ts
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+// ── PR #2 — Channel tri-lane + Radio singleton ────────────────────────
+import "./channel.basic.test";
+import "./radio.singleton.test";

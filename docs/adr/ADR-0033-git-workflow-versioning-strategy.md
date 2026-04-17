@@ -4,7 +4,7 @@
 
 | Champ           | Valeur                                                                                                                                                                                                               |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Statut**      | 🟡 Proposed                                                                                                                                                                                                          |
+| **Statut**      | 🟢 Accepted                                                                                                                                                                                                          |
 | **Date**        | 2026-04-14                                                                                                                                                                                                           |
 | **Décideurs**   | @ncac                                                                                                                                                                                                                |
 | **ADR liées**   | [ADR-0028](ADR-0028-implementation-phasing-strategy.md) (phasage kernel-first 3 strates), [ADR-0029](ADR-0029-v1-scope-freeze.md) (scope v1 gelé), [ADR-0032](ADR-0032-build-pipeline-toolchain.md) (build pipeline) |
@@ -767,3 +767,4 @@ Versioning : [SemVer](https://semver.org/lang/fr/)
 | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-04-14 | Création (Proposed) — workflow Git Flow adapté + versioning SemVer `0.x.y`. 4 options Git (Git Flow, Git Flow adapté, GitHub Flow, Trunk-Based), 3 options versioning (SemVer pré-release, strate-based, alpha/beta labels)                   |
 | 2026-04-14 | Ajout §8 Gestion de l'historique existant — 3 options (H1 conserver, H2 squash, H3 rebase), décision H2 (squash baseline). Justification : 0 clones, 0 forks, historique illisible, cohérence avec Conventional Commits. Exécution documentée |
+| 2026-04-17 | **Accepted** — workflow appliqué de facto (branches `develop` + `feature/*` actives). Passage formalisé suite à feedback review (point 5 : « Proposed mais déjà prescriptif »)                                                                |

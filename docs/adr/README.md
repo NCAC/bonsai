@@ -41,7 +41,8 @@
 | [ADR-0030](ADR-0030-testing-as-architecture-proof.md)                | Tests comme preuve d'architecture — Spécification exécutable par strate                 | 🟢 Accepted   | 2026-04-10                      | ADR-0028, ADR-0029, ADR-0006                                     |
 | [ADR-0031](ADR-0031-monorepo-package-topology.md)                    | Topologie des packages du monorepo — 1 package par composant                            | 🟢 Accepted   | 2026-04-10                      | RFC 2-architecture, distribution                                 |
 | [ADR-0032](ADR-0032-build-pipeline-toolchain.md)                     | Build Pipeline — Toolchain, artefacts et stratégie de bundling DTS                      | 🟡 Proposed   | 2026-04-14                      | ADR-0019, ADR-0028, ADR-0029, ADR-0031                           |
-| [ADR-0033](ADR-0033-git-workflow-versioning-strategy.md)             | Workflow Git & stratégie de versioning — Git Flow adapté, SemVer `0.x.y`                | 🟡 Proposed   | 2026-04-14                      | ADR-0028, ADR-0029, ADR-0032                                     |
+| [ADR-0033](ADR-0033-git-workflow-versioning-strategy.md)             | Workflow Git & stratégie de versioning — Git Flow adapté, SemVer `0.x.y`                | � Accepted    | 2026-04-17                      | ADR-0028, ADR-0029, ADR-0032                                     |
+| [ADR-0034](ADR-0034-cumulative-regression-gate.md)                   | Gate de non-régression cumulative par strate — fichier d'entrée explicite + CI          | 🟡 Proposed   | 2026-04-17                      | ADR-0028, ADR-0030, ADR-0006                                     |
 
 ---
 
