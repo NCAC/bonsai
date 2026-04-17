@@ -121,9 +121,15 @@ rfc/
 
 | Icône | Statut | Description |
 |-------|--------|-------------|
-| 🟢 | **Stable** | Architecture définie, amendements mineurs possibles |
+| 🟢 | **Stable** | Spécification stabilisée — contrat figé, prêt à implémenter. Amendements mineurs possibles via ADR |
+| 🔵 | **Proven** | Spécification stabilisée **ET** couverte par des tests d'architecture (ADR-0030). Le code implémente le contrat et les tests le prouvent |
 | 🟡 | **Draft** | Rédaction/révision active |
 | ⚪ | **Brouillon** | Exploration, non normatif |
+
+> **Clarification (amendement 2026-04-17)** : 🟢 Stable signifie que la **spécification** est figée,
+> pas que le code est implémenté. Un document passe de 🟢 Stable à 🔵 Proven lorsque
+> les tests de la strate correspondante (ADR-0030, ADR-0034) couvrent les invariants qu'il définit.
+> Avant ce passage, le document fait foi pour le contrat mais n'est pas encore vérifié par le code.
 
 ---
 
