@@ -10,7 +10,7 @@
 | **Ne couvre pas** | La pipeline de build (voir [BUILD-CODING-STYLE](BUILD-CODING-STYLE.md)) |
 | **Statut**        | 🟢 Active                                        |
 | **Créé le**       | 2026-03-17                                        |
-| **Mis à jour**    | 2026-04-01                                        |
+| **Mis à jour**    | 2026-04-20                                        |
 | **Dépend de**     | RFC-0001, RFC-0002, ADR-0001, ADR-0005            |
 
 > ### Périmètre
@@ -252,6 +252,52 @@ type TEntityEvent = {
 const changedKeys = [...new Set(patches.map(p => String(p.path[0])))];
 // TypeScript infère string[]
 ```
+
+### 2.6 Encapsulation : `#` hard private systématique (ES2022+)
+
+> **Règle absolue** : toute propriété ou méthode qui ne fait pas partie de
+> l'API **publique** ou **protected** utilise le **hard private ES natif** (`#field`),
+> jamais le mot-clé `private` de TypeScript.
+
+**Justification** :
+- Le `private` TypeScript est un mensonge runtime — contournable via `(instance as any)._field`
+- Le `#` ES natif est **enforcement runtime réel** — `TypeError` si accès externe
+- Cohérent avec I5 (Entity n'est accessible que par sa Feature) et I6 (state encapsulé)
+- Pas de faux sentiment de sécurité : si c'est privé, c'est *vraiment* privé
+
+**Prérequis** : `"target": "ES2022"` minimum dans `tsconfig.base.json`.
+
+```typescript
+// ✅ BON : hard private ES natif
+export class CartFeature extends Feature<TCartState> {
+  #lastComputedTotal = 0;
+
+  #computeTotal(): number {
+    return this.entity.state.items.reduce((sum, i) => sum + i.price * i.qty, 0);
+  }
+
+  onGetTotalRequest(): number {
+    this.#lastComputedTotal = this.#computeTotal();
+    return this.#lastComputedTotal;
+  }
+}
+
+// ❌ MAUVAIS : private TypeScript (contournable, faux sentiment de sécurité)
+export class CartFeature extends Feature<TCartState> {
+  private _lastComputedTotal = 0;       // (instance as any)._lastComputedTotal → pas d'erreur
+  private _computeTotal(): number { }   // (instance as any)._computeTotal() → pas d'erreur
+}
+```
+
+| Contexte | Utiliser |
+|----------|----------|
+| Champ/méthode interne à la classe | `#field` |
+| Propriété accessible aux sous-classes | `protected` |
+| API publique du composant | `public` (implicite) |
+| Constructeur singleton (empêcher `new`) | `private constructor()` (exception — ES n'a pas de `#constructor`) |
+
+> **Exception unique** : le `private constructor()` reste en `private` TS car
+> ES2022 ne supporte pas `#constructor`. C'est le seul cas où `private` est autorisé.
 
 ---
 

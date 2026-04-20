@@ -72,34 +72,34 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
    * State courant de l'Entity. Accessible en lecture par les sous-classes
    * et par le code qui détient une référence à l'Entity.
    */
-  private _state!: TStructure;
+  #state!: TStructure;
 
   /**
    * Copie du state initial pour pouvoir le retourner via `initialState` (D17).
    */
-  private _initialState!: TStructure;
+  #initialState!: TStructure;
 
   /**
    * Listeners catch-all (I51).
    */
-  private _listeners: Array<TEntityUpdateListener<TStructure>> = [];
+  #listeners: Array<TEntityUpdateListener<TStructure>> = [];
 
   /**
    * Flag d'initialisation (lazy init pour contourner la restriction abstraite).
    */
-  private _initialized = false;
+  #initialized = false;
 
   constructor() {
-    // L'initialisation réelle est faite dans _ensureInitialized()
+    // L'initialisation réelle est faite dans #ensureInitialized()
     // car TS interdit l'accès aux propriétés abstraites dans le constructeur.
-    this._ensureInitialized();
+    this.#ensureInitialized();
   }
 
-  private _ensureInitialized(): void {
-    if (!this._initialized) {
-      this._initialState = this.defineInitialState();
-      this._state = this._initialState;
-      this._initialized = true;
+  #ensureInitialized(): void {
+    if (!this.#initialized) {
+      this.#initialState = this.defineInitialState();
+      this.#state = this.#initialState;
+      this.#initialized = true;
     }
   }
 
@@ -117,7 +117,7 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
    * State courant (lecture seule depuis l'extérieur).
    */
   get state(): TStructure {
-    return this._state;
+    return this.#state;
   }
 
   /**
@@ -125,7 +125,7 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
    * Accessible publiquement pour reset ou comparaison.
    */
   get initialState(): TStructure {
-    return this._initialState;
+    return this.#initialState;
   }
 
   /**
@@ -159,13 +159,13 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
       recipe = maybeRecipe!;
     }
 
-    const previousState = this._state;
+    const previousState = this.#state;
 
     // Immer produce — mutation immutable
     const nextState = Immer.produce(previousState, recipe);
 
     // Détection no-op : comparaison shallow des clés de 1er niveau
-    const changedKeys = this._computeChangedKeys(previousState, nextState);
+    const changedKeys = this.#computeChangedKeys(previousState, nextState);
 
     if (changedKeys.length === 0) {
       // No-op — pas de notification
@@ -173,7 +173,7 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
     }
 
     // Mise à jour du state
-    this._state = nextState;
+    this.#state = nextState;
 
     // Notification catch-all (I51)
     const event: TEntityEvent<TStructure> = {
@@ -185,7 +185,7 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
       timestamp: Date.now()
     };
 
-    for (const listener of this._listeners) {
+    for (const listener of this.#listeners) {
       listener(event);
     }
   }
@@ -195,7 +195,7 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
    * Appelé après chaque mutation non no-op.
    */
   onAnyEntityUpdated(listener: TEntityUpdateListener<TStructure>): void {
-    this._listeners.push(listener);
+    this.#listeners.push(listener);
   }
 
   // ─── Private ─────────────────────────────────────────────────────────
@@ -204,7 +204,7 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
    * Comparaison shallow des clés de premier niveau entre deux states.
    * Retourne la liste des clés dont la référence a changé.
    */
-  private _computeChangedKeys(prev: TStructure, next: TStructure): string[] {
+  #computeChangedKeys(prev: TStructure, next: TStructure): string[] {
     if (prev === next) return [];
 
     // TStructure est un objet (garanti par l'usage)

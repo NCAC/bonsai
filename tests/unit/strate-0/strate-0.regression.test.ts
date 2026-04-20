@@ -15,6 +15,7 @@
  * |------|------------|--------------------------------------------------|
  * | #2   | 2026-04-17 | channel.basic, radio.singleton                   |
  * | #5   | 2026-04-20 | entity.basic                                     |
+ * | #7   | 2026-04-20 | feature.core                                     |
  *
  * ── Utilisation ────────────────────────────────────────────────────────
  *
@@ -30,3 +31,6 @@ import "./radio.singleton.test";
 
 // ── PR #5 — Entity basic (ADR-0001, I6, I46, I51, I52) ───────────────
 import "./entity.basic.test";
+
+// ── PR #7 — Feature core (5 capacités, I1, I2, I3, I5, I12, I21, I48) ─
+import "./feature.core.test";

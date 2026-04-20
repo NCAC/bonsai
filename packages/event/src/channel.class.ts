@@ -39,24 +39,21 @@ export type TAnyEventPayload = {
 
 export class Channel {
   // ── Lane 1 — Commands (1:1) ──────────────────────────────────
-  private readonly commandHandlers = new Map<string, TCommandHandler>();
+  readonly #commandHandlers = new Map<string, TCommandHandler>();
 
-  // ── Lane 2 — Events (1:N via RxJS Subject) ──────────────────
-  private readonly eventSubjects = new Map<string, RXJS.Subject<unknown>>();
-  private readonly eventSubscriptions = new Map<
+  // ── Lane 2 — Events (1:N via RxJS Subject) ────────────────
+  readonly #eventSubjects = new Map<string, RXJS.Subject<unknown>>();
+  readonly #eventSubscriptions = new Map<
     string,
     Map<TEventListener, RXJS.Subscription>
   >();
 
-  // ── Lane 3 — Requests (1:1 sync) ────────────────────────────
-  private readonly requestRepliers = new Map<string, TRequestReplier>();
+  // ── Lane 3 — Requests (1:1 sync) ──────────────────────
+  readonly #requestRepliers = new Map<string, TRequestReplier>();
 
-  // ── Événement technique `any` ────────────────────────────────
-  private readonly anySubject = new RXJS.Subject<TAnyEventPayload>();
-  private readonly anySubscriptions = new Map<
-    TEventListener,
-    RXJS.Subscription
-  >();
+  // ── Événement technique `any` ──────────────────────────
+  readonly #anySubject = new RXJS.Subject<TAnyEventPayload>();
+  readonly #anySubscriptions = new Map<TEventListener, RXJS.Subscription>();
 
   constructor(public readonly name: string) {}
 
@@ -69,7 +66,7 @@ export class Channel {
    * @throws DuplicateHandlerError si un handler est déjà enregistré pour ce Command
    */
   handle(commandName: string, handler: TCommandHandler): void {
-    if (this.commandHandlers.has(commandName)) {
+    if (this.#commandHandlers.has(commandName)) {
       throw new DuplicateHandlerError(
         `Command "${this.name}:${commandName}" already has a handler`,
         "I10",
@@ -77,7 +74,7 @@ export class Channel {
         "Each Command must have exactly one handler (the owning Feature)."
       );
     }
-    this.commandHandlers.set(commandName, handler);
+    this.#commandHandlers.set(commandName, handler);
   }
 
   /**
@@ -85,7 +82,7 @@ export class Channel {
    * @throws NoHandlerError si aucun handler n'est enregistré (strate 0 : toujours throw)
    */
   trigger(commandName: string, payload: unknown): void {
-    const handler = this.commandHandlers.get(commandName);
+    const handler = this.#commandHandlers.get(commandName);
     if (!handler) {
       throw new NoHandlerError(
         `No handler for command "${this.name}:${commandName}"`,
@@ -105,12 +102,12 @@ export class Channel {
    * Enregistre un listener pour un Event. I11 : N listeners autorisés.
    */
   listen(eventName: string, listener: TEventListener): void {
-    if (!this.eventSubjects.has(eventName)) {
-      this.eventSubjects.set(eventName, new RXJS.Subject<unknown>());
-      this.eventSubscriptions.set(eventName, new Map());
+    if (!this.#eventSubjects.has(eventName)) {
+      this.#eventSubjects.set(eventName, new RXJS.Subject<unknown>());
+      this.#eventSubscriptions.set(eventName, new Map());
     }
 
-    const subject = this.eventSubjects.get(eventName)!;
+    const subject = this.#eventSubjects.get(eventName)!;
     const subscription = subject.subscribe({
       next: (payload) => {
         try {
@@ -129,14 +126,14 @@ export class Channel {
       }
     });
 
-    this.eventSubscriptions.get(eventName)!.set(listener, subscription);
+    this.#eventSubscriptions.get(eventName)!.set(listener, subscription);
   }
 
   /**
    * Supprime un listener spécifique pour un Event.
    */
   unlisten(eventName: string, listener: TEventListener): void {
-    const subsMap = this.eventSubscriptions.get(eventName);
+    const subsMap = this.#eventSubscriptions.get(eventName);
     if (subsMap) {
       const subscription = subsMap.get(listener);
       if (subscription) {
@@ -151,13 +148,13 @@ export class Channel {
    * Silencieux si aucun listener. Émet `any` automatiquement après.
    */
   emit(eventName: string, payload: unknown): void {
-    const subject = this.eventSubjects.get(eventName);
+    const subject = this.#eventSubjects.get(eventName);
     if (subject) {
       subject.next(payload);
     }
 
     // Événement technique `any` — émis après chaque Event granulaire
-    this.anySubject.next({
+    this.#anySubject.next({
       event: eventName,
       changes:
         payload && typeof payload === "object"
@@ -170,7 +167,7 @@ export class Channel {
    * Enregistre un listener pour l'événement technique `any`.
    */
   listenAny(listener: (payload: TAnyEventPayload) => void): void {
-    const subscription = this.anySubject.subscribe({
+    const subscription = this.#anySubject.subscribe({
       next: (payload) => {
         try {
           listener(payload);
@@ -186,17 +183,17 @@ export class Channel {
         }
       }
     });
-    this.anySubscriptions.set(listener as TEventListener, subscription);
+    this.#anySubscriptions.set(listener as TEventListener, subscription);
   }
 
   /**
    * Supprime un listener `any`.
    */
   unlistenAny(listener: (payload: TAnyEventPayload) => void): void {
-    const subscription = this.anySubscriptions.get(listener as TEventListener);
+    const subscription = this.#anySubscriptions.get(listener as TEventListener);
     if (subscription) {
       subscription.unsubscribe();
-      this.anySubscriptions.delete(listener as TEventListener);
+      this.#anySubscriptions.delete(listener as TEventListener);
     }
   }
 
@@ -209,7 +206,7 @@ export class Channel {
    * @throws DuplicateHandlerError si un replier est déjà enregistré
    */
   reply(requestName: string, replier: TRequestReplier): void {
-    if (this.requestRepliers.has(requestName)) {
+    if (this.#requestRepliers.has(requestName)) {
       throw new DuplicateHandlerError(
         `Request "${this.name}:${requestName}" already has a replier`,
         "I10",
@@ -217,14 +214,14 @@ export class Channel {
         "Each Request must have exactly one replier."
       );
     }
-    this.requestRepliers.set(requestName, replier);
+    this.#requestRepliers.set(requestName, replier);
   }
 
   /**
    * Supprime un replier.
    */
   unreply(requestName: string): void {
-    this.requestRepliers.delete(requestName);
+    this.#requestRepliers.delete(requestName);
   }
 
   /**
@@ -233,7 +230,7 @@ export class Channel {
    * - Replier qui throw → null, erreur loguée (I55)
    */
   request(requestName: string, params: unknown): unknown | null {
-    const replier = this.requestRepliers.get(requestName);
+    const replier = this.#requestRepliers.get(requestName);
     if (!replier) {
       return null;
     }
@@ -258,28 +255,28 @@ export class Channel {
    */
   clear(): void {
     // Commands
-    this.commandHandlers.clear();
+    this.#commandHandlers.clear();
 
     // Events — unsubscribe all, complete subjects
-    for (const [, subsMap] of this.eventSubscriptions) {
+    for (const [, subsMap] of this.#eventSubscriptions) {
       for (const [, sub] of subsMap) {
         sub.unsubscribe();
       }
     }
-    this.eventSubscriptions.clear();
-    for (const [, subject] of this.eventSubjects) {
+    this.#eventSubscriptions.clear();
+    for (const [, subject] of this.#eventSubjects) {
       subject.complete();
     }
-    this.eventSubjects.clear();
+    this.#eventSubjects.clear();
 
     // Any
-    for (const [, sub] of this.anySubscriptions) {
+    for (const [, sub] of this.#anySubscriptions) {
       sub.unsubscribe();
     }
-    this.anySubscriptions.clear();
-    this.anySubject.complete();
+    this.#anySubscriptions.clear();
+    this.#anySubject.complete();
 
     // Requests
-    this.requestRepliers.clear();
+    this.#requestRepliers.clear();
   }
 }
