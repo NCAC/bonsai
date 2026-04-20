@@ -10,6 +10,7 @@
       "@bonsai/types": ["./packages/types/index.d.ts"],
       "@bonsai/types/*": ["./packages/types/src/*"],
       "@bonsai/rxjs": ["./packages/rxjs/src/rxjs"],
+      "@bonsai/immer": ["./packages/immer/src/immer"],
       "@bonsai/valibot": ["./packages/valibot/src/valibot"],
       "@bonsai/event": ["./packages/event/src/bonsai-event"],
       "@bonsai/event/*": ["./packages/event/src/*"]
@@ -33,6 +34,7 @@
   "references": [
     { "path": "./packages/types" },
     { "path": "./packages/rxjs" },
+    { "path": "./packages/immer" },
     { "path": "./packages/valibot" },
     { "path": "./packages/event" }
     // { "path": "./packages/app-node" },

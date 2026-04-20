@@ -14,6 +14,7 @@
     "paths": {
       "@bonsai/types": ["./packages/types/index"],
       "@bonsai/rxjs": ["./packages/rxjs/src/rxjs"],
+      "@bonsai/immer": ["./packages/immer/src/immer"],
       "@bonsai/valibot": ["./packages/valibot/src/valibot"],
       "@bonsai/event": ["./packages/event/src/bonsai-event"]
     }
@@ -21,6 +22,7 @@
   "include": [
     "../../../core/src/**/*.ts",
     "../../../packages/rxjs/src/**/*.ts",
+    "../../../packages/immer/src/**/*.ts",
     "../../../packages/valibot/src/**/*.ts",
     "../../../packages/event/src/**/*.ts"
   ]

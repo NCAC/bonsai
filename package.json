@@ -39,6 +39,7 @@
   ],
   "dependencies": {
     "@bonsai/core": "workspace:^",
+    "@bonsai/entity": "workspace:^",
     "@bonsai/event": "workspace:^",
     "@bonsai/immer": "workspace:^",
     "@bonsai/rxjs": "workspace:^",

@@ -1,5 +1,6 @@
 #ignore everything
 /*
+*.tsbuildinfo
 #except for these files :
 !.gitignore
 !README.md

@@ -6,7 +6,7 @@
  *
  * Critères validés :
  * - VC1 : compilabilité (tsc --noEmit → zéro erreur)
- * - VC5 : types Event présents (Channel, Radio, EventCallback)
+ * - VC5 : types Event présents (Channel, Radio, TAnyEventPayload)
  * - VC6 : types utilitaires présents (TJsonObject, TDictionary, etc.)
  */
 
@@ -23,23 +23,25 @@ const dict: TDictionary<number> = { alpha: 1, beta: 2 };
 type TestFn = AnyFunction;
 type TestCtor = TConstructor<object>;
 
-// --- VC5 : types Event (Channel, Radio, EventCallback, RequestHandler) ---
-import type { Channel, EventCallback, RequestHandler } from "@bonsai/core";
+// --- VC5 : types Event — Channel tri-lane + Radio singleton ---
+import type { TAnyEventPayload } from "@bonsai/core";
+import { Channel, Radio } from "@bonsai/core";
 
-import { Radio } from "@bonsai/core";
-
-// Channel — pub/sub + request/reply
+// Channel — tri-lane (Command 1:1, Event 1:N, Request sync T|null)
 declare const channel: Channel;
-channel.on("user:login", (data: { userId: string }) => {});
-channel.trigger("user:login", { userId: "abc" });
+channel.handle("addItem", (payload) => {}); // Command lane
+channel.trigger("addItem", { productId: "abc" }); // Command lane
+channel.listen("itemAdded", (payload) => {}); // Event lane
+channel.emit("itemAdded", { productId: "abc" }); // Event lane
+channel.reply("getItems", () => [1, 2, 3]); // Request lane
+const items = channel.request("getItems", undefined); // Request lane — T | null
 
-// Radio — singleton, accès aux channels
+// Radio — singleton registre des Channels
 const radio = Radio.me();
 const ch: Channel = radio.channel("app");
 
-// EventCallback / RequestHandler
-const eventCb: EventCallback<{ msg: string }> = (data) => {};
-const reqHandler: RequestHandler<string, number> = (req) => req.length;
+// TAnyEventPayload — événement technique `any`
+const anyPayload: TAnyEventPayload = { event: "itemAdded", changes: {} };
 
 // --- VC4 : Namespace Valibot (Tier 1 — ADR-0022 + ADR-0032 §3) ---
 import { Valibot } from "@bonsai/core";
@@ -50,3 +52,12 @@ const userSchema = Valibot.object({
   age: Valibot.pipe(Valibot.number(), Valibot.integer(), Valibot.minValue(0))
 });
 type User = Valibot.InferOutput<typeof userSchema>;
+
+// --- VC4b : Namespace Immer (Tier 3 — ADR-0001 + ADR-0032 §3) ---
+import { Immer } from "@bonsai/core";
+
+// Le framework utilise Immer.produce en interne — namespace opaque
+type TestDraft = Immer.Draft<{ count: number }>;
+const produced = Immer.produce({ count: 0 }, (draft: TestDraft) => {
+  draft.count++;
+});
