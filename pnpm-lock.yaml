@@ -11,6 +11,9 @@ importers:
       '@bonsai/core':
         specifier: workspace:^
         version: link:core
+      '@bonsai/entity':
+        specifier: workspace:^
+        version: link:packages/entity
       '@bonsai/event':
         specifier: workspace:^
         version: link:packages/event
@@ -168,6 +171,12 @@ importers:
       '@bonsai/valibot':
         specifier: workspace:^
         version: link:../packages/valibot
+
+  packages/entity:
+    dependencies:
+      '@bonsai/immer':
+        specifier: workspace:^
+        version: link:../immer
 
   packages/error:
     dependencies:

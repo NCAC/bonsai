@@ -1,16 +1,5 @@
-/**
- * bonsai Framework - Version 0.1.0
- * Bundled by Bonsai Build System
- * Date: 2025-10-30T12:54:46.205Z
- */
 export * from '@bonsai/types';
 
-const RXJS = (function () {
-/**
- * @bonsai/rxjs - Version 0.1.0
- * Bundled by Bonsai Build System
- * Date: 2025-10-30T07:15:27.069Z
- */
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
 
@@ -48,7 +37,7 @@ function __awaiter(thisArg, _arguments, P, generator) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
         function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, [])).next());
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 }
 
@@ -110,7 +99,7 @@ function __read(o, n) {
 }
 
 function __spreadArray(to, from, pack) {
-    if (arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
+    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
         if (ar || !(i in from)) {
             if (!ar) ar = Array.prototype.slice.call(from, 0, i);
             ar[i] = from[i];
@@ -149,7 +138,7 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
     return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
 };
 
-function isFunction(value) {
+function isFunction$1(value) {
     return typeof value === 'function';
 }
 
@@ -217,7 +206,7 @@ var Subscription = (function () {
                 }
             }
             var initialFinalizer = this.initialTeardown;
-            if (isFunction(initialFinalizer)) {
+            if (isFunction$1(initialFinalizer)) {
                 try {
                     initialFinalizer();
                 }
@@ -309,10 +298,10 @@ var Subscription = (function () {
 var EMPTY_SUBSCRIPTION = Subscription.EMPTY;
 function isSubscription(value) {
     return (value instanceof Subscription ||
-        (value && 'closed' in value && isFunction(value.remove) && isFunction(value.add) && isFunction(value.unsubscribe)));
+        (value && 'closed' in value && isFunction$1(value.remove) && isFunction$1(value.add) && isFunction$1(value.unsubscribe)));
 }
 function execFinalizer(finalizer) {
-    if (isFunction(finalizer)) {
+    if (isFunction$1(finalizer)) {
         finalizer();
     }
     else {
@@ -320,7 +309,7 @@ function execFinalizer(finalizer) {
     }
 }
 
-var config = {
+var config$1 = {
     onUnhandledError: null,
     onStoppedNotification: null,
     Promise: undefined,
@@ -344,7 +333,7 @@ var timeoutProvider = {
 
 function reportUnhandledError(err) {
     timeoutProvider.setTimeout(function () {
-        var onUnhandledError = config.onUnhandledError;
+        var onUnhandledError = config$1.onUnhandledError;
         if (onUnhandledError) {
             onUnhandledError(err);
         }
@@ -373,7 +362,7 @@ function createNotification(kind, value, error) {
 
 var context = null;
 function errorContext(cb) {
-    if (config.useDeprecatedSynchronousErrorHandling) {
+    if (config$1.useDeprecatedSynchronousErrorHandling) {
         var isRoot = !context;
         if (isRoot) {
             context = { errorThrown: false, error: null };
@@ -392,7 +381,7 @@ function errorContext(cb) {
     }
 }
 function captureError(err) {
-    if (config.useDeprecatedSynchronousErrorHandling && context) {
+    if (config$1.useDeprecatedSynchronousErrorHandling && context) {
         context.errorThrown = true;
         context.error = err;
     }
@@ -522,7 +511,7 @@ var SafeSubscriber = (function (_super) {
     function SafeSubscriber(observerOrNext, error, complete) {
         var _this = _super.call(this) || this;
         var partialObserver;
-        if (isFunction(observerOrNext) || !observerOrNext) {
+        if (isFunction$1(observerOrNext) || !observerOrNext) {
             partialObserver = {
                 next: (observerOrNext !== null && observerOrNext !== void 0 ? observerOrNext : undefined),
                 error: error !== null && error !== void 0 ? error : undefined,
@@ -531,7 +520,7 @@ var SafeSubscriber = (function (_super) {
         }
         else {
             var context_1;
-            if (_this && config.useDeprecatedNextContext) {
+            if (_this && config$1.useDeprecatedNextContext) {
                 context_1 = Object.create(observerOrNext);
                 context_1.unsubscribe = function () { return _this.unsubscribe(); };
                 partialObserver = {
@@ -550,7 +539,7 @@ var SafeSubscriber = (function (_super) {
     return SafeSubscriber;
 }(Subscriber));
 function handleUnhandledError(error) {
-    if (config.useDeprecatedSynchronousErrorHandling) {
+    if (config$1.useDeprecatedSynchronousErrorHandling) {
         captureError(error);
     }
     else {
@@ -561,7 +550,7 @@ function defaultErrorHandler(err) {
     throw err;
 }
 function handleStoppedNotification(notification, subscriber) {
-    var onStoppedNotification = config.onStoppedNotification;
+    var onStoppedNotification = config$1.onStoppedNotification;
     onStoppedNotification && timeoutProvider.setTimeout(function () { return onStoppedNotification(notification, subscriber); });
 }
 var EMPTY_OBSERVER = {
@@ -577,7 +566,7 @@ function identity(x) {
     return x;
 }
 
-function pipe() {
+function pipe$1() {
     var fns = [];
     for (var _i = 0; _i < arguments.length; _i++) {
         fns[_i] = arguments[_i];
@@ -681,17 +670,17 @@ var Observable = (function () {
 }());
 function getPromiseCtor(promiseCtor) {
     var _a;
-    return (_a = promiseCtor !== null && promiseCtor !== void 0 ? promiseCtor : config.Promise) !== null && _a !== void 0 ? _a : Promise;
+    return (_a = promiseCtor !== null && promiseCtor !== void 0 ? promiseCtor : config$1.Promise) !== null && _a !== void 0 ? _a : Promise;
 }
 function isObserver(value) {
-    return value && isFunction(value.next) && isFunction(value.error) && isFunction(value.complete);
+    return value && isFunction$1(value.next) && isFunction$1(value.error) && isFunction$1(value.complete);
 }
 function isSubscriber(value) {
     return (value && value instanceof Subscriber) || (isObserver(value) && isSubscription(value));
 }
 
 function hasLift(source) {
-    return isFunction(source === null || source === void 0 ? void 0 : source.lift);
+    return isFunction$1(source === null || source === void 0 ? void 0 : source.lift);
 }
 function operate(init) {
     return function (source) {
@@ -1679,7 +1668,7 @@ var VirtualAction = (function (_super) {
 }(AsyncAction));
 
 var EMPTY = new Observable(function (subscriber) { return subscriber.complete(); });
-function empty(scheduler) {
+function empty$1(scheduler) {
     return scheduler ? emptyScheduled(scheduler) : EMPTY;
 }
 function emptyScheduled(scheduler) {
@@ -1687,14 +1676,14 @@ function emptyScheduled(scheduler) {
 }
 
 function isScheduler(value) {
-    return value && isFunction(value.schedule);
+    return value && isFunction$1(value.schedule);
 }
 
 function last$1(arr) {
     return arr[arr.length - 1];
 }
 function popResultSelector(args) {
-    return isFunction(last$1(args)) ? args.pop() : undefined;
+    return isFunction$1(last$1(args)) ? args.pop() : undefined;
 }
 function popScheduler(args) {
     return isScheduler(last$1(args)) ? args.pop() : undefined;
@@ -1706,15 +1695,15 @@ function popNumber(args, defaultValue) {
 var isArrayLike = (function (x) { return x && typeof x.length === 'number' && typeof x !== 'function'; });
 
 function isPromise(value) {
-    return isFunction(value === null || value === void 0 ? void 0 : value.then);
+    return isFunction$1(value === null || value === void 0 ? void 0 : value.then);
 }
 
 function isInteropObservable(input) {
-    return isFunction(input[observable]);
+    return isFunction$1(input[observable]);
 }
 
 function isAsyncIterable(obj) {
-    return Symbol.asyncIterator && isFunction(obj === null || obj === void 0 ? void 0 : obj[Symbol.asyncIterator]);
+    return Symbol.asyncIterator && isFunction$1(obj === null || obj === void 0 ? void 0 : obj[Symbol.asyncIterator]);
 }
 
 function createInvalidObservableTypeError(input) {
@@ -1730,7 +1719,7 @@ function getSymbolIterator() {
 var iterator = getSymbolIterator();
 
 function isIterable(input) {
-    return isFunction(input === null || input === void 0 ? void 0 : input[iterator]);
+    return isFunction$1(input === null || input === void 0 ? void 0 : input[iterator]);
 }
 
 function readableStreamLikeToAsyncGenerator(readableStream) {
@@ -1766,7 +1755,7 @@ function readableStreamLikeToAsyncGenerator(readableStream) {
     });
 }
 function isReadableStreamLike(obj) {
-    return isFunction(obj === null || obj === void 0 ? void 0 : obj.getReader);
+    return isFunction$1(obj === null || obj === void 0 ? void 0 : obj.getReader);
 }
 
 function innerFrom(input) {
@@ -1798,7 +1787,7 @@ function innerFrom(input) {
 function fromInteropObservable(obj) {
     return new Observable(function (subscriber) {
         var obs = obj[observable]();
-        if (isFunction(obs.subscribe)) {
+        if (isFunction$1(obs.subscribe)) {
             return obs.subscribe(subscriber);
         }
         throw new TypeError('Provided object does not correctly implement Symbol.observable');
@@ -1848,13 +1837,13 @@ function fromIterable(iterable) {
 }
 function fromAsyncIterable(asyncIterable) {
     return new Observable(function (subscriber) {
-        process(asyncIterable, subscriber).catch(function (err) { return subscriber.error(err); });
+        process$1(asyncIterable, subscriber).catch(function (err) { return subscriber.error(err); });
     });
 }
 function fromReadableStreamLike(readableStream) {
     return fromAsyncIterable(readableStreamLikeToAsyncGenerator(readableStream));
 }
-function process(asyncIterable, subscriber) {
+function process$1(asyncIterable, subscriber) {
     var asyncIterable_1, asyncIterable_1_1;
     var e_2, _a;
     return __awaiter(this, void 0, void 0, function () {
@@ -1981,7 +1970,7 @@ function scheduleIterable(input, scheduler) {
                 }
             }, 0, true);
         });
-        return function () { return isFunction(iterator$1 === null || iterator$1 === void 0 ? void 0 : iterator$1.return) && iterator$1.return(); };
+        return function () { return isFunction$1(iterator$1 === null || iterator$1 === void 0 ? void 0 : iterator$1.return) && iterator$1.return(); };
     });
 }
 
@@ -2048,7 +2037,7 @@ function of() {
 }
 
 function throwError(errorOrErrorFactory, scheduler) {
-    var errorFactory = isFunction(errorOrErrorFactory) ? errorOrErrorFactory : function () { return errorOrErrorFactory; };
+    var errorFactory = isFunction$1(errorOrErrorFactory) ? errorOrErrorFactory : function () { return errorOrErrorFactory; };
     var init = function (subscriber) { return subscriber.error(errorFactory()); };
     return new Observable(scheduler ? function (subscriber) { return scheduler.schedule(init, 0, subscriber); } : init);
 }
@@ -2075,7 +2064,7 @@ var Notification = (function () {
     };
     Notification.prototype.accept = function (nextOrObserver, error, complete) {
         var _a;
-        return isFunction((_a = nextOrObserver) === null || _a === void 0 ? void 0 : _a.next)
+        return isFunction$1((_a = nextOrObserver) === null || _a === void 0 ? void 0 : _a.next)
             ? this.observe(nextOrObserver)
             : this.do(nextOrObserver, error, complete);
     };
@@ -2121,7 +2110,7 @@ function observeNotification(notification, observer) {
 }
 
 function isObservable(obj) {
-    return !!obj && (obj instanceof Observable || (isFunction(obj.lift) && isFunction(obj.subscribe)));
+    return !!obj && (obj instanceof Observable || (isFunction$1(obj.lift) && isFunction$1(obj.subscribe)));
 }
 
 var EmptyError = createErrorClass(function (_super) {
@@ -2260,7 +2249,7 @@ function timeoutErrorFactory(info) {
     throw new TimeoutError(info);
 }
 
-function map(project, thisArg) {
+function map$1(project, thisArg) {
     return operate(function (source, subscriber) {
         var index = 0;
         source.subscribe(createOperatorSubscriber(subscriber, function (value) {
@@ -2269,12 +2258,12 @@ function map(project, thisArg) {
     });
 }
 
-var isArray$2 = Array.isArray;
+var isArray$3 = Array.isArray;
 function callOrApply(fn, args) {
-    return isArray$2(args) ? fn.apply(void 0, __spreadArray([], __read(args))) : fn(args);
+    return isArray$3(args) ? fn.apply(void 0, __spreadArray([], __read(args))) : fn(args);
 }
 function mapOneOrManyArgs(fn) {
-    return map(function (args) { return callOrApply(fn, args); });
+    return map$1(function (args) { return callOrApply(fn, args); });
 }
 
 function bindCallbackInternals(isNodeStyle, callbackFunc, resultSelector, scheduler) {
@@ -2357,12 +2346,12 @@ function bindNodeCallback(callbackFunc, resultSelector, scheduler) {
     return bindCallbackInternals(true, callbackFunc, resultSelector, scheduler);
 }
 
-var isArray$1 = Array.isArray;
-var getPrototypeOf = Object.getPrototypeOf, objectProto = Object.prototype, getKeys = Object.keys;
+var isArray$2 = Array.isArray;
+var getPrototypeOf$1 = Object.getPrototypeOf, objectProto = Object.prototype, getKeys = Object.keys;
 function argsArgArrayOrObject(args) {
     if (args.length === 1) {
         var first_1 = args[0];
-        if (isArray$1(first_1)) {
+        if (isArray$2(first_1)) {
             return { args: first_1, keys: null };
         }
         if (isPOJO(first_1)) {
@@ -2376,7 +2365,7 @@ function argsArgArrayOrObject(args) {
     return { args: args, keys: null };
 }
 function isPOJO(obj) {
-    return obj && typeof obj === 'object' && getPrototypeOf(obj) === objectProto;
+    return obj && typeof obj === 'object' && getPrototypeOf$1(obj) === objectProto;
 }
 
 function createObject(keys, values) {
@@ -2504,8 +2493,8 @@ function mergeInternals(source, subscriber, project, concurrent, onBeforeNext, e
 
 function mergeMap(project, resultSelector, concurrent) {
     if (concurrent === void 0) { concurrent = Infinity; }
-    if (isFunction(resultSelector)) {
-        return mergeMap(function (a, i) { return map(function (b, ii) { return resultSelector(a, b, i, ii); })(innerFrom(project(a, i))); }, concurrent);
+    if (isFunction$1(resultSelector)) {
+        return mergeMap(function (a, i) { return map$1(function (b, ii) { return resultSelector(a, b, i, ii); })(innerFrom(project(a, i))); }, concurrent);
     }
     else if (typeof resultSelector === 'number') {
         concurrent = resultSelector;
@@ -2604,7 +2593,7 @@ var nodeEventEmitterMethods = ['addListener', 'removeListener'];
 var eventTargetMethods = ['addEventListener', 'removeEventListener'];
 var jqueryMethods = ['on', 'off'];
 function fromEvent(target, eventName, options, resultSelector) {
-    if (isFunction(options)) {
+    if (isFunction$1(options)) {
         resultSelector = options;
         options = undefined;
     }
@@ -2643,13 +2632,13 @@ function toCommonHandlerRegistry(target, eventName) {
     return function (methodName) { return function (handler) { return target[methodName](eventName, handler); }; };
 }
 function isNodeStyleEventEmitter(target) {
-    return isFunction(target.addListener) && isFunction(target.removeListener);
+    return isFunction$1(target.addListener) && isFunction$1(target.removeListener);
 }
 function isJQueryStyleEventEmitter(target) {
-    return isFunction(target.on) && isFunction(target.off);
+    return isFunction$1(target.on) && isFunction$1(target.off);
 }
 function isEventTarget(target) {
-    return isFunction(target.addEventListener) && isFunction(target.removeEventListener);
+    return isFunction$1(target.addEventListener) && isFunction$1(target.removeEventListener);
 }
 
 function fromEventPattern(addHandler, removeHandler, resultSelector) {
@@ -2665,7 +2654,7 @@ function fromEventPattern(addHandler, removeHandler, resultSelector) {
             return subscriber.next(e.length === 1 ? e[0] : e);
         };
         var retValue = addHandler(handler);
-        return isFunction(removeHandler) ? function () { return removeHandler(handler, retValue); } : undefined;
+        return isFunction$1(removeHandler) ? function () { return removeHandler(handler, retValue); } : undefined;
     });
 }
 
@@ -2777,16 +2766,16 @@ function merge$1() {
 }
 
 var NEVER = new Observable(noop);
-function never() {
+function never$1() {
     return NEVER;
 }
 
-var isArray = Array.isArray;
+var isArray$1 = Array.isArray;
 function argsOrArgArray(args) {
-    return args.length === 1 && isArray(args[0]) ? args[0] : args;
+    return args.length === 1 && isArray$1(args[0]) ? args[0] : args;
 }
 
-function onErrorResumeNext$1() {
+function onErrorResumeNext() {
     var sources = [];
     for (var _i = 0; _i < arguments.length; _i++) {
         sources[_i] = arguments[_i];
@@ -2831,11 +2820,11 @@ function filter(predicate, thisArg) {
     });
 }
 
-function partition$1(source, predicate, thisArg) {
+function partition(source, predicate, thisArg) {
     return [filter(predicate, thisArg)(innerFrom(source)), filter(not(predicate, thisArg))(innerFrom(source))];
 }
 
-function race$1() {
+function race() {
     var sources = [];
     for (var _i = 0; _i < arguments.length; _i++) {
         sources[_i] = arguments[_i];
@@ -3256,7 +3245,7 @@ function toArray() {
 }
 
 function joinAllInternals(joinFn, project) {
-    return pipe(toArray(), mergeMap(function (sources) { return joinFn(sources); }), project ? mapOneOrManyArgs(project) : identity);
+    return pipe$1(toArray(), mergeMap(function (sources) { return joinFn(sources); }), project ? mapOneOrManyArgs(project) : identity);
 }
 
 function combineLatestAll(project) {
@@ -3272,7 +3261,7 @@ function combineLatest() {
     }
     var resultSelector = popResultSelector(args);
     return resultSelector
-        ? pipe(combineLatest.apply(void 0, __spreadArray([], __read(args))), mapOneOrManyArgs(resultSelector))
+        ? pipe$1(combineLatest.apply(void 0, __spreadArray([], __read(args))), mapOneOrManyArgs(resultSelector))
         : operate(function (source, subscriber) {
             combineLatestInit(__spreadArray([source], __read(argsOrArgArray(args))))(subscriber);
         });
@@ -3287,11 +3276,11 @@ function combineLatestWith() {
 }
 
 function concatMap(project, resultSelector) {
-    return isFunction(resultSelector) ? mergeMap(project, resultSelector, 1) : mergeMap(project, 1);
+    return isFunction$1(resultSelector) ? mergeMap(project, resultSelector, 1) : mergeMap(project, 1);
 }
 
 function concatMapTo(innerObservable, resultSelector) {
-    return isFunction(resultSelector) ? concatMap(function () { return innerObservable; }, resultSelector) : concatMap(function () { return innerObservable; });
+    return isFunction$1(resultSelector) ? concatMap(function () { return innerObservable; }, resultSelector) : concatMap(function () { return innerObservable; });
 }
 
 function concat() {
@@ -3444,7 +3433,7 @@ function ignoreElements() {
 }
 
 function mapTo(value) {
-    return map(function () { return value; });
+    return map$1(function () { return value; });
 }
 
 function delayWhen(delayDurationSelector, subscriptionDelay) {
@@ -3556,7 +3545,7 @@ function every(predicate, thisArg) {
 function exhaustMap(project, resultSelector) {
     if (resultSelector) {
         return function (source) {
-            return source.pipe(exhaustMap(function (a, i) { return innerFrom(project(a, i)).pipe(map(function (b, ii) { return resultSelector(a, b, i, ii); })); }));
+            return source.pipe(exhaustMap(function (a, i) { return innerFrom(project(a, i)).pipe(map$1(function (b, ii) { return resultSelector(a, b, i, ii); })); }));
         };
     }
     return operate(function (source, subscriber) {
@@ -3592,7 +3581,7 @@ function expand(project, concurrent, scheduler) {
     });
 }
 
-function finalize(callback) {
+function finalize$1(callback) {
     return operate(function (source, subscriber) {
         try {
             source.subscribe(subscriber);
@@ -3756,14 +3745,14 @@ function materialize() {
 }
 
 function max(comparer) {
-    return reduce(isFunction(comparer) ? function (x, y) { return (comparer(x, y) > 0 ? x : y); } : function (x, y) { return (x > y ? x : y); });
+    return reduce(isFunction$1(comparer) ? function (x, y) { return (comparer(x, y) > 0 ? x : y); } : function (x, y) { return (x > y ? x : y); });
 }
 
 var flatMap = mergeMap;
 
 function mergeMapTo(innerObservable, resultSelector, concurrent) {
     if (concurrent === void 0) { concurrent = Infinity; }
-    if (isFunction(resultSelector)) {
+    if (isFunction$1(resultSelector)) {
         return mergeMap(function () { return innerObservable; }, resultSelector, concurrent);
     }
     if (typeof resultSelector === 'number') {
@@ -3803,12 +3792,12 @@ function mergeWith() {
 }
 
 function min(comparer) {
-    return reduce(isFunction(comparer) ? function (x, y) { return (comparer(x, y) < 0 ? x : y); } : function (x, y) { return (x < y ? x : y); });
+    return reduce(isFunction$1(comparer) ? function (x, y) { return (comparer(x, y) < 0 ? x : y); } : function (x, y) { return (x < y ? x : y); });
 }
 
 function multicast(subjectOrSubjectFactory, selector) {
-    var subjectFactory = isFunction(subjectOrSubjectFactory) ? subjectOrSubjectFactory : function () { return subjectOrSubjectFactory; };
-    if (isFunction(selector)) {
+    var subjectFactory = isFunction$1(subjectOrSubjectFactory) ? subjectOrSubjectFactory : function () { return subjectOrSubjectFactory; };
+    if (isFunction$1(selector)) {
         return connect(selector, {
             connector: subjectFactory,
         });
@@ -3822,9 +3811,8 @@ function onErrorResumeNextWith() {
         sources[_i] = arguments[_i];
     }
     var nextSources = argsOrArgArray(sources);
-    return function (source) { return onErrorResumeNext$1.apply(void 0, __spreadArray([source], __read(nextSources))); };
+    return function (source) { return onErrorResumeNext.apply(void 0, __spreadArray([source], __read(nextSources))); };
 }
-var onErrorResumeNext = onErrorResumeNextWith;
 
 function pairwise() {
     return operate(function (source, subscriber) {
@@ -3848,7 +3836,7 @@ function pluck() {
     if (length === 0) {
         throw new Error('list of properties cannot be empty.');
     }
-    return map(function (x) {
+    return map$1(function (x) {
         var currentProp = x;
         for (var i = 0; i < length; i++) {
             var p = currentProp === null || currentProp === void 0 ? void 0 : currentProp[properties[i]];
@@ -3882,10 +3870,10 @@ function publishLast() {
 }
 
 function publishReplay(bufferSize, windowTime, selectorOrScheduler, timestampProvider) {
-    if (selectorOrScheduler && !isFunction(selectorOrScheduler)) {
+    if (selectorOrScheduler && !isFunction$1(selectorOrScheduler)) {
         timestampProvider = selectorOrScheduler;
     }
-    var selector = isFunction(selectorOrScheduler) ? selectorOrScheduler : undefined;
+    var selector = isFunction$1(selectorOrScheduler) ? selectorOrScheduler : undefined;
     return function (source) { return multicast(new ReplaySubject(bufferSize, windowTime, timestampProvider), selector)(source); };
 }
 
@@ -4364,7 +4352,7 @@ function switchAll() {
 }
 
 function switchMapTo(innerObservable, resultSelector) {
-    return isFunction(resultSelector) ? switchMap(function () { return innerObservable; }, resultSelector) : switchMap(function () { return innerObservable; });
+    return isFunction$1(resultSelector) ? switchMap(function () { return innerObservable; }, resultSelector) : switchMap(function () { return innerObservable; });
 }
 
 function switchScan(accumulator, seed) {
@@ -4397,7 +4385,7 @@ function takeWhile(predicate, inclusive) {
 }
 
 function tap(observerOrNext, error, complete) {
-    var tapObserver = isFunction(observerOrNext) || error || complete
+    var tapObserver = isFunction$1(observerOrNext) || error || complete
         ?
             { next: observerOrNext, error: error, complete: complete }
         : observerOrNext;
@@ -4530,7 +4518,7 @@ function timeoutWith(due, withObservable, scheduler) {
 
 function timestamp(timestampProvider) {
     if (timestampProvider === void 0) { timestampProvider = dateTimestampProvider; }
-    return map(function (value) { return ({ value: value, timestamp: timestampProvider.now() }); });
+    return map$1(function (value) { return ({ value: value, timestamp: timestampProvider.now() }); });
 }
 
 function window(windowBoundaries) {
@@ -4813,7 +4801,7 @@ function zipWith() {
     return zip.apply(void 0, __spreadArray([], __read(otherInputs)));
 }
 
-var RxjsOriginal = /*#__PURE__*/Object.freeze({
+var index$1 = /*#__PURE__*/Object.freeze({
     __proto__: null,
     ArgumentOutOfRangeError: ArgumentOutOfRangeError,
     AsyncSubject: AsyncSubject,
@@ -4863,7 +4851,7 @@ var RxjsOriginal = /*#__PURE__*/Object.freeze({
     concatMap: concatMap,
     concatMapTo: concatMapTo,
     concatWith: concatWith,
-    config: config,
+    config: config$1,
     connect: connect,
     connectable: connectable,
     count: count,
@@ -4878,7 +4866,7 @@ var RxjsOriginal = /*#__PURE__*/Object.freeze({
     distinctUntilChanged: distinctUntilChanged,
     distinctUntilKeyChanged: distinctUntilKeyChanged,
     elementAt: elementAt,
-    empty: empty,
+    empty: empty$1,
     endWith: endWith,
     every: every,
     exhaust: exhaust,
@@ -4886,7 +4874,7 @@ var RxjsOriginal = /*#__PURE__*/Object.freeze({
     exhaustMap: exhaustMap,
     expand: expand,
     filter: filter,
-    finalize: finalize,
+    finalize: finalize$1,
     find: find,
     findIndex: findIndex,
     first: first,
@@ -4906,7 +4894,7 @@ var RxjsOriginal = /*#__PURE__*/Object.freeze({
     isObservable: isObservable,
     last: last,
     lastValueFrom: lastValueFrom,
-    map: map,
+    map: map$1,
     mapTo: mapTo,
     materialize: materialize,
     max: max,
@@ -4918,17 +4906,17 @@ var RxjsOriginal = /*#__PURE__*/Object.freeze({
     mergeWith: mergeWith,
     min: min,
     multicast: multicast,
-    never: never,
+    never: never$1,
     noop: noop,
     observable: observable,
     observeOn: observeOn,
     of: of,
-    onErrorResumeNext: onErrorResumeNext$1,
+    onErrorResumeNext: onErrorResumeNext,
     onErrorResumeNextWith: onErrorResumeNextWith,
     pairs: pairs,
     pairwise: pairwise,
-    partition: partition$1,
-    pipe: pipe,
+    partition: partition,
+    pipe: pipe$1,
     pluck: pluck,
     publish: publish,
     publishBehavior: publishBehavior,
@@ -4936,7 +4924,7 @@ var RxjsOriginal = /*#__PURE__*/Object.freeze({
     publishReplay: publishReplay,
     queue: queue,
     queueScheduler: queueScheduler,
-    race: race$1,
+    race: race,
     raceWith: raceWith,
     range: range,
     reduce: reduce,
@@ -4990,418 +4978,9714 @@ var RxjsOriginal = /*#__PURE__*/Object.freeze({
     zipWith: zipWith
 });
 
-function partition(predicate, thisArg) {
-    return function (source) {
-        return [filter(predicate, thisArg)(source), filter(not(predicate, thisArg))(source)];
-    };
+//#region src/storages/globalConfig/globalConfig.ts
+let store$4;
+/**
+* Sets the global configuration.
+*
+* @param config The configuration.
+*/
+function setGlobalConfig(config$1) {
+	store$4 = {
+		...store$4,
+		...config$1
+	};
+}
+/**
+* Returns the global configuration.
+*
+* @param config The config to merge.
+*
+* @returns The configuration.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getGlobalConfig(config$1) {
+	return {
+		lang: config$1?.lang ?? store$4?.lang,
+		message: config$1?.message,
+		abortEarly: config$1?.abortEarly ?? store$4?.abortEarly,
+		abortPipeEarly: config$1?.abortPipeEarly ?? store$4?.abortPipeEarly
+	};
+}
+/**
+* Deletes the global configuration.
+*/
+function deleteGlobalConfig() {
+	store$4 = void 0;
 }
 
-function race() {
-    var args = [];
-    for (var _i = 0; _i < arguments.length; _i++) {
-        args[_i] = arguments[_i];
-    }
-    return raceWith.apply(void 0, __spreadArray([], __read(argsOrArgArray(args))));
+//#endregion
+//#region src/storages/globalMessage/globalMessage.ts
+let store$3;
+/**
+* Sets a global error message.
+*
+* @param message The error message.
+* @param lang The language of the message.
+*/
+function setGlobalMessage(message$1, lang) {
+	if (!store$3) store$3 = /* @__PURE__ */ new Map();
+	store$3.set(lang, message$1);
+}
+/**
+* Returns a global error message.
+*
+* @param lang The language of the message.
+*
+* @returns The error message.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getGlobalMessage(lang) {
+	return store$3?.get(lang);
+}
+/**
+* Deletes a global error message.
+*
+* @param lang The language of the message.
+*/
+function deleteGlobalMessage(lang) {
+	store$3?.delete(lang);
 }
 
-var operators = /*#__PURE__*/Object.freeze({
-    __proto__: null,
-    audit: audit,
-    auditTime: auditTime,
-    buffer: buffer,
-    bufferCount: bufferCount,
-    bufferTime: bufferTime,
-    bufferToggle: bufferToggle,
-    bufferWhen: bufferWhen,
-    catchError: catchError,
-    combineAll: combineAll,
-    combineLatest: combineLatest,
-    combineLatestAll: combineLatestAll,
-    combineLatestWith: combineLatestWith,
-    concat: concat,
-    concatAll: concatAll,
-    concatMap: concatMap,
-    concatMapTo: concatMapTo,
-    concatWith: concatWith,
-    connect: connect,
-    count: count,
-    debounce: debounce,
-    debounceTime: debounceTime,
-    defaultIfEmpty: defaultIfEmpty,
-    delay: delay,
-    delayWhen: delayWhen,
-    dematerialize: dematerialize,
-    distinct: distinct,
-    distinctUntilChanged: distinctUntilChanged,
-    distinctUntilKeyChanged: distinctUntilKeyChanged,
-    elementAt: elementAt,
-    endWith: endWith,
-    every: every,
-    exhaust: exhaust,
-    exhaustAll: exhaustAll,
-    exhaustMap: exhaustMap,
-    expand: expand,
-    filter: filter,
-    finalize: finalize,
-    find: find,
-    findIndex: findIndex,
-    first: first,
-    flatMap: flatMap,
-    groupBy: groupBy,
-    ignoreElements: ignoreElements,
-    isEmpty: isEmpty,
-    last: last,
-    map: map,
-    mapTo: mapTo,
-    materialize: materialize,
-    max: max,
-    merge: merge,
-    mergeAll: mergeAll,
-    mergeMap: mergeMap,
-    mergeMapTo: mergeMapTo,
-    mergeScan: mergeScan,
-    mergeWith: mergeWith,
-    min: min,
-    multicast: multicast,
-    observeOn: observeOn,
-    onErrorResumeNext: onErrorResumeNext,
-    pairwise: pairwise,
-    partition: partition,
-    pluck: pluck,
-    publish: publish,
-    publishBehavior: publishBehavior,
-    publishLast: publishLast,
-    publishReplay: publishReplay,
-    race: race,
-    raceWith: raceWith,
-    reduce: reduce,
-    refCount: refCount,
-    repeat: repeat,
-    repeatWhen: repeatWhen,
-    retry: retry,
-    retryWhen: retryWhen,
-    sample: sample,
-    sampleTime: sampleTime,
-    scan: scan,
-    sequenceEqual: sequenceEqual,
-    share: share,
-    shareReplay: shareReplay,
-    single: single,
-    skip: skip,
-    skipLast: skipLast,
-    skipUntil: skipUntil,
-    skipWhile: skipWhile,
-    startWith: startWith,
-    subscribeOn: subscribeOn,
-    switchAll: switchAll,
-    switchMap: switchMap,
-    switchMapTo: switchMapTo,
-    switchScan: switchScan,
-    take: take,
-    takeLast: takeLast,
-    takeUntil: takeUntil,
-    takeWhile: takeWhile,
-    tap: tap,
-    throttle: throttle,
-    throttleTime: throttleTime,
-    throwIfEmpty: throwIfEmpty,
-    timeInterval: timeInterval,
-    timeout: timeout,
-    timeoutWith: timeoutWith,
-    timestamp: timestamp,
-    toArray: toArray,
-    window: window,
-    windowCount: windowCount,
-    windowTime: windowTime,
-    windowToggle: windowToggle,
-    windowWhen: windowWhen,
-    withLatestFrom: withLatestFrom,
-    zip: zip,
-    zipAll: zipAll,
-    zipWith: zipWith
-});
+//#endregion
+//#region src/storages/schemaMessage/schemaMessage.ts
+let store$2;
+/**
+* Sets a schema error message.
+*
+* @param message The error message.
+* @param lang The language of the message.
+*/
+function setSchemaMessage(message$1, lang) {
+	if (!store$2) store$2 = /* @__PURE__ */ new Map();
+	store$2.set(lang, message$1);
+}
+/**
+* Returns a schema error message.
+*
+* @param lang The language of the message.
+*
+* @returns The error message.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getSchemaMessage(lang) {
+	return store$2?.get(lang);
+}
+/**
+* Deletes a schema error message.
+*
+* @param lang The language of the message.
+*/
+function deleteSchemaMessage(lang) {
+	store$2?.delete(lang);
+}
 
-// Importer toutes les fonctionnalités de rxjs
-// Créer un objet qui regroupe toutes les fonctionnalités
-const RXJS = {
-    ...RxjsOriginal,
-    operators
+//#endregion
+//#region src/storages/specificMessage/specificMessage.ts
+let store$1;
+/**
+* Sets a specific error message.
+*
+* @param reference The identifier reference.
+* @param message The error message.
+* @param lang The language of the message.
+*/
+function setSpecificMessage(reference, message$1, lang) {
+	if (!store$1) store$1 = /* @__PURE__ */ new Map();
+	if (!store$1.get(reference)) store$1.set(reference, /* @__PURE__ */ new Map());
+	store$1.get(reference).set(lang, message$1);
+}
+/**
+* Returns a specific error message.
+*
+* @param reference The identifier reference.
+* @param lang The language of the message.
+*
+* @returns The error message.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getSpecificMessage(reference, lang) {
+	return store$1?.get(reference)?.get(lang);
+}
+/**
+* Deletes a specific error message.
+*
+* @param reference The identifier reference.
+* @param lang The language of the message.
+*/
+function deleteSpecificMessage(reference, lang) {
+	store$1?.get(reference)?.delete(lang);
+}
+
+//#endregion
+//#region src/utils/_stringify/_stringify.ts
+/**
+* Stringifies an unknown input to a literal or type string.
+*
+* @param input The unknown input.
+*
+* @returns A literal or type string.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _stringify(input) {
+	const type = typeof input;
+	if (type === "string") return `"${input}"`;
+	if (type === "number" || type === "bigint" || type === "boolean") return `${input}`;
+	if (type === "object" || type === "function") return (input && Object.getPrototypeOf(input)?.constructor?.name) ?? "null";
+	return type;
+}
+
+//#endregion
+//#region src/utils/_addIssue/_addIssue.ts
+/**
+* Adds an issue to the dataset.
+*
+* @param context The issue context.
+* @param label The issue label.
+* @param dataset The input dataset.
+* @param config The configuration.
+* @param other The optional props.
+*
+* @internal
+*/
+function _addIssue(context, label, dataset, config$1, other) {
+	const input = other && "input" in other ? other.input : dataset.value;
+	const expected = other?.expected ?? context.expects ?? null;
+	const received = other?.received ?? /* @__PURE__ */ _stringify(input);
+	const issue = {
+		kind: context.kind,
+		type: context.type,
+		input,
+		expected,
+		received,
+		message: `Invalid ${label}: ${expected ? `Expected ${expected} but r` : "R"}eceived ${received}`,
+		requirement: context.requirement,
+		path: other?.path,
+		issues: other?.issues,
+		lang: config$1.lang,
+		abortEarly: config$1.abortEarly,
+		abortPipeEarly: config$1.abortPipeEarly
+	};
+	const isSchema = context.kind === "schema";
+	const message$1 = other?.message ?? context.message ?? /* @__PURE__ */ getSpecificMessage(context.reference, issue.lang) ?? (isSchema ? /* @__PURE__ */ getSchemaMessage(issue.lang) : null) ?? config$1.message ?? /* @__PURE__ */ getGlobalMessage(issue.lang);
+	if (message$1 !== void 0) issue.message = typeof message$1 === "function" ? message$1(issue) : message$1;
+	if (isSchema) dataset.typed = false;
+	if (dataset.issues) dataset.issues.push(issue);
+	else dataset.issues = [issue];
+}
+
+//#endregion
+//#region src/utils/_cloneDataset/_cloneDataset.ts
+/**
+* Creates a shallow copy of a dataset.
+*
+* Hint: The `value` is copied by reference, but the `issues` array is cloned
+* to avoid reusing mutable dataset state across multiple runs. Mutating a
+* returned object or array value can therefore affect later cache hits that
+* reuse the same cached output.
+*
+* @param dataset The output dataset.
+*
+* @returns The copied output dataset.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _cloneDataset(dataset) {
+	return {
+		typed: dataset.typed,
+		value: dataset.value,
+		issues: dataset.issues && [...dataset.issues]
+	};
+}
+
+//#endregion
+//#region src/utils/_getByteCount/_getByteCount.ts
+let textEncoder;
+/**
+* Returns the byte count of the input.
+*
+* @param input The input to be measured.
+*
+* @returns The byte count.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _getByteCount(input) {
+	if (!textEncoder) textEncoder = new TextEncoder();
+	return textEncoder.encode(input).length;
+}
+
+//#endregion
+//#region src/utils/_getGraphemeCount/_getGraphemeCount.ts
+let segmenter;
+/**
+* Returns the grapheme count of the input.
+*
+* @param input The input to be measured.
+*
+* @returns The grapheme count.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _getGraphemeCount(input) {
+	if (!segmenter) segmenter = new Intl.Segmenter();
+	const segments = segmenter.segment(input);
+	let count = 0;
+	for (const _ of segments) count++;
+	return count;
+}
+
+//#endregion
+//#region src/utils/_getLastMetadata/_getLastMetadata.ts
+/**
+* Returns the last top-level value of a given metadata type from a schema
+* using a breadth-first search that starts with the last item in the pipeline.
+*
+* @param schema The schema to search.
+* @param type The metadata type.
+*
+* @returns The value, if any.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _getLastMetadata(schema, type) {
+	if ("pipe" in schema) {
+		const nestedSchemas = [];
+		for (let index = schema.pipe.length - 1; index >= 0; index--) {
+			const item = schema.pipe[index];
+			if (item.kind === "schema" && "pipe" in item) nestedSchemas.push(item);
+			else if (item.kind === "metadata" && item.type === type) return item[type];
+		}
+		for (const nestedSchema of nestedSchemas) {
+			const result = /* @__PURE__ */ _getLastMetadata(nestedSchema, type);
+			if (result !== void 0) return result;
+		}
+	}
+}
+
+//#endregion
+//#region src/utils/_getStandardProps/_getStandardProps.ts
+/**
+* Returns the Standard Schema properties.
+*
+* @param context The schema context.
+*
+* @returns The Standard Schema properties.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _getStandardProps(context) {
+	return {
+		version: 1,
+		vendor: "valibot",
+		validate(value$1) {
+			return context["~run"]({ value: value$1 }, /* @__PURE__ */ getGlobalConfig());
+		}
+	};
+}
+
+//#endregion
+//#region src/utils/_getWordCount/_getWordCount.ts
+let store;
+/**
+* Returns the word count of the input.
+*
+* @param locales The locales to be used.
+* @param input The input to be measured.
+*
+* @returns The word count.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _getWordCount(locales, input) {
+	if (!store) store = /* @__PURE__ */ new Map();
+	if (!store.get(locales)) store.set(locales, new Intl.Segmenter(locales, { granularity: "word" }));
+	const segments = store.get(locales).segment(input);
+	let count = 0;
+	for (const segment of segments) if (segment.isWordLike) count++;
+	return count;
+}
+
+//#endregion
+//#region src/utils/_isLuhnAlgo/_isLuhnAlgo.ts
+/**
+* Non-digit regex.
+*/
+const NON_DIGIT_REGEX = /\D/gu;
+/**
+* Checks whether a string with numbers corresponds to the luhn algorithm.
+*
+* @param input The input to be checked.
+*
+* @returns Whether input is valid.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _isLuhnAlgo(input) {
+	const number$1 = input.replace(NON_DIGIT_REGEX, "");
+	let length$1 = number$1.length;
+	let bit = 1;
+	let sum = 0;
+	while (length$1) {
+		const value$1 = +number$1[--length$1];
+		bit ^= 1;
+		sum += bit ? [
+			0,
+			2,
+			4,
+			6,
+			8,
+			1,
+			3,
+			5,
+			7,
+			9
+		][value$1] : value$1;
+	}
+	return sum % 10 === 0;
+}
+
+//#endregion
+//#region src/utils/_isValidObjectKey/_isValidObjectKey.ts
+/**
+* Disallows inherited object properties and prevents object prototype
+* pollution by disallowing certain keys.
+*
+* @param object The object to check.
+* @param key The key to check.
+*
+* @returns Whether the key is allowed.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _isValidObjectKey(object$1, key) {
+	return Object.hasOwn(object$1, key) && key !== "__proto__" && key !== "prototype" && key !== "constructor";
+}
+
+//#endregion
+//#region src/utils/_joinExpects/_joinExpects.ts
+/**
+* Joins multiple `expects` values with the given separator.
+*
+* @param values The `expects` values.
+* @param separator The separator.
+*
+* @returns The joined `expects` property.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _joinExpects(values$1, separator) {
+	const list = [...new Set(values$1)];
+	if (list.length > 1) return `(${list.join(` ${separator} `)})`;
+	return list[0] ?? "never";
+}
+
+//#endregion
+//#region src/utils/entriesFromList/entriesFromList.ts
+/**
+* Creates an object entries definition from a list of keys and a schema.
+*
+* @param list A list of keys.
+* @param schema The schema of the keys.
+*
+* @returns The object entries.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function entriesFromList(list, schema) {
+	const entries$1 = {};
+	for (const key of list) entries$1[key] = schema;
+	return entries$1;
+}
+
+//#endregion
+//#region src/utils/entriesFromObjects/entriesFromObjects.ts
+/* @__NO_SIDE_EFFECTS__ */
+function entriesFromObjects(schemas) {
+	const entries$1 = {};
+	for (const schema of schemas) Object.assign(entries$1, schema.entries);
+	return entries$1;
+}
+
+//#endregion
+//#region src/utils/getDotPath/getDotPath.ts
+/* @__NO_SIDE_EFFECTS__ */
+function getDotPath(issue) {
+	if (issue.path) {
+		let key = "";
+		for (const item of issue.path) if (typeof item.key === "string" || typeof item.key === "number") if (key) key += `.${item.key}`;
+		else key += item.key;
+		else return null;
+		return key;
+	}
+	return null;
+}
+
+//#endregion
+//#region src/utils/isOfKind/isOfKind.ts
+/**
+* A generic type guard to check the kind of an object.
+*
+* @param kind The kind to check for.
+* @param object The object to check.
+*
+* @returns Whether it matches.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function isOfKind(kind, object$1) {
+	return object$1.kind === kind;
+}
+
+//#endregion
+//#region src/utils/isOfType/isOfType.ts
+/**
+* A generic type guard to check the type of an object.
+*
+* @param type The type to check for.
+* @param object The object to check.
+*
+* @returns Whether it matches.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function isOfType(type, object$1) {
+	return object$1.type === type;
+}
+
+//#endregion
+//#region src/utils/isValiError/isValiError.ts
+/**
+* A type guard to check if an error is a ValiError.
+*
+* @param error The error to check.
+*
+* @returns Whether its a ValiError.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function isValiError(error) {
+	return error instanceof ValiError;
+}
+
+//#endregion
+//#region src/utils/ValiError/ValiError.ts
+/**
+* A Valibot error with useful information.
+*/
+var ValiError = class extends Error {
+	/**
+	* Creates a Valibot error with useful information.
+	*
+	* @param issues The error issues.
+	*/
+	constructor(issues) {
+		super(issues[0].message);
+		this.name = "ValiError";
+		this.issues = issues;
+	}
 };
 
+//#endregion
+//#region src/actions/args/args.ts
+/* @__NO_SIDE_EFFECTS__ */
+function args(schema) {
+	return {
+		kind: "transformation",
+		type: "args",
+		reference: args,
+		async: false,
+		schema,
+		"~run"(dataset, config$1) {
+			const func = dataset.value;
+			dataset.value = (...args_) => {
+				const argsDataset = this.schema["~run"]({ value: args_ }, config$1);
+				if (argsDataset.issues) throw new ValiError(argsDataset.issues);
+				return func(...argsDataset.value);
+			};
+			return dataset;
+		}
+	};
+}
 
-  return { ...RXJS };
-})();
+//#endregion
+//#region src/actions/args/argsAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function argsAsync(schema) {
+	return {
+		kind: "transformation",
+		type: "args",
+		reference: argsAsync,
+		async: false,
+		schema,
+		"~run"(dataset, config$1) {
+			const func = dataset.value;
+			dataset.value = async (...args$1) => {
+				const argsDataset = await schema["~run"]({ value: args$1 }, config$1);
+				if (argsDataset.issues) throw new ValiError(argsDataset.issues);
+				return func(...argsDataset.value);
+			};
+			return dataset;
+		}
+	};
+}
 
+//#endregion
+//#region src/actions/await/awaitAsync.ts
 /**
- * @bonsai/event - Version 0.1.0
- * Bundled by Bonsai Build System
- * Date: 2025-10-30T10:57:11.306Z
- */
+* Creates an await transformation action.
+*
+* @returns An await action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function awaitAsync() {
+	return {
+		kind: "transformation",
+		type: "await",
+		reference: awaitAsync,
+		async: true,
+		async "~run"(dataset) {
+			dataset.value = await dataset.value;
+			return dataset;
+		}
+	};
+}
 
-class EventTrigger {
-    constructor() {
-        this.subjects = new Map();
-        this.subscriptions = new Map();
-    }
-    on(event, listener) {
-        if (!this.subjects.has(event)) {
-            this.subjects.set(event, new RXJS.Subject());
-        }
-        this.subjects.get(event).subscribe(listener);
-    }
-    off(event) {
-        const subject = this.subjects.get(event);
-        if (subject) {
-            const subscription = this.subscriptions.get(event);
-            if (subscription) {
-                subscription.unsubscribe();
-                this.subscriptions.delete(event);
-            }
-        }
-    }
-    once(event, listener) {
-        if (!this.subjects.has(event)) {
-            this.subjects.set(event, new RXJS.Subject());
-        }
-        this.subjects.get(event).pipe(RXJS.take(1)).subscribe(listener);
-    }
-    listenTo(emitter, event, listener) {
-        const subscription = emitter.getEventObservable(event).subscribe(listener);
-        this.subscriptions.set(event, subscription);
-    }
-    listenToOnce(emitter, event, listener) {
-        const subject = emitter.getEventObservable(event);
-        if (subject instanceof RXJS.Subject) {
-            const subscription = subject.pipe(RXJS.take(1)).subscribe(listener);
-            this.subscriptions.set(event, subscription);
-        }
-    }
-    stopListening(event) {
-        const subscription = this.subscriptions.get(event);
-        if (subscription) {
-            subscription.unsubscribe();
-            this.subscriptions.delete(event);
-        }
-    }
-    trigger(event, data) {
-        if (!this.subjects.has(event)) {
-            this.subjects.set(event, new RXJS.Subject());
-        }
-        this.subjects.get(event).next(data);
-    }
-    getEventObservable(event) {
-        if (!this.subjects.has(event)) {
-            this.subjects.set(event, new RXJS.Subject());
-        }
-        return this.subjects.get(event);
-    }
+//#endregion
+//#region src/regex.ts
+/**
+* [Base64](https://en.wikipedia.org/wiki/Base64) regex.
+*/
+const BASE64_REGEX = /^(?:[\da-z+/]{4})*(?:[\da-z+/]{2}==|[\da-z+/]{3}=)?$/iu;
+/**
+* [BIC](https://en.wikipedia.org/wiki/ISO_9362) regex.
+*/
+const BIC_REGEX = /^[A-Z]{6}(?!00)[\dA-Z]{2}(?:[\dA-Z]{3})?$/u;
+/**
+* [Cuid2](https://github.com/paralleldrive/cuid2) regex.
+*/
+const CUID2_REGEX = /^[a-z][\da-z]*$/u;
+/**
+* [Decimal](https://en.wikipedia.org/wiki/Decimal) regex.
+*/
+const DECIMAL_REGEX = /^[+-]?(?:\d*\.)?\d+$/u;
+/**
+* [Digits](https://en.wikipedia.org/wiki/Numerical_digit) regex.
+*/
+const DIGITS_REGEX = /^\d+$/u;
+/**
+* [Domain name](https://en.wikipedia.org/wiki/Domain_name) regex.
+*
+* Hint: We decided against the `i` flag for better JSON Schema compatibility.
+* ASCII-only validation. Internationalized domain names (IDNs) are not
+* supported, including Punycode-encoded labels.
+*/
+const DOMAIN_REGEX = /^(?=.{1,253}$)(?:(?![Xx][Nn]--)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/u;
+/**
+* [Email address](https://en.wikipedia.org/wiki/Email_address) regex.
+*/
+const EMAIL_REGEX = /^[\w+-]+(?:\.[\w+-]+)*@[\da-z]+(?:[.-][\da-z]+)*\.[a-z]{2,}$/iu;
+/**
+* Emoji regex from [emoji-regex-xs](https://github.com/slevithan/emoji-regex-xs) v1.0.0 (MIT license).
+*
+* Hint: We decided against the newer `/^\p{RGI_Emoji}+$/v` regex because it is
+* not supported in older runtimes and does not match all emoji.
+*/
+const EMOJI_REGEX = /^(?:[\u{1F1E6}-\u{1F1FF}]{2}|\u{1F3F4}[\u{E0061}-\u{E007A}]{2}[\u{E0030}-\u{E0039}\u{E0061}-\u{E007A}]{1,3}\u{E007F}|(?:\p{Emoji}\uFE0F\u20E3?|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?|(?![\p{Emoji_Modifier_Base}\u{1F1E6}-\u{1F1FF}])\p{Emoji_Presentation})(?:\u200D(?:\p{Emoji}\uFE0F\u20E3?|\p{Emoji_Modifier_Base}\p{Emoji_Modifier}?|(?![\p{Emoji_Modifier_Base}\u{1F1E6}-\u{1F1FF}])\p{Emoji_Presentation}))*)+$/u;
+/**
+* [Hexadecimal](https://en.wikipedia.org/wiki/Hexadecimal) regex.
+*
+* Hint: We decided against the `i` flag for better JSON Schema compatibility.
+*/
+const HEXADECIMAL_REGEX = /^(?:0[hx])?[\da-fA-F]+$/u;
+/**
+* [Hex color](https://en.wikipedia.org/wiki/Web_colors#Hex_triplet) regex.
+*
+* Hint: We decided against the `i` flag for better JSON Schema compatibility.
+*/
+const HEX_COLOR_REGEX = /^#(?:[\da-fA-F]{3,4}|[\da-fA-F]{6}|[\da-fA-F]{8})$/u;
+/**
+* [IMEI](https://en.wikipedia.org/wiki/International_Mobile_Equipment_Identity) regex.
+*/
+const IMEI_REGEX = /^\d{15}$|^\d{2}-\d{6}-\d{6}-\d$/u;
+/**
+* [IPv4](https://en.wikipedia.org/wiki/IPv4) regex.
+*/
+const IPV4_REGEX = /^(?:(?:[1-9]|1\d|2[0-4])?\d|25[0-5])(?:\.(?:(?:[1-9]|1\d|2[0-4])?\d|25[0-5])){3}$/u;
+/**
+* [IPv6](https://en.wikipedia.org/wiki/IPv6) regex.
+*/
+const IPV6_REGEX = /^(?:(?:[\da-f]{1,4}:){7}[\da-f]{1,4}|(?:[\da-f]{1,4}:){1,7}:|(?:[\da-f]{1,4}:){1,6}:[\da-f]{1,4}|(?:[\da-f]{1,4}:){1,5}(?::[\da-f]{1,4}){1,2}|(?:[\da-f]{1,4}:){1,4}(?::[\da-f]{1,4}){1,3}|(?:[\da-f]{1,4}:){1,3}(?::[\da-f]{1,4}){1,4}|(?:[\da-f]{1,4}:){1,2}(?::[\da-f]{1,4}){1,5}|[\da-f]{1,4}:(?::[\da-f]{1,4}){1,6}|:(?:(?::[\da-f]{1,4}){1,7}|:)|fe80:(?::[\da-f]{0,4}){0,4}%[\da-z]+|::(?:f{4}(?::0{1,4})?:)?(?:(?:25[0-5]|(?:2[0-4]|1?\d)?\d)\.){3}(?:25[0-5]|(?:2[0-4]|1?\d)?\d)|(?:[\da-f]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1?\d)?\d)\.){3}(?:25[0-5]|(?:2[0-4]|1?\d)?\d))$/iu;
+/**
+* [IP](https://en.wikipedia.org/wiki/IP_address) regex.
+*/
+const IP_REGEX = /^(?:(?:[1-9]|1\d|2[0-4])?\d|25[0-5])(?:\.(?:(?:[1-9]|1\d|2[0-4])?\d|25[0-5])){3}$|^(?:(?:[\da-f]{1,4}:){7}[\da-f]{1,4}|(?:[\da-f]{1,4}:){1,7}:|(?:[\da-f]{1,4}:){1,6}:[\da-f]{1,4}|(?:[\da-f]{1,4}:){1,5}(?::[\da-f]{1,4}){1,2}|(?:[\da-f]{1,4}:){1,4}(?::[\da-f]{1,4}){1,3}|(?:[\da-f]{1,4}:){1,3}(?::[\da-f]{1,4}){1,4}|(?:[\da-f]{1,4}:){1,2}(?::[\da-f]{1,4}){1,5}|[\da-f]{1,4}:(?::[\da-f]{1,4}){1,6}|:(?:(?::[\da-f]{1,4}){1,7}|:)|fe80:(?::[\da-f]{0,4}){0,4}%[\da-z]+|::(?:f{4}(?::0{1,4})?:)?(?:(?:25[0-5]|(?:2[0-4]|1?\d)?\d)\.){3}(?:25[0-5]|(?:2[0-4]|1?\d)?\d)|(?:[\da-f]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1?\d)?\d)\.){3}(?:25[0-5]|(?:2[0-4]|1?\d)?\d))$/iu;
+/**
+* [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) date regex.
+*/
+const ISO_DATE_REGEX = /^\d{4}-(?:0[1-9]|1[0-2])-(?:[12]\d|0[1-9]|3[01])$/u;
+/**
+* [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) date-time regex.
+*/
+const ISO_DATE_TIME_REGEX = /^\d{4}-(?:0[1-9]|1[0-2])-(?:[12]\d|0[1-9]|3[01])[T ](?:0\d|1\d|2[0-3]):[0-5]\d$/u;
+/**
+* [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) time regex.
+*/
+const ISO_TIME_REGEX = /^(?:0\d|1\d|2[0-3]):[0-5]\d$/u;
+/**
+* [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) time with seconds regex.
+*/
+const ISO_TIME_SECOND_REGEX = /^(?:0\d|1\d|2[0-3])(?::[0-5]\d){2}$/u;
+/**
+* [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) timestamp regex. Allows a
+* space as a date/time separator and an optional space before the UTC offset.
+*/
+const ISO_TIMESTAMP_REGEX = /^\d{4}-(?:0[1-9]|1[0-2])-(?:[12]\d|0[1-9]|3[01])[T ](?:0\d|1\d|2[0-3])(?::[0-5]\d){2}(?:\.\d{1,9})?(?:Z| ?[+-](?:0\d|1\d|2[0-3])(?::?[0-5]\d)?)$/u;
+/**
+* [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601) week regex.
+*/
+const ISO_WEEK_REGEX = /^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$/u;
+/**
+* [JWS compact serialization](https://datatracker.ietf.org/doc/html/rfc7515#section-3.1)
+* regex.
+*
+* Hint: Empty payload and signature segments are allowed because the
+* Base64URL-encoded representation of an empty octet sequence is an empty
+* string.
+*/
+const JWS_COMPACT_REGEX = /^(?:[\w-]{2,3}|(?:[\w-]{4})+(?:[\w-]{2,3})?)\.(?:[\w-]{2,3}|(?:[\w-]{4})+(?:[\w-]{2,3})?)?\.(?:[\w-]{2,3}|(?:[\w-]{4})+(?:[\w-]{2,3})?)?$/u;
+/**
+* [ISRC](https://en.wikipedia.org/wiki/International_Standard_Recording_Code) regex.
+*/
+const ISRC_REGEX = /^(?:[A-Z]{2}[A-Z\d]{3}\d{7}|[A-Z]{2}-[A-Z\d]{3}-\d{2}-\d{5})$/u;
+/**
+* [MAC](https://en.wikipedia.org/wiki/MAC_address) 48 bit regex.
+*
+* Hint: We decided against the `i` flag for better JSON Schema compatibility.
+*/
+const MAC48_REGEX = /^(?:[\da-fA-F]{2}:){5}[\da-fA-F]{2}$|^(?:[\da-fA-F]{2}-){5}[\da-fA-F]{2}$|^(?:[\da-fA-F]{4}\.){2}[\da-fA-F]{4}$/u;
+/**
+* [MAC](https://en.wikipedia.org/wiki/MAC_address) 64 bit regex.
+*
+* Hint: We decided against the `i` flag for better JSON Schema compatibility.
+*/
+const MAC64_REGEX = /^(?:[\da-fA-F]{2}:){7}[\da-fA-F]{2}$|^(?:[\da-fA-F]{2}-){7}[\da-fA-F]{2}$|^(?:[\da-fA-F]{4}\.){3}[\da-fA-F]{4}$|^(?:[\da-fA-F]{4}:){3}[\da-fA-F]{4}$/u;
+/**
+* [MAC](https://en.wikipedia.org/wiki/MAC_address) regex.
+*
+* Hint: We decided against the `i` flag for better JSON Schema compatibility.
+*/
+const MAC_REGEX = /^(?:[\da-fA-F]{2}:){5}[\da-fA-F]{2}$|^(?:[\da-fA-F]{2}-){5}[\da-fA-F]{2}$|^(?:[\da-fA-F]{4}\.){2}[\da-fA-F]{4}$|^(?:[\da-fA-F]{2}:){7}[\da-fA-F]{2}$|^(?:[\da-fA-F]{2}-){7}[\da-fA-F]{2}$|^(?:[\da-fA-F]{4}\.){3}[\da-fA-F]{4}$|^(?:[\da-fA-F]{4}:){3}[\da-fA-F]{4}$/u;
+/**
+* [Nano ID](https://github.com/ai/nanoid) regex.
+*/
+const NANO_ID_REGEX = /^[\w-]+$/u;
+/**
+* [Octal](https://en.wikipedia.org/wiki/Octal) regex.
+*/
+const OCTAL_REGEX = /^(?:0o)?[0-7]+$/u;
+/**
+* [RFC 5322 email address](https://datatracker.ietf.org/doc/html/rfc5322#section-3.4.1) regex.
+*
+* Hint: This regex was taken from the [HTML Living Standard Specification](https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address) and does not perfectly represent RFC 5322.
+*/
+const RFC_EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+/**
+* [Slug](https://en.wikipedia.org/wiki/Clean_URL#Slug) regex.
+*/
+const SLUG_REGEX = /^[\da-z]+(?:[-_][\da-z]+)*$/u;
+/**
+* [ULID](https://github.com/ulid/spec) regex.
+*
+* Hint: We decided against the `i` flag for better JSON Schema compatibility.
+*/
+const ULID_REGEX = /^[\da-hjkmnp-tv-zA-HJKMNP-TV-Z]{26}$/u;
+/**
+* [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier) regex.
+*/
+const UUID_REGEX = /^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/iu;
+
+//#endregion
+//#region src/actions/base64/base64.ts
+/* @__NO_SIDE_EFFECTS__ */
+function base64(message$1) {
+	return {
+		kind: "validation",
+		type: "base64",
+		reference: base64,
+		async: false,
+		expects: null,
+		requirement: BASE64_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "Base64", dataset, config$1);
+			return dataset;
+		}
+	};
 }
-class TestEvent extends EventTrigger {
+
+//#endregion
+//#region src/actions/bic/bic.ts
+/* @__NO_SIDE_EFFECTS__ */
+function bic(message$1) {
+	return {
+		kind: "validation",
+		type: "bic",
+		reference: bic,
+		async: false,
+		expects: null,
+		requirement: BIC_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "BIC", dataset, config$1);
+			return dataset;
+		}
+	};
 }
-const testEvent = new TestEvent();
-testEvent.on("event1", (message) => {
-    console.log(`Received: [idea ${message.idea}] [num ${message.num}] [isFinite ${message.isFinite}]`);
+
+//#endregion
+//#region src/actions/brand/brand.ts
+/**
+* Creates a brand transformation action.
+*
+* @param name The brand name.
+*
+* @returns A brand action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function brand(name) {
+	return {
+		kind: "transformation",
+		type: "brand",
+		reference: brand,
+		async: false,
+		name,
+		"~run"(dataset) {
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/bytes/bytes.ts
+/* @__NO_SIDE_EFFECTS__ */
+function bytes(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "bytes",
+		reference: bytes,
+		async: false,
+		expects: `${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed) {
+				const length$1 = /* @__PURE__ */ _getByteCount(dataset.value);
+				if (length$1 !== this.requirement) _addIssue(this, "bytes", dataset, config$1, { received: `${length$1}` });
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/check/check.ts
+/* @__NO_SIDE_EFFECTS__ */
+function check(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "check",
+		reference: check,
+		async: false,
+		expects: null,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "input", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/check/checkAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function checkAsync(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "check",
+		reference: checkAsync,
+		async: true,
+		expects: null,
+		requirement,
+		message: message$1,
+		async "~run"(dataset, config$1) {
+			if (dataset.typed && !await this.requirement(dataset.value)) _addIssue(this, "input", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/checkItems/checkItems.ts
+/* @__NO_SIDE_EFFECTS__ */
+function checkItems(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "check_items",
+		reference: checkItems,
+		async: false,
+		expects: null,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed) for (let index = 0; index < dataset.value.length; index++) {
+				const item = dataset.value[index];
+				if (!this.requirement(item, index, dataset.value)) _addIssue(this, "item", dataset, config$1, {
+					input: item,
+					path: [{
+						type: "array",
+						origin: "value",
+						input: dataset.value,
+						key: index,
+						value: item
+					}]
+				});
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/checkItems/checkItemsAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function checkItemsAsync(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "check_items",
+		reference: checkItemsAsync,
+		async: true,
+		expects: null,
+		requirement,
+		message: message$1,
+		async "~run"(dataset, config$1) {
+			if (dataset.typed) {
+				const requirementResults = await Promise.all(dataset.value.map(this.requirement));
+				for (let index = 0; index < dataset.value.length; index++) if (!requirementResults[index]) {
+					const item = dataset.value[index];
+					_addIssue(this, "item", dataset, config$1, {
+						input: item,
+						path: [{
+							type: "array",
+							origin: "value",
+							input: dataset.value,
+							key: index,
+							value: item
+						}]
+					});
+				}
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/creditCard/creditCard.ts
+/**
+* Credit card regex.
+*/
+const CREDIT_CARD_REGEX = /^(?:\d{13,19}|\d{4}(?: \d{3,6}){2,4}|\d{4}(?:-\d{3,6}){2,4})$/u;
+/**
+* Sanitize regex.
+*/
+const SANITIZE_REGEX = /[- ]/gu;
+/**
+* Provider regex list.
+*/
+const PROVIDER_REGEX_LIST = [
+	/^3[47]\d{13}$/u,
+	/^3(?:0[0-5]|[68]\d)\d{11,13}$/u,
+	/^6(?:011|5\d{2})\d{12,15}$/u,
+	/^(?:2131|1800|35\d{3})\d{11}$/u,
+	/^5[1-5]\d{2}|(?:222\d|22[3-9]\d|2[3-6]\d{2}|27[01]\d|2720)\d{12}$/u,
+	/^(?:6[27]\d{14,17}|81\d{14,17})$/u,
+	/^4\d{12}(?:\d{3,6})?$/u
+];
+/* @__NO_SIDE_EFFECTS__ */
+function creditCard(message$1) {
+	return {
+		kind: "validation",
+		type: "credit_card",
+		reference: creditCard,
+		async: false,
+		expects: null,
+		requirement(input) {
+			let sanitized;
+			return CREDIT_CARD_REGEX.test(input) && (sanitized = input.replace(SANITIZE_REGEX, "")) && PROVIDER_REGEX_LIST.some((regex$1) => regex$1.test(sanitized)) && /* @__PURE__ */ _isLuhnAlgo(sanitized);
+		},
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "credit card", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/cuid2/cuid2.ts
+/* @__NO_SIDE_EFFECTS__ */
+function cuid2(message$1) {
+	return {
+		kind: "validation",
+		type: "cuid2",
+		reference: cuid2,
+		async: false,
+		expects: null,
+		requirement: CUID2_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "Cuid2", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/decimal/decimal.ts
+/* @__NO_SIDE_EFFECTS__ */
+function decimal(message$1) {
+	return {
+		kind: "validation",
+		type: "decimal",
+		reference: decimal,
+		async: false,
+		expects: null,
+		requirement: DECIMAL_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "decimal", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/description/description.ts
+/**
+* Creates a description metadata action.
+*
+* @param description_ The description text.
+*
+* @returns A description action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function description(description_) {
+	return {
+		kind: "metadata",
+		type: "description",
+		reference: description,
+		description: description_
+	};
+}
+
+//#endregion
+//#region src/actions/digits/digits.ts
+/* @__NO_SIDE_EFFECTS__ */
+function digits(message$1) {
+	return {
+		kind: "validation",
+		type: "digits",
+		reference: digits,
+		async: false,
+		expects: null,
+		requirement: DIGITS_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "digits", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/domain/domain.ts
+/* @__NO_SIDE_EFFECTS__ */
+function domain(message$1) {
+	return {
+		kind: "validation",
+		type: "domain",
+		reference: domain,
+		expects: null,
+		async: false,
+		requirement: DOMAIN_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "domain", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/email/email.ts
+/* @__NO_SIDE_EFFECTS__ */
+function email(message$1) {
+	return {
+		kind: "validation",
+		type: "email",
+		reference: email,
+		expects: null,
+		async: false,
+		requirement: EMAIL_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "email", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/emoji/emoji.ts
+/* @__NO_SIDE_EFFECTS__ */
+function emoji(message$1) {
+	return {
+		kind: "validation",
+		type: "emoji",
+		reference: emoji,
+		async: false,
+		expects: null,
+		requirement: EMOJI_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "emoji", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/empty/empty.ts
+/* @__NO_SIDE_EFFECTS__ */
+function empty(message$1) {
+	return {
+		kind: "validation",
+		type: "empty",
+		reference: empty,
+		async: false,
+		expects: "0",
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value.length > 0) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/endsWith/endsWith.ts
+/* @__NO_SIDE_EFFECTS__ */
+function endsWith(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "ends_with",
+		reference: endsWith,
+		async: false,
+		expects: `"${requirement}"`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !dataset.value.endsWith(this.requirement)) _addIssue(this, "end", dataset, config$1, { received: `"${dataset.value.slice(-this.requirement.length)}"` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/entries/entries.ts
+/* @__NO_SIDE_EFFECTS__ */
+function entries(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "entries",
+		reference: entries,
+		async: false,
+		expects: `${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (!dataset.typed) return dataset;
+			const count = Object.keys(dataset.value).length;
+			if (dataset.typed && count !== this.requirement) _addIssue(this, "entries", dataset, config$1, { received: `${count}` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/everyItem/everyItem.ts
+/* @__NO_SIDE_EFFECTS__ */
+function everyItem(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "every_item",
+		reference: everyItem,
+		async: false,
+		expects: null,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !dataset.value.every(this.requirement)) _addIssue(this, "item", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/examples/examples.ts
+/**
+* Creates an examples metadata action.
+*
+* @param examples_ The examples.
+*
+* @returns An examples action.
+*
+* @beta
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function examples(examples_) {
+	return {
+		kind: "metadata",
+		type: "examples",
+		reference: examples,
+		examples: examples_
+	};
+}
+
+//#endregion
+//#region src/actions/excludes/excludes.ts
+/* @__NO_SIDE_EFFECTS__ */
+function excludes(requirement, message$1) {
+	const received = /* @__PURE__ */ _stringify(requirement);
+	return {
+		kind: "validation",
+		type: "excludes",
+		reference: excludes,
+		async: false,
+		expects: `!${received}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value.includes(this.requirement)) _addIssue(this, "content", dataset, config$1, { received });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/filterItems/filterItems.ts
+/* @__NO_SIDE_EFFECTS__ */
+function filterItems(operation) {
+	return {
+		kind: "transformation",
+		type: "filter_items",
+		reference: filterItems,
+		async: false,
+		operation,
+		"~run"(dataset) {
+			dataset.value = dataset.value.filter(this.operation);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/findItem/findItem.ts
+/* @__NO_SIDE_EFFECTS__ */
+function findItem(operation) {
+	return {
+		kind: "transformation",
+		type: "find_item",
+		reference: findItem,
+		async: false,
+		operation,
+		"~run"(dataset) {
+			dataset.value = dataset.value.find(this.operation);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/finite/finite.ts
+/* @__NO_SIDE_EFFECTS__ */
+function finite(message$1) {
+	return {
+		kind: "validation",
+		type: "finite",
+		reference: finite,
+		async: false,
+		expects: null,
+		requirement: Number.isFinite,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "finite", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/flavor/flavor.ts
+/**
+* Creates a flavor transformation action.
+*
+* @param name The flavor name.
+*
+* @returns A flavor action.
+*
+* @beta
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function flavor(name) {
+	return {
+		kind: "transformation",
+		type: "flavor",
+		reference: flavor,
+		async: false,
+		name,
+		"~run"(dataset) {
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/graphemes/graphemes.ts
+/* @__NO_SIDE_EFFECTS__ */
+function graphemes(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "graphemes",
+		reference: graphemes,
+		async: false,
+		expects: `${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed) {
+				const count = /* @__PURE__ */ _getGraphemeCount(dataset.value);
+				if (count !== this.requirement) _addIssue(this, "graphemes", dataset, config$1, { received: `${count}` });
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/gtValue/gtValue.ts
+/* @__NO_SIDE_EFFECTS__ */
+function gtValue(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "gt_value",
+		reference: gtValue,
+		async: false,
+		expects: `>${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !(dataset.value > this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/guard/guard.ts
+/* @__NO_SIDE_EFFECTS__ */
+function guard(requirement, message$1) {
+	return {
+		kind: "transformation",
+		type: "guard",
+		reference: guard,
+		async: false,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement(dataset.value)) {
+				_addIssue(this, "input", dataset, config$1);
+				dataset.typed = false;
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/hash/hash.ts
+/**
+* Hash lengths object.
+*/
+const HASH_LENGTHS = {
+	md4: 32,
+	md5: 32,
+	sha1: 40,
+	sha256: 64,
+	sha384: 96,
+	sha512: 128,
+	ripemd128: 32,
+	ripemd160: 40,
+	tiger128: 32,
+	tiger160: 40,
+	tiger192: 48,
+	crc32: 8,
+	crc32b: 8,
+	adler32: 8
+};
+/* @__NO_SIDE_EFFECTS__ */
+function hash(types, message$1) {
+	return {
+		kind: "validation",
+		type: "hash",
+		reference: hash,
+		expects: null,
+		async: false,
+		requirement: RegExp(types.map((type) => `^[a-fA-F0-9]{${HASH_LENGTHS[type]}}$`).join("|"), "u"),
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "hash", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/hexadecimal/hexadecimal.ts
+/* @__NO_SIDE_EFFECTS__ */
+function hexadecimal(message$1) {
+	return {
+		kind: "validation",
+		type: "hexadecimal",
+		reference: hexadecimal,
+		async: false,
+		expects: null,
+		requirement: HEXADECIMAL_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "hexadecimal", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/hexColor/hexColor.ts
+/* @__NO_SIDE_EFFECTS__ */
+function hexColor(message$1) {
+	return {
+		kind: "validation",
+		type: "hex_color",
+		reference: hexColor,
+		async: false,
+		expects: null,
+		requirement: HEX_COLOR_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "hex color", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/imei/imei.ts
+/* @__NO_SIDE_EFFECTS__ */
+function imei(message$1) {
+	return {
+		kind: "validation",
+		type: "imei",
+		reference: imei,
+		async: false,
+		expects: null,
+		requirement(input) {
+			return IMEI_REGEX.test(input) && /* @__PURE__ */ _isLuhnAlgo(input);
+		},
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "IMEI", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/includes/includes.ts
+/* @__NO_SIDE_EFFECTS__ */
+function includes(requirement, message$1) {
+	const expects = /* @__PURE__ */ _stringify(requirement);
+	return {
+		kind: "validation",
+		type: "includes",
+		reference: includes,
+		async: false,
+		expects,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !dataset.value.includes(this.requirement)) _addIssue(this, "content", dataset, config$1, { received: `!${expects}` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/integer/integer.ts
+/* @__NO_SIDE_EFFECTS__ */
+function integer(message$1) {
+	return {
+		kind: "validation",
+		type: "integer",
+		reference: integer,
+		async: false,
+		expects: null,
+		requirement: Number.isInteger,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "integer", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/ip/ip.ts
+/* @__NO_SIDE_EFFECTS__ */
+function ip(message$1) {
+	return {
+		kind: "validation",
+		type: "ip",
+		reference: ip,
+		async: false,
+		expects: null,
+		requirement: IP_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "IP", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/ipv4/ipv4.ts
+/* @__NO_SIDE_EFFECTS__ */
+function ipv4(message$1) {
+	return {
+		kind: "validation",
+		type: "ipv4",
+		reference: ipv4,
+		async: false,
+		expects: null,
+		requirement: IPV4_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "IPv4", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/ipv6/ipv6.ts
+/* @__NO_SIDE_EFFECTS__ */
+function ipv6(message$1) {
+	return {
+		kind: "validation",
+		type: "ipv6",
+		reference: ipv6,
+		async: false,
+		expects: null,
+		requirement: IPV6_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "IPv6", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/isbn/utils/_isIsbn10.ts
+/**
+* [Validates an ISBN-10](https://en.wikipedia.org/wiki/ISBN#ISBN-10_check_digits).
+*
+* @param input The input value.
+*
+* @returns `true` if the input is a valid ISBN-10, `false` otherwise.
+*
+* @internal
+*/
+function _isIsbn10(input) {
+	const digits$1 = input.split("").map((c) => c === "X" ? 10 : parseInt(c));
+	let sum = 0;
+	for (let i = 0; i < 10; i++) sum += digits$1[i] * (10 - i);
+	return sum % 11 === 0;
+}
+
+//#endregion
+//#region src/actions/isbn/utils/_isIsbn13.ts
+/**
+* [Validates an ISBN-13](https://en.wikipedia.org/wiki/ISBN#ISBN-13_check_digit_calculation).
+*
+* @param input The input value.
+*
+* @returns `true` if the input is a valid ISBN-13, `false` otherwise.
+*
+* @internal
+*/
+function _isIsbn13(input) {
+	const digits$1 = input.split("").map((c) => parseInt(c));
+	let sum = 0;
+	for (let i = 0; i < 13; i++) sum += digits$1[i] * (i % 2 === 0 ? 1 : 3);
+	return sum % 10 === 0;
+}
+
+//#endregion
+//#region src/actions/isbn/isbn.ts
+/**
+* ISBN separator regex.
+*/
+const ISBN_SEPARATOR_REGEX = /[- ]/gu;
+/**
+* ISBN-10 detection regex.
+*/
+const ISBN_10_DETECTION_REGEX = /^\d{9}[\dX]$/u;
+/**
+* ISBN-13 detection regex.
+*/
+const ISBN_13_DETECTION_REGEX = /^\d{13}$/u;
+/* @__NO_SIDE_EFFECTS__ */
+function isbn(message$1) {
+	return {
+		kind: "validation",
+		type: "isbn",
+		reference: isbn,
+		async: false,
+		expects: null,
+		requirement(input) {
+			const replacedInput = input.replace(ISBN_SEPARATOR_REGEX, "");
+			if (ISBN_10_DETECTION_REGEX.test(replacedInput)) return _isIsbn10(replacedInput);
+			else if (ISBN_13_DETECTION_REGEX.test(replacedInput)) return _isIsbn13(replacedInput);
+			return false;
+		},
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "ISBN", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/isrc/isrc.ts
+/* @__NO_SIDE_EFFECTS__ */
+function isrc(message$1) {
+	return {
+		kind: "validation",
+		type: "isrc",
+		reference: isrc,
+		async: false,
+		expects: null,
+		requirement: ISRC_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "ISRC", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/isoDate/isoDate.ts
+/* @__NO_SIDE_EFFECTS__ */
+function isoDate(message$1) {
+	return {
+		kind: "validation",
+		type: "iso_date",
+		reference: isoDate,
+		async: false,
+		expects: null,
+		requirement: ISO_DATE_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "date", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/isoDateTime/isoDateTime.ts
+/* @__NO_SIDE_EFFECTS__ */
+function isoDateTime(message$1) {
+	return {
+		kind: "validation",
+		type: "iso_date_time",
+		reference: isoDateTime,
+		async: false,
+		expects: null,
+		requirement: ISO_DATE_TIME_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "date-time", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/isoTime/isoTime.ts
+/* @__NO_SIDE_EFFECTS__ */
+function isoTime(message$1) {
+	return {
+		kind: "validation",
+		type: "iso_time",
+		reference: isoTime,
+		async: false,
+		expects: null,
+		requirement: ISO_TIME_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "time", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/isoTimeSecond/isoTimeSecond.ts
+/* @__NO_SIDE_EFFECTS__ */
+function isoTimeSecond(message$1) {
+	return {
+		kind: "validation",
+		type: "iso_time_second",
+		reference: isoTimeSecond,
+		async: false,
+		expects: null,
+		requirement: ISO_TIME_SECOND_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "time-second", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/isoTimestamp/isoTimestamp.ts
+/* @__NO_SIDE_EFFECTS__ */
+function isoTimestamp(message$1) {
+	return {
+		kind: "validation",
+		type: "iso_timestamp",
+		reference: isoTimestamp,
+		async: false,
+		expects: null,
+		requirement: ISO_TIMESTAMP_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "timestamp", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/isoWeek/isoWeek.ts
+/* @__NO_SIDE_EFFECTS__ */
+function isoWeek(message$1) {
+	return {
+		kind: "validation",
+		type: "iso_week",
+		reference: isoWeek,
+		async: false,
+		expects: null,
+		requirement: ISO_WEEK_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "week", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/jwsCompact/jwsCompact.ts
+/* @__NO_SIDE_EFFECTS__ */
+function jwsCompact(message$1) {
+	return {
+		kind: "validation",
+		type: "jws_compact",
+		reference: jwsCompact,
+		async: false,
+		expects: null,
+		requirement: JWS_COMPACT_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "JWS compact", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/length/length.ts
+/* @__NO_SIDE_EFFECTS__ */
+function length(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "length",
+		reference: length,
+		async: false,
+		expects: `${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value.length !== this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/ltValue/ltValue.ts
+/* @__NO_SIDE_EFFECTS__ */
+function ltValue(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "lt_value",
+		reference: ltValue,
+		async: false,
+		expects: `<${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !(dataset.value < this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/mac/mac.ts
+/* @__NO_SIDE_EFFECTS__ */
+function mac(message$1) {
+	return {
+		kind: "validation",
+		type: "mac",
+		reference: mac,
+		async: false,
+		expects: null,
+		requirement: MAC_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "MAC", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/mac48/mac48.ts
+/* @__NO_SIDE_EFFECTS__ */
+function mac48(message$1) {
+	return {
+		kind: "validation",
+		type: "mac48",
+		reference: mac48,
+		async: false,
+		expects: null,
+		requirement: MAC48_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "48-bit MAC", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/mac64/mac64.ts
+/* @__NO_SIDE_EFFECTS__ */
+function mac64(message$1) {
+	return {
+		kind: "validation",
+		type: "mac64",
+		reference: mac64,
+		async: false,
+		expects: null,
+		requirement: MAC64_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "64-bit MAC", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/mapItems/mapItems.ts
+/* @__NO_SIDE_EFFECTS__ */
+function mapItems(operation) {
+	return {
+		kind: "transformation",
+		type: "map_items",
+		reference: mapItems,
+		async: false,
+		operation,
+		"~run"(dataset) {
+			dataset.value = dataset.value.map(this.operation);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/maxBytes/maxBytes.ts
+/* @__NO_SIDE_EFFECTS__ */
+function maxBytes(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "max_bytes",
+		reference: maxBytes,
+		async: false,
+		expects: `<=${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed) {
+				const length$1 = /* @__PURE__ */ _getByteCount(dataset.value);
+				if (length$1 > this.requirement) _addIssue(this, "bytes", dataset, config$1, { received: `${length$1}` });
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/maxEntries/maxEntries.ts
+/* @__NO_SIDE_EFFECTS__ */
+function maxEntries(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "max_entries",
+		reference: maxEntries,
+		async: false,
+		expects: `<=${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (!dataset.typed) return dataset;
+			const count = Object.keys(dataset.value).length;
+			if (dataset.typed && count > this.requirement) _addIssue(this, "entries", dataset, config$1, { received: `${count}` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/maxGraphemes/maxGraphemes.ts
+/* @__NO_SIDE_EFFECTS__ */
+function maxGraphemes(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "max_graphemes",
+		reference: maxGraphemes,
+		async: false,
+		expects: `<=${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed) {
+				const count = /* @__PURE__ */ _getGraphemeCount(dataset.value);
+				if (count > this.requirement) _addIssue(this, "graphemes", dataset, config$1, { received: `${count}` });
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/maxLength/maxLength.ts
+/* @__NO_SIDE_EFFECTS__ */
+function maxLength(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "max_length",
+		reference: maxLength,
+		async: false,
+		expects: `<=${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value.length > this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/maxSize/maxSize.ts
+/* @__NO_SIDE_EFFECTS__ */
+function maxSize(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "max_size",
+		reference: maxSize,
+		async: false,
+		expects: `<=${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value.size > this.requirement) _addIssue(this, "size", dataset, config$1, { received: `${dataset.value.size}` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/maxValue/maxValue.ts
+/* @__NO_SIDE_EFFECTS__ */
+function maxValue(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "max_value",
+		reference: maxValue,
+		async: false,
+		expects: `<=${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !(dataset.value <= this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/maxWords/maxWords.ts
+/* @__NO_SIDE_EFFECTS__ */
+function maxWords(locales, requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "max_words",
+		reference: maxWords,
+		async: false,
+		expects: `<=${requirement}`,
+		locales,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed) {
+				const count = /* @__PURE__ */ _getWordCount(this.locales, dataset.value);
+				if (count > this.requirement) _addIssue(this, "words", dataset, config$1, { received: `${count}` });
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/metadata/metadata.ts
+/**
+* Creates a custom metadata action.
+*
+* @param metadata_ The metadata object.
+*
+* @returns A metadata action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function metadata(metadata_) {
+	return {
+		kind: "metadata",
+		type: "metadata",
+		reference: metadata,
+		metadata: metadata_
+	};
+}
+
+//#endregion
+//#region src/actions/mimeType/mimeType.ts
+/* @__NO_SIDE_EFFECTS__ */
+function mimeType(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "mime_type",
+		reference: mimeType,
+		async: false,
+		expects: /* @__PURE__ */ _joinExpects(requirement.map((option) => `"${option}"`), "|"),
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.includes(dataset.value.type)) _addIssue(this, "MIME type", dataset, config$1, { received: `"${dataset.value.type}"` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/minBytes/minBytes.ts
+/* @__NO_SIDE_EFFECTS__ */
+function minBytes(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "min_bytes",
+		reference: minBytes,
+		async: false,
+		expects: `>=${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed) {
+				const length$1 = /* @__PURE__ */ _getByteCount(dataset.value);
+				if (length$1 < this.requirement) _addIssue(this, "bytes", dataset, config$1, { received: `${length$1}` });
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/minEntries/minEntries.ts
+/* @__NO_SIDE_EFFECTS__ */
+function minEntries(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "min_entries",
+		reference: minEntries,
+		async: false,
+		expects: `>=${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (!dataset.typed) return dataset;
+			const count = Object.keys(dataset.value).length;
+			if (dataset.typed && count < this.requirement) _addIssue(this, "entries", dataset, config$1, { received: `${count}` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/minGraphemes/minGraphemes.ts
+/* @__NO_SIDE_EFFECTS__ */
+function minGraphemes(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "min_graphemes",
+		reference: minGraphemes,
+		async: false,
+		expects: `>=${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed) {
+				const count = /* @__PURE__ */ _getGraphemeCount(dataset.value);
+				if (count < this.requirement) _addIssue(this, "graphemes", dataset, config$1, { received: `${count}` });
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/minLength/minLength.ts
+/* @__NO_SIDE_EFFECTS__ */
+function minLength(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "min_length",
+		reference: minLength,
+		async: false,
+		expects: `>=${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value.length < this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/minSize/minSize.ts
+/* @__NO_SIDE_EFFECTS__ */
+function minSize(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "min_size",
+		reference: minSize,
+		async: false,
+		expects: `>=${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value.size < this.requirement) _addIssue(this, "size", dataset, config$1, { received: `${dataset.value.size}` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/minValue/minValue.ts
+/* @__NO_SIDE_EFFECTS__ */
+function minValue(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "min_value",
+		reference: minValue,
+		async: false,
+		expects: `>=${requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement)}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !(dataset.value >= this.requirement)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/minWords/minWords.ts
+/* @__NO_SIDE_EFFECTS__ */
+function minWords(locales, requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "min_words",
+		reference: minWords,
+		async: false,
+		expects: `>=${requirement}`,
+		locales,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed) {
+				const count = /* @__PURE__ */ _getWordCount(this.locales, dataset.value);
+				if (count < this.requirement) _addIssue(this, "words", dataset, config$1, { received: `${count}` });
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/multipleOf/multipleOf.ts
+/* @__NO_SIDE_EFFECTS__ */
+function multipleOf(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "multiple_of",
+		reference: multipleOf,
+		async: false,
+		expects: `%${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value % this.requirement != 0) _addIssue(this, "multiple", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/nanoid/nanoid.ts
+/* @__NO_SIDE_EFFECTS__ */
+function nanoid(message$1) {
+	return {
+		kind: "validation",
+		type: "nanoid",
+		reference: nanoid,
+		async: false,
+		expects: null,
+		requirement: NANO_ID_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "Nano ID", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/nonEmpty/nonEmpty.ts
+/* @__NO_SIDE_EFFECTS__ */
+function nonEmpty(message$1) {
+	return {
+		kind: "validation",
+		type: "non_empty",
+		reference: nonEmpty,
+		async: false,
+		expects: "!0",
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value.length === 0) _addIssue(this, "length", dataset, config$1, { received: "0" });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/normalize/normalize.ts
+/* @__NO_SIDE_EFFECTS__ */
+function normalize(form) {
+	return {
+		kind: "transformation",
+		type: "normalize",
+		reference: normalize,
+		async: false,
+		form,
+		"~run"(dataset) {
+			dataset.value = dataset.value.normalize(this.form);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/notBytes/notBytes.ts
+/* @__NO_SIDE_EFFECTS__ */
+function notBytes(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "not_bytes",
+		reference: notBytes,
+		async: false,
+		expects: `!${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed) {
+				const length$1 = /* @__PURE__ */ _getByteCount(dataset.value);
+				if (length$1 === this.requirement) _addIssue(this, "bytes", dataset, config$1, { received: `${length$1}` });
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/notEntries/notEntries.ts
+/* @__NO_SIDE_EFFECTS__ */
+function notEntries(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "not_entries",
+		reference: notEntries,
+		async: false,
+		expects: `!${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (!dataset.typed) return dataset;
+			const count = Object.keys(dataset.value).length;
+			if (dataset.typed && count === this.requirement) _addIssue(this, "entries", dataset, config$1, { received: `${count}` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/notGraphemes/notGraphemes.ts
+/* @__NO_SIDE_EFFECTS__ */
+function notGraphemes(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "not_graphemes",
+		reference: notGraphemes,
+		async: false,
+		expects: `!${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed) {
+				const count = /* @__PURE__ */ _getGraphemeCount(dataset.value);
+				if (count === this.requirement) _addIssue(this, "graphemes", dataset, config$1, { received: `${count}` });
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/notLength/notLength.ts
+/* @__NO_SIDE_EFFECTS__ */
+function notLength(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "not_length",
+		reference: notLength,
+		async: false,
+		expects: `!${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value.length === this.requirement) _addIssue(this, "length", dataset, config$1, { received: `${dataset.value.length}` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/notSize/notSize.ts
+/* @__NO_SIDE_EFFECTS__ */
+function notSize(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "not_size",
+		reference: notSize,
+		async: false,
+		expects: `!${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value.size === this.requirement) _addIssue(this, "size", dataset, config$1, { received: `${dataset.value.size}` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/notValue/notValue.ts
+/* @__NO_SIDE_EFFECTS__ */
+function notValue(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "not_value",
+		reference: notValue,
+		async: false,
+		expects: requirement instanceof Date ? `!${requirement.toJSON()}` : `!${/* @__PURE__ */ _stringify(requirement)}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && this.requirement <= dataset.value && this.requirement >= dataset.value) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/notValues/notValues.ts
+/* @__NO_SIDE_EFFECTS__ */
+function notValues(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "not_values",
+		reference: notValues,
+		async: false,
+		expects: `!${/* @__PURE__ */ _joinExpects(requirement.map((value$1) => value$1 instanceof Date ? value$1.toJSON() : /* @__PURE__ */ _stringify(value$1)), "|")}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && this.requirement.some((value$1) => value$1 <= dataset.value && value$1 >= dataset.value)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/notWords/notWords.ts
+/* @__NO_SIDE_EFFECTS__ */
+function notWords(locales, requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "not_words",
+		reference: notWords,
+		async: false,
+		expects: `!${requirement}`,
+		locales,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed) {
+				const count = /* @__PURE__ */ _getWordCount(this.locales, dataset.value);
+				if (count === this.requirement) _addIssue(this, "words", dataset, config$1, { received: `${count}` });
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/octal/octal.ts
+/* @__NO_SIDE_EFFECTS__ */
+function octal(message$1) {
+	return {
+		kind: "validation",
+		type: "octal",
+		reference: octal,
+		async: false,
+		expects: null,
+		requirement: OCTAL_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "octal", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/parseBoolean/parseBoolean.ts
+const TRUTHY = [
+	true,
+	1,
+	"true",
+	"1",
+	"yes",
+	"y",
+	"on",
+	"enabled"
+];
+const FALSY = [
+	false,
+	0,
+	"false",
+	"0",
+	"no",
+	"n",
+	"off",
+	"disabled"
+];
+/* @__NO_SIDE_EFFECTS__ */
+function parseBoolean(config$1, message$1) {
+	const normalize$1 = (v) => typeof v === "string" ? v.toLowerCase() : v;
+	const truthyRaw = config$1?.truthy ?? TRUTHY;
+	const falsyRaw = config$1?.falsy ?? FALSY;
+	const truthy = config$1?.truthy ? config$1.truthy.map(normalize$1) : TRUTHY;
+	const falsy = config$1?.falsy ? config$1.falsy.map(normalize$1) : FALSY;
+	return {
+		kind: "transformation",
+		type: "parse_boolean",
+		reference: parseBoolean,
+		expects: /* @__PURE__ */ _joinExpects([...truthyRaw, ...falsyRaw].map(_stringify), "|"),
+		config: config$1,
+		message: message$1,
+		async: false,
+		"~run"(dataset, config$2) {
+			const input = normalize$1(dataset.value);
+			if (truthy.includes(input)) dataset.value = true;
+			else if (falsy.includes(input)) dataset.value = false;
+			else {
+				_addIssue(this, "boolean", dataset, config$2);
+				dataset.typed = false;
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/parseJson/parseJson.ts
+/* @__NO_SIDE_EFFECTS__ */
+function parseJson(config$1, message$1) {
+	return {
+		kind: "transformation",
+		type: "parse_json",
+		reference: parseJson,
+		config: config$1,
+		message: message$1,
+		async: false,
+		"~run"(dataset, config$2) {
+			try {
+				dataset.value = JSON.parse(dataset.value, this.config?.reviver);
+			} catch (error) {
+				if (error instanceof Error) {
+					_addIssue(this, "JSON", dataset, config$2, { received: `"${error.message}"` });
+					dataset.typed = false;
+				} else throw error;
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/partialCheck/utils/_isPartiallyTyped/_isPartiallyTyped.ts
+/**
+* Checks if a dataset is partially typed.
+*
+* @param dataset The dataset to check.
+* @param paths The paths to check.
+*
+* @returns Whether it is partially typed.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _isPartiallyTyped(dataset, paths) {
+	if (dataset.issues) for (const path of paths) for (const issue of dataset.issues) {
+		let typed = false;
+		const bound = Math.min(path.length, issue.path?.length ?? 0);
+		for (let index = 0; index < bound; index++) if (path[index] !== issue.path[index].key && (path[index] !== "$" || issue.path[index].type !== "array")) {
+			typed = true;
+			break;
+		}
+		if (!typed) return false;
+	}
+	return true;
+}
+
+//#endregion
+//#region src/actions/partialCheck/partialCheck.ts
+/* @__NO_SIDE_EFFECTS__ */
+function partialCheck(paths, requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "partial_check",
+		reference: partialCheck,
+		async: false,
+		expects: null,
+		paths,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if ((dataset.typed || /* @__PURE__ */ _isPartiallyTyped(dataset, paths)) && !this.requirement(dataset.value)) _addIssue(this, "input", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/partialCheck/partialCheckAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function partialCheckAsync(paths, requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "partial_check",
+		reference: partialCheckAsync,
+		async: true,
+		expects: null,
+		paths,
+		requirement,
+		message: message$1,
+		async "~run"(dataset, config$1) {
+			if ((dataset.typed || /* @__PURE__ */ _isPartiallyTyped(dataset, paths)) && !await this.requirement(dataset.value)) _addIssue(this, "input", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/rawCheck/rawCheck.ts
+/**
+* Creates a raw check validation action.
+*
+* @param action The validation action.
+*
+* @returns A raw check action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function rawCheck(action) {
+	return {
+		kind: "validation",
+		type: "raw_check",
+		reference: rawCheck,
+		async: false,
+		expects: null,
+		"~run"(dataset, config$1) {
+			action({
+				dataset,
+				config: config$1,
+				addIssue: (info) => _addIssue(this, info?.label ?? "input", dataset, config$1, info)
+			});
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/rawCheck/rawCheckAsync.ts
+/**
+* Creates a raw check validation action.
+*
+* @param action The validation action.
+*
+* @returns A raw check action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function rawCheckAsync(action) {
+	return {
+		kind: "validation",
+		type: "raw_check",
+		reference: rawCheckAsync,
+		async: true,
+		expects: null,
+		async "~run"(dataset, config$1) {
+			await action({
+				dataset,
+				config: config$1,
+				addIssue: (info) => _addIssue(this, info?.label ?? "input", dataset, config$1, info)
+			});
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/rawTransform/rawTransform.ts
+/**
+* Creates a raw transformation action.
+*
+* @param action The transformation action.
+*
+* @returns A raw transform action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function rawTransform(action) {
+	return {
+		kind: "transformation",
+		type: "raw_transform",
+		reference: rawTransform,
+		async: false,
+		"~run"(dataset, config$1) {
+			const output = action({
+				dataset,
+				config: config$1,
+				addIssue: (info) => _addIssue(this, info?.label ?? "input", dataset, config$1, info),
+				NEVER: null
+			});
+			if (dataset.issues) dataset.typed = false;
+			else dataset.value = output;
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/rawTransform/rawTransformAsync.ts
+/**
+* Creates a raw transformation action.
+*
+* @param action The transformation action.
+*
+* @returns A raw transform action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function rawTransformAsync(action) {
+	return {
+		kind: "transformation",
+		type: "raw_transform",
+		reference: rawTransformAsync,
+		async: true,
+		async "~run"(dataset, config$1) {
+			const output = await action({
+				dataset,
+				config: config$1,
+				addIssue: (info) => _addIssue(this, info?.label ?? "input", dataset, config$1, info),
+				NEVER: null
+			});
+			if (dataset.issues) dataset.typed = false;
+			else dataset.value = output;
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/readonly/readonly.ts
+/* @__NO_SIDE_EFFECTS__ */
+function readonly() {
+	return {
+		kind: "transformation",
+		type: "readonly",
+		reference: readonly,
+		async: false,
+		"~run"(dataset) {
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/reduceItems/reduceItems.ts
+/* @__NO_SIDE_EFFECTS__ */
+function reduceItems(operation, initial) {
+	return {
+		kind: "transformation",
+		type: "reduce_items",
+		reference: reduceItems,
+		async: false,
+		operation,
+		initial,
+		"~run"(dataset) {
+			dataset.value = dataset.value.reduce(this.operation, this.initial);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/regex/regex.ts
+/* @__NO_SIDE_EFFECTS__ */
+function regex(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "regex",
+		reference: regex,
+		async: false,
+		expects: `${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "format", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/returns/returns.ts
+/* @__NO_SIDE_EFFECTS__ */
+function returns(schema) {
+	return {
+		kind: "transformation",
+		type: "returns",
+		reference: returns,
+		async: false,
+		schema,
+		"~run"(dataset, config$1) {
+			const func = dataset.value;
+			dataset.value = (...args_) => {
+				const returnsDataset = this.schema["~run"]({ value: func(...args_) }, config$1);
+				if (returnsDataset.issues) throw new ValiError(returnsDataset.issues);
+				return returnsDataset.value;
+			};
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/returns/returnsAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function returnsAsync(schema) {
+	return {
+		kind: "transformation",
+		type: "returns",
+		reference: returnsAsync,
+		async: false,
+		schema,
+		"~run"(dataset, config$1) {
+			const func = dataset.value;
+			dataset.value = async (...args_) => {
+				const returnsDataset = await this.schema["~run"]({ value: await func(...args_) }, config$1);
+				if (returnsDataset.issues) throw new ValiError(returnsDataset.issues);
+				return returnsDataset.value;
+			};
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/rfcEmail/rfcEmail.ts
+/* @__NO_SIDE_EFFECTS__ */
+function rfcEmail(message$1) {
+	return {
+		kind: "validation",
+		type: "rfc_email",
+		reference: rfcEmail,
+		expects: null,
+		async: false,
+		requirement: RFC_EMAIL_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "email", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/safeInteger/safeInteger.ts
+/* @__NO_SIDE_EFFECTS__ */
+function safeInteger(message$1) {
+	return {
+		kind: "validation",
+		type: "safe_integer",
+		reference: safeInteger,
+		async: false,
+		expects: null,
+		requirement: Number.isSafeInteger,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "safe integer", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/size/size.ts
+/* @__NO_SIDE_EFFECTS__ */
+function size(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "size",
+		reference: size,
+		async: false,
+		expects: `${requirement}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && dataset.value.size !== this.requirement) _addIssue(this, "size", dataset, config$1, { received: `${dataset.value.size}` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/slug/slug.ts
+/* @__NO_SIDE_EFFECTS__ */
+function slug(message$1) {
+	return {
+		kind: "validation",
+		type: "slug",
+		reference: slug,
+		async: false,
+		expects: null,
+		requirement: SLUG_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "slug", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/someItem/someItem.ts
+/* @__NO_SIDE_EFFECTS__ */
+function someItem(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "some_item",
+		reference: someItem,
+		async: false,
+		expects: null,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !dataset.value.some(this.requirement)) _addIssue(this, "item", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/sortItems/sortItems.ts
+/* @__NO_SIDE_EFFECTS__ */
+function sortItems(operation) {
+	return {
+		kind: "transformation",
+		type: "sort_items",
+		reference: sortItems,
+		async: false,
+		operation,
+		"~run"(dataset) {
+			dataset.value = dataset.value.sort(this.operation);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/startsWith/startsWith.ts
+/* @__NO_SIDE_EFFECTS__ */
+function startsWith(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "starts_with",
+		reference: startsWith,
+		async: false,
+		expects: `"${requirement}"`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !dataset.value.startsWith(this.requirement)) _addIssue(this, "start", dataset, config$1, { received: `"${dataset.value.slice(0, this.requirement.length)}"` });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/stringifyJson/stringifyJson.ts
+/* @__NO_SIDE_EFFECTS__ */
+function stringifyJson(config$1, message$1) {
+	return {
+		kind: "transformation",
+		type: "stringify_json",
+		reference: stringifyJson,
+		message: message$1,
+		config: config$1,
+		async: false,
+		"~run"(dataset, config$2) {
+			try {
+				const output = JSON.stringify(dataset.value, this.config?.replacer, this.config?.space);
+				if (output === void 0) {
+					_addIssue(this, "JSON", dataset, config$2);
+					dataset.typed = false;
+				}
+				dataset.value = output;
+			} catch (error) {
+				if (error instanceof Error) {
+					_addIssue(this, "JSON", dataset, config$2, { received: `"${error.message}"` });
+					dataset.typed = false;
+				} else throw error;
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/title/title.ts
+/**
+* Creates a title metadata action.
+*
+* @param title_ The title text.
+*
+* @returns A title action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function title(title_) {
+	return {
+		kind: "metadata",
+		type: "title",
+		reference: title,
+		title: title_
+	};
+}
+
+//#endregion
+//#region src/actions/toBigint/toBigint.ts
+/* @__NO_SIDE_EFFECTS__ */
+function toBigint(message$1) {
+	return {
+		kind: "transformation",
+		type: "to_bigint",
+		reference: toBigint,
+		async: false,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			try {
+				dataset.value = BigInt(dataset.value);
+			} catch {
+				_addIssue(this, "bigint", dataset, config$1);
+				dataset.typed = false;
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/toBoolean/toBoolean.ts
+/**
+* Creates a to boolean transformation action.
+*
+* @returns A to boolean action.
+*
+* @beta
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function toBoolean() {
+	return {
+		kind: "transformation",
+		type: "to_boolean",
+		reference: toBoolean,
+		async: false,
+		"~run"(dataset) {
+			dataset.value = Boolean(dataset.value);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/toDate/toDate.ts
+/* @__NO_SIDE_EFFECTS__ */
+function toDate(message$1) {
+	return {
+		kind: "transformation",
+		type: "to_date",
+		reference: toDate,
+		async: false,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			try {
+				dataset.value = new Date(dataset.value);
+				if (isNaN(dataset.value)) {
+					_addIssue(this, "date", dataset, config$1, { received: "\"Invalid Date\"" });
+					dataset.typed = false;
+				}
+			} catch {
+				_addIssue(this, "date", dataset, config$1);
+				dataset.typed = false;
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/toLowerCase/toLowerCase.ts
+/**
+* Creates a to lower case transformation action.
+*
+* @returns A to lower case action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function toLowerCase() {
+	return {
+		kind: "transformation",
+		type: "to_lower_case",
+		reference: toLowerCase,
+		async: false,
+		"~run"(dataset) {
+			dataset.value = dataset.value.toLowerCase();
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/toMaxValue/toMaxValue.ts
+/**
+* Creates a to max value transformation action.
+*
+* @param requirement The maximum value.
+*
+* @returns A to max value action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function toMaxValue(requirement) {
+	return {
+		kind: "transformation",
+		type: "to_max_value",
+		reference: toMaxValue,
+		async: false,
+		requirement,
+		"~run"(dataset) {
+			dataset.value = dataset.value > this.requirement ? this.requirement : dataset.value;
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/toMinValue/toMinValue.ts
+/**
+* Creates a to min value transformation action.
+*
+* @param requirement The minimum value.
+*
+* @returns A to min value action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function toMinValue(requirement) {
+	return {
+		kind: "transformation",
+		type: "to_min_value",
+		reference: toMinValue,
+		async: false,
+		requirement,
+		"~run"(dataset) {
+			dataset.value = dataset.value < this.requirement ? this.requirement : dataset.value;
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/toNumber/toNumber.ts
+/* @__NO_SIDE_EFFECTS__ */
+function toNumber(message$1) {
+	return {
+		kind: "transformation",
+		type: "to_number",
+		reference: toNumber,
+		async: false,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			try {
+				dataset.value = Number(dataset.value);
+				if (isNaN(dataset.value)) {
+					_addIssue(this, "number", dataset, config$1);
+					dataset.typed = false;
+				}
+			} catch {
+				_addIssue(this, "number", dataset, config$1);
+				dataset.typed = false;
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/toString/toString.ts
+/* @__NO_SIDE_EFFECTS__ */
+function toString(message$1) {
+	return {
+		kind: "transformation",
+		type: "to_string",
+		reference: toString,
+		async: false,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			try {
+				dataset.value = String(dataset.value);
+			} catch {
+				_addIssue(this, "string", dataset, config$1);
+				dataset.typed = false;
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/toUpperCase/toUpperCase.ts
+/**
+* Creates a to upper case transformation action.
+*
+* @returns A to upper case action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function toUpperCase() {
+	return {
+		kind: "transformation",
+		type: "to_upper_case",
+		reference: toUpperCase,
+		async: false,
+		"~run"(dataset) {
+			dataset.value = dataset.value.toUpperCase();
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/transform/transform.ts
+/**
+* Creates a custom transformation action.
+*
+* @param operation The transformation operation.
+*
+* @returns A transform action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function transform(operation) {
+	return {
+		kind: "transformation",
+		type: "transform",
+		reference: transform,
+		async: false,
+		operation,
+		"~run"(dataset) {
+			dataset.value = this.operation(dataset.value);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/transform/transformAsync.ts
+/**
+* Creates a custom transformation action.
+*
+* @param operation The transformation operation.
+*
+* @returns A transform action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function transformAsync(operation) {
+	return {
+		kind: "transformation",
+		type: "transform",
+		reference: transformAsync,
+		async: true,
+		operation,
+		async "~run"(dataset) {
+			dataset.value = await this.operation(dataset.value);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/trim/trim.ts
+/**
+* Creates a trim transformation action.
+*
+* @returns A trim action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function trim() {
+	return {
+		kind: "transformation",
+		type: "trim",
+		reference: trim,
+		async: false,
+		"~run"(dataset) {
+			dataset.value = dataset.value.trim();
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/trimEnd/trimEnd.ts
+/**
+* Creates a trim end transformation action.
+*
+* @returns A trim end action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function trimEnd() {
+	return {
+		kind: "transformation",
+		type: "trim_end",
+		reference: trimEnd,
+		async: false,
+		"~run"(dataset) {
+			dataset.value = dataset.value.trimEnd();
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/trimStart/trimStart.ts
+/**
+* Creates a trim start transformation action.
+*
+* @returns A trim start action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function trimStart() {
+	return {
+		kind: "transformation",
+		type: "trim_start",
+		reference: trimStart,
+		async: false,
+		"~run"(dataset) {
+			dataset.value = dataset.value.trimStart();
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/ulid/ulid.ts
+/* @__NO_SIDE_EFFECTS__ */
+function ulid(message$1) {
+	return {
+		kind: "validation",
+		type: "ulid",
+		reference: ulid,
+		async: false,
+		expects: null,
+		requirement: ULID_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "ULID", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/url/url.ts
+/* @__NO_SIDE_EFFECTS__ */
+function url(message$1) {
+	return {
+		kind: "validation",
+		type: "url",
+		reference: url,
+		async: false,
+		expects: null,
+		requirement(input) {
+			try {
+				new URL(input);
+				return true;
+			} catch {
+				return false;
+			}
+		},
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement(dataset.value)) _addIssue(this, "URL", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/uuid/uuid.ts
+/* @__NO_SIDE_EFFECTS__ */
+function uuid(message$1) {
+	return {
+		kind: "validation",
+		type: "uuid",
+		reference: uuid,
+		async: false,
+		expects: null,
+		requirement: UUID_REGEX,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.test(dataset.value)) _addIssue(this, "UUID", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/value/value.ts
+/* @__NO_SIDE_EFFECTS__ */
+function value(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "value",
+		reference: value,
+		async: false,
+		expects: requirement instanceof Date ? requirement.toJSON() : /* @__PURE__ */ _stringify(requirement),
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !(this.requirement <= dataset.value && this.requirement >= dataset.value)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/values/values.ts
+/* @__NO_SIDE_EFFECTS__ */
+function values(requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "values",
+		reference: values,
+		async: false,
+		expects: `${/* @__PURE__ */ _joinExpects(requirement.map((value$1) => value$1 instanceof Date ? value$1.toJSON() : /* @__PURE__ */ _stringify(value$1)), "|")}`,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed && !this.requirement.some((value$1) => value$1 <= dataset.value && value$1 >= dataset.value)) _addIssue(this, "value", dataset, config$1, { received: dataset.value instanceof Date ? dataset.value.toJSON() : /* @__PURE__ */ _stringify(dataset.value) });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/actions/words/words.ts
+/* @__NO_SIDE_EFFECTS__ */
+function words(locales, requirement, message$1) {
+	return {
+		kind: "validation",
+		type: "words",
+		reference: words,
+		async: false,
+		expects: `${requirement}`,
+		locales,
+		requirement,
+		message: message$1,
+		"~run"(dataset, config$1) {
+			if (dataset.typed) {
+				const count = /* @__PURE__ */ _getWordCount(this.locales, dataset.value);
+				if (count !== this.requirement) _addIssue(this, "words", dataset, config$1, { received: `${count}` });
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/assert/assert.ts
+/**
+* Checks if the input matches the schema. As this is an assertion function, it
+* can be used as a type guard.
+*
+* @param schema The schema to be used.
+* @param input The input to be tested.
+*/
+function assert(schema, input) {
+	const issues = schema["~run"]({ value: input }, { abortEarly: true }).issues;
+	if (issues) throw new ValiError(issues);
+}
+
+//#endregion
+//#region src/methods/cache/_LruCache.ts
+/**
+* Efficient LRU cache using Map iteration order.
+*/
+var _LruCache = class {
+	constructor(config$1) {
+		this.refCount = 0;
+		this.maxSize = config$1?.maxSize ?? 1e3;
+		this.maxAge = config$1?.maxAge ?? Infinity;
+		this.hasMaxAge = isFinite(this.maxAge);
+	}
+	/**
+	* Stringifies an unknown input to a cache key component.
+	*
+	* @param input The unknown input.
+	*
+	* @returns A cache key component.
+	*/
+	#stringify(input) {
+		const type = typeof input;
+		if (type === "string") return `"${input}"`;
+		if (type === "number" || type === "boolean") return `${input}`;
+		if (type === "bigint") return `${input}n`;
+		if (type === "object" || type === "function") {
+			if (input) {
+				this.refIds ??= /* @__PURE__ */ new WeakMap();
+				let id = this.refIds.get(input);
+				if (!id) {
+					id = ++this.refCount;
+					this.refIds.set(input, id);
+				}
+				return `#${id}`;
+			}
+			return "null";
+		}
+		return type;
+	}
+	/**
+	* Creates a cache key from input and config.
+	*
+	* @param input The input value.
+	* @param config The parse configuration.
+	*
+	* @returns The cache key.
+	*/
+	key(input, config$1 = {}) {
+		return `${this.#stringify(input)}|${this.#stringify(config$1.lang)}|${this.#stringify(config$1.message)}|${this.#stringify(config$1.abortEarly)}|${this.#stringify(config$1.abortPipeEarly)}`;
+	}
+	/**
+	* Gets a value from the cache by key.
+	*
+	* @param key The cache key.
+	*
+	* @returns The cached value.
+	*/
+	get(key) {
+		if (!this.store) return void 0;
+		const entry = this.store.get(key);
+		if (!entry) return void 0;
+		if (this.hasMaxAge && Date.now() - entry[1] > this.maxAge) {
+			this.store.delete(key);
+			return;
+		}
+		this.store.delete(key);
+		this.store.set(key, entry);
+		return entry[0];
+	}
+	/**
+	* Sets a value in the cache by key.
+	*
+	* @param key The cache key.
+	* @param value The cached value.
+	*/
+	set(key, value$1) {
+		this.store ??= /* @__PURE__ */ new Map();
+		this.store.delete(key);
+		const timestamp = this.hasMaxAge ? Date.now() : 0;
+		this.store.set(key, [value$1, timestamp]);
+		if (this.store.size > this.maxSize) this.store.delete(this.store.keys().next().value);
+	}
+	/**
+	* Clears all entries from the cache.
+	*/
+	clear() {
+		this.store?.clear();
+	}
+};
+
+//#endregion
+//#region src/methods/cache/cache.ts
+/* @__NO_SIDE_EFFECTS__ */
+function cache(schema, config$1) {
+	return {
+		...schema,
+		cacheConfig: config$1,
+		cache: new _LruCache(config$1),
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, runConfig) {
+			const key = this.cache.key(dataset.value, runConfig);
+			let outputDataset = this.cache.get(key);
+			if (!outputDataset) this.cache.set(key, outputDataset = schema["~run"](dataset, runConfig));
+			return /* @__PURE__ */ _cloneDataset(outputDataset);
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/cache/cacheAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function cacheAsync(schema, config$1) {
+	let activeRuns;
+	return {
+		...schema,
+		async: true,
+		cacheConfig: config$1,
+		cache: new _LruCache(config$1),
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, runConfig) {
+			const key = this.cache.key(dataset.value, runConfig);
+			const cached = this.cache.get(key);
+			if (cached) return /* @__PURE__ */ _cloneDataset(cached);
+			let promise$1 = activeRuns?.get(key);
+			if (!promise$1) {
+				activeRuns ??= /* @__PURE__ */ new Map();
+				promise$1 = Promise.resolve(schema["~run"](dataset, runConfig));
+				activeRuns.set(key, promise$1);
+			}
+			try {
+				const outputDataset = await promise$1;
+				this.cache.set(key, outputDataset);
+				return /* @__PURE__ */ _cloneDataset(outputDataset);
+			} finally {
+				activeRuns?.delete(key);
+			}
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/config/config.ts
+/**
+* Changes the local configuration of a schema.
+*
+* @param schema The schema to configure.
+* @param config The parse configuration.
+*
+* @returns The configured schema.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function config(schema, config$1) {
+	return {
+		...schema,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config_) {
+			return schema["~run"](dataset, {
+				...config_,
+				...config$1
+			});
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/getFallback/getFallback.ts
+/**
+* Returns the fallback value of the schema.
+*
+* @param schema The schema to get it from.
+* @param dataset The output dataset if available.
+* @param config The config if available.
+*
+* @returns The fallback value.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getFallback(schema, dataset, config$1) {
+	return typeof schema.fallback === "function" ? schema.fallback(dataset, config$1) : schema.fallback;
+}
+
+//#endregion
+//#region src/methods/fallback/fallback.ts
+/**
+* Returns a fallback value as output if the input does not match the schema.
+*
+* @param schema The schema to catch.
+* @param fallback The fallback value.
+*
+* @returns The passed schema.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function fallback(schema, fallback$1) {
+	return {
+		...schema,
+		fallback: fallback$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const outputDataset = schema["~run"](dataset, config$1);
+			return outputDataset.issues ? {
+				typed: true,
+				value: /* @__PURE__ */ getFallback(this, outputDataset, config$1)
+			} : outputDataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/fallback/fallbackAsync.ts
+/**
+* Returns a fallback value as output if the input does not match the schema.
+*
+* @param schema The schema to catch.
+* @param fallback The fallback value.
+*
+* @returns The passed schema.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function fallbackAsync(schema, fallback$1) {
+	return {
+		...schema,
+		fallback: fallback$1,
+		async: true,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			const outputDataset = await schema["~run"](dataset, config$1);
+			return outputDataset.issues ? {
+				typed: true,
+				value: await /* @__PURE__ */ getFallback(this, outputDataset, config$1)
+			} : outputDataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/flatten/flatten.ts
+/* @__NO_SIDE_EFFECTS__ */
+function flatten(issues) {
+	const flatErrors = {};
+	for (const issue of issues) if (issue.path) {
+		const dotPath = /* @__PURE__ */ getDotPath(issue);
+		if (dotPath) {
+			if (!flatErrors.nested) flatErrors.nested = {};
+			if (flatErrors.nested[dotPath]) flatErrors.nested[dotPath].push(issue.message);
+			else flatErrors.nested[dotPath] = [issue.message];
+		} else if (flatErrors.other) flatErrors.other.push(issue.message);
+		else flatErrors.other = [issue.message];
+	} else if (flatErrors.root) flatErrors.root.push(issue.message);
+	else flatErrors.root = [issue.message];
+	return flatErrors;
+}
+
+//#endregion
+//#region src/methods/forward/forward.ts
+/**
+* Forwards the issues of the passed validation action.
+*
+* @param action The validation action.
+* @param path The path to forward the issues to.
+*
+* @returns The modified action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function forward(action, path) {
+	return {
+		...action,
+		"~run"(dataset, config$1) {
+			const prevIssues = dataset.issues && [...dataset.issues];
+			dataset = action["~run"](dataset, config$1);
+			if (dataset.issues) {
+				for (const issue of dataset.issues) if (!prevIssues?.includes(issue)) {
+					let pathInput = dataset.value;
+					for (const key of path) {
+						const pathValue = pathInput[key];
+						const pathItem = {
+							type: "unknown",
+							origin: "value",
+							input: pathInput,
+							key,
+							value: pathValue
+						};
+						if (issue.path) issue.path.push(pathItem);
+						else issue.path = [pathItem];
+						if (!pathValue) break;
+						pathInput = pathValue;
+					}
+				}
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/forward/forwardAsync.ts
+/**
+* Forwards the issues of the passed validation action.
+*
+* @param action The validation action.
+* @param path The path to forward the issues to.
+*
+* @returns The modified action.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function forwardAsync(action, path) {
+	return {
+		...action,
+		async: true,
+		async "~run"(dataset, config$1) {
+			const prevIssues = dataset.issues && [...dataset.issues];
+			dataset = await action["~run"](dataset, config$1);
+			if (dataset.issues) {
+				for (const issue of dataset.issues) if (!prevIssues?.includes(issue)) {
+					let pathInput = dataset.value;
+					for (const key of path) {
+						const pathValue = pathInput[key];
+						const pathItem = {
+							type: "unknown",
+							origin: "value",
+							input: pathInput,
+							key,
+							value: pathValue
+						};
+						if (issue.path) issue.path.push(pathItem);
+						else issue.path = [pathItem];
+						if (!pathValue) break;
+						pathInput = pathValue;
+					}
+				}
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/getDefault/getDefault.ts
+/**
+* Returns the default value of the schema.
+*
+* @param schema The schema to get it from.
+* @param dataset The input dataset if available.
+* @param config The config if available.
+*
+* @returns The default value.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getDefault(schema, dataset, config$1) {
+	return typeof schema.default === "function" ? schema.default(dataset, config$1) : schema.default;
+}
+
+//#endregion
+//#region src/methods/getDefaults/getDefaults.ts
+/**
+* Returns the default values of the schema.
+*
+* Hint: The difference to `getDefault` is that for object and tuple schemas
+* this function recursively returns the default values of the subschemas
+* instead of `undefined`.
+*
+* @param schema The schema to get them from.
+*
+* @returns The default values.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getDefaults(schema) {
+	if ("entries" in schema) {
+		const object$1 = {};
+		for (const key in schema.entries) object$1[key] = /* @__PURE__ */ getDefaults(schema.entries[key]);
+		return object$1;
+	}
+	if ("items" in schema) return schema.items.map(getDefaults);
+	return /* @__PURE__ */ getDefault(schema);
+}
+
+//#endregion
+//#region src/methods/getDefaults/getDefaultsAsync.ts
+/**
+* Returns the default values of the schema.
+*
+* Hint: The difference to `getDefault` is that for object and tuple schemas
+* this function recursively returns the default values of the subschemas
+* instead of `undefined`.
+*
+* @param schema The schema to get them from.
+*
+* @returns The default values.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+async function getDefaultsAsync(schema) {
+	if ("entries" in schema) return Object.fromEntries(await Promise.all(Object.entries(schema.entries).map(async ([key, value$1]) => [key, await /* @__PURE__ */ getDefaultsAsync(value$1)])));
+	if ("items" in schema) return Promise.all(schema.items.map(getDefaultsAsync));
+	return /* @__PURE__ */ getDefault(schema);
+}
+
+//#endregion
+//#region src/methods/getDescription/getDescription.ts
+/**
+* Returns the description of the schema.
+*
+* If multiple descriptions are defined, the last one of the highest level is
+* returned. If no description is defined, `undefined` is returned.
+*
+* @param schema The schema to get the description from.
+*
+* @returns The description, if any.
+*
+* @beta
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getDescription(schema) {
+	return /* @__PURE__ */ _getLastMetadata(schema, "description");
+}
+
+//#endregion
+//#region src/methods/getExamples/getExamples.ts
+/**
+* Returns the examples of a schema.
+*
+* If multiple examples are defined, it concatenates them using depth-first
+* search. If no examples are defined, an empty array is returned.
+*
+* @param schema The schema to get the examples from.
+*
+* @returns The examples, if any.
+*
+* @beta
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getExamples(schema) {
+	const examples$1 = [];
+	function depthFirstCollect(schema$1) {
+		if ("pipe" in schema$1) {
+			for (const item of schema$1.pipe) if (item.kind === "schema" && "pipe" in item) depthFirstCollect(item);
+			else if (item.kind === "metadata" && item.type === "examples") examples$1.push(...item.examples);
+		}
+	}
+	depthFirstCollect(schema);
+	return examples$1;
+}
+
+//#endregion
+//#region src/methods/getFallbacks/getFallbacks.ts
+/**
+* Returns the fallback values of the schema.
+*
+* Hint: The difference to `getFallback` is that for object and tuple schemas
+* this function recursively returns the fallback values of the subschemas
+* instead of `undefined`.
+*
+* @param schema The schema to get them from.
+*
+* @returns The fallback values.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getFallbacks(schema) {
+	if ("entries" in schema) {
+		const object$1 = {};
+		for (const key in schema.entries) object$1[key] = /* @__PURE__ */ getFallbacks(schema.entries[key]);
+		return object$1;
+	}
+	if ("items" in schema) return schema.items.map(getFallbacks);
+	return /* @__PURE__ */ getFallback(schema);
+}
+
+//#endregion
+//#region src/methods/getFallbacks/getFallbacksAsync.ts
+/**
+* Returns the fallback values of the schema.
+*
+* Hint: The difference to `getFallback` is that for object and tuple schemas
+* this function recursively returns the fallback values of the subschemas
+* instead of `undefined`.
+*
+* @param schema The schema to get them from.
+*
+* @returns The fallback values.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+async function getFallbacksAsync(schema) {
+	if ("entries" in schema) return Object.fromEntries(await Promise.all(Object.entries(schema.entries).map(async ([key, value$1]) => [key, await /* @__PURE__ */ getFallbacksAsync(value$1)])));
+	if ("items" in schema) return Promise.all(schema.items.map(getFallbacksAsync));
+	return /* @__PURE__ */ getFallback(schema);
+}
+
+//#endregion
+//#region src/methods/getMetadata/getMetadata.ts
+/**
+* Returns the metadata of a schema.
+*
+* If multiple metadata are defined, it shallowly merges them using depth-first
+* search. If no metadata is defined, an empty object is returned.
+*
+* @param schema Schema to get the metadata from.
+*
+* @returns The metadata, if any.
+*
+* @beta
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getMetadata(schema) {
+	const result = {};
+	function depthFirstMerge(schema$1) {
+		if ("pipe" in schema$1) {
+			for (const item of schema$1.pipe) if (item.kind === "schema" && "pipe" in item) depthFirstMerge(item);
+			else if (item.kind === "metadata" && item.type === "metadata") Object.assign(result, item.metadata);
+		}
+	}
+	depthFirstMerge(schema);
+	return result;
+}
+
+//#endregion
+//#region src/methods/getTitle/getTitle.ts
+/**
+* Returns the title of the schema.
+*
+* If multiple titles are defined, the last one of the highest level is
+* returned. If no title is defined, `undefined` is returned.
+*
+* @param schema The schema to get the title from.
+*
+* @returns The title, if any.
+*
+* @beta
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function getTitle(schema) {
+	return /* @__PURE__ */ _getLastMetadata(schema, "title");
+}
+
+//#endregion
+//#region src/methods/is/is.ts
+/**
+* Checks if the input matches the schema. By using a type predicate, this
+* function can be used as a type guard.
+*
+* @param schema The schema to be used.
+* @param input The input to be tested.
+*
+* @returns Whether the input matches the schema.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function is$1(schema, input) {
+	return !schema["~run"]({ value: input }, { abortEarly: true }).issues;
+}
+
+//#endregion
+//#region src/schemas/any/any.ts
+/**
+* Creates an any schema.
+*
+* Hint: This schema function exists only for completeness and is not
+* recommended in practice. Instead, `unknown` should be used to accept
+* unknown data.
+*
+* @returns An any schema.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function any() {
+	return {
+		kind: "schema",
+		type: "any",
+		reference: any,
+		expects: "any",
+		async: false,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset) {
+			dataset.typed = true;
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/array/array.ts
+/* @__NO_SIDE_EFFECTS__ */
+function array(item, message$1) {
+	return {
+		kind: "schema",
+		type: "array",
+		reference: array,
+		expects: "Array",
+		async: false,
+		item,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (Array.isArray(input)) {
+				dataset.typed = true;
+				dataset.value = [];
+				for (let key = 0; key < input.length; key++) {
+					const value$1 = input[key];
+					const itemDataset = this.item["~run"]({ value: value$1 }, config$1);
+					if (itemDataset.issues) {
+						const pathItem = {
+							type: "array",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of itemDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = itemDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!itemDataset.typed) dataset.typed = false;
+					dataset.value.push(itemDataset.value);
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/array/arrayAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function arrayAsync(item, message$1) {
+	return {
+		kind: "schema",
+		type: "array",
+		reference: arrayAsync,
+		expects: "Array",
+		async: true,
+		item,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (Array.isArray(input)) {
+				dataset.typed = true;
+				dataset.value = [];
+				const itemDatasets = await Promise.all(input.map((value$1) => this.item["~run"]({ value: value$1 }, config$1)));
+				for (let key = 0; key < itemDatasets.length; key++) {
+					const itemDataset = itemDatasets[key];
+					if (itemDataset.issues) {
+						const pathItem = {
+							type: "array",
+							origin: "value",
+							input,
+							key,
+							value: input[key]
+						};
+						for (const issue of itemDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = itemDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!itemDataset.typed) dataset.typed = false;
+					dataset.value.push(itemDataset.value);
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/bigint/bigint.ts
+/* @__NO_SIDE_EFFECTS__ */
+function bigint(message$1) {
+	return {
+		kind: "schema",
+		type: "bigint",
+		reference: bigint,
+		expects: "bigint",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (typeof dataset.value === "bigint") dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/blob/blob.ts
+/* @__NO_SIDE_EFFECTS__ */
+function blob(message$1) {
+	return {
+		kind: "schema",
+		type: "blob",
+		reference: blob,
+		expects: "Blob",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value instanceof Blob) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/boolean/boolean.ts
+/* @__NO_SIDE_EFFECTS__ */
+function boolean(message$1) {
+	return {
+		kind: "schema",
+		type: "boolean",
+		reference: boolean,
+		expects: "boolean",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (typeof dataset.value === "boolean") dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/custom/custom.ts
+/* @__NO_SIDE_EFFECTS__ */
+function custom(check$1, message$1) {
+	return {
+		kind: "schema",
+		type: "custom",
+		reference: custom,
+		expects: "unknown",
+		async: false,
+		check: check$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (this.check(dataset.value)) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/custom/customAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function customAsync(check$1, message$1) {
+	return {
+		kind: "schema",
+		type: "custom",
+		reference: customAsync,
+		expects: "unknown",
+		async: true,
+		check: check$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			if (await this.check(dataset.value)) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/date/date.ts
+/* @__NO_SIDE_EFFECTS__ */
+function date(message$1) {
+	return {
+		kind: "schema",
+		type: "date",
+		reference: date,
+		expects: "Date",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value instanceof Date) if (!isNaN(dataset.value)) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1, { received: "\"Invalid Date\"" });
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/enum/enum.ts
+/* @__NO_SIDE_EFFECTS__ */
+function enum_(enum__, message$1) {
+	const options = [];
+	for (const key in enum__) if (`${+key}` !== key || typeof enum__[key] !== "string" || !Object.is(enum__[enum__[key]], +key)) options.push(enum__[key]);
+	return {
+		kind: "schema",
+		type: "enum",
+		reference: enum_,
+		expects: /* @__PURE__ */ _joinExpects(options.map(_stringify), "|"),
+		async: false,
+		enum: enum__,
+		options,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (this.options.includes(dataset.value)) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/exactOptional/exactOptional.ts
+/* @__NO_SIDE_EFFECTS__ */
+function exactOptional(wrapped, default_) {
+	return {
+		kind: "schema",
+		type: "exact_optional",
+		reference: exactOptional,
+		expects: wrapped.expects,
+		async: false,
+		wrapped,
+		default: default_,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			return this.wrapped["~run"](dataset, config$1);
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/exactOptional/exactOptionalAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function exactOptionalAsync(wrapped, default_) {
+	return {
+		kind: "schema",
+		type: "exact_optional",
+		reference: exactOptionalAsync,
+		expects: wrapped.expects,
+		async: true,
+		wrapped,
+		default: default_,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			return this.wrapped["~run"](dataset, config$1);
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/file/file.ts
+/* @__NO_SIDE_EFFECTS__ */
+function file(message$1) {
+	return {
+		kind: "schema",
+		type: "file",
+		reference: file,
+		expects: "File",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value instanceof File) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/function/function.ts
+/* @__NO_SIDE_EFFECTS__ */
+function function_(message$1) {
+	return {
+		kind: "schema",
+		type: "function",
+		reference: function_,
+		expects: "Function",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (typeof dataset.value === "function") dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/instance/instance.ts
+/* @__NO_SIDE_EFFECTS__ */
+function instance(class_, message$1) {
+	return {
+		kind: "schema",
+		type: "instance",
+		reference: instance,
+		expects: class_.name,
+		async: false,
+		class: class_,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value instanceof this.class) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/intersect/utils/_merge/_merge.ts
+/**
+* Merges two values into one single output.
+*
+* @param value1 First value.
+* @param value2 Second value.
+*
+* @returns The merge dataset.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _merge(value1, value2) {
+	if (typeof value1 === typeof value2) {
+		if (value1 === value2 || value1 instanceof Date && value2 instanceof Date && +value1 === +value2) return { value: value1 };
+		if (value1 && value2 && value1.constructor === Object && value2.constructor === Object) {
+			for (const key in value2) if (key in value1) {
+				const dataset = /* @__PURE__ */ _merge(value1[key], value2[key]);
+				if (dataset.issue) return dataset;
+				value1[key] = dataset.value;
+			} else value1[key] = value2[key];
+			return { value: value1 };
+		}
+		if (Array.isArray(value1) && Array.isArray(value2)) {
+			if (value1.length === value2.length) {
+				for (let index = 0; index < value1.length; index++) {
+					const dataset = /* @__PURE__ */ _merge(value1[index], value2[index]);
+					if (dataset.issue) return dataset;
+					value1[index] = dataset.value;
+				}
+				return { value: value1 };
+			}
+		}
+	}
+	return { issue: true };
+}
+
+//#endregion
+//#region src/schemas/intersect/intersect.ts
+/* @__NO_SIDE_EFFECTS__ */
+function intersect(options, message$1) {
+	return {
+		kind: "schema",
+		type: "intersect",
+		reference: intersect,
+		expects: /* @__PURE__ */ _joinExpects(options.map((option) => option.expects), "&"),
+		async: false,
+		options,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (this.options.length) {
+				const input = dataset.value;
+				let outputs;
+				dataset.typed = true;
+				for (const schema of this.options) {
+					const optionDataset = schema["~run"]({ value: input }, config$1);
+					if (optionDataset.issues) {
+						if (dataset.issues) dataset.issues.push(...optionDataset.issues);
+						else dataset.issues = optionDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!optionDataset.typed) dataset.typed = false;
+					if (dataset.typed) if (outputs) outputs.push(optionDataset.value);
+					else outputs = [optionDataset.value];
+				}
+				if (dataset.typed) {
+					dataset.value = outputs[0];
+					for (let index = 1; index < outputs.length; index++) {
+						const mergeDataset = /* @__PURE__ */ _merge(dataset.value, outputs[index]);
+						if (mergeDataset.issue) {
+							_addIssue(this, "type", dataset, config$1, { received: "unknown" });
+							break;
+						}
+						dataset.value = mergeDataset.value;
+					}
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/intersect/intersectAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function intersectAsync(options, message$1) {
+	return {
+		kind: "schema",
+		type: "intersect",
+		reference: intersectAsync,
+		expects: /* @__PURE__ */ _joinExpects(options.map((option) => option.expects), "&"),
+		async: true,
+		options,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			if (this.options.length) {
+				const input = dataset.value;
+				let outputs;
+				dataset.typed = true;
+				const optionDatasets = await Promise.all(this.options.map((schema) => schema["~run"]({ value: input }, config$1)));
+				for (const optionDataset of optionDatasets) {
+					if (optionDataset.issues) {
+						if (dataset.issues) dataset.issues.push(...optionDataset.issues);
+						else dataset.issues = optionDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!optionDataset.typed) dataset.typed = false;
+					if (dataset.typed) if (outputs) outputs.push(optionDataset.value);
+					else outputs = [optionDataset.value];
+				}
+				if (dataset.typed) {
+					dataset.value = outputs[0];
+					for (let index = 1; index < outputs.length; index++) {
+						const mergeDataset = /* @__PURE__ */ _merge(dataset.value, outputs[index]);
+						if (mergeDataset.issue) {
+							_addIssue(this, "type", dataset, config$1, { received: "unknown" });
+							break;
+						}
+						dataset.value = mergeDataset.value;
+					}
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/lazy/lazy.ts
+/**
+* Creates a lazy schema.
+*
+* @param getter The schema getter.
+*
+* @returns A lazy schema.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function lazy(getter) {
+	return {
+		kind: "schema",
+		type: "lazy",
+		reference: lazy,
+		expects: "unknown",
+		async: false,
+		getter,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			return this.getter(dataset.value)["~run"](dataset, config$1);
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/lazy/lazyAsync.ts
+/**
+* Creates a lazy schema.
+*
+* @param getter The schema getter.
+*
+* @returns A lazy schema.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function lazyAsync(getter) {
+	return {
+		kind: "schema",
+		type: "lazy",
+		reference: lazyAsync,
+		expects: "unknown",
+		async: true,
+		getter,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			return (await this.getter(dataset.value))["~run"](dataset, config$1);
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/literal/literal.ts
+/* @__NO_SIDE_EFFECTS__ */
+function literal(literal_, message$1) {
+	return {
+		kind: "schema",
+		type: "literal",
+		reference: literal,
+		expects: /* @__PURE__ */ _stringify(literal_),
+		async: false,
+		literal: literal_,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value === this.literal) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/looseObject/looseObject.ts
+/* @__NO_SIDE_EFFECTS__ */
+function looseObject(entries$1, message$1) {
+	return {
+		kind: "schema",
+		type: "loose_object",
+		reference: looseObject,
+		expects: "Object",
+		async: false,
+		entries: entries$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				for (const key in this.entries) {
+					const valueSchema = this.entries[key];
+					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
+						if (valueDataset.issues) {
+							const pathItem = {
+								type: "object",
+								origin: "value",
+								input,
+								key,
+								value: value$1
+							};
+							for (const issue of valueDataset.issues) {
+								if (issue.path) issue.path.unshift(pathItem);
+								else issue.path = [pathItem];
+								dataset.issues?.push(issue);
+							}
+							if (!dataset.issues) dataset.issues = valueDataset.issues;
+							if (config$1.abortEarly) {
+								dataset.typed = false;
+								break;
+							}
+						}
+						if (!valueDataset.typed) dataset.typed = false;
+						dataset.value[key] = valueDataset.value;
+					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+						_addIssue(this, "key", dataset, config$1, {
+							input: void 0,
+							expected: `"${key}"`,
+							path: [{
+								type: "object",
+								origin: "key",
+								input,
+								key,
+								value: input[key]
+							}]
+						});
+						if (config$1.abortEarly) break;
+					}
+				}
+				if (!dataset.issues || !config$1.abortEarly) {
+					for (const key in input) if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) dataset.value[key] = input[key];
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/looseObject/looseObjectAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function looseObjectAsync(entries$1, message$1) {
+	return {
+		kind: "schema",
+		type: "loose_object",
+		reference: looseObjectAsync,
+		expects: "Object",
+		async: true,
+		entries: entries$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				const valueDatasets = await Promise.all(Object.entries(this.entries).map(async ([key, valueSchema]) => {
+					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+						const value$1 = key in input ? input[key] : await /* @__PURE__ */ getDefault(valueSchema);
+						return [
+							key,
+							value$1,
+							valueSchema,
+							await valueSchema["~run"]({ value: value$1 }, config$1)
+						];
+					}
+					return [
+						key,
+						input[key],
+						valueSchema,
+						null
+					];
+				}));
+				for (const [key, value$1, valueSchema, valueDataset] of valueDatasets) if (valueDataset) {
+					if (valueDataset.issues) {
+						const pathItem = {
+							type: "object",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of valueDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = valueDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!valueDataset.typed) dataset.typed = false;
+					dataset.value[key] = valueDataset.value;
+				} else if (valueSchema.fallback !== void 0) dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
+				else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+					_addIssue(this, "key", dataset, config$1, {
+						input: void 0,
+						expected: `"${key}"`,
+						path: [{
+							type: "object",
+							origin: "key",
+							input,
+							key,
+							value: value$1
+						}]
+					});
+					if (config$1.abortEarly) break;
+				}
+				if (!dataset.issues || !config$1.abortEarly) {
+					for (const key in input) if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) dataset.value[key] = input[key];
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/looseTuple/looseTuple.ts
+/* @__NO_SIDE_EFFECTS__ */
+function looseTuple(items, message$1) {
+	return {
+		kind: "schema",
+		type: "loose_tuple",
+		reference: looseTuple,
+		expects: "Array",
+		async: false,
+		items,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (Array.isArray(input)) {
+				dataset.typed = true;
+				dataset.value = [];
+				for (let key = 0; key < this.items.length; key++) {
+					const value$1 = input[key];
+					const itemDataset = this.items[key]["~run"]({ value: value$1 }, config$1);
+					if (itemDataset.issues) {
+						const pathItem = {
+							type: "array",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of itemDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = itemDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!itemDataset.typed) dataset.typed = false;
+					dataset.value.push(itemDataset.value);
+				}
+				if (!dataset.issues || !config$1.abortEarly) for (let key = this.items.length; key < input.length; key++) dataset.value.push(input[key]);
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/looseTuple/looseTupleAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function looseTupleAsync(items, message$1) {
+	return {
+		kind: "schema",
+		type: "loose_tuple",
+		reference: looseTupleAsync,
+		expects: "Array",
+		async: true,
+		items,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (Array.isArray(input)) {
+				dataset.typed = true;
+				dataset.value = [];
+				const itemDatasets = await Promise.all(this.items.map(async (item, key) => {
+					const value$1 = input[key];
+					return [
+						key,
+						value$1,
+						await item["~run"]({ value: value$1 }, config$1)
+					];
+				}));
+				for (const [key, value$1, itemDataset] of itemDatasets) {
+					if (itemDataset.issues) {
+						const pathItem = {
+							type: "array",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of itemDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = itemDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!itemDataset.typed) dataset.typed = false;
+					dataset.value.push(itemDataset.value);
+				}
+				if (!dataset.issues || !config$1.abortEarly) for (let key = this.items.length; key < input.length; key++) dataset.value.push(input[key]);
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/map/map.ts
+/* @__NO_SIDE_EFFECTS__ */
+function map(key, value$1, message$1) {
+	return {
+		kind: "schema",
+		type: "map",
+		reference: map,
+		expects: "Map",
+		async: false,
+		key,
+		value: value$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input instanceof Map) {
+				dataset.typed = true;
+				dataset.value = /* @__PURE__ */ new Map();
+				for (const [inputKey, inputValue] of input) {
+					const keyDataset = this.key["~run"]({ value: inputKey }, config$1);
+					if (keyDataset.issues) {
+						const pathItem = {
+							type: "map",
+							origin: "key",
+							input,
+							key: inputKey,
+							value: inputValue
+						};
+						for (const issue of keyDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = keyDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					const valueDataset = this.value["~run"]({ value: inputValue }, config$1);
+					if (valueDataset.issues) {
+						const pathItem = {
+							type: "map",
+							origin: "value",
+							input,
+							key: inputKey,
+							value: inputValue
+						};
+						for (const issue of valueDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = valueDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!keyDataset.typed || !valueDataset.typed) dataset.typed = false;
+					dataset.value.set(keyDataset.value, valueDataset.value);
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/map/mapAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function mapAsync(key, value$1, message$1) {
+	return {
+		kind: "schema",
+		type: "map",
+		reference: mapAsync,
+		expects: "Map",
+		async: true,
+		key,
+		value: value$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input instanceof Map) {
+				dataset.typed = true;
+				dataset.value = /* @__PURE__ */ new Map();
+				const datasets = await Promise.all([...input].map(([inputKey, inputValue]) => Promise.all([
+					inputKey,
+					inputValue,
+					this.key["~run"]({ value: inputKey }, config$1),
+					this.value["~run"]({ value: inputValue }, config$1)
+				])));
+				for (const [inputKey, inputValue, keyDataset, valueDataset] of datasets) {
+					if (keyDataset.issues) {
+						const pathItem = {
+							type: "map",
+							origin: "key",
+							input,
+							key: inputKey,
+							value: inputValue
+						};
+						for (const issue of keyDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = keyDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (valueDataset.issues) {
+						const pathItem = {
+							type: "map",
+							origin: "value",
+							input,
+							key: inputKey,
+							value: inputValue
+						};
+						for (const issue of valueDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = valueDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!keyDataset.typed || !valueDataset.typed) dataset.typed = false;
+					dataset.value.set(keyDataset.value, valueDataset.value);
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/nan/nan.ts
+/* @__NO_SIDE_EFFECTS__ */
+function nan(message$1) {
+	return {
+		kind: "schema",
+		type: "nan",
+		reference: nan,
+		expects: "NaN",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (Number.isNaN(dataset.value)) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/never/never.ts
+/* @__NO_SIDE_EFFECTS__ */
+function never(message$1) {
+	return {
+		kind: "schema",
+		type: "never",
+		reference: never,
+		expects: "never",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			_addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/nonNullable/nonNullable.ts
+/* @__NO_SIDE_EFFECTS__ */
+function nonNullable(wrapped, message$1) {
+	return {
+		kind: "schema",
+		type: "non_nullable",
+		reference: nonNullable,
+		expects: "!null",
+		async: false,
+		wrapped,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value !== null) dataset = this.wrapped["~run"](dataset, config$1);
+			if (dataset.value === null) _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/nonNullable/nonNullableAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function nonNullableAsync(wrapped, message$1) {
+	return {
+		kind: "schema",
+		type: "non_nullable",
+		reference: nonNullableAsync,
+		expects: "!null",
+		async: true,
+		wrapped,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			if (dataset.value !== null) dataset = await this.wrapped["~run"](dataset, config$1);
+			if (dataset.value === null) _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/nonNullish/nonNullish.ts
+/* @__NO_SIDE_EFFECTS__ */
+function nonNullish(wrapped, message$1) {
+	return {
+		kind: "schema",
+		type: "non_nullish",
+		reference: nonNullish,
+		expects: "(!null & !undefined)",
+		async: false,
+		wrapped,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (!(dataset.value === null || dataset.value === void 0)) dataset = this.wrapped["~run"](dataset, config$1);
+			if (dataset.value === null || dataset.value === void 0) _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/nonNullish/nonNullishAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function nonNullishAsync(wrapped, message$1) {
+	return {
+		kind: "schema",
+		type: "non_nullish",
+		reference: nonNullishAsync,
+		expects: "(!null & !undefined)",
+		async: true,
+		wrapped,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			if (!(dataset.value === null || dataset.value === void 0)) dataset = await this.wrapped["~run"](dataset, config$1);
+			if (dataset.value === null || dataset.value === void 0) _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/nonOptional/nonOptional.ts
+/* @__NO_SIDE_EFFECTS__ */
+function nonOptional(wrapped, message$1) {
+	return {
+		kind: "schema",
+		type: "non_optional",
+		reference: nonOptional,
+		expects: "!undefined",
+		async: false,
+		wrapped,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value !== void 0) dataset = this.wrapped["~run"](dataset, config$1);
+			if (dataset.value === void 0) _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/nonOptional/nonOptionalAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function nonOptionalAsync(wrapped, message$1) {
+	return {
+		kind: "schema",
+		type: "non_optional",
+		reference: nonOptionalAsync,
+		expects: "!undefined",
+		async: true,
+		wrapped,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			if (dataset.value !== void 0) dataset = await this.wrapped["~run"](dataset, config$1);
+			if (dataset.value === void 0) _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/null/null.ts
+/* @__NO_SIDE_EFFECTS__ */
+function null_(message$1) {
+	return {
+		kind: "schema",
+		type: "null",
+		reference: null_,
+		expects: "null",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value === null) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/nullable/nullable.ts
+/* @__NO_SIDE_EFFECTS__ */
+function nullable(wrapped, default_) {
+	return {
+		kind: "schema",
+		type: "nullable",
+		reference: nullable,
+		expects: `(${wrapped.expects} | null)`,
+		async: false,
+		wrapped,
+		default: default_,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value === null) {
+				if (this.default !== void 0) dataset.value = /* @__PURE__ */ getDefault(this, dataset, config$1);
+				if (dataset.value === null) {
+					dataset.typed = true;
+					return dataset;
+				}
+			}
+			return this.wrapped["~run"](dataset, config$1);
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/nullable/nullableAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function nullableAsync(wrapped, default_) {
+	return {
+		kind: "schema",
+		type: "nullable",
+		reference: nullableAsync,
+		expects: `(${wrapped.expects} | null)`,
+		async: true,
+		wrapped,
+		default: default_,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			if (dataset.value === null) {
+				if (this.default !== void 0) dataset.value = await /* @__PURE__ */ getDefault(this, dataset, config$1);
+				if (dataset.value === null) {
+					dataset.typed = true;
+					return dataset;
+				}
+			}
+			return this.wrapped["~run"](dataset, config$1);
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/nullish/nullish.ts
+/* @__NO_SIDE_EFFECTS__ */
+function nullish(wrapped, default_) {
+	return {
+		kind: "schema",
+		type: "nullish",
+		reference: nullish,
+		expects: `(${wrapped.expects} | null | undefined)`,
+		async: false,
+		wrapped,
+		default: default_,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value === null || dataset.value === void 0) {
+				if (this.default !== void 0) dataset.value = /* @__PURE__ */ getDefault(this, dataset, config$1);
+				if (dataset.value === null || dataset.value === void 0) {
+					dataset.typed = true;
+					return dataset;
+				}
+			}
+			return this.wrapped["~run"](dataset, config$1);
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/nullish/nullishAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function nullishAsync(wrapped, default_) {
+	return {
+		kind: "schema",
+		type: "nullish",
+		reference: nullishAsync,
+		expects: `(${wrapped.expects} | null | undefined)`,
+		async: true,
+		wrapped,
+		default: default_,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			if (dataset.value === null || dataset.value === void 0) {
+				if (this.default !== void 0) dataset.value = await /* @__PURE__ */ getDefault(this, dataset, config$1);
+				if (dataset.value === null || dataset.value === void 0) {
+					dataset.typed = true;
+					return dataset;
+				}
+			}
+			return this.wrapped["~run"](dataset, config$1);
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/number/number.ts
+/* @__NO_SIDE_EFFECTS__ */
+function number(message$1) {
+	return {
+		kind: "schema",
+		type: "number",
+		reference: number,
+		expects: "number",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (typeof dataset.value === "number" && !isNaN(dataset.value)) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/object/object.ts
+/* @__NO_SIDE_EFFECTS__ */
+function object(entries$1, message$1) {
+	return {
+		kind: "schema",
+		type: "object",
+		reference: object,
+		expects: "Object",
+		async: false,
+		entries: entries$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				for (const key in this.entries) {
+					const valueSchema = this.entries[key];
+					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
+						if (valueDataset.issues) {
+							const pathItem = {
+								type: "object",
+								origin: "value",
+								input,
+								key,
+								value: value$1
+							};
+							for (const issue of valueDataset.issues) {
+								if (issue.path) issue.path.unshift(pathItem);
+								else issue.path = [pathItem];
+								dataset.issues?.push(issue);
+							}
+							if (!dataset.issues) dataset.issues = valueDataset.issues;
+							if (config$1.abortEarly) {
+								dataset.typed = false;
+								break;
+							}
+						}
+						if (!valueDataset.typed) dataset.typed = false;
+						dataset.value[key] = valueDataset.value;
+					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+						_addIssue(this, "key", dataset, config$1, {
+							input: void 0,
+							expected: `"${key}"`,
+							path: [{
+								type: "object",
+								origin: "key",
+								input,
+								key,
+								value: input[key]
+							}]
+						});
+						if (config$1.abortEarly) break;
+					}
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/object/objectAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function objectAsync(entries$1, message$1) {
+	return {
+		kind: "schema",
+		type: "object",
+		reference: objectAsync,
+		expects: "Object",
+		async: true,
+		entries: entries$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				const valueDatasets = await Promise.all(Object.entries(this.entries).map(async ([key, valueSchema]) => {
+					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+						const value$1 = key in input ? input[key] : await /* @__PURE__ */ getDefault(valueSchema);
+						return [
+							key,
+							value$1,
+							valueSchema,
+							await valueSchema["~run"]({ value: value$1 }, config$1)
+						];
+					}
+					return [
+						key,
+						input[key],
+						valueSchema,
+						null
+					];
+				}));
+				for (const [key, value$1, valueSchema, valueDataset] of valueDatasets) if (valueDataset) {
+					if (valueDataset.issues) {
+						const pathItem = {
+							type: "object",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of valueDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = valueDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!valueDataset.typed) dataset.typed = false;
+					dataset.value[key] = valueDataset.value;
+				} else if (valueSchema.fallback !== void 0) dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
+				else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+					_addIssue(this, "key", dataset, config$1, {
+						input: void 0,
+						expected: `"${key}"`,
+						path: [{
+							type: "object",
+							origin: "key",
+							input,
+							key,
+							value: value$1
+						}]
+					});
+					if (config$1.abortEarly) break;
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/objectWithRest/objectWithRest.ts
+/* @__NO_SIDE_EFFECTS__ */
+function objectWithRest(entries$1, rest, message$1) {
+	return {
+		kind: "schema",
+		type: "object_with_rest",
+		reference: objectWithRest,
+		expects: "Object",
+		async: false,
+		entries: entries$1,
+		rest,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				for (const key in this.entries) {
+					const valueSchema = this.entries[key];
+					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
+						if (valueDataset.issues) {
+							const pathItem = {
+								type: "object",
+								origin: "value",
+								input,
+								key,
+								value: value$1
+							};
+							for (const issue of valueDataset.issues) {
+								if (issue.path) issue.path.unshift(pathItem);
+								else issue.path = [pathItem];
+								dataset.issues?.push(issue);
+							}
+							if (!dataset.issues) dataset.issues = valueDataset.issues;
+							if (config$1.abortEarly) {
+								dataset.typed = false;
+								break;
+							}
+						}
+						if (!valueDataset.typed) dataset.typed = false;
+						dataset.value[key] = valueDataset.value;
+					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+						_addIssue(this, "key", dataset, config$1, {
+							input: void 0,
+							expected: `"${key}"`,
+							path: [{
+								type: "object",
+								origin: "key",
+								input,
+								key,
+								value: input[key]
+							}]
+						});
+						if (config$1.abortEarly) break;
+					}
+				}
+				if (!dataset.issues || !config$1.abortEarly) {
+					for (const key in input) if (/* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)) {
+						const valueDataset = this.rest["~run"]({ value: input[key] }, config$1);
+						if (valueDataset.issues) {
+							const pathItem = {
+								type: "object",
+								origin: "value",
+								input,
+								key,
+								value: input[key]
+							};
+							for (const issue of valueDataset.issues) {
+								if (issue.path) issue.path.unshift(pathItem);
+								else issue.path = [pathItem];
+								dataset.issues?.push(issue);
+							}
+							if (!dataset.issues) dataset.issues = valueDataset.issues;
+							if (config$1.abortEarly) {
+								dataset.typed = false;
+								break;
+							}
+						}
+						if (!valueDataset.typed) dataset.typed = false;
+						dataset.value[key] = valueDataset.value;
+					}
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/objectWithRest/objectWithRestAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function objectWithRestAsync(entries$1, rest, message$1) {
+	return {
+		kind: "schema",
+		type: "object_with_rest",
+		reference: objectWithRestAsync,
+		expects: "Object",
+		async: true,
+		entries: entries$1,
+		rest,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				const [normalDatasets, restDatasets] = await Promise.all([Promise.all(Object.entries(this.entries).map(async ([key, valueSchema]) => {
+					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+						const value$1 = key in input ? input[key] : await /* @__PURE__ */ getDefault(valueSchema);
+						return [
+							key,
+							value$1,
+							valueSchema,
+							await valueSchema["~run"]({ value: value$1 }, config$1)
+						];
+					}
+					return [
+						key,
+						input[key],
+						valueSchema,
+						null
+					];
+				})), Promise.all(Object.entries(input).filter(([key]) => /* @__PURE__ */ _isValidObjectKey(input, key) && !(key in this.entries)).map(async ([key, value$1]) => [
+					key,
+					value$1,
+					await this.rest["~run"]({ value: value$1 }, config$1)
+				]))]);
+				for (const [key, value$1, valueSchema, valueDataset] of normalDatasets) if (valueDataset) {
+					if (valueDataset.issues) {
+						const pathItem = {
+							type: "object",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of valueDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = valueDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!valueDataset.typed) dataset.typed = false;
+					dataset.value[key] = valueDataset.value;
+				} else if (valueSchema.fallback !== void 0) dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
+				else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+					_addIssue(this, "key", dataset, config$1, {
+						input: void 0,
+						expected: `"${key}"`,
+						path: [{
+							type: "object",
+							origin: "key",
+							input,
+							key,
+							value: value$1
+						}]
+					});
+					if (config$1.abortEarly) break;
+				}
+				if (!dataset.issues || !config$1.abortEarly) for (const [key, value$1, valueDataset] of restDatasets) {
+					if (valueDataset.issues) {
+						const pathItem = {
+							type: "object",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of valueDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = valueDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!valueDataset.typed) dataset.typed = false;
+					dataset.value[key] = valueDataset.value;
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/optional/optional.ts
+/* @__NO_SIDE_EFFECTS__ */
+function optional(wrapped, default_) {
+	return {
+		kind: "schema",
+		type: "optional",
+		reference: optional,
+		expects: `(${wrapped.expects} | undefined)`,
+		async: false,
+		wrapped,
+		default: default_,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value === void 0) {
+				if (this.default !== void 0) dataset.value = /* @__PURE__ */ getDefault(this, dataset, config$1);
+				if (dataset.value === void 0) {
+					dataset.typed = true;
+					return dataset;
+				}
+			}
+			return this.wrapped["~run"](dataset, config$1);
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/optional/optionalAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function optionalAsync(wrapped, default_) {
+	return {
+		kind: "schema",
+		type: "optional",
+		reference: optionalAsync,
+		expects: `(${wrapped.expects} | undefined)`,
+		async: true,
+		wrapped,
+		default: default_,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			if (dataset.value === void 0) {
+				if (this.default !== void 0) dataset.value = await /* @__PURE__ */ getDefault(this, dataset, config$1);
+				if (dataset.value === void 0) {
+					dataset.typed = true;
+					return dataset;
+				}
+			}
+			return this.wrapped["~run"](dataset, config$1);
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/picklist/picklist.ts
+/* @__NO_SIDE_EFFECTS__ */
+function picklist(options, message$1) {
+	return {
+		kind: "schema",
+		type: "picklist",
+		reference: picklist,
+		expects: /* @__PURE__ */ _joinExpects(options.map(_stringify), "|"),
+		async: false,
+		options,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (this.options.includes(dataset.value)) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/promise/promise.ts
+/* @__NO_SIDE_EFFECTS__ */
+function promise(message$1) {
+	return {
+		kind: "schema",
+		type: "promise",
+		reference: promise,
+		expects: "Promise",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value instanceof Promise) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/record/record.ts
+/* @__NO_SIDE_EFFECTS__ */
+function record(key, value$1, message$1) {
+	return {
+		kind: "schema",
+		type: "record",
+		reference: record,
+		expects: "Object",
+		async: false,
+		key,
+		value: value$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				for (const entryKey in input) if (/* @__PURE__ */ _isValidObjectKey(input, entryKey)) {
+					const entryValue = input[entryKey];
+					const keyDataset = this.key["~run"]({ value: entryKey }, config$1);
+					if (keyDataset.issues) {
+						const pathItem = {
+							type: "object",
+							origin: "key",
+							input,
+							key: entryKey,
+							value: entryValue
+						};
+						for (const issue of keyDataset.issues) {
+							issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = keyDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					const valueDataset = this.value["~run"]({ value: entryValue }, config$1);
+					if (valueDataset.issues) {
+						const pathItem = {
+							type: "object",
+							origin: "value",
+							input,
+							key: entryKey,
+							value: entryValue
+						};
+						for (const issue of valueDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = valueDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!keyDataset.typed || !valueDataset.typed) dataset.typed = false;
+					if (keyDataset.typed) dataset.value[keyDataset.value] = valueDataset.value;
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/record/recordAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function recordAsync(key, value$1, message$1) {
+	return {
+		kind: "schema",
+		type: "record",
+		reference: recordAsync,
+		expects: "Object",
+		async: true,
+		key,
+		value: value$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				const datasets = await Promise.all(Object.entries(input).filter(([key$1]) => /* @__PURE__ */ _isValidObjectKey(input, key$1)).map(([entryKey, entryValue]) => Promise.all([
+					entryKey,
+					entryValue,
+					this.key["~run"]({ value: entryKey }, config$1),
+					this.value["~run"]({ value: entryValue }, config$1)
+				])));
+				for (const [entryKey, entryValue, keyDataset, valueDataset] of datasets) {
+					if (keyDataset.issues) {
+						const pathItem = {
+							type: "object",
+							origin: "key",
+							input,
+							key: entryKey,
+							value: entryValue
+						};
+						for (const issue of keyDataset.issues) {
+							issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = keyDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (valueDataset.issues) {
+						const pathItem = {
+							type: "object",
+							origin: "value",
+							input,
+							key: entryKey,
+							value: entryValue
+						};
+						for (const issue of valueDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = valueDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!keyDataset.typed || !valueDataset.typed) dataset.typed = false;
+					if (keyDataset.typed) dataset.value[keyDataset.value] = valueDataset.value;
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/set/set.ts
+/* @__NO_SIDE_EFFECTS__ */
+function set$1(value$1, message$1) {
+	return {
+		kind: "schema",
+		type: "set",
+		reference: set$1,
+		expects: "Set",
+		async: false,
+		value: value$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input instanceof Set) {
+				dataset.typed = true;
+				dataset.value = /* @__PURE__ */ new Set();
+				for (const inputValue of input) {
+					const valueDataset = this.value["~run"]({ value: inputValue }, config$1);
+					if (valueDataset.issues) {
+						const pathItem = {
+							type: "set",
+							origin: "value",
+							input,
+							key: null,
+							value: inputValue
+						};
+						for (const issue of valueDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = valueDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!valueDataset.typed) dataset.typed = false;
+					dataset.value.add(valueDataset.value);
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/set/setAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function setAsync(value$1, message$1) {
+	return {
+		kind: "schema",
+		type: "set",
+		reference: setAsync,
+		expects: "Set",
+		async: true,
+		value: value$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input instanceof Set) {
+				dataset.typed = true;
+				dataset.value = /* @__PURE__ */ new Set();
+				const valueDatasets = await Promise.all([...input].map(async (inputValue) => [inputValue, await this.value["~run"]({ value: inputValue }, config$1)]));
+				for (const [inputValue, valueDataset] of valueDatasets) {
+					if (valueDataset.issues) {
+						const pathItem = {
+							type: "set",
+							origin: "value",
+							input,
+							key: null,
+							value: inputValue
+						};
+						for (const issue of valueDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = valueDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!valueDataset.typed) dataset.typed = false;
+					dataset.value.add(valueDataset.value);
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/strictObject/strictObject.ts
+/* @__NO_SIDE_EFFECTS__ */
+function strictObject(entries$1, message$1) {
+	return {
+		kind: "schema",
+		type: "strict_object",
+		reference: strictObject,
+		expects: "Object",
+		async: false,
+		entries: entries$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				for (const key in this.entries) {
+					const valueSchema = this.entries[key];
+					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+						const value$1 = key in input ? input[key] : /* @__PURE__ */ getDefault(valueSchema);
+						const valueDataset = valueSchema["~run"]({ value: value$1 }, config$1);
+						if (valueDataset.issues) {
+							const pathItem = {
+								type: "object",
+								origin: "value",
+								input,
+								key,
+								value: value$1
+							};
+							for (const issue of valueDataset.issues) {
+								if (issue.path) issue.path.unshift(pathItem);
+								else issue.path = [pathItem];
+								dataset.issues?.push(issue);
+							}
+							if (!dataset.issues) dataset.issues = valueDataset.issues;
+							if (config$1.abortEarly) {
+								dataset.typed = false;
+								break;
+							}
+						}
+						if (!valueDataset.typed) dataset.typed = false;
+						dataset.value[key] = valueDataset.value;
+					} else if (valueSchema.fallback !== void 0) dataset.value[key] = /* @__PURE__ */ getFallback(valueSchema);
+					else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+						_addIssue(this, "key", dataset, config$1, {
+							input: void 0,
+							expected: `"${key}"`,
+							path: [{
+								type: "object",
+								origin: "key",
+								input,
+								key,
+								value: input[key]
+							}]
+						});
+						if (config$1.abortEarly) break;
+					}
+				}
+				if (!dataset.issues || !config$1.abortEarly) {
+					for (const key in input) if (!(key in this.entries)) {
+						_addIssue(this, "key", dataset, config$1, {
+							input: key,
+							expected: "never",
+							path: [{
+								type: "object",
+								origin: "key",
+								input,
+								key,
+								value: input[key]
+							}]
+						});
+						break;
+					}
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/strictObject/strictObjectAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function strictObjectAsync(entries$1, message$1) {
+	return {
+		kind: "schema",
+		type: "strict_object",
+		reference: strictObjectAsync,
+		expects: "Object",
+		async: true,
+		entries: entries$1,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				dataset.typed = true;
+				dataset.value = {};
+				const valueDatasets = await Promise.all(Object.entries(this.entries).map(async ([key, valueSchema]) => {
+					if (key in input || (valueSchema.type === "exact_optional" || valueSchema.type === "optional" || valueSchema.type === "nullish") && valueSchema.default !== void 0) {
+						const value$1 = key in input ? input[key] : await /* @__PURE__ */ getDefault(valueSchema);
+						return [
+							key,
+							value$1,
+							valueSchema,
+							await valueSchema["~run"]({ value: value$1 }, config$1)
+						];
+					}
+					return [
+						key,
+						input[key],
+						valueSchema,
+						null
+					];
+				}));
+				for (const [key, value$1, valueSchema, valueDataset] of valueDatasets) if (valueDataset) {
+					if (valueDataset.issues) {
+						const pathItem = {
+							type: "object",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of valueDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = valueDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!valueDataset.typed) dataset.typed = false;
+					dataset.value[key] = valueDataset.value;
+				} else if (valueSchema.fallback !== void 0) dataset.value[key] = await /* @__PURE__ */ getFallback(valueSchema);
+				else if (valueSchema.type !== "exact_optional" && valueSchema.type !== "optional" && valueSchema.type !== "nullish") {
+					_addIssue(this, "key", dataset, config$1, {
+						input: void 0,
+						expected: `"${key}"`,
+						path: [{
+							type: "object",
+							origin: "key",
+							input,
+							key,
+							value: value$1
+						}]
+					});
+					if (config$1.abortEarly) break;
+				}
+				if (!dataset.issues || !config$1.abortEarly) {
+					for (const key in input) if (!(key in this.entries)) {
+						_addIssue(this, "key", dataset, config$1, {
+							input: key,
+							expected: "never",
+							path: [{
+								type: "object",
+								origin: "key",
+								input,
+								key,
+								value: input[key]
+							}]
+						});
+						break;
+					}
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/strictTuple/strictTuple.ts
+/* @__NO_SIDE_EFFECTS__ */
+function strictTuple(items, message$1) {
+	return {
+		kind: "schema",
+		type: "strict_tuple",
+		reference: strictTuple,
+		expects: "Array",
+		async: false,
+		items,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (Array.isArray(input)) {
+				dataset.typed = true;
+				dataset.value = [];
+				for (let key = 0; key < this.items.length; key++) {
+					const value$1 = input[key];
+					const itemDataset = this.items[key]["~run"]({ value: value$1 }, config$1);
+					if (itemDataset.issues) {
+						const pathItem = {
+							type: "array",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of itemDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = itemDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!itemDataset.typed) dataset.typed = false;
+					dataset.value.push(itemDataset.value);
+				}
+				if (!(dataset.issues && config$1.abortEarly) && this.items.length < input.length) _addIssue(this, "type", dataset, config$1, {
+					input: input[this.items.length],
+					expected: "never",
+					path: [{
+						type: "array",
+						origin: "value",
+						input,
+						key: this.items.length,
+						value: input[this.items.length]
+					}]
+				});
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/strictTuple/strictTupleAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function strictTupleAsync(items, message$1) {
+	return {
+		kind: "schema",
+		type: "strict_tuple",
+		reference: strictTupleAsync,
+		expects: "Array",
+		async: true,
+		items,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (Array.isArray(input)) {
+				dataset.typed = true;
+				dataset.value = [];
+				const itemDatasets = await Promise.all(this.items.map(async (item, key) => {
+					const value$1 = input[key];
+					return [
+						key,
+						value$1,
+						await item["~run"]({ value: value$1 }, config$1)
+					];
+				}));
+				for (const [key, value$1, itemDataset] of itemDatasets) {
+					if (itemDataset.issues) {
+						const pathItem = {
+							type: "array",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of itemDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = itemDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!itemDataset.typed) dataset.typed = false;
+					dataset.value.push(itemDataset.value);
+				}
+				if (!(dataset.issues && config$1.abortEarly) && this.items.length < input.length) _addIssue(this, "type", dataset, config$1, {
+					input: input[this.items.length],
+					expected: "never",
+					path: [{
+						type: "array",
+						origin: "value",
+						input,
+						key: this.items.length,
+						value: input[this.items.length]
+					}]
+				});
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/string/string.ts
+/* @__NO_SIDE_EFFECTS__ */
+function string(message$1) {
+	return {
+		kind: "schema",
+		type: "string",
+		reference: string,
+		expects: "string",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (typeof dataset.value === "string") dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/symbol/symbol.ts
+/* @__NO_SIDE_EFFECTS__ */
+function symbol(message$1) {
+	return {
+		kind: "schema",
+		type: "symbol",
+		reference: symbol,
+		expects: "symbol",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (typeof dataset.value === "symbol") dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/tuple/tuple.ts
+/* @__NO_SIDE_EFFECTS__ */
+function tuple(items, message$1) {
+	return {
+		kind: "schema",
+		type: "tuple",
+		reference: tuple,
+		expects: "Array",
+		async: false,
+		items,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (Array.isArray(input)) {
+				dataset.typed = true;
+				dataset.value = [];
+				for (let key = 0; key < this.items.length; key++) {
+					const value$1 = input[key];
+					const itemDataset = this.items[key]["~run"]({ value: value$1 }, config$1);
+					if (itemDataset.issues) {
+						const pathItem = {
+							type: "array",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of itemDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = itemDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!itemDataset.typed) dataset.typed = false;
+					dataset.value.push(itemDataset.value);
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/tuple/tupleAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function tupleAsync(items, message$1) {
+	return {
+		kind: "schema",
+		type: "tuple",
+		reference: tupleAsync,
+		expects: "Array",
+		async: true,
+		items,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (Array.isArray(input)) {
+				dataset.typed = true;
+				dataset.value = [];
+				const itemDatasets = await Promise.all(this.items.map(async (item, key) => {
+					const value$1 = input[key];
+					return [
+						key,
+						value$1,
+						await item["~run"]({ value: value$1 }, config$1)
+					];
+				}));
+				for (const [key, value$1, itemDataset] of itemDatasets) {
+					if (itemDataset.issues) {
+						const pathItem = {
+							type: "array",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of itemDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = itemDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!itemDataset.typed) dataset.typed = false;
+					dataset.value.push(itemDataset.value);
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/tupleWithRest/tupleWithRest.ts
+/* @__NO_SIDE_EFFECTS__ */
+function tupleWithRest(items, rest, message$1) {
+	return {
+		kind: "schema",
+		type: "tuple_with_rest",
+		reference: tupleWithRest,
+		expects: "Array",
+		async: false,
+		items,
+		rest,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (Array.isArray(input)) {
+				dataset.typed = true;
+				dataset.value = [];
+				for (let key = 0; key < this.items.length; key++) {
+					const value$1 = input[key];
+					const itemDataset = this.items[key]["~run"]({ value: value$1 }, config$1);
+					if (itemDataset.issues) {
+						const pathItem = {
+							type: "array",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of itemDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = itemDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!itemDataset.typed) dataset.typed = false;
+					dataset.value.push(itemDataset.value);
+				}
+				if (!dataset.issues || !config$1.abortEarly) for (let key = this.items.length; key < input.length; key++) {
+					const value$1 = input[key];
+					const itemDataset = this.rest["~run"]({ value: value$1 }, config$1);
+					if (itemDataset.issues) {
+						const pathItem = {
+							type: "array",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of itemDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = itemDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!itemDataset.typed) dataset.typed = false;
+					dataset.value.push(itemDataset.value);
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/tupleWithRest/tupleWithRestAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function tupleWithRestAsync(items, rest, message$1) {
+	return {
+		kind: "schema",
+		type: "tuple_with_rest",
+		reference: tupleWithRestAsync,
+		expects: "Array",
+		async: true,
+		items,
+		rest,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (Array.isArray(input)) {
+				dataset.typed = true;
+				dataset.value = [];
+				const [normalDatasets, restDatasets] = await Promise.all([Promise.all(this.items.map(async (item, key) => {
+					const value$1 = input[key];
+					return [
+						key,
+						value$1,
+						await item["~run"]({ value: value$1 }, config$1)
+					];
+				})), Promise.all(input.slice(this.items.length).map(async (value$1, key) => {
+					return [
+						key + this.items.length,
+						value$1,
+						await this.rest["~run"]({ value: value$1 }, config$1)
+					];
+				}))]);
+				for (const [key, value$1, itemDataset] of normalDatasets) {
+					if (itemDataset.issues) {
+						const pathItem = {
+							type: "array",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of itemDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = itemDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!itemDataset.typed) dataset.typed = false;
+					dataset.value.push(itemDataset.value);
+				}
+				if (!dataset.issues || !config$1.abortEarly) for (const [key, value$1, itemDataset] of restDatasets) {
+					if (itemDataset.issues) {
+						const pathItem = {
+							type: "array",
+							origin: "value",
+							input,
+							key,
+							value: value$1
+						};
+						for (const issue of itemDataset.issues) {
+							if (issue.path) issue.path.unshift(pathItem);
+							else issue.path = [pathItem];
+							dataset.issues?.push(issue);
+						}
+						if (!dataset.issues) dataset.issues = itemDataset.issues;
+						if (config$1.abortEarly) {
+							dataset.typed = false;
+							break;
+						}
+					}
+					if (!itemDataset.typed) dataset.typed = false;
+					dataset.value.push(itemDataset.value);
+				}
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/undefined/undefined.ts
+/* @__NO_SIDE_EFFECTS__ */
+function undefined_(message$1) {
+	return {
+		kind: "schema",
+		type: "undefined",
+		reference: undefined_,
+		expects: "undefined",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value === void 0) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/undefinedable/undefinedable.ts
+/* @__NO_SIDE_EFFECTS__ */
+function undefinedable(wrapped, default_) {
+	return {
+		kind: "schema",
+		type: "undefinedable",
+		reference: undefinedable,
+		expects: `(${wrapped.expects} | undefined)`,
+		async: false,
+		wrapped,
+		default: default_,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value === void 0) {
+				if (this.default !== void 0) dataset.value = /* @__PURE__ */ getDefault(this, dataset, config$1);
+				if (dataset.value === void 0) {
+					dataset.typed = true;
+					return dataset;
+				}
+			}
+			return this.wrapped["~run"](dataset, config$1);
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/undefinedable/undefinedableAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function undefinedableAsync(wrapped, default_) {
+	return {
+		kind: "schema",
+		type: "undefinedable",
+		reference: undefinedableAsync,
+		expects: `(${wrapped.expects} | undefined)`,
+		async: true,
+		wrapped,
+		default: default_,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			if (dataset.value === void 0) {
+				if (this.default !== void 0) dataset.value = await /* @__PURE__ */ getDefault(this, dataset, config$1);
+				if (dataset.value === void 0) {
+					dataset.typed = true;
+					return dataset;
+				}
+			}
+			return this.wrapped["~run"](dataset, config$1);
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/union/utils/_subIssues/_subIssues.ts
+/**
+* Returns the sub issues of the provided datasets for the union issue.
+*
+* @param datasets The datasets.
+*
+* @returns The sub issues.
+*
+* @internal
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function _subIssues(datasets) {
+	let issues;
+	if (datasets) for (const dataset of datasets) if (issues) issues.push(...dataset.issues);
+	else issues = dataset.issues;
+	return issues;
+}
+
+//#endregion
+//#region src/schemas/union/union.ts
+/* @__NO_SIDE_EFFECTS__ */
+function union(options, message$1) {
+	return {
+		kind: "schema",
+		type: "union",
+		reference: union,
+		expects: /* @__PURE__ */ _joinExpects(options.map((option) => option.expects), "|"),
+		async: false,
+		options,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			let validDataset;
+			let typedDatasets;
+			let untypedDatasets;
+			for (const schema of this.options) {
+				const optionDataset = schema["~run"]({ value: dataset.value }, config$1);
+				if (optionDataset.typed) if (optionDataset.issues) if (typedDatasets) typedDatasets.push(optionDataset);
+				else typedDatasets = [optionDataset];
+				else {
+					validDataset = optionDataset;
+					break;
+				}
+				else if (untypedDatasets) untypedDatasets.push(optionDataset);
+				else untypedDatasets = [optionDataset];
+			}
+			if (validDataset) return validDataset;
+			if (typedDatasets) {
+				if (typedDatasets.length === 1) return typedDatasets[0];
+				_addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(typedDatasets) });
+				dataset.typed = true;
+			} else if (untypedDatasets?.length === 1) return untypedDatasets[0];
+			else _addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(untypedDatasets) });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/union/unionAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function unionAsync(options, message$1) {
+	return {
+		kind: "schema",
+		type: "union",
+		reference: unionAsync,
+		expects: /* @__PURE__ */ _joinExpects(options.map((option) => option.expects), "|"),
+		async: true,
+		options,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			let validDataset;
+			let typedDatasets;
+			let untypedDatasets;
+			for (const schema of this.options) {
+				const optionDataset = await schema["~run"]({ value: dataset.value }, config$1);
+				if (optionDataset.typed) if (optionDataset.issues) if (typedDatasets) typedDatasets.push(optionDataset);
+				else typedDatasets = [optionDataset];
+				else {
+					validDataset = optionDataset;
+					break;
+				}
+				else if (untypedDatasets) untypedDatasets.push(optionDataset);
+				else untypedDatasets = [optionDataset];
+			}
+			if (validDataset) return validDataset;
+			if (typedDatasets) {
+				if (typedDatasets.length === 1) return typedDatasets[0];
+				_addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(typedDatasets) });
+				dataset.typed = true;
+			} else if (untypedDatasets?.length === 1) return untypedDatasets[0];
+			else _addIssue(this, "type", dataset, config$1, { issues: /* @__PURE__ */ _subIssues(untypedDatasets) });
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/unknown/unknown.ts
+/**
+* Creates a unknown schema.
+*
+* @returns A unknown schema.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function unknown() {
+	return {
+		kind: "schema",
+		type: "unknown",
+		reference: unknown,
+		expects: "unknown",
+		async: false,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset) {
+			dataset.typed = true;
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/variant/variant.ts
+/* @__NO_SIDE_EFFECTS__ */
+function variant(key, options, message$1) {
+	return {
+		kind: "schema",
+		type: "variant",
+		reference: variant,
+		expects: "Object",
+		async: false,
+		key,
+		options,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				let outputDataset;
+				let maxDiscriminatorPriority = 0;
+				let invalidDiscriminatorKey = this.key;
+				let expectedDiscriminators = [];
+				const parseOptions = (variant$1, allKeys) => {
+					for (const schema of variant$1.options) {
+						if (schema.type === "variant") parseOptions(schema, new Set(allKeys).add(schema.key));
+						else {
+							let keysAreValid = true;
+							let currentPriority = 0;
+							for (const currentKey of allKeys) {
+								const discriminatorSchema = schema.entries[currentKey];
+								if (currentKey in input ? discriminatorSchema["~run"]({
+									typed: false,
+									value: input[currentKey]
+								}, { abortEarly: true }).issues : discriminatorSchema.type !== "exact_optional" && discriminatorSchema.type !== "optional" && discriminatorSchema.type !== "nullish") {
+									keysAreValid = false;
+									if (invalidDiscriminatorKey !== currentKey && (maxDiscriminatorPriority < currentPriority || maxDiscriminatorPriority === currentPriority && currentKey in input && !(invalidDiscriminatorKey in input))) {
+										maxDiscriminatorPriority = currentPriority;
+										invalidDiscriminatorKey = currentKey;
+										expectedDiscriminators = [];
+									}
+									if (invalidDiscriminatorKey === currentKey) expectedDiscriminators.push(schema.entries[currentKey].expects);
+									break;
+								}
+								currentPriority++;
+							}
+							if (keysAreValid) {
+								const optionDataset = schema["~run"]({ value: input }, config$1);
+								if (!outputDataset || !outputDataset.typed && optionDataset.typed) outputDataset = optionDataset;
+							}
+						}
+						if (outputDataset && !outputDataset.issues) break;
+					}
+				};
+				parseOptions(this, new Set([this.key]));
+				if (outputDataset) return outputDataset;
+				_addIssue(this, "type", dataset, config$1, {
+					input: input[invalidDiscriminatorKey],
+					expected: /* @__PURE__ */ _joinExpects(expectedDiscriminators, "|"),
+					path: [{
+						type: "object",
+						origin: "value",
+						input,
+						key: invalidDiscriminatorKey,
+						value: input[invalidDiscriminatorKey]
+					}]
+				});
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/variant/variantAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function variantAsync(key, options, message$1) {
+	return {
+		kind: "schema",
+		type: "variant",
+		reference: variantAsync,
+		expects: "Object",
+		async: true,
+		key,
+		options,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			const input = dataset.value;
+			if (input && typeof input === "object") {
+				let outputDataset;
+				let maxDiscriminatorPriority = 0;
+				let invalidDiscriminatorKey = this.key;
+				let expectedDiscriminators = [];
+				const parseOptions = async (variant$1, allKeys) => {
+					for (const schema of variant$1.options) {
+						if (schema.type === "variant") await parseOptions(schema, new Set(allKeys).add(schema.key));
+						else {
+							let keysAreValid = true;
+							let currentPriority = 0;
+							for (const currentKey of allKeys) {
+								const discriminatorSchema = schema.entries[currentKey];
+								if (currentKey in input ? (await discriminatorSchema["~run"]({
+									typed: false,
+									value: input[currentKey]
+								}, { abortEarly: true })).issues : discriminatorSchema.type !== "exact_optional" && discriminatorSchema.type !== "optional" && discriminatorSchema.type !== "nullish") {
+									keysAreValid = false;
+									if (invalidDiscriminatorKey !== currentKey && (maxDiscriminatorPriority < currentPriority || maxDiscriminatorPriority === currentPriority && currentKey in input && !(invalidDiscriminatorKey in input))) {
+										maxDiscriminatorPriority = currentPriority;
+										invalidDiscriminatorKey = currentKey;
+										expectedDiscriminators = [];
+									}
+									if (invalidDiscriminatorKey === currentKey) expectedDiscriminators.push(schema.entries[currentKey].expects);
+									break;
+								}
+								currentPriority++;
+							}
+							if (keysAreValid) {
+								const optionDataset = await schema["~run"]({ value: input }, config$1);
+								if (!outputDataset || !outputDataset.typed && optionDataset.typed) outputDataset = optionDataset;
+							}
+						}
+						if (outputDataset && !outputDataset.issues) break;
+					}
+				};
+				await parseOptions(this, new Set([this.key]));
+				if (outputDataset) return outputDataset;
+				_addIssue(this, "type", dataset, config$1, {
+					input: input[invalidDiscriminatorKey],
+					expected: /* @__PURE__ */ _joinExpects(expectedDiscriminators, "|"),
+					path: [{
+						type: "object",
+						origin: "value",
+						input,
+						key: invalidDiscriminatorKey,
+						value: input[invalidDiscriminatorKey]
+					}]
+				});
+			} else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/schemas/void/void.ts
+/* @__NO_SIDE_EFFECTS__ */
+function void_(message$1) {
+	return {
+		kind: "schema",
+		type: "void",
+		reference: void_,
+		expects: "void",
+		async: false,
+		message: message$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			if (dataset.value === void 0) dataset.typed = true;
+			else _addIssue(this, "type", dataset, config$1);
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/keyof/keyof.ts
+/* @__NO_SIDE_EFFECTS__ */
+function keyof(schema, message$1) {
+	return /* @__PURE__ */ picklist(Object.keys(schema.entries), message$1);
+}
+
+//#endregion
+//#region src/methods/message/message.ts
+/**
+* Changes the local message configuration of a schema.
+*
+* @param schema The schema to configure.
+* @param message_ The error message.
+*
+* @returns The configured schema.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function message(schema, message_) {
+	return {
+		...schema,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			return schema["~run"](dataset, {
+				...config$1,
+				message: message_
+			});
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/omit/omit.ts
+/**
+* Creates a modified copy of an object schema that does not contain the
+* selected entries.
+*
+* @param schema The schema to omit from.
+* @param keys The selected entries.
+*
+* @returns An object schema.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function omit(schema, keys) {
+	const entries$1 = { ...schema.entries };
+	for (const key of keys) delete entries$1[key];
+	return {
+		...schema,
+		entries: entries$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/parse/parse.ts
+/**
+* Parses an unknown input based on a schema.
+*
+* @param schema The schema to be used.
+* @param input The input to be parsed.
+* @param config The parse configuration.
+*
+* @returns The parsed input.
+*/
+function parse(schema, input, config$1) {
+	const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
+	if (dataset.issues) throw new ValiError(dataset.issues);
+	return dataset.value;
+}
+
+//#endregion
+//#region src/methods/parse/parseAsync.ts
+/**
+* Parses an unknown input based on a schema.
+*
+* @param schema The schema to be used.
+* @param input The input to be parsed.
+* @param config The parse configuration.
+*
+* @returns The parsed input.
+*/
+async function parseAsync(schema, input, config$1) {
+	const dataset = await schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
+	if (dataset.issues) throw new ValiError(dataset.issues);
+	return dataset.value;
+}
+
+//#endregion
+//#region src/methods/parser/parser.ts
+/* @__NO_SIDE_EFFECTS__ */
+function parser(schema, config$1) {
+	const func = (input) => parse(schema, input, config$1);
+	func.schema = schema;
+	func.config = config$1;
+	return func;
+}
+
+//#endregion
+//#region src/methods/parser/parserAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function parserAsync(schema, config$1) {
+	const func = (input) => parseAsync(schema, input, config$1);
+	func.schema = schema;
+	func.config = config$1;
+	return func;
+}
+
+//#endregion
+//#region src/methods/partial/partial.ts
+/* @__NO_SIDE_EFFECTS__ */
+function partial(schema, keys) {
+	const entries$1 = {};
+	for (const key in schema.entries) entries$1[key] = !keys || keys.includes(key) ? /* @__PURE__ */ optional(schema.entries[key]) : schema.entries[key];
+	return {
+		...schema,
+		entries: entries$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/partial/partialAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function partialAsync(schema, keys) {
+	const entries$1 = {};
+	for (const key in schema.entries) entries$1[key] = !keys || keys.includes(key) ? /* @__PURE__ */ optionalAsync(schema.entries[key]) : schema.entries[key];
+	return {
+		...schema,
+		entries: entries$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/pick/pick.ts
+/**
+* Creates a modified copy of an object schema that contains only the selected
+* entries.
+*
+* @param schema The schema to pick from.
+* @param keys The selected entries.
+*
+* @returns An object schema.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function pick(schema, keys) {
+	const entries$1 = {};
+	for (const key of keys) entries$1[key] = schema.entries[key];
+	return {
+		...schema,
+		entries: entries$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/pipe/pipe.ts
+/* @__NO_SIDE_EFFECTS__ */
+function pipe(...pipe$1) {
+	return {
+		...pipe$1[0],
+		pipe: pipe$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		"~run"(dataset, config$1) {
+			for (const item of pipe$1) if (item.kind !== "metadata") {
+				if (dataset.issues && (item.kind === "schema" || item.kind === "transformation")) {
+					dataset.typed = false;
+					break;
+				}
+				if (!dataset.issues || !config$1.abortEarly && !config$1.abortPipeEarly) dataset = item["~run"](dataset, config$1);
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/pipe/pipeAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function pipeAsync(...pipe$1) {
+	return {
+		...pipe$1[0],
+		pipe: pipe$1,
+		async: true,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		},
+		async "~run"(dataset, config$1) {
+			for (const item of pipe$1) if (item.kind !== "metadata") {
+				if (dataset.issues && (item.kind === "schema" || item.kind === "transformation")) {
+					dataset.typed = false;
+					break;
+				}
+				if (!dataset.issues || !config$1.abortEarly && !config$1.abortPipeEarly) dataset = await item["~run"](dataset, config$1);
+			}
+			return dataset;
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/required/required.ts
+/* @__NO_SIDE_EFFECTS__ */
+function required(schema, arg2, arg3) {
+	const keys = Array.isArray(arg2) ? arg2 : void 0;
+	const message$1 = Array.isArray(arg2) ? arg3 : arg2;
+	const entries$1 = {};
+	for (const key in schema.entries) entries$1[key] = !keys || keys.includes(key) ? /* @__PURE__ */ nonOptional(schema.entries[key], message$1) : schema.entries[key];
+	return {
+		...schema,
+		entries: entries$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/required/requiredAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function requiredAsync(schema, arg2, arg3) {
+	const keys = Array.isArray(arg2) ? arg2 : void 0;
+	const message$1 = Array.isArray(arg2) ? arg3 : arg2;
+	const entries$1 = {};
+	for (const key in schema.entries) entries$1[key] = !keys || keys.includes(key) ? /* @__PURE__ */ nonOptionalAsync(schema.entries[key], message$1) : schema.entries[key];
+	return {
+		...schema,
+		entries: entries$1,
+		get "~standard"() {
+			return /* @__PURE__ */ _getStandardProps(this);
+		}
+	};
+}
+
+//#endregion
+//#region src/methods/safeParse/safeParse.ts
+/**
+* Parses an unknown input based on a schema.
+*
+* @param schema The schema to be used.
+* @param input The input to be parsed.
+* @param config The parse configuration.
+*
+* @returns The parse result.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function safeParse(schema, input, config$1) {
+	const dataset = schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
+	return {
+		typed: dataset.typed,
+		success: !dataset.issues,
+		output: dataset.value,
+		issues: dataset.issues
+	};
+}
+
+//#endregion
+//#region src/methods/safeParse/safeParseAsync.ts
+/**
+* Parses an unknown input based on a schema.
+*
+* @param schema The schema to be used.
+* @param input The input to be parsed.
+* @param config The parse configuration.
+*
+* @returns The parse result.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+async function safeParseAsync(schema, input, config$1) {
+	const dataset = await schema["~run"]({ value: input }, /* @__PURE__ */ getGlobalConfig(config$1));
+	return {
+		typed: dataset.typed,
+		success: !dataset.issues,
+		output: dataset.value,
+		issues: dataset.issues
+	};
+}
+
+//#endregion
+//#region src/methods/safeParser/safeParser.ts
+/* @__NO_SIDE_EFFECTS__ */
+function safeParser(schema, config$1) {
+	const func = (input) => /* @__PURE__ */ safeParse(schema, input, config$1);
+	func.schema = schema;
+	func.config = config$1;
+	return func;
+}
+
+//#endregion
+//#region src/methods/safeParser/safeParserAsync.ts
+/* @__NO_SIDE_EFFECTS__ */
+function safeParserAsync(schema, config$1) {
+	const func = (input) => /* @__PURE__ */ safeParseAsync(schema, input, config$1);
+	func.schema = schema;
+	func.config = config$1;
+	return func;
+}
+
+//#endregion
+//#region src/methods/summarize/summarize.ts
+/**
+* Summarize the error messages of issues in a pretty-printable multi-line string.
+*
+* @param issues The list of issues.
+*
+* @returns A summary of the issues.
+*
+* @beta
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function summarize(issues) {
+	let summary = "";
+	for (const issue of issues) {
+		if (summary) summary += "\n";
+		summary += `× ${issue.message}`;
+		const dotPath = /* @__PURE__ */ getDotPath(issue);
+		if (dotPath) summary += `\n  → at ${dotPath}`;
+	}
+	return summary;
+}
+
+//#endregion
+//#region src/methods/unwrap/unwrap.ts
+/**
+* Unwraps the wrapped schema.
+*
+* @param schema The schema to be unwrapped.
+*
+* @returns The unwrapped schema.
+*/
+/* @__NO_SIDE_EFFECTS__ */
+function unwrap(schema) {
+	return schema.wrapped;
+}
+
+var index = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    BASE64_REGEX: BASE64_REGEX,
+    BIC_REGEX: BIC_REGEX,
+    CUID2_REGEX: CUID2_REGEX,
+    DECIMAL_REGEX: DECIMAL_REGEX,
+    DIGITS_REGEX: DIGITS_REGEX,
+    DOMAIN_REGEX: DOMAIN_REGEX,
+    EMAIL_REGEX: EMAIL_REGEX,
+    EMOJI_REGEX: EMOJI_REGEX,
+    HEXADECIMAL_REGEX: HEXADECIMAL_REGEX,
+    HEX_COLOR_REGEX: HEX_COLOR_REGEX,
+    IMEI_REGEX: IMEI_REGEX,
+    IPV4_REGEX: IPV4_REGEX,
+    IPV6_REGEX: IPV6_REGEX,
+    IP_REGEX: IP_REGEX,
+    ISO_DATE_REGEX: ISO_DATE_REGEX,
+    ISO_DATE_TIME_REGEX: ISO_DATE_TIME_REGEX,
+    ISO_TIMESTAMP_REGEX: ISO_TIMESTAMP_REGEX,
+    ISO_TIME_REGEX: ISO_TIME_REGEX,
+    ISO_TIME_SECOND_REGEX: ISO_TIME_SECOND_REGEX,
+    ISO_WEEK_REGEX: ISO_WEEK_REGEX,
+    ISRC_REGEX: ISRC_REGEX,
+    JWS_COMPACT_REGEX: JWS_COMPACT_REGEX,
+    MAC48_REGEX: MAC48_REGEX,
+    MAC64_REGEX: MAC64_REGEX,
+    MAC_REGEX: MAC_REGEX,
+    NANO_ID_REGEX: NANO_ID_REGEX,
+    OCTAL_REGEX: OCTAL_REGEX,
+    RFC_EMAIL_REGEX: RFC_EMAIL_REGEX,
+    SLUG_REGEX: SLUG_REGEX,
+    ULID_REGEX: ULID_REGEX,
+    UUID_REGEX: UUID_REGEX,
+    ValiError: ValiError,
+    _addIssue: _addIssue,
+    _cloneDataset: _cloneDataset,
+    _getByteCount: _getByteCount,
+    _getGraphemeCount: _getGraphemeCount,
+    _getLastMetadata: _getLastMetadata,
+    _getStandardProps: _getStandardProps,
+    _getWordCount: _getWordCount,
+    _isLuhnAlgo: _isLuhnAlgo,
+    _isValidObjectKey: _isValidObjectKey,
+    _joinExpects: _joinExpects,
+    _stringify: _stringify,
+    any: any,
+    args: args,
+    argsAsync: argsAsync,
+    array: array,
+    arrayAsync: arrayAsync,
+    assert: assert,
+    awaitAsync: awaitAsync,
+    base64: base64,
+    bic: bic,
+    bigint: bigint,
+    blob: blob,
+    boolean: boolean,
+    brand: brand,
+    bytes: bytes,
+    cache: cache,
+    cacheAsync: cacheAsync,
+    check: check,
+    checkAsync: checkAsync,
+    checkItems: checkItems,
+    checkItemsAsync: checkItemsAsync,
+    config: config,
+    creditCard: creditCard,
+    cuid2: cuid2,
+    custom: custom,
+    customAsync: customAsync,
+    date: date,
+    decimal: decimal,
+    deleteGlobalConfig: deleteGlobalConfig,
+    deleteGlobalMessage: deleteGlobalMessage,
+    deleteSchemaMessage: deleteSchemaMessage,
+    deleteSpecificMessage: deleteSpecificMessage,
+    description: description,
+    digits: digits,
+    domain: domain,
+    email: email,
+    emoji: emoji,
+    empty: empty,
+    endsWith: endsWith,
+    entries: entries,
+    entriesFromList: entriesFromList,
+    entriesFromObjects: entriesFromObjects,
+    enum: enum_,
+    enum_: enum_,
+    everyItem: everyItem,
+    exactOptional: exactOptional,
+    exactOptionalAsync: exactOptionalAsync,
+    examples: examples,
+    excludes: excludes,
+    fallback: fallback,
+    fallbackAsync: fallbackAsync,
+    file: file,
+    filterItems: filterItems,
+    findItem: findItem,
+    finite: finite,
+    flatten: flatten,
+    flavor: flavor,
+    forward: forward,
+    forwardAsync: forwardAsync,
+    function: function_,
+    function_: function_,
+    getDefault: getDefault,
+    getDefaults: getDefaults,
+    getDefaultsAsync: getDefaultsAsync,
+    getDescription: getDescription,
+    getDotPath: getDotPath,
+    getExamples: getExamples,
+    getFallback: getFallback,
+    getFallbacks: getFallbacks,
+    getFallbacksAsync: getFallbacksAsync,
+    getGlobalConfig: getGlobalConfig,
+    getGlobalMessage: getGlobalMessage,
+    getMetadata: getMetadata,
+    getSchemaMessage: getSchemaMessage,
+    getSpecificMessage: getSpecificMessage,
+    getTitle: getTitle,
+    graphemes: graphemes,
+    gtValue: gtValue,
+    guard: guard,
+    hash: hash,
+    hexColor: hexColor,
+    hexadecimal: hexadecimal,
+    imei: imei,
+    includes: includes,
+    instance: instance,
+    integer: integer,
+    intersect: intersect,
+    intersectAsync: intersectAsync,
+    ip: ip,
+    ipv4: ipv4,
+    ipv6: ipv6,
+    is: is$1,
+    isOfKind: isOfKind,
+    isOfType: isOfType,
+    isValiError: isValiError,
+    isbn: isbn,
+    isoDate: isoDate,
+    isoDateTime: isoDateTime,
+    isoTime: isoTime,
+    isoTimeSecond: isoTimeSecond,
+    isoTimestamp: isoTimestamp,
+    isoWeek: isoWeek,
+    isrc: isrc,
+    jwsCompact: jwsCompact,
+    keyof: keyof,
+    lazy: lazy,
+    lazyAsync: lazyAsync,
+    length: length,
+    literal: literal,
+    looseObject: looseObject,
+    looseObjectAsync: looseObjectAsync,
+    looseTuple: looseTuple,
+    looseTupleAsync: looseTupleAsync,
+    ltValue: ltValue,
+    mac: mac,
+    mac48: mac48,
+    mac64: mac64,
+    map: map,
+    mapAsync: mapAsync,
+    mapItems: mapItems,
+    maxBytes: maxBytes,
+    maxEntries: maxEntries,
+    maxGraphemes: maxGraphemes,
+    maxLength: maxLength,
+    maxSize: maxSize,
+    maxValue: maxValue,
+    maxWords: maxWords,
+    message: message,
+    metadata: metadata,
+    mimeType: mimeType,
+    minBytes: minBytes,
+    minEntries: minEntries,
+    minGraphemes: minGraphemes,
+    minLength: minLength,
+    minSize: minSize,
+    minValue: minValue,
+    minWords: minWords,
+    multipleOf: multipleOf,
+    nan: nan,
+    nanoid: nanoid,
+    never: never,
+    nonEmpty: nonEmpty,
+    nonNullable: nonNullable,
+    nonNullableAsync: nonNullableAsync,
+    nonNullish: nonNullish,
+    nonNullishAsync: nonNullishAsync,
+    nonOptional: nonOptional,
+    nonOptionalAsync: nonOptionalAsync,
+    normalize: normalize,
+    notBytes: notBytes,
+    notEntries: notEntries,
+    notGraphemes: notGraphemes,
+    notLength: notLength,
+    notSize: notSize,
+    notValue: notValue,
+    notValues: notValues,
+    notWords: notWords,
+    null: null_,
+    null_: null_,
+    nullable: nullable,
+    nullableAsync: nullableAsync,
+    nullish: nullish,
+    nullishAsync: nullishAsync,
+    number: number,
+    object: object,
+    objectAsync: objectAsync,
+    objectWithRest: objectWithRest,
+    objectWithRestAsync: objectWithRestAsync,
+    octal: octal,
+    omit: omit,
+    optional: optional,
+    optionalAsync: optionalAsync,
+    parse: parse,
+    parseAsync: parseAsync,
+    parseBoolean: parseBoolean,
+    parseJson: parseJson,
+    parser: parser,
+    parserAsync: parserAsync,
+    partial: partial,
+    partialAsync: partialAsync,
+    partialCheck: partialCheck,
+    partialCheckAsync: partialCheckAsync,
+    pick: pick,
+    picklist: picklist,
+    pipe: pipe,
+    pipeAsync: pipeAsync,
+    promise: promise,
+    rawCheck: rawCheck,
+    rawCheckAsync: rawCheckAsync,
+    rawTransform: rawTransform,
+    rawTransformAsync: rawTransformAsync,
+    readonly: readonly,
+    record: record,
+    recordAsync: recordAsync,
+    reduceItems: reduceItems,
+    regex: regex,
+    required: required,
+    requiredAsync: requiredAsync,
+    returns: returns,
+    returnsAsync: returnsAsync,
+    rfcEmail: rfcEmail,
+    safeInteger: safeInteger,
+    safeParse: safeParse,
+    safeParseAsync: safeParseAsync,
+    safeParser: safeParser,
+    safeParserAsync: safeParserAsync,
+    set: set$1,
+    setAsync: setAsync,
+    setGlobalConfig: setGlobalConfig,
+    setGlobalMessage: setGlobalMessage,
+    setSchemaMessage: setSchemaMessage,
+    setSpecificMessage: setSpecificMessage,
+    size: size,
+    slug: slug,
+    someItem: someItem,
+    sortItems: sortItems,
+    startsWith: startsWith,
+    strictObject: strictObject,
+    strictObjectAsync: strictObjectAsync,
+    strictTuple: strictTuple,
+    strictTupleAsync: strictTupleAsync,
+    string: string,
+    stringifyJson: stringifyJson,
+    summarize: summarize,
+    symbol: symbol,
+    title: title,
+    toBigint: toBigint,
+    toBoolean: toBoolean,
+    toDate: toDate,
+    toLowerCase: toLowerCase,
+    toMaxValue: toMaxValue,
+    toMinValue: toMinValue,
+    toNumber: toNumber,
+    toString: toString,
+    toUpperCase: toUpperCase,
+    transform: transform,
+    transformAsync: transformAsync,
+    trim: trim,
+    trimEnd: trimEnd,
+    trimStart: trimStart,
+    tuple: tuple,
+    tupleAsync: tupleAsync,
+    tupleWithRest: tupleWithRest,
+    tupleWithRestAsync: tupleWithRestAsync,
+    ulid: ulid,
+    undefined: undefined_,
+    undefined_: undefined_,
+    undefinedable: undefinedable,
+    undefinedableAsync: undefinedableAsync,
+    union: union,
+    unionAsync: unionAsync,
+    unknown: unknown,
+    unwrap: unwrap,
+    url: url,
+    uuid: uuid,
+    value: value,
+    values: values,
+    variant: variant,
+    variantAsync: variantAsync,
+    void: void_,
+    void_: void_,
+    words: words
 });
-testEvent.trigger("event1", { idea: "Hello", num: 42, isFinite: true });
-testEvent.off("event1");
-// // Exemple d'utilisation
-// const emitter1 = new EventTrigger();
-// const emitter2 = new EventTrigger();
-// emitter1.on("event1", (message: string) => {
-//   console.log(`emitter1 received: ${message}`);
-// });
-// emitter2.listenTo(emitter1, "event1", (message: string) => {
-//   console.log(`emitter2 received: ${message}`);
-// });
-// emitter1.trigger("event1", "Hello, world!");
-// // Utilisation de listenToOnce
-// emitter2.listenToOnce(emitter1, "event2", (message: string) => {
-//   console.log(`emitter2 received once: ${message}`);
-// });
-// emitter1.trigger("event2", "This will be received once");
-// emitter1.trigger("event2", "This will not be received");
-// // Arrêter d'écouter un événement
-// emitter2.stopListening("event1");
-// emitter1.trigger("event1", "This will not be received by emitter2");
-// type MyEventMap = TEventMap<{
-//   event1: (message: { idea: string; num: number; isFinite: boolean }) => void;
-//   event2: (message: string) => void;
-// }>;
-// class MyEvent extends EventTrigger<MyEvent, MyEventMap> {
-//   // ...
-// }
-// const myEvent = new MyEvent();
-// myEvent.on("event1", (message) => {
-//   console.log(`Received: ${message.idea} ${message.num} ${message.isFinite}`);
-// });
+
+// src/utils/env.ts
+var NOTHING = Symbol.for("immer-nothing");
+var DRAFTABLE = Symbol.for("immer-draftable");
+var DRAFT_STATE = Symbol.for("immer-state");
+
+// src/utils/errors.ts
+var errors = process.env.NODE_ENV !== "production" ? [
+  // All error codes, starting by 0:
+  function(plugin) {
+    return `The plugin for '${plugin}' has not been loaded into Immer. To enable the plugin, import and call \`enable${plugin}()\` when initializing your application.`;
+  },
+  function(thing) {
+    return `produce can only be called on things that are draftable: plain objects, arrays, Map, Set or classes that are marked with '[immerable]: true'. Got '${thing}'`;
+  },
+  "This object has been frozen and should not be mutated",
+  function(data) {
+    return "Cannot use a proxy that has been revoked. Did you pass an object from inside an immer function to an async process? " + data;
+  },
+  "An immer producer returned a new value *and* modified its draft. Either return a new value *or* modify the draft.",
+  "Immer forbids circular references",
+  "The first or second argument to `produce` must be a function",
+  "The third argument to `produce` must be a function or undefined",
+  "First argument to `createDraft` must be a plain object, an array, or an immerable object",
+  "First argument to `finishDraft` must be a draft returned by `createDraft`",
+  function(thing) {
+    return `'current' expects a draft, got: ${thing}`;
+  },
+  "Object.defineProperty() cannot be used on an Immer draft",
+  "Object.setPrototypeOf() cannot be used on an Immer draft",
+  "Immer only supports deleting array indices",
+  "Immer only supports setting array indices and the 'length' property",
+  function(thing) {
+    return `'original' expects a draft, got: ${thing}`;
+  }
+  // Note: if more errors are added, the errorOffset in Patches.ts should be increased
+  // See Patches.ts for additional errors
+] : [];
+function die(error, ...args) {
+  if (process.env.NODE_ENV !== "production") {
+    const e = errors[error];
+    const msg = isFunction(e) ? e.apply(null, args) : e;
+    throw new Error(`[Immer] ${msg}`);
+  }
+  throw new Error(
+    `[Immer] minified error nr: ${error}. Full error at: https://bit.ly/3cXEKWf`
+  );
+}
+
+// src/utils/common.ts
+var O = Object;
+var getPrototypeOf = O.getPrototypeOf;
+var CONSTRUCTOR = "constructor";
+var PROTOTYPE = "prototype";
+var CONFIGURABLE = "configurable";
+var ENUMERABLE = "enumerable";
+var WRITABLE = "writable";
+var VALUE = "value";
+var isDraft = (value) => !!value && !!value[DRAFT_STATE];
+function isDraftable(value) {
+  if (!value)
+    return false;
+  return isPlainObject(value) || isArray(value) || !!value[DRAFTABLE] || !!value[CONSTRUCTOR]?.[DRAFTABLE] || isMap(value) || isSet(value);
+}
+var objectCtorString = O[PROTOTYPE][CONSTRUCTOR].toString();
+var cachedCtorStrings = /* @__PURE__ */ new WeakMap();
+function isPlainObject(value) {
+  if (!value || !isObjectish(value))
+    return false;
+  const proto = getPrototypeOf(value);
+  if (proto === null || proto === O[PROTOTYPE])
+    return true;
+  const Ctor = O.hasOwnProperty.call(proto, CONSTRUCTOR) && proto[CONSTRUCTOR];
+  if (Ctor === Object)
+    return true;
+  if (!isFunction(Ctor))
+    return false;
+  let ctorString = cachedCtorStrings.get(Ctor);
+  if (ctorString === void 0) {
+    ctorString = Function.toString.call(Ctor);
+    cachedCtorStrings.set(Ctor, ctorString);
+  }
+  return ctorString === objectCtorString;
+}
+function original(value) {
+  if (!isDraft(value))
+    die(15, value);
+  return value[DRAFT_STATE].base_;
+}
+function each(obj, iter, strict = true) {
+  if (getArchtype(obj) === 0 /* Object */) {
+    const keys = strict ? Reflect.ownKeys(obj) : O.keys(obj);
+    keys.forEach((key) => {
+      iter(key, obj[key], obj);
+    });
+  } else {
+    obj.forEach((entry, index) => iter(index, entry, obj));
+  }
+}
+function getArchtype(thing) {
+  const state = thing[DRAFT_STATE];
+  return state ? state.type_ : isArray(thing) ? 1 /* Array */ : isMap(thing) ? 2 /* Map */ : isSet(thing) ? 3 /* Set */ : 0 /* Object */;
+}
+var has = (thing, prop, type = getArchtype(thing)) => type === 2 /* Map */ ? thing.has(prop) : O[PROTOTYPE].hasOwnProperty.call(thing, prop);
+var get = (thing, prop, type = getArchtype(thing)) => (
+  // @ts-ignore
+  type === 2 /* Map */ ? thing.get(prop) : thing[prop]
+);
+var set = (thing, propOrOldValue, value, type = getArchtype(thing)) => {
+  if (type === 2 /* Map */)
+    thing.set(propOrOldValue, value);
+  else if (type === 3 /* Set */) {
+    thing.add(value);
+  } else
+    thing[propOrOldValue] = value;
+};
+function is(x, y) {
+  if (x === y) {
+    return x !== 0 || 1 / x === 1 / y;
+  } else {
+    return x !== x && y !== y;
+  }
+}
+var isArray = Array.isArray;
+var isMap = (target) => target instanceof Map;
+var isSet = (target) => target instanceof Set;
+var isObjectish = (target) => typeof target === "object";
+var isFunction = (target) => typeof target === "function";
+var isBoolean = (target) => typeof target === "boolean";
+function isArrayIndex(value) {
+  const n = +value;
+  return Number.isInteger(n) && String(n) === value;
+}
+var getProxyDraft = (value) => {
+  if (!isObjectish(value))
+    return null;
+  return value?.[DRAFT_STATE];
+};
+var latest = (state) => state.copy_ || state.base_;
+var getValue = (value) => {
+  const proxyDraft = getProxyDraft(value);
+  return proxyDraft ? proxyDraft.copy_ ?? proxyDraft.base_ : value;
+};
+var getFinalValue = (state) => state.modified_ ? state.copy_ : state.base_;
+function shallowCopy(base, strict) {
+  if (isMap(base)) {
+    return new Map(base);
+  }
+  if (isSet(base)) {
+    return new Set(base);
+  }
+  if (isArray(base))
+    return Array[PROTOTYPE].slice.call(base);
+  const isPlain = isPlainObject(base);
+  if (strict === true || strict === "class_only" && !isPlain) {
+    const descriptors = O.getOwnPropertyDescriptors(base);
+    delete descriptors[DRAFT_STATE];
+    let keys = Reflect.ownKeys(descriptors);
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      const desc = descriptors[key];
+      if (desc[WRITABLE] === false) {
+        desc[WRITABLE] = true;
+        desc[CONFIGURABLE] = true;
+      }
+      if (desc.get || desc.set)
+        descriptors[key] = {
+          [CONFIGURABLE]: true,
+          [WRITABLE]: true,
+          // could live with !!desc.set as well here...
+          [ENUMERABLE]: desc[ENUMERABLE],
+          [VALUE]: base[key]
+        };
+    }
+    return O.create(getPrototypeOf(base), descriptors);
+  } else {
+    const proto = getPrototypeOf(base);
+    if (proto !== null && isPlain) {
+      return { ...base };
+    }
+    const obj = O.create(proto);
+    return O.assign(obj, base);
+  }
+}
+function freeze(obj, deep = false) {
+  if (isFrozen(obj) || isDraft(obj) || !isDraftable(obj))
+    return obj;
+  if (getArchtype(obj) > 1) {
+    O.defineProperties(obj, {
+      set: dontMutateMethodOverride,
+      add: dontMutateMethodOverride,
+      clear: dontMutateMethodOverride,
+      delete: dontMutateMethodOverride
+    });
+  }
+  O.freeze(obj);
+  if (deep)
+    each(
+      obj,
+      (_key, value) => {
+        freeze(value, true);
+      },
+      false
+    );
+  return obj;
+}
+function dontMutateFrozenCollections() {
+  die(2);
+}
+var dontMutateMethodOverride = {
+  [VALUE]: dontMutateFrozenCollections
+};
+function isFrozen(obj) {
+  if (obj === null || !isObjectish(obj))
+    return true;
+  return O.isFrozen(obj);
+}
+
+// src/utils/plugins.ts
+var PluginMapSet = "MapSet";
+var PluginPatches = "Patches";
+var PluginArrayMethods = "ArrayMethods";
+var plugins = {};
+function getPlugin(pluginKey) {
+  const plugin = plugins[pluginKey];
+  if (!plugin) {
+    die(0, pluginKey);
+  }
+  return plugin;
+}
+var isPluginLoaded = (pluginKey) => !!plugins[pluginKey];
+function loadPlugin(pluginKey, implementation) {
+  if (!plugins[pluginKey])
+    plugins[pluginKey] = implementation;
+}
+
+// src/core/scope.ts
+var currentScope;
+var getCurrentScope = () => currentScope;
+var createScope = (parent_, immer_) => ({
+  drafts_: [],
+  parent_,
+  immer_,
+  // Whenever the modified draft contains a draft from another scope, we
+  // need to prevent auto-freezing so the unowned draft can be finalized.
+  canAutoFreeze_: true,
+  unfinalizedDrafts_: 0,
+  handledSet_: /* @__PURE__ */ new Set(),
+  processedForPatches_: /* @__PURE__ */ new Set(),
+  mapSetPlugin_: isPluginLoaded(PluginMapSet) ? getPlugin(PluginMapSet) : void 0,
+  arrayMethodsPlugin_: isPluginLoaded(PluginArrayMethods) ? getPlugin(PluginArrayMethods) : void 0
+});
+function usePatchesInScope(scope, patchListener) {
+  if (patchListener) {
+    scope.patchPlugin_ = getPlugin(PluginPatches);
+    scope.patches_ = [];
+    scope.inversePatches_ = [];
+    scope.patchListener_ = patchListener;
+  }
+}
+function revokeScope(scope) {
+  leaveScope(scope);
+  scope.drafts_.forEach(revokeDraft);
+  scope.drafts_ = null;
+}
+function leaveScope(scope) {
+  if (scope === currentScope) {
+    currentScope = scope.parent_;
+  }
+}
+var enterScope = (immer2) => currentScope = createScope(currentScope, immer2);
+function revokeDraft(draft) {
+  const state = draft[DRAFT_STATE];
+  if (state.type_ === 0 /* Object */ || state.type_ === 1 /* Array */)
+    state.revoke_();
+  else
+    state.revoked_ = true;
+}
+
+// src/core/finalize.ts
+function processResult(result, scope) {
+  scope.unfinalizedDrafts_ = scope.drafts_.length;
+  const baseDraft = scope.drafts_[0];
+  const isReplaced = result !== void 0 && result !== baseDraft;
+  if (isReplaced) {
+    if (baseDraft[DRAFT_STATE].modified_) {
+      revokeScope(scope);
+      die(4);
+    }
+    if (isDraftable(result)) {
+      result = finalize(scope, result);
+    }
+    const { patchPlugin_ } = scope;
+    if (patchPlugin_) {
+      patchPlugin_.generateReplacementPatches_(
+        baseDraft[DRAFT_STATE].base_,
+        result,
+        scope
+      );
+    }
+  } else {
+    result = finalize(scope, baseDraft);
+  }
+  maybeFreeze(scope, result, true);
+  revokeScope(scope);
+  if (scope.patches_) {
+    scope.patchListener_(scope.patches_, scope.inversePatches_);
+  }
+  return result !== NOTHING ? result : void 0;
+}
+function finalize(rootScope, value) {
+  if (isFrozen(value))
+    return value;
+  const state = value[DRAFT_STATE];
+  if (!state) {
+    const finalValue = handleValue(value, rootScope.handledSet_, rootScope);
+    return finalValue;
+  }
+  if (!isSameScope(state, rootScope)) {
+    return value;
+  }
+  if (!state.modified_) {
+    return state.base_;
+  }
+  if (!state.finalized_) {
+    const { callbacks_ } = state;
+    if (callbacks_) {
+      while (callbacks_.length > 0) {
+        const callback = callbacks_.pop();
+        callback(rootScope);
+      }
+    }
+    generatePatchesAndFinalize(state, rootScope);
+  }
+  return state.copy_;
+}
+function maybeFreeze(scope, value, deep = false) {
+  if (!scope.parent_ && scope.immer_.autoFreeze_ && scope.canAutoFreeze_) {
+    freeze(value, deep);
+  }
+}
+function markStateFinalized(state) {
+  state.finalized_ = true;
+  state.scope_.unfinalizedDrafts_--;
+}
+var isSameScope = (state, rootScope) => state.scope_ === rootScope;
+var EMPTY_LOCATIONS_RESULT = [];
+function updateDraftInParent(parent, draftValue, finalizedValue, originalKey) {
+  const parentCopy = latest(parent);
+  const parentType = parent.type_;
+  if (originalKey !== void 0) {
+    const currentValue = get(parentCopy, originalKey, parentType);
+    if (currentValue === draftValue) {
+      set(parentCopy, originalKey, finalizedValue, parentType);
+      return;
+    }
+  }
+  if (!parent.draftLocations_) {
+    const draftLocations = parent.draftLocations_ = /* @__PURE__ */ new Map();
+    each(parentCopy, (key, value) => {
+      if (isDraft(value)) {
+        const keys = draftLocations.get(value) || [];
+        keys.push(key);
+        draftLocations.set(value, keys);
+      }
+    });
+  }
+  const locations = parent.draftLocations_.get(draftValue) ?? EMPTY_LOCATIONS_RESULT;
+  for (const location of locations) {
+    set(parentCopy, location, finalizedValue, parentType);
+  }
+}
+function registerChildFinalizationCallback(parent, child, key) {
+  parent.callbacks_.push(function childCleanup(rootScope) {
+    const state = child;
+    if (!state || !isSameScope(state, rootScope)) {
+      return;
+    }
+    rootScope.mapSetPlugin_?.fixSetContents(state);
+    const finalizedValue = getFinalValue(state);
+    updateDraftInParent(parent, state.draft_ ?? state, finalizedValue, key);
+    generatePatchesAndFinalize(state, rootScope);
+  });
+}
+function generatePatchesAndFinalize(state, rootScope) {
+  const shouldFinalize = state.modified_ && !state.finalized_ && (state.type_ === 3 /* Set */ || state.type_ === 1 /* Array */ && state.allIndicesReassigned_ || (state.assigned_?.size ?? 0) > 0);
+  if (shouldFinalize) {
+    const { patchPlugin_ } = rootScope;
+    if (patchPlugin_) {
+      const basePath = patchPlugin_.getPath(state);
+      if (basePath) {
+        patchPlugin_.generatePatches_(state, basePath, rootScope);
+      }
+    }
+    markStateFinalized(state);
+  }
+}
+function handleCrossReference(target, key, value) {
+  const { scope_ } = target;
+  if (isDraft(value)) {
+    const state = value[DRAFT_STATE];
+    if (isSameScope(state, scope_)) {
+      state.callbacks_.push(function crossReferenceCleanup() {
+        prepareCopy(target);
+        const finalizedValue = getFinalValue(state);
+        updateDraftInParent(target, value, finalizedValue, key);
+      });
+    }
+  } else if (isDraftable(value)) {
+    target.callbacks_.push(function nestedDraftCleanup() {
+      const targetCopy = latest(target);
+      if (target.type_ === 3 /* Set */) {
+        if (targetCopy.has(value)) {
+          handleValue(value, scope_.handledSet_, scope_);
+        }
+      } else {
+        if (get(targetCopy, key, target.type_) === value) {
+          if (scope_.drafts_.length > 1 && (target.assigned_.get(key) ?? false) === true && target.copy_) {
+            handleValue(
+              get(target.copy_, key, target.type_),
+              scope_.handledSet_,
+              scope_
+            );
+          }
+        }
+      }
+    });
+  }
+}
+function handleValue(target, handledSet, rootScope) {
+  if (!rootScope.immer_.autoFreeze_ && rootScope.unfinalizedDrafts_ < 1) {
+    return target;
+  }
+  if (isDraft(target) || handledSet.has(target) || !isDraftable(target) || isFrozen(target)) {
+    return target;
+  }
+  handledSet.add(target);
+  each(target, (key, value) => {
+    if (isDraft(value)) {
+      const state = value[DRAFT_STATE];
+      if (isSameScope(state, rootScope)) {
+        const updatedValue = getFinalValue(state);
+        set(target, key, updatedValue, target.type_);
+        markStateFinalized(state);
+      }
+    } else if (isDraftable(value)) {
+      handleValue(value, handledSet, rootScope);
+    }
+  });
+  return target;
+}
+
+// src/core/proxy.ts
+function createProxyProxy(base, parent) {
+  const baseIsArray = isArray(base);
+  const state = {
+    type_: baseIsArray ? 1 /* Array */ : 0 /* Object */,
+    // Track which produce call this is associated with.
+    scope_: parent ? parent.scope_ : getCurrentScope(),
+    // True for both shallow and deep changes.
+    modified_: false,
+    // Used during finalization.
+    finalized_: false,
+    // Track which properties have been assigned (true) or deleted (false).
+    // actually instantiated in `prepareCopy()`
+    assigned_: void 0,
+    // The parent draft state.
+    parent_: parent,
+    // The base state.
+    base_: base,
+    // The base proxy.
+    draft_: null,
+    // set below
+    // The base copy with any updated values.
+    copy_: null,
+    // Called by the `produce` function.
+    revoke_: null,
+    isManual_: false,
+    // `callbacks` actually gets assigned in `createProxy`
+    callbacks_: void 0
+  };
+  let target = state;
+  let traps = objectTraps;
+  if (baseIsArray) {
+    target = [state];
+    traps = arrayTraps;
+  }
+  const { revoke, proxy } = Proxy.revocable(target, traps);
+  state.draft_ = proxy;
+  state.revoke_ = revoke;
+  return [proxy, state];
+}
+var objectTraps = {
+  get(state, prop) {
+    if (prop === DRAFT_STATE)
+      return state;
+    let arrayPlugin = state.scope_.arrayMethodsPlugin_;
+    const isArrayWithStringProp = state.type_ === 1 /* Array */ && typeof prop === "string";
+    if (isArrayWithStringProp) {
+      if (arrayPlugin?.isArrayOperationMethod(prop)) {
+        return arrayPlugin.createMethodInterceptor(state, prop);
+      }
+    }
+    const source = latest(state);
+    if (!has(source, prop, state.type_)) {
+      return readPropFromProto(state, source, prop);
+    }
+    const value = source[prop];
+    if (state.finalized_ || !isDraftable(value)) {
+      return value;
+    }
+    if (isArrayWithStringProp && state.operationMethod && arrayPlugin?.isMutatingArrayMethod(
+      state.operationMethod
+    ) && isArrayIndex(prop)) {
+      return value;
+    }
+    if (value === peek(state.base_, prop)) {
+      prepareCopy(state);
+      const childKey = state.type_ === 1 /* Array */ ? +prop : prop;
+      const childDraft = createProxy(state.scope_, value, state, childKey);
+      return state.copy_[childKey] = childDraft;
+    }
+    return value;
+  },
+  has(state, prop) {
+    return prop in latest(state);
+  },
+  ownKeys(state) {
+    return Reflect.ownKeys(latest(state));
+  },
+  set(state, prop, value) {
+    const desc = getDescriptorFromProto(latest(state), prop);
+    if (desc?.set) {
+      desc.set.call(state.draft_, value);
+      return true;
+    }
+    if (!state.modified_) {
+      const current2 = peek(latest(state), prop);
+      const currentState = current2?.[DRAFT_STATE];
+      if (currentState && currentState.base_ === value) {
+        state.copy_[prop] = value;
+        state.assigned_.set(prop, false);
+        return true;
+      }
+      if (is(value, current2) && (value !== void 0 || has(state.base_, prop, state.type_)))
+        return true;
+      prepareCopy(state);
+      markChanged(state);
+    }
+    if (state.copy_[prop] === value && // special case: handle new props with value 'undefined'
+    (value !== void 0 || prop in state.copy_) || // special case: NaN
+    Number.isNaN(value) && Number.isNaN(state.copy_[prop]))
+      return true;
+    state.copy_[prop] = value;
+    state.assigned_.set(prop, true);
+    handleCrossReference(state, prop, value);
+    return true;
+  },
+  deleteProperty(state, prop) {
+    prepareCopy(state);
+    if (peek(state.base_, prop) !== void 0 || prop in state.base_) {
+      state.assigned_.set(prop, false);
+      markChanged(state);
+    } else {
+      state.assigned_.delete(prop);
+    }
+    if (state.copy_) {
+      delete state.copy_[prop];
+    }
+    return true;
+  },
+  // Note: We never coerce `desc.value` into an Immer draft, because we can't make
+  // the same guarantee in ES5 mode.
+  getOwnPropertyDescriptor(state, prop) {
+    const owner = latest(state);
+    const desc = Reflect.getOwnPropertyDescriptor(owner, prop);
+    if (!desc)
+      return desc;
+    return {
+      [WRITABLE]: true,
+      [CONFIGURABLE]: state.type_ !== 1 /* Array */ || prop !== "length",
+      [ENUMERABLE]: desc[ENUMERABLE],
+      [VALUE]: owner[prop]
+    };
+  },
+  defineProperty() {
+    die(11);
+  },
+  getPrototypeOf(state) {
+    return getPrototypeOf(state.base_);
+  },
+  setPrototypeOf() {
+    die(12);
+  }
+};
+var arrayTraps = {};
+for (let key in objectTraps) {
+  let fn = objectTraps[key];
+  arrayTraps[key] = function() {
+    const args = arguments;
+    args[0] = args[0][0];
+    return fn.apply(this, args);
+  };
+}
+arrayTraps.deleteProperty = function(state, prop) {
+  if (process.env.NODE_ENV !== "production" && isNaN(parseInt(prop)))
+    die(13);
+  return arrayTraps.set.call(this, state, prop, void 0);
+};
+arrayTraps.set = function(state, prop, value) {
+  if (process.env.NODE_ENV !== "production" && prop !== "length" && isNaN(parseInt(prop)))
+    die(14);
+  return objectTraps.set.call(this, state[0], prop, value, state[0]);
+};
+function peek(draft, prop) {
+  const state = draft[DRAFT_STATE];
+  const source = state ? latest(state) : draft;
+  return source[prop];
+}
+function readPropFromProto(state, source, prop) {
+  const desc = getDescriptorFromProto(source, prop);
+  return desc ? VALUE in desc ? desc[VALUE] : (
+    // This is a very special case, if the prop is a getter defined by the
+    // prototype, we should invoke it with the draft as context!
+    desc.get?.call(state.draft_)
+  ) : void 0;
+}
+function getDescriptorFromProto(source, prop) {
+  if (!(prop in source))
+    return void 0;
+  let proto = getPrototypeOf(source);
+  while (proto) {
+    const desc = Object.getOwnPropertyDescriptor(proto, prop);
+    if (desc)
+      return desc;
+    proto = getPrototypeOf(proto);
+  }
+  return void 0;
+}
+function markChanged(state) {
+  if (!state.modified_) {
+    state.modified_ = true;
+    if (state.parent_) {
+      markChanged(state.parent_);
+    }
+  }
+}
+function prepareCopy(state) {
+  if (!state.copy_) {
+    state.assigned_ = /* @__PURE__ */ new Map();
+    state.copy_ = shallowCopy(
+      state.base_,
+      state.scope_.immer_.useStrictShallowCopy_
+    );
+  }
+}
+
+// src/core/immerClass.ts
+var Immer2 = class {
+  constructor(config) {
+    this.autoFreeze_ = true;
+    this.useStrictShallowCopy_ = false;
+    this.useStrictIteration_ = false;
+    /**
+     * The `produce` function takes a value and a "recipe function" (whose
+     * return value often depends on the base state). The recipe function is
+     * free to mutate its first argument however it wants. All mutations are
+     * only ever applied to a __copy__ of the base state.
+     *
+     * Pass only a function to create a "curried producer" which relieves you
+     * from passing the recipe function every time.
+     *
+     * Only plain objects and arrays are made mutable. All other objects are
+     * considered uncopyable.
+     *
+     * Note: This function is __bound__ to its `Immer` instance.
+     *
+     * @param {any} base - the initial state
+     * @param {Function} recipe - function that receives a proxy of the base state as first argument and which can be freely modified
+     * @param {Function} patchListener - optional function that will be called with all the patches produced here
+     * @returns {any} a new state, or the initial state if nothing was modified
+     */
+    this.produce = (base, recipe, patchListener) => {
+      if (isFunction(base) && !isFunction(recipe)) {
+        const defaultBase = recipe;
+        recipe = base;
+        const self = this;
+        return function curriedProduce(base2 = defaultBase, ...args) {
+          return self.produce(base2, (draft) => recipe.call(this, draft, ...args));
+        };
+      }
+      if (!isFunction(recipe))
+        die(6);
+      if (patchListener !== void 0 && !isFunction(patchListener))
+        die(7);
+      let result;
+      if (isDraftable(base)) {
+        const scope = enterScope(this);
+        const proxy = createProxy(scope, base, void 0);
+        let hasError = true;
+        try {
+          result = recipe(proxy);
+          hasError = false;
+        } finally {
+          if (hasError)
+            revokeScope(scope);
+          else
+            leaveScope(scope);
+        }
+        usePatchesInScope(scope, patchListener);
+        return processResult(result, scope);
+      } else if (!base || !isObjectish(base)) {
+        result = recipe(base);
+        if (result === void 0)
+          result = base;
+        if (result === NOTHING)
+          result = void 0;
+        if (this.autoFreeze_)
+          freeze(result, true);
+        if (patchListener) {
+          const p = [];
+          const ip = [];
+          getPlugin(PluginPatches).generateReplacementPatches_(base, result, {
+            patches_: p,
+            inversePatches_: ip
+          });
+          patchListener(p, ip);
+        }
+        return result;
+      } else
+        die(1, base);
+    };
+    this.produceWithPatches = (base, recipe) => {
+      if (isFunction(base)) {
+        return (state, ...args) => this.produceWithPatches(state, (draft) => base(draft, ...args));
+      }
+      let patches, inversePatches;
+      const result = this.produce(base, recipe, (p, ip) => {
+        patches = p;
+        inversePatches = ip;
+      });
+      return [result, patches, inversePatches];
+    };
+    if (isBoolean(config?.autoFreeze))
+      this.setAutoFreeze(config.autoFreeze);
+    if (isBoolean(config?.useStrictShallowCopy))
+      this.setUseStrictShallowCopy(config.useStrictShallowCopy);
+    if (isBoolean(config?.useStrictIteration))
+      this.setUseStrictIteration(config.useStrictIteration);
+  }
+  createDraft(base) {
+    if (!isDraftable(base))
+      die(8);
+    if (isDraft(base))
+      base = current(base);
+    const scope = enterScope(this);
+    const proxy = createProxy(scope, base, void 0);
+    proxy[DRAFT_STATE].isManual_ = true;
+    leaveScope(scope);
+    return proxy;
+  }
+  finishDraft(draft, patchListener) {
+    const state = draft && draft[DRAFT_STATE];
+    if (!state || !state.isManual_)
+      die(9);
+    const { scope_: scope } = state;
+    usePatchesInScope(scope, patchListener);
+    return processResult(void 0, scope);
+  }
+  /**
+   * Pass true to automatically freeze all copies created by Immer.
+   *
+   * By default, auto-freezing is enabled.
+   */
+  setAutoFreeze(value) {
+    this.autoFreeze_ = value;
+  }
+  /**
+   * Pass true to enable strict shallow copy.
+   *
+   * By default, immer does not copy the object descriptors such as getter, setter and non-enumrable properties.
+   */
+  setUseStrictShallowCopy(value) {
+    this.useStrictShallowCopy_ = value;
+  }
+  /**
+   * Pass false to use faster iteration that skips non-enumerable properties
+   * but still handles symbols for compatibility.
+   *
+   * By default, strict iteration is enabled (includes all own properties).
+   */
+  setUseStrictIteration(value) {
+    this.useStrictIteration_ = value;
+  }
+  shouldUseStrictIteration() {
+    return this.useStrictIteration_;
+  }
+  applyPatches(base, patches) {
+    let i;
+    for (i = patches.length - 1; i >= 0; i--) {
+      const patch = patches[i];
+      if (patch.path.length === 0 && patch.op === "replace") {
+        base = patch.value;
+        break;
+      }
+    }
+    if (i > -1) {
+      patches = patches.slice(i + 1);
+    }
+    const applyPatchesImpl = getPlugin(PluginPatches).applyPatches_;
+    if (isDraft(base)) {
+      return applyPatchesImpl(base, patches);
+    }
+    return this.produce(
+      base,
+      (draft) => applyPatchesImpl(draft, patches)
+    );
+  }
+};
+function createProxy(rootScope, value, parent, key) {
+  const [draft, state] = isMap(value) ? getPlugin(PluginMapSet).proxyMap_(value, parent) : isSet(value) ? getPlugin(PluginMapSet).proxySet_(value, parent) : createProxyProxy(value, parent);
+  const scope = parent?.scope_ ?? getCurrentScope();
+  scope.drafts_.push(draft);
+  state.callbacks_ = parent?.callbacks_ ?? [];
+  state.key_ = key;
+  if (parent && key !== void 0) {
+    registerChildFinalizationCallback(parent, state, key);
+  } else {
+    state.callbacks_.push(function rootDraftCleanup(rootScope2) {
+      rootScope2.mapSetPlugin_?.fixSetContents(state);
+      const { patchPlugin_ } = rootScope2;
+      if (state.modified_ && patchPlugin_) {
+        patchPlugin_.generatePatches_(state, [], rootScope2);
+      }
+    });
+  }
+  return draft;
+}
+
+// src/core/current.ts
+function current(value) {
+  if (!isDraft(value))
+    die(10, value);
+  return currentImpl(value);
+}
+function currentImpl(value) {
+  if (!isDraftable(value) || isFrozen(value))
+    return value;
+  const state = value[DRAFT_STATE];
+  let copy;
+  let strict = true;
+  if (state) {
+    if (!state.modified_)
+      return state.base_;
+    state.finalized_ = true;
+    copy = shallowCopy(value, state.scope_.immer_.useStrictShallowCopy_);
+    strict = state.scope_.immer_.shouldUseStrictIteration();
+  } else {
+    copy = shallowCopy(value, true);
+  }
+  each(
+    copy,
+    (key, childValue) => {
+      set(copy, key, currentImpl(childValue));
+    },
+    strict
+  );
+  if (state) {
+    state.finalized_ = false;
+  }
+  return copy;
+}
+
+// src/plugins/patches.ts
+function enablePatches() {
+  const errorOffset = 16;
+  if (process.env.NODE_ENV !== "production") {
+    errors.push(
+      'Sets cannot have "replace" patches.',
+      function(op) {
+        return "Unsupported patch operation: " + op;
+      },
+      function(path) {
+        return "Cannot apply patch, path doesn't resolve: " + path;
+      },
+      "Patching reserved attributes like __proto__, prototype and constructor is not allowed"
+    );
+  }
+  function getPath(state, path = []) {
+    if (state.key_ !== void 0) {
+      const parentCopy = state.parent_.copy_ ?? state.parent_.base_;
+      const proxyDraft = getProxyDraft(get(parentCopy, state.key_));
+      const valueAtKey = get(parentCopy, state.key_);
+      if (valueAtKey === void 0) {
+        return null;
+      }
+      if (valueAtKey !== state.draft_ && valueAtKey !== state.base_ && valueAtKey !== state.copy_) {
+        return null;
+      }
+      if (proxyDraft != null && proxyDraft.base_ !== state.base_) {
+        return null;
+      }
+      const isSet2 = state.parent_.type_ === 3 /* Set */;
+      let key;
+      if (isSet2) {
+        const setParent = state.parent_;
+        key = Array.from(setParent.drafts_.keys()).indexOf(state.key_);
+      } else {
+        key = state.key_;
+      }
+      if (!(isSet2 && parentCopy.size > key || has(parentCopy, key))) {
+        return null;
+      }
+      path.push(key);
+    }
+    if (state.parent_) {
+      return getPath(state.parent_, path);
+    }
+    path.reverse();
+    try {
+      resolvePath(state.copy_, path);
+    } catch (e) {
+      return null;
+    }
+    return path;
+  }
+  function resolvePath(base, path) {
+    let current2 = base;
+    for (let i = 0; i < path.length - 1; i++) {
+      const key = path[i];
+      current2 = get(current2, key);
+      if (!isObjectish(current2) || current2 === null) {
+        throw new Error(`Cannot resolve path at '${path.join("/")}'`);
+      }
+    }
+    return current2;
+  }
+  const REPLACE = "replace";
+  const ADD = "add";
+  const REMOVE = "remove";
+  function generatePatches_(state, basePath, scope) {
+    if (state.scope_.processedForPatches_.has(state)) {
+      return;
+    }
+    state.scope_.processedForPatches_.add(state);
+    const { patches_, inversePatches_ } = scope;
+    switch (state.type_) {
+      case 0 /* Object */:
+      case 2 /* Map */:
+        return generatePatchesFromAssigned(
+          state,
+          basePath,
+          patches_,
+          inversePatches_
+        );
+      case 1 /* Array */:
+        return generateArrayPatches(
+          state,
+          basePath,
+          patches_,
+          inversePatches_
+        );
+      case 3 /* Set */:
+        return generateSetPatches(
+          state,
+          basePath,
+          patches_,
+          inversePatches_
+        );
+    }
+  }
+  function generateArrayPatches(state, basePath, patches, inversePatches) {
+    let { base_, assigned_ } = state;
+    let copy_ = state.copy_;
+    if (copy_.length < base_.length) {
+      [base_, copy_] = [copy_, base_];
+      [patches, inversePatches] = [inversePatches, patches];
+    }
+    const allReassigned = state.allIndicesReassigned_ === true;
+    for (let i = 0; i < base_.length; i++) {
+      const copiedItem = copy_[i];
+      const baseItem = base_[i];
+      const isAssigned = allReassigned || assigned_?.get(i.toString());
+      if (isAssigned && copiedItem !== baseItem) {
+        const childState = copiedItem?.[DRAFT_STATE];
+        if (childState && childState.modified_) {
+          continue;
+        }
+        const path = basePath.concat([i]);
+        patches.push({
+          op: REPLACE,
+          path,
+          // Need to maybe clone it, as it can in fact be the original value
+          // due to the base/copy inversion at the start of this function
+          value: clonePatchValueIfNeeded(copiedItem)
+        });
+        inversePatches.push({
+          op: REPLACE,
+          path,
+          value: clonePatchValueIfNeeded(baseItem)
+        });
+      }
+    }
+    for (let i = base_.length; i < copy_.length; i++) {
+      const path = basePath.concat([i]);
+      patches.push({
+        op: ADD,
+        path,
+        // Need to maybe clone it, as it can in fact be the original value
+        // due to the base/copy inversion at the start of this function
+        value: clonePatchValueIfNeeded(copy_[i])
+      });
+    }
+    for (let i = copy_.length - 1; base_.length <= i; --i) {
+      const path = basePath.concat([i]);
+      inversePatches.push({
+        op: REMOVE,
+        path
+      });
+    }
+  }
+  function generatePatchesFromAssigned(state, basePath, patches, inversePatches) {
+    const { base_, copy_, type_ } = state;
+    each(state.assigned_, (key, assignedValue) => {
+      const origValue = get(base_, key, type_);
+      const value = get(copy_, key, type_);
+      const op = !assignedValue ? REMOVE : has(base_, key) ? REPLACE : ADD;
+      if (origValue === value && op === REPLACE)
+        return;
+      const path = basePath.concat(key);
+      patches.push(
+        op === REMOVE ? { op, path } : { op, path, value: clonePatchValueIfNeeded(value) }
+      );
+      inversePatches.push(
+        op === ADD ? { op: REMOVE, path } : op === REMOVE ? { op: ADD, path, value: clonePatchValueIfNeeded(origValue) } : { op: REPLACE, path, value: clonePatchValueIfNeeded(origValue) }
+      );
+    });
+  }
+  function generateSetPatches(state, basePath, patches, inversePatches) {
+    let { base_, copy_ } = state;
+    let i = 0;
+    base_.forEach((value) => {
+      if (!copy_.has(value)) {
+        const path = basePath.concat([i]);
+        patches.push({
+          op: REMOVE,
+          path,
+          value
+        });
+        inversePatches.unshift({
+          op: ADD,
+          path,
+          value
+        });
+      }
+      i++;
+    });
+    i = 0;
+    copy_.forEach((value) => {
+      if (!base_.has(value)) {
+        const path = basePath.concat([i]);
+        patches.push({
+          op: ADD,
+          path,
+          value
+        });
+        inversePatches.unshift({
+          op: REMOVE,
+          path,
+          value
+        });
+      }
+      i++;
+    });
+  }
+  function generateReplacementPatches_(baseValue, replacement, scope) {
+    const { patches_, inversePatches_ } = scope;
+    patches_.push({
+      op: REPLACE,
+      path: [],
+      value: replacement === NOTHING ? void 0 : replacement
+    });
+    inversePatches_.push({
+      op: REPLACE,
+      path: [],
+      value: baseValue
+    });
+  }
+  function applyPatches_(draft, patches) {
+    patches.forEach((patch) => {
+      const { path, op } = patch;
+      let base = draft;
+      for (let i = 0; i < path.length - 1; i++) {
+        const parentType = getArchtype(base);
+        let p = path[i];
+        if (typeof p !== "string" && typeof p !== "number") {
+          p = "" + p;
+        }
+        if ((parentType === 0 /* Object */ || parentType === 1 /* Array */) && (p === "__proto__" || p === CONSTRUCTOR))
+          die(errorOffset + 3);
+        if (isFunction(base) && p === PROTOTYPE)
+          die(errorOffset + 3);
+        base = get(base, p);
+        if (!isObjectish(base))
+          die(errorOffset + 2, path.join("/"));
+      }
+      const type = getArchtype(base);
+      const value = deepClonePatchValue(patch.value);
+      const key = path[path.length - 1];
+      switch (op) {
+        case REPLACE:
+          switch (type) {
+            case 2 /* Map */:
+              return base.set(key, value);
+            case 3 /* Set */:
+              die(errorOffset);
+            default:
+              return base[key] = value;
+          }
+        case ADD:
+          switch (type) {
+            case 1 /* Array */:
+              return key === "-" ? base.push(value) : base.splice(key, 0, value);
+            case 2 /* Map */:
+              return base.set(key, value);
+            case 3 /* Set */:
+              return base.add(value);
+            default:
+              return base[key] = value;
+          }
+        case REMOVE:
+          switch (type) {
+            case 1 /* Array */:
+              return base.splice(key, 1);
+            case 2 /* Map */:
+              return base.delete(key);
+            case 3 /* Set */:
+              return base.delete(patch.value);
+            default:
+              return delete base[key];
+          }
+        default:
+          die(errorOffset + 1, op);
+      }
+    });
+    return draft;
+  }
+  function deepClonePatchValue(obj) {
+    if (!isDraftable(obj))
+      return obj;
+    if (isArray(obj))
+      return obj.map(deepClonePatchValue);
+    if (isMap(obj))
+      return new Map(
+        Array.from(obj.entries()).map(([k, v]) => [k, deepClonePatchValue(v)])
+      );
+    if (isSet(obj))
+      return new Set(Array.from(obj).map(deepClonePatchValue));
+    const cloned = Object.create(getPrototypeOf(obj));
+    for (const key in obj)
+      cloned[key] = deepClonePatchValue(obj[key]);
+    if (has(obj, DRAFTABLE))
+      cloned[DRAFTABLE] = obj[DRAFTABLE];
+    return cloned;
+  }
+  function clonePatchValueIfNeeded(obj) {
+    if (isDraft(obj)) {
+      return deepClonePatchValue(obj);
+    } else
+      return obj;
+  }
+  loadPlugin(PluginPatches, {
+    applyPatches_,
+    generatePatches_,
+    generateReplacementPatches_,
+    getPath
+  });
+}
+
+// src/plugins/mapset.ts
+function enableMapSet() {
+  class DraftMap extends Map {
+    constructor(target, parent) {
+      super();
+      this[DRAFT_STATE] = {
+        type_: 2 /* Map */,
+        parent_: parent,
+        scope_: parent ? parent.scope_ : getCurrentScope(),
+        modified_: false,
+        finalized_: false,
+        copy_: void 0,
+        assigned_: void 0,
+        base_: target,
+        draft_: this,
+        isManual_: false,
+        revoked_: false,
+        callbacks_: []
+      };
+    }
+    get size() {
+      return latest(this[DRAFT_STATE]).size;
+    }
+    has(key) {
+      return latest(this[DRAFT_STATE]).has(key);
+    }
+    set(key, value) {
+      const state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      if (!latest(state).has(key) || latest(state).get(key) !== value) {
+        prepareMapCopy(state);
+        markChanged(state);
+        state.assigned_.set(key, true);
+        state.copy_.set(key, value);
+        state.assigned_.set(key, true);
+        handleCrossReference(state, key, value);
+      }
+      return this;
+    }
+    delete(key) {
+      if (!this.has(key)) {
+        return false;
+      }
+      const state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      prepareMapCopy(state);
+      markChanged(state);
+      if (state.base_.has(key)) {
+        state.assigned_.set(key, false);
+      } else {
+        state.assigned_.delete(key);
+      }
+      state.copy_.delete(key);
+      return true;
+    }
+    clear() {
+      const state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      if (latest(state).size) {
+        prepareMapCopy(state);
+        markChanged(state);
+        state.assigned_ = /* @__PURE__ */ new Map();
+        each(state.base_, (key) => {
+          state.assigned_.set(key, false);
+        });
+        state.copy_.clear();
+      }
+    }
+    forEach(cb, thisArg) {
+      const state = this[DRAFT_STATE];
+      latest(state).forEach((_value, key, _map) => {
+        cb.call(thisArg, this.get(key), key, this);
+      });
+    }
+    get(key) {
+      const state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      const value = latest(state).get(key);
+      if (state.finalized_ || !isDraftable(value)) {
+        return value;
+      }
+      if (value !== state.base_.get(key)) {
+        return value;
+      }
+      const draft = createProxy(state.scope_, value, state, key);
+      prepareMapCopy(state);
+      state.copy_.set(key, draft);
+      return draft;
+    }
+    keys() {
+      return latest(this[DRAFT_STATE]).keys();
+    }
+    values() {
+      const iterator = this.keys();
+      return {
+        [Symbol.iterator]: () => this.values(),
+        next: () => {
+          const r = iterator.next();
+          if (r.done)
+            return r;
+          const value = this.get(r.value);
+          return {
+            done: false,
+            value
+          };
+        }
+      };
+    }
+    entries() {
+      const iterator = this.keys();
+      return {
+        [Symbol.iterator]: () => this.entries(),
+        next: () => {
+          const r = iterator.next();
+          if (r.done)
+            return r;
+          const value = this.get(r.value);
+          return {
+            done: false,
+            value: [r.value, value]
+          };
+        }
+      };
+    }
+    [(Symbol.iterator)]() {
+      return this.entries();
+    }
+  }
+  function proxyMap_(target, parent) {
+    const map = new DraftMap(target, parent);
+    return [map, map[DRAFT_STATE]];
+  }
+  function prepareMapCopy(state) {
+    if (!state.copy_) {
+      state.assigned_ = /* @__PURE__ */ new Map();
+      state.copy_ = new Map(state.base_);
+    }
+  }
+  class DraftSet extends Set {
+    constructor(target, parent) {
+      super();
+      this[DRAFT_STATE] = {
+        type_: 3 /* Set */,
+        parent_: parent,
+        scope_: parent ? parent.scope_ : getCurrentScope(),
+        modified_: false,
+        finalized_: false,
+        copy_: void 0,
+        base_: target,
+        draft_: this,
+        drafts_: /* @__PURE__ */ new Map(),
+        revoked_: false,
+        isManual_: false,
+        assigned_: void 0,
+        callbacks_: []
+      };
+    }
+    get size() {
+      return latest(this[DRAFT_STATE]).size;
+    }
+    has(value) {
+      const state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      if (!state.copy_) {
+        return state.base_.has(value);
+      }
+      if (state.copy_.has(value))
+        return true;
+      if (state.drafts_.has(value) && state.copy_.has(state.drafts_.get(value)))
+        return true;
+      return false;
+    }
+    add(value) {
+      const state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      if (!this.has(value)) {
+        prepareSetCopy(state);
+        markChanged(state);
+        state.copy_.add(value);
+        handleCrossReference(state, value, value);
+      }
+      return this;
+    }
+    delete(value) {
+      if (!this.has(value)) {
+        return false;
+      }
+      const state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      prepareSetCopy(state);
+      markChanged(state);
+      return state.copy_.delete(value) || (state.drafts_.has(value) ? state.copy_.delete(state.drafts_.get(value)) : (
+        /* istanbul ignore next */
+        false
+      ));
+    }
+    clear() {
+      const state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      if (latest(state).size) {
+        prepareSetCopy(state);
+        markChanged(state);
+        state.copy_.clear();
+      }
+    }
+    values() {
+      const state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      prepareSetCopy(state);
+      return state.copy_.values();
+    }
+    entries() {
+      const state = this[DRAFT_STATE];
+      assertUnrevoked(state);
+      prepareSetCopy(state);
+      return state.copy_.entries();
+    }
+    keys() {
+      return this.values();
+    }
+    [(Symbol.iterator)]() {
+      return this.values();
+    }
+    forEach(cb, thisArg) {
+      const iterator = this.values();
+      let result = iterator.next();
+      while (!result.done) {
+        cb.call(thisArg, result.value, result.value, this);
+        result = iterator.next();
+      }
+    }
+  }
+  function proxySet_(target, parent) {
+    const set2 = new DraftSet(target, parent);
+    return [set2, set2[DRAFT_STATE]];
+  }
+  function prepareSetCopy(state) {
+    if (!state.copy_) {
+      state.copy_ = /* @__PURE__ */ new Set();
+      state.base_.forEach((value) => {
+        if (isDraftable(value)) {
+          const draft = createProxy(state.scope_, value, state, value);
+          state.drafts_.set(value, draft);
+          state.copy_.add(draft);
+        } else {
+          state.copy_.add(value);
+        }
+      });
+    }
+  }
+  function assertUnrevoked(state) {
+    if (state.revoked_)
+      die(3, JSON.stringify(latest(state)));
+  }
+  function fixSetContents(target) {
+    if (target.type_ === 3 /* Set */ && target.copy_) {
+      const copy = new Set(target.copy_);
+      target.copy_.clear();
+      copy.forEach((value) => {
+        target.copy_.add(getValue(value));
+      });
+    }
+  }
+  loadPlugin(PluginMapSet, { proxyMap_, proxySet_, fixSetContents });
+}
+
+// src/plugins/arrayMethods.ts
+function enableArrayMethods() {
+  const SHIFTING_METHODS = /* @__PURE__ */ new Set(["shift", "unshift"]);
+  const QUEUE_METHODS = /* @__PURE__ */ new Set(["push", "pop"]);
+  const RESULT_RETURNING_METHODS = /* @__PURE__ */ new Set([
+    ...QUEUE_METHODS,
+    ...SHIFTING_METHODS
+  ]);
+  const REORDERING_METHODS = /* @__PURE__ */ new Set(["reverse", "sort"]);
+  const MUTATING_METHODS = /* @__PURE__ */ new Set([
+    ...RESULT_RETURNING_METHODS,
+    ...REORDERING_METHODS,
+    "splice"
+  ]);
+  const FIND_METHODS = /* @__PURE__ */ new Set(["find", "findLast"]);
+  const NON_MUTATING_METHODS = /* @__PURE__ */ new Set([
+    "filter",
+    "slice",
+    "concat",
+    "flat",
+    ...FIND_METHODS,
+    "findIndex",
+    "findLastIndex",
+    "some",
+    "every",
+    "indexOf",
+    "lastIndexOf",
+    "includes",
+    "join",
+    "toString",
+    "toLocaleString"
+  ]);
+  function isMutatingArrayMethod(method) {
+    return MUTATING_METHODS.has(method);
+  }
+  function isNonMutatingArrayMethod(method) {
+    return NON_MUTATING_METHODS.has(method);
+  }
+  function isArrayOperationMethod(method) {
+    return isMutatingArrayMethod(method) || isNonMutatingArrayMethod(method);
+  }
+  function enterOperation(state, method) {
+    state.operationMethod = method;
+  }
+  function exitOperation(state) {
+    state.operationMethod = void 0;
+  }
+  function executeArrayMethod(state, operation, markLength = true) {
+    prepareCopy(state);
+    const result = operation();
+    markChanged(state);
+    if (markLength)
+      state.assigned_.set("length", true);
+    return result;
+  }
+  function markAllIndicesReassigned(state) {
+    state.allIndicesReassigned_ = true;
+  }
+  function normalizeSliceIndex(index, length) {
+    if (index < 0) {
+      return Math.max(length + index, 0);
+    }
+    return Math.min(index, length);
+  }
+  function handleInsertedValues(state, startIndex, values) {
+    for (let i = 0; i < values.length; i++) {
+      const index = startIndex + i;
+      state.assigned_.set(index, true);
+      handleCrossReference(state, index, values[i]);
+    }
+  }
+  function handleSimpleOperation(state, method, args) {
+    return executeArrayMethod(state, () => {
+      const lengthBefore = state.copy_.length;
+      const result = state.copy_[method](...args);
+      if (SHIFTING_METHODS.has(method)) {
+        markAllIndicesReassigned(state);
+      }
+      if (method === "push" && args.length > 0) {
+        handleInsertedValues(state, lengthBefore, args);
+      } else if (method === "unshift" && args.length > 0) {
+        handleInsertedValues(state, 0, args);
+      }
+      return RESULT_RETURNING_METHODS.has(method) ? result : state.draft_;
+    });
+  }
+  function handleReorderingOperation(state, method, args) {
+    return executeArrayMethod(
+      state,
+      () => {
+        state.copy_[method](...args);
+        markAllIndicesReassigned(state);
+        return state.draft_;
+      },
+      false
+    );
+  }
+  function createMethodInterceptor(state, originalMethod) {
+    return function interceptedMethod(...args) {
+      const method = originalMethod;
+      enterOperation(state, method);
+      try {
+        if (isMutatingArrayMethod(method)) {
+          if (RESULT_RETURNING_METHODS.has(method)) {
+            return handleSimpleOperation(state, method, args);
+          }
+          if (REORDERING_METHODS.has(method)) {
+            return handleReorderingOperation(state, method, args);
+          }
+          if (method === "splice") {
+            const res = executeArrayMethod(
+              state,
+              () => state.copy_.splice(...args)
+            );
+            markAllIndicesReassigned(state);
+            if (args.length > 2) {
+              const startIndex = normalizeSliceIndex(
+                args[0] ?? 0,
+                state.copy_.length
+              );
+              handleInsertedValues(state, startIndex, args.slice(2));
+            }
+            return res;
+          }
+        } else {
+          return handleNonMutatingOperation(state, method, args);
+        }
+      } finally {
+        exitOperation(state);
+      }
+    };
+  }
+  function handleNonMutatingOperation(state, method, args) {
+    const source = latest(state);
+    if (method === "filter") {
+      const predicate = args[0];
+      const result = [];
+      for (let i = 0; i < source.length; i++) {
+        if (predicate(source[i], i, source)) {
+          result.push(state.draft_[i]);
+        }
+      }
+      return result;
+    }
+    if (FIND_METHODS.has(method)) {
+      const predicate = args[0];
+      const isForward = method === "find";
+      const step = isForward ? 1 : -1;
+      const start = isForward ? 0 : source.length - 1;
+      for (let i = start; i >= 0 && i < source.length; i += step) {
+        if (predicate(source[i], i, source)) {
+          return state.draft_[i];
+        }
+      }
+      return void 0;
+    }
+    if (method === "slice") {
+      const rawStart = args[0] ?? 0;
+      const rawEnd = args[1] ?? source.length;
+      const start = normalizeSliceIndex(rawStart, source.length);
+      const end = normalizeSliceIndex(rawEnd, source.length);
+      const result = [];
+      for (let i = start; i < end; i++) {
+        result.push(state.draft_[i]);
+      }
+      return result;
+    }
+    return source[method](...args);
+  }
+  loadPlugin(PluginArrayMethods, {
+    createMethodInterceptor,
+    isArrayOperationMethod,
+    isMutatingArrayMethod
+  });
+}
+
+// src/immer.ts
+var immer = new Immer2();
+var produce = immer.produce;
+var produceWithPatches = /* @__PURE__ */ immer.produceWithPatches.bind(
+  immer
+);
+var setAutoFreeze = /* @__PURE__ */ immer.setAutoFreeze.bind(immer);
+var setUseStrictShallowCopy = /* @__PURE__ */ immer.setUseStrictShallowCopy.bind(
+  immer
+);
+var setUseStrictIteration = /* @__PURE__ */ immer.setUseStrictIteration.bind(
+  immer
+);
+var applyPatches = /* @__PURE__ */ immer.applyPatches.bind(immer);
+var createDraft = /* @__PURE__ */ immer.createDraft.bind(immer);
+var finishDraft = /* @__PURE__ */ immer.finishDraft.bind(immer);
+var castDraft = (value) => value;
+var castImmutable = (value) => value;
+
+var immer$1 = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    Immer: Immer2,
+    applyPatches: applyPatches,
+    castDraft: castDraft,
+    castImmutable: castImmutable,
+    createDraft: createDraft,
+    current: current,
+    enableArrayMethods: enableArrayMethods,
+    enableMapSet: enableMapSet,
+    enablePatches: enablePatches,
+    finishDraft: finishDraft,
+    freeze: freeze,
+    immerable: DRAFTABLE,
+    isDraft: isDraft,
+    isDraftable: isDraftable,
+    nothing: NOTHING,
+    original: original,
+    produce: produce,
+    produceWithPatches: produceWithPatches,
+    setAutoFreeze: setAutoFreeze,
+    setUseStrictIteration: setUseStrictIteration,
+    setUseStrictShallowCopy: setUseStrictShallowCopy
+});
 
 /**
- * Channel - Gestionnaire de communications pub/sub et request/reply
+ * BonsaiError — Classe de base pour toutes les erreurs structurées du framework.
  *
- * Un Channel représente un canal de communication nommé qui supporte :
- * - Pub/Sub avec événements
- * - Request/Reply avec promesses
+ * Chaque erreur Bonsai fournit :
+ * - `invariantId` : identifiant de l'invariant ou ADR violé (ex: "I10", "ADR-0002")
+ * - `component` : namespace ou nom du composant concerné
+ * - `suggestion` : message actionnable pour le développeur
+ *
+ * @see ADR-0002 — Error Propagation Strategy (taxonomie complète)
  */
+class BonsaiError extends Error {
+    constructor(message, invariantId, component = "", suggestion = "") {
+        super(`[${invariantId}]${component ? ` ${component}` : ""} — ${message}${suggestion ? `\n  → ${suggestion}` : ""}`);
+        this.invariantId = invariantId;
+        this.component = component;
+        this.suggestion = suggestion;
+        this.name = "BonsaiError";
+    }
+}
+// ═══════════════════════════════════════════════════════════════
+// Channel Layer (Communication)
+// ═══════════════════════════════════════════════════════════════
+/**
+ * Event listener a throw — erreur isolée, les autres listeners continuent.
+ */
+class ListenerError extends BonsaiError {
+    constructor() {
+        super(...arguments);
+        this.name = "ListenerError";
+    }
+}
+/**
+ * `trigger()` sans `handle()` enregistré, ou `request()` sans `reply()`.
+ */
+class NoHandlerError extends BonsaiError {
+    constructor() {
+        super(...arguments);
+        this.name = "NoHandlerError";
+    }
+}
+/**
+ * `handle()` ou `reply()` appelé deux fois pour le même message (I10).
+ */
+class DuplicateHandlerError extends BonsaiError {
+    constructor() {
+        super(...arguments);
+        this.name = "DuplicateHandlerError";
+    }
+}
+
+/**
+ * Channel tri-lane — infrastructure de communication interne Bonsai.
+ *
+ * Un Channel est un contrat de communication à 3 lanes :
+ * - **Command Lane** : `handle()` / `trigger()` — 1:1 (un seul handler)
+ * - **Event Lane** : `listen()` / `unlisten()` / `emit()` — 1:N (broadcast)
+ * - **Request Lane** : `reply()` / `unreply()` / `request()` — 1:1 synchrone, T | null
+ *
+ * Le Channel émet automatiquement un événement `any` après chaque `emit()`.
+ *
+ * @see RFC 2-architecture/communication.md
+ * @see ADR-0003 — Sémantiques runtime Channel
+ * @see ADR-0023 — request() synchrone
+ */
+// ── Channel ──────────────────────────────────────────────────────
 class Channel {
     constructor(name) {
         this.name = name;
-        this.listeners = new Map();
-        this.requestHandlers = new Map();
+        // ── Lane 1 — Commands (1:1) ──────────────────────────────────
+        this.commandHandlers = new Map();
+        // ── Lane 2 — Events (1:N via RxJS Subject) ──────────────────
+        this.eventSubjects = new Map();
+        this.eventSubscriptions = new Map();
+        // ── Lane 3 — Requests (1:1 sync) ────────────────────────────
+        this.requestRepliers = new Map();
+        // ── Événement technique `any` ────────────────────────────────
+        this.anySubject = new Subject();
+        this.anySubscriptions = new Map();
     }
+    // ═══════════════════════════════════════════════════════════════
+    // Lane 1 — Commands
+    // ═══════════════════════════════════════════════════════════════
     /**
-     * Enregistre un listener pour un événement (Pub/Sub)
+     * Enregistre le handler unique pour un Command. I10 : un seul handler par Command.
+     * @throws DuplicateHandlerError si un handler est déjà enregistré pour ce Command
      */
-    on(event, callback) {
-        if (!this.listeners.has(event)) {
-            this.listeners.set(event, []);
+    handle(commandName, handler) {
+        if (this.commandHandlers.has(commandName)) {
+            throw new DuplicateHandlerError(`Command "${this.name}:${commandName}" already has a handler`, "I10", this.name, "Each Command must have exactly one handler (the owning Feature).");
         }
-        this.listeners.get(event).push(callback);
+        this.commandHandlers.set(commandName, handler);
     }
     /**
-     * Supprime un listener pour un événement
+     * Émet un Command vers son handler unique.
+     * @throws NoHandlerError si aucun handler n'est enregistré (strate 0 : toujours throw)
      */
-    off(event, callback) {
-        const callbacks = this.listeners.get(event);
-        if (callbacks) {
-            const index = callbacks.indexOf(callback);
-            if (index > -1) {
-                callbacks.splice(index, 1);
+    trigger(commandName, payload) {
+        const handler = this.commandHandlers.get(commandName);
+        if (!handler) {
+            throw new NoHandlerError(`No handler for command "${this.name}:${commandName}"`, "I10", this.name, `Register a handler with channel.handle("${commandName}", handler)`);
+        }
+        handler(payload);
+    }
+    // ═══════════════════════════════════════════════════════════════
+    // Lane 2 — Events
+    // ═══════════════════════════════════════════════════════════════
+    /**
+     * Enregistre un listener pour un Event. I11 : N listeners autorisés.
+     */
+    listen(eventName, listener) {
+        if (!this.eventSubjects.has(eventName)) {
+            this.eventSubjects.set(eventName, new Subject());
+            this.eventSubscriptions.set(eventName, new Map());
+        }
+        const subject = this.eventSubjects.get(eventName);
+        const subscription = subject.subscribe({
+            next: (payload) => {
+                try {
+                    listener(payload);
+                }
+                catch (error) {
+                    // ADR-0002 : isolation des erreurs — ne propage pas aux autres listeners
+                    console.error(new ListenerError(`Listener error on "${this.name}:${eventName}"`, "ADR-0002", this.name), error);
+                }
+            }
+        });
+        this.eventSubscriptions.get(eventName).set(listener, subscription);
+    }
+    /**
+     * Supprime un listener spécifique pour un Event.
+     */
+    unlisten(eventName, listener) {
+        const subsMap = this.eventSubscriptions.get(eventName);
+        if (subsMap) {
+            const subscription = subsMap.get(listener);
+            if (subscription) {
+                subscription.unsubscribe();
+                subsMap.delete(listener);
             }
         }
     }
     /**
-     * Déclenche un événement avec des données (Pub/Sub)
+     * Émet un Event vers tous les listeners (1:N).
+     * Silencieux si aucun listener. Émet `any` automatiquement après.
      */
-    trigger(event, data) {
-        const callbacks = this.listeners.get(event) || [];
-        callbacks.forEach((callback) => {
-            try {
-                callback(data);
-            }
-            catch (error) {
-                console.error(`Error in event listener for ${event}:`, error);
-            }
+    emit(eventName, payload) {
+        const subject = this.eventSubjects.get(eventName);
+        if (subject) {
+            subject.next(payload);
+        }
+        // Événement technique `any` — émis après chaque Event granulaire
+        this.anySubject.next({
+            event: eventName,
+            changes: payload && typeof payload === "object"
+                ? payload
+                : {}
         });
     }
     /**
-     * Enregistre un handler pour une requête (Request/Reply)
+     * Enregistre un listener pour l'événement technique `any`.
      */
-    reply(requestType, handler) {
-        this.requestHandlers.set(requestType, handler);
+    listenAny(listener) {
+        const subscription = this.anySubject.subscribe({
+            next: (payload) => {
+                try {
+                    listener(payload);
+                }
+                catch (error) {
+                    console.error(new ListenerError(`Listener error on "${this.name}:any"`, "ADR-0002", this.name), error);
+                }
+            }
+        });
+        this.anySubscriptions.set(listener, subscription);
     }
     /**
-     * Supprime un handler de requête
+     * Supprime un listener `any`.
      */
-    unreply(requestType) {
-        this.requestHandlers.delete(requestType);
+    unlistenAny(listener) {
+        const subscription = this.anySubscriptions.get(listener);
+        if (subscription) {
+            subscription.unsubscribe();
+            this.anySubscriptions.delete(listener);
+        }
+    }
+    // ═══════════════════════════════════════════════════════════════
+    // Lane 3 — Requests (synchrone, T | null)
+    // ═══════════════════════════════════════════════════════════════
+    /**
+     * Enregistre le replier unique pour un type de Request.
+     * @throws DuplicateHandlerError si un replier est déjà enregistré
+     */
+    reply(requestName, replier) {
+        if (this.requestRepliers.has(requestName)) {
+            throw new DuplicateHandlerError(`Request "${this.name}:${requestName}" already has a replier`, "I10", this.name, "Each Request must have exactly one replier.");
+        }
+        this.requestRepliers.set(requestName, replier);
     }
     /**
-     * Effectue une requête et attend la réponse (Request/Reply)
+     * Supprime un replier.
      */
-    async request(requestType, data) {
-        const handler = this.requestHandlers.get(requestType);
-        if (!handler) {
-            throw new Error(`No handler registered for request type: ${requestType}`);
+    unreply(requestName) {
+        this.requestRepliers.delete(requestName);
+    }
+    /**
+     * Effectue une Request synchrone. Retourne T | null.
+     * - Pas de replier → null (ADR-0023, D44)
+     * - Replier qui throw → null, erreur loguée (I55)
+     */
+    request(requestName, params) {
+        const replier = this.requestRepliers.get(requestName);
+        if (!replier) {
+            return null;
         }
         try {
-            const result = await handler(data);
-            return result;
+            return replier(params);
         }
         catch (error) {
-            throw new Error(`Request handler error for ${requestType}: ${error}`);
+            console.error(`[Bonsai] Request replier error on "${this.name}:${requestName}"`, error);
+            return null;
         }
     }
+    // ═══════════════════════════════════════════════════════════════
+    // Lifecycle
+    // ═══════════════════════════════════════════════════════════════
     /**
-     * Obtient la liste des événements écoutés
-     */
-    getListenedEvents() {
-        return Array.from(this.listeners.keys());
-    }
-    /**
-     * Obtient la liste des types de requête supportés
-     */
-    getSupportedRequests() {
-        return Array.from(this.requestHandlers.keys());
-    }
-    /**
-     * Vérifie si le channel écoute un événement
-     */
-    isListening(event) {
-        return this.listeners.has(event) && this.listeners.get(event).length > 0;
-    }
-    /**
-     * Vérifie si le channel peut traiter un type de requête
-     */
-    canHandle(requestType) {
-        return this.requestHandlers.has(requestType);
-    }
-    /**
-     * Nettoyage complet du channel
+     * Supprime tous les handlers, listeners et repliers.
+     * Complète les Subjects RxJS.
      */
     clear() {
-        this.listeners.clear();
-        this.requestHandlers.clear();
+        // Commands
+        this.commandHandlers.clear();
+        // Events — unsubscribe all, complete subjects
+        for (const [, subsMap] of this.eventSubscriptions) {
+            for (const [, sub] of subsMap) {
+                sub.unsubscribe();
+            }
+        }
+        this.eventSubscriptions.clear();
+        for (const [, subject] of this.eventSubjects) {
+            subject.complete();
+        }
+        this.eventSubjects.clear();
+        // Any
+        for (const [, sub] of this.anySubscriptions) {
+            sub.unsubscribe();
+        }
+        this.anySubscriptions.clear();
+        this.anySubject.complete();
+        // Requests
+        this.requestRepliers.clear();
     }
 }
 
 /**
- * Radio Singleton - Gestionnaire central des channels de communication
+ * Radio — Singleton registre des Channels.
  *
- * Le Radio est le point central de communication dans Bonsai.
- * Il gère les channels nommés et permet l'accès global aux communications.
+ * Radio est le point central de câblage des communications Bonsai.
+ * Il gère les instances Channel par namespace (get-or-create).
+ *
+ * I15 — Radio n'est jamais exposé au développeur d'application.
+ *
+ * @see RFC 2-architecture/communication.md §8
  */
 class Radio {
-    /**
-     * Constructeur privé pour forcer le pattern singleton
-     */
+    /** Constructeur privé — force le pattern singleton via `me()`. */
     constructor() {
         this.channels = new Map();
+        if (!Radio.constructing) {
+            throw new Error("Radio is a singleton — use Radio.me() to get the instance.");
+        }
     }
-    /**
-     * Obtient l'instance unique du Radio
-     */
+    /** Retourne l'instance unique du Radio. */
     static me() {
         if (!Radio.instance) {
+            Radio.constructing = true;
             Radio.instance = new Radio();
+            Radio.constructing = false;
         }
         return Radio.instance;
     }
-    /**
-     * Obtient ou crée un channel par son nom
-     */
+    /** Obtient ou crée un Channel par namespace. */
     channel(name) {
         if (!this.channels.has(name)) {
             this.channels.set(name, new Channel(name));
         }
         return this.channels.get(name);
     }
-    /**
-     * Liste tous les noms de channels existants
-     */
+    /** Vérifie si un Channel existe pour ce namespace. */
+    hasChannel(name) {
+        return this.channels.has(name);
+    }
+    /** Liste tous les namespaces enregistrés. */
     getChannelNames() {
         return Array.from(this.channels.keys());
     }
     /**
-     * Vérifie si un channel existe
-     */
-    hasChannel(name) {
-        return this.channels.has(name);
-    }
-    /**
-     * Supprime un channel
+     * Supprime un Channel. Appelle `clear()` sur le Channel avant suppression.
+     * @returns `true` si le Channel existait, `false` sinon
      */
     removeChannel(name) {
-        return this.channels.delete(name);
+        const channel = this.channels.get(name);
+        if (channel) {
+            channel.clear();
+            return this.channels.delete(name);
+        }
+        return false;
     }
-    /**
-     * Réinitialise le Radio (utile pour les tests)
-     */
+    /** Reset complet — détruit le singleton. Usage : tests uniquement. */
     static reset() {
         if (Radio.instance) {
+            for (const [, channel] of Radio.instance.channels) {
+                channel.clear();
+            }
             Radio.instance.channels.clear();
         }
         Radio.instance = undefined;
     }
 }
+Radio.constructing = false;
 
-export { Channel, EventTrigger, RXJS, Radio };
+export { Channel, immer$1 as Immer, index$1 as RXJS, Radio, index as Valibot };

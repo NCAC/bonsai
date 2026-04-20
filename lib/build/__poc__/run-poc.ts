@@ -141,6 +141,9 @@ async function main() {
               "@bonsai/rxjs": [
                 "./lib/build/__poc__/out/packages/rxjs/src/rxjs"
               ],
+              "@bonsai/immer": [
+                "./lib/build/__poc__/out/packages/immer/src/immer"
+              ],
               "@bonsai/valibot": [
                 "./lib/build/__poc__/out/packages/valibot/src/valibot"
               ],
@@ -335,16 +338,21 @@ async function main() {
     const exportLine = dtsLines.find((l) => /^export\s*\{/.test(l)) || "";
     const valibotOk = /\bValibot\b/.test(exportLine);
     const rxjsOk = /\bRXJS\b/.test(exportLine);
+    const immerOk = /\bImmer\b/.test(exportLine);
 
-    if (valibotOk && rxjsOk) {
+    if (valibotOk && rxjsOk && immerOk) {
       results.push({
         id,
         passed: true,
-        detail: `export { ..., as RXJS, ..., as Valibot } ✓`
+        detail: `export { ..., as RXJS, ..., as Immer, ..., as Valibot } ✓`
       });
-      pass(id, `Namespaces RXJS et Valibot exportés`);
+      pass(id, `Namespaces RXJS, Immer et Valibot exportés`);
     } else {
-      const missing = [!valibotOk && "Valibot", !rxjsOk && "RXJS"]
+      const missing = [
+        !valibotOk && "Valibot",
+        !rxjsOk && "RXJS",
+        !immerOk && "Immer"
+      ]
         .filter(Boolean)
         .join(", ");
       results.push({
@@ -362,9 +370,7 @@ async function main() {
     const checks = {
       Channel: /\bclass\s+Channel\b/.test(dtsContent),
       Radio: /\bclass\s+Radio\b/.test(dtsContent),
-      EventTrigger: /\bclass\s+EventTrigger\b/.test(dtsContent),
-      EventCallback: /\bEventCallback\b/.test(dtsContent),
-      RequestHandler: /\bRequestHandler\b/.test(dtsContent)
+      TAnyEventPayload: /\bTAnyEventPayload\b/.test(dtsContent)
     };
     const found = Object.entries(checks)
       .filter(([, v]) => v)

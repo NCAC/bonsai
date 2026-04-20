@@ -14,6 +14,7 @@
  * | PR   | Date       | Tests ajoutés                                    |
  * |------|------------|--------------------------------------------------|
  * | #2   | 2026-04-17 | channel.basic, radio.singleton                   |
+ * | #5   | 2026-04-20 | entity.basic                                     |
  *
  * ── Utilisation ────────────────────────────────────────────────────────
  *
@@ -26,3 +27,6 @@
 // ── PR #2 — Channel tri-lane + Radio singleton ────────────────────────
 import "./channel.basic.test";
 import "./radio.singleton.test";
+
+// ── PR #5 — Entity basic (ADR-0001, I6, I46, I51, I52) ───────────────
+import "./entity.basic.test";

@@ -75,5 +75,10 @@ export * from "@bonsai/rxjs";
 // @bonsai/valibot — Tier 1 intégrée (ADR-0022 + ADR-0032 §3)
 export * from "@bonsai/valibot";
 
+// @bonsai/immer — Tier 3 opaque (ADR-0001 + ADR-0032 §3)
+// Immer est utilisé en interne pour les mutations immutables d'Entity.
+// Les types (Draft, Patch, etc.) sont encapsulés dans le namespace `Immer`.
+export * from "@bonsai/immer";
+
 // @bonsai/event — Channel, Radio, EventTrigger
 export * from "@bonsai/event";

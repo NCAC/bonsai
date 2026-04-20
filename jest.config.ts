@@ -53,6 +53,7 @@ const config: Config = {
     // ── Wrappers libs tierces ──
     "^@bonsai/types$": "<rootDir>/packages/types/index.d.ts",
     "^@bonsai/rxjs$": "<rootDir>/packages/rxjs/src/rxjs.ts",
+    "^@bonsai/immer$": "<rootDir>/packages/immer/src/immer.ts",
     "^@bonsai/remeda$": "<rootDir>/packages/remeda/src/remeda.ts",
     "^@bonsai/zod$": "<rootDir>/packages/zod/src/zod.ts",
     // ── Alias internes ──

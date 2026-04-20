@@ -1,0 +1,11 @@
+{
+  "name": "@bonsai/entity",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/bonsai-entity.ts",
+  "types": "./src/bonsai-entity.ts",
+  "dependencies": {
+    "@bonsai/immer": "workspace:^"
+  }
+}

@@ -1,274 +1,279 @@
 /**
  * @bonsai/event - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2025-10-30T10:57:11.306Z
+ * Date: 2026-04-17T21:02:03.909Z
  */
 import { RXJS } from '@bonsai/rxjs';
-
-class EventTrigger {
-    constructor() {
-        this.subjects = new Map();
-        this.subscriptions = new Map();
-    }
-    on(event, listener) {
-        if (!this.subjects.has(event)) {
-            this.subjects.set(event, new RXJS.Subject());
-        }
-        this.subjects.get(event).subscribe(listener);
-    }
-    off(event) {
-        const subject = this.subjects.get(event);
-        if (subject) {
-            const subscription = this.subscriptions.get(event);
-            if (subscription) {
-                subscription.unsubscribe();
-                this.subscriptions.delete(event);
-            }
-        }
-    }
-    once(event, listener) {
-        if (!this.subjects.has(event)) {
-            this.subjects.set(event, new RXJS.Subject());
-        }
-        this.subjects.get(event).pipe(RXJS.take(1)).subscribe(listener);
-    }
-    listenTo(emitter, event, listener) {
-        const subscription = emitter.getEventObservable(event).subscribe(listener);
-        this.subscriptions.set(event, subscription);
-    }
-    listenToOnce(emitter, event, listener) {
-        const subject = emitter.getEventObservable(event);
-        if (subject instanceof RXJS.Subject) {
-            const subscription = subject.pipe(RXJS.take(1)).subscribe(listener);
-            this.subscriptions.set(event, subscription);
-        }
-    }
-    stopListening(event) {
-        const subscription = this.subscriptions.get(event);
-        if (subscription) {
-            subscription.unsubscribe();
-            this.subscriptions.delete(event);
-        }
-    }
-    trigger(event, data) {
-        if (!this.subjects.has(event)) {
-            this.subjects.set(event, new RXJS.Subject());
-        }
-        this.subjects.get(event).next(data);
-    }
-    getEventObservable(event) {
-        if (!this.subjects.has(event)) {
-            this.subjects.set(event, new RXJS.Subject());
-        }
-        return this.subjects.get(event);
-    }
-}
-class TestEvent extends EventTrigger {
-}
-const testEvent = new TestEvent();
-testEvent.on("event1", (message) => {
-    console.log(`Received: [idea ${message.idea}] [num ${message.num}] [isFinite ${message.isFinite}]`);
-});
-testEvent.trigger("event1", { idea: "Hello", num: 42, isFinite: true });
-testEvent.off("event1");
-// // Exemple d'utilisation
-// const emitter1 = new EventTrigger();
-// const emitter2 = new EventTrigger();
-// emitter1.on("event1", (message: string) => {
-//   console.log(`emitter1 received: ${message}`);
-// });
-// emitter2.listenTo(emitter1, "event1", (message: string) => {
-//   console.log(`emitter2 received: ${message}`);
-// });
-// emitter1.trigger("event1", "Hello, world!");
-// // Utilisation de listenToOnce
-// emitter2.listenToOnce(emitter1, "event2", (message: string) => {
-//   console.log(`emitter2 received once: ${message}`);
-// });
-// emitter1.trigger("event2", "This will be received once");
-// emitter1.trigger("event2", "This will not be received");
-// // Arrêter d'écouter un événement
-// emitter2.stopListening("event1");
-// emitter1.trigger("event1", "This will not be received by emitter2");
-// type MyEventMap = TEventMap<{
-//   event1: (message: { idea: string; num: number; isFinite: boolean }) => void;
-//   event2: (message: string) => void;
-// }>;
-// class MyEvent extends EventTrigger<MyEvent, MyEventMap> {
-//   // ...
-// }
-// const myEvent = new MyEvent();
-// myEvent.on("event1", (message) => {
-//   console.log(`Received: ${message.idea} ${message.num} ${message.isFinite}`);
-// });
+import { DuplicateHandlerError, NoHandlerError, ListenerError } from '@bonsai/error';
 
 /**
- * Channel - Gestionnaire de communications pub/sub et request/reply
+ * Channel tri-lane — infrastructure de communication interne Bonsai.
  *
- * Un Channel représente un canal de communication nommé qui supporte :
- * - Pub/Sub avec événements
- * - Request/Reply avec promesses
+ * Un Channel est un contrat de communication à 3 lanes :
+ * - **Command Lane** : `handle()` / `trigger()` — 1:1 (un seul handler)
+ * - **Event Lane** : `listen()` / `unlisten()` / `emit()` — 1:N (broadcast)
+ * - **Request Lane** : `reply()` / `unreply()` / `request()` — 1:1 synchrone, T | null
+ *
+ * Le Channel émet automatiquement un événement `any` après chaque `emit()`.
+ *
+ * @see RFC 2-architecture/communication.md
+ * @see ADR-0003 — Sémantiques runtime Channel
+ * @see ADR-0023 — request() synchrone
  */
+// ── Channel ──────────────────────────────────────────────────────
 class Channel {
     constructor(name) {
         this.name = name;
-        this.listeners = new Map();
-        this.requestHandlers = new Map();
+        // ── Lane 1 — Commands (1:1) ──────────────────────────────────
+        this.commandHandlers = new Map();
+        // ── Lane 2 — Events (1:N via RxJS Subject) ──────────────────
+        this.eventSubjects = new Map();
+        this.eventSubscriptions = new Map();
+        // ── Lane 3 — Requests (1:1 sync) ────────────────────────────
+        this.requestRepliers = new Map();
+        // ── Événement technique `any` ────────────────────────────────
+        this.anySubject = new RXJS.Subject();
+        this.anySubscriptions = new Map();
     }
+    // ═══════════════════════════════════════════════════════════════
+    // Lane 1 — Commands
+    // ═══════════════════════════════════════════════════════════════
     /**
-     * Enregistre un listener pour un événement (Pub/Sub)
+     * Enregistre le handler unique pour un Command. I10 : un seul handler par Command.
+     * @throws DuplicateHandlerError si un handler est déjà enregistré pour ce Command
      */
-    on(event, callback) {
-        if (!this.listeners.has(event)) {
-            this.listeners.set(event, []);
+    handle(commandName, handler) {
+        if (this.commandHandlers.has(commandName)) {
+            throw new DuplicateHandlerError(`Command "${this.name}:${commandName}" already has a handler`, "I10", this.name, "Each Command must have exactly one handler (the owning Feature).");
         }
-        this.listeners.get(event).push(callback);
+        this.commandHandlers.set(commandName, handler);
     }
     /**
-     * Supprime un listener pour un événement
+     * Émet un Command vers son handler unique.
+     * @throws NoHandlerError si aucun handler n'est enregistré (strate 0 : toujours throw)
      */
-    off(event, callback) {
-        const callbacks = this.listeners.get(event);
-        if (callbacks) {
-            const index = callbacks.indexOf(callback);
-            if (index > -1) {
-                callbacks.splice(index, 1);
+    trigger(commandName, payload) {
+        const handler = this.commandHandlers.get(commandName);
+        if (!handler) {
+            throw new NoHandlerError(`No handler for command "${this.name}:${commandName}"`, "I10", this.name, `Register a handler with channel.handle("${commandName}", handler)`);
+        }
+        handler(payload);
+    }
+    // ═══════════════════════════════════════════════════════════════
+    // Lane 2 — Events
+    // ═══════════════════════════════════════════════════════════════
+    /**
+     * Enregistre un listener pour un Event. I11 : N listeners autorisés.
+     */
+    listen(eventName, listener) {
+        if (!this.eventSubjects.has(eventName)) {
+            this.eventSubjects.set(eventName, new RXJS.Subject());
+            this.eventSubscriptions.set(eventName, new Map());
+        }
+        const subject = this.eventSubjects.get(eventName);
+        const subscription = subject.subscribe({
+            next: (payload) => {
+                try {
+                    listener(payload);
+                }
+                catch (error) {
+                    // ADR-0002 : isolation des erreurs — ne propage pas aux autres listeners
+                    console.error(new ListenerError(`Listener error on "${this.name}:${eventName}"`, "ADR-0002", this.name), error);
+                }
+            }
+        });
+        this.eventSubscriptions.get(eventName).set(listener, subscription);
+    }
+    /**
+     * Supprime un listener spécifique pour un Event.
+     */
+    unlisten(eventName, listener) {
+        const subsMap = this.eventSubscriptions.get(eventName);
+        if (subsMap) {
+            const subscription = subsMap.get(listener);
+            if (subscription) {
+                subscription.unsubscribe();
+                subsMap.delete(listener);
             }
         }
     }
     /**
-     * Déclenche un événement avec des données (Pub/Sub)
+     * Émet un Event vers tous les listeners (1:N).
+     * Silencieux si aucun listener. Émet `any` automatiquement après.
      */
-    trigger(event, data) {
-        const callbacks = this.listeners.get(event) || [];
-        callbacks.forEach((callback) => {
-            try {
-                callback(data);
-            }
-            catch (error) {
-                console.error(`Error in event listener for ${event}:`, error);
-            }
+    emit(eventName, payload) {
+        const subject = this.eventSubjects.get(eventName);
+        if (subject) {
+            subject.next(payload);
+        }
+        // Événement technique `any` — émis après chaque Event granulaire
+        this.anySubject.next({
+            event: eventName,
+            changes: payload && typeof payload === "object"
+                ? payload
+                : {}
         });
     }
     /**
-     * Enregistre un handler pour une requête (Request/Reply)
+     * Enregistre un listener pour l'événement technique `any`.
      */
-    reply(requestType, handler) {
-        this.requestHandlers.set(requestType, handler);
+    listenAny(listener) {
+        const subscription = this.anySubject.subscribe({
+            next: (payload) => {
+                try {
+                    listener(payload);
+                }
+                catch (error) {
+                    console.error(new ListenerError(`Listener error on "${this.name}:any"`, "ADR-0002", this.name), error);
+                }
+            }
+        });
+        this.anySubscriptions.set(listener, subscription);
     }
     /**
-     * Supprime un handler de requête
+     * Supprime un listener `any`.
      */
-    unreply(requestType) {
-        this.requestHandlers.delete(requestType);
+    unlistenAny(listener) {
+        const subscription = this.anySubscriptions.get(listener);
+        if (subscription) {
+            subscription.unsubscribe();
+            this.anySubscriptions.delete(listener);
+        }
+    }
+    // ═══════════════════════════════════════════════════════════════
+    // Lane 3 — Requests (synchrone, T | null)
+    // ═══════════════════════════════════════════════════════════════
+    /**
+     * Enregistre le replier unique pour un type de Request.
+     * @throws DuplicateHandlerError si un replier est déjà enregistré
+     */
+    reply(requestName, replier) {
+        if (this.requestRepliers.has(requestName)) {
+            throw new DuplicateHandlerError(`Request "${this.name}:${requestName}" already has a replier`, "I10", this.name, "Each Request must have exactly one replier.");
+        }
+        this.requestRepliers.set(requestName, replier);
     }
     /**
-     * Effectue une requête et attend la réponse (Request/Reply)
+     * Supprime un replier.
      */
-    async request(requestType, data) {
-        const handler = this.requestHandlers.get(requestType);
-        if (!handler) {
-            throw new Error(`No handler registered for request type: ${requestType}`);
+    unreply(requestName) {
+        this.requestRepliers.delete(requestName);
+    }
+    /**
+     * Effectue une Request synchrone. Retourne T | null.
+     * - Pas de replier → null (ADR-0023, D44)
+     * - Replier qui throw → null, erreur loguée (I55)
+     */
+    request(requestName, params) {
+        const replier = this.requestRepliers.get(requestName);
+        if (!replier) {
+            return null;
         }
         try {
-            const result = await handler(data);
-            return result;
+            return replier(params);
         }
         catch (error) {
-            throw new Error(`Request handler error for ${requestType}: ${error}`);
+            console.error(`[Bonsai] Request replier error on "${this.name}:${requestName}"`, error);
+            return null;
         }
     }
+    // ═══════════════════════════════════════════════════════════════
+    // Lifecycle
+    // ═══════════════════════════════════════════════════════════════
     /**
-     * Obtient la liste des événements écoutés
-     */
-    getListenedEvents() {
-        return Array.from(this.listeners.keys());
-    }
-    /**
-     * Obtient la liste des types de requête supportés
-     */
-    getSupportedRequests() {
-        return Array.from(this.requestHandlers.keys());
-    }
-    /**
-     * Vérifie si le channel écoute un événement
-     */
-    isListening(event) {
-        return this.listeners.has(event) && this.listeners.get(event).length > 0;
-    }
-    /**
-     * Vérifie si le channel peut traiter un type de requête
-     */
-    canHandle(requestType) {
-        return this.requestHandlers.has(requestType);
-    }
-    /**
-     * Nettoyage complet du channel
+     * Supprime tous les handlers, listeners et repliers.
+     * Complète les Subjects RxJS.
      */
     clear() {
-        this.listeners.clear();
-        this.requestHandlers.clear();
+        // Commands
+        this.commandHandlers.clear();
+        // Events — unsubscribe all, complete subjects
+        for (const [, subsMap] of this.eventSubscriptions) {
+            for (const [, sub] of subsMap) {
+                sub.unsubscribe();
+            }
+        }
+        this.eventSubscriptions.clear();
+        for (const [, subject] of this.eventSubjects) {
+            subject.complete();
+        }
+        this.eventSubjects.clear();
+        // Any
+        for (const [, sub] of this.anySubscriptions) {
+            sub.unsubscribe();
+        }
+        this.anySubscriptions.clear();
+        this.anySubject.complete();
+        // Requests
+        this.requestRepliers.clear();
     }
 }
 
 /**
- * Radio Singleton - Gestionnaire central des channels de communication
+ * Radio — Singleton registre des Channels.
  *
- * Le Radio est le point central de communication dans Bonsai.
- * Il gère les channels nommés et permet l'accès global aux communications.
+ * Radio est le point central de câblage des communications Bonsai.
+ * Il gère les instances Channel par namespace (get-or-create).
+ *
+ * I15 — Radio n'est jamais exposé au développeur d'application.
+ *
+ * @see RFC 2-architecture/communication.md §8
  */
 class Radio {
-    /**
-     * Constructeur privé pour forcer le pattern singleton
-     */
+    /** Constructeur privé — force le pattern singleton via `me()`. */
     constructor() {
         this.channels = new Map();
+        if (!Radio.constructing) {
+            throw new Error("Radio is a singleton — use Radio.me() to get the instance.");
+        }
     }
-    /**
-     * Obtient l'instance unique du Radio
-     */
+    /** Retourne l'instance unique du Radio. */
     static me() {
         if (!Radio.instance) {
+            Radio.constructing = true;
             Radio.instance = new Radio();
+            Radio.constructing = false;
         }
         return Radio.instance;
     }
-    /**
-     * Obtient ou crée un channel par son nom
-     */
+    /** Obtient ou crée un Channel par namespace. */
     channel(name) {
         if (!this.channels.has(name)) {
             this.channels.set(name, new Channel(name));
         }
         return this.channels.get(name);
     }
-    /**
-     * Liste tous les noms de channels existants
-     */
+    /** Vérifie si un Channel existe pour ce namespace. */
+    hasChannel(name) {
+        return this.channels.has(name);
+    }
+    /** Liste tous les namespaces enregistrés. */
     getChannelNames() {
         return Array.from(this.channels.keys());
     }
     /**
-     * Vérifie si un channel existe
-     */
-    hasChannel(name) {
-        return this.channels.has(name);
-    }
-    /**
-     * Supprime un channel
+     * Supprime un Channel. Appelle `clear()` sur le Channel avant suppression.
+     * @returns `true` si le Channel existait, `false` sinon
      */
     removeChannel(name) {
-        return this.channels.delete(name);
+        const channel = this.channels.get(name);
+        if (channel) {
+            channel.clear();
+            return this.channels.delete(name);
+        }
+        return false;
     }
-    /**
-     * Réinitialise le Radio (utile pour les tests)
-     */
+    /** Reset complet — détruit le singleton. Usage : tests uniquement. */
     static reset() {
         if (Radio.instance) {
+            for (const [, channel] of Radio.instance.channels) {
+                channel.clear();
+            }
             Radio.instance.channels.clear();
         }
         Radio.instance = undefined;
     }
 }
+Radio.constructing = false;
 
-export { Channel, EventTrigger, Radio };
+export { Channel, Radio };
