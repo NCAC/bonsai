@@ -82,3 +82,15 @@ export * from "@bonsai/immer";
 
 // @bonsai/event — Channel, Radio, EventTrigger
 export * from "@bonsai/event";
+
+// @bonsai/view — View base class
+export * from "@bonsai/view";
+
+// @bonsai/composer — Composer base class
+export * from "@bonsai/composer";
+
+// @bonsai/foundation — Foundation base class
+export * from "@bonsai/foundation";
+
+// @bonsai/application — Application orchestrator
+export * from "@bonsai/application";

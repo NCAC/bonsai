@@ -4,24 +4,43 @@
  * Invariants prouvés :
  *   I33  — Foundation unique par application — cible <body>
  *   I20  — Seuls Foundation/Composers créent/détruisent des Views
- *   I34  — rootElement d'une View = enfant de <body>, jamais <body>
- *
- * Sémantiques strate 0 :
- *   - rootElement = document.body (toujours)
- *   - Déclare les Composers racines via get composers()
- *   - N'a PAS de TUIMap en strate 0 (ADR-0018 Suspended)
- *   - N'a PAS d'event delegation globale en strate 0 (strate 1)
  *
  * @jest-environment jsdom
  */
 
-import { describe, it, expect, beforeEach, jest } from "@jest/globals";
+import { describe, it, expect, beforeEach } from "@jest/globals";
 import { resetDOM } from "../../helpers/dom-setup";
+import { Foundation, type TFoundationComposerEntry } from "@bonsai/foundation";
+import { Composer, type TResolveResult } from "@bonsai/composer";
+import { View, type TViewParams } from "@bonsai/view";
 
-// ============================================================================
-// IMPORT TDD : Foundation n'existe pas encore. Tests rouges.
-// import { Foundation, Composer, Application } from "@core/bonsai";
-// ============================================================================
+// ─── Fixtures ────────────────────────────────────────────────────────────────
+
+const simpleViewParams = {
+  uiElements: {},
+  listen: [] as readonly string[],
+  trigger: [] as readonly string[]
+} as const satisfies TViewParams;
+
+class SimpleView extends View {
+  get params() {
+    return simpleViewParams;
+  }
+}
+
+class MainComposer extends Composer {
+  resolve(event: unknown | null): TResolveResult | null {
+    return { viewClass: SimpleView, rootElement: "[data-view='main']" };
+  }
+}
+
+class HeaderComposer extends Composer {
+  resolve(event: unknown | null): TResolveResult | null {
+    return null;
+  }
+}
+
+// ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe("Foundation basic — Strate 0 [I33, I20]", () => {
   beforeEach(() => {
@@ -29,38 +48,77 @@ describe("Foundation basic — Strate 0 [I33, I20]", () => {
   });
 
   describe("I33 — Singleton Foundation, targets <body>", () => {
-    it.skip("Foundation rootElement is document.body", () => {
-      // const foundation = new Foundation();
-      // expect(foundation.el).toBe(document.body);
+    it("Foundation rootElement is document.body", () => {
+      class AppFoundation extends Foundation {
+        get composers(): readonly TFoundationComposerEntry[] {
+          return [];
+        }
+      }
+
+      const foundation = new AppFoundation();
+      expect(foundation.el).toBe(document.body);
     });
 
-    it.skip("I33 — only one Foundation per Application", () => {
-      // const app = new Application();
-      // // La Foundation est fournie par l'Application ou par défaut
-      // // Instancier une deuxième Foundation devrait être impossible
+    it("I33 — Foundation cannot be attached twice", () => {
+      class AppFoundation extends Foundation {
+        get composers(): readonly TFoundationComposerEntry[] {
+          return [];
+        }
+      }
+
+      const foundation = new AppFoundation();
+      foundation.attach();
+
+      expect(() => foundation.attach()).toThrow(/already attached/i);
     });
   });
 
   describe("Composers racines", () => {
-    it.skip("Foundation declares root Composers via get composers()", () => {
-      // class AppFoundation extends Foundation {
-      //   get composers() {
-      //     return [
-      //       { composer: HeaderComposer, rootElement: "[data-region='header']" },
-      //       { composer: MainComposer, rootElement: "[data-region='main']" },
-      //       { composer: FooterComposer, rootElement: "[data-region='footer']" },
-      //     ] as const;
-      //   }
-      // }
-      //
-      // document.body.innerHTML = `
-      //   <header data-region="header"></header>
-      //   <main data-region="main"></main>
-      //   <footer data-region="footer"></footer>
-      // `;
-      //
-      // // Au bootstrap, la Foundation crée les Composers racines
-      // // Chaque Composer gère sa région du DOM
+    it("Foundation declares root Composers via get composers()", () => {
+      class AppFoundation extends Foundation {
+        get composers(): readonly TFoundationComposerEntry[] {
+          return [
+            {
+              composer: HeaderComposer as unknown as typeof Composer,
+              rootElement: "[data-region='header']"
+            },
+            {
+              composer: MainComposer as unknown as typeof Composer,
+              rootElement: "[data-region='main']"
+            }
+          ];
+        }
+      }
+
+      document.body.innerHTML = `
+        <header data-region="header"></header>
+        <main data-region="main">
+          <div data-view="main"></div>
+        </main>
+      `;
+
+      const foundation = new AppFoundation();
+      foundation.attach();
+
+      expect(foundation.composerInstances).toHaveLength(2);
+    });
+
+    it("Foundation onAttach() is called after Composers are resolved", () => {
+      const callOrder: string[] = [];
+
+      class AppFoundation extends Foundation {
+        get composers(): readonly TFoundationComposerEntry[] {
+          return [];
+        }
+        onAttach() {
+          callOrder.push("onAttach");
+        }
+      }
+
+      const foundation = new AppFoundation();
+      foundation.attach();
+
+      expect(callOrder).toContain("onAttach");
     });
   });
 });
