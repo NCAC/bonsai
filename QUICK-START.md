@@ -11,12 +11,14 @@
 ### Option 1: Avec Dev Container (Recommandé)
 
 1. **Cloner le repository** :
+
 ```bash
 git clone https://github.com/NCAC/bonsai.git
 cd bonsai
 ```
 
 2. **Ouvrir avec VS Code** :
+
 ```bash
 code .
 ```
@@ -32,11 +34,13 @@ code .
 ### Option 2: Installation locale
 
 1. **Installer les dépendances** :
+
 ```bash
 pnpm install
 ```
 
 2. **Build initial** :
+
 ```bash
 pnpm run build:no-watch
 ```
@@ -47,20 +51,27 @@ pnpm run build:no-watch
 bonsai/
 ├── core/                   # Framework core (point d'entrée)
 ├── packages/               # Packages individuels
-│   ├── event/             # Système événementiel
+│   ├── entity/            # Entity abstraite (mutate, state)
+│   ├── event/             # Système Channel tri-lane + Radio
+│   ├── immer/             # Wrapper Immer (Tier 3 opaque)
 │   ├── types/             # Types utilitaires
 │   ├── rxjs/              # Intégration RxJS
+│   ├── valibot/           # Validation Entity (ADR-0022)
 │   ├── remeda/            # Utilities fonctionnelles
 │   └── zod/               # Validation schémas
 ├── lib/                   # Système de build
 ├── tests/                 # Suites de tests
-├── docs/                  # Documentation
+├── docs/                  # Documentation (FR — voir ADR-0036)
+│   ├── rfc/              # Spécifications (le QUOI)
+│   ├── adr/              # Décisions architecturales (le POURQUOI)
+│   └── guides/           # Conventions (le COMMENT)
 └── .github/agents/        # Agents conversationnels
 ```
 
 ## Commandes Principales
 
 ### Build et Développement
+
 ```bash
 # Build avec watch mode (développement)
 pnpm run build
@@ -73,6 +84,7 @@ pnpm run build:clean
 ```
 
 ### Tests
+
 ```bash
 # Tous les tests
 pnpm test
@@ -94,12 +106,14 @@ pnpm run test:e2e
 ### 1. Développement d'un nouveau package
 
 1. **Créer la structure** :
+
 ```bash
 mkdir -p packages/mon-package/src
 cd packages/mon-package
 ```
 
 2. **Créer package.json** :
+
 ```json
 {
   "name": "@bonsai/mon-package",
@@ -121,17 +135,19 @@ cd packages/mon-package
 ### 2. TDD (Test-Driven Development)
 
 1. **Écrire le test d'abord** :
+
 ```typescript
 // tests/unit/ma-feature.test.ts
-describe('MaFeature', () => {
-  it('should do something', () => {
+describe("MaFeature", () => {
+  it("should do something", () => {
     // Test qui échoue initialement
-    expect(new MaFeature().method()).toBe('expected');
+    expect(new MaFeature().method()).toBe("expected");
   });
 });
 ```
 
 2. **Lancer le test** (il doit échouer) :
+
 ```bash
 pnpm run test:watch
 ```
@@ -143,11 +159,13 @@ pnpm run test:watch
 ### 3. Debugging et Logs
 
 - **Build logs détaillés** :
+
 ```bash
 DEBUG=bonsai:build pnpm run build
 ```
 
 - **Logs par composant** :
+
 ```bash
 DEBUG=bonsai:cache pnpm run build  # Cache uniquement
 DEBUG=bonsai:* pnpm run build      # Tous les logs
@@ -158,21 +176,21 @@ DEBUG=bonsai:* pnpm run build      # Tous les logs
 ### Communication via Channels
 
 ```typescript
-import { Radio } from '@bonsai/event';
+import { Radio } from "@bonsai/event";
 
 // Obtenir un channel
-const userChannel = Radio.channel<UserEvents>('user');
+const userChannel = Radio.channel<UserEvents>("user");
 
 // Publier un événement
-userChannel.trigger('user:login', { userId: '123' });
+userChannel.trigger("user:login", { userId: "123" });
 
 // S'abonner à un événement
-userChannel.on('user:login', (data) => {
-  console.log('User logged in:', data.userId);
+userChannel.on("user:login", (data) => {
+  console.log("User logged in:", data.userId);
 });
 
 // Request/Reply pattern
-const result = await userChannel.request('user:getData', { userId: '123' });
+const result = await userChannel.request("user:getData", { userId: "123" });
 ```
 
 ### Entities et State
@@ -190,14 +208,14 @@ class UserEntity {
 // Feature : logique métier et cycle de vie des entities
 class UserFeature {
   private users = new Map<string, UserEntity>();
-  
+
   createUser(data: CreateUserData): UserEntity {
     const user = new UserEntity(data.id, data.name, data.email);
     this.users.set(user.id, user);
-    
+
     // Notifier via channel
-    Radio.channel('user').trigger('user:created', user);
-    
+    Radio.channel("user").trigger("user:created", user);
+
     return user;
   }
 }
@@ -219,4 +237,4 @@ class UserFeature {
 
 ---
 
-*Pour obtenir de l'aide, utilisez l'agent conversationnel spécialisé ou consultez la documentation dans `/docs/`*
+_Pour obtenir de l'aide, utilisez l'agent conversationnel spécialisé ou consultez la documentation dans `/docs/`_
