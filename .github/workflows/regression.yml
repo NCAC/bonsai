@@ -47,5 +47,5 @@ jobs:
       - name: Type-check
         run: pnpm tsc --noEmit
 
-      - name: Full test suite
-        run: pnpm test:ci
+      - name: Regression gate
+        run: pnpm test:regression
