@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# Validation Conventional Commits (ADR-0033, CONTRIBUTING.md)
+commit_msg=$(cat "$1")
+commit_pattern='^(feat|fix|docs|refactor|test|chore|perf|ci|build)(\(.+\))?!?:.+'
+
+if ! echo "$commit_msg" | grep -qE "$commit_pattern"; then
+  echo ""
+  echo "❌ Message de commit invalide."
+  echo "📘 Format attendu : type(scope)?: message"
+  echo "   Exemples : feat: add Channel class"
+  echo "              fix(entity): correct mutate signature"
+  echo "   Types : feat, fix, docs, refactor, test, chore, perf, ci, build"
+  exit 1
+fi

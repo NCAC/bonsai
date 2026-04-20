@@ -1,0 +1,9 @@
+#!/bin/sh
+
+echo "🧪 Running full test suite before push..."
+pnpm test || {
+  echo "❌ Tests failed. Push annulé."
+  exit 1
+}
+
+echo "✅ Pre-push checks passed."

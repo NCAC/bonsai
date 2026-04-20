@@ -14,6 +14,9 @@ importers:
       '@bonsai/event':
         specifier: workspace:^
         version: link:packages/event
+      '@bonsai/immer':
+        specifier: workspace:^
+        version: link:packages/immer
       '@bonsai/rxjs':
         specifier: workspace:^
         version: link:packages/rxjs
@@ -71,6 +74,9 @@ importers:
       gulp-prettier:
         specifier: ^6.0.0
         version: 6.0.0
+      immer:
+        specifier: ^11.1.4
+        version: 11.1.4
       js-yaml:
         specifier: ^4.1.0
         version: 4.1.0
@@ -150,6 +156,9 @@ importers:
       '@bonsai/event':
         specifier: workspace:^
         version: link:../packages/event
+      '@bonsai/immer':
+        specifier: workspace:^
+        version: link:../packages/immer
       '@bonsai/rxjs':
         specifier: workspace:^
         version: link:../packages/rxjs
@@ -177,6 +186,12 @@ importers:
       '@bonsai/types':
         specifier: workspace:^
         version: link:../types
+
+  packages/immer:
+    dependencies:
+      immer:
+        specifier: ^11.1.4
+        version: 11.1.4
 
   packages/remeda: {}
 
@@ -1350,6 +1365,9 @@ packages:
 
   ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
+
+  immer@11.1.4:
+    resolution: {integrity: sha512-XREFCPo6ksxVzP4E0ekD5aMdf8WMwmdNaz6vuvxgI40UaEiu6q3p8X52aU6GdyvLY3XXX/8R7JOTXStz/nBbRw==}
 
   import-local@3.2.0:
     resolution: {integrity: sha512-2SPlun1JUPWoM6t3F0dw0FkCF/jWY8kttcY4f599GLTSjh2OCuuhdTkJQsEcZzBqbXZGKMK2OqW1oZsjtf/gQA==}
@@ -3412,6 +3430,8 @@ snapshots:
       safer-buffer: 2.1.2
 
   ieee754@1.2.1: {}
+
+  immer@11.1.4: {}
 
   import-local@3.2.0:
     dependencies:

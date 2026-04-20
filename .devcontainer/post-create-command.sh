@@ -13,7 +13,8 @@ git config --local core.filemode false
 # install node modules
 pnpm install
 
-# initialize Husky (if not already initialized)
-npx husky install
+# initialize Husky (v9+ : simple init, pas de "install")
+npx husky
+chmod +x .husky/pre-commit .husky/commit-msg .husky/pre-push
 
 echo "✅ Configuration du DevContainer terminée avec succès."
