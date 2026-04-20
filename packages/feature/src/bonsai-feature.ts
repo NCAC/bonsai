@@ -27,15 +27,12 @@ import { Radio } from "@bonsai/event";
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 /**
- * Interface statique que les classes Feature concrètes doivent satisfaire.
+ * Constructeur concret d'une sous-classe de Feature.
+ * Combine les membres statiques (namespace, channels) avec l'instanciabilité.
  */
 export type TFeatureClass<
   TState extends TJsonSerializable = TJsonSerializable
-> = {
-  readonly namespace: string;
-  readonly channels: readonly string[];
-  new (): Feature<TState>;
-};
+> = (new () => Feature<TState>) & typeof Feature;
 
 // ─── Feature abstract class ──────────────────────────────────────────────────
 

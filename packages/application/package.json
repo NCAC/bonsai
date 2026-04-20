@@ -1,0 +1,13 @@
+{
+  "name": "@bonsai/application",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "src/bonsai-application.ts",
+  "types": "src/bonsai-application.ts",
+  "dependencies": {
+    "@bonsai/event": "workspace:^",
+    "@bonsai/feature": "workspace:^",
+    "@bonsai/foundation": "workspace:^"
+  }
+}

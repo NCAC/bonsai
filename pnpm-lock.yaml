@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@bonsai/application':
+        specifier: workspace:^
+        version: link:packages/application
+      '@bonsai/composer':
+        specifier: workspace:^
+        version: link:packages/composer
       '@bonsai/core':
         specifier: workspace:^
         version: link:core
@@ -20,6 +26,9 @@ importers:
       '@bonsai/feature':
         specifier: workspace:^
         version: link:packages/feature
+      '@bonsai/foundation':
+        specifier: workspace:^
+        version: link:packages/foundation
       '@bonsai/immer':
         specifier: workspace:^
         version: link:packages/immer
@@ -181,6 +190,24 @@ importers:
         specifier: workspace:^
         version: link:../packages/valibot
 
+  packages/application:
+    dependencies:
+      '@bonsai/event':
+        specifier: workspace:^
+        version: link:../event
+      '@bonsai/feature':
+        specifier: workspace:^
+        version: link:../feature
+      '@bonsai/foundation':
+        specifier: workspace:^
+        version: link:../foundation
+
+  packages/composer:
+    dependencies:
+      '@bonsai/view':
+        specifier: workspace:^
+        version: link:../view
+
   packages/entity:
     dependencies:
       '@bonsai/immer':
@@ -213,6 +240,12 @@ importers:
       '@bonsai/event':
         specifier: workspace:^
         version: link:../event
+
+  packages/foundation:
+    dependencies:
+      '@bonsai/composer':
+        specifier: workspace:^
+        version: link:../composer
 
   packages/immer:
     dependencies:

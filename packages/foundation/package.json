@@ -1,0 +1,11 @@
+{
+  "name": "@bonsai/foundation",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "src/bonsai-foundation.ts",
+  "types": "src/bonsai-foundation.ts",
+  "dependencies": {
+    "@bonsai/composer": "workspace:^"
+  }
+}
