@@ -2,6 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "types": ["jest", "@jest/globals", "node"],
+    "lib": ["ESNext", "DOM"],
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
@@ -14,6 +15,7 @@
   },
   "include": [
     "tests/**/*",
+    "packages/*/src/**/*.ts",
     "core/src/**/*.test.ts",
     "packages/**/*.test.ts",
     "lib/**/*.test.ts",

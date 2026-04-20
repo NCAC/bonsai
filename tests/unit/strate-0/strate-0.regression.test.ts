@@ -1,4 +1,6 @@
 /**
+ * @jest-environment jsdom
+ *
  * ═══════════════════════════════════════════════════════════════════════════
  * Strate 0 — Suite de non-régression cumulative
  * ═══════════════════════════════════════════════════════════════════════════
@@ -16,6 +18,7 @@
  * | #2   | 2026-04-17 | channel.basic, radio.singleton                   |
  * | #5   | 2026-04-20 | entity.basic                                     |
  * | #7   | 2026-04-20 | feature.core                                     |
+ * | #8   | 2026-04-20 | view.core                                        |
  *
  * ── Utilisation ────────────────────────────────────────────────────────
  *
@@ -34,3 +37,6 @@ import "./entity.basic.test";
 
 // ── PR #7 — Feature core (5 capacités, I1, I2, I3, I5, I12, I21, I48) ─
 import "./feature.core.test";
+
+// ── PR #8 — View core (ADR-0024, I4, I31, I39, I40, I48, D48) ─────────
+import "./view.core.test";
