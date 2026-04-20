@@ -27,5 +27,5 @@
     }
   },
   "include": ["lib/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "lib/build/__poc__"]
 }
