@@ -245,7 +245,7 @@ build-validation:
 ## Références
 
 - [ADR-0032](ADR-0032-dts-bundling-strategy.md) — DTS bundling strategy
-- [ADR-0034](ADR-0034-cumulative-regression-gate.md) — Cumulative regression gate
+- [ADR-0034](ADR-0034-continuous-verification-strategy.md) — Continuous verification strategy
 - [ADR-0033](ADR-0033-git-workflow-versioning-strategy.md) — Git workflow & versioning
 - [PoC run-poc.ts](../../lib/build/__poc__/run-poc.ts) — Validation pipeline VC1–VC8
 

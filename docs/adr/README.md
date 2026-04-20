@@ -44,6 +44,7 @@
 | [ADR-0033](ADR-0033-git-workflow-versioning-strategy.md)             | Workflow Git & stratégie de versioning — Git Flow adapté, SemVer `0.x.y`                | 🟢 Accepted   | 2026-04-17                      | ADR-0028, ADR-0029, ADR-0032                                     |
 | [ADR-0034](ADR-0034-continuous-verification-strategy.md)             | Stratégie de vérification continue — Hooks Husky + CI GitHub Actions                    | 🟢 Accepted   | 2026-04-20                      | ADR-0028, ADR-0030, ADR-0006, ADR-0033                           |
 | [ADR-0035](ADR-0035-build-artifacts-versioning-strategy.md)          | Stratégie artefacts de build — tout versionné, rebuild systématique, `main` fait foi    | 🟢 Accepted   | 2026-04-17                      | ADR-0032, ADR-0034, ADR-0033                                     |
+| [ADR-0036](ADR-0036-documentation-internationalization-strategy.md)  | Internationalisation documentation — FR source, EN dérivée (`-EN.md`), traduction incrémentale | 🟢 Accepted   | 2026-04-20                      | ADR-0033                                                         |
 
 ---
 
@@ -125,6 +126,15 @@ D'après la [Roadmap de consolidation](../archive/ROADMAP-CONSOLIDATION.md) :
 - ~~ADR-0028 Stratégie de phasage d'implémentation — Kernel-first en 3 strates~~ → 🟢 Accepted
 - ~~ADR-0029 Périmètre gelé v1 — 16 ADR IN, 4 Accepted OUT~~ → 🟢 Accepted
 - ~~ADR-0030 Tests comme preuve d'architecture — spécification exécutable par strate~~ → 🟢 Accepted
+
+### 🔴 P1 — Infrastructure et build
+
+- ~~ADR-0031 Topologie des packages du monorepo~~ → 🟢 Accepted
+- ADR-0032 Build Pipeline — Toolchain, DTS bundling → 🟡 Proposed
+- ~~ADR-0033 Workflow Git & stratégie de versioning~~ → 🟢 Accepted
+- ~~ADR-0034 Stratégie de vérification continue (Husky + CI)~~ → 🟢 Accepted
+- ~~ADR-0035 Stratégie artefacts de build (tout versionné, rebuild systématique)~~ → 🟢 Accepted
+- ~~ADR-0036 Internationalisation documentation (FR source, EN dérivée)~~ → 🟢 Accepted
 
 ---
 
