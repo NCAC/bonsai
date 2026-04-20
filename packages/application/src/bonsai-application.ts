@@ -25,6 +25,7 @@
  */
 
 import { Radio } from "@bonsai/event";
+import { type TFeatureClass } from "@bonsai/feature";
 import { Foundation } from "@bonsai/foundation";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -37,19 +38,10 @@ export type TApplicationOptions = {
   readonly foundation?: typeof Foundation;
 };
 
-/**
- * Interface statique minimale d'une Feature (pour register).
- * Le vrai type est dans @bonsai/feature, on ne tire pas la dépendance circulaire.
- */
-interface IFeatureStatic {
-  readonly namespace: string;
-  new (...args: any[]): any;
-}
-
 // ─── Application class ───────────────────────────────────────────────────────
 
 export class Application {
-  #registeredFeatures: IFeatureStatic[] = [];
+  #registeredFeatures: TFeatureClass[] = [];
   #namespaces: Set<string> = new Set();
   #started = false;
   #foundationClass: typeof Foundation | null;
@@ -66,7 +58,7 @@ export class Application {
    * Enregistre une Feature. Vérifie l'unicité du namespace (I24).
    * Ne peut plus être appelé après start().
    */
-  register(FeatureClass: IFeatureStatic): void {
+  register(FeatureClass: TFeatureClass): void {
     if (this.#started) {
       throw new Error(
         "[Bonsai Application] Cannot register after start() — already started"
