@@ -17,6 +17,9 @@ importers:
       '@bonsai/event':
         specifier: workspace:^
         version: link:packages/event
+      '@bonsai/feature':
+        specifier: workspace:^
+        version: link:packages/feature
       '@bonsai/immer':
         specifier: workspace:^
         version: link:packages/immer
@@ -195,6 +198,15 @@ importers:
       '@bonsai/types':
         specifier: workspace:^
         version: link:../types
+
+  packages/feature:
+    dependencies:
+      '@bonsai/entity':
+        specifier: workspace:^
+        version: link:../entity
+      '@bonsai/event':
+        specifier: workspace:^
+        version: link:../event
 
   packages/immer:
     dependencies:

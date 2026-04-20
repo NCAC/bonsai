@@ -41,6 +41,7 @@
     "@bonsai/core": "workspace:^",
     "@bonsai/entity": "workspace:^",
     "@bonsai/event": "workspace:^",
+    "@bonsai/feature": "workspace:^",
     "@bonsai/immer": "workspace:^",
     "@bonsai/rxjs": "workspace:^",
     "@bonsai/types": "workspace:^",

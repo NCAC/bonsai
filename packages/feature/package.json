@@ -1,0 +1,12 @@
+{
+  "name": "@bonsai/feature",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/bonsai-feature.ts",
+  "types": "src/bonsai-feature.ts",
+  "dependencies": {
+    "@bonsai/entity": "workspace:^",
+    "@bonsai/event": "workspace:^"
+  }
+}
