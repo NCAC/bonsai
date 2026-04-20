@@ -46,6 +46,7 @@
     "@bonsai/rxjs": "workspace:^",
     "@bonsai/types": "workspace:^",
     "@bonsai/valibot": "workspace:^",
+    "@bonsai/view": "workspace:^",
     "@rollup/plugin-alias": "^5.1.1",
     "@rollup/plugin-commonjs": "^28.0.3",
     "@rollup/plugin-json": "^6.1.0",
@@ -86,6 +87,7 @@
     "@types/jest": "^29.5.14",
     "husky": "^9.1.7",
     "jest": "^29.7.0",
+    "jest-environment-jsdom": "^30.3.0",
     "ora": "^8.2.0",
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2"
