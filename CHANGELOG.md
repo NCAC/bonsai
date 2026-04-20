@@ -12,9 +12,28 @@ Workflow : [ADR-0033](docs/adr/ADR-0033-git-workflow-versioning-strategy.md)
 
 ### Added
 
+- **`@bonsai/entity`** : abstract `Entity<TStructure>` base class — `mutate(intent, recipe)` via Immer, no-op detection, `onAnyEntityUpdated()` catch-all (I6, I46, I51, I52)
+- **`@bonsai/immer`** : opaque Tier 3 wrapper for Immer (`produce`, `Draft`)
+- **ADR-0034** : Continuous verification strategy — Husky pre-commit + CI GitHub Actions
+- **ADR-0035** : Build artifacts versioning strategy — all versioned, systematic rebuild, `main` authoritative
+- **ADR-0036** : Documentation internationalization — FR source, EN derived (`-EN.md`)
+- **Husky hooks** : pre-commit (`tsc --noEmit` + regression), commit-msg (Conventional Commits), pre-push (full tests)
+- **CI workflow** : `.github/workflows/regression.yml` — continuous verification on PR → `develop`
+- **Regression gate** : 39 cumulative tests (Channel + Radio + Entity)
+- **GitHub Copilot agents** : `.github/agents/` (dev-framework, build-framework, rfc-architect)
+
 ### Changed
 
+- `core/dist/bonsai.d.ts` and `core/dist/bonsai.js` rebuilt from current sources
+- `.gitignore` : added `*.tsbuildinfo`
+- Documentation cleanup : ADR index updated (36 entries), governance matrix corrected
+
 ### Fixed
+
+- Broken cross-reference in ADR-0035 (old ADR-0034 filename)
+- ADR-0007 status in RFC governance matrix (🟢 → ⚪ Superseded)
+- DevTools RFC status in docs hub (🟢 Stable → 🟡 Draft)
+- ADR count in docs hub (23 → 36)
 
 ---
 
@@ -43,5 +62,5 @@ Workflow : [ADR-0033](docs/adr/ADR-0033-git-workflow-versioning-strategy.md)
 
 ---
 
-[Unreleased]: https://github.com/nicmusic/bonsai/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/nicmusic/bonsai/releases/tag/v0.1.0
+[Unreleased]: https://github.com/NCAC/bonsai/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/NCAC/bonsai/releases/tag/v0.1.0

@@ -25,8 +25,10 @@ Le projet est organisé en plusieurs sections principales:
 Bonsai intègre plusieurs bibliothèques externes populaires, encapsulées pour une utilisation cohérente:
 
 - **RxJS**: Programmation réactive
+- **Immer**: Mutations d'état immuables
 - **Remeda**: Utilitaires fonctionnels
 - **Zod**: Validation de schémas
+- **Valibot**: Validation de schémas (contrats Entity)
 
 ## Fonctionnalités principales
 
@@ -103,12 +105,18 @@ emitter.trigger("update", "Hello world!");
 
 ## Packages principaux
 
-- `@bonsai/event` : système d'événements
+- `@bonsai/event` : système Channel tri-lane (Commands, Events, Requests) + Radio singleton
+- `@bonsai/entity` : classe abstraite Entity avec `mutate()` Immer
 - `@bonsai/types` : types utilitaires avancés
+- `@bonsai/immer` : wrapper Immer (Tier 3 opaque)
+- `@bonsai/valibot` : wrapper Valibot (validation Entity)
 - `@bonsai/rxjs` : intégration RxJS
 - `@bonsai/remeda` : utilitaires fonctionnels
 - `@bonsai/zod` : validation de schémas
 
 ## Documentation
 
-Pour plus d'exemples et la documentation complète de l'API, consultez les README de chaque package ou la documentation en ligne.
+- 📐 [RFCs — Spécifications](docs/rfc/README.md) (source de vérité)
+- 📋 [ADRs — Décisions](docs/adr/README.md) (36 décisions architecturales)
+- 📖 [Guides](docs/guides/) (conventions de codage)
+- 🇬🇧 [English version](README.md)

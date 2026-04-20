@@ -4,7 +4,7 @@
 
 > ⚠️ **Work in Progress** - This framework is under active development. The API will very likely change before the stable release.
 
-Modern JavaScript framework for frontend development.
+Modern TypeScript framework for frontend development — event-driven architecture, unidirectional data flow, compile-time safety.
 
 ## Introduction
 
@@ -27,8 +27,10 @@ The project is organized into several main sections:
 Bonsai integrates several popular external libraries, encapsulated for consistent usage:
 
 - **RxJS**: Reactive programming
+- **Immer**: Immutable state mutations
 - **Remeda**: Functional utilities
 - **Zod**: Schema validation
+- **Valibot**: Schema validation (Entity contracts)
 
 ## Main Features
 
@@ -98,12 +100,20 @@ emitter.trigger("update", "Hello world!");
 
 ## Main Packages
 
-- `@bonsai/event`: event system
+- `@bonsai/event`: tri-lane Channel system (Commands, Events, Requests) + Radio singleton
+- `@bonsai/entity`: abstract Entity base class with Immer-based `mutate()`
 - `@bonsai/types`: advanced utility types
+- `@bonsai/immer`: Immer wrapper (opaque Tier 3)
+- `@bonsai/valibot`: Valibot wrapper (Entity schema validation)
 - `@bonsai/rxjs`: RxJS integration
 - `@bonsai/remeda`: functional utilities
 - `@bonsai/zod`: schema validation
 
 ## Documentation
 
-For more examples and full API documentation, see each package's README or the online documentation.
+Architectural documentation (RFCs, ADRs) is written in **French** — the design language of the project (see [ADR-0036](docs/adr/ADR-0036-documentation-internationalization-strategy.md)). English translations are planned for stable documents.
+
+- 📐 [RFCs — Specifications](docs/rfc/README.md) (source of truth)
+- 📋 [ADRs — Decisions](docs/adr/README.md) (36 architectural decisions)
+- 📖 [Guides](docs/guides/) (coding conventions)
+- 🇫🇷 [Version française](README.fr.md)
