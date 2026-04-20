@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# ── Vérification de typage ────────────────────────────────
+echo "🔍 Type-checking (tsc --noEmit)..."
+pnpm tsc --noEmit || {
+  echo "❌ Erreurs de compilation TypeScript. Commit annulé."
+  exit 1
+}
+
+# ── Gate de non-régression ────────────────────────────────
+echo "🧪 Running regression tests..."
+pnpm test:regression || {
+  echo "❌ Tests de non-régression en échec. Commit annulé."
+  exit 1
+}
+
+echo "✅ Pre-commit checks passed."
