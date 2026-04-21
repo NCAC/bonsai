@@ -6,6 +6,7 @@
  *   - Slot DOM immutable fourni par le parent (Foundation ou View)
  *   - Machine à états minimal : idle → active → idle
  *   - Création d'élément DOM si absent (D30)
+ *   - Diff de transitions §3.1 (5 cas Same/New/null) sans recréation inutile
  *
  * Invariants :
  *   I20  — Seuls Foundation/Composers créent/détruisent des Views
@@ -18,6 +19,15 @@
  *   ADR-0025 — Pas de lifecycle hooks (ni onMount, ni onUnmount, ni onAttach)
  *   ADR-0026 — rootElement = string CSS selector only
  *   ADR-0027 — resolve(event) unique point d'entrée, pas de state local
+ *
+ * Diff §3.1 (RFC composer.md) :
+ *   | resolve() retourne | View montée         | Action                                    |
+ *   | ------------------ | ------------------- | ----------------------------------------- |
+ *   | SameView+SameRoot  | SameView instance   | **No-op** (instance conservée)            |
+ *   | NewView (ou root)  | OldView instance    | **Detach** OldView → **Attach** NewView   |
+ *   | NewView            | null                | **Attach** NewView                        |
+ *   | null               | OldView instance    | **Detach** OldView                        |
+ *   | null               | null                | **No-op**                                 |
  *
  * @packageDocumentation
  */
@@ -61,6 +71,12 @@ export abstract class Composer {
 
   /** La View actuellement montée (null si resolve() a retourné null) */
   #currentView: View | null = null;
+
+  /**
+   * Dernier résultat retourné par resolve() — sert de référence pour le diff §3.1.
+   * Null si la dernière sortie était null (ou avant le premier resolve).
+   */
+  #currentResult: TResolveResult | null = null;
 
   /** Machine à états minimal : idle → active → idle */
   #state: "idle" | "active" = "idle";
@@ -135,22 +151,76 @@ export abstract class Composer {
 
   // ─── Private ───────────────────────────────────────────────────────────
 
+  /**
+   * Diff §3.1 (RFC composer.md) — applique la transition entre l'état précédent
+   * (`#currentView` + `#currentResult`) et la nouvelle décision retournée par
+   * `resolve(event)`. 5 transitions possibles, aucune recréation inutile.
+   */
   #performResolve(event: unknown | null): void {
-    const result = this.resolve(event);
+    const next = this.resolve(event);
+    const prev = this.#currentResult;
 
-    if (result === null) {
-      // Detach current view if any
-      this.#currentView = null;
-      this.#state = "idle";
+    // Transition 5 : null + null → no-op
+    if (next === null && prev === null) {
       return;
     }
 
-    // Instancier et monter la View
+    // Transition 4 : null + instance → detach
+    if (next === null) {
+      this.#detachCurrent();
+      return;
+    }
+
+    // À ce stade, next !== null
+
+    // Transition 1 : SameView + SameRoot + currentView → no-op
+    // (instance conservée, aucun remount)
+    if (
+      prev !== null &&
+      this.#currentView !== null &&
+      prev.view === next.view &&
+      prev.rootElement === next.rootElement
+    ) {
+      return;
+    }
+
+    // Transition 3 : NewView + null → attach simple
+    if (this.#currentView === null) {
+      this.#attachNew(next);
+      return;
+    }
+
+    // Transition 2 : NewView (ou même viewClass mais rootElement différent)
+    //                + instance existante → detach + attach
+    this.#detachCurrent();
+    this.#attachNew(next);
+  }
+
+  /**
+   * Instancie la View décrite par `result`, la monte sur son rootElement,
+   * et met à jour l'état interne. Appelée par `#performResolve()` uniquement.
+   */
+  #attachNew(result: TResolveResult): void {
     const ViewClass = result.view;
     const view = new (ViewClass as unknown as new () => View)();
     view.mount(result.rootElement);
     this.#currentView = view;
+    this.#currentResult = result;
     this.#state = "active";
+  }
+
+  /**
+   * Détache la View courante. En strate 0, le Composer n'a pas de subscription
+   * propre à libérer (ADR-0025) — il libère simplement la référence. La RFC §4.2
+   * prévoit `view.onDetach()` en strates ultérieures.
+   *
+   * Note : l'élément DOM créé par D30 (slot du Composer) reste en place — c'est
+   * le slot, pas le rootElement de la View. Seule la View mountée est libérée.
+   */
+  #detachCurrent(): void {
+    this.#currentView = null;
+    this.#currentResult = null;
+    this.#state = "idle";
   }
 
   /**
