@@ -147,15 +147,17 @@ export class Application {
     // Phase 2: Entities — instanciation (gérée par Feature en strate 0)
     // (rien à faire explicitement — Entity est créée par Feature dans son constructeur)
 
-    // Phase 3: Features — instancie, câble handlers, appelle onInit (I56)
+    // Phase 3: Features — instancie, bootstrap (auto-discovery handlers I48),
+    // appelle onInit (I56)
     for (const FeatureClass of this.#registeredFeatures) {
       const instance = new FeatureClass();
       this.#featureInstances.push(instance);
 
-      // Appeler onInit si la méthode existe
-      if (typeof instance.onInit === "function") {
-        instance.onInit();
-      }
+      // bootstrap() = création Entity + auto-discovery (Commands/Requests/Events)
+      // PUIS appel de onInit() à la fin (cf. Feature.bootstrap()).
+      // En strate 0, Application délègue tout à Feature.bootstrap() qui inclut
+      // déjà l'appel à onInit() — pas de double appel.
+      instance.bootstrap();
     }
 
     // Phase 4: Views — Foundation → Composers → Views
