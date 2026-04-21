@@ -55,7 +55,7 @@ export type TPackage = {
    */
   isTypesOnly?: boolean;
   /**
-   * Nom de la dépendance amont (upstream) à tracker pour la version (ex: 'rxjs' ou 'remeda')
+   * Nom de la dépendance amont (upstream) à tracker pour la version (ex: 'rxjs' ou 'valibot')
    */
   upstreamDependency?: string;
 };

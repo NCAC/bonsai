@@ -253,8 +253,6 @@ importers:
         specifier: ^11.1.4
         version: 11.1.4
 
-  packages/remeda: {}
-
   packages/rxjs: {}
 
   packages/types: {}
@@ -266,8 +264,6 @@ importers:
       '@bonsai/event':
         specifier: workspace:^
         version: link:../event
-
-  packages/zod: {}
 
 packages:
 

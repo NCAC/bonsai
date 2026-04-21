@@ -1,5 +1,12 @@
 # ADR-0022 : Entity Schema Validation Strategy
 
+> ### ⚠️ Mise à jour 2026-04-21
+> Le wrapper `packages/zod/` **a été supprimé du repo**. Les sections de cet ADR
+> qui le mentionnent (legacy, rétrocompatibilité, exemples `import { z } from 'zod'`)
+> sont désormais **purement historiques** et conservées pour la traçabilité de la
+> décision. **Toute nouvelle Entity utilise Valibot** (`@bonsai/valibot`).
+> Aucune compatibilité Zod n'est plus assurée.
+
 > ### TL;DR
 > **Valibot imposé** comme unique bibliothèque de validation. Chaque Entity définit
 > `abstract get schema(): TEntitySchema<TStructure>`. Validation **modale** : silencieuse
