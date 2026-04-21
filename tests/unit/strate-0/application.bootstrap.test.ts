@@ -43,14 +43,29 @@ class CartEntity extends Entity<TCartState> {
 
 class CartFeature extends Feature<CartEntity> {
   static readonly namespace = "cart" as const;
-  static readonly channels = {
-    commands: ["addItem"],
-    events: ["itemAdded"],
-    requests: []
-  } as const;
+  // channels = liste des namespaces externes écoutés (I48 auto-discovery).
+  // CartFeature n'écoute rien d'externe en strate 0.
+  static readonly channels = [] as const;
 
   protected get Entity() {
     return CartEntity;
+  }
+}
+
+/**
+ * Stub partagé pour les fixtures de bootstrap qui n'ont pas de logique métier
+ * (uniquement la chaîne register/start). Évite de redéclarer une Entity vide
+ * dans chaque test. Conforme ADR-0037 — Feature exige `get Entity()`.
+ */
+type TNoopState = Record<string, never>;
+class NoopEntity extends Entity<TNoopState> {
+  protected defineInitialState(): TNoopState {
+    return {};
+  }
+}
+abstract class StubFeature extends Feature<NoopEntity> {
+  protected get Entity() {
+    return NoopEntity;
   }
 }
 
@@ -78,13 +93,9 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56]", () => {
       const app = new Application();
       app.register(CartFeature);
 
-      class FakeCartFeature extends Feature {
+      class FakeCartFeature extends StubFeature {
         static readonly namespace = "cart" as const;
-        static readonly channels = {
-          commands: [],
-          events: [],
-          requests: []
-        } as const;
+        static readonly channels = [] as const;
       }
 
       expect(() => app.register(FakeCartFeature)).toThrow(
@@ -99,13 +110,9 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56]", () => {
       app.register(CartFeature);
       app.start();
 
-      class AnotherFeature extends Feature {
+      class AnotherFeature extends StubFeature {
         static readonly namespace = "orders" as const;
-        static readonly channels = {
-          commands: [],
-          events: [],
-          requests: []
-        } as const;
+        static readonly channels = [] as const;
       }
 
       expect(() => app.register(AnotherFeature)).toThrow(/already started/i);
@@ -127,13 +134,9 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56]", () => {
     it("I56 — onInit() of every Feature called before Foundation creation", () => {
       const callOrder: string[] = [];
 
-      class OrderedFeature extends Feature {
+      class OrderedFeature extends StubFeature {
         static readonly namespace = "ordered" as const;
-        static readonly channels = {
-          commands: [],
-          events: [],
-          requests: []
-        } as const;
+        static readonly channels = [] as const;
         onInit() {
           callOrder.push("feature:onInit");
         }
@@ -187,13 +190,9 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56]", () => {
 
   describe("Namespace reserved words", () => {
     it("namespace 'local' is reserved — throws at registration", () => {
-      class BadFeature extends Feature {
+      class BadFeature extends StubFeature {
         static readonly namespace = "local" as const;
-        static readonly channels = {
-          commands: [],
-          events: [],
-          requests: []
-        } as const;
+        static readonly channels = [] as const;
       }
 
       const app = new Application();
@@ -229,13 +228,9 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56]", () => {
     it("Bootstrap order — channels created BEFORE Feature.onInit (Phase 1 < Phase 3)", () => {
       const callOrder: string[] = [];
 
-      class ChannelObserverFeature extends Feature {
+      class ChannelObserverFeature extends StubFeature {
         static readonly namespace = "observer" as const;
-        static readonly channels = {
-          commands: [],
-          events: [],
-          requests: []
-        } as const;
+        static readonly channels = [] as const;
         onInit() {
           // Si on arrive ici, le channel doit déjà exister (Phase 1 terminée)
           try {
@@ -259,24 +254,16 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56]", () => {
     it("Bootstrap order — Foundation.attach called AFTER all Features.onInit (Phase 3 < Phase 4)", () => {
       const callOrder: string[] = [];
 
-      class FeatureA extends Feature {
+      class FeatureA extends StubFeature {
         static readonly namespace = "feat-a" as const;
-        static readonly channels = {
-          commands: [],
-          events: [],
-          requests: []
-        } as const;
+        static readonly channels = [] as const;
         onInit() {
           callOrder.push("featA:onInit");
         }
       }
-      class FeatureB extends Feature {
+      class FeatureB extends StubFeature {
         static readonly namespace = "feat-b" as const;
-        static readonly channels = {
-          commands: [],
-          events: [],
-          requests: []
-        } as const;
+        static readonly channels = [] as const;
         onInit() {
           callOrder.push("featB:onInit");
         }

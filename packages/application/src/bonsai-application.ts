@@ -25,7 +25,7 @@
  */
 
 import { Radio } from "@bonsai/event";
-import { type TFeatureClass } from "@bonsai/feature";
+import { Feature } from "@bonsai/feature";
 import { Foundation } from "@bonsai/foundation";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -38,15 +38,36 @@ export type TApplicationOptions = {
   readonly foundation?: typeof Foundation;
 };
 
+/**
+ * Type structurel laxe accepté par `Application.register()`.
+ *
+ * Volontairement plus large que `TFeatureClass<TEntity>` (qui est invariant en
+ * TEntity à cause de `protected get Entity(): new () => TEntity` — position
+ * output). Application n'a besoin que de `namespace` (clé I24) et du
+ * constructeur — la forme de l'Entity ne la concerne pas.
+ *
+ * Ce type structurel évite à l'utilisateur d'avoir à caster ses Features
+ * concrètes (`CartFeature extends Feature<CartEntity>`) lors de l'appel à
+ * `register()`.
+ */
+export type TRegisterableFeature = {
+  new (): Feature<any>;
+  readonly namespace: string;
+  readonly channels: readonly string[];
+};
+
 // ─── Application class ───────────────────────────────────────────────────────
 
 export class Application {
-  #registeredFeatures: TFeatureClass[] = [];
+  // Stockage interne : on perd le typage paramétré (TEntity) car Application
+  // ne fait que du dispatch namespace → instance. Le type structurel large
+  // est suffisant : on n'utilise que `namespace` et le constructeur.
+  #registeredFeatures: TRegisterableFeature[] = [];
   #namespaces: Set<string> = new Set();
   #started = false;
   #foundationClass: typeof Foundation | null;
   #foundationInstance: Foundation | null = null;
-  #featureInstances: any[] = [];
+  #featureInstances: Feature<any>[] = [];
 
   constructor(options?: TApplicationOptions) {
     this.#foundationClass = options?.foundation ?? null;
@@ -57,8 +78,13 @@ export class Application {
   /**
    * Enregistre une Feature. Vérifie l'unicité du namespace (I24).
    * Ne peut plus être appelé après start().
+   *
+   * Le paramètre est typé `TRegisterableFeature` (type structurel laxe) pour
+   * accepter n'importe quelle sous-classe `Feature<TEntity>` concrète sans
+   * variance bloquante. Application ne consomme que `namespace` et le
+   * constructeur.
    */
-  register(FeatureClass: TFeatureClass): void {
+  register(FeatureClass: TRegisterableFeature): void {
     if (this.#started) {
       throw new Error(
         "[Bonsai Application] Cannot register after start() — already started"
