@@ -10,7 +10,7 @@
 
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { resetDOM } from "../../helpers/dom-setup";
-import { Foundation, type TFoundationComposerEntry } from "@bonsai/foundation";
+import { Foundation } from "@bonsai/foundation";
 import { Composer, type TResolveResult } from "@bonsai/composer";
 import { View, type TViewParams } from "@bonsai/view";
 
@@ -52,13 +52,11 @@ describe("Foundation basic — Strate 0 [I33, I20]", () => {
       // body et html sont protected (RFC foundation.md §1) : on prouve l'ancrage
       // via le comportement observable — attach() doit fonctionner sur document.body.
       class AppFoundation extends Foundation {
-        get composers(): readonly TFoundationComposerEntry[] {
-          return [
-            {
-              composer: HeaderComposer as unknown as typeof Composer,
-              rootElement: "[data-region='header']"
-            }
-          ];
+        get composers() {
+          return {
+            "[data-region='header']":
+              HeaderComposer as unknown as typeof Composer
+          };
         }
       }
 
@@ -75,8 +73,8 @@ describe("Foundation basic — Strate 0 [I33, I20]", () => {
 
     it("I33 — Foundation cannot be attached twice", () => {
       class AppFoundation extends Foundation {
-        get composers(): readonly TFoundationComposerEntry[] {
-          return [];
+        get composers() {
+          return {};
         }
       }
 
@@ -90,17 +88,12 @@ describe("Foundation basic — Strate 0 [I33, I20]", () => {
   describe("Composers racines", () => {
     it("Foundation declares root Composers via get composers()", () => {
       class AppFoundation extends Foundation {
-        get composers(): readonly TFoundationComposerEntry[] {
-          return [
-            {
-              composer: HeaderComposer as unknown as typeof Composer,
-              rootElement: "[data-region='header']"
-            },
-            {
-              composer: MainComposer as unknown as typeof Composer,
-              rootElement: "[data-region='main']"
-            }
-          ];
+        get composers() {
+          return {
+            "[data-region='header']":
+              HeaderComposer as unknown as typeof Composer,
+            "[data-region='main']": MainComposer as unknown as typeof Composer
+          };
         }
       }
 
@@ -121,8 +114,8 @@ describe("Foundation basic — Strate 0 [I33, I20]", () => {
       const callOrder: string[] = [];
 
       class AppFoundation extends Foundation {
-        get composers(): readonly TFoundationComposerEntry[] {
-          return [];
+        get composers() {
+          return {};
         }
         onAttach() {
           callOrder.push("onAttach");

@@ -16,7 +16,7 @@
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { resetDOM } from "../../helpers/dom-setup";
 import { Application } from "@bonsai/application";
-import { Foundation, type TFoundationComposerEntry } from "@bonsai/foundation";
+import { Foundation } from "@bonsai/foundation";
 import { Entity } from "@bonsai/entity";
 import { Feature } from "@bonsai/feature";
 import { Radio } from "@bonsai/event";
@@ -55,8 +55,8 @@ class CartFeature extends Feature<CartEntity> {
 }
 
 class EmptyFoundation extends Foundation {
-  get composers(): readonly TFoundationComposerEntry[] {
-    return [];
+  get composers() {
+    return {};
   }
 }
 
@@ -140,8 +140,8 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56]", () => {
       }
 
       class OrderedFoundation extends Foundation {
-        get composers(): readonly TFoundationComposerEntry[] {
-          return [];
+        get composers() {
+          return {};
         }
         onAttach() {
           callOrder.push("foundation:onAttach");

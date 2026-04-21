@@ -5,13 +5,16 @@
  *   - body  = document.body            (toujours en strate 0, I33)
  *   - html  = document.documentElement (droit d'altération N1, D27)
  *   - Déclare les Composers racines via abstract get composers()
- *   - Crée et attache les Composers au bootstrap
+ *     (Readonly<Record<string, typeof Composer>> — ADR-0038)
+ *   - Crée et attache les Composers au bootstrap dans l'ordre d'insertion
+ *     (ES2015+ Object.entries garantit l'ordre des clés string)
  *   - Hooks onAttach() / onDetach()
  *
  * Invariants :
  *   I33  — Foundation unique par application — cible <body>
  *   I20  — Seuls Foundation/Composers créent/détruisent des Views
  *   I34  — rootElement d'une View = enfant de <body>, jamais <body>
+ *   I67  — Stabilité structurelle de Foundation (ADR-0038)
  *   D27  — Foundation peut altérer html/body en N1 uniquement
  *
  * Strate 0 simplifications (ADR-0028) :
@@ -23,22 +26,6 @@
  */
 
 import { Composer, type TComposerOptions } from "@bonsai/composer";
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-/**
- * Entrée de déclaration d'un Composer racine dans Foundation.
- *
- * NB : la structure exacte (Record vs Entry[] vs Map) sera tranchée
- * par ADR-0038. La RFC composer/foundation actuelle documente Record ;
- * la strate 0 utilise Entry[] en attendant l'ADR.
- */
-export type TFoundationComposerEntry = {
-  /** La classe Composer concrète */
-  readonly composer: typeof Composer;
-  /** Sélecteur CSS dans <body> pour le slot du Composer */
-  readonly rootElement: string;
-};
 
 // ─── Foundation abstract class ───────────────────────────────────────────────
 
@@ -88,6 +75,9 @@ export abstract class Foundation {
   /**
    * Attache la Foundation : résout et crée les Composers racines.
    * Appelé une seule fois par Application.start().
+   *
+   * Itère sur Object.entries(this.composers) — l'ordre d'insertion des
+   * clés string non numériques est garanti par ES2015+ (§9.1.12).
    */
   attach(): void {
     if (this.#attached) {
@@ -97,13 +87,13 @@ export abstract class Foundation {
     }
     this.#attached = true;
 
-    const entries = this.composers;
+    const composersMap = this.composers;
 
-    for (const entry of entries) {
-      const ComposerClass = entry.composer as unknown as new (
+    for (const [selector, ComposerCtor] of Object.entries(composersMap)) {
+      const ComposerClass = ComposerCtor as unknown as new (
         opts: TComposerOptions
       ) => Composer;
-      const instance = new ComposerClass({ rootElement: entry.rootElement });
+      const instance = new ComposerClass({ rootElement: selector });
       instance.attach(this.#body);
       this.#composerInstances.push(instance);
     }
@@ -114,10 +104,18 @@ export abstract class Foundation {
   // ─── Abstract ──────────────────────────────────────────────────────────
 
   /**
-   * Déclare les Composers racines — clés = sélecteurs CSS dans <body>.
-   * Évalué au bootstrap par attach().
+   * Déclare les Composers racines de Foundation — ADR-0038.
+   *
+   * Clés = sélecteurs CSS dans <body> (string libre, validé runtime).
+   * Valeurs = classes Composer concrètes.
+   *
+   * Layout stable et persistant — typiquement 3-5 entrées
+   * (#header, #main, #footer, #aside...). Évalué une seule fois au bootstrap (I67).
+   *
+   * Pour la composition dynamique : déléguer à une View dédiée via View.composers + PDR
+   * (cf. ADR-0038 §6.3 — Pattern délégation).
    */
-  abstract get composers(): readonly TFoundationComposerEntry[];
+  abstract get composers(): Readonly<Record<string, typeof Composer>>;
 
   // ─── Lifecycle hooks ───────────────────────────────────────────────────
 
