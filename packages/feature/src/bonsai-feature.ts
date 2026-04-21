@@ -31,12 +31,25 @@ import { Radio } from "@bonsai/event";
  * Combine les membres statiques (namespace, channels) avec l'instanciabilité.
  */
 export type TFeatureClass<
-  TState extends TJsonSerializable = TJsonSerializable
-> = (new () => Feature<TState>) & typeof Feature;
+  TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>
+> = (new () => Feature<TEntity>) & typeof Feature;
 
 // ─── Feature abstract class ──────────────────────────────────────────────────
 
-export abstract class Feature<TState extends TJsonSerializable> {
+/**
+ * Feature — unité métier paramétrée par sa classe Entity concrète.
+ *
+ * Générique typé par la CLASSE Entity (ADR-0037), pas par la forme du state :
+ * cela encode I22 (1:1:1) au type-level et donne accès aux méthodes
+ * `query` de l'Entity sans cast.
+ *
+ * En strate 0, seul le générique TEntity est présent ; le second générique
+ * TChannel prévu par la RFC est ajouté en strate supérieure quand le typage
+ * Channel sera mis en place.
+ */
+export abstract class Feature<
+  TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>
+> {
   /**
    * Namespace statique — chaque sous-classe DOIT le redéfinir.
    * Identifie le Channel, l'Entity et la Feature de manière 1:1:1 (I21, I22).
@@ -44,15 +57,23 @@ export abstract class Feature<TState extends TJsonSerializable> {
   static readonly namespace: string;
   static readonly channels: readonly string[] = [];
 
-  #entity!: Entity<TState>;
+  #entity!: TEntity;
   #bootstrapped = false;
 
   // ─── Abstract ──────────────────────────────────────────────────────────
 
   /**
-   * Factory de l'Entity. Chaque Feature concrète crée sa propre Entity (I22).
+   * Liaison Feature → Entity concrète (D17 amendé par ADR-0037).
+   *
+   * Chaque Feature concrète DOIT fournir ce getter retournant le constructeur
+   * de son Entity. Le retour est typé par TEntity (la classe concrète), ce qui
+   * permet à `this.entity` d'être typé sans cast.
+   *
+   * Le getter (et non une propriété) est requis car les initialiseurs des
+   * sous-classes s'exécutent APRÈS super() ; un getter sur le prototype est
+   * accessible dès le bootstrap de la base class.
    */
-  protected abstract createEntity(): Entity<TState>;
+  protected abstract get Entity(): new () => TEntity;
 
   // ─── Public API ────────────────────────────────────────────────────────
 
@@ -65,8 +86,9 @@ export abstract class Feature<TState extends TJsonSerializable> {
 
   /**
    * Accès à l'Entity (I5 — propriétaire exclusif).
+   * Typée par la classe concrète (TEntity) grâce à ADR-0037.
    */
-  get entity(): Entity<TState> {
+  get entity(): TEntity {
     return this.#entity;
   }
 
@@ -78,8 +100,9 @@ export abstract class Feature<TState extends TJsonSerializable> {
     if (this.#bootstrapped) return;
     this.#bootstrapped = true;
 
-    // I22 — Création de l'Entity 1:1
-    this.#entity = this.createEntity();
+    // I22 — Création de l'Entity 1:1 via le getter Entity (D17 amendé par ADR-0037)
+    const EntityCtor = this.Entity;
+    this.#entity = new EntityCtor();
 
     // Auto-discovery des handlers (I48)
     this.#registerCommandHandlers();

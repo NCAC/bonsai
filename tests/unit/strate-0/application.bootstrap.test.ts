@@ -17,18 +17,41 @@ import { describe, it, expect, beforeEach } from "@jest/globals";
 import { resetDOM } from "../../helpers/dom-setup";
 import { Application } from "@bonsai/application";
 import { Foundation, type TFoundationComposerEntry } from "@bonsai/foundation";
+import { Entity } from "@bonsai/entity";
 import { Feature } from "@bonsai/feature";
 import { Radio } from "@bonsai/event";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
-class CartFeature extends Feature {
+type TCartState = {
+  items: Array<{ productId: string; qty: number; price: number }>;
+  total: number;
+};
+
+class CartEntity extends Entity<TCartState> {
+  protected defineInitialState(): TCartState {
+    return { items: [], total: 0 };
+  }
+
+  get query() {
+    return {
+      getTotal: () => this.state.total,
+      getItemCount: () => this.state.items.length
+    };
+  }
+}
+
+class CartFeature extends Feature<CartEntity> {
   static readonly namespace = "cart" as const;
   static readonly channels = {
     commands: ["addItem"],
     events: ["itemAdded"],
     requests: []
   } as const;
+
+  protected get Entity() {
+    return CartEntity;
+  }
 }
 
 class EmptyFoundation extends Foundation {

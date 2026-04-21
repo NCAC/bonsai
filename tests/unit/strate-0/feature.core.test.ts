@@ -63,12 +63,13 @@ class PricingEntity extends Entity<TPricingState> {
 
 // ─── Features concrètes (fixtures) ────────────────────────────────────────
 
-class CartFeature extends Feature<TCartState> {
+class CartFeature extends Feature<CartEntity> {
   static readonly namespace = "cart" as const;
   static readonly channels = ["pricing"] as const;
 
-  protected createEntity(): CartEntity {
-    return new CartEntity();
+  /** Liaison Feature → Entity concrète (D17 amendé par ADR-0037) */
+  protected get Entity() {
+    return CartEntity;
   }
 
   // C2 — Command handler auto-discovered
@@ -81,9 +82,9 @@ class CartFeature extends Feature<TCartState> {
     this.emit("itemAdded", { item: payload });
   }
 
-  // C4 — Reply on own channel
+  // C4 — Reply on own channel — plus aucun cast grâce à ADR-0037
   onGetTotalRequest(): number {
-    return (this.entity as CartEntity).query.getTotal();
+    return this.entity.query.getTotal();
   }
 
   // C5 — request to external channel (exposed for testing)
@@ -99,33 +100,37 @@ class CartFeature extends Feature<TCartState> {
   }
 }
 
-class PricingFeature extends Feature<TPricingState> {
+class PricingFeature extends Feature<PricingEntity> {
   static readonly namespace = "pricing" as const;
   static readonly channels = [] as const;
 
-  protected createEntity(): PricingEntity {
-    return new PricingEntity();
+  protected get Entity() {
+    return PricingEntity;
   }
 
-  // C4 — reply
+  // C4 — reply (plus aucun cast grâce à ADR-0037)
   onGetItemPriceRequest(params: { productId: string }): number | null {
-    return (this.entity as PricingEntity).query.getItemPrice(params.productId);
+    return this.entity.query.getItemPrice(params.productId);
+  }
+}
+
+type TCartListenerState = { lastEvent: string | null };
+
+class CartListenerEntity extends Entity<TCartListenerState> {
+  protected defineInitialState(): TCartListenerState {
+    return { lastEvent: null };
   }
 }
 
 /**
  * Feature qui écoute les events d'un Channel externe (C3 — listen)
  */
-class CartListenerFeature extends Feature<{ lastEvent: string | null }> {
+class CartListenerFeature extends Feature<CartListenerEntity> {
   static readonly namespace = "cartListener" as const;
   static readonly channels = ["cart"] as const;
 
-  protected createEntity() {
-    return new (class extends Entity<{ lastEvent: string | null }> {
-      protected defineInitialState() {
-        return { lastEvent: null };
-      }
-    })();
+  protected get Entity() {
+    return CartListenerEntity;
   }
 
   // I48 — Auto-discovered: on{Channel}{EventName}Event

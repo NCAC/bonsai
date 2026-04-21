@@ -29,6 +29,18 @@ export type TJsonSerializable =
   | { [key: string]: TJsonSerializable };
 
 /**
+ * Extrait la structure d'état (TStructure) d'une classe Entity concrète.
+ *
+ * Introduit par ADR-0037 — permet de dériver la forme du state
+ * depuis une classe Entity, sans la redéclarer manuellement.
+ *
+ * @example
+ *   type TCartState = TEntityState<CartEntity>;  // = { items: [...]; total: number }
+ */
+export type TEntityState<E extends Entity<TJsonSerializable>> =
+  E extends Entity<infer S> ? S : never;
+
+/**
  * Paramètres optionnels passés à mutate() — payload + metas (traçabilité).
  */
 export type TMutationParams = {

@@ -7,22 +7,22 @@
 
 ---
 
-| Champ | Valeur |
-|-------|--------|
-| **ADR source** | [ADR-0009 — Forms Pattern](../adr/ADR-0009-forms-pattern.md) |
+| Champ          | Valeur                                                                                                                                                     |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ADR source** | [ADR-0009 — Forms Pattern](../adr/ADR-0009-forms-pattern.md)                                                                                               |
 | **Pré-requis** | ADR-0001 (mutate), ADR-0015 (localState), D36/D38 (Behavior — [RFC-0001-composants §8](../rfc/2-architecture/README.md#8-behavior)), D48, ADR-0016 (metas) |
-| **Créé le** | 2026-04-01 |
+| **Créé le**    | 2026-04-01                                                                                                                                                 |
 
 ---
 
 ## TL;DR
 
-| Situation | Pattern | Où vit l'état de saisie |
-|-----------|---------|------------------------|
-| Formulaire simple (contact, login, newsletter) | **localState dans la View** | View (`updateLocal`) |
-| Formulaire réutilisable (adresse sur 3 pages) | **FormBehavior** | Behavior (`updateLocal`) |
-| Wizard multi-step (checkout) | **Entity + localState par étape** | View (saisie) + Entity (étapes validées) |
-| Recherche / filtres live | **localState + debounce + Command** | View (debounce) + Feature (requête) |
+| Situation                                      | Pattern                             | Où vit l'état de saisie                  |
+| ---------------------------------------------- | ----------------------------------- | ---------------------------------------- |
+| Formulaire simple (contact, login, newsletter) | **localState dans la View**         | View (`updateLocal`)                     |
+| Formulaire réutilisable (adresse sur 3 pages)  | **FormBehavior**                    | Behavior (`updateLocal`)                 |
+| Wizard multi-step (checkout)                   | **Entity + localState par étape**   | View (saisie) + Entity (étapes validées) |
+| Recherche / filtres live                       | **localState + debounce + Command** | View (debounce) + Feature (requête)      |
 
 > **Règle fondamentale** : l'état de saisie (valeurs, touched, errors, isSubmitting) est
 > de l'**état de présentation transitoire** (I30, I42). Seule la **soumission finale**
@@ -74,7 +74,7 @@ export namespace Newsletter {
   };
 
   export type Channel = TChannelDefinition & {
-    readonly namespace: 'newsletter';
+    readonly namespace: "newsletter";
     readonly commands: {
       subscribe: { email: string };
     };
@@ -84,7 +84,7 @@ export namespace Newsletter {
     readonly requests: {};
   };
 
-  export const channel: unique symbol = Symbol('newsletter');
+  export const channel: unique symbol = Symbol("newsletter");
 }
 ```
 
@@ -93,18 +93,17 @@ export namespace Newsletter {
 La Feature ne voit que la soumission. Pas de `updateField`, pas de `touchField`.
 
 ```typescript
-class NewsletterFeature extends Feature<Newsletter.State, Newsletter.Channel> {
+class NewsletterFeature extends Feature<NewsletterEntity, Newsletter.Channel> {
   static readonly namespace = Newsletter.channel;
 
   onSubscribeCommand(payload: { email: string }, metas: TMessageMetas): void {
-    this.entity.mutate(
-      'newsletter:subscribe',
-      { payload, metas },
-      draft => {
-        draft.subscribers.push({ email: payload.email, subscribedAt: Date.now() });
-      }
-    );
-    this.emit('subscribed', { email: payload.email }, { metas });
+    this.entity.mutate("newsletter:subscribe", { payload, metas }, (draft) => {
+      draft.subscribers.push({
+        email: payload.email,
+        subscribedAt: Date.now()
+      });
+    });
+    this.emit("subscribed", { email: payload.email }, { metas });
   }
 }
 ```
@@ -119,10 +118,10 @@ type TNewsletterLocal = TJsonSerializable & {
 };
 
 type TNewsletterUI = TUIMap<{
-  emailInput: { el: HTMLInputElement;  event: ['input'] };
-  submitBtn:  { el: HTMLButtonElement; event: ['click'] };
-  errorMsg:   { el: HTMLSpanElement;   event: [] };
-  successMsg: { el: HTMLDivElement;    event: [] };
+  emailInput: { el: HTMLInputElement; event: ["input"] };
+  submitBtn: { el: HTMLButtonElement; event: ["click"] };
+  errorMsg: { el: HTMLSpanElement; event: [] };
+  successMsg: { el: HTMLDivElement; event: [] };
 }>;
 
 class NewsletterView extends View<
@@ -132,62 +131,70 @@ class NewsletterView extends View<
   TNewsletterLocal
 > {
   static readonly trigger = [Newsletter.channel] as const;
-  static readonly listen  = [Newsletter.channel] as const;
+  static readonly listen = [Newsletter.channel] as const;
 
   get params() {
     return {
-      rootElement: '#newsletter-form',
+      rootElement: "#newsletter-form",
       uiElements: {
-        emailInput: '.Newsletter-emailInput',
-        submitBtn:  '.Newsletter-submitBtn',
-        errorMsg:   '.Newsletter-error',
-        successMsg: '.Newsletter-success',
-      },
+        emailInput: ".Newsletter-emailInput",
+        submitBtn: ".Newsletter-submitBtn",
+        errorMsg: ".Newsletter-error",
+        successMsg: ".Newsletter-success"
+      }
     };
   }
 
   // ── localState initial (ADR-0015) ──
   protected get localState(): TNewsletterLocal {
-    return { email: '', error: null, isSubmitted: false };
+    return { email: "", error: null, isSubmitted: false };
   }
 
   // ── D48 auto-discovery ──
 
-  onEmailInputInput(e: TUIEventFor<TNewsletterUI, 'emailInput', 'input'>): void {
+  onEmailInputInput(
+    e: TUIEventFor<TNewsletterUI, "emailInput", "input">
+  ): void {
     const value = e.currentTarget.value;
-    this.updateLocal(draft => {
+    this.updateLocal((draft) => {
       draft.email = value;
-      draft.error = value.length > 0 && !value.includes('@')
-        ? 'Email invalide'
-        : null;
+      draft.error =
+        value.length > 0 && !value.includes("@") ? "Email invalide" : null;
     });
   }
 
   onSubmitBtnClick(): void {
     const email = this.local.email;
-    if (!email.includes('@')) {
-      this.updateLocal(draft => { draft.error = 'Email invalide'; });
+    if (!email.includes("@")) {
+      this.updateLocal((draft) => {
+        draft.error = "Email invalide";
+      });
       return;
     }
     // ✅ Seule la soumission franchit la frontière
-    this.trigger(Newsletter.channel, 'subscribe', { email });
+    this.trigger(Newsletter.channel, "subscribe", { email });
   }
 
   // ── N1 callbacks — feedback synchrone ──
 
   onLocalErrorUpdated(update: TLocalUpdate<string | null>): void {
-    this.getUI('errorMsg').text(update.actual ?? '');
-    this.getUI('emailInput').toggleClass('is-invalid', update.actual !== null);
+    this.getUI("errorMsg").text(update.actual ?? "");
+    this.getUI("emailInput").toggleClass("is-invalid", update.actual !== null);
   }
 
   onLocalIsSubmittedUpdated(update: TLocalUpdate<boolean>): void {
-    this.getUI('successMsg').visible(update.actual);
+    this.getUI("successMsg").visible(update.actual);
   }
 
   // ── Event domaine ──
 
-  onNewsletterSubscribedEvent(payload: { email: string }, metas: TMessageMetas): void {
-    this.updateLocal(draft => { draft.isSubmitted = true; });
+  onNewsletterSubscribedEvent(
+    payload: { email: string },
+    metas: TMessageMetas
+  ): void {
+    this.updateLocal((draft) => {
+      draft.isSubmitted = true;
+    });
   }
 }
 ```
@@ -224,13 +231,13 @@ type TFormLocal<TFields extends Record<string, string>> = TJsonSerializable & {
 };
 
 type TContactFormBehaviorUI = TUIMap<{
-  nameField:    { el: HTMLInputElement;    event: ['input', 'blur'] };
-  emailField:   { el: HTMLInputElement;    event: ['input', 'blur'] };
-  messageField: { el: HTMLTextAreaElement;  event: ['input', 'blur'] };
-  submitBtn:    { el: HTMLButtonElement;   event: ['click'] };
-  nameError:    { el: HTMLSpanElement;     event: [] };
-  emailError:   { el: HTMLSpanElement;     event: [] };
-  messageError: { el: HTMLSpanElement;     event: [] };
+  nameField: { el: HTMLInputElement; event: ["input", "blur"] };
+  emailField: { el: HTMLInputElement; event: ["input", "blur"] };
+  messageField: { el: HTMLTextAreaElement; event: ["input", "blur"] };
+  submitBtn: { el: HTMLButtonElement; event: ["click"] };
+  nameError: { el: HTMLSpanElement; event: [] };
+  emailError: { el: HTMLSpanElement; event: [] };
+  messageError: { el: HTMLSpanElement; event: [] };
 }>;
 
 class ContactFormBehavior extends Behavior<
@@ -238,7 +245,10 @@ class ContactFormBehavior extends Behavior<
   TContactFormBehaviorUI,
   TFormLocal<TContactFields>
 > {
-  private readonly validators: Record<keyof TContactFields, (v: string) => string | null>;
+  private readonly validators: Record<
+    keyof TContactFields,
+    (v: string) => string | null
+  >;
   private readonly onValidSubmit: (values: TContactFields) => void;
 
   constructor(config: {
@@ -252,49 +262,61 @@ class ContactFormBehavior extends Behavior<
 
   protected get localState(): TFormLocal<TContactFields> {
     return {
-      values: { name: '', email: '', message: '' },
+      values: { name: "", email: "", message: "" },
       touched: { name: false, email: false, message: false },
       errors: { name: null, email: null, message: null },
-      isSubmitting: false,
+      isSubmitting: false
     };
   }
 
   // D48 — handlers auto-dérivés depuis TContactFormBehaviorUI
 
-  onNameFieldInput(e: TUIEventFor<TContactFormBehaviorUI, 'nameField', 'input'>): void {
+  onNameFieldInput(
+    e: TUIEventFor<TContactFormBehaviorUI, "nameField", "input">
+  ): void {
     const value = e.currentTarget.value;
-    this.updateLocal(draft => {
+    this.updateLocal((draft) => {
       draft.values.name = value;
       draft.errors.name = this.validators.name(value);
     });
   }
 
   onNameFieldBlur(): void {
-    this.updateLocal(draft => { draft.touched.name = true; });
+    this.updateLocal((draft) => {
+      draft.touched.name = true;
+    });
   }
 
-  onEmailFieldInput(e: TUIEventFor<TContactFormBehaviorUI, 'emailField', 'input'>): void {
+  onEmailFieldInput(
+    e: TUIEventFor<TContactFormBehaviorUI, "emailField", "input">
+  ): void {
     const value = e.currentTarget.value;
-    this.updateLocal(draft => {
+    this.updateLocal((draft) => {
       draft.values.email = value;
       draft.errors.email = this.validators.email(value);
     });
   }
 
   onEmailFieldBlur(): void {
-    this.updateLocal(draft => { draft.touched.email = true; });
+    this.updateLocal((draft) => {
+      draft.touched.email = true;
+    });
   }
 
-  onMessageFieldInput(e: TUIEventFor<TContactFormBehaviorUI, 'messageField', 'input'>): void {
+  onMessageFieldInput(
+    e: TUIEventFor<TContactFormBehaviorUI, "messageField", "input">
+  ): void {
     const value = e.currentTarget.value;
-    this.updateLocal(draft => {
+    this.updateLocal((draft) => {
       draft.values.message = value;
       draft.errors.message = this.validators.message(value);
     });
   }
 
   onMessageFieldBlur(): void {
-    this.updateLocal(draft => { draft.touched.message = true; });
+    this.updateLocal((draft) => {
+      draft.touched.message = true;
+    });
   }
 
   onSubmitBtnClick(): void {
@@ -302,39 +324,58 @@ class ContactFormBehavior extends Behavior<
     const errors = {
       name: this.validators.name(values.name),
       email: this.validators.email(values.email),
-      message: this.validators.message(values.message),
+      message: this.validators.message(values.message)
     };
-    const hasErrors = Object.values(errors).some(e => e !== null);
+    const hasErrors = Object.values(errors).some((e) => e !== null);
 
-    this.updateLocal(draft => {
+    this.updateLocal((draft) => {
       draft.errors = errors;
       draft.touched = { name: true, email: true, message: true };
     });
 
     if (!hasErrors) {
-      this.updateLocal(draft => { draft.isSubmitting = true; });
+      this.updateLocal((draft) => {
+        draft.isSubmitting = true;
+      });
       this.onValidSubmit({ ...values });
     }
   }
 
   // N1 callbacks
 
-  onLocalErrorsUpdated(update: TLocalUpdate<Record<keyof TContactFields, string | null>>): void {
+  onLocalErrorsUpdated(
+    update: TLocalUpdate<Record<keyof TContactFields, string | null>>
+  ): void {
     const errors = update.actual;
     const touched = this.local.touched;
 
-    this.getUI('nameError').text(touched.name && errors.name ? errors.name : '');
-    this.getUI('emailError').text(touched.email && errors.email ? errors.email : '');
-    this.getUI('messageError').text(touched.message && errors.message ? errors.message : '');
+    this.getUI("nameError").text(
+      touched.name && errors.name ? errors.name : ""
+    );
+    this.getUI("emailError").text(
+      touched.email && errors.email ? errors.email : ""
+    );
+    this.getUI("messageError").text(
+      touched.message && errors.message ? errors.message : ""
+    );
 
-    this.getUI('nameField').toggleClass('is-invalid', touched.name && errors.name !== null);
-    this.getUI('emailField').toggleClass('is-invalid', touched.email && errors.email !== null);
-    this.getUI('messageField').toggleClass('is-invalid', touched.message && errors.message !== null);
+    this.getUI("nameField").toggleClass(
+      "is-invalid",
+      touched.name && errors.name !== null
+    );
+    this.getUI("emailField").toggleClass(
+      "is-invalid",
+      touched.email && errors.email !== null
+    );
+    this.getUI("messageField").toggleClass(
+      "is-invalid",
+      touched.message && errors.message !== null
+    );
   }
 
   onLocalIsSubmittingUpdated(update: TLocalUpdate<boolean>): void {
-    this.getUI('submitBtn').attr('disabled', String(update.actual));
-    this.getUI('submitBtn').text(update.actual ? 'Envoi…' : 'Envoyer');
+    this.getUI("submitBtn").attr("disabled", String(update.actual));
+    this.getUI("submitBtn").text(update.actual ? "Envoi…" : "Envoyer");
   }
 }
 ```
@@ -344,15 +385,15 @@ class ContactFormBehavior extends Behavior<
 ```typescript
 class ContactPageView extends View<[Contact.Channel], TContactPageUI> {
   static readonly trigger = [Contact.channel] as const;
-  static readonly listen  = [Contact.channel] as const;
+  static readonly listen = [Contact.channel] as const;
 
   get params() {
     return {
-      rootElement: '#contact-page',
+      rootElement: "#contact-page",
       uiElements: {
-        pageTitle:  '.ContactPage-title',
-        successMsg: '.ContactPage-success',
-      },
+        pageTitle: ".ContactPage-title",
+        successMsg: ".ContactPage-success"
+      }
     };
   }
 
@@ -360,15 +401,15 @@ class ContactPageView extends View<[Contact.Channel], TContactPageUI> {
     return [
       new ContactFormBehavior({
         validators: {
-          name: (v) => v.length < 2 ? 'Nom trop court' : null,
-          email: (v) => !v.includes('@') ? 'Email invalide' : null,
-          message: (v) => v.length < 10 ? 'Message trop court' : null,
+          name: (v) => (v.length < 2 ? "Nom trop court" : null),
+          email: (v) => (!v.includes("@") ? "Email invalide" : null),
+          message: (v) => (v.length < 10 ? "Message trop court" : null)
         },
         onValidSubmit: (values) => {
           // La View fait le trigger — seule elle a accès au Channel
-          this.trigger(Contact.channel, 'submitContact', values);
-        },
-      }),
+          this.trigger(Contact.channel, "submitContact", values);
+        }
+      })
     ];
   }
 }
@@ -415,17 +456,17 @@ export namespace Checkout {
     currentStep: number;
     steps: {
       shipping: { address: string; city: string; zip: string } | null;
-      payment: { method: 'card' | 'paypal'; cardLast4: string | null } | null;
+      payment: { method: "card" | "paypal"; cardLast4: string | null } | null;
       confirmation: { accepted: boolean } | null;
     };
     isComplete: boolean;
   };
 
   export type Channel = TChannelDefinition & {
-    readonly namespace: 'checkout';
+    readonly namespace: "checkout";
     readonly commands: {
       completeShipping: { address: string; city: string; zip: string };
-      completePayment: { method: 'card' | 'paypal'; cardLast4: string | null };
+      completePayment: { method: "card" | "paypal"; cardLast4: string | null };
       confirmOrder: void;
       goToStep: { step: number };
     };
@@ -438,14 +479,15 @@ export namespace Checkout {
     };
   };
 
-  export const channel: unique symbol = Symbol('checkout');
+  export const channel: unique symbol = Symbol("checkout");
 }
 ```
 
 ```typescript
 // ShippingStepView — localState pour la saisie, Command pour valider l'étape
 class ShippingStepView extends View<
-  [Checkout.Channel], TShippingUI,
+  [Checkout.Channel],
+  TShippingUI,
   { rootElement: string; uiElements: TUIElements<TShippingUI> },
   TShippingLocal
 > {
@@ -453,9 +495,9 @@ class ShippingStepView extends View<
 
   protected get localState(): TShippingLocal {
     return {
-      values: { address: '', city: '', zip: '' },
+      values: { address: "", city: "", zip: "" },
       errors: { address: null, city: null, zip: null },
-      touched: { address: false, city: false, zip: false },
+      touched: { address: false, city: false, zip: false }
     };
   }
 
@@ -464,12 +506,14 @@ class ShippingStepView extends View<
   onNextBtnClick(): void {
     const { values } = this.local;
     // Validation complète
-    const errors = { /* ... */ };
-    const hasErrors = Object.values(errors).some(e => e !== null);
+    const errors = {
+      /* ... */
+    };
+    const hasErrors = Object.values(errors).some((e) => e !== null);
 
     if (!hasErrors) {
       // ✅ L'étape validée franchit la frontière → Command → Entity
-      this.trigger(Checkout.channel, 'completeShipping', { ...values });
+      this.trigger(Checkout.channel, "completeShipping", { ...values });
     }
   }
 }
@@ -538,15 +582,15 @@ private async checkUsernameAvailability(username: string): Promise<void> {
 
 ## 6. Anti-patterns
 
-| ❌ Interdit | ✅ Correct | Raison |
-|------------|-----------|--------|
-| `this.entity.state.values[field] = value` | `this.entity.mutate('form:update', { payload, metas }, draft => { ... })` | ADR-0001 |
-| `get uiEvents() { return { 'input @ui.x': 'onX' } }` | D48 auto-discovery depuis TUIMap | D48 |
-| `this.trigger('ns:cmd', payload)` | `this.trigger(Ns.channel, 'cmd', payload)` | RFC-0002 §9.3 |
-| `this.getUI('btn').prop('disabled', true)` | `this.getUI('btn').attr('disabled', 'true')` | I41 |
-| `document.querySelector('.x')` | `this.getUI('x')` | I39 |
-| `onSubmitCommand(payload) { }` | `onSubmitCommand(payload: void, metas: TMessageMetas): void { }` | ADR-0016 |
-| État `touched`/`errors` dans l'Entity | `localState` dans la View/Behavior | I30, I42, ADR-0009 |
+| ❌ Interdit                                          | ✅ Correct                                                                | Raison             |
+| ---------------------------------------------------- | ------------------------------------------------------------------------- | ------------------ |
+| `this.entity.state.values[field] = value`            | `this.entity.mutate('form:update', { payload, metas }, draft => { ... })` | ADR-0001           |
+| `get uiEvents() { return { 'input @ui.x': 'onX' } }` | D48 auto-discovery depuis TUIMap                                          | D48                |
+| `this.trigger('ns:cmd', payload)`                    | `this.trigger(Ns.channel, 'cmd', payload)`                                | RFC-0002 §9.3      |
+| `this.getUI('btn').prop('disabled', true)`           | `this.getUI('btn').attr('disabled', 'true')`                              | I41                |
+| `document.querySelector('.x')`                       | `this.getUI('x')`                                                         | I39                |
+| `onSubmitCommand(payload) { }`                       | `onSubmitCommand(payload: void, metas: TMessageMetas): void { }`          | ADR-0016           |
+| État `touched`/`errors` dans l'Entity                | `localState` dans la View/Behavior                                        | I30, I42, ADR-0009 |
 
 ---
 
