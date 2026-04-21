@@ -54,8 +54,7 @@ const config: Config = {
     "^@bonsai/types$": "<rootDir>/packages/types/index.d.ts",
     "^@bonsai/rxjs$": "<rootDir>/packages/rxjs/src/rxjs.ts",
     "^@bonsai/immer$": "<rootDir>/packages/immer/src/immer.ts",
-    "^@bonsai/remeda$": "<rootDir>/packages/remeda/src/remeda.ts",
-    "^@bonsai/zod$": "<rootDir>/packages/zod/src/zod.ts",
+    "^@bonsai/valibot$": "<rootDir>/packages/valibot/src/valibot.ts",
     // ── Alias internes ──
     "^@build/(.*)$": "<rootDir>/lib/build/$1",
     "^@lib/(.*)$": "<rootDir>/lib/$1",

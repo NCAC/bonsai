@@ -57,8 +57,7 @@ bonsai/
 │   ├── types/             # Types utilitaires
 │   ├── rxjs/              # Intégration RxJS
 │   ├── valibot/           # Validation Entity (ADR-0022)
-│   ├── remeda/            # Utilities fonctionnelles
-│   └── zod/               # Validation schémas
+│   └── valibot/           # Validation de schémas (Entity)
 ├── lib/                   # Système de build
 ├── tests/                 # Suites de tests
 ├── docs/                  # Documentation (FR — voir ADR-0036)

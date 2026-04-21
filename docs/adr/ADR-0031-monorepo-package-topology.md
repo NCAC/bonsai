@@ -629,7 +629,9 @@ packages/{name}/
 | `@bonsai/behavior`    | `bonsai-behavior.ts`    | `behavior.class.ts`                      | `dist/bonsai-behavior.js`    | `dist/bonsai-behavior.d.ts`    |
 | `@bonsai/application` | `bonsai-application.ts` | `application.class.ts`                   | `dist/bonsai-application.js` | `dist/bonsai-application.d.ts` |
 
-> **Wrappers de libs tierces** (`@bonsai/remeda`, `@bonsai/rxjs`, `@bonsai/zod`) conservent leur convention courte (`{name}.ts`) — ce ne sont pas des composants Bonsai.
+> **Wrappers de libs tierces** (`@bonsai/rxjs`, `@bonsai/immer`, `@bonsai/valibot`) conservent leur convention courte (`{name}.ts`) — ce ne sont pas des composants Bonsai.
+>
+> _Historique 2026-04-21 : `@bonsai/zod` supprimé (remplacé par `@bonsai/valibot` — cf. ADR-0022) ; `@bonsai/remeda` supprimé (utilisé uniquement par `tools/`, pas par le framework — cf. C3 ci-dessous)._
 
 ---
 

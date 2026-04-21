@@ -88,7 +88,7 @@ Le cache de build a pour objectif principal d’accélérer le processus de comp
 
 # Synthèse des stratégies de cache dans Bonsai
 
-## 1. Composants de type `library` (ex : @bonsai/rxjs, remeda, zod...)
+## 1. Composants de type `library` (ex : @bonsai/rxjs, @bonsai/valibot, @bonsai/immer...)
 
 - **Principe** : Le cache repose sur la version de la librairie référencée dans `pnpm-lock.yaml`.
 - **Fonctionnement** :

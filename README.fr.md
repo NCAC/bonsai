@@ -1,122 +1,169 @@
-# Bonsai Framework
+[![🇬🇧 English documentation](https://img.shields.io/badge/docs-english-blue)](./README.md)
+[![Strate 0](https://img.shields.io/badge/strate%200-livr%C3%A9e-success)](https://github.com/NCAC/bonsai/releases/tag/v0.1.0-strate-0)
+[![Tests](https://img.shields.io/badge/tests-175%20passed-brightgreen)]()
+[![Coverage](https://img.shields.io/badge/coverage-91%25-brightgreen)]()
+[![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-blue)]()
 
-Un framework JavaScript moderne pour le développement frontend.
+# Framework Bonsai
 
-> ⚠️ **En cours de développement** - Ce framework est actuellement en phase de développement actif. L'API va _très certainement_ évoluer avant la version stable.
+> ⚠️ **Work in Progress** — strate 0 livrée (avril 2026). L'API publique est stable pour les composants core ; les strates 1+ ajouteront Behavior, formulaires, routing et SSR.
 
-## Introduction
+Framework TypeScript moderne pour applications frontend opinionées — architecture événementielle, flux de données strictement unidirectionnel, sécurité au compile-time, et une philosophie « le type EST le contrat ».
 
-**bonsai** est un framework front-end écrit en TypeScript, conçu pour offrir une base solide, typée et modulaire pour le développement d'applications web modernes. Il met l'accent sur la clarté, la robustesse et la réutilisabilité du code.
+---
 
-En plus, il intègre des bibliothèques externes populaires sous une API unifiée.
+## Pourquoi Bonsai
 
-## Structure du projet
+La plupart des frameworks frontend te _laissent_ structurer une app. Bonsai te **force** à la structurer correctement — le type system rejette de lui-même les architectures qui violent le flux unidirectionnel.
 
-Le projet est organisé en plusieurs sections principales:
+- **Une seule direction, sans exception** : `View → Command → Feature → Event → View`. Les Views n'ont jamais `emit`. Les Features ne touchent jamais le DOM. Le compilateur l'impose.
+- **State encapsulé** : chaque Feature possède exactement une Entity. La mutation passe par une unique méthode `mutate(intent, recipe)` (Immer en interne). Pas de setters, pas de proxies réactifs qui fuient.
+- **TypeScript DX-first** : les handlers sont auto-découverts par leur nom (`onAddItemCommand`, `onCartItemAddedEvent`). Pas de boilerplate d'enregistrement, pas de décorateurs, IntelliSense complète.
+- **DOM chirurgical** : les vues sont rendues via templates Pug (côté serveur / build-time) et mises à jour par projections N1 (`getUI("itemCount").text("3")`) — pas de virtual DOM, pas de diffing.
 
-- `core/`: Le cœur du framework
-- `packages/`: Modules individuels et bibliothèques encapsulées
-- `lib/`: Outils de build et de développement
-- `tools/`: Scripts utilitaires
-- `docs/`: Documentation technique
+## Statut — Strate 0 ✅
 
-## Bibliothèques externes intégrées
+| Composant                       | Statut                  | Coverage |
+| ------------------------------- | ----------------------- | -------- |
+| `@bonsai/entity`                | 🟢 Stable               | 100 %    |
+| `@bonsai/feature`               | 🟢 Stable               | 96 %     |
+| `@bonsai/view`                  | 🟢 Stable               | 95 %     |
+| `@bonsai/composer`              | 🟢 Stable               | 96 %     |
+| `@bonsai/foundation`            | 🟢 Stable               | 89 %     |
+| `@bonsai/application`           | 🟢 Stable               | 97 %     |
+| `@bonsai/event` (Channel/Radio) | 🟢 Stable               | 90 %     |
+| `@bonsai/behavior`              | 🟡 Stub (strate 1)      | —        |
 
-Bonsai intègre plusieurs bibliothèques externes populaires, encapsulées pour une utilisation cohérente:
+**Gate E2E** vert : un cart round-trip complet (click → trigger → handle → mutate → emit → DOM) traverse les six composants sans aucun mock. Voir [`tests/e2e/strate-0.cart-round-trip.test.ts`](tests/e2e/strate-0.cart-round-trip.test.ts).
 
-- **RxJS**: Programmation réactive
-- **Immer**: Mutations d'état immuables
-- **Remeda**: Utilitaires fonctionnels
-- **Zod**: Validation de schémas
-- **Valibot**: Validation de schémas (contrats Entity)
+## Aperçu rapide
 
-## Fonctionnalités principales
+```ts
+// Feature — possède le state, gère les commands, émet des events
+class CartFeature extends Feature<CartEntity> {
+  static readonly namespace = "cart" as const;
+  protected get Entity() { return CartEntity; }
 
-- Architecture modulaire (événements, types utilitaires, intégration RxJS, etc.)
-- Système d'événements inspiré de Backbone.Events/Radio (Pub/Sub, Request/Reply)
-- Large collection de types utilitaires stricts
-- Intégration transparente de librairies modernes (rxjs, zod, remeda)
-- 100% TypeScript, typage strict et documentation des API
+  onAddItemCommand(payload: TCartItem): void {
+    this.entity.mutate("addItem", (draft) => {
+      draft.items.push(payload);
+      draft.total += payload.price * payload.qty;
+    });
+    this.emit("itemAdded", { item: payload });
+  }
+}
+
+// View — uniquement DOM, ne possède jamais de state
+class CartView extends View {
+  get params() { return cartViewParams; }
+
+  // Auto-dérivé depuis uiElements.addButton + event DOM "click"
+  onAddButtonClick(): void {
+    this.callTrigger("cart", "addItem", { productId: "p1", qty: 1, price: 9.99 });
+  }
+
+  // Auto-dérivé depuis le channel écouté "cart" + event "itemAdded"
+  onCartItemAddedEvent(payload: { item: TCartItem }): void {
+    this.getUI("itemCount").text(String(this.#count++));
+  }
+}
+```
+
+## Architecture en 30 secondes
+
+```
+                ┌─────────────────────────────────────┐
+                │             Application              │  ← bootstrap, namespaces
+                └─────────────────────────────────────┘
+                        │                       │
+                        ▼                       ▼
+                ┌──────────────┐        ┌──────────────┐
+                │  Foundation  │        │   Features   │  ← possèdent le State (Entity)
+                │  (composers) │        │              │     les Channels (handlers)
+                └──────────────┘        └──────────────┘
+                        │                       ▲
+                        ▼                       │  Events
+                ┌──────────────┐       Commands │  Replies
+                │   Composer   │       (trigger)│  (reply)
+                │  (resolves)  │                │
+                └──────────────┘                │
+                        │                       │
+                        ▼                       │
+                ┌──────────────┐        ┌──────────────┐
+                │     View     │ ─────▶ │   Channel    │  ← Radio singleton
+                │  (DOM N1)    │        │ (tri-lane)   │     dispatche
+                └──────────────┘        └──────────────┘
+```
+
+- **Foundation** possède le layout de la page (`<body>` + slots de composers).
+- **Composer** décide quelle **View** monter au runtime (avec diff au re-resolve).
+- **View** observe le DOM, déclenche des **Commands**, écoute des **Events**.
+- **Channel** route Commands / Events / Requests ; **Radio** possède un Channel par namespace de Feature.
+- **Feature** est la seule entité qui **émet des Events** et **possède du state mutable** (son Entity).
+
+→ Architecture complète : [docs/rfc/RFC-0001-architecture-fondamentale.md](docs/rfc/RFC-0001-architecture-fondamentale.md)
+
+## Structure du dépôt
+
+```
+bonsai/
+├── core/              # méta-package @bonsai/core (re-exports)
+├── packages/          # 8 packages framework (un par composant)
+│   ├── entity/        application/  composer/  feature/
+│   ├── foundation/    view/         event/     behavior/ (stub)
+│   ├── error/         # invariants, erreurs préfixées Bonsai
+│   └── immer/  rxjs/  valibot/  types/   # wrappers libs tierces
+├── tests/
+│   ├── unit/strate-0/    # 161 tests, un dossier par composant
+│   ├── integration/      # scénarios cross-package
+│   └── e2e/              # 🚪 strate gates (un par strate)
+├── lib/build/         # pipeline de build interne (Rollup + emit .d.ts)
+├── tools/             # build-bonsai-package, pug-to-ts-template
+└── docs/
+    ├── rfc/           # 4 RFC — source de vérité
+    └── adr/           # 38 ADR — décisions architecturales
+```
 
 ## Développement
 
 ### Prérequis
 
-- Node.js 23+
-- pnpm
+- **Node.js** 23+
+- **pnpm** 10+
 
-### Installation
-
-```bash
-# Installer les dépendances
-pnpm install
-```
-
-### Compilation
+### Commandes courantes
 
 ```bash
-# Compiler tous les packages et le framework
-pnpm run build
-
-# Compiler sans watch
-pnpm run build:no-watch
-
-# Compiler et nettoyer tous les fichiers compilés avant
-pnpm run build:clean
+pnpm install                          # installe le workspace
+pnpm tsc:check                        # type-check uniquement (no emit)
+pnpm test                             # suite de tests complète
+pnpm test:strate-0:regression         # suite de régression strate 0
+pnpm jest tests/unit/strate-0         # tous les tests unit strate 0
+pnpm jest tests/e2e --no-coverage     # gate E2E
+pnpm test:coverage                    # coverage avec rapport HTML
+pnpm run build                        # build tous les packages (watch)
+pnpm run build:no-watch               # build one-shot
 ```
 
----
+### Quality gates
 
-## Documentation du système de build
-
-Le framework Bonsai utilise un système de build intelligent qui gère automatiquement :
-
-- **Packages réguliers** : Compilation TypeScript + Rollup
-- **Packages types-only** : Copie directe des fichiers `.d.ts` (optimisé)
-- **Détection automatique** : Aucune configuration manuelle requise
-- **Build incrémental** : Seuls les packages modifiés sont rebuildés
-
-> 📖 **Documentation complète** :
->
-> - **Vue d'ensemble** : [`/lib/BUILD.md`](./lib/BUILD.md) - Concepts et fonctionnement
-> - **Guide développeur** : [`/lib/DEVELOPER-GUIDE.md`](./lib/DEVELOPER-GUIDE.md) - Usage pratique
-> - **Architecture** : [`/lib/ARCHITECTURE.md`](./lib/ARCHITECTURE.md) - Détails techniques
-> - **Index complet** : [`/lib/README.md`](./lib/README.md) - Navigation dans la documentation
-
-## Installation côté client
-
-```bash
-pnpm add bonsai
-```
-
-## Utilisation de base
-
-```ts
-import { EventTrigger, RXJS, zod } from "bonsai";
-
-// Exemple : création d'un émetteur d'événements
-type MyEvents = { update: string };
-class MyEmitter extends EventTrigger<MyEmitter, MyEvents> {}
-
-const emitter = new MyEmitter();
-emitter.on("update", (msg) => console.log(msg));
-emitter.trigger("update", "Hello world!");
-```
-
-## Packages principaux
-
-- `@bonsai/event` : système Channel tri-lane (Commands, Events, Requests) + Radio singleton
-- `@bonsai/entity` : classe abstraite Entity avec `mutate()` Immer
-- `@bonsai/types` : types utilitaires avancés
-- `@bonsai/immer` : wrapper Immer (Tier 3 opaque)
-- `@bonsai/valibot` : wrapper Valibot (validation Entity)
-- `@bonsai/rxjs` : intégration RxJS
-- `@bonsai/remeda` : utilitaires fonctionnels
-- `@bonsai/zod` : validation de schémas
+- **TypeScript strict** : `strict: true`, `noImplicitAny`, `strictNullChecks`, `noUncheckedIndexedAccess`.
+- **Seuils de coverage** verrouillés dans `jest.config.ts` — toute régression sous la baseline strate 0 fait échouer la CI.
+- **Husky pre-commit / pre-push** : ADR-0034 continuous verification.
 
 ## Documentation
 
-- 📐 [RFCs — Spécifications](docs/rfc/README.md) (source de vérité)
-- 📋 [ADRs — Décisions](docs/adr/README.md) (36 décisions architecturales)
-- 📖 [Guides](docs/guides/) (conventions de codage)
-- 🇬🇧 [English version](README.md)
+La documentation architecturale (RFC, ADR) est rédigée en **français** — la langue de conception du projet (cf. [ADR-0036](docs/adr/ADR-0036-documentation-internationalization-strategy.md)). Des traductions anglaises sont prévues pour les documents stables.
+
+|             |                                                                                       |
+| ----------- | ------------------------------------------------------------------------------------- |
+| 📐 **RFC**  | [Source de vérité](docs/rfc/README.md) — architecture, contrats, invariants            |
+| 📋 **ADR**  | [38 décisions](docs/adr/README.md) — chaque arbitrage architectural                    |
+| 📖 **Guides** | [Conventions de code](docs/guides/) — style TypeScript, style framework             |
+| 🚪 **Strates** | [ADR-0028](docs/adr/ADR-0028-strate-roadmap.md) — roadmap de livraison & gates      |
+| 🛠️ **Build** | [lib/BUILD.md](lib/BUILD.md), [lib/DEVELOPER-GUIDE.md](lib/DEVELOPER-GUIDE.md)        |
+| 🇬🇧          | [English version](README.md)                                                            |
+
+## Licence
+
+MIT © NCAC

@@ -275,7 +275,7 @@ type EventHandler<T> = (data: T) => void;
 // ✅ Imports organisés
 // 1. Node modules
 import { Observable } from 'rxjs';
-import { z } from 'zod';
+import * as v from 'valibot';
 
 // 2. Framework internal
 import { Feature } from '@bonsai/core';
