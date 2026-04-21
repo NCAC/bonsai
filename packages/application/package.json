@@ -3,6 +3,12 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/bonsai-application.ts",
+      "default": "./src/bonsai-application.ts"
+    }
+  },
   "main": "src/bonsai-application.ts",
   "types": "src/bonsai-application.ts",
   "dependencies": {

@@ -1,9 +1,5 @@
 /**
- * Te// Import depuis les sources pour éviter les problèmes de modules ES avec Jest
-import { Channel } from '../../packages/event/src/channel.class';s TDD pour la classe Channel
- *
- * Ces tests définissent le comportement attendu d'un Channel
- * qui gère les communications pub/sub et request/reply.
+ * Tests unitaires Channel — API tri-lane actuelle.
  */
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
@@ -84,26 +80,26 @@ describe("Channel", () => {
 
     it("should register and trigger events", () => {
       const callback = jest.fn();
-      channel.on("test-event", callback);
-      channel.trigger("test-event", "data");
+      channel.listen("test-event", callback);
+      channel.emit("test-event", "data");
       expect(callback).toHaveBeenCalledWith("data");
     });
 
     it("should handle multiple listeners for the same event", () => {
       const callback1 = jest.fn();
       const callback2 = jest.fn();
-      channel.on("test-event", callback1);
-      channel.on("test-event", callback2);
-      channel.trigger("test-event", "data");
+      channel.listen("test-event", callback1);
+      channel.listen("test-event", callback2);
+      channel.emit("test-event", "data");
       expect(callback1).toHaveBeenCalledWith("data");
       expect(callback2).toHaveBeenCalledWith("data");
     });
 
     it("should remove listeners", () => {
       const callback = jest.fn();
-      channel.on("test-event", callback);
-      channel.off("test-event", callback);
-      channel.trigger("test-event", "data");
+      channel.listen("test-event", callback);
+      channel.unlisten("test-event", callback);
+      channel.emit("test-event", "data");
       expect(callback).not.toHaveBeenCalled();
     });
 
@@ -122,37 +118,33 @@ describe("Channel", () => {
       expect(result).toBe("async-response-input");
     });
 
-    it("should throw error for unhandled request", async () => {
-      await expect(
-        channel.request("nonexistent-request", "data")
-      ).rejects.toThrow(
-        "No handler registered for request type: nonexistent-request"
-      );
-    });
-
-    it("should provide introspection methods", () => {
-      const callback = jest.fn();
-      channel.on("event1", callback);
-      channel.on("event2", callback);
-      channel.reply("request1", () => "response");
-
-      expect(channel.getListenedEvents()).toEqual(["event1", "event2"]);
-      expect(channel.getSupportedRequests()).toEqual(["request1"]);
-      expect(channel.isListening("event1")).toBe(true);
-      expect(channel.isListening("nonexistent")).toBe(false);
-      expect(channel.canHandle("request1")).toBe(true);
-      expect(channel.canHandle("nonexistent")).toBe(false);
+    it("should return null for unhandled request", () => {
+      const result = channel.request("nonexistent-request", "data");
+      expect(result).toBeNull();
     });
 
     it("should clear all listeners and handlers", () => {
       const callback = jest.fn();
-      channel.on("event", callback);
+      channel.listen("event", callback);
       channel.reply("request", () => "response");
 
       channel.clear();
 
-      expect(channel.getListenedEvents()).toHaveLength(0);
-      expect(channel.getSupportedRequests()).toHaveLength(0);
+      channel.emit("event", "data");
+      expect(callback).not.toHaveBeenCalled();
+      expect(channel.request("request", {})).toBeNull();
+    });
+
+    it("should dispatch technical any event after emit", () => {
+      const anyCallback = jest.fn();
+
+      channel.listenAny(anyCallback);
+      channel.emit("productAdded", { id: "p1", qty: 2 });
+
+      expect(anyCallback).toHaveBeenCalledWith({
+        event: "productAdded",
+        changes: { id: "p1", qty: 2 }
+      });
     });
   });
 });
