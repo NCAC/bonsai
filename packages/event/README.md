@@ -1,98 +1,143 @@
-**@bonsai/event** is a typed implementation of two complementary event systems, inspired by [Backbone.Events](https://github.com/jashkenas/backbone/blob/master/backbone.js?plain=1#L71) and [Backbone.radio](https://github.com/marionettejs/backbone.radio#readme).
+# @bonsai/event
 
-It includes two event systems :
-
-- **Events** which is an implementation of Pub/Sub pattern (aka EventEmitter in Node.js)
-- **Request** which is a request/reply (aka HTTP communication) pattern.
-
-
-It provides two ways of event implementation :
-
-## The **Event-in-object way**
-
-  The `EventTrigger` class is the base event emitter class provided by `@bonsai/event`. It provides all the features of the **Events** system with `on`, `listenTo`, `once`, `listenToOnce`, `off`, `stopListening` and `trigger` methods. It is a typed rewrite of [Backbone.Events](https://github.com/jashkenas/backbone/blob/master/backbone.js#L71).
-
-  Let's say that an objectA - a `view` for example - needs to react to events from an objectB - a `model` for example.
-  ```
-  myView.listenTo(myModel, "change", () => {
-    console.log("Something in myModel has changed.");
-  });
-
-  // later, this will trigger the callback on myView
-  myModel.trigger("change");
-  ```
-
-  This is possible **only if the listener has access to the emitter**.
+> **Infrastructure de communication tri-lane du framework Bonsai.**
+> Channel (Command / Event / Request) + Radio (singleton registre).
 
 ---
 
-## The **Channel way**
+## Rôle
 
-  The `Channel` class serves as a third party object to allow independant objects to communicate. It inherits all functionality from `EventTrigger` and also provides all functionality from **Request**: `reply`, `request`. Channels are created and retrieved by the singleton object `Radio`.
+`@bonsai/event` fournit les deux primitives de communication runtime de Bonsai :
 
-  Here is an example:
-  ```ts
-  // in a User.channel.ts file
-  import {
-    TEventMap,
-    TRequestMap,
-    Radio,
-    Channel
-  } from "@bonsai/event";
+| Export | Rôle | Visibilité |
+|--------|------|------------|
+| **`Channel`** | Contrat de communication tri-lane : Commands (1:1), Events (1:N), Requests (1:1 sync) | Interne framework — jamais instancié par le développeur |
+| **`Radio`** | Singleton registre des Channels — câblage au bootstrap | Interne framework (I15) |
 
-  type TUserChannelRequestMap = TRequestMap<{
-    users: () => string[] // retrieve all the users
-    "is:logged": (name: string) => boolean; //
-  }>;
+> **Ce package est une infrastructure interne.** Le développeur d'application
+> interagit avec les Channels indirectement via `Feature.emit()`, `View.trigger()`,
+> `View.request()`, etc. Il n'importe jamais `Channel` ni `Radio` directement.
 
-  type TUserChannelEventMap = TEventMap<{
-    login: (name: string) => void;
-    logout: (name: string) => void;
-  }>;
-  export const userChannel = Radio.channel("user") as Channel<
-    TUserChannelEventMap,
-    TUserChannelRequestMap
-  >;
+---
 
-  // list of users
-  const users = [
-    { name: "admin", isLogged: true },
-    { name: "anonymous", isLogged: false }
-  ];
+## Architecture — Channel tri-lane
 
-  // Logic of the channel.
+Chaque Channel expose trois lanes indépendantes :
 
-  userChannel.reply("users", () => {
-    return users;
-  });
-  userChannel.reply("is:logged", (username) => {
-    const result = users.find((user) => { return username === user.name });
-    return result | null;
-  });
-  userChannel.on("login", (username) => {
-    const index = users.findIndex((user) => { return username === user.name });
-    if (index > -1) {
-      users[index].isLogged = true;
-    }
-  });
-  userChannel.on("logout", (username) => {
-    const index = users.findIndex((user) => { return username === user.name });
-    if (index > -1) {
-      users[index].isLogged = false;
-    }
-  });
+```
 
+                 Channel "cart"                       │
 
+  Command Lane   │  trigger(name, payload)    → 1:1  │
+                 │  handle(name, handler)             │
 
-  // in another distant object
-  import { userChannel } from "../../User/User.channel.ts"
+  Event Lane     │  emit(name, payload)       → 1:N  │
+                 │  on(name, handler)                 │
+                 │  off(name, handler)                │
+                 │  → émet `any` automatiquement      │
 
-  // to know if the user 'admin' is logged
-  const isAdminLogged = userChannel.request("is:logged", "admin");
+  Request Lane   │  request(name, params)     → sync │
+                 │  reply(name, handler)       T|null │
 
+```
 
-  // to make the user 'anonmymous' log in.
-  userChannel.trigger("login", "anonymous");
+### Sémantiques runtime (ADR-0003)
 
-  ```
+| Situation | Comportement |
+|-----------|-------------|
+| `trigger()` sans handler | `throw NoHandlerError` (strate 0 : toujours throw) |
+| `handle()` dupliqué | `throw DuplicateHandlerError` (I10) |
+| `emit()` sans listener | Silencieux — valide sémantiquement |
+| `request()` sans replier | Retourne `null` (D44, ADR-0023) |
+| `reply()` qui throw | Retourne `null`, erreur loguée (I55) |
+| Listener qui throw | Erreur isolée, les autres listeners continuent (ADR-0002) |
 
+### Événement réservé `any`
+
+Après chaque `emit()` d'un Event granulaire, le Channel émet automatiquement
+un événement technique `any` avec le payload :
+
+```typescript
+type TAnyEventPayload = {
+  readonly event: string;
+  readonly changes: Record<string, unknown>;
+};
+```
+
+---
+
+## Architecture — Radio singleton
+
+```typescript
+Radio.me()                    // → instance unique
+Radio.me().channel("cart")    // → Channel (get or create)
+Radio.me().hasChannel("cart") // → boolean
+Radio.reset()                 // → reset complet (tests only)
+```
+
+Radio est le **registre central** des instances Channel. Au bootstrap
+(`app.start()`), le framework résout les déclarations statiques des composants
+en connexions runtime via Radio.
+
+> **I15** — Radio n'est jamais exposé au développeur d'application.
+
+---
+
+## Dépendances
+
+```
+@bonsai/types   ← TJsonValue (payloads)
+@bonsai/error   ← NoHandlerError, DuplicateHandlerError, invariant()
+@bonsai/rxjs    ← Subject, Subscription (dispatch interne)
+```
+
+---
+
+## Structure des fichiers
+
+```
+src/
+  bonsai-event.ts         ← barrel (exports publics)
+  channel.class.ts        ← Channel tri-lane
+  radio.singleton.ts      ← Radio singleton
+  types.ts                ← types publics (TAnyEventPayload, etc.)
+```
+
+---
+
+## Périmètre strate 0 (ADR-0028)
+
+**Inclus :**
+- Channel tri-lane : `handle`/`trigger`, `on`/`off`/`emit` + `any`, `reply`/`request` sync
+- Radio singleton : registre, get-or-create, reset
+- Détection handler absent (`trigger` sans `handle`) → throw
+- Détection handler dupliqué → throw
+- Isolation des erreurs entre listeners (`emit`)
+- `dispose()` — nettoyage des registres et Subjects RxJS
+
+**Exclu (strate 1+) :**
+- Metas causales (`correlationId`, `causationId`, `hop`) — stub
+- Anti-boucle I9 (`hop > maxHops`)
+- `noHandler` configurable par mode (dev/prod)
+- Generics `TChannelDefinition` typés — arrive avec Feature
+
+---
+
+## Documents normatifs
+
+| Document | Ce qu'il spécifie |
+|----------|-------------------|
+| [RFC communication.md](../../docs/rfc/2-architecture/communication.md) | Tri-lane, matrice des droits, flux, `any`, Radio §8 |
+| [ADR-0003](../../docs/adr/ADR-0003-channel-runtime-semantics.md) | Sémantiques runtime (throw/warn/silent par mode) |
+| [ADR-0023](../../docs/adr/ADR-0023-request-reply-sync-vs-async.md) | `request()` synchrone, `T \| null` |
+| [ADR-0002](../../docs/adr/ADR-0002-error-propagation-strategy.md) | Isolation des erreurs, taxonomie `BonsaiError` |
+| [ADR-0028](../../docs/adr/ADR-0028-implementation-phasing-strategy.md) | Périmètre strate 0 |
+| [ADR-0031](../../docs/adr/ADR-0031-monorepo-package-topology.md) | Topologie packages, DAG |
+
+---
+
+## Tests
+
+Les tests de spécification sont dans `tests/unit/strate-0/` :
+- `channel.basic.test.ts` — invariants I10, I11, I25, I26, I27, I29, I55
+- `radio.singleton.test.ts` — invariant I15

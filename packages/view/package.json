@@ -1,0 +1,11 @@
+{
+  "name": "@bonsai/view",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/bonsai-view.ts",
+  "types": "./src/bonsai-view.ts",
+  "dependencies": {
+    "@bonsai/event": "workspace:^"
+  }
+}

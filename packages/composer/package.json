@@ -1,0 +1,11 @@
+{
+  "name": "@bonsai/composer",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "src/bonsai-composer.ts",
+  "types": "src/bonsai-composer.ts",
+  "dependencies": {
+    "@bonsai/view": "workspace:^"
+  }
+}

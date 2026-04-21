@@ -39,12 +39,12 @@ type TMessageMetas = {
   // ── Origine ──
   /** Origine du message */
   origin: {
-    kind: 'view' | 'feature' | 'behavior' | 'composer' | 'foundation';
+    kind: "view" | "feature" | "behavior" | "composer" | "foundation";
     name: string;
     /** Namespace de la Feature, si applicable */
     namespace?: string;
   };
-}
+};
 ```
 
 ---
@@ -53,12 +53,12 @@ type TMessageMetas = {
 
 Tous les identifiants (`messageId`, `correlationId` sans prefixe) sont des **ULID** (Universally Unique Lexicographically Sortable Identifier).
 
-| Propriete | UUID v4 | Nanoid | **ULID** |
-|-----------|---------|--------|----------|
-| Triable temporellement | Non | Non | Oui |
-| Unique garanti | Oui | Oui | Oui |
-| Longueur | 36 | 21 | 26 |
-| Ideal pour event log | Non | Non | Oui |
+| Propriete              | UUID v4 | Nanoid | **ULID** |
+| ---------------------- | ------- | ------ | -------- |
+| Triable temporellement | Non     | Non    | Oui      |
+| Unique garanti         | Oui     | Oui    | Oui      |
+| Longueur               | 36      | 21     | 26       |
+| Ideal pour event log   | Non     | Non    | Oui      |
 
 **Justification** : le tri temporel natif est essentiel pour le Event Ledger ([devtools](../devtools.md)) et l'Event Sourcing (ADR-0011).
 
@@ -66,10 +66,10 @@ Tous les identifiants (`messageId`, `correlationId` sans prefixe) sont des **ULI
 
 ## 3. Prefixes `correlationId` — `usr-` et `sys-`
 
-| Prefixe | Initiateur | Exemple |
-|---------|------------|---------|
-| `usr-` | UI (View, Behavior, Foundation) | `usr-01ARZ3NDEKTSV4RRFFQ69G5FAV` |
-| `sys-` | Systeme (timer, scheduled task, init) | `sys-01ARZ4ABCDEFGHIJKLMNOPQRS` |
+| Prefixe | Initiateur                            | Exemple                          |
+| ------- | ------------------------------------- | -------------------------------- |
+| `usr-`  | UI (View, Behavior, Foundation)       | `usr-01ARZ3NDEKTSV4RRFFQ69G5FAV` |
+| `sys-`  | Systeme (timer, scheduled task, init) | `sys-01ARZ4ABCDEFGHIJKLMNOPQRS`  |
 
 > **I8 amende** : le `correlationId` est cree par l'UI **ou** par le framework pour les actions systeme.
 > Le prefixe `usr-`/`sys-` permet de distinguer l'origine dans les DevTools.
@@ -94,47 +94,47 @@ Tous les identifiants (`messageId`, `correlationId` sans prefixe) sont des **ULI
 Tous les handlers (Command, Event, Request) recoivent **toujours** deux parametres :
 
 ```typescript
-class CartFeature extends Feature<Cart.State, Cart.Channel> {
+class CartFeature extends Feature<CartEntity, Cart.Channel> {
   // Command handler — recoit payload + metas
   onAddItemCommand(payload: AddItemPayload, metas: TMessageMetas) {
     // metas disponible directement en parametre
-    this.entity.mutate("cart:addItem", { payload, metas }, draft => {
+    this.entity.mutate("cart:addItem", { payload, metas }, (draft) => {
       draft.items.push(payload.item);
     });
 
     // Propagation explicite aux emissions
-    this.emit('cart:itemAdded', { item: payload.item }, { metas });
+    this.emit("cart:itemAdded", { item: payload.item }, { metas });
   }
 
   // Async — le closure capture metas naturellement
   async onCheckoutCommand(payload: CheckoutPayload, metas: TMessageMetas) {
     const price = await this.request(
-      'pricing:calculate',
+      "pricing:calculate",
       { items: payload.items },
       { metas }
     );
     // metas toujours disponible grace au closure
-    this.emit('cart:checkedOut', { total: price }, { metas });
+    this.emit("cart:checkedOut", { total: price }, { metas });
   }
 }
 ```
 
 ### Decisions rejetees
 
-| Alternative | Raison du rejet |
-|-------------|-----------------|
-| Context implicite (`AsyncLocalStorage`) | Magie, Node-only, debugging complexe |
-| Getter `this.currentMetas` | Implicite, risque hors handler, problemes async |
-| Wrapper `withMetas(fn)` | Ajoute de la magie inutile |
+| Alternative                             | Raison du rejet                                 |
+| --------------------------------------- | ----------------------------------------------- |
+| Context implicite (`AsyncLocalStorage`) | Magie, Node-only, debugging complexe            |
+| Getter `this.currentMetas`              | Implicite, risque hors handler, problemes async |
+| Wrapper `withMetas(fn)`                 | Ajoute de la magie inutile                      |
 
 ### Creation de nouvelle correlation (cas systeme)
 
 ```typescript
-class SyncFeature extends Feature<Sync.State, Sync.Channel> {
+class SyncFeature extends Feature<SyncEntity, Sync.Channel> {
   onTimerTick() {
     // Pas de metas en entree (event systeme)
     // Le framework cree une nouvelle correlation sys-
-    this.emit('sync:started', {});
+    this.emit("sync:started", {});
     // → correlationId = 'sys-01ARZ3...'
   }
 }
@@ -148,30 +148,30 @@ Les metas suivent un cycle de vie previsible qui assure la tracabilite complete 
 
 ### A la racine (UI trigger)
 
-| Champ | Valeur |
-|-------|--------|
-| `messageId` | Nouvelle valeur unique |
+| Champ           | Valeur                                  |
+| --------------- | --------------------------------------- |
+| `messageId`     | Nouvelle valeur unique                  |
 | `correlationId` | Nouvelle valeur unique (creee par l'UI) |
-| `causationId` | `null` (pas de message parent) |
-| `hop` | `0` |
+| `causationId`   | `null` (pas de message parent)          |
+| `hop`           | `0`                                     |
 
 ### Reaction d'une Feature (Command handler → emit Event)
 
-| Champ | Valeur |
-|-------|--------|
-| `messageId` | Nouvelle valeur unique |
+| Champ           | Valeur                                 |
+| --------------- | -------------------------------------- |
+| `messageId`     | Nouvelle valeur unique                 |
 | `correlationId` | `parent.correlationId` (inchange — I8) |
-| `causationId` | `parent.messageId` |
-| `hop` | `parent.hop + 1` |
+| `causationId`   | `parent.messageId`                     |
+| `hop`           | `parent.hop + 1`                       |
 
 ### Reaction cross-feature (Feature B listen un Event de Feature A)
 
-| Champ | Valeur |
-|-------|--------|
-| `messageId` | Nouvelle valeur unique |
+| Champ           | Valeur                                     |
+| --------------- | ------------------------------------------ |
+| `messageId`     | Nouvelle valeur unique                     |
 | `correlationId` | `parent.correlationId` (toujours inchange) |
-| `causationId` | `parent.messageId` (l'Event de Feature A) |
-| `hop` | `parent.hop + 1` |
+| `causationId`   | `parent.messageId` (l'Event de Feature A)  |
+| `hop`           | `parent.hop + 1`                           |
 
 > Le `correlationId` relie toute la chaine : du `trigger()` initial de la View
 > jusqu'au dernier Event emis par la derniere Feature reactive.
@@ -183,12 +183,12 @@ Les metas suivent un cycle de vie previsible qui assure la tracabilite complete 
 
 Le framework implemente des garde-fous pour prevenir les boucles et garantir l'integrite causale :
 
-| Garde-fou | Mecanisme | Invariant |
-|-----------|-----------|----------|
-| **Anti-boucle** | Si `hop > MAX_HOPS` → le message est **rejete** avec une erreur explicite | I9 |
-| **Correlation immuable** | Le `correlationId` est verifie comme jamais modifie dans la chaine | I8 |
-| **Causalite obligatoire** | Tout message sauf le trigger initial **doit** avoir un `causationId` non-null | I7 |
-| **Origine verifiee** | Le `origin.kind` est assigne automatiquement par le framework, pas par le developpeur | I7 |
+| Garde-fou                 | Mecanisme                                                                             | Invariant |
+| ------------------------- | ------------------------------------------------------------------------------------- | --------- |
+| **Anti-boucle**           | Si `hop > MAX_HOPS` → le message est **rejete** avec une erreur explicite             | I9        |
+| **Correlation immuable**  | Le `correlationId` est verifie comme jamais modifie dans la chaine                    | I8        |
+| **Causalite obligatoire** | Tout message sauf le trigger initial **doit** avoir un `causationId` non-null         | I7        |
+| **Origine verifiee**      | Le `origin.kind` est assigne automatiquement par le framework, pas par le developpeur | I7        |
 
 > **`MAX_HOPS`** est configurable dans Application (`maxHops`).
 > Une valeur typique est 10–20 — au-dela, il s'agit tres probablement
@@ -207,11 +207,11 @@ automatiquement les metas initiales d'une nouvelle chaine causale :
 // Cree par le framework -- JAMAIS par le developpeur
 const metas: TMessageMetas = {
   messageId: ulid(),
-  correlationId: `usr-${ulid()}`,  // nouvelle transaction, prefixe 'usr-'
-  causationId: null,                // racine
-  origin: { kind: 'view', name: viewClass.name },
+  correlationId: `usr-${ulid()}`, // nouvelle transaction, prefixe 'usr-'
+  causationId: null, // racine
+  origin: { kind: "view", name: viewClass.name },
   hop: 0,
-  timestamp: Date.now(),
+  timestamp: Date.now()
 };
 ```
 
@@ -233,27 +233,27 @@ Le framework cree de nouvelles metas derivees a chaque propagation
 // Framework interne -- derivation des metas enfant
 function deriveChildMetas(
   parentMetas: TMessageMetas,
-  origin: TMessageMetas['origin']
+  origin: TMessageMetas["origin"]
 ): TMessageMetas {
   return {
     messageId: ulid(),
-    correlationId: parentMetas.correlationId,  // inchange (I8)
-    causationId: parentMetas.messageId,        // chainage causal
+    correlationId: parentMetas.correlationId, // inchange (I8)
+    causationId: parentMetas.messageId, // chainage causal
     origin,
-    hop: parentMetas.hop + 1,                  // incremente
-    timestamp: Date.now(),
+    hop: parentMetas.hop + 1, // incremente
+    timestamp: Date.now()
   };
 }
 ```
 
 ### 7.3 Invariants API des metas
 
-| # | Invariant | Principe |
-|---|-----------|----------|
+| #       | Invariant                                                                                                                                                                                                          | Principe                                           |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
 | **I54** | Le framework **cree** les metas au point d'entree. Le developpeur les **recoit** en parametre `(payload, metas)` et les **propage** explicitement a `emit()`, `request()` et `mutate()`. (D43 amende par ADR-0016) | -> [metas SS4](#4-propagation-explicite-des-metas) |
-| **I7** | Tout message porte des metadonnees causales completes | -> [metas SS1](#1-structure-des-metas) |
-| **I8** | Le `correlationId` est immuable dans une chaine | -> [metas SS5](#5-cycle-de-vie-des-metas) |
-| **I9** | `hop > maxHops` -> message rejete | -> [metas SS6](#6-garde-fous-mecaniques) |
+| **I7**  | Tout message porte des metadonnees causales completes                                                                                                                                                              | -> [metas SS1](#1-structure-des-metas)             |
+| **I8**  | Le `correlationId` est immuable dans une chaine                                                                                                                                                                    | -> [metas SS5](#5-cycle-de-vie-des-metas)          |
+| **I9**  | `hop > maxHops` -> message rejete                                                                                                                                                                                  | -> [metas SS6](#6-garde-fous-mecaniques)           |
 
 ---
 

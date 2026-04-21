@@ -1,10 +1,12 @@
 #ignore everything
 /*
+*.tsbuildinfo
 #except for these files :
 !.gitignore
 !README.md
 !README.fr.md
 !LICENSE
+!CHANGELOG.md
 !package.json
 !tsconfig.json
 !tsconfig.base.json
@@ -26,6 +28,9 @@
 
 
 !/.devcontainer
+!/.husky
+
+!/.github
 
 !/tools
 !/lib

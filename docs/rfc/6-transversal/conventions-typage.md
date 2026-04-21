@@ -35,7 +35,7 @@ rembourse integralement en DX — et ce pour **chaque composant** :
 |         (les CSS selectors ne viennent qu'en dernier)             |
 |                                                                   |
 |  2. IMPLEMENTER LA CLASSE                                         |
-|     Feature -> extends Feature<TEntityStructure, TChannel>        |
+|     Feature -> extends Feature<TEntityClass, TChannel>            |
 |            -> implements TRequiredCommandHandlers<TChannel>        |
 |     View   -> extends View<TViewCapabilities> (ADR-0024)          |
 |                                                                   |
@@ -50,7 +50,7 @@ rembourse integralement en DX — et ce pour **chaque composant** :
 ```
 
 > **Principe** : de la rigueur et de la discipline au depart, mais a l'arrivee
-> le compilateur travaille pour le developpeur — sur *toute* la surface de l'API.
+> le compilateur travaille pour le developpeur — sur _toute_ la surface de l'API.
 > Les CSS selectors, les selecteurs DOM, les valeurs d'attribut sont des
 > details d'implementation. Les contrats de type sont la source de verite.
 
@@ -58,13 +58,13 @@ rembourse integralement en DX — et ce pour **chaque composant** :
 
 ## 2. Prefixes de types
 
-| Categorie | Prefixe | Regle | Exemples |
-|-----------|---------|-------|----------|
-| **Types structurels** — formes de donnees (state, config, payload, definition) | `T` | **DOIT** | `TChannelDefinition`, `TMessageMetas`, `TRouteState`, `TEntityEvent` |
-| **Types contractuels** — utilises en `implements`, API surface | `T` | **DOIT** | `TRequiredCommandHandlers`, `TEntityKeyHandlers`, `TProjectionNode` |
-| **Types utilitaires** — calcul type-level (mapped, conditional, template literal) | — | **NE DOIT PAS** | `ExtractHandlerName`, `UnionToIntersection`, `CommandPayload` |
-| **Types namespace-scoped** — qualifies par le namespace | — | **NE DOIT PAS** | `Cart.Channel`, `Cart.State`, `Inventory.Channel` |
-| **Classes** | — | **NE DOIT PAS** | `Feature`, `Entity`, `Application` |
+| Categorie                                                                         | Prefixe | Regle           | Exemples                                                             |
+| --------------------------------------------------------------------------------- | ------- | --------------- | -------------------------------------------------------------------- |
+| **Types structurels** — formes de donnees (state, config, payload, definition)    | `T`     | **DOIT**        | `TChannelDefinition`, `TMessageMetas`, `TRouteState`, `TEntityEvent` |
+| **Types contractuels** — utilises en `implements`, API surface                    | `T`     | **DOIT**        | `TRequiredCommandHandlers`, `TEntityKeyHandlers`, `TProjectionNode`  |
+| **Types utilitaires** — calcul type-level (mapped, conditional, template literal) | —       | **NE DOIT PAS** | `ExtractHandlerName`, `UnionToIntersection`, `CommandPayload`        |
+| **Types namespace-scoped** — qualifies par le namespace                           | —       | **NE DOIT PAS** | `Cart.Channel`, `Cart.State`, `Inventory.Channel`                    |
+| **Classes**                                                                       | —       | **NE DOIT PAS** | `Feature`, `Entity`, `Application`                                   |
 
 > **Justification** : le prefixe `T` distingue les types des classes dans les signatures.
 > Les types utilitaires s'alignent sur les conventions TypeScript natives (`Partial`, `Record`,
@@ -130,7 +130,7 @@ Conversion d'un nom de message en nom de methode handler :
  */
 type ExtractHandlerName<
   TMessageName extends string,
-  TSuffix extends 'Command' | 'Event' | 'Request'
+  TSuffix extends "Command" | "Event" | "Request"
 > = `on${Capitalize<TMessageName>}${TSuffix}`;
 
 /**
@@ -150,9 +150,8 @@ type ExtractCrossChannelHandlerName<
  * Inspire du pattern Marionette.js Model `change:key`,
  * adapte a la convention onXXX auto-decouverte (D12).
  */
-type ExtractEntityKeyHandlerName<
-  TKey extends string
-> = `on${Capitalize<TKey>}EntityUpdated`;
+type ExtractEntityKeyHandlerName<TKey extends string> =
+  `on${Capitalize<TKey>}EntityUpdated`;
 ```
 
 ### 5.2 Mapped types — contrainte des handlers depuis les declarations Channel
@@ -166,9 +165,10 @@ type ExtractEntityKeyHandlerName<
  * de methode onXxxCommand() avec le payload correctement type.
  */
 type TRequiredCommandHandlers<TChannel extends TChannelDefinition> = {
-  [K in keyof TChannel['commands'] as ExtractHandlerName<
-    K & string, 'Command'
-  >]: (payload: TChannel['commands'][K], metas: TMessageMetas) => void;
+  [K in keyof TChannel["commands"] as ExtractHandlerName<
+    K & string,
+    "Command"
+  >]: (payload: TChannel["commands"][K], metas: TMessageMetas) => void;
 };
 
 /**
@@ -177,9 +177,10 @@ type TRequiredCommandHandlers<TChannel extends TChannelDefinition> = {
  * `null` si le replier throw ou si le Channel n'est pas enregistré (D44 revisé).
  */
 type TRequiredRequestHandlers<TChannel extends TChannelDefinition> = {
-  [K in keyof TChannel['requests'] as ExtractHandlerName<
-    K & string, 'Request'
-  >]: TChannel['requests'][K] extends { params: infer P; result: infer R }
+  [K in keyof TChannel["requests"] as ExtractHandlerName<
+    K & string,
+    "Request"
+  >]: TChannel["requests"][K] extends { params: infer P; result: infer R }
     ? P extends void
       ? (metas: TMessageMetas) => R | null
       : (params: P, metas: TMessageMetas) => R | null
@@ -202,19 +203,22 @@ type TRequiredRequestHandlers<TChannel extends TChannelDefinition> = {
  * Contraste avec `TRequiredCommandHandlers` et `TRequiredRequestHandlers`
  * ou TOUS les handlers DOIVENT etre implementes.
  */
-type TEventHandlers<
-  TChannels extends readonly TChannelDefinition[]
-> = Partial<
-  UnionToIntersection<{
-    [I in keyof TChannels]: TChannels[I] extends TChannelDefinition
-      ? {
-          [K in keyof TChannels[I]['events'] as ExtractCrossChannelHandlerName<
-            TChannels[I]['namespace'] & string,
-            K & string
-          >]: (payload: TChannels[I]['events'][K], metas: TMessageMetas) => void;
-        }
-      : never;
-  }[number]>
+type TEventHandlers<TChannels extends readonly TChannelDefinition[]> = Partial<
+  UnionToIntersection<
+    {
+      [I in keyof TChannels]: TChannels[I] extends TChannelDefinition
+        ? {
+            [K in keyof TChannels[I]["events"] as ExtractCrossChannelHandlerName<
+              TChannels[I]["namespace"] & string,
+              K & string
+            >]: (
+              payload: TChannels[I]["events"][K],
+              metas: TMessageMetas
+            ) => void;
+          }
+        : never;
+    }[number]
+  >
 >;
 ```
 
@@ -229,9 +233,11 @@ type TEventHandlers<
  * Necessaire pour fusionner les handlers de plusieurs Channels
  * en un seul type plat.
  */
-type UnionToIntersection<U> =
-  (U extends any ? (k: U) => void : never) extends
-  (k: infer I) => void ? I : never;
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
+  k: infer I
+) => void
+  ? I
+  : never;
 ```
 
 ```typescript
@@ -247,9 +253,11 @@ type UnionToIntersection<U> =
  * Source of truth : entity.md §6.
  */
 type TEntityKeyHandlers<TStructure extends TJsonSerializable> = Partial<{
-  [K in keyof TStructure as ExtractEntityKeyHandlerName<
-    K & string
-  >]: (prev: TStructure[K], next: TStructure[K], patches: Patch[]) => void;
+  [K in keyof TStructure as ExtractEntityKeyHandlerName<K & string>]: (
+    prev: TStructure[K],
+    next: TStructure[K],
+    patches: Patch[]
+  ) => void;
 }>;
 ```
 
@@ -267,16 +275,29 @@ type TEntityKeyHandlers<TStructure extends TJsonSerializable> = Partial<{
  */
 type CommandPayload<
   TChannel extends TChannelDefinition,
-  TName extends keyof TChannel['commands']
-> = TChannel['commands'][TName];
+  TName extends keyof TChannel["commands"]
+> = TChannel["commands"][TName];
 
 /**
  * Extrait le type de resultat d'un Request a partir du Channel.
  */
 type RequestResult<
   TChannel extends TChannelDefinition,
-  TName extends keyof TChannel['requests']
-> = TChannel['requests'][TName] extends { result: infer R } ? R : never;
+  TName extends keyof TChannel["requests"]
+> = TChannel["requests"][TName] extends { result: infer R } ? R : never;
+
+/**
+ * Extrait la structure d'état (TStructure) d'une classe Entity concrete.
+ *
+ * Introduit par [ADR-0037](../../adr/ADR-0037-feature-generic-entity-class.md) :
+ * permet de dériver le state depuis le générique `Feature<TEntityClass, TChannel>`
+ * sans redéclarer la forme du state au niveau de la Feature.
+ *
+ * @example
+ *   type TCartState = TEntityState<CartEntity>;  // = Cart.State
+ */
+type TEntityState<E extends Entity<TJsonSerializable>> =
+  E extends Entity<infer S> ? S : never;
 ```
 
 ---
@@ -290,19 +311,19 @@ type RequestResult<
 > I39–I41 sont des rappels contextuels déjà définis dans les invariants architecturaux.
 > I54–I56 actés suite aux décisions D43, D44, D18 et ADR-0016.
 
-| #     | Invariant | Principe |
-|-------|-----------|----------|
-| **I46** | `TStructure` d'une Entity est contraint à `TJsonSerializable` — pas de classes, pas de fonctions, pas de cycles (D10) | → [Entity §2](../3-couche-abstraite/entity.md) |
-| **I47** | Les déclarations Channel se font via le token `Namespace.channel` (D11, D14) — pas via la classe Feature ni via une string | → [Feature §2](../3-couche-abstraite/feature.md), [Communication §3](../2-architecture/communication.md) |
-| **I48** | Les handlers sont des méthodes conventionnelles `on<Name><Command\|Event\|Request>` — le framework les découvre et les câble automatiquement (D12) | → [Feature §4](../3-couche-abstraite/feature.md) |
-| **I49** | Chaque Feature exporte un TS `namespace` regroupant `Channel`, `State` et `channel` token — c'est le contrat public unique (D13, D14) | → [Communication §3](../2-architecture/communication.md) |
-| **I50** | L'instance runtime `Channel` est interne au framework — créée au `register()`, jamais exposée ni manipulée par le développeur (D15) | → [Communication §5](../2-architecture/communication.md) |
-| **I51** | Les mutations de l'Entity déclenchent des notifications auto-découvertes `on<Key>EntityUpdated` (per-key) et/ou `onAnyEntityUpdated` (catch-all) sur la Feature propriétaire — le framework les câble automatiquement (D16, D12) | → [Entity §4](../3-couche-abstraite/entity.md) |
-| **I52** | L'Entity peut exposer des **méthodes query** (lecture seule, pures) pour servir les request handlers de la Feature — ces méthodes ne modifient jamais `this.state` (D16) | → [Entity §5](../3-couche-abstraite/entity.md) |
-| **I53** | Un handler `on<Key>EntityUpdated` où `<Key>` ne correspond pas à une clé de `TStructure` est une erreur (compile-time via `TEntityKeyHandlers<TStructure>`, runtime au bootstrap) | → [Entity §6](../3-couche-abstraite/entity.md) |
-| **I54** | Le framework **crée** les metas au point d'entrée (trigger, timer, init). Le développeur les **reçoit** en paramètre `(payload, metas)` et les **propage** explicitement à `emit()`, `request()` et `mutate()`. Le développeur ne forge **jamais** de metas manuellement. (D43 amendé par ADR-0016) | → [Metas](../2-architecture/metas.md) |
-| **I55** | `reply()` ne throw jamais — retourne toujours un résultat ou `null` (D44 révisé par ADR-0023) | → [Feature §3](../3-couche-abstraite/feature.md), [Communication](../2-architecture/communication.md) |
-| **I56** | `onInit()` de chaque Feature est appelé avant la création des Foundations — la couche abstraite est intégralement active avant la couche concrète (D18, principe d'ordre de bootstrap) | → [Lifecycle](../2-architecture/lifecycle.md) |
+| #       | Invariant                                                                                                                                                                                                                                                                                           | Principe                                                                                                 |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **I46** | `TStructure` d'une Entity est contraint à `TJsonSerializable` — pas de classes, pas de fonctions, pas de cycles (D10)                                                                                                                                                                               | → [Entity §2](../3-couche-abstraite/entity.md)                                                           |
+| **I47** | Les déclarations Channel se font via le token `Namespace.channel` (D11, D14) — pas via la classe Feature ni via une string                                                                                                                                                                          | → [Feature §2](../3-couche-abstraite/feature.md), [Communication §3](../2-architecture/communication.md) |
+| **I48** | Les handlers sont des méthodes conventionnelles `on<Name><Command\|Event\|Request>` — le framework les découvre et les câble automatiquement (D12)                                                                                                                                                  | → [Feature §4](../3-couche-abstraite/feature.md)                                                         |
+| **I49** | Chaque Feature exporte un TS `namespace` regroupant `Channel`, `State` et `channel` token — c'est le contrat public unique (D13, D14)                                                                                                                                                               | → [Communication §3](../2-architecture/communication.md)                                                 |
+| **I50** | L'instance runtime `Channel` est interne au framework — créée au `register()`, jamais exposée ni manipulée par le développeur (D15)                                                                                                                                                                 | → [Communication §5](../2-architecture/communication.md)                                                 |
+| **I51** | Les mutations de l'Entity déclenchent des notifications auto-découvertes `on<Key>EntityUpdated` (per-key) et/ou `onAnyEntityUpdated` (catch-all) sur la Feature propriétaire — le framework les câble automatiquement (D16, D12)                                                                    | → [Entity §4](../3-couche-abstraite/entity.md)                                                           |
+| **I52** | L'Entity peut exposer des **méthodes query** (lecture seule, pures) pour servir les request handlers de la Feature — ces méthodes ne modifient jamais `this.state` (D16)                                                                                                                            | → [Entity §5](../3-couche-abstraite/entity.md)                                                           |
+| **I53** | Un handler `on<Key>EntityUpdated` où `<Key>` ne correspond pas à une clé de `TStructure` est une erreur (compile-time via `TEntityKeyHandlers<TStructure>`, runtime au bootstrap)                                                                                                                   | → [Entity §6](../3-couche-abstraite/entity.md)                                                           |
+| **I54** | Le framework **crée** les metas au point d'entrée (trigger, timer, init). Le développeur les **reçoit** en paramètre `(payload, metas)` et les **propage** explicitement à `emit()`, `request()` et `mutate()`. Le développeur ne forge **jamais** de metas manuellement. (D43 amendé par ADR-0016) | → [Metas](../2-architecture/metas.md)                                                                    |
+| **I55** | `reply()` ne throw jamais — retourne toujours un résultat ou `null` (D44 révisé par ADR-0023)                                                                                                                                                                                                       | → [Feature §3](../3-couche-abstraite/feature.md), [Communication](../2-architecture/communication.md)    |
+| **I56** | `onInit()` de chaque Feature est appelé avant la création des Foundations — la couche abstraite est intégralement active avant la couche concrète (D18, principe d'ordre de bootstrap)                                                                                                              | → [Lifecycle](../2-architecture/lifecycle.md)                                                            |
 
 ---
 

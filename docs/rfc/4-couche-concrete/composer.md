@@ -6,13 +6,35 @@
 
 ---
 
-| Champ | Valeur |
-|-------|--------|
-| **Composant** | Composer |
-| **Couche** | Concrete (ephemere) |
-| **Source**    | Historique : RFC-0002-api-contrats-typage §12 |
-| **Statut** | Stable |
-| **ADRs liees** | ADR-0020 (N-instances, scope immutable), ADR-0024 (pattern manifeste value-first), ADR-0025 (pas de hooks lifecycle), ADR-0026 (rootElement string-only CSS), ADR-0027 (resolve(event) argument unique) |
+| Champ          | Valeur                                                                                                                                                                                                                              |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Composant**  | Composer                                                                                                                                                                                                                            |
+| **Couche**     | Concrete (ephemere)                                                                                                                                                                                                                 |
+| **Source**     | Historique : RFC-0002-api-contrats-typage §12                                                                                                                                                                                       |
+| **Statut**     | Stable                                                                                                                                                                                                                              |
+| **ADRs liees** | ADR-0020 (N-instances, scope immutable), ADR-0024 (pattern manifeste value-first), ADR-0025 (pas de hooks lifecycle), ADR-0026 (rootElement string-only CSS), ADR-0027 (resolve(event) argument unique), ADR-0028 (phasage strates) |
+
+---
+
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible complet** du Composer. Pour s'aligner
+> sur la stratégie de phasage kernel-first, certaines capacités sont **différées
+> en strate 1 ou 2** et ne sont **pas implémentées en strate 0** :
+>
+> | Élément                                                            | Strate cible | Sections concernées     |
+> | ------------------------------------------------------------------ | ------------ | ----------------------- |
+> | `get params()` avec `listen` / `request` (ADR-0024)                | Strate 1     | §1.1, §1.2, §2.2, §2.3  |
+> | Type `TComposerEvent<TListen>` (union discriminée typée)           | Strate 1     | §1.1, §1.2, §3          |
+> | Generic de classe `Composer<TCapabilities>`                        | Strate 1     | §1.2                    |
+> | `protected request()` (request/reply synchrone)                    | Strate 1     | §1.2, §2.2, §2.3        |
+> | Auto-discovery handlers Channel                                    | Strate 1     | §3                      |
+> | Retour `TResolveResult[]` (N-instances hétérogènes, ADR-0020 §6.3) | Strate 2     | §3.2                    |
+> | Champ `options` dans `TResolveResult` (D34 merge)                  | Strate 2     | §1.1, §4.1 (étapes 3-4) |
+>
+> **Strate 0 — périmètre effectif** : `Composer` non-générique, `resolve(event: unknown \| null) → TResolveResult \| null`, slot DOM immutable (ADR-0026), création D30, diff §3.1 des 5 transitions Same/New/null. Pas de `params()`, pas de `listen`, pas de `request()`, pas de retour tableau.
+>
+> Voir aussi : [ADR-0028](../../adr/ADR-0028-implementation-phasing-strategy.md) — phasage kernel-first en 3 strates.
 
 ---
 
@@ -53,10 +75,10 @@ Son unique point d'entree est `resolve(event)` (ADR-0025, ADR-0027).
  *   (ex: readonly [typeof Router.channel, typeof Auth.channel])
  */
 type TComposerEvent<TListen extends readonly TChannelDefinition[]> = {
-  readonly discriminant: `${TListen[number]['namespace']}:${string & keyof TListen[number]['events']}`;
-  readonly namespace: TListen[number]['namespace'];
-  readonly eventName: string & keyof TListen[number]['events'];
-  readonly payload: TListen[number]['events'][keyof TListen[number]['events']];
+  readonly discriminant: `${TListen[number]["namespace"]}:${string & keyof TListen[number]["events"]}`;
+  readonly namespace: TListen[number]["namespace"];
+  readonly eventName: string & keyof TListen[number]["events"];
+  readonly payload: TListen[number]["events"][keyof TListen[number]["events"]];
 };
 // Note : la definition complete avec distribution par variante est dans ADR-0027 §3.
 
@@ -65,7 +87,7 @@ type TComposerEvent<TListen extends readonly TChannelDefinition[]> = {
  * Utilise avec `satisfies` pour verifier la forme sans elargir les types.
  */
 type TComposerParams = {
-  readonly listen:  readonly TChannelDefinition[];
+  readonly listen: readonly TChannelDefinition[];
   readonly request: readonly TChannelDefinition[];
 };
 
@@ -74,8 +96,8 @@ type TComposerParams = {
  * Extrait les types narrow (tuples) depuis typeof params.
  */
 type TComposerCapabilities<TParams extends TComposerParams> = {
-  readonly listen:  TParams['listen'];
-  readonly request: TParams['request'];
+  readonly listen: TParams["listen"];
+  readonly request: TParams["request"];
 };
 
 /**
@@ -92,6 +114,21 @@ type TResolveResult<V extends typeof View = typeof View> = {
   readonly view: V;
   readonly rootElement: string;
   readonly options?: Partial<ExtractViewOptions<V>>;
+};
+
+/**
+ * TComposerOptions -- argument du constructeur (framework-internal).
+ *
+ * Le Composer est instancie par le framework, jamais par le developpeur.
+ * Le framework fournit le selecteur du scope DOM via cet objet.
+ * Le scope est immutable une fois assigne (ADR-0020).
+ *
+ * NB : le developpeur n'ecrit pas `new MyComposer({...})` ; il declare la
+ * classe dans `Foundation.composers` ou `View.composers` et le framework
+ * orchestre l'instanciation.
+ */
+type TComposerOptions = {
+  readonly rootElement: string;
 };
 ```
 
@@ -119,7 +156,9 @@ type TResolveResult<V extends typeof View = typeof View> = {
  * Invariant de scope immutable (ADR-0020) :
  * Le scope est assigne une fois et ne migre jamais.
  */
-abstract class Composer<TCapabilities extends TComposerCapabilities<TComposerParams>> {
+abstract class Composer<
+  TCapabilities extends TComposerCapabilities<TComposerParams>
+> {
   /** Reference au scope DOM -- fourni par le framework, jamais mute par le Composer */
   protected readonly slot: HTMLElement;
 
@@ -139,7 +178,7 @@ abstract class Composer<TCapabilities extends TComposerCapabilities<TComposerPar
    * - null               -> le framework detache les Views courantes (scope vide)
    */
   abstract resolve(
-    event: TComposerEvent<TCapabilities['listen']> | null
+    event: TComposerEvent<TCapabilities["listen"]> | null
   ): TResolveResult | TResolveResult[] | null;
 
   /** La View actuellement montee (null si vide) -- pour resolve() classique (0/1) */
@@ -149,7 +188,10 @@ abstract class Composer<TCapabilities extends TComposerCapabilities<TComposerPar
    * Effectue un request/reply synchrone (ADR-0023).
    * Disponible dans resolve() pour obtenir de l'information du Feature.
    */
-  protected request<T>(channel: TChannelDefinition, requestName: string): T | null;
+  protected request<T>(
+    channel: TChannelDefinition,
+    requestName: string
+  ): T | null;
 }
 ```
 
@@ -171,18 +213,22 @@ abstract class Composer<TCapabilities extends TComposerCapabilities<TComposerPar
 // resolve(event) recoit toujours null (aucun Event ecoute).
 
 const footerComposerParams = {
-  listen:  [],
-  request: [],
+  listen: [],
+  request: []
 } as const satisfies TComposerParams;
 
-type TFooterComposerCapabilities = TComposerCapabilities<typeof footerComposerParams>;
+type TFooterComposerCapabilities = TComposerCapabilities<
+  typeof footerComposerParams
+>;
 
 class FooterComposer extends Composer<TFooterComposerCapabilities> {
-  get params() { return footerComposerParams; }
+  get params() {
+    return footerComposerParams;
+  }
 
   resolve(event: null): TResolveResult {
     // Toujours la meme View — le footer ne change jamais
-    return { view: FooterView, rootElement: 'footer.Footer' };
+    return { view: FooterView, rootElement: "footer.Footer" };
   }
 }
 ```
@@ -195,25 +241,32 @@ class FooterComposer extends Composer<TFooterComposerCapabilities> {
 // Au premier montage, le Composer fait un request() pour obtenir l'etat initial.
 
 const sidebarComposerParams = {
-  listen:  [Auth.channel],
-  request: [Auth.channel],
+  listen: [Auth.channel],
+  request: [Auth.channel]
 } as const satisfies TComposerParams;
 
-type TSidebarComposerCapabilities = TComposerCapabilities<typeof sidebarComposerParams>;
+type TSidebarComposerCapabilities = TComposerCapabilities<
+  typeof sidebarComposerParams
+>;
 
 class SidebarComposer extends Composer<TSidebarComposerCapabilities> {
-  get params() { return sidebarComposerParams; }
+  get params() {
+    return sidebarComposerParams;
+  }
 
-  resolve(event: TComposerEvent<TSidebarComposerCapabilities['listen']> | null): TResolveResult {
+  resolve(
+    event: TComposerEvent<TSidebarComposerCapabilities["listen"]> | null
+  ): TResolveResult {
     // Premier montage : request() pour obtenir l'etat initial
     // Appels suivants : l'Event porte directement le payload
-    const isAuthenticated = event !== null
-      ? event.payload.isAuthenticated                     // ← Event Auth recu
-      : this.request<boolean>(Auth.channel, 'isAuthenticated'); // ← premier montage
+    const isAuthenticated =
+      event !== null
+        ? event.payload.isAuthenticated // ← Event Auth recu
+        : this.request<boolean>(Auth.channel, "isAuthenticated"); // ← premier montage
 
     return {
       view: isAuthenticated ? ProfileView : LoginView,
-      rootElement: '.Sidebar-content',
+      rootElement: ".Sidebar-content"
     };
   }
 }
@@ -231,31 +284,41 @@ class SidebarComposer extends Composer<TSidebarComposerCapabilities> {
 // Le Composer utilise request() pour obtenir l'etat complet quand necessaire.
 
 const mainComposerParams = {
-  listen:  [Router.channel, Auth.channel],
-  request: [Router.channel, Auth.channel],
+  listen: [Router.channel, Auth.channel],
+  request: [Router.channel, Auth.channel]
 } as const satisfies TComposerParams;
 
-type TMainComposerCapabilities = TComposerCapabilities<typeof mainComposerParams>;
+type TMainComposerCapabilities = TComposerCapabilities<
+  typeof mainComposerParams
+>;
 
 class MainContentComposer extends Composer<TMainComposerCapabilities> {
-  get params() { return mainComposerParams; }
+  get params() {
+    return mainComposerParams;
+  }
 
-  resolve(event: TComposerEvent<TMainComposerCapabilities['listen']> | null): TResolveResult | null {
+  resolve(
+    event: TComposerEvent<TMainComposerCapabilities["listen"]> | null
+  ): TResolveResult | null {
     // Obtenir l'etat courant (request synchrone, ADR-0023)
-    const route = this.request<TCurrentRoute>(Router.channel, 'currentRoute');
-    const isAuth = this.request<boolean>(Auth.channel, 'isAuthenticated');
+    const route = this.request<TCurrentRoute>(Router.channel, "currentRoute");
+    const isAuth = this.request<boolean>(Auth.channel, "isAuthenticated");
 
     // Pages protegees : redirect si non authentifie
     if (!isAuth && route.requiresAuth) {
-      return { view: LoginView, rootElement: '.MainContent-root' };
+      return { view: LoginView, rootElement: ".MainContent-root" };
     }
 
     // Routing standard
     switch (route.page) {
-      case 'home':    return { view: HomeView,     rootElement: '.MainContent-root' };
-      case 'product': return { view: ProductView,  rootElement: '.MainContent-root' };
-      case 'cart':    return { view: CartView,      rootElement: '.MainContent-root' };
-      default:        return { view: NotFoundView,  rootElement: '.MainContent-root' };
+      case "home":
+        return { view: HomeView, rootElement: ".MainContent-root" };
+      case "product":
+        return { view: ProductView, rootElement: ".MainContent-root" };
+      case "cart":
+        return { view: CartView, rootElement: ".MainContent-root" };
+      default:
+        return { view: NotFoundView, rootElement: ".MainContent-root" };
     }
   }
 }
@@ -278,11 +341,11 @@ class MainContentComposer extends Composer<TMainComposerCapabilities> {
 `resolve(event)` est l'unique methode abstraite du Composer (ADR-0027).
 Le framework l'appelle avec l'Event declencheur en argument :
 
-| Quand | Argument `event` |
-|-------|-----------------|
-| **Premier montage** | `null` — le scope existe pour la premiere fois (bootstrap ou apparition dynamique) |
-| **Apres un Event** | `TComposerEvent` — l'Event ecoute (listen) qui a declenche le recalcul. Discriminant, namespace, eventName et payload types |
-| **Reapparition du scope** | `null` — le scope avait disparu puis reapparait (ex: projection de la View parente) |
+| Quand                     | Argument `event`                                                                                                            |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Premier montage**       | `null` — le scope existe pour la premiere fois (bootstrap ou apparition dynamique)                                          |
+| **Apres un Event**        | `TComposerEvent` — l'Event ecoute (listen) qui a declenche le recalcul. Discriminant, namespace, eventName et payload types |
+| **Reapparition du scope** | `null` — le scope avait disparu puis reapparait (ex: projection de la View parente)                                         |
 
 > **ADR-0027** : l'Event est passe **en argument**, pas via un handler `onXxxEvent()`.
 > Le Composer n'a pas de state local ou le stocker — il recalcule sa decision a chaque appel.
@@ -293,15 +356,19 @@ Le framework l'appelle avec l'Event declencheur en argument :
 
 ### 3.1 Diff pour le retour simple (`TResolveResult | null`)
 
-| `resolve()` retourne | View montee | Action framework |
-|----------------------|-------------|-----------------|
-| `SameView` | `SameView` instance | **No-op** |
-| `NewView` | `OldView` instance | **Detach** OldView -> **Attach** NewView |
-| `NewView` | null | **Attach** NewView |
-| null | `OldView` instance | **Detach** OldView |
-| null | null | **No-op** |
+| `resolve()` retourne | View montee         | Action framework                         |
+| -------------------- | ------------------- | ---------------------------------------- |
+| `SameView`           | `SameView` instance | **No-op**                                |
+| `NewView`            | `OldView` instance  | **Detach** OldView -> **Attach** NewView |
+| `NewView`            | null                | **Attach** NewView                       |
+| null                 | `OldView` instance  | **Detach** OldView                       |
+| null                 | null                | **No-op**                                |
 
 ### 3.2 Diff pour le retour tableau (`TResolveResult[]`) -- ADR-0020
+
+> ⏳ **Strate 2 (ADR-0028)** — le retour tableau (N-instances hétérogènes) est
+> différé en strate 2. En strate 0, `resolve()` retourne strictement
+> `TResolveResult | null` (cf. §3.1 et l'encadré périmètre en tête).
 
 ```
 resolve() retourne R' (nouveau)           Etat precedent R (ancien)
@@ -347,7 +414,7 @@ resolve() retourne R' (nouveau)           Etat precedent R (ancien)
 10. Framework cable les handlers Channel de la View
 11. view.onAttach()
 12. Pour chaque Composer enfant : resolution recursive (retour a l'etape 1)
-``` 
+```
 
 ### 4.2 Sequence de detachement (normative)
 
@@ -415,15 +482,16 @@ idle -> resolving -> active(Views) -> detaching -> idle
                                    | [destroyed] (si View parente detruite)
 ```
 
-| Etat | Description | Transitions |
-|------|-------------|-------------|
-| `idle` | Scope present, aucune View montee | -> `resolving` si condition remplie |
-| `resolving` | `resolve()` appele, Views determinees | -> `active(Views)` si resultat non-null, -> `idle` si null |
-| `active(Views)` | 1/N Views montees dans le scope | -> `resolving` si `resolve()` recalcule (diff), -> `detaching` si scope disparait |
-| `detaching` | Detachement recursif des Views et de leurs Composers enfants | -> `idle` (scope toujours la) ou `destroyed` (scope disparu) |
-| `destroyed` | Scope definitivement disparu (View parente detruite) | -- (terminal) |
+| Etat            | Description                                                  | Transitions                                                                       |
+| --------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `idle`          | Scope present, aucune View montee                            | -> `resolving` si condition remplie                                               |
+| `resolving`     | `resolve()` appele, Views determinees                        | -> `active(Views)` si resultat non-null, -> `idle` si null                        |
+| `active(Views)` | 1/N Views montees dans le scope                              | -> `resolving` si `resolve()` recalcule (diff), -> `detaching` si scope disparait |
+| `detaching`     | Detachement recursif des Views et de leurs Composers enfants | -> `idle` (scope toujours la) ou `destroyed` (scope disparu)                      |
+| `destroyed`     | Scope definitivement disparu (View parente detruite)         | -- (terminal)                                                                     |
 
 > **Invariants de transition** :
+>
 > - Un Composer en `active(Views)` recalcule l'ensemble via `resolve(event)` ; le framework diff et applique les changements (attach/detach) -- pas de montage imperatif individuel (I37, ADR-0020)
 > - La transition `active -> detaching` declenche la cascade de destruction (§5)
 > - Un Composer `destroyed` n'est jamais reutilise -- la View parente est elle-meme detruite

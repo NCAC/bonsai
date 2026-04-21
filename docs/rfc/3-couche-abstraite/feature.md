@@ -6,14 +6,15 @@
 
 ---
 
-| Champ             | Valeur                                           |
-|-------------------|--------------------------------------------------|
-| **Composant**     | Feature                                          |
-| **Couche**        | Abstraite (persistante)                          |
-| **Statut**        | 🟢 Stable                                        |
-| **Mis à jour**    | 2026-04-02                                       |
+| Champ          | Valeur                  |
+| -------------- | ----------------------- |
+| **Composant**  | Feature                 |
+| **Couche**     | Abstraite (persistante) |
+| **Statut**     | 🟢 Stable               |
+| **Mis à jour** | 2026-04-02              |
 
 > ### Statut normatif
+>
 > Ce document fait foi pour le **contrat Feature** : classe abstraite, 5 capacités, handlers `onXXX`, cycle de vie.
 > Il fait également foi pour la **pratique de déclaration Channel** : `TChannelDefinition`, `declareChannel`,
 > pattern namespace TS (D14), co-localisation (D13).
@@ -44,9 +45,13 @@ via les mapped types définis dans [RFC-0002 §3 Conventions de typage](../6-tra
 
 ```typescript
 /**
- * Classe abstraite Feature — paramétrée par la structure Entity et le Channel.
+ * Classe abstraite Feature — paramétrée par la classe Entity concrete et le Channel.
  *
- * TStructure est contraint à TJsonSerializable (D10).
+ * TEntityClass est contraint à Entity<TJsonSerializable> (ADR-0037, D10) :
+ * la Feature est typée par sa CLASSE Entity, pas par la forme du state.
+ * Cela encode I22 (1:1:1 namespace ↔ Feature ↔ Entity) au type-level
+ * et élimine tout cast `as ConcreteEntity` dans le code applicatif.
+ *
  * TChannel est contraint à TChannelDefinition.
  * Les génériques sont *contraints* : le développeur ne peut pas instancier
  * une Feature avec un Channel arbitraire.
@@ -58,28 +63,31 @@ via les mapped types définis dans [RFC-0002 §3 Conventions de typage](../6-tra
  * `protected` sur entity, onInit, onDestroy, etc.
  */
 abstract class Feature<
-  TStructure extends TJsonSerializable,
+  TEntityClass extends Entity<TJsonSerializable>,
   TChannel extends TChannelDefinition
 > {
   /** Namespace unique — dérivé du token Namespace.channel (D5, I21, D14) */
   static readonly namespace: string;
 
   /**
-   * Constructeur de l'Entity concrète — getter abstrait obligatoire (D17).
+   * Constructeur de l'Entity concrète — getter abstrait obligatoire
+   * (D17 amendé par [ADR-0037](../../adr/ADR-0037-feature-generic-entity-class.md)).
    *
    * Chaque Feature concrète DOIT fournir ce getter retournant le
-   * constructeur de son Entity. La base class l'utilise pour
-   * instancier this.entity dans son constructeur.
+   * constructeur de son Entity. Le retour est typé par TEntityClass
+   * (la classe concrète), pas par Entity<TStructure> — ce qui
+   * permet à `this.entity` d'être typé par la classe concrète
+   * et donne accès aux méthodes `query`, sans cast.
    *
    * Le getter (et non une propriété) est nécessaire car les
    * initialiseurs de propriétés de la classe fille s'exécutent
    * APRÈS super() — un getter sur le prototype est accessible
    * dès le constructeur de la classe abstraite.
    */
-  protected abstract get Entity(): new () => Entity<TStructure>;
+  protected abstract get Entity(): new () => TEntityClass;
 
-  /** L'Entity de cette Feature — relation 1:1:1 (I22) */
-  protected readonly entity: Entity<TStructure>;
+  /** L'Entity de cette Feature — typée par la classe concrète (I22, ADR-0037) */
+  protected readonly entity: TEntityClass;
 
   /**
    * Constructeur — instancie l'Entity automatiquement via D17.
@@ -107,13 +115,14 @@ abstract class Feature<
 > via `keyof Child`), Bonsai utilise `implements TRequiredCommandHandlers<TChannel>`.
 >
 > La différence clé :
+>
 > - **Introspection du type concret** : `RequiredHandlers<Self, Channel>` — a besoin de `Self`
 > - **Génération depuis le contrat** : `RequiredHandlers<Channel>` — le Channel seul suffit
 >
 > Bonsai choisit la seconde approche. Les signatures des méthodes `onXXX`
 > sont générées **uniquement depuis la `TChannelDefinition`**, sans connaître
 > le type concret de la Feature. Le `implements` vérifie que la classe
-> satisfait ces signatures. Résultat : `Feature<TStructure, TChannel>`
+> satisfait ces signatures. Résultat : `Feature<TEntityClass, TChannel>`
 > — deux génériques au lieu de trois, zéro récursion.
 >
 > Pour les cas où un retour typé `this` est nécessaire (chaînage, etc.),
@@ -131,10 +140,10 @@ abstract class Feature<
 
 Un Channel a **deux facettes** :
 
-| Facette | Nature | Visibilité |
-|---------|--------|------------|
+| Facette                     | Nature                            | Visibilité                              |
+| --------------------------- | --------------------------------- | --------------------------------------- |
 | `TChannelDefinition` (type) | Contrat de communication tri-lane | Public — exporté dans le TS `namespace` |
-| `Channel` (classe runtime) | Registres de handlers, dispatch | Interne framework — jamais exposé (D15) |
+| `Channel` (classe runtime)  | Registres de handlers, dispatch   | Interne framework — jamais exposé (D15) |
 
 Le développeur ne manipule que le **type** et le **token**. L'instance runtime est un détail d'implémentation.
 
@@ -144,7 +153,7 @@ type TChannelDefinition = {
   readonly commands: Record<string, unknown>;
   readonly events: Record<string, unknown>;
   readonly requests: Record<string, { params: unknown; result: unknown }>;
-}
+};
 ```
 
 ### Utilitaire `declareChannel`
@@ -154,7 +163,7 @@ type TChannelDefinition = {
  * Crée un token de référence Channel typé.
  * Léger à runtime ({ namespace }), complet au type-level (TChannel).
  */
-function declareChannel<T extends TChannelDefinition>(ns: T['namespace']): T {
+function declareChannel<T extends TChannelDefinition>(ns: T["namespace"]): T {
   return { namespace: ns } as T;
 }
 ```
@@ -166,7 +175,7 @@ Chaque Feature exporte un **TS `namespace`** qui regroupe Channel, State et toke
 ```typescript
 export namespace Cart {
   export type Channel = TChannelDefinition & {
-    readonly namespace: 'cart';
+    readonly namespace: "cart";
     readonly commands: {
       addItem: { productId: string; qty: number };
       removeItem: { productId: string };
@@ -188,7 +197,7 @@ export namespace Cart {
     total: number;
   };
 
-  export const channel = declareChannel<Channel>('cart');
+  export const channel = declareChannel<Channel>("cart");
 }
 ```
 
@@ -203,12 +212,12 @@ contenir de types ; une déclaration `type` ne peut pas contenir de valeurs.
 
 > **D13** : le Channel, le State et le token sont définis dans le **même fichier** que la Feature.
 
-| Aspect | Fichier séparé | Co-localisé (D13) |
-|--------|---------------|-------------------|
-| Cohérence | 2 fichiers à modifier | 1 seul fichier |
-| Navigation IDE | 2 onglets | 1 onglet |
-| Import | 2 imports | 1 import |
-| Risque de désync | Oui | Non |
+| Aspect           | Fichier séparé        | Co-localisé (D13) |
+| ---------------- | --------------------- | ----------------- |
+| Cohérence        | 2 fichiers à modifier | 1 seul fichier    |
+| Navigation IDE   | 2 onglets             | 1 onglet          |
+| Import           | 2 imports             | 1 import          |
+| Risque de désync | Oui                   | Non               |
 
 ```
 Cart/
@@ -228,15 +237,17 @@ Cart/
 
 ```typescript
 class CartFeature
-  extends Feature<Cart.State, Cart.Channel>
+  extends Feature<CartEntity, Cart.Channel>
   implements
     TRequiredCommandHandlers<Cart.Channel>,
     TRequiredRequestHandlers<Cart.Channel>
 {
   static readonly namespace = Cart.channel.namespace;
 
-  /** Liaison Feature → Entity concrète (D17) */
-  protected get Entity() { return CartEntity; }
+  /** Liaison Feature → Entity concrète (D17 amendé par ADR-0037) */
+  protected get Entity() {
+    return CartEntity;
+  }
 
   /** Channels externes écoutés — Events uniquement (C3) */
   static readonly listen = [Inventory.channel, Pricing.channel] as const;
@@ -263,14 +274,14 @@ class CartFeature
 <!--
   Le Channel propre est toujours implicite pour emit (C1),
   handle (C2) et reply (C4).
-  
+
   Seules les dépendances EXTERNES sont déclarées :
   - listen : Channels dont la Feature écoute les Events
   - request : Channels dont la Feature peut lire le state
-  
+
   Le framework (Radio) résout ces déclarations au bootstrap
   pour câbler les Channels automatiquement.
-  
+
   Note : pas de déclaration `emit` ni `handle` ni `reply` —
   ces capacités sont implicites sur le Channel propre.
 -->
@@ -384,13 +395,13 @@ protected trigger<
 
 ### Convention de nommage
 
-| Type | Pattern | Paramètre | Retour | Exemple |
-|------|---------|-----------|--------|---------|
-| **Command** (C2 handle) | `on<MessageName>Command` | `payload: T, metas: TMessageMetas` | `void` | `onAddItemCommand(payload: AddItemPayload, metas: TMessageMetas)` |
-| **Event** (C3 listen) | `on<ChannelName><EventName>Event` | `payload: T, metas: TMessageMetas` | `void` | `onInventoryStockUpdatedEvent(payload: StockPayload, metas: TMessageMetas)` |
-| **Request** (C4 reply) | `on<RequestName>Request` | `void` ou `payload: T, metas: TMessageMetas` | `T \| null` (D9 révisé, ADR-0023) | `onTotalRequest(params: void, metas: TMessageMetas): number \| null` |
-| **Entity per-key** (D16) | `on<Key>EntityUpdated` | `prev: T, next: T, patches: Patch[]` | `void` | `onItemsEntityUpdated(prev: CartItem[], next: CartItem[], patches: Patch[])` |
-| **Entity catch-all** (D16) | `onAnyEntityUpdated` | `event: TEntityEvent` | `void` | `onAnyEntityUpdated(event: TEntityEvent)` |
+| Type                       | Pattern                           | Paramètre                                    | Retour                            | Exemple                                                                      |
+| -------------------------- | --------------------------------- | -------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------------- |
+| **Command** (C2 handle)    | `on<MessageName>Command`          | `payload: T, metas: TMessageMetas`           | `void`                            | `onAddItemCommand(payload: AddItemPayload, metas: TMessageMetas)`            |
+| **Event** (C3 listen)      | `on<ChannelName><EventName>Event` | `payload: T, metas: TMessageMetas`           | `void`                            | `onInventoryStockUpdatedEvent(payload: StockPayload, metas: TMessageMetas)`  |
+| **Request** (C4 reply)     | `on<RequestName>Request`          | `void` ou `payload: T, metas: TMessageMetas` | `T \| null` (D9 révisé, ADR-0023) | `onTotalRequest(params: void, metas: TMessageMetas): number \| null`         |
+| **Entity per-key** (D16)   | `on<Key>EntityUpdated`            | `prev: T, next: T, patches: Patch[]`         | `void`                            | `onItemsEntityUpdated(prev: CartItem[], next: CartItem[], patches: Patch[])` |
+| **Entity catch-all** (D16) | `onAnyEntityUpdated`              | `event: TEntityEvent`                        | `void`                            | `onAnyEntityUpdated(event: TEntityEvent)`                                    |
 
 > Pour les Entity handlers, voir [RFC-0002-entity §6 Notifications](../3-couche-abstraite/entity.md#6-notifications-entity--feature).
 
@@ -398,45 +409,62 @@ protected trigger<
 
 ```typescript
 class CartFeature
-  extends Feature<Cart.State, Cart.Channel>
+  extends Feature<CartEntity, Cart.Channel>
   implements
     TRequiredCommandHandlers<Cart.Channel>,
     TRequiredRequestHandlers<Cart.Channel>
 {
   static readonly namespace = Cart.channel.namespace;
-  protected get Entity() { return CartEntity; }
+  protected get Entity() {
+    return CartEntity;
+  }
   static readonly listen = [Inventory.channel] as const;
   static readonly request = [Pricing.channel] as const;
 
   // ── C2 handle : Commands entrants sur son propre Channel ──
 
   /** Reçoit le Command cart:addItem — déclenché par une View via trigger() */
-  onAddItemCommand(payload: { productId: string; qty: number }, metas: TMessageMetas): void {
+  onAddItemCommand(
+    payload: { productId: string; qty: number },
+    metas: TMessageMetas
+  ): void {
     // Mute l'Entity via mutate(), puis émet un Event
-    this.entity.mutate('cart:addItem', { payload, metas }, draft => {
+    this.entity.mutate("cart:addItem", { payload, metas }, (draft) => {
       draft.items.push({ productId: payload.productId, qty: payload.qty });
     });
-    this.emit('itemAdded', { productId: payload.productId, qty: payload.qty }, { metas });
+    this.emit(
+      "itemAdded",
+      { productId: payload.productId, qty: payload.qty },
+      { metas }
+    );
   }
 
   /** Reçoit le Command cart:removeItem */
-  onRemoveItemCommand(payload: { productId: string }, metas: TMessageMetas): void {
-    this.entity.mutate('cart:removeItem', { payload, metas }, draft => {
-      draft.items = draft.items.filter(i => i.productId !== payload.productId);
+  onRemoveItemCommand(
+    payload: { productId: string },
+    metas: TMessageMetas
+  ): void {
+    this.entity.mutate("cart:removeItem", { payload, metas }, (draft) => {
+      draft.items = draft.items.filter(
+        (i) => i.productId !== payload.productId
+      );
     });
-    this.emit('itemRemoved', { productId: payload.productId }, { metas });
+    this.emit("itemRemoved", { productId: payload.productId }, { metas });
   }
 
   // ── C3 listen : Events d'autres Features ──
 
   /** Écoute l'Event inventory:stockUpdated */
-  onInventoryStockUpdatedEvent(payload: { productId: string; stock: number }, metas: TMessageMetas): void {
+  onInventoryStockUpdatedEvent(
+    payload: { productId: string; stock: number },
+    metas: TMessageMetas
+  ): void {
     if (payload.stock === 0) {
-      this.entity.mutate('cart:markOutOfStock', { payload, metas }, draft => {
-        const item = draft.items.find(i => i.productId === payload.productId);
+      this.entity.mutate("cart:markOutOfStock", { payload, metas }, (draft) => {
+        const item = draft.items.find((i) => i.productId === payload.productId);
         if (item) item.outOfStock = true;
       });
-      this.emit('itemOutOfStock', { productId: payload.productId }, { metas });
+      this.emit("itemOutOfStock", { productId: payload.productId }, { metas });
     }
   }
 
@@ -466,7 +494,7 @@ Exemple end-to-end illustrant la philosophie TypeScript-first :
 export namespace Cart {
   // 1a. Le contrat de communication (Channel)
   export type Channel = TChannelDefinition & {
-    readonly namespace: 'cart';
+    readonly namespace: "cart";
     readonly commands: {
       addItem: { productId: string; qty: number };
       removeItem: { productId: string };
@@ -480,7 +508,10 @@ export namespace Cart {
       cleared: void;
     };
     readonly requests: {
-      items: { params: void; result: Array<{ productId: string; qty: number }> };
+      items: {
+        params: void;
+        result: Array<{ productId: string; qty: number }>;
+      };
       total: { params: void; result: number };
     };
   };
@@ -493,7 +524,7 @@ export namespace Cart {
   };
 
   // 1c. Token de référence
-  export const channel = declareChannel<Channel>('cart');
+  export const channel = declareChannel<Channel>("cart");
 }
 
 // ────────────────────────────────────────────────────────────
@@ -503,40 +534,53 @@ export namespace Cart {
 // ────────────────────────────────────────────────────────────
 
 class CartFeature
-  extends Feature<Cart.State, Cart.Channel>
+  extends Feature<CartEntity, Cart.Channel>
   implements
     TRequiredCommandHandlers<Cart.Channel>,
     TRequiredRequestHandlers<Cart.Channel>
 {
   static readonly namespace = Cart.channel.namespace;
-  protected get Entity() { return CartEntity; }
+  protected get Entity() {
+    return CartEntity;
+  }
 
   // ── Commands (obligatoires par implements) ──
 
-  onAddItemCommand(payload: { productId: string; qty: number }, metas: TMessageMetas): void {
-    this.entity.mutate('cart:addItem', { payload, metas }, draft => {
+  onAddItemCommand(
+    payload: { productId: string; qty: number },
+    metas: TMessageMetas
+  ): void {
+    this.entity.mutate("cart:addItem", { payload, metas }, (draft) => {
       draft.items.push({ productId: payload.productId, qty: payload.qty });
     });
-    this.emit('itemAdded', payload, { metas });
+    this.emit("itemAdded", payload, { metas });
   }
 
-  onRemoveItemCommand(payload: { productId: string }, metas: TMessageMetas): void {
-    this.entity.mutate('cart:removeItem', { payload, metas }, draft => {
-      draft.items = draft.items.filter(i => i.productId !== payload.productId);
+  onRemoveItemCommand(
+    payload: { productId: string },
+    metas: TMessageMetas
+  ): void {
+    this.entity.mutate("cart:removeItem", { payload, metas }, (draft) => {
+      draft.items = draft.items.filter(
+        (i) => i.productId !== payload.productId
+      );
     });
-    this.emit('itemRemoved', payload, { metas });
+    this.emit("itemRemoved", payload, { metas });
   }
 
   onClearCommand(payload: void, metas: TMessageMetas): void {
-    this.entity.mutate('cart:clear', draft => {
+    this.entity.mutate("cart:clear", (draft) => {
       draft.items = [];
     });
-    this.emit('cleared', undefined, { metas });
+    this.emit("cleared", undefined, { metas });
   }
 
   // ── Requests (obligatoires par implements) ──
 
-  onItemsRequest(params: void, metas: TMessageMetas): Array<{ productId: string; qty: number }> | null {
+  onItemsRequest(
+    params: void,
+    metas: TMessageMetas
+  ): Array<{ productId: string; qty: number }> | null {
     return this.entity.getItems();
   }
 
@@ -559,7 +603,7 @@ class CartFeature
 
 <!--
   Mécanisme de découverte (framework interne) :
-  
+
   Au bootstrap, le framework :
   1. Introspecte les méthodes de la Feature
   2. Filtre celles qui commencent par `on` et finissent par
@@ -571,13 +615,13 @@ class CartFeature
   5. Pour les *Request : vérifie que le nom correspond à un
      Request déclaré dans le Channel propre (TChannel.requests)
   6. Câble automatiquement les handlers via Radio
-  
+
   Si une méthode onXXX ne correspond à aucun message connu :
   → erreur au bootstrap (validation dynamique)
-  
+
   Si un message déclaré n'a pas de handler onXXX :
   → warning en mode debug, erreur en mode strict (à décider)
-  
+
   Typage compile-time :
   Le framework fournit des types utilitaires qui vérifient
   la correspondance entre les méthodes onXXX et les déclarations
@@ -593,17 +637,19 @@ class CartFeature
 
 ```typescript
 abstract class Feature<
-  TStructure extends TJsonSerializable,
+  TEntityClass extends Entity<TJsonSerializable>,
   TChannel extends TChannelDefinition
 > {
   /**
-   * Constructeur de l'Entity concrète — obligatoire (D17).
+   * Constructeur de l'Entity concrète — obligatoire (D17 amendé par ADR-0037).
    * La Feature concrète retourne sa classe Entity via ce getter.
+   * Le retour est typé par TEntityClass : `this.entity` est typé par
+   * la classe concrète, plus aucun cast nécessaire pour accéder à `query`.
    */
-  protected abstract get Entity(): new () => Entity<TStructure>;
+  protected abstract get Entity(): new () => TEntityClass;
 
   /** Accès direct à l'Entity — Feature est le seul propriétaire (I6) */
-  protected readonly entity: Entity<TStructure>;
+  protected readonly entity: TEntityClass;
 
   /** Instanciation automatique dans le constructeur (D17) */
   constructor() {
@@ -616,15 +662,15 @@ abstract class Feature<
   La Feature accède à son Entity directement via `this.entity`.
   C'est la seule exception au découplage par Channel :
   la relation Feature ↔ Entity est directe, pas événementielle.
-  
+
   Le getter `abstract get Entity()` (D17) garantit au compile-time
   que chaque Feature concrète fournit son constructeur Entity.
   La base class instancie automatiquement via `new this.Entity()`.
-  
+
   Le getter (et non une propriété) est nécessaire car les
   initialiseurs de propriétés s'exécutent après super() —
   un getter sur le prototype est déjà résolu dans le constructeur parent.
-  
+
   Aucun autre composant n'a accès à `this.entity` :
   - Les Views/Behaviors lisent le state via request() (C5)
   - Les autres Features lisent via request() (C5, D3)
@@ -638,18 +684,18 @@ abstract class Feature<
 Les hooks de cycle de vie sont des **méthodes framework internes** (L1),
 pas des Events sur un Channel. Le framework les appelle directement.
 
-| Hook | Quand | Usage typique |
-|------|-------|---------------|
-| `onInit()` | Après instanciation, après câblage des Channels | Chargement initial de données, setup |
-| `onDestroy()` | Avant destruction au shutdown | Cleanup, sauvegarde, libération de ressources |
+| Hook          | Quand                                           | Usage typique                                 |
+| ------------- | ----------------------------------------------- | --------------------------------------------- |
+| `onInit()`    | Après instanciation, après câblage des Channels | Chargement initial de données, setup          |
+| `onDestroy()` | Avant destruction au shutdown                   | Cleanup, sauvegarde, libération de ressources |
 
 ```typescript
 abstract class Feature<
-  TStructure extends TJsonSerializable,
+  TEntityClass extends Entity<TJsonSerializable>,
   TChannel extends TChannelDefinition
 > {
-  protected abstract get Entity(): new () => Entity<TStructure>;
-  protected readonly entity: Entity<TStructure>;
+  protected abstract get Entity(): new () => TEntityClass;
+  protected readonly entity: TEntityClass;
 
   constructor() {
     this.entity = new this.Entity();
@@ -668,15 +714,15 @@ abstract class Feature<
 
 <!--
   Pourquoi pas des Events Channel ?
-  
+
   RFC-0001 Q9 a démontré que les Events lifecycle sont structurellement
   inutiles : au moment où `onInit` est appelé (bootstrap étape 5),
   aucune View n'existe encore pour écouter. Et quand les Views existent
   (étape 6+), les Features sont déjà initialisées.
-  
+
   Les hooks sont synchrones ou async (Promise<void>) pour permettre
   un chargement initial de données (fetch, localStorage, etc.).
-  
+
   Ordre d'appel :
   - onInit() : appelé pour chaque Feature dans l'ordre d'enregistrement
   - Si un onInit() retourne une Promise, le bootstrap attend sa résolution
@@ -694,14 +740,14 @@ abstract class Feature<
 registered → wired → initialized → active → destroying → [destroyed]
 ```
 
-| État | Entrée (déclencheur) | Sorties possibles | Notes |
-|------|----------------------|-------------------|-------|
-| `registered` | `app.register(FeatureClass)` | → `wired` (bootstrap) | Validation namespace (I21) |
-| `wired` | Câblage Radio — Channels résolus, handlers indexés | → `initialized` | Erreur si handler manquant ou duplicate |
-| `initialized` | `onInit()` terminé | → `active` | `onInit()` async attendu (D18) |
-| `active` | Bootstrap complet | → `destroying` (shutdown) | Phase nominale — traite Commands, émet Events, répond à Requests |
-| `destroying` | `app.stop()` | → `destroyed` | `onDestroy()` appelé. Ordre : inverse de registration |
-| `destroyed` | Nettoyage complet | — (terminal) | Entity déréférencée, subscriptions supprimées |
+| État          | Entrée (déclencheur)                               | Sorties possibles         | Notes                                                            |
+| ------------- | -------------------------------------------------- | ------------------------- | ---------------------------------------------------------------- |
+| `registered`  | `app.register(FeatureClass)`                       | → `wired` (bootstrap)     | Validation namespace (I21)                                       |
+| `wired`       | Câblage Radio — Channels résolus, handlers indexés | → `initialized`           | Erreur si handler manquant ou duplicate                          |
+| `initialized` | `onInit()` terminé                                 | → `active`                | `onInit()` async attendu (D18)                                   |
+| `active`      | Bootstrap complet                                  | → `destroying` (shutdown) | Phase nominale — traite Commands, émet Events, répond à Requests |
+| `destroying`  | `app.stop()`                                       | → `destroyed`             | `onDestroy()` appelé. Ordre : inverse de registration            |
+| `destroyed`   | Nettoyage complet                                  | — (terminal)              | Entity déréférencée, subscriptions supprimées                    |
 
 > **Garantie de séquence** : une Feature ne peut pas recevoir de Command avant d'être
 > en état `active`. Le bootstrap garantit que la couche abstraite est intégralement
@@ -713,10 +759,10 @@ registered → wired → initialized → active → destroying → [destroyed]
 
 Un Command handler peut échouer pour deux raisons distinctes :
 
-| Situation | Comportement attendu | Exemple |
-|-----------|---------------------|---------|
-| **Refus métier** | Le handler n'exécute pas la mutation et n'émet pas d'Event. Il peut émettre un Event d'erreur métier dédié. | `cart:addItem` avec `qty <= 0` — ne pas muter, émettre `cart:itemRejected` |
-| **Exception inattendue** | Capturée par le framework, logguée avec contexte causal complet. L'exception ne propage pas aux autres composants. Voir [ADR-0002](../adr/ADR-0002-error-propagation-strategy.md). | Erreur réseau dans un handler d'IO Feature |
+| Situation                | Comportement attendu                                                                                                                                                               | Exemple                                                                    |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| **Refus métier**         | Le handler n'exécute pas la mutation et n'émet pas d'Event. Il peut émettre un Event d'erreur métier dédié.                                                                        | `cart:addItem` avec `qty <= 0` — ne pas muter, émettre `cart:itemRejected` |
+| **Exception inattendue** | Capturée par le framework, logguée avec contexte causal complet. L'exception ne propage pas aux autres composants. Voir [ADR-0002](../adr/ADR-0002-error-propagation-strategy.md). | Erreur réseau dans un handler d'IO Feature                                 |
 
 > **Convention de refus métier** : ne pas lever d'exception pour un refus métier prévisible.
 > Préférer un Event dédié (`xxx:rejected`, `xxx:failed`) avec le motif dans le payload.
@@ -761,10 +807,10 @@ onTotalRequest(params: void, metas: TMessageMetas): number | null {
 > **Recommandation** : les Command handlers DEVRAIENT être idempotents quand le
 > domaine le permet — appliquer deux fois le même Command produit le même état final.
 
-| Niveau | Description | Recommandation |
-|--------|-------------|----------------|
-| **Idempotent strict** | Deux exécutions = même state final | ✅ Préféré (ex: `setX`, `markAs`) |
-| **Non-idempotent contrôlé** | Effet cumulatif explicite et voulu | ✅ Acceptable (ex: `addItem`, `increment`) |
+| Niveau                          | Description                        | Recommandation                                    |
+| ------------------------------- | ---------------------------------- | ------------------------------------------------- |
+| **Idempotent strict**           | Deux exécutions = même state final | ✅ Préféré (ex: `setX`, `markAs`)                 |
+| **Non-idempotent contrôlé**     | Effet cumulatif explicite et voulu | ✅ Acceptable (ex: `addItem`, `increment`)        |
 | **Non-idempotent involontaire** | Duplication d'état par inattention | ❌ Anti-pattern (ex: push sans check d'existance) |
 
 ```typescript
@@ -793,12 +839,12 @@ onSetStatusCommand({ status }: { status: string }, metas: TMessageMetas): void {
 > La section suivante est **informative** — voir [Framework Style Guide](../guides/FRAMEWORK-STYLE-GUIDE.md)
 > pour les conventions détaillées.
 
-| Indicateur | Seuil d'alerte | Action recommandée |
-|-----------|---------------|-------------------|
-| Nombre de Commands > 10 | God Feature potentielle | Découper en Features par sous-domaine |
-| Nombre de `listen` > 5 | Dépendances croisées excessives | Créer une Feature d'intégration dédiée |
-| Handler > 30 lignes | Logique mal placée | Extraire dans des méthodes privées ou dans l'Entity |
-| Entity avec > 15 propriétés | State trop large | Découper en deux Features avec Entities séparées |
+| Indicateur                  | Seuil d'alerte                  | Action recommandée                                  |
+| --------------------------- | ------------------------------- | --------------------------------------------------- |
+| Nombre de Commands > 10     | God Feature potentielle         | Découper en Features par sous-domaine               |
+| Nombre de `listen` > 5      | Dépendances croisées excessives | Créer une Feature d'intégration dédiée              |
+| Handler > 30 lignes         | Logique mal placée              | Extraire dans des méthodes privées ou dans l'Entity |
+| Entity avec > 15 propriétés | State trop large                | Découper en deux Features avec Entities séparées    |
 
 > **Anti-pattern God Feature** — voir [RFC-0001-invariants-decisions §2](../reference/invariants.md#-god-feature).
 > Une Feature bien calibrée répond à une seule question : "de quoi suis-je responsable ?"
@@ -860,17 +906,17 @@ abstract class BonsaiError extends Error {
 
 #### Matrice de comportement
 
-| Erreur | State | Historique | Continue ? | Mode dev | Mode prod |
-|--------|-------|------------|------------|----------|-----------|
-| **MutationError** | ❌ Rollback | ❌ Non ajouté | Non | throw | throw |
-| **CommandError** | ❌ Pas muté | — | Non | throw | throw |
-| **RequestError** | — | — | Non | reject | reject |
-| **BroadcastError** | ✅ Conservé | ✅ Conservé | ✅ Oui | throw | log |
-| **ListenerError** | — | — | ✅ Oui | throw | log |
-| **TimeoutError** | — | — | Non | reject | reject |
-| **NoHandlerError** | — | — | — | throw | warn |
-| **RenderError** | — | — | ✅ Boundary | throw | boundary |
-| **BehaviorError** | — | — | ✅ Oui | throw | log |
+| Erreur             | State       | Historique    | Continue ?  | Mode dev | Mode prod |
+| ------------------ | ----------- | ------------- | ----------- | -------- | --------- |
+| **MutationError**  | ❌ Rollback | ❌ Non ajouté | Non         | throw    | throw     |
+| **CommandError**   | ❌ Pas muté | —             | Non         | throw    | throw     |
+| **RequestError**   | —           | —             | Non         | reject   | reject    |
+| **BroadcastError** | ✅ Conservé | ✅ Conservé   | ✅ Oui      | throw    | log       |
+| **ListenerError**  | —           | —             | ✅ Oui      | throw    | log       |
+| **TimeoutError**   | —           | —             | Non         | reject   | reject    |
+| **NoHandlerError** | —           | —             | —           | throw    | warn      |
+| **RenderError**    | —           | —             | ✅ Boundary | throw    | boundary  |
+| **BehaviorError**  | —           | —             | ✅ Oui      | throw    | log       |
 
 #### Principe clé : séparation Mutation vs Broadcast
 
@@ -895,14 +941,14 @@ onItemsEntityUpdated(prev, next, patches) {
 Chaque Feature (et View) peut surcharger `onError()` pour un comportement custom :
 
 ```typescript
-class CartFeature extends Feature<Cart.State, Cart.Channel> {
+class CartFeature extends Feature<CartEntity, Cart.Channel> {
   protected onError(error: BonsaiError): void {
-    if (error instanceof RequestError && error.request === 'pricing:getPrice') {
+    if (error instanceof RequestError && error.request === "pricing:getPrice") {
       this.useCachedPrice(); // Retry avec cache
       return;
     }
     if (error instanceof MutationError) {
-      this.emit('cart:error', { message: 'Action failed, please retry' });
+      this.emit("cart:error", { message: "Action failed, please retry" });
       return;
     }
     super.onError(error); // Comportement par défaut

@@ -30,14 +30,8 @@
 
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { resetDOM } from "../helpers/dom-setup";
-
-// ============================================================================
-// IMPORT TDD : rien n'existe encore. Ce test est ROUGE.
-// Quand il sera VERT, la strate 0 est livrée.
-//
-// import { Application } from "@core/bonsai";
-// import { CartFeature } from "../fixtures/cart-feature.fixture";
-// ============================================================================
+import { Application } from "@bonsai/application";
+import { CartFeature, AppFoundation } from "../fixtures/cart-feature.fixture";
 
 describe("🚪 GATE Strate 0 — Cart round-trip E2E [ADR-0028]", () => {
   beforeEach(() => {
@@ -60,39 +54,39 @@ describe("🚪 GATE Strate 0 — Cart round-trip E2E [ADR-0028]", () => {
     `;
   });
 
-  it.skip("click addButton → trigger → handle → mutate → emit → N1 projection → DOM updated", () => {
+  it("click addButton → trigger → handle → mutate → emit → N1 projection → DOM updated", () => {
     // ── 1. Bootstrap ──────────────────────────────────────────────
-    // const app = new Application();
-    // app.register(CartFeature);
-    // app.start();
+    const app = new Application({ foundation: AppFoundation });
+    app.register(CartFeature);
+    app.start();
 
     // ── 2. Vérifier que la View est montée ────────────────────────
-    // const addButton = document.querySelector("[data-ui='addButton']") as HTMLElement;
-    // expect(addButton).not.toBeNull();
+    const addButton = document.querySelector(
+      "[data-ui='addButton']"
+    ) as HTMLElement;
+    expect(addButton).not.toBeNull();
 
-    // ── 3. Simuler click ──────────────────────────────────────────
-    // addButton.click();
+    const itemCount = document.querySelector("[data-ui='itemCount']");
+    const total = document.querySelector("[data-ui='total']");
+    const emptyMsg = document.querySelector(
+      "[data-ui='emptyMessage']"
+    ) as HTMLElement;
 
-    // ── 4. Vérifier la projection N1 dans le DOM ──────────────────
-    // const itemCount = document.querySelector("[data-ui='itemCount']");
-    // expect(itemCount!.textContent).toBe("1");
+    // État initial — pré-rendu côté template (PDR), la View n'a rien projeté
+    expect(itemCount!.textContent).toBe("0");
 
-    // ── 5. Vérifier que le message "empty" est masqué ─────────────
-    // const emptyMsg = document.querySelector("[data-ui='emptyMessage']") as HTMLElement;
-    // expect(emptyMsg.style.display).toBe("none");
+    // ── 3. Premier click ──────────────────────────────────────────
+    addButton.click();
 
-    // ── 6. Ajouter un deuxième item ───────────────────────────────
-    // addButton.click();
-    // expect(itemCount!.textContent).toBe("2");
-  });
+    // ── 4. Projection N1 mise à jour ──────────────────────────────
+    expect(itemCount!.textContent).toBe("1");
+    expect(total!.textContent).toBe("9.99");
+    // visible(false) → display:none (D19)
+    expect(emptyMsg.style.display).toBe("none");
 
-  it.skip("trigger without handler in dev mode throws descriptive error", () => {
-    // const app = new Application();
-    // app.start(); // Pas de Feature enregistrée
-    //
-    // // Trigger un command sans handler → erreur claire
-    // expect(() => {
-    //   /* simulate trigger on an unregistered channel */
-    // }).toThrow(/no handler/i);
+    // ── 5. Deuxième click — confirme la persistance du state ─────
+    addButton.click();
+    expect(itemCount!.textContent).toBe("2");
+    expect(total!.textContent).toBe("19.98");
   });
 });

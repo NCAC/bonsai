@@ -2,17 +2,18 @@
   "name": "@bonsai/event",
   "version": "0.1.0",
   "private": true,
-  "description": "Event module for bonsai",
+  "description": "Communication infrastructure for Bonsai — Channel tri-lane + Radio singleton",
   "type": "module",
   "author": {
     "name": "NCAC",
     "email": "dev.ncac@gmail.com"
   },
   "main": "./dist/bonsai-event.js",
-  "types": "./dist/bonsai-event.d.ts",
+  "types": "./src/bonsai-event.ts",
   "src": "./src/bonsai-event.ts",
   "dependencies": {
     "@bonsai/types": "workspace:^",
+    "@bonsai/error": "workspace:^",
     "@bonsai/rxjs": "workspace:^"
   }
 }

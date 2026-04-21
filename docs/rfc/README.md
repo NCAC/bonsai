@@ -121,9 +121,15 @@ rfc/
 
 | Icône | Statut | Description |
 |-------|--------|-------------|
-| 🟢 | **Stable** | Architecture définie, amendements mineurs possibles |
+| 🟢 | **Stable** | Spécification stabilisée — contrat figé, prêt à implémenter. Amendements mineurs possibles via ADR |
+| 🔵 | **Proven** | Spécification stabilisée **ET** couverte par des tests d'architecture (ADR-0030). Le code implémente le contrat et les tests le prouvent |
 | 🟡 | **Draft** | Rédaction/révision active |
 | ⚪ | **Brouillon** | Exploration, non normatif |
+
+> **Clarification (amendement 2026-04-17)** : 🟢 Stable signifie que la **spécification** est figée,
+> pas que le code est implémenté. Un document passe de 🟢 Stable à 🔵 Proven lorsque
+> les tests de la strate correspondante (ADR-0030, ADR-0034) couvrent les invariants qu'il définit.
+> Avant ce passage, le document fait foi pour le contrat mais n'est pas encore vérifié par le code.
 
 ---
 
@@ -191,7 +197,7 @@ En cas de divergence entre documents, le **document source de vérité** prévau
 | Listes virtualisées | [Rendu avancé §6, §12](5-rendu.md) | [ADR-0012](../adr/ADR-0012-virtualized-list.md) 🟢 | 🟡 50% | Absorber API `Virtualizer` |
 | Local state (View & Behavior) | [View](4-couche-concrete/view.md) / [Behavior](4-couche-concrete/behavior.md) | [ADR-0015](../adr/ADR-0015-local-state-mechanism.md) 🟢 | ✅ 80% | `updateLocal()`, `get local`, dual N1/N2-N3 absorbés |
 | SSR & hydration | [Rendu avancé](5-rendu.md) | [ADR-0014](../adr/ADR-0014-ssr-hydration-strategy.md) 🟢 | ✅ 80% | H1–H5 absorbés |
-| Contrat Behavior | [Behavior](4-couche-concrete/behavior.md) | [ADR-0007](../adr/ADR-0007-behavior-contract.md) 🟢 | ✅ 80% | Contrat absorbé dans le chapitre dédié |
+| Contrat Behavior | [Behavior](4-couche-concrete/behavior.md) | [ADR-0007](../adr/ADR-0007-behavior-contract.md) ⚪ | ✅ 80% | Contrat absorbé dans le chapitre dédié (ADR superseded) |
 
 ### Transversal
 
@@ -204,6 +210,8 @@ En cas de divergence entre documents, le **document source de vérité** prévau
 | Réutilisation code View | [Décisions D38](reference/decisions.md) | [ADR-0013](../adr/ADR-0013-view-code-reuse.md) ⚪ | — | ⚪ Superseded (→ D38) |
 | Distribution ESM | [Distribution](2-architecture/distribution.md) | [ADR-0019](../adr/ADR-0019-esm-modulaire.md) 🟢 | 🟡 50% | BonsaiRegistry, chargement dynamique absorbés |
 | Extension Points | [Architecture](2-architecture/README.md) | [ADR-0021](../adr/ADR-0021-extension-points.md) 🟡 | 🔴 0% | Proposed — en attente d'acceptation |
+| Build artifacts & versioning | *Aucune RFC* | [ADR-0035](../adr/ADR-0035-build-artifacts-versioning-strategy.md) 🟢 | 🔴 0% | Tout versionné, rebuild systématique, `main` fait foi |
+| Internationalisation docs | *Aucune RFC* | [ADR-0036](../adr/ADR-0036-documentation-internationalization-strategy.md) 🟢 | 🔴 0% | FR source, EN dérivée (`-EN.md`), traduction incrémentale |
 
 ### Légende
 

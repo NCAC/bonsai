@@ -227,42 +227,50 @@ Chaque composant framework est un package pnpm indépendant dans `packages/`. Le
 
 ```
 packages/
-  types/                          → "@bonsai/types"
-  event/                          → "@bonsai/event"     (Radio, Channel — réécriture depuis zéro, legacy marionext abandonné)
-  entity/                         → "@bonsai/entity"
+  types/                          → "@bonsai/types"     (types cross-packages : TJsonValue, TConstructor, TNullish — nettoyé, legacy marionext purgé)
+  error/                          → "@bonsai/error"     (BonsaiError, taxonomie ADR-0002, invariant(), hardInvariant())
     package.json                     deps: @bonsai/types
+    src/
+      bonsai-error.ts            → barrel
+      bonsai-error.class.ts      → hiérarchie BonsaiError
+      invariant.ts               → invariant(), hardInvariant(), warning()
+  event/                          → "@bonsai/event"     (Radio, Channel — réécriture depuis zéro, legacy marionext abandonné)
+    package.json                     deps: @bonsai/types, @bonsai/error
+  entity/                         → "@bonsai/entity"
+    package.json                     deps: @bonsai/types, @bonsai/error
     src/
       entity.class.ts
       bonsai-entity.ts            → barrel
   feature/                        → "@bonsai/feature"
-    package.json                     deps: @bonsai/entity, @bonsai/event
+    package.json                     deps: @bonsai/entity, @bonsai/event, @bonsai/error
     src/
       feature.class.ts
       bonsai-feature.ts           → barrel
   behavior/                       → "@bonsai/behavior"
-    package.json                     deps: @bonsai/event, @bonsai/types
+    package.json                     deps: @bonsai/event, @bonsai/types, @bonsai/error
     src/
       behavior.class.ts
       bonsai-behavior.ts          → barrel
   view/                           → "@bonsai/view"
-    package.json                     deps: @bonsai/event, @bonsai/behavior
+    package.json                     deps: @bonsai/event, @bonsai/behavior, @bonsai/error
     src/
       view.class.ts
       bonsai-view.ts              → barrel
   composer/                       → "@bonsai/composer"
-    package.json                     deps: @bonsai/event, @bonsai/view
+    package.json                     deps: @bonsai/event, @bonsai/view, @bonsai/error
     src/
       composer.class.ts
       bonsai-composer.ts          → barrel
   foundation/                     → "@bonsai/foundation"
-    package.json                     deps: @bonsai/event, @bonsai/composer
+    package.json                     deps: @bonsai/event, @bonsai/composer, @bonsai/error
     src/
       foundation.class.ts
       bonsai-foundation.ts        → barrel
   application/                    → "@bonsai/application"
     package.json                     deps: @bonsai/feature, @bonsai/entity,
                                            @bonsai/event, @bonsai/view,
-                                           @bonsai/composer, @bonsai/foundation
+                                           @bonsai/composer, @bonsai/foundation,
+                                           @bonsai/error
     src/
       application.class.ts
       bonsai-application.ts       → barrel
@@ -276,24 +284,30 @@ core/                             → "@bonsai/core"  (méta-package — barrel 
 **Graphe de dépendances (DAG pur, zéro cycle) :**
 
 ```
-                    @bonsai/types
-                    ╱           ╲
-           @bonsai/event    @bonsai/entity
-              │    ╲            │
-              │   @bonsai/feature
-              │
-        @bonsai/behavior
-              │
-         @bonsai/view
-              │
-        @bonsai/composer
-              │
-       @bonsai/foundation
-              │
-       @bonsai/application  ← orchestre tout
-              │
-        @bonsai/core        ← méta-package (barrel pur, zéro code propre)
+                    @bonsai/types           ← types primitifs cross-packages
+                    ╱     │     ╲
+           @bonsai/error   │      │            ← BonsaiError, invariant(), hardInvariant()
+            ╱   │   ╲     │      │
+   @bonsai/event │  @bonsai/entity
+        │   ╲    │        │
+        │   @bonsai/feature
+        │
+  @bonsai/behavior
+        │
+   @bonsai/view
+        │
+  @bonsai/composer
+        │
+ @bonsai/foundation
+        │
+ @bonsai/application  ← orchestre tout
+        │
+  @bonsai/core        ← méta-package (barrel pur, zéro code propre)
 ```
+
+> **`@bonsai/error` est une dépendance de quasi tout le graphe** : chaque composant
+> qui valide un invariant, émet un diagnostic ou throw une `BonsaiError` structurée
+> en dépend. C'est le second socle après `@bonsai/types`.
 
 **Import développeur :**
 
@@ -330,7 +344,8 @@ import { Feature, Entity, Application } from "@bonsai/core";
   "main": "./dist/bonsai-entity.js",
   "types": "./dist/bonsai-entity.d.ts",
   "dependencies": {
-    "@bonsai/types": "workspace:^"
+    "@bonsai/types": "workspace:^",
+    "@bonsai/error": "workspace:^"
   }
 }
 ```
@@ -347,6 +362,7 @@ moduleNameMapper: {
   "^@bonsai/foundation$":  "<rootDir>/packages/foundation/src/bonsai-foundation.ts",
   "^@bonsai/application$": "<rootDir>/packages/application/src/bonsai-application.ts",
   "^@bonsai/behavior$":    "<rootDir>/packages/behavior/src/bonsai-behavior.ts",
+  "^@bonsai/error$":       "<rootDir>/packages/error/src/bonsai-error.ts",
   "^@bonsai/event$":       "<rootDir>/packages/event/src/bonsai-event.ts",
   "^@bonsai/types$":       "<rootDir>/packages/types/index.d.ts",
   // Méta-package barrel
@@ -414,19 +430,29 @@ Nous choisissons **Option D — Un package par composant** parce que :
 
 ```typescript
 // core/src/bonsai.ts — méta-package barrel
+
+// Socle transversal
+export type {
+  TJsonValue,
+  TJsonObject,
+  TJsonPrimitive,
+  TConstructor
+} from "@bonsai/types";
+export { BonsaiError, invariant, hardInvariant } from "@bonsai/error";
+
+// Couche abstraite
 export { Entity } from "@bonsai/entity";
 export type { TEntityStructure } from "@bonsai/entity";
-
 export { Feature } from "@bonsai/feature";
 export type { TChannelDefinition, declareChannel } from "@bonsai/event";
+export { Radio, Channel } from "@bonsai/event";
 
+// Couche concrète
 export { View } from "@bonsai/view";
 export { Composer } from "@bonsai/composer";
 export { Foundation } from "@bonsai/foundation";
 export { Behavior } from "@bonsai/behavior";
 export { Application } from "@bonsai/application";
-
-export { Radio, Channel } from "@bonsai/event";
 ```
 
 #### Renommage du package `core/`
@@ -445,6 +471,54 @@ Concrètement :
 - Les tests existants référençant l'ancienne API (`tests/unit/channel.class.test.ts`, `tests/unit/radio.singleton.test.ts`) sont obsolètes — les tests strate-0 les remplacent
 
 **Le fait qu'un fichier soit commité ne lui confère aucun statut d'immutabilité ni de conformité architecturale.**
+
+#### `@bonsai/types` — périmètre post-nettoyage
+
+`@bonsai/types` est un package **types-only** (`.d.ts`, pas de runtime). Son rôle est de fournir les **types primitifs cross-packages** utilisés comme contrats transversaux entre ≥2 composants Bonsai distincts.
+
+**Critère d'appartenance** : un type vit dans `@bonsai/types` si et seulement si :
+
+1. Il est utilisé par ≥2 packages Bonsai distincts comme contrat d'interface, ET
+2. Il ne peut pas être inliné dans un package consommateur sans créer une dépendance circulaire
+
+**Types conservés :**
+
+| Type                                                        | Justification                                                               |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `TJsonValue`, `TJsonObject`, `TJsonArray`, `TJsonPrimitive` | Contrainte state Entity (D10), payload Channel — cross Entity/Event/Feature |
+| `TConstructor`, `TClass`                                    | `Application.register()`, factories — cross Application/Feature             |
+| `TNullish`, `TNonUndefined`                                 | Types de garde basiques transversaux                                        |
+| `AnyFunction` (renommé `TFunction`)                         | Handlers Channel, callbacks génériques                                      |
+| `TParameters`                                               | Utilitaire générique handlers                                               |
+
+**Types supprimés** (fork type-fest/utility-types/lodash, aucun consommateur Bonsai identifié) :
+`TuplifyUnion`, `StrictArrayOfValues`, `StrictArrayOfKeys`, `MutableKeys`, `RequiredKeys`, `OptionalKeys`, `PickByValue`, `PickByValueExact`, `TPropertyNameByType`, `TFunctionPropertyNames`, `TNonFunctionPropertyNames`, `TOneLetter`, `StringDigit`, `Whitespace`, `StringHash`, `TNumericDictionary`, `TDictionaryValue`, `Entry`, `TEntries`, `AlwaysParameters`, `type-fest-empty-object.d.ts` (doublon).
+
+**Moment du nettoyage** : immédiatement avant le milestone Feature (quand `TChannelDefinition` et `TCommandMap` devront y atterrir). Le milestone Channel/Radio ne nécessite que `TJsonValue` et `AnyFunction`, qui existent déjà.
+
+#### `@bonsai/error` — nouveau package fondation
+
+`@bonsai/error` est un **nouveau package** qui centralise l'infrastructure d'erreurs et de validation du framework. Il implémente la taxonomie définie par [ADR-0002](ADR-0002-error-propagation-strategy.md) et les modes de validation de [ADR-0004](ADR-0004-validation-modes.md).
+
+**Contenu :**
+
+| Export                                                                                                                                              | Rôle                                                                                                       |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `BonsaiError` (classe de base)                                                                                                                      | Erreur structurée avec `invariantId`, `component`, `suggestion`. Toutes les erreurs framework en héritent. |
+| Sous-classes : `MutationError`, `CommandError`, `RequestError`, `ListenerError`, `NoHandlerError`, `RenderError`, `BehaviorError`, `BroadcastError` | Taxonomie ADR-0002 — une classe par catégorie                                                              |
+| `invariant(condition, message, invariantId)`                                                                                                        | Assertion runtime — throw `BonsaiError` si condition fausse. Strippable en prod via `__DEV__` (ADR-0004).  |
+| `hardInvariant(condition, message, invariantId)`                                                                                                    | Assertion **non-strippable** — erreurs structurelles fatales (bootstrap, I21, I10…). Reste en prod.        |
+| `warning(condition, message)`                                                                                                                       | Log conditionnel `__DEV__` only — ne throw jamais.                                                         |
+
+**Pourquoi un package séparé et pas dans `@bonsai/types` ou `@bonsai/event` :**
+
+- `@bonsai/types` est types-only, pas de runtime — or `invariant()` et `BonsaiError` sont du code runtime
+- `@bonsai/event` est trop spécifique — `BonsaiError` est utilisé par Entity, Feature, View, Application…
+- Un package dédié permet à **tout le graphe** d'en dépendre sans cycle, car `@bonsai/error` ne dépend que de `@bonsai/types`
+
+**Dépendances** : `@bonsai/types` uniquement (pour `TJsonValue` dans les payloads d'erreur).
+
+**Moment de création** : au démarrage du milestone Channel/Radio — les sémantiques runtime Channel (ADR-0003 : throw en dev, warn en prod, `NoHandlerError`) nécessitent `@bonsai/error` immédiatement.
 
 #### Emplacement des packages
 
@@ -544,6 +618,8 @@ packages/{name}/
 
 | Package               | Barrel source           | Classe principale                        | `main` (dist)                | `types` (dist)                 |
 | --------------------- | ----------------------- | ---------------------------------------- | ---------------------------- | ------------------------------ |
+| `@bonsai/types`       | `index.d.ts`            | _(types only — pas de runtime)_          | —                            | `index.d.ts`                   |
+| `@bonsai/error`       | `bonsai-error.ts`       | `bonsai-error.class.ts`, `invariant.ts`  | `dist/bonsai-error.js`       | `dist/bonsai-error.d.ts`       |
 | `@bonsai/entity`      | `bonsai-entity.ts`      | `entity.class.ts`                        | `dist/bonsai-entity.js`      | `dist/bonsai-entity.d.ts`      |
 | `@bonsai/feature`     | `bonsai-feature.ts`     | `feature.class.ts`                       | `dist/bonsai-feature.js`     | `dist/bonsai-feature.d.ts`     |
 | `@bonsai/event`       | `bonsai-event.ts`       | `radio.singleton.ts`, `channel.class.ts` | `dist/bonsai-event.js`       | `dist/bonsai-event.d.ts`       |
@@ -592,8 +668,9 @@ packages/{name}/
 - [ ] Remplacer l'alias `@core/bonsai` par les imports `@bonsai/*` dans `tsconfig.test.json` (paths)
 - [ ] Mettre à jour les imports dans tous les tests strate-0
 - [ ] Vérifier le DAG avec `pnpm ls --depth 1` après scaffolding
+- [ ] Créer le package `@bonsai/error` dans `packages/error/` : `BonsaiError`, taxonomie ADR-0002, `invariant()`, `hardInvariant()`, `warning()` (ADR-0004)
 - [ ] Réécrire `@bonsai/event` depuis zéro selon les spécifications RFC/ADR (Radio singleton I15, Channel tri-lane ADR-0023 sync, suppression EventTrigger legacy)
-- [ ] Réécrire `@bonsai/types` depuis zéro — seuls les types conformes aux RFC sont conservés
+- [ ] Nettoyer `@bonsai/types` — purger les types fork type-fest/utility-types/lodash sans consommateur, ne conserver que les types cross-packages identifiés
 - [ ] Supprimer les tests legacy obsolètes (`tests/unit/channel.class.test.ts`, `tests/unit/radio.singleton.test.ts`) — remplacés par les tests strate-0
 
 ---
@@ -612,8 +689,9 @@ packages/{name}/
 
 ## Historique
 
-| Date       | Changement                                                                                                   |
-| ---------- | ------------------------------------------------------------------------------------------------------------ |
-| 2026-04-10 | Création (Proposed) — motivée par le démarrage de l'implémentation strate 0                                  |
-| 2026-04-10 | Ajout Option D (un package par composant) — retenue comme décision                                           |
-| 2026-04-10 | **Accepted** — rupture actée avec l'héritage marionext : `@bonsai/event` et `@bonsai/types` réécrits de zéro |
+| Date       | Changement                                                                                                                                                                                                                                                                                |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-04-10 | Création (Proposed) — motivée par le démarrage de l'implémentation strate 0                                                                                                                                                                                                               |
+| 2026-04-10 | Ajout Option D (un package par composant) — retenue comme décision                                                                                                                                                                                                                        |
+| 2026-04-10 | **Accepted** — rupture actée avec l'héritage marionext : `@bonsai/event` et `@bonsai/types` réécrits de zéro                                                                                                                                                                              |
+| 2026-04-16 | Amendement : ajout `@bonsai/error` (taxonomie ADR-0002, invariant/hardInvariant) comme package fondation dans le DAG. Périmètre post-nettoyage de `@bonsai/types` détaillé (critères d'appartenance, types conservés/supprimés). DAG, barrel, moduleNameMapper et conventions mis à jour. |

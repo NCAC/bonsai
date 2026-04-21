@@ -1,25 +1,33 @@
 /**
- * Fixture — CartFeature, CartEntity, CartView, CartComposer
+ * Fixture — CartFeature, CartEntity, CartView, MainComposer, AppFoundation
  *
- * Cette fixture définit un mini-domaine "panier" pour les tests.
- * Elle sera décommentée au fur et à mesure de l'implémentation.
+ * Mini-domaine "panier" conforme au contrat strate 0 (post-audit 2026-04-21,
+ * ADR-0037, ADR-0038). Sert de gate E2E (cf. strate-0.cart-round-trip.test.ts).
  *
- * Utilisée par :
- *   - tests/unit/strate-0/feature.core.test.ts
- *   - tests/integration/strate-0/trigger-handle-mutate-emit.test.ts
- *   - tests/e2e/strate-0.cart-round-trip.test.ts
+ * Flux complet illustré :
+ *   View.click @addButton
+ *     => trigger("cart", "addItem", payload)
+ *     => Channel.handle => CartFeature.onAddItemCommand
+ *     => entity.mutate("addItem", recipe)
+ *     => emit("itemAdded", { item })
+ *     => View.onCartItemAddedEvent
+ *     => getUI("itemCount").text(...)  // projection N1
  */
 
-// ============================================================================
-// IMPORT TDD : les classes de base n'existent pas encore.
-// import { Feature, Entity, View, Composer, Foundation } from "@core/bonsai";
-// ============================================================================
+import { Entity } from "@bonsai/entity";
+import { Feature } from "@bonsai/feature";
+import { View, type TViewParams } from "@bonsai/view";
+import {
+  Composer,
+  type TResolveResult,
+  type TComposerOptions
+} from "@bonsai/composer";
+import { Foundation } from "@bonsai/foundation";
 
-// ─── Types ─────────────────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface TCartItem {
   productId: string;
-  name: string;
   qty: number;
   price: number;
 }
@@ -27,151 +35,114 @@ export interface TCartItem {
 export interface TCartState {
   items: TCartItem[];
   total: number;
-  lastUpdated: string | null;
 }
 
-export const CART_INITIAL_STATE: TCartState = {
-  items: [],
-  total: 0,
-  lastUpdated: null,
-};
+// ─── Entity ─────────────────────────────────────────────────────────────────
 
-// ─── Channel definition (namespace + commands + events + requests) ──
+export class CartEntity extends Entity<TCartState> {
+  protected defineInitialState(): TCartState {
+    return { items: [], total: 0 };
+  }
 
-/**
- * Le Channel "cart" tel que défini par le namespace CartFeature.
- * En Bonsai, un namespace TypeScript exporte ce contrat.
- */
-// export namespace Cart {
-//   export const namespace = "cart" as const;
-//
-//   export type Commands = {
-//     addItem: { productId: string; qty: number };
-//     removeItem: { productId: string };
-//     clearCart: void;
-//   };
-//
-//   export type Events = {
-//     itemAdded: { item: TCartItem };
-//     itemRemoved: { productId: string };
-//     cartCleared: void;
-//   };
-//
-//   export type Requests = {
-//     getTotal: { result: number };
-//     getItemCount: { result: number };
-//     getItemById: { params: { productId: string }; result: TCartItem | null };
-//   };
-// }
+  get query() {
+    return {
+      getTotal: () => this.state.total,
+      getItemCount: () => this.state.items.length
+    };
+  }
+}
 
-// ─── Entity ────────────────────────────────────────────────────────
+// ─── Feature ────────────────────────────────────────────────────────────────
 
-// export class CartEntity extends Entity<TCartState> {
-//   constructor() {
-//     super(CART_INITIAL_STATE);
-//   }
-//
-//   get query() {
-//     return {
-//       getItems: () => this.state.items,
-//       getTotal: () => this.state.total,
-//       getItemCount: () => this.state.items.length,
-//       getItemById: (id: string) =>
-//         this.state.items.find((item) => item.productId === id) ?? null,
-//     };
-//   }
-// }
+export class CartFeature extends Feature<CartEntity> {
+  static readonly namespace = "cart" as const;
+  static readonly channels = [] as const;
 
-// ─── Feature ───────────────────────────────────────────────────────
+  protected get Entity() {
+    return CartEntity;
+  }
 
-// export class CartFeature extends Feature<typeof Cart, TCartState> {
-//   static readonly namespace = Cart.namespace;
-//
-//   // C2 — handle command (auto-discovered: onAddItemCommand)
-//   onAddItemCommand(payload: Cart.Commands["addItem"]) {
-//     const price = this.request("pricing", "getItemPrice", {
-//       productId: payload.productId,
-//     }) ?? 0;
-//
-//     this.entity.mutate("addItem", (draft) => {
-//       draft.items.push({
-//         productId: payload.productId,
-//         name: `Product ${payload.productId}`,
-//         qty: payload.qty,
-//         price,
-//       });
-//       draft.total += price * payload.qty;
-//       draft.lastUpdated = new Date().toISOString();
-//     });
-//   }
-//
-//   // catch-all notification → emit event
-//   onAnyEntityUpdated(event: TEntityEvent<TCartState>) {
-//     if (event.changedKeys.includes("items")) {
-//       const lastItem = event.nextState.items.at(-1);
-//       if (lastItem) {
-//         this.emit("itemAdded", { item: lastItem });
-//       }
-//     }
-//   }
-//
-//   // C4 — reply request (auto-discovered: onGetTotalRequest)
-//   onGetTotalRequest(): number {
-//     return this.entity.query.getTotal();
-//   }
-//
-//   onGetItemCountRequest(): number {
-//     return this.entity.query.getItemCount();
-//   }
-// }
+  // C2 — Command handler auto-discovered (I48)
+  onAddItemCommand(payload: TCartItem): void {
+    this.entity.mutate("addItem", (draft) => {
+      draft.items.push(payload);
+      draft.total += payload.price * payload.qty;
+    });
+    // C1 — emit on own Channel
+    this.emit("itemAdded", { item: payload });
+  }
 
-// ─── View ──────────────────────────────────────────────────────────
+  // C4 — Reply auto-discovered
+  onGetItemCountRequest(): number {
+    return this.entity.query.getItemCount();
+  }
+}
 
-// export class CartView extends View {
-//   static readonly ui = {
-//     itemCount: "[data-ui='itemCount']",
-//     total: "[data-ui='total']",
-//     addButton: "[data-ui='addButton']",
-//     itemList: "[data-ui='itemList']",
-//     emptyMessage: "[data-ui='emptyMessage']",
-//   } as const;
-//
-//   static readonly channels = ["cart"] as const;
-//
-//   get params() {
-//     return {} as const;
-//   }
-//
-//   // D48 — auto-derived from ui.addButton
-//   onAddButtonClick(_event: Event) {
-//     this.trigger("cart:addItem", { productId: "123", qty: 1 });
-//   }
-//
-//   // Listen cart:itemAdded
-//   onCartItemAddedEvent(payload: Cart.Events["itemAdded"]) {
-//     const count = /* get from request or internal tracking */ 1;
-//     this.getUI("itemCount").text(String(count));
-//     this.getUI("emptyMessage").visible(false);
-//   }
-// }
+// ─── View ───────────────────────────────────────────────────────────────────
 
-// ─── Composer ──────────────────────────────────────────────────────
+const cartViewParams = {
+  uiElements: {
+    itemCount: "[data-ui='itemCount']",
+    total: "[data-ui='total']",
+    addButton: "[data-ui='addButton']",
+    emptyMessage: "[data-ui='emptyMessage']"
+  },
+  // Channels écoutés (auto-discovery on{Channel}{EventName}Event — I48)
+  listen: ["cart"] as const,
+  // Channels vers lesquels on peut trigger
+  trigger: ["cart"] as const
+} as const satisfies TViewParams;
 
-// export class MainComposer extends Composer {
-//   resolve(event: TBonsaiEvent | null): TResolveResult | null {
-//     return {
-//       viewClass: CartView,
-//       rootElement: "[data-view='cart']",
-//     };
-//   }
-// }
+export class CartView extends View {
+  // Compteur local — la Feature est source de vérité, la View ne stocke
+  // qu'un cache d'affichage minimal.
+  #itemCount = 0;
 
-// ─── Foundation ────────────────────────────────────────────────────
+  get params(): TViewParams {
+    return cartViewParams;
+  }
 
-// export class AppFoundation extends Foundation {
-//   get composers() {
-//     return [
-//       { composer: MainComposer, rootElement: "[data-region='main']" },
-//     ] as const;
-//   }
-// }
+  // D48 — auto-derived from uiElements.addButton
+  onAddButtonClick(_event: Event): void {
+    this.callTrigger("cart", "addItem", {
+      productId: `prod-${this.#itemCount + 1}`,
+      qty: 1,
+      price: 9.99
+    });
+  }
+
+  // I48 — auto-derived: on{Channel}{EventName}Event
+  onCartItemAddedEvent(_payload: { item: TCartItem }): void {
+    this.#itemCount += 1;
+    this.getUI("itemCount").text(String(this.#itemCount));
+    this.getUI("total").text((this.#itemCount * 9.99).toFixed(2));
+    this.getUI("emptyMessage").visible(false);
+  }
+}
+
+// ─── Composer ───────────────────────────────────────────────────────────────
+
+export class MainComposer extends Composer {
+  constructor(options: TComposerOptions) {
+    super(options);
+  }
+
+  resolve(_event: unknown | null): TResolveResult | null {
+    return {
+      view: CartView,
+      rootElement: "[data-view='cart']"
+    };
+  }
+}
+
+// ─── Foundation ─────────────────────────────────────────────────────────────
+
+export class AppFoundation extends Foundation {
+  // ADR-0038 — Record<string, typeof Composer> ; clés = sélecteurs CSS dans <body>.
+  // Layout stable : un seul slot principal en strate 0.
+  get composers() {
+    return {
+      "[data-region='main']": MainComposer
+    } as const;
+  }
+}

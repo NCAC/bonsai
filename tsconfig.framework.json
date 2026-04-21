@@ -7,11 +7,13 @@
       "@build/*": ["./lib/build/*"],
       "bonsai/lib/*": ["./lib/*"],
       "bonsai": ["./core/dist"],
-      "@bonsai/types*": ["./packages/types/dist"],
-      "@bonsai/remeda*": ["./packages/remeda/dist"],
-      "@bonsai/rxjs*": ["./packages/rxjs/dist"],
-      "@bonsai/zod*": ["./packages/zod/dist"],
-      "@bonsai/event*": ["./packages/event/dist"]
+      "@bonsai/types": ["./packages/types/index.d.ts"],
+      "@bonsai/types/*": ["./packages/types/src/*"],
+      "@bonsai/rxjs": ["./packages/rxjs/src/rxjs"],
+      "@bonsai/immer": ["./packages/immer/src/immer"],
+      "@bonsai/valibot": ["./packages/valibot/src/valibot"],
+      "@bonsai/event": ["./packages/event/src/bonsai-event"],
+      "@bonsai/event/*": ["./packages/event/src/*"]
       // "@bonsai/error*": ["packages/error/dist"],
       // "@bonsai/dom*": ["packages/dom/dist"],
       // "@bonsai/vdom*": ["packages/vdom/dist"],
@@ -31,9 +33,9 @@
   "include": ["core/src", "tests"],
   "references": [
     { "path": "./packages/types" },
-    { "path": "./packages/remeda" },
     { "path": "./packages/rxjs" },
-    { "path": "./packages/zod" },
+    { "path": "./packages/immer" },
+    { "path": "./packages/valibot" },
     { "path": "./packages/event" }
     // { "path": "./packages/app-node" },
     // { "path": "./packages/base-components" },

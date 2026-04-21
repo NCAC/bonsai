@@ -3,6 +3,7 @@
 # Libraries: External packages that can be built in parallel
 libraries:
   - "@bonsai/rxjs"
+  - "@bonsai/immer"
   - "@bonsai/valibot"
   # @bonsai/remeda supprimé (ADR-0031 C3 — hors API publique Bonsai)
 
