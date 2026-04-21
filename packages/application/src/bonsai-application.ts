@@ -90,10 +90,26 @@ export class Application {
   /**
    * Bootstrap en 4 phases simplifiées (strate 0).
    * Ne peut être appelé qu'une seule fois.
+   *
+   * Phases (alignement ADR-0010, version simplifiée pour la strate 0) :
+   *   Phase 1 — Channels  : `Radio.channel(namespace)` pour chaque Feature
+   *   Phase 2 — Entities  : (implicite : créées par Feature en strate 0)
+   *   Phase 3 — Features  : instanciation + `onInit()` (I56)
+   *   Phase 4 — Views     : `Foundation.attach()` qui orchestre Composers → Views
+   *
+   * @throws si appelée deux fois (strate 0 : pas de re-bootstrap)
+   * @throws si aucune Foundation n'a été fournie au constructeur (I33 :
+   *   une application sans Foundation ne peut rien afficher)
    */
   start(): void {
     if (this.#started) {
       throw new Error("[Bonsai Application] Cannot start() — already started");
+    }
+    if (this.#foundationClass === null) {
+      throw new Error(
+        "[Bonsai Application] Cannot start() — no Foundation provided. " +
+          "Pass { foundation: MyFoundation } to the Application constructor (I33)."
+      );
     }
     this.#started = true;
 
@@ -105,7 +121,7 @@ export class Application {
     // Phase 2: Entities — instanciation (gérée par Feature en strate 0)
     // (rien à faire explicitement — Entity est créée par Feature dans son constructeur)
 
-    // Phase 3: Features — instancie, câble handlers, appelle onInit
+    // Phase 3: Features — instancie, câble handlers, appelle onInit (I56)
     for (const FeatureClass of this.#registeredFeatures) {
       const instance = new FeatureClass();
       this.#featureInstances.push(instance);
@@ -117,12 +133,10 @@ export class Application {
     }
 
     // Phase 4: Views — Foundation → Composers → Views
-    if (this.#foundationClass) {
-      const FoundationClass = this
-        .#foundationClass as unknown as new () => Foundation;
-      this.#foundationInstance = new FoundationClass();
-      this.#foundationInstance.attach();
-    }
+    const FoundationClass = this
+      .#foundationClass as unknown as new () => Foundation;
+    this.#foundationInstance = new FoundationClass();
+    this.#foundationInstance.attach();
   }
 
   /**

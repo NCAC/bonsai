@@ -10,6 +10,28 @@
 > **ADR-0019 (Accepted)** : deux modes de distribution (IIFE + ESM Modulaire).
 > **ADR-0014 (Accepted)** : SSR hydration via `serverState` opt-in.
 
+---
+
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible complet** d'Application (6 phases, async,
+> SSR, BonsaiRegistry, BootstrapError typée). Conformément au phasage kernel-first,
+> certaines capacités sont **différées** :
+>
+> | Élément                                                              | Strate cible | Sections concernées |
+> | -------------------------------------------------------------------- | ------------ | ------------------- |
+> | Bootstrap async (`start(): Promise<void>`) + `BootstrapError` typée  | Strate 1     | §1, §2              |
+> | Phases `'config'` et `'start'` (6 phases au total au lieu de 4)      | Strate 1     | §1                  |
+> | `TBootstrapOptions.serverState` (SSR hydratation, ADR-0014)          | Strate 1     | §1                  |
+> | `TApplicationConfig` complet (`mode`, `debug`, providers, registry…) | Strate 1     | §1                  |
+> | `BonsaiRegistry` ESM modulaire (ADR-0019)                            | Strate 2     | §3                  |
+> | `Application.stop()` / shutdown ordonnée                             | Strate 2     | —                   |
+> | DevTools hooks                                                       | Strate 2     | —                   |
+>
+> **Strate 0 — périmètre effectif** : `Application` exporte `register(FeatureClass)` (validation namespace I24, mot réservé `'local'`), et `start(): void` synchrone en **4 phases** (Channels → Entities implicites → Features+`onInit` (I56) → Foundation.attach). Foundation **obligatoire** au start (I33). `app.foundation` et `app.started` exposés en lecture. Aucun runtime API (I23).
+>
+> Voir aussi : [ADR-0028](../../adr/ADR-0028-implementation-phasing-strategy.md), [ADR-0010](../../adr/ADR-0010-bootstrap-phases.md).
+
 ## 1. Types de bootstrap (ADR-0010)
 
 ```typescript
@@ -20,7 +42,13 @@
  *
  * @see ADR-0010 — Bootstrap par phases (Option C retenue)
  */
-type PhaseKey = 'config' | 'channels' | 'entities' | 'features' | 'views' | 'start';
+type PhaseKey =
+  | "config"
+  | "channels"
+  | "entities"
+  | "features"
+  | "views"
+  | "start";
 
 /**
  * Contexte applicatif construit progressivement durant le bootstrap.
@@ -49,7 +77,7 @@ type TAppContext = {
  * });
  */
 class BootstrapError extends Error {
-  readonly name = 'BootstrapError';
+  readonly name = "BootstrapError";
   constructor(
     /** Phase durant laquelle l'erreur s'est produite */
     readonly phase: PhaseKey,
@@ -141,14 +169,14 @@ class Application {
 Execute les 6 phases du bootstrap sequentiellement (ADR-0010).
 Si une phase echoue, le bootstrap s'arrete immediatement avec un `BootstrapError`.
 
-| Phase | `PhaseKey` | Etapes internes |
-|-------|-----------|-----------------|
-| 1 | `'config'` | Verification que `register()` a ete appele au moins une fois. Chargement de la configuration. |
-| 2 | `'channels'` | Resolution des declarations (`listen`, `request`) — verifie que les Channels references existent dans Radio. Cablage Radio (introspection `onXXX`, peuplement des registres). |
-| 3 | `'entities'` | Instanciation des Entities via D17. Instanciation Router. **Si `options.serverState` est fourni** (ADR-0014 H5), le framework itere sur chaque entree et pre-peuple l'Entity correspondante via `entity.populateFromServer(state)` — silencieusement, sans notifications ni Events. |
-| 4 | `'features'` | Couche abstraite active — `onInit()` de chaque Feature. Les Entities sont deja peuplees (soit via `serverState`, soit avec `initialState`). |
-| 5 | `'views'` | Creation Foundation (couche concrete commence). Pour chaque View : detection du mode SSR vs SPA **par noeud** (ADR-0014 H1). `setup()` hydrate le DOM existant (H2), `create()` genere le DOM en SPA (D30). Resolution recursive des Composers et Views. |
-| 6 | `'start'` | Application dormante — evenement start (optionnel, voir Q9). |
+| Phase | `PhaseKey`   | Etapes internes                                                                                                                                                                                                                                                                     |
+| ----- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | `'config'`   | Verification que `register()` a ete appele au moins une fois. Chargement de la configuration.                                                                                                                                                                                       |
+| 2     | `'channels'` | Resolution des declarations (`listen`, `request`) — verifie que les Channels references existent dans Radio. Cablage Radio (introspection `onXXX`, peuplement des registres).                                                                                                       |
+| 3     | `'entities'` | Instanciation des Entities via D17. Instanciation Router. **Si `options.serverState` est fourni** (ADR-0014 H5), le framework itere sur chaque entree et pre-peuple l'Entity correspondante via `entity.populateFromServer(state)` — silencieusement, sans notifications ni Events. |
+| 4     | `'features'` | Couche abstraite active — `onInit()` de chaque Feature. Les Entities sont deja peuplees (soit via `serverState`, soit avec `initialState`).                                                                                                                                         |
+| 5     | `'views'`    | Creation Foundation (couche concrete commence). Pour chaque View : detection du mode SSR vs SPA **par noeud** (ADR-0014 H1). `setup()` hydrate le DOM existant (H2), `create()` genere le DOM en SPA (D30). Resolution recursive des Composers et Views.                            |
+| 6     | `'start'`    | Application dormante — evenement start (optionnel, voir Q9).                                                                                                                                                                                                                        |
 
 ### Diagramme de dependances entre phases
 
@@ -195,13 +223,13 @@ Si une phase echoue, le bootstrap s'arrete immediatement avec un `BootstrapError
 
 Execute le shutdown en **ordre inverse** des phases de bootstrap (ADR-0010) :
 
-| Etape | Phase inverse | Responsabilite |
-|-------|---------------|----------------|
-| 1 | `'views'` | Detacher les Views (`onDetach()`), detruire les Behaviors, nettoyer localState, supprimer les projections. |
-| 2 | `'features'` | `onDestroy()` de chaque Feature (ordre inverse d'enregistrement). |
-| 3 | `'channels'` | Desinscrire les Channels de Radio, detacher les handlers. |
-| 4 | `'entities'` | Reinitialiser les Entities. |
-| 5 | — | Reset Radio, `isRunning = false`. |
+| Etape | Phase inverse | Responsabilite                                                                                             |
+| ----- | ------------- | ---------------------------------------------------------------------------------------------------------- |
+| 1     | `'views'`     | Detacher les Views (`onDetach()`), detruire les Behaviors, nettoyer localState, supprimer les projections. |
+| 2     | `'features'`  | `onDestroy()` de chaque Feature (ordre inverse d'enregistrement).                                          |
+| 3     | `'channels'`  | Desinscrire les Channels de Radio, detacher les handlers.                                                  |
+| 4     | `'entities'`  | Reinitialiser les Entities.                                                                                |
+| 5     | —             | Reset Radio, `isRunning = false`.                                                                          |
 
 ---
 
@@ -219,7 +247,7 @@ type TApplicationConfig = {
   strict: boolean;
 
   /** Granularite des logs (defaut : 'warn') */
-  logLevel: 'error' | 'warn' | 'info' | 'debug' | 'trace';
+  logLevel: "error" | "warn" | "info" | "debug" | "trace";
 
   /** Activer la validation des declarations au bootstrap (defaut : true) */
   validateAtBootstrap: boolean;

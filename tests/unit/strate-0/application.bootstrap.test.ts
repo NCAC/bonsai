@@ -200,4 +200,108 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56]", () => {
       expect(() => app.register(BadFeature)).toThrow(/reserved/i);
     });
   });
+
+  // ── Bootstrap guards (Étape 5 — durcissement) ────────────────────────────
+
+  describe("Bootstrap guards [I33, I56, ADR-0010]", () => {
+    it("start() throws if no Foundation provided (I33)", () => {
+      const app = new Application();
+      app.register(CartFeature);
+
+      expect(() => app.start()).toThrow(/no Foundation/i);
+    });
+
+    it("start() instantiates the Foundation and exposes app.foundation", () => {
+      const app = new Application({
+        foundation: EmptyFoundation as unknown as typeof Foundation
+      });
+      app.register(CartFeature);
+
+      expect(app.foundation).toBeNull();
+      expect(app.started).toBe(false);
+
+      app.start();
+
+      expect(app.started).toBe(true);
+      expect(app.foundation).toBeInstanceOf(EmptyFoundation);
+    });
+
+    it("Bootstrap order — channels created BEFORE Feature.onInit (Phase 1 < Phase 3)", () => {
+      const callOrder: string[] = [];
+
+      class ChannelObserverFeature extends Feature {
+        static readonly namespace = "observer" as const;
+        static readonly channels = {
+          commands: [],
+          events: [],
+          requests: []
+        } as const;
+        onInit() {
+          // Si on arrive ici, le channel doit déjà exister (Phase 1 terminée)
+          try {
+            Radio.me().channel("observer");
+            callOrder.push("channel-exists-at-onInit");
+          } catch {
+            callOrder.push("channel-MISSING-at-onInit");
+          }
+        }
+      }
+
+      const app = new Application({
+        foundation: EmptyFoundation as unknown as typeof Foundation
+      });
+      app.register(ChannelObserverFeature);
+      app.start();
+
+      expect(callOrder).toEqual(["channel-exists-at-onInit"]);
+    });
+
+    it("Bootstrap order — Foundation.attach called AFTER all Features.onInit (Phase 3 < Phase 4)", () => {
+      const callOrder: string[] = [];
+
+      class FeatureA extends Feature {
+        static readonly namespace = "feat-a" as const;
+        static readonly channels = {
+          commands: [],
+          events: [],
+          requests: []
+        } as const;
+        onInit() {
+          callOrder.push("featA:onInit");
+        }
+      }
+      class FeatureB extends Feature {
+        static readonly namespace = "feat-b" as const;
+        static readonly channels = {
+          commands: [],
+          events: [],
+          requests: []
+        } as const;
+        onInit() {
+          callOrder.push("featB:onInit");
+        }
+      }
+      class WatcherFoundation extends Foundation {
+        get composers() {
+          return {};
+        }
+        onAttach() {
+          callOrder.push("foundation:onAttach");
+        }
+      }
+
+      const app = new Application({
+        foundation: WatcherFoundation as unknown as typeof Foundation
+      });
+      app.register(FeatureA);
+      app.register(FeatureB);
+      app.start();
+
+      expect(callOrder).toEqual([
+        "featA:onInit",
+        "featB:onInit",
+        "foundation:onAttach"
+      ]);
+    });
+  });
 });
