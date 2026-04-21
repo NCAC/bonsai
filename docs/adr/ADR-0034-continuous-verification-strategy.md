@@ -76,10 +76,10 @@ Implémentation de la strate 0 : chaque PR doit garantir que les PI précédents
 
 Nous adoptons une stratégie à **deux niveaux complémentaires** :
 
-| Niveau                      | Déclencheur               | Vérifications                       | Temps cible | Bloquant ?  |
-| --------------------------- | ------------------------- | ----------------------------------- | ----------- | ----------- |
-| **1 — Pre-commit (Husky)**  | Chaque `git commit` local | `tsc --noEmit` + `test:regression`  | < 30s       | Oui (local) |
-| **2 — CI (GitHub Actions)** | PR vers `develop`         | `tsc --noEmit` + `pnpm test` (tous) | < 3 min     | Oui (merge) |
+| Niveau                      | Déclencheur               | Vérifications                      | Temps cible | Bloquant ?                                     |
+| --------------------------- | ------------------------- | ---------------------------------- | ----------- | ---------------------------------------------- |
+| **1 — Pre-commit (Husky)**  | Chaque `git commit` local | `tsc --noEmit` + `test:regression` | < 30s       | Oui (local — contournable via `--no-verify`)   |
+| **2 — CI (GitHub Actions)** | PR vers `develop`         | `tsc --noEmit` + `pnpm test:ci`    | < 3 min     | **Oui (branch protection — non-contournable)** |
 
 ### Justification
 
@@ -213,6 +213,21 @@ jobs:
       - name: Full test suite
         run: pnpm test:ci
 ```
+
+### Status check requis sur la branch protection de `develop`
+
+Le workflow ci-dessus DOIT être configuré comme **status check requis** sur la branche `develop` (Settings → Branches → Branch protection rule for `develop`).
+
+| Paramètre branch protection                          | Valeur                         | Justification                                                                                                                   |
+| ---------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Require status checks to pass before merging**     | ☑ activé                       | Sans ça, le bouton « Squash and merge » fonctionne même si la CI échoue → la gate du Niveau 2 devient purement informative      |
+| **Require branches to be up to date before merging** | ☑ activé                       | Force le rebase/merge de `develop` dans la branche feature avant le merge final → la CI a tourné sur le code _réellement mergé_ |
+| **Required check (nom exact)**                       | `Type-check + Full test suite` | Correspond au champ `name:` du job `verify` dans `regression.yml` (et non pas au nom du workflow)                               |
+| **Allow administrators to bypass**                   | ☑ activé (toi seul)            | Garde-fou en cas d'urgence ; ne doit jamais être utilisé en routine                                                             |
+
+> ⚠️ La liste déroulante des status checks dans GitHub ne propose que les checks **déjà exécutés au moins une fois**. Si le check n'apparaît pas, taper exactement `Type-check + Full test suite`.
+
+Avec cette configuration, la promesse de l'ADR — « la CI est bloquante au merge » — est mécaniquement garantie par GitHub, et non plus dépendante de la discipline du mergeur.
 
 ### Évolution future (post-v1)
 
@@ -349,7 +364,7 @@ import "./application.bootstrap.test";
 - [x] Mettre à jour `post-create-command.sh` (Husky v9+, chmod +x)
 - [x] Ajouter `tsc:check` au `package.json`
 - [ ] Mettre à jour `CONTRIBUTING.md` — section non-régression + checklist PR
-- [ ] Configurer branch protection rule sur `develop` (quand le repo est prêt)
+- [x] Configurer branch protection rule sur `develop` avec le status check requis (2026-04-21 — voir § Niveau 2)
 
 ---
 
@@ -365,7 +380,8 @@ import "./application.bootstrap.test";
 
 ## Historique
 
-| Date       | Changement                                                                     |
-| ---------- | ------------------------------------------------------------------------------ |
-| 2026-04-17 | Création (Proposed) — scope initial : gate de non-régression cumulative        |
-| 2026-04-20 | Élargi et renommé : stratégie de vérification continue (hooks + CI). Accepted. |
+| Date       | Changement                                                                                                                                                           |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-04-17 | Création (Proposed) — scope initial : gate de non-régression cumulative                                                                                              |
+| 2026-04-20 | Élargi et renommé : stratégie de vérification continue (hooks + CI). Accepted.                                                                                       |
+| 2026-04-21 | Amendement : workflow CI promu **status check requis** sur `develop` (branch protection). Job exécute `pnpm test:ci` (full suite) au lieu de `pnpm test:regression`. |

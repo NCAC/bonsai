@@ -9,8 +9,7 @@
     "moduleResolution": "node",
     "baseUrl": ".",
     "paths": {
-      // Packages @bonsai/* résolus via pnpm workspace (package.json types field)
-      // Paths manuels uniquement pour les packages pas encore publiés en dist
+      // Résolution via package.json des modules @bonsai/* (workspace pnpm)
     }
   },
   "include": [

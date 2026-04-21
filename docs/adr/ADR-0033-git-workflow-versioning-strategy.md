@@ -478,6 +478,8 @@ git push -u origin develop
 | `develop` → `main`            | **Merge commit** (no fast-forward)            | Le merge commit est le jalon. `git log --first-parent main` montre l'historique des releases. `--no-ff` obligatoire |
 | `hotfix/*` → `main` (post-v1) | **Merge commit** + cherry-pick vers `develop` | Standard Git Flow                                                                                                   |
 
+> **Status check requis** : toute PR `feature/*` → `develop` est conditionnée à la réussite du job `Type-check + Full test suite` (workflow `regression.yml`, voir [ADR-0034](ADR-0034-continuous-verification-strategy.md)). La branch protection de `develop` rend ce check non-contournable côté GitHub.
+
 ### Conventions de commit (rappel — CONTRIBUTING.md)
 
 Tous les commits DOIVENT suivre **Conventional Commits** :
