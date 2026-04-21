@@ -28,11 +28,16 @@ import { View } from "@bonsai/view";
 
 /**
  * Résultat de resolve() — décrit la View à instancier.
- * Strate 0 : pas de tableau, pas d'options (simplification).
+ *
+ * Strate 0 (ADR-0028) : pas de tableau (N-instances reportées en strate 1),
+ * pas d'options (D34 reporté).
+ *
+ * Le champ `view` (et non `viewClass`) est l'identifiant officiel
+ * du contrat — alignement RFC composer.md §1.1 + ADR-0020 §6.2 + ADR-0026.
  */
 export type TResolveResult = {
   /** La classe View concrète à instancier */
-  readonly viewClass: typeof View;
+  readonly view: typeof View;
   /** Sélecteur CSS de l'élément root de la View — dans le scope du Composer (ADR-0026) */
   readonly rootElement: string;
 };
@@ -141,7 +146,7 @@ export abstract class Composer {
     }
 
     // Instancier et monter la View
-    const ViewClass = result.viewClass;
+    const ViewClass = result.view;
     const view = new (ViewClass as unknown as new () => View)();
     view.mount(result.rootElement);
     this.#currentView = view;

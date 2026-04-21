@@ -47,7 +47,7 @@ describe("Composer basic — Strate 0 [I20, I35, I37]", () => {
       class MainComposer extends Composer {
         resolve(event: unknown | null): TResolveResult | null {
           return {
-            viewClass: CartView,
+            view: CartView,
             rootElement: "[data-view='cart']"
           };
         }
@@ -65,7 +65,7 @@ describe("Composer basic — Strate 0 [I20, I35, I37]", () => {
       const result = composer.resolve(null);
 
       expect(result).not.toBeNull();
-      expect(result!.viewClass).toBe(CartView);
+      expect(result!.view).toBe(CartView);
       expect(result!.rootElement).toBe("[data-view='cart']");
     });
 
@@ -101,7 +101,7 @@ describe("Composer basic — Strate 0 [I20, I35, I37]", () => {
     it("D30 — Composer creates DOM element if selector not found", () => {
       class MainComposer extends Composer {
         resolve(event: unknown | null): TResolveResult | null {
-          return { viewClass: CartView, rootElement: "[data-view='cart']" };
+          return { view: CartView, rootElement: "[data-view='cart']" };
         }
       }
 
@@ -138,7 +138,7 @@ describe("Composer basic — Strate 0 [I20, I35, I37]", () => {
     it("attach() resolves and mounts the View", () => {
       class MainComposer extends Composer {
         resolve(event: unknown | null): TResolveResult | null {
-          return { viewClass: CartView, rootElement: "[data-view='cart']" };
+          return { view: CartView, rootElement: "[data-view='cart']" };
         }
       }
 

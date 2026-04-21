@@ -2,17 +2,19 @@
  * @bonsai/foundation — Foundation abstract base class
  *
  * Strate 0 — Capacités :
- *   - rootElement = document.body (toujours en strate 0)
+ *   - body  = document.body            (toujours en strate 0, I33)
+ *   - html  = document.documentElement (droit d'altération N1, D27)
  *   - Déclare les Composers racines via abstract get composers()
  *   - Crée et attache les Composers au bootstrap
- *   - onAttach() lifecycle hook
+ *   - Hooks onAttach() / onDetach()
  *
  * Invariants :
  *   I33  — Foundation unique par application — cible <body>
  *   I20  — Seuls Foundation/Composers créent/détruisent des Views
  *   I34  — rootElement d'une View = enfant de <body>, jamais <body>
+ *   D27  — Foundation peut altérer html/body en N1 uniquement
  *
- * Strate 0 simplifications :
+ * Strate 0 simplifications (ADR-0028) :
  *   - Pas de TUIMap (ADR-0018 Suspended)
  *   - Pas d'event delegation globale (strate 1)
  *   - Pas de params() Channel capabilities (strate 1)
@@ -26,6 +28,10 @@ import { Composer, type TComposerOptions } from "@bonsai/composer";
 
 /**
  * Entrée de déclaration d'un Composer racine dans Foundation.
+ *
+ * NB : la structure exacte (Record vs Entry[] vs Map) sera tranchée
+ * par ADR-0038. La RFC composer/foundation actuelle documente Record ;
+ * la strate 0 utilise Entry[] en attendant l'ADR.
  */
 export type TFoundationComposerEntry = {
   /** La classe Composer concrète */
@@ -38,7 +44,10 @@ export type TFoundationComposerEntry = {
 
 export abstract class Foundation {
   /** Référence à <body> — toujours document.body en strate 0 (I33) */
-  #el: HTMLElement;
+  #body: HTMLElement;
+
+  /** Référence à <html> — droit d'altération N1 (D27, RFC foundation.md §2) */
+  #html: HTMLElement;
 
   /** Les instances de Composers racines créées au bootstrap */
   #composerInstances: Composer[] = [];
@@ -47,16 +56,26 @@ export abstract class Foundation {
   #attached = false;
 
   constructor() {
-    this.#el = document.body;
+    this.#body = document.body;
+    this.#html = document.documentElement;
   }
 
   // ─── Public API ────────────────────────────────────────────────────────
 
   /**
-   * Référence à l'élément racine (<body>).
+   * Référence à <body> — alignement RFC foundation.md §1.
+   * Le développeur peut altérer en N1 (classes, attributs) — D27.
    */
-  get el(): HTMLElement {
-    return this.#el;
+  protected get body(): HTMLElement {
+    return this.#body;
+  }
+
+  /**
+   * Référence à <html> — alignement RFC foundation.md §1.
+   * Le développeur peut altérer en N1 (classes, attributs) — D27.
+   */
+  protected get html(): HTMLElement {
+    return this.#html;
   }
 
   /**
@@ -85,7 +104,7 @@ export abstract class Foundation {
         opts: TComposerOptions
       ) => Composer;
       const instance = new ComposerClass({ rootElement: entry.rootElement });
-      instance.attach(this.#el);
+      instance.attach(this.#body);
       this.#composerInstances.push(instance);
     }
 
@@ -104,8 +123,22 @@ export abstract class Foundation {
 
   /**
    * Hook appelé après résolution des Composers racines.
+   * Surcharger pour brancher des écouteurs DOM globaux (resize, scroll, etc.).
+   * Default no-op.
    */
   onAttach(): void {
+    // Default no-op
+  }
+
+  /**
+   * Hook appelé au shutdown — symétrique de onAttach().
+   * Surcharger pour débrancher les écouteurs DOM globaux installés dans onAttach().
+   * Default no-op.
+   *
+   * NB : non invoqué automatiquement en strate 0 (pas de shutdown formalisé) ;
+   * point d'extension pour la strate 1.
+   */
+  onDetach(): void {
     // Default no-op
   }
 }

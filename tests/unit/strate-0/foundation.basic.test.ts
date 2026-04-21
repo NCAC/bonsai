@@ -30,7 +30,7 @@ class SimpleView extends View {
 
 class MainComposer extends Composer {
   resolve(event: unknown | null): TResolveResult | null {
-    return { viewClass: SimpleView, rootElement: "[data-view='main']" };
+    return { view: SimpleView, rootElement: "[data-view='main']" };
   }
 }
 
@@ -48,15 +48,29 @@ describe("Foundation basic — Strate 0 [I33, I20]", () => {
   });
 
   describe("I33 — Singleton Foundation, targets <body>", () => {
-    it("Foundation rootElement is document.body", () => {
+    it("Foundation targets document.body — Composers racines attachés sous body", () => {
+      // body et html sont protected (RFC foundation.md §1) : on prouve l'ancrage
+      // via le comportement observable — attach() doit fonctionner sur document.body.
       class AppFoundation extends Foundation {
         get composers(): readonly TFoundationComposerEntry[] {
-          return [];
+          return [
+            {
+              composer: HeaderComposer as unknown as typeof Composer,
+              rootElement: "[data-region='header']"
+            }
+          ];
         }
       }
 
+      document.body.innerHTML = `<header data-region="header"></header>`;
+
       const foundation = new AppFoundation();
-      expect(foundation.el).toBe(document.body);
+      foundation.attach();
+
+      // Le HeaderComposer a résolu son slot dans <body> — preuve d'ancrage
+      expect(foundation.composerInstances[0]!.slot).toBe(
+        document.body.querySelector("[data-region='header']")
+      );
     });
 
     it("I33 — Foundation cannot be attached twice", () => {
