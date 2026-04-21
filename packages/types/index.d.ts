@@ -38,7 +38,14 @@ export type {
   TDictionaryArray,
   TDictionaryValue
 } from "./src/dictionaries";
-export type { TNonEmptyString, TOneLetter } from "./src/string";
+export type {
+  TNonEmptyString,
+  TOneLetter,
+  TLowerLetter,
+  TUpperLetter,
+  TAllLetters,
+  CamelCase
+} from "./src/string";
 export type {
   ArrayEntry,
   TMapEntry,
