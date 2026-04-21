@@ -6,13 +6,35 @@
 
 ---
 
-| Champ          | Valeur                                                                                                                                                                                                  |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Composant**  | Composer                                                                                                                                                                                                |
-| **Couche**     | Concrete (ephemere)                                                                                                                                                                                     |
-| **Source**     | Historique : RFC-0002-api-contrats-typage §12                                                                                                                                                           |
-| **Statut**     | Stable                                                                                                                                                                                                  |
-| **ADRs liees** | ADR-0020 (N-instances, scope immutable), ADR-0024 (pattern manifeste value-first), ADR-0025 (pas de hooks lifecycle), ADR-0026 (rootElement string-only CSS), ADR-0027 (resolve(event) argument unique) |
+| Champ          | Valeur                                                                                                                                                                                                                              |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Composant**  | Composer                                                                                                                                                                                                                            |
+| **Couche**     | Concrete (ephemere)                                                                                                                                                                                                                 |
+| **Source**     | Historique : RFC-0002-api-contrats-typage §12                                                                                                                                                                                       |
+| **Statut**     | Stable                                                                                                                                                                                                                              |
+| **ADRs liees** | ADR-0020 (N-instances, scope immutable), ADR-0024 (pattern manifeste value-first), ADR-0025 (pas de hooks lifecycle), ADR-0026 (rootElement string-only CSS), ADR-0027 (resolve(event) argument unique), ADR-0028 (phasage strates) |
+
+---
+
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible complet** du Composer. Pour s'aligner
+> sur la stratégie de phasage kernel-first, certaines capacités sont **différées
+> en strate 1 ou 2** et ne sont **pas implémentées en strate 0** :
+>
+> | Élément                                                            | Strate cible | Sections concernées     |
+> | ------------------------------------------------------------------ | ------------ | ----------------------- |
+> | `get params()` avec `listen` / `request` (ADR-0024)                | Strate 1     | §1.1, §1.2, §2.2, §2.3  |
+> | Type `TComposerEvent<TListen>` (union discriminée typée)           | Strate 1     | §1.1, §1.2, §3          |
+> | Generic de classe `Composer<TCapabilities>`                        | Strate 1     | §1.2                    |
+> | `protected request()` (request/reply synchrone)                    | Strate 1     | §1.2, §2.2, §2.3        |
+> | Auto-discovery handlers Channel                                    | Strate 1     | §3                      |
+> | Retour `TResolveResult[]` (N-instances hétérogènes, ADR-0020 §6.3) | Strate 2     | §3.2                    |
+> | Champ `options` dans `TResolveResult` (D34 merge)                  | Strate 2     | §1.1, §4.1 (étapes 3-4) |
+>
+> **Strate 0 — périmètre effectif** : `Composer` non-générique, `resolve(event: unknown \| null) → TResolveResult \| null`, slot DOM immutable (ADR-0026), création D30, diff §3.1 des 5 transitions Same/New/null. Pas de `params()`, pas de `listen`, pas de `request()`, pas de retour tableau.
+>
+> Voir aussi : [ADR-0028](../../adr/ADR-0028-implementation-phasing-strategy.md) — phasage kernel-first en 3 strates.
 
 ---
 
@@ -343,6 +365,10 @@ Le framework l'appelle avec l'Event declencheur en argument :
 | null                 | null                | **No-op**                                |
 
 ### 3.2 Diff pour le retour tableau (`TResolveResult[]`) -- ADR-0020
+
+> ⏳ **Strate 2 (ADR-0028)** — le retour tableau (N-instances hétérogènes) est
+> différé en strate 2. En strate 0, `resolve()` retourne strictement
+> `TResolveResult | null` (cf. §3.1 et l'encadré périmètre en tête).
 
 ```
 resolve() retourne R' (nouveau)           Etat precedent R (ancien)

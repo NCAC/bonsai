@@ -6,13 +6,32 @@
 
 ---
 
-| Champ          | Valeur                                                                                                                 |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **Composant**  | Foundation                                                                                                             |
-| **Couche**     | Concrete (persistant -- exception)                                                                                     |
-| **Source**     | Historique : RFC-0002-api-contrats-typage §11, ADR-0018                                                                |
-| **Statut**     | Stable                                                                                                                 |
-| **ADRs liees** | ADR-0010 (bootstrap order), ADR-0018 (Foundation contract), **ADR-0038 (Foundation.composers Record + I67 stabilite)** |
+| Champ          | Valeur                                                                                                                                             |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Composant**  | Foundation                                                                                                                                         |
+| **Couche**     | Concrete (persistant -- exception)                                                                                                                 |
+| **Source**     | Historique : RFC-0002-api-contrats-typage §11, ADR-0018                                                                                            |
+| **Statut**     | Stable                                                                                                                                             |
+| **ADRs liees** | ADR-0010 (bootstrap order), ADR-0018 (Foundation contract), ADR-0028 (phasage strates), **ADR-0038 (Foundation.composers Record + I67 stabilite)** |
+
+---
+
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible complet** de Foundation. Conformément
+> au phasage kernel-first, certaines capacités sont **différées** :
+>
+> | Élément                                                         | Strate cible | Sections concernées |
+> | --------------------------------------------------------------- | ------------ | ------------------- |
+> | `get params()` avec `listen` / `trigger` / `request` (ADR-0024) | Strate 1     | §1, §2              |
+> | Generic de classe `Foundation<TCapabilities>`                   | Strate 1     | §1                  |
+> | Auto-discovery handlers Channel (`onXxxYyyEvent`)               | Strate 1     | §2                  |
+> | `protected this.html` / `this.body` exposés au développeur      | Strate 1     | §2                  |
+> | Hooks `onAttach()` / `onDetach()` côté Foundation               | Strate 1     | §1, §2              |
+>
+> **Strate 0 — périmètre effectif** : `Foundation` non-générique, abstract `get composers(): Readonly<Record<string, typeof Composer>>` (ADR-0038), `attach()` orchestre la résolution + instanciation des Composers racines, garantie I33 (singleton), I34 (rootElement enfant de `<body>`), I67 (stabilité structurelle).
+>
+> Voir aussi : [ADR-0028](../../adr/ADR-0028-implementation-phasing-strategy.md), [ADR-0038](../../adr/ADR-0038-foundation-composers-record-stable-layout.md).
 
 ---
 
