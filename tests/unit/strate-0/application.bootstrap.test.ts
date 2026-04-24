@@ -124,6 +124,13 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
         (app as unknown as { register?: unknown }).register
       ).toBeUndefined();
     });
+
+    it("Application can be constructed with no arguments — empty manifest (I69)", () => {
+      // Covers the `options?.features ?? {}` fallback branch (L88)
+      const app = new Application();
+      expect(app.started).toBe(false);
+      expect(app.foundation).toBeNull();
+    });
   });
 
   // ── 4-phase bootstrap ──────────────────────────────────────────────────
@@ -264,6 +271,28 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
         expect(err).toBeInstanceOf(BonsaiNamespaceError);
         expect((err as BonsaiNamespaceError).code).toBe(
           "NAMESPACE_UNKNOWN_REFERENCE"
+        );
+      }
+    });
+
+    it("Empty string manifest key → BonsaiNamespaceError(NAMESPACE_INVALID_FORMAT)", () => {
+      // Covers the `ns.length === 0` branch in assertValidNamespace (types.ts L156)
+      class AnyFeature extends StubFeature<string> {
+        static readonly channels = [] as const;
+      }
+
+      const app = new Application({
+        foundation: EmptyFoundation as unknown as typeof Foundation,
+        features: { "": AnyFeature } as unknown as { cart: typeof CartFeature }
+      });
+
+      try {
+        app.start();
+        throw new Error("expected throw");
+      } catch (err) {
+        expect(err).toBeInstanceOf(BonsaiNamespaceError);
+        expect((err as BonsaiNamespaceError).code).toBe(
+          "NAMESPACE_INVALID_FORMAT"
         );
       }
     });

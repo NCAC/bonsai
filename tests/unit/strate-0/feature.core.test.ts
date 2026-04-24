@@ -24,7 +24,7 @@
  */
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
-import { Feature } from "@bonsai/feature";
+import { Feature, isCamelCaseNamespace, isReservedNamespace } from "@bonsai/feature";
 import { Entity, type TJsonSerializable } from "@bonsai/entity";
 import { Radio } from "@bonsai/event";
 
@@ -290,6 +290,56 @@ describe("Feature core — Strate 0", () => {
       feature.bootstrap();
 
       expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it("bootstrap() is idempotent — second call is a no-op (I48)", () => {
+      // Covers the `if (this.#bootstrapped) return` early-exit branch (L153)
+      const feature = new CartFeature("cart");
+      feature.bootstrap();
+      const entityAfterFirst = feature.entity;
+
+      // Second call must not throw and must not re-instantiate the Entity
+      expect(() => feature.bootstrap()).not.toThrow();
+      expect(feature.entity).toBe(entityAfterFirst);
+    });
+  });
+
+  describe("isCamelCaseNamespace / isReservedNamespace runtime helpers (ADR-0039)", () => {
+    it("isCamelCaseNamespace returns true for valid camelCase namespaces", () => {
+      expect(isCamelCaseNamespace("cart")).toBe(true);
+      expect(isCamelCaseNamespace("userProfile")).toBe(true);
+    });
+
+    it("isCamelCaseNamespace returns false for non-camelCase strings", () => {
+      expect(isCamelCaseNamespace("Cart")).toBe(false);
+      expect(isCamelCaseNamespace("my-cart")).toBe(false);
+    });
+
+    it("isReservedNamespace returns true for reserved namespaces", () => {
+      expect(isReservedNamespace("local")).toBe(true);
+    });
+
+    it("isReservedNamespace returns false for non-reserved namespaces", () => {
+      expect(isReservedNamespace("cart")).toBe(false);
+    });
+  });
+
+  describe("I48 — Auto-discovery edge cases", () => {
+    it("Method named exactly 'on{Channel}Event' (empty eventPascal) is silently skipped", () => {
+      // "onCartEvent" = prefix "onCart" + "" + suffix "Event" → eventPascal.length === 0
+      // The handler must be skipped without throwing (L272)
+      class ObserverFeature extends Feature<CartEntity, "observer"> {
+        static readonly channels = ["cart"] as const;
+        protected get Entity() {
+          return CartEntity;
+        }
+        onCartEvent(_payload: unknown) {
+          /* intentionally empty — must be ignored */
+        }
+      }
+
+      const feature = new ObserverFeature("observer");
+      expect(() => feature.bootstrap()).not.toThrow();
     });
   });
 });

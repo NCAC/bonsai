@@ -193,7 +193,7 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
           throw new BonsaiNamespaceError(
             "NAMESPACE_UNKNOWN_REFERENCE",
             `Feature "${ownNs}" declares unknown channel "${ref}". ` +
-              `Known namespaces: ${namespaces.join(", ") || "(none)"}`
+              `Known namespaces: ${namespaces.join(", ")}`
           );
         }
       }
