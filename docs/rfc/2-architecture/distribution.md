@@ -11,14 +11,14 @@
 
 ## 1. Deux modes de distribution
 
-| Aspect | Mode IIFE (classique) | Mode ESM Modulaire |
-|--------|----------------------|-------------------|
-| **Livraison** | Bundle unique (`bonsai.iife.js`) | Modules ES natifs (`*.esm.js`) |
-| **Chargement** | `<script>` classique | `<script type="module">` |
-| **Resolution** | Build-time (bundler) | Runtime (navigateur) |
-| **BonsaiRegistry** | Non necessaire | Obligatoire |
-| **Tree-shaking** | Via bundler | Natif |
-| **Cas d'usage** | Applications classiques, CMS, legacy | Applications modernes, micro-frontends |
+| Aspect             | Mode IIFE (classique)                | Mode ESM Modulaire                     |
+| ------------------ | ------------------------------------ | -------------------------------------- |
+| **Livraison**      | Bundle unique (`bonsai.iife.js`)     | Modules ES natifs (`*.esm.js`)         |
+| **Chargement**     | `<script>` classique                 | `<script type="module">`               |
+| **Resolution**     | Build-time (bundler)                 | Runtime (navigateur)                   |
+| **BonsaiRegistry** | Non necessaire                       | Obligatoire                            |
+| **Tree-shaking**   | Via bundler                          | Natif                                  |
+| **Cas d'usage**    | Applications classiques, CMS, legacy | Applications modernes, micro-frontends |
 
 ## 2. Mode IIFE — Bootstrap classique
 
@@ -27,16 +27,16 @@ produit un fichier unique qui contient tout le code de l'application.
 
 ```typescript
 // Mode IIFE — tout est connu au build-time, pas besoin de BonsaiRegistry
-import { Application } from '@bonsai/core';
-import { CartFeature } from './features/cart.feature';
-import { UserFeature } from './features/user.feature';
+import { Application } from "@bonsai/core";
+import { CartFeature } from "./features/cart.feature";
+import { UserFeature } from "./features/user.feature";
 
 // Le manifest applicatif : clé camelCase = namespace, valeur = classe Feature (ADR-0039)
 const app = new Application({
   features: {
     cart: CartFeature,
-    user: UserFeature,
-  },
+    user: UserFeature
+  }
 });
 app.start();
 ```
@@ -68,14 +68,14 @@ collecte les declarations de ces modules avant que l'Application lance le bootst
 
 ```typescript
 // bootstrap.esm.ts — point d'entree Mode ESM
-import { Application, BonsaiRegistry } from '/bonsai/bonsai.esm.js';
+import { Application, BonsaiRegistry } from "/bonsai/bonsai.esm.js";
 
 // Tous les modules de la page ont deja execute leurs registerFeature()
 const app = new Application();
 const { features } = BonsaiRegistry.collect();
 
 // Enregistrement standard — identique au bootstrap classique
-features.forEach(f => app.register(f));
+features.forEach((f) => app.register(f));
 app.start();
 ```
 
@@ -86,14 +86,14 @@ app.start();
 
 Le `BonsaiRegistry` est un **singleton** exporte par le runtime ESM. Il offre :
 
-| Methode | Role |
-|---------|------|
-| `registerFeature(feature)` | Enregistre une Feature (idempotent, erreur si collision namespace I21) |
-| `registerView(view)` | Enregistre une View (optionnel — import statique possible) |
-| `registerComposer(composer)` | Enregistre un Composer (optionnel) |
-| `registerBehavior(behavior)` | Enregistre un Behavior |
-| `collect()` | Retourne un snapshot immuable de tous les composants enregistres. **Verrouille** le registry |
-| `reset()` | Reinitialise le registry — usage test uniquement (`@internal`) |
+| Methode                      | Role                                                                                         |
+| ---------------------------- | -------------------------------------------------------------------------------------------- |
+| `registerFeature(feature)`   | Enregistre une Feature (idempotent, erreur si collision namespace I21)                       |
+| `registerView(view)`         | Enregistre une View (optionnel — import statique possible)                                   |
+| `registerComposer(composer)` | Enregistre un Composer (optionnel)                                                           |
+| `registerBehavior(behavior)` | Enregistre un Behavior                                                                       |
+| `collect()`                  | Retourne un snapshot immuable de tous les composants enregistres. **Verrouille** le registry |
+| `reset()`                    | Reinitialise le registry — usage test uniquement (`@internal`)                               |
 
 > **Invariant** : `collect()` verrouille le registry — les appels a `register*()`
 > apres `collect()` sont des no-ops (mode strict : throw).
@@ -112,7 +112,7 @@ Le `BonsaiRegistry` est un **singleton** exporte par le runtime ESM. Il offre :
 ```
                 @bonsai/types           ← types primitifs cross-packages
                 ╱     │     ╲
-       @bonsai/error   │      │          ← BonsaiError, invariant(), hardInvariant()
+       @bonsai/error  │      │          ← BonsaiError, invariant(), hardInvariant()
         ╱   │   ╲     │      │
 @bonsai/event │  @bonsai/entity
       │   ╲    │        │
@@ -161,11 +161,11 @@ import { Entity } from "@bonsai/core";
 
 **Tests — l'import dépend du niveau :**
 
-| Niveau | Import | Objectif |
-|--------|--------|----------|
-| **Unit** (`tests/unit/`) | `from "@bonsai/entity"` | Prouve l'isolation, charge le minimum |
-| **Intégration** (`tests/integration/`) | `from "@bonsai/core"` | Teste comme un consommateur |
-| **E2E** (`tests/e2e/`) | `from "@bonsai/core"` | Exactement comme le développeur d'application |
+| Niveau                                 | Import                  | Objectif                                      |
+| -------------------------------------- | ----------------------- | --------------------------------------------- |
+| **Unit** (`tests/unit/`)               | `from "@bonsai/entity"` | Prouve l'isolation, charge le minimum         |
+| **Intégration** (`tests/integration/`) | `from "@bonsai/core"`   | Teste comme un consommateur                   |
+| **E2E** (`tests/e2e/`)                 | `from "@bonsai/core"`   | Exactement comme le développeur d'application |
 
 ### Structure d'un package composant
 

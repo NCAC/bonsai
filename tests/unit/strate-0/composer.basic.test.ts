@@ -1,5 +1,5 @@
 /**
- * Tests Strate 0 — Composer basic
+ * Tests Strate 0 — Composer basic + diff resolve()
  *
  * Invariants prouvés :
  *   I20  — Seuls Foundation/Composers créent/détruisent des Views
@@ -12,6 +12,14 @@
  *   - Machine à états minimal : idle → active → idle
  *   - Création d'élément DOM si absent (D30)
  *   - Pas de lifecycle hooks (ADR-0025)
+ *
+ * Transitions diff resolve() §3.1 (ADR-0027) :
+ *   | resolve()          | View montée       | Action                                 |
+ *   | SameView+SameRoot  | SameView instance | No-op (instance conservée)             |
+ *   | NewView (ou root)  | OldView instance  | Detach OldView → Attach NewView        |
+ *   | NewView            | null              | Attach NewView                         |
+ *   | null               | OldView instance  | Detach OldView                         |
+ *   | null               | null              | No-op                                  |
  *
  * @jest-environment jsdom
  */
@@ -33,6 +41,35 @@ class CartView extends View {
   get params() {
     return cartViewParams;
   }
+}
+
+class CheckoutView extends View {
+  get params() {
+    return cartViewParams;
+  }
+}
+
+class ProgrammableComposer extends Composer {
+  decide: (event: unknown | null) => TResolveResult | null = () => null;
+  resolveCalls = 0;
+
+  resolve(event: unknown | null): TResolveResult | null {
+    this.resolveCalls += 1;
+    return this.decide(event);
+  }
+}
+
+function setupDiffDOM(): void {
+  document.body.innerHTML = `
+    <main data-region="main">
+      <div data-view="cart"></div>
+      <div data-view="checkout"></div>
+    </main>
+  `;
+}
+
+function createProgrammableComposer(): ProgrammableComposer {
+  return new ProgrammableComposer({ rootElement: "[data-region='main']" });
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -173,5 +210,135 @@ describe("Composer basic — Strate 0 [I20, I35, I37]", () => {
 
       expect(composer.currentView).toBeNull();
     });
+  });
+});
+
+// ─── Diff resolve() §3.1 — 5 transitions ─────────────────────────────────────
+
+describe("Composer diff resolve() §3.1 — 5 transitions [I20, I35, I37, ADR-0027]", () => {
+  beforeEach(() => {
+    resetDOM();
+    setupDiffDOM();
+  });
+
+  it("Transition null + null → no-op (currentView reste null)", () => {
+    const composer = createProgrammableComposer();
+    composer.decide = () => null;
+
+    composer.attach(document.body);
+    expect(composer.currentView).toBeNull();
+
+    composer.performResolve("event-1");
+    expect(composer.currentView).toBeNull();
+    expect(composer.resolveCalls).toBe(2);
+  });
+
+  it("Transition NewView + null → attach (instance créée, currentView défini)", () => {
+    const composer = createProgrammableComposer();
+    composer.decide = () => ({ view: CartView, rootElement: "[data-view='cart']" });
+
+    composer.attach(document.body);
+
+    expect(composer.currentView).toBeInstanceOf(CartView);
+  });
+
+  it("Transition SameView + SameRoot → no-op (MÊME instance conservée)", () => {
+    const composer = createProgrammableComposer();
+    composer.decide = () => ({ view: CartView, rootElement: "[data-view='cart']" });
+
+    composer.attach(document.body);
+    const firstInstance = composer.currentView;
+
+    composer.performResolve("event-tick");
+
+    expect(composer.currentView).toBe(firstInstance);
+    expect(composer.currentView).toBeInstanceOf(CartView);
+  });
+
+  it("Transition NewView (classe différente) + instance → detach + attach", () => {
+    const composer = createProgrammableComposer();
+    composer.decide = () => ({ view: CartView, rootElement: "[data-view='cart']" });
+
+    composer.attach(document.body);
+    const firstInstance = composer.currentView;
+
+    composer.decide = () => ({ view: CheckoutView, rootElement: "[data-view='checkout']" });
+    composer.performResolve("switch");
+
+    expect(composer.currentView).not.toBe(firstInstance);
+    expect(composer.currentView).toBeInstanceOf(CheckoutView);
+  });
+
+  it("Transition SameView + rootElement différent → detach + attach (nouvelle instance)", () => {
+    const composer = createProgrammableComposer();
+    composer.decide = () => ({ view: CartView, rootElement: "[data-view='cart']" });
+
+    composer.attach(document.body);
+    const firstInstance = composer.currentView;
+
+    composer.decide = () => ({ view: CartView, rootElement: "[data-view='checkout']" });
+    composer.performResolve("relocate");
+
+    expect(composer.currentView).not.toBe(firstInstance);
+    expect(composer.currentView).toBeInstanceOf(CartView);
+  });
+
+  it("Transition null + instance → detach (currentView devient null)", () => {
+    const composer = createProgrammableComposer();
+    composer.decide = () => ({ view: CartView, rootElement: "[data-view='cart']" });
+
+    composer.attach(document.body);
+    expect(composer.currentView).toBeInstanceOf(CartView);
+
+    composer.decide = () => null;
+    composer.performResolve("hide");
+
+    expect(composer.currentView).toBeNull();
+  });
+
+  it("Cycle complet null → View → null → View (toutes transitions chaînées)", () => {
+    const composer = createProgrammableComposer();
+
+    composer.decide = () => null;
+    composer.attach(document.body);
+    expect(composer.currentView).toBeNull();
+
+    composer.decide = () => ({ view: CartView, rootElement: "[data-view='cart']" });
+    composer.performResolve("show-cart");
+    const cartInstance = composer.currentView;
+    expect(cartInstance).toBeInstanceOf(CartView);
+
+    composer.performResolve("noop-tick");
+    expect(composer.currentView).toBe(cartInstance);
+
+    composer.decide = () => null;
+    composer.performResolve("hide");
+    expect(composer.currentView).toBeNull();
+
+    composer.decide = () => ({ view: CheckoutView, rootElement: "[data-view='checkout']" });
+    composer.performResolve("show-checkout");
+    expect(composer.currentView).toBeInstanceOf(CheckoutView);
+  });
+
+  it("ADR-0027 — resolve() est recalculé à chaque appel (pas de cache local)", () => {
+    const composer = createProgrammableComposer();
+    let toggle = true;
+    composer.decide = () =>
+      toggle
+        ? { view: CartView, rootElement: "[data-view='cart']" }
+        : { view: CheckoutView, rootElement: "[data-view='checkout']" };
+
+    composer.attach(document.body);
+    expect(composer.currentView).toBeInstanceOf(CartView);
+
+    toggle = false;
+    composer.performResolve("toggle");
+    expect(composer.currentView).toBeInstanceOf(CheckoutView);
+
+    toggle = true;
+    composer.performResolve("toggle");
+    expect(composer.currentView).toBeInstanceOf(CartView);
+
+    expect(composer.resolveCalls).toBe(3);
   });
 });
