@@ -5,7 +5,7 @@
 | **Statut**              | 🟢 Accepted                                                                                                                                                                                                                                                                                                                                                              |
 | **Date**                | 2026-04-21                                                                                                                                                                                                                                                                                                                                                               |
 | **Décideurs**           | @ncac                                                                                                                                                                                                                                                                                                                                                                    |
-| **RFC liées**           | RFC-0001-invariants-decisions, RFC-0002-feature, RFC-0002-channel                                                                                                                                                                                                                                                                                                        |
+| **RFC liées**           | [invariants.md](../rfc/reference/invariants.md), [feature.md](../rfc/3-couche-abstraite/feature.md), [communication.md](../rfc/2-architecture/communication.md)                                                                                                                                                                                                          |
 | **ADR liées**           | [ADR-0001](ADR-0001-entity-diff-notification-strategy.md), [ADR-0003](ADR-0003-channel-runtime-semantics.md), [ADR-0004](ADR-0004-validation-modes.md), [ADR-0015](ADR-0015-local-state-mechanism.md), [ADR-0019](ADR-0019-mode-esm-modulaire.md), [ADR-0024](ADR-0024-component-capabilities-manifest-pattern.md), [ADR-0037](ADR-0037-feature-generic-entity-class.md) |
 | **Décisions amendées**  | I21, I24 (formulation runtime → compile-time + filet runtime) ; D5, D6 (registre de namespaces)                                                                                                                                                                                                                                                                          |
 | **Invariants impactés** | I21, I22, I24, I57 (amendés) — I68 à I72 (nouveaux, à intégrer dans RFC-0001-invariants-decisions)                                                                                                                                                                                                                                                                       |
@@ -144,10 +144,10 @@ const app = new Application({ foundation: AppFoundation })
 
 ```typescript
 // app/manifest.ts — TYPE-MANIFEST, zéro classe importée
-export interface AppManifest {
+export type AppManifest = {
   user: unknown;
   cart: unknown;
-}
+};
 export type AppNamespace = keyof AppManifest;
 export type ExternalOf<TSelfNS extends AppNamespace> = Exclude<
   AppNamespace,
@@ -216,6 +216,37 @@ Nous choisissons **Option D — Manifest applicatif typé**, complétée par :
 - **A** est rejetée parce qu'elle laisse l'invariant le plus structurel du framework dépendre d'un check `Set.has()` au runtime — incompatible avec le principe « Compile-time > Runtime » de Bonsai.
 - **B** est rejetée parce qu'elle impose une API fluent invasive sans bénéfice supplémentaire vs D pour l'unicité, et perd la centralisation déclarative.
 - **C** est **disqualifiée techniquement** : TypeScript merge silencieusement les augmentations d'interface en doublon, donc l'augmentation globale ne peut pas porter l'unicité.
+
+### Modèle contractuel
+
+Le namespace n'est ni une donnée « locale » détenue par la Feature, ni une information dérivable automatiquement.
+Il est le résultat d'un **contrat explicite** entre deux responsabilités distinctes.
+
+- **La Feature** ne proclame pas son identité globale ; elle **énonce une précondition** :
+  _si je suis utilisée, je dois l'être sous ce namespace précis_.
+  Cette contrainte est portée en **signature de type** (`TSelfNS`) et représente une attente,
+  non une affirmation d'existence.
+
+- **L'Application** est l'unique autorité d'enregistrement.
+  Elle **institue l'univers des Features** effectivement actives,
+  garantit l'unicité, et tranche toute collision via le manifest applicatif.
+
+- **Le typage (`satisfies StrictManifest<M>`) joue le rôle d'arbitre compile-time** :
+  il confronte l'attente déclarée par la Feature à la réalité imposée par l'Application.
+
+Ce découplage est volontaire : une Feature n'a, par nature, aucune visibilité sur l'ensemble
+dans lequel elle sera éventuellement intégrée.
+Tenter de lui faire porter l'unicité reviendrait à introduire un registre global implicite
+ou des effets de bord à l'import — deux anti‑patterns explicitement exclus de Bonsai.
+
+Ainsi, la « double présence » du namespace n'est pas une duplication de responsabilité,
+mais l'expression d'un **accord bilatéral vérifié** :
+
+| Acteur      | Rôle architectural                                                   |
+| ----------- | -------------------------------------------------------------------- |
+| Feature     | Précondition typée (« je m'attends à être enregistrée comme X »)     |
+| Application | Autorité et registre (« voici les X existants, uniques et valides ») |
+| TypeScript  | Juge compile-time garantissant la cohérence du contrat               |
 
 ### Le paradoxe de l'auto-référence et sa résolution
 
@@ -348,7 +379,7 @@ Erreur typée : `BonsaiNamespaceError` (étend `BonsaiRegistryError` mentionné 
 - 🔶 **Plugins tiers (futur) qui veulent ajouter une Feature post-bootstrap** — _hors-scope ADR-0039_ ; un futur ADR « extension manifest » traitera ce cas.
 - 🔶 **Migration des tests strate 0** — volume faible, ADR fait office de breaking change documenté avant strate 1.
 
-### Invariants nouveaux (à intégrer dans RFC-0001-invariants-decisions)
+### Invariants nouveaux (intégrés dans [invariants.md](../rfc/reference/invariants.md))
 
 | Réf | Contenu                                                                                                                                                                                               |
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -376,6 +407,41 @@ Erreur typée : `BonsaiNamespaceError` (étend `BonsaiRegistryError` mentionné 
 | [tests/e2e/strate-0.cart-round-trip.test.ts](../../tests/e2e/strate-0.cart-round-trip.test.ts)               | Le test crée son propre manifest                                                                                                                                             |
 | [tests/unit/strate-0/application.bootstrap.test.ts](../../tests/unit/strate-0/application.bootstrap.test.ts) | Tests de l'API manifest, plus de `register()`                                                                                                                                |
 | RFC-0002-feature, RFC-0001-invariants-decisions                                                              | Mise à jour des sections namespace + invariants amendés/nouveaux                                                                                                             |
+
+---
+
+## Amendement — Compatibilité avec ADR-0019 (Mode ESM Modulaire)
+
+Cette ADR définit un mécanisme **statique** (manifest applicatif typé) qui maximise les garanties _compile-time_ lorsque l'Application connaît l'ensemble de ses Features **avant** le bootstrap.
+
+Or, [ADR-0019](ADR-0019-mode-esm-modulaire.md) — Mode ESM Modulaire introduit un mécanisme **dynamique** de découverte et de collecte des Features via `BonsaiRegistry` (`registerFeature()` dans chaque module ESM, puis `collect()` au bootstrap).
+
+Afin de ne pas fermer la porte au Mode ESM Modulaire, les points suivants sont **précisés** :
+
+### 1) Manifest : distinguer « syntaxique » vs « logique »
+
+- **Manifest syntaxique (univers fermé)** : un objet TypeScript littéral `{ [namespace]: FeatureClass }` validé par `satisfies StrictManifest<M>`. Il offre l'unicité par construction (clé dupliquée) et des garanties de cohérence au compile-time.
+- **Manifest logique (univers collecté)** : une structure équivalente au runtime (ensemble de paires `{ namespace → FeatureClass }`) produite par `BonsaiRegistry.collect()` à partir des modules effectivement chargés.
+
+Dans les deux cas, **l'Application bootstrappe un même « univers de namespaces »** (I68–I72) ; seule la **stratégie d'assemblage** diffère (statique vs dynamique).
+
+### 2) Unicité : compile-time si possible, runtime sinon
+
+- En **univers fermé**, l'unicité est principalement garantie au compile-time via les règles TypeScript sur les clés d'objet (TS1117), complétée par un filet runtime.
+- En **univers ESM**, l'unicité ne peut pas être garantie au compile-time par l'Application hôte (monde ouvert). Elle est donc garantie **au runtime** au moment de la déclaration/collecte : `BonsaiRegistry.registerFeature()` détecte une collision et lève `BonsaiRegistryError` immédiatement ; `collect()` fige un snapshot pour un bootstrap déterministe.
+
+Cette précision ne change pas l'invariant : « deux modules ne peuvent pas enregistrer le même namespace » (I21/I24), mais explicite que la phase de détection dépend du mode d'assemblage.
+
+### 3) `TSelfNS` reste un contrat intra-module, quel que soit le mode
+
+Le paramètre de type `TSelfNS` reste la **précondition typée** portée par la Feature (contrat local) et demeure pertinent en mode ESM :
+
+- en mode statique, `satisfies StrictManifest<M>` confronte `TSelfNS` à la clé d'enregistrement au compile-time ;
+- en mode ESM, la confrontation est assurée par la validation runtime (registry + bootstrap), tout en conservant la _type-safety intra-module_ (C4 ADR-0019).
+
+### 4) Portée de cette ADR
+
+Cette ADR **n'abolit pas** `BonsaiRegistry` et ne décrète pas que _toute_ Application doit être assemblée par un manifest statique. Elle standardise un assemblage statique optimal pour les univers fermés, tout en admettant qu'un assemblage dynamique ESM produise un manifest logique équivalent avant `Application.start()`.
 
 ---
 
@@ -494,3 +560,4 @@ export type CamelCaseNamespace<S extends string> =
 | ---------- | ------------------------------------------------------------------------------------------- |
 | 2026-04-21 | Pré-ADR rédigé (`docs/namespace-feature.md`) puis amendé pour intégrer Option ① (`TSelfNS`) |
 | 2026-04-21 | Promotion en ADR formel — Accepted                                                          |
+| 2026-04-24 | Amendement — Compatibilité avec ADR-0019 (Mode ESM Modulaire) : distinction manifest syntaxique / logique, unicité compile-time vs runtime, portée précisée |
