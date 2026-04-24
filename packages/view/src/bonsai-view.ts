@@ -126,6 +126,14 @@ export abstract class View {
   }
 
   /**
+   * L'élément DOM racine après mount. Disponible dans onAttach() et les
+   * handlers — permet aux sous-classes de lire les data-* attributes (I34).
+   */
+  protected get el(): HTMLElement | null {
+    return this.#rootEl;
+  }
+
+  /**
    * Monte la View sur un rootElement. Appelé par le Composer.
    * - Lit `get params()` une seule fois (ADR-0024)
    * - Résout le rootElement dans le DOM
@@ -144,6 +152,13 @@ export abstract class View {
 
     this.#rootElement = rootSelector;
     this.#rootEl = document.querySelector(rootSelector) as HTMLElement;
+
+    // I34: rootElement must not be document.body itself
+    if (this.#rootEl === document.body) {
+      throw new Error(
+        `[Bonsai View] I34 — rootElement cannot be document.body. Provide a child element selector.`
+      );
+    }
 
     // Auto-discovery
     this.#registerUIHandlers();
