@@ -122,6 +122,7 @@ describe("Channel tri-lane basic — Strate 0 [I10, I11, I25, I26, I27, I29, I55
     });
 
     it("emit() error in one listener does not prevent other listeners", () => {
+      const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
       const listener1 = jest.fn(() => {
         throw new Error("listener1 crash");
       });
@@ -131,8 +132,9 @@ describe("Channel tri-lane basic — Strate 0 [I10, I11, I25, I26, I27, I29, I55
       channel.listen("itemAdded", listener2);
       channel.emit("itemAdded", { item: {} });
 
-      // listener2 DOIT être appelé malgré le throw de listener1
       expect(listener2).toHaveBeenCalledTimes(1);
+      expect(errorSpy).toHaveBeenCalled(); // ADR-0002 : erreur loguée, pas propagée
+      errorSpy.mockRestore();
     });
 
     it("unlisten() removes a specific listener", () => {
@@ -169,14 +171,16 @@ describe("Channel tri-lane basic — Strate 0 [I10, I11, I25, I26, I27, I29, I55
     });
 
     it("I55 — request() returns null when replier throws (never propagates)", () => {
+      const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
       channel.reply("getTotal", () => {
         throw new Error("database connection lost");
       });
 
       const result = channel.request("getTotal", {});
 
-      // Le framework intercepte, retourne null (D44 révisé)
       expect(result).toBeNull();
+      expect(errorSpy).toHaveBeenCalled(); // L'erreur est loguée côté framework (D44 révisé)
+      errorSpy.mockRestore();
     });
 
     it("reply() passes params to the replier function", () => {
