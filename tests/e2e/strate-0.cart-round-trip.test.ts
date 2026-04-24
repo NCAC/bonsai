@@ -56,8 +56,13 @@ describe("🚪 GATE Strate 0 — Cart round-trip E2E [ADR-0028]", () => {
 
   it("click addButton → trigger → handle → mutate → emit → N1 projection → DOM updated", () => {
     // ── 1. Bootstrap ──────────────────────────────────────────────
-    const app = new Application({ foundation: AppFoundation });
-    app.register(CartFeature);
+    // ADR-0039 — manifest applicatif (clé = namespace, valeur = classe Feature).
+    // L'unicité, le format camelCase et l'accord TSelfNS↔clé sont vérifiés
+    // au compile-time via `StrictManifest<M>` (cf. tests de type).
+    const app = new Application({
+      foundation: AppFoundation,
+      features: { cart: CartFeature }
+    });
     app.start();
 
     // ── 2. Vérifier que la View est montée ────────────────────────

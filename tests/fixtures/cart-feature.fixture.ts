@@ -26,16 +26,16 @@ import { Foundation } from "@bonsai/foundation";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export interface TCartItem {
+export type TCartItem = {
   productId: string;
   qty: number;
   price: number;
-}
+};
 
-export interface TCartState {
+export type TCartState = {
   items: TCartItem[];
   total: number;
-}
+};
 
 // ─── Entity ─────────────────────────────────────────────────────────────────
 
@@ -54,8 +54,11 @@ export class CartEntity extends Entity<TCartState> {
 
 // ─── Feature ────────────────────────────────────────────────────────────────
 
-export class CartFeature extends Feature<CartEntity> {
-  static readonly namespace = "cart" as const;
+/**
+ * CartFeature — `TSelfNS = "cart"` ancre la classe à la clé du manifest
+ * applicatif (ADR-0039 — I72). Plus de `static namespace`.
+ */
+export class CartFeature extends Feature<CartEntity, "cart"> {
   static readonly channels = [] as const;
 
   protected get Entity() {

@@ -31,9 +31,13 @@ import { Application } from '@bonsai/core';
 import { CartFeature } from './features/cart.feature';
 import { UserFeature } from './features/user.feature';
 
-const app = new Application();
-app.register(CartFeature);
-app.register(UserFeature);
+// Le manifest applicatif : clé camelCase = namespace, valeur = classe Feature (ADR-0039)
+const app = new Application({
+  features: {
+    cart: CartFeature,
+    user: UserFeature,
+  },
+});
 app.start();
 ```
 
@@ -94,6 +98,91 @@ Le `BonsaiRegistry` est un **singleton** exporte par le runtime ESM. Il offre :
 > **Invariant** : `collect()` verrouille le registry — les appels a `register*()`
 > apres `collect()` sont des no-ops (mode strict : throw).
 > Nature : composant runtime singleton, comme Radio (QO-ESM-3).
+
+---
+
+## 4. Topologie des packages (ADR-0031)
+
+> **ADR-0031 (Accepted)** : **Option D — un package pnpm par composant**. Le
+> compilateur TypeScript et la résolution pnpm garantissent les frontières
+> architecturales au build-time — aucune convention documentaire ne suffit.
+
+### Graphe de dépendances (DAG pur, zéro cycle)
+
+```
+                @bonsai/types           ← types primitifs cross-packages
+                ╱     │     ╲
+       @bonsai/error   │      │          ← BonsaiError, invariant(), hardInvariant()
+        ╱   │   ╲     │      │
+@bonsai/event │  @bonsai/entity
+      │   ╲    │        │
+      │   @bonsai/feature
+      │
+@bonsai/behavior
+      │
+ @bonsai/view
+      │
+@bonsai/composer
+      │
+@bonsai/foundation
+      │
+@bonsai/application   ← orchestre tout
+      │
+ @bonsai/core         ← méta-package barrel pur (zéro code propre)
+```
+
+Chaque arc dans ce graphe correspond à une entrée `"dependencies"` dans un
+`package.json`. Si le lien n'est pas déclaré, l'import ne compile pas —
+c'est la garantie fondamentale d'Option D.
+
+### Convention d'import — deux audiences, deux règles
+
+**Développeur d'application** (consommateur du framework) :
+
+```typescript
+// ✅ Un seul import à connaître
+import { Application, Feature, Entity, View, Composer } from "@bonsai/core";
+
+// ❌ Interdit — imports internes réservés au framework
+import { Entity } from "@bonsai/entity";
+```
+
+**Développeur framework** (code inter-packages) :
+
+```typescript
+// ✅ Import depuis le package du composant — dépendance explicite
+import { Entity } from "@bonsai/entity";
+import { Feature } from "@bonsai/feature";
+import { Channel, Radio } from "@bonsai/event";
+
+// ❌ Interdit — crée des dépendances circulaires et masque le DAG
+import { Entity } from "@bonsai/core";
+```
+
+**Tests — l'import dépend du niveau :**
+
+| Niveau | Import | Objectif |
+|--------|--------|----------|
+| **Unit** (`tests/unit/`) | `from "@bonsai/entity"` | Prouve l'isolation, charge le minimum |
+| **Intégration** (`tests/integration/`) | `from "@bonsai/core"` | Teste comme un consommateur |
+| **E2E** (`tests/e2e/`) | `from "@bonsai/core"` | Exactement comme le développeur d'application |
+
+### Structure d'un package composant
+
+Chaque package suit un template identique :
+
+```
+packages/{name}/
+  package.json          → "@bonsai/{name}", deps uniquement @bonsai/* nécessaires
+  tsconfig.json         → extends tsconfig.base.json
+  src/
+    bonsai-{name}.ts    ← barrel (re-exports publics)
+    {name}.class.ts     ← classe principale
+    types.ts            ← types publics (optionnel)
+```
+
+`@bonsai/core` (dans `core/`) est le seul méta-package : barrel pur qui
+ré-exporte tous les composants. Il ne contient aucun code propre.
 
 ---
 

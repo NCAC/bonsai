@@ -14,51 +14,107 @@
  *   I3  — Feature ne peut reply que sur son propre Channel
  *   I5  — Entity n'est accessible que par sa Feature propriétaire
  *   I12 — Aucune Feature ne peut emit sur le Channel d'une autre
- *   I21 — Chaque Feature déclare un namespace unique
+ *   I21 — Chaque Feature DOIT être enregistrée dans le manifest applicatif
+ *         sous une clé namespace unique camelCase plat (amendé ADR-0039)
  *   I22 — Relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte
  *   I48 — Handlers auto-découverts par convention de nommage
+ *   I68 — Le namespace est porté par le manifest applicatif, pas par
+ *         un `static` sur la classe Feature (ADR-0039)
+ *   I72 — `TSelfNS` doit correspondre exactement à la clé sous laquelle
+ *         la Feature est enregistrée dans le manifest (ADR-0039)
  *
  * @packageDocumentation
  */
 
 import { Entity, type TJsonSerializable } from "@bonsai/entity";
 import { Radio } from "@bonsai/event";
+import { assertValidNamespace } from "./types";
+
+// ─── Re-exports — surface publique du package ───────────────────────────────
+
+export {
+  RESERVED_NAMESPACES,
+  BonsaiNamespaceError,
+  isCamelCaseNamespace,
+  isReservedNamespace,
+  assertValidNamespace
+} from "./types";
+export type {
+  ReservedNamespace,
+  CamelCaseNamespace,
+  ValidatedManifest,
+  StrictManifest,
+  TBonsaiNamespaceErrorCode
+} from "./types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 /**
  * Constructeur concret d'une sous-classe de Feature.
- * Combine les membres statiques (namespace, channels) avec l'instanciabilité.
+ *
+ * Depuis ADR-0039, le constructeur prend obligatoirement `namespace: TSelfNS`
+ * en paramètre — ce qui permet à `StrictManifest<M>` de vérifier au
+ * compile-time que la classe est compatible avec sa clé d'enregistrement (I72).
  */
 export type TFeatureClass<
-  TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>
-> = (new () => Feature<TEntity>) & typeof Feature;
+  TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>,
+  TSelfNS extends string = string
+> = new (namespace: TSelfNS) => Feature<TEntity, TSelfNS>;
 
 // ─── Feature abstract class ──────────────────────────────────────────────────
 
 /**
- * Feature — unité métier paramétrée par sa classe Entity concrète.
+ * Feature — unité métier paramétrée par sa classe Entity et son namespace.
  *
- * Générique typé par la CLASSE Entity (ADR-0037), pas par la forme du state :
- * cela encode I22 (1:1:1) au type-level et donne accès aux méthodes
- * `query` de l'Entity sans cast.
+ * Paramètres de type :
+ *   - `TEntity`  : la classe Entity (ADR-0037 — encode I22 au type-level)
+ *   - `TSelfNS`  : le namespace sous lequel cette Feature s'attend à être
+ *                  enregistrée dans le manifest applicatif (ADR-0039 — I72).
+ *                  Par défaut `string` pour les sous-classes non paramétrées.
  *
- * En strate 0, seul le générique TEntity est présent ; le second générique
- * TChannel prévu par la RFC est ajouté en strate supérieure quand le typage
- * Channel sera mis en place.
+ * **Le namespace n'est plus déclaré sur la classe** (`static namespace`
+ * supprimé, ADR-0039 — I68). Il est :
+ *   - injecté par le constructeur (immuabilité dès construction)
+ *   - dérivé de la clé du manifest applicatif (source de vérité — I69)
+ *   - validé au compile-time par `StrictManifest<M>` au `satisfies`
+ *   - validé au runtime par `assertValidNamespace()` (filet — I71)
+ *
+ * Le générique `TChannel` prévu par la RFC sera ajouté en strate supérieure
+ * quand le typage Channel sera mis en place — il s'insérera entre `TEntity`
+ * et `TSelfNS`.
  */
 export abstract class Feature<
-  TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>
+  TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>,
+  TSelfNS extends string = string
 > {
   /**
-   * Namespace statique — chaque sous-classe DOIT le redéfinir.
-   * Identifie le Channel, l'Entity et la Feature de manière 1:1:1 (I21, I22).
+   * Namespaces externes écoutés par cette Feature (auto-discovery I48).
+   *
+   * Reste un `static` parce qu'il participe à la signature de la classe
+   * (lue par `Application.start()` avant toute instanciation) et qu'il est
+   * immuable par classe. Le typage strict via `ExternalOf<TSelfNS>` viendra
+   * avec le paramètre `TChannel` en strate supérieure.
    */
-  static readonly namespace: string;
   static readonly channels: readonly string[] = [];
 
+  readonly #namespace: TSelfNS;
   #entity!: TEntity;
   #bootstrapped = false;
+
+  // ─── Constructor ───────────────────────────────────────────────────────
+
+  /**
+   * Crée une Feature attachée au namespace passé en paramètre.
+   *
+   * Appelé exclusivement par `Application.start()` qui transmet la clé du
+   * manifest. L'instanciation manuelle (tests) doit aussi passer le namespace.
+   *
+   * @throws `BonsaiNamespaceError` si le namespace est invalide ou réservé.
+   */
+  constructor(namespace: TSelfNS) {
+    assertValidNamespace(namespace);
+    this.#namespace = namespace;
+  }
 
   // ─── Abstract ──────────────────────────────────────────────────────────
 
@@ -68,20 +124,17 @@ export abstract class Feature<
    * Chaque Feature concrète DOIT fournir ce getter retournant le constructeur
    * de son Entity. Le retour est typé par TEntity (la classe concrète), ce qui
    * permet à `this.entity` d'être typé sans cast.
-   *
-   * Le getter (et non une propriété) est requis car les initialiseurs des
-   * sous-classes s'exécutent APRÈS super() ; un getter sur le prototype est
-   * accessible dès le bootstrap de la base class.
    */
   protected abstract get Entity(): new () => TEntity;
 
   // ─── Public API ────────────────────────────────────────────────────────
 
   /**
-   * Le namespace de cette instance (délègue au static).
+   * Le namespace de cette instance — immuable, défini au constructeur.
+   * Typé `TSelfNS` (string littéral si la Feature est paramétrée).
    */
-  get namespace(): string {
-    return (this.constructor as typeof Feature).namespace;
+  get namespace(): TSelfNS {
+    return this.#namespace;
   }
 
   /**
@@ -119,7 +172,7 @@ export abstract class Feature<
    * C1 — Émet un Event sur le propre Channel de cette Feature (I1, I12).
    */
   protected emit(eventName: string, payload: unknown): void {
-    const channel = Radio.me().channel(this.namespace);
+    const channel = Radio.me().channel(this.#namespace);
     channel.emit(eventName, payload);
   }
 
@@ -154,7 +207,7 @@ export abstract class Feature<
    * Convention : `onAddItemCommand` → commande "addItem"
    */
   #registerCommandHandlers(): void {
-    const channel = Radio.me().channel(this.namespace);
+    const channel = Radio.me().channel(this.#namespace);
     const proto = Object.getPrototypeOf(this);
     const methods = Object.getOwnPropertyNames(proto);
 
@@ -176,7 +229,7 @@ export abstract class Feature<
    * Convention : `onGetTotalRequest` → request "getTotal"
    */
   #registerRequestRepliers(): void {
-    const channel = Radio.me().channel(this.namespace);
+    const channel = Radio.me().channel(this.#namespace);
     const proto = Object.getPrototypeOf(this);
     const methods = Object.getOwnPropertyNames(proto);
 

@@ -11,7 +11,7 @@
 | **Composant**  | Feature                 |
 | **Couche**     | Abstraite (persistante) |
 | **Statut**     | 🟢 Stable               |
-| **Mis à jour** | 2026-04-02              |
+| **Mis à jour** | 2026-04-21              |
 
 > ### Statut normatif
 >
@@ -19,6 +19,7 @@
 > Il fait également foi pour la **pratique de déclaration Channel** : `TChannelDefinition`, `declareChannel`,
 > pattern namespace TS (D14), co-localisation (D13).
 > Les mutations Entity utilisent `mutate(intent, params?, recipe)` conformément à [ADR-0001](../../adr/ADR-0001-entity-diff-notification-strategy.md).
+> L'identité de la Feature (namespace) est portée par le **manifest applicatif** (I68–I72) conformément à [ADR-0039](../../adr/ADR-0039-namespace-authority-and-uniqueness.md) — la classe Feature ne déclare **plus** de `static readonly namespace`.
 > Pour le **concept Channel** (tri-lane, événement `any`, sémantiques runtime) → voir [communication.md](../2-architecture/communication.md).
 
 ---
@@ -45,7 +46,8 @@ via les mapped types définis dans [RFC-0002 §3 Conventions de typage](../6-tra
 
 ```typescript
 /**
- * Classe abstraite Feature — paramétrée par la classe Entity concrete et le Channel.
+ * Classe abstraite Feature — paramétrée par la classe Entity concrete, le Channel
+ * et le namespace self-type (I68–I72, ADR-0039).
  *
  * TEntityClass est contraint à Entity<TJsonSerializable> (ADR-0037, D10) :
  * la Feature est typée par sa CLASSE Entity, pas par la forme du state.
@@ -53,36 +55,41 @@ via les mapped types définis dans [RFC-0002 §3 Conventions de typage](../6-tra
  * et élimine tout cast `as ConcreteEntity` dans le code applicatif.
  *
  * TChannel est contraint à TChannelDefinition.
+ *
+ * TSelfNS est le namespace auquel cette Feature s'attend à être enregistrée
+ * dans le manifest applicatif (ADR-0039, I72). La classe reste **anonyme en
+ * valeur** (aucun littéral n'apparaît dans son code hors annotation de type)
+ * mais **typée en signature** : le manifest vérifie au compile-time via
+ * `StrictManifest<M>` que la clé d'enregistrement == TSelfNS.
+ *
  * Les génériques sont *contraints* : le développeur ne peut pas instancier
  * une Feature avec un Channel arbitraire.
  *
- * Pas de F-bounded polymorphism récursif (pas de Self-type) :
- * chaque Feature est une classe concrète finale, pas une base d'héritage
- * entre Features concrètes. Le seul héritage utilisé est le pattern
- * abstract → concret (Feature → CartFeature), qui justifie l'accès
- * `protected` sur entity, onInit, onDestroy, etc.
+ * Pas de F-bounded polymorphism récursif (pas de Self-type).
  */
 abstract class Feature<
   TEntityClass extends Entity<TJsonSerializable>,
-  TChannel extends TChannelDefinition
+  TChannel extends TChannelDefinition,
+  TSelfNS extends string = string
 > {
-  /** Namespace unique — dérivé du token Namespace.channel (D5, I21, D14) */
-  static readonly namespace: string;
+  // ❌ Plus de `static readonly namespace` — I68, ADR-0039.
+  //    Le namespace est porté par la clé du manifest applicatif et injecté
+  //    au constructeur (option c d'ADR-0039).
+
+  /**
+   * Namespace injecté au constructeur et immuable dès construction (I68, ADR-0039).
+   * Typé par TSelfNS (chaîne littérale) — l'IDE propose la valeur exacte.
+   */
+  readonly #namespace: TSelfNS;
+
+  /** Lecture du namespace — typée par TSelfNS de la sous-classe. */
+  get namespace(): TSelfNS {
+    return this.#namespace;
+  }
 
   /**
    * Constructeur de l'Entity concrète — getter abstrait obligatoire
    * (D17 amendé par [ADR-0037](../../adr/ADR-0037-feature-generic-entity-class.md)).
-   *
-   * Chaque Feature concrète DOIT fournir ce getter retournant le
-   * constructeur de son Entity. Le retour est typé par TEntityClass
-   * (la classe concrète), pas par Entity<TStructure> — ce qui
-   * permet à `this.entity` d'être typé par la classe concrète
-   * et donne accès aux méthodes `query`, sans cast.
-   *
-   * Le getter (et non une propriété) est nécessaire car les
-   * initialiseurs de propriétés de la classe fille s'exécutent
-   * APRÈS super() — un getter sur le prototype est accessible
-   * dès le constructeur de la classe abstraite.
    */
   protected abstract get Entity(): new () => TEntityClass;
 
@@ -90,12 +97,16 @@ abstract class Feature<
   protected readonly entity: TEntityClass;
 
   /**
-   * Constructeur — instancie l'Entity automatiquement via D17.
+   * Constructeur — reçoit le namespace injecté par Application au bootstrap
+   * (option c d'ADR-0039) et instancie l'Entity via D17.
    *
-   * Le framework appelle ce constructeur au bootstrap (RFC-0001 §5.1 étape 5).
-   * Le développeur ne l'appelle jamais directement.
+   * Le framework appelle ce constructeur au bootstrap (RFC-0001 §5.1 étape 5)
+   * en lisant la clé du manifest applicatif. Le développeur ne l'appelle jamais
+   * directement.
    */
-  constructor() {
+  constructor(namespace: TSelfNS) {
+    assertValidNamespace(namespace); // filet runtime (ADR-0039 §Filet)
+    this.#namespace = namespace;
     this.entity = new this.Entity();
   }
 
@@ -105,8 +116,9 @@ abstract class Feature<
 }
 ```
 
-> **Invariants respectés** : I21 (namespace unique), I22 (1:1:1),
-> I6 (seule la Feature modifie son Entity).
+> **Invariants respectés** : I21 (namespace unique via manifest), I22 (1:1:1),
+> I6 (seule la Feature modifie son Entity), I68–I72 (autorité manifest,
+> ADR-0039).
 
 > **Pas de self-type récursif (`Feature<Self, ...>`)** :
 > Contrairement au pattern `Class<Child extends Class<Child>>` où la classe
@@ -234,15 +246,24 @@ Cart/
 
 > **Décision D11** : les déclarations Channel se font via le **token
 > `Namespace.channel`** (D14), pas via la classe Feature elle-même.
+>
+> **Amendement [ADR-0039](../../adr/ADR-0039-namespace-authority-and-uniqueness.md)** :
+> la classe Feature ne déclare **plus** de `static readonly namespace`.
+> L'identité de la Feature est portée par la **clé du manifest applicatif**
+> (I68, I69) et **injectée au constructeur** au bootstrap (I68, option c).
+> Le paramètre de type `TSelfNS` — troisième paramètre de `Feature<_, _, TSelfNS>`
+> — déclare en signature le namespace attendu, vérifié contre la clé du manifest
+> par `StrictManifest<M>` au `satisfies` (I72).
 
 ```typescript
 class CartFeature
-  extends Feature<CartEntity, Cart.Channel>
+  extends Feature<CartEntity, Cart.Channel, "cart">
   implements
     TRequiredCommandHandlers<Cart.Channel>,
     TRequiredRequestHandlers<Cart.Channel>
 {
-  static readonly namespace = Cart.channel.namespace;
+  // ❌ Plus de `static readonly namespace = Cart.channel.namespace` — I68, ADR-0039.
+  //    Le namespace est porté par la clé du manifest applicatif et TSelfNS.
 
   /** Liaison Feature → Entity concrète (D17 amendé par ADR-0037) */
   protected get Entity() {
@@ -258,6 +279,49 @@ class CartFeature
   // ... les méthodes onXXX requises par implements (voir §4)
 }
 ```
+
+### Manifest applicatif (ADR-0039)
+
+L'enregistrement de la Feature se fait via un **manifest applicatif** typé
+(I69, pattern A bis — type-manifest séparé du value-manifest) :
+
+```typescript
+// app/manifest.ts — TYPE-MANIFEST (interface explicite, zéro classe importée)
+export interface AppManifest {
+  user: unknown;
+  cart: unknown;
+}
+export type AppNamespace = keyof AppManifest;
+export type ExternalOf<TSelfNS extends AppNamespace> = Exclude<
+  AppNamespace,
+  TSelfNS
+>;
+export type StrictManifest<M> = {
+  [K in keyof M & string]: new (namespace: K) => Feature<any, any, K>;
+};
+```
+
+```typescript
+// app/main.ts — VALUE-MANIFEST (satisfies vérifie la cohérence)
+import type { AppManifest, StrictManifest } from "@app/manifest.js";
+import { UserFeature } from "@user/user.feature.js";
+import { CartFeature } from "@cart/cart.feature.js";
+
+const features = {
+  user: UserFeature,
+  cart: CartFeature
+  // cart: AnotherFeature,  ← TS1117 : clé dupliquée → I21, I24
+  // Cart: CartFeature,     ← clé non camelCase → never → I21
+  // local: SomethingFeature ← réservé → never → I57, I71
+  // user: CartFeature,     ← TSelfNS "cart" ≠ clé "user" → erreur satisfies → I72
+} satisfies StrictManifest<AppManifest>;
+
+const app = new Application({ foundation: AppFoundation, features });
+app.start();
+```
+
+> **`Application.register()` est supprimée** (I69, D-η ADR-0039). L'enregistrement
+> se fait exclusivement via le manifest passé au constructeur d'Application.
 
 > **Note ADR-0024** : les Features conservent `static readonly listen` et `static readonly request`
 > car le framework lit ces déclarations depuis la **classe** (pas l'instance) lors du câblage
@@ -409,12 +473,12 @@ protected trigger<
 
 ```typescript
 class CartFeature
-  extends Feature<CartEntity, Cart.Channel>
+  extends Feature<CartEntity, Cart.Channel, "cart">
   implements
     TRequiredCommandHandlers<Cart.Channel>,
     TRequiredRequestHandlers<Cart.Channel>
 {
-  static readonly namespace = Cart.channel.namespace;
+  // namespace injecté au constructeur via le manifest applicatif (ADR-0039, I68)
   protected get Entity() {
     return CartEntity;
   }
@@ -534,12 +598,12 @@ export namespace Cart {
 // ────────────────────────────────────────────────────────────
 
 class CartFeature
-  extends Feature<CartEntity, Cart.Channel>
+  extends Feature<CartEntity, Cart.Channel, "cart">
   implements
     TRequiredCommandHandlers<Cart.Channel>,
     TRequiredRequestHandlers<Cart.Channel>
 {
-  static readonly namespace = Cart.channel.namespace;
+  // namespace injecté au constructeur via le manifest applicatif (ADR-0039, I68)
   protected get Entity() {
     return CartEntity;
   }
