@@ -1,13 +1,19 @@
 /**
- * Tests Strate 0 — Application bootstrap
+ * Tests Strate 0 — Application bootstrap (refondu ADR-0039)
  *
  * Invariants prouvés :
  *   I23  — Application est dormante au runtime
- *   I24  — Application garantit l'unicité des namespaces au bootstrap
+ *   I24  — Manifest garantit l'unicité au compile-time ; Application valide
+ *          format + réservés + cohérence des `channels` au bootstrap (amendé ADR-0039)
+ *   I33  — Application sans Foundation ne peut rien afficher
  *   I56  — onInit() de chaque Feature appelé avant la création de la Foundation
+ *   I68  — Le namespace est porté par le manifest, pas par un static (ADR-0039)
+ *   I69  — Le manifest est l'unique source de vérité de l'identité (ADR-0039)
+ *   I70  — Toute référence à un namespace externe DOIT être validée (ADR-0039)
+ *   I71  — `RESERVED_NAMESPACES` est une constante framework (ADR-0039)
  *
  * Sémantiques strate 0 :
- *   - register(FeatureClass) — enregistre une Feature
+ *   - constructor({ foundation, features }) — déclare le manifest applicatif
  *   - start() — bootstrap en 4 phases simplifiées
  *
  * @jest-environment jsdom
@@ -18,7 +24,7 @@ import { resetDOM } from "../../helpers/dom-setup";
 import { Application } from "@bonsai/application";
 import { Foundation } from "@bonsai/foundation";
 import { Entity } from "@bonsai/entity";
-import { Feature } from "@bonsai/feature";
+import { Feature, BonsaiNamespaceError } from "@bonsai/feature";
 import { Radio } from "@bonsai/event";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -41,21 +47,15 @@ class CartEntity extends Entity<TCartState> {
   }
 }
 
-class CartFeature extends Feature<CartEntity> {
-  static readonly namespace = "cart" as const;
-  // channels = liste des namespaces externes écoutés (I48 auto-discovery).
-  // CartFeature n'écoute rien d'externe en strate 0.
+class CartFeature extends Feature<CartEntity, "cart"> {
   static readonly channels = [] as const;
-
   protected get Entity() {
     return CartEntity;
   }
 }
 
 /**
- * Stub partagé pour les fixtures de bootstrap qui n'ont pas de logique métier
- * (uniquement la chaîne register/start). Évite de redéclarer une Entity vide
- * dans chaque test. Conforme ADR-0037 — Feature exige `get Entity()`.
+ * Stub partagé pour les fixtures de bootstrap qui n'ont pas de logique métier.
  */
 type TNoopState = Record<string, never>;
 class NoopEntity extends Entity<TNoopState> {
@@ -63,7 +63,10 @@ class NoopEntity extends Entity<TNoopState> {
     return {};
   }
 }
-abstract class StubFeature extends Feature<NoopEntity> {
+abstract class StubFeature<TSelfNS extends string> extends Feature<
+  NoopEntity,
+  TSelfNS
+> {
   protected get Entity() {
     return NoopEntity;
   }
@@ -77,65 +80,69 @@ class EmptyFoundation extends Foundation {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-describe("Application bootstrap — Strate 0 [I23, I24, I56]", () => {
+describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
   beforeEach(() => {
     resetDOM();
     Radio.reset();
   });
 
-  describe("register() — Feature registration", () => {
-    it("register() accepts a Feature class", () => {
-      const app = new Application();
-      expect(() => app.register(CartFeature)).not.toThrow();
+  // ── Manifest API (ADR-0039) ────────────────────────────────────────────
+
+  describe("Manifest applicatif (ADR-0039 — I68/I69)", () => {
+    it("Application accepts a features manifest in its constructor", () => {
+      expect(
+        () =>
+          new Application({
+            foundation: EmptyFoundation as unknown as typeof Foundation,
+            features: { cart: CartFeature }
+          })
+      ).not.toThrow();
     });
 
-    it("I24 — register() with duplicate namespace throws", () => {
-      const app = new Application();
-      app.register(CartFeature);
-
-      class FakeCartFeature extends StubFeature {
-        static readonly namespace = "cart" as const;
+    it("start() instantiates each Feature with the namespace from the manifest key (I72)", () => {
+      class OrderFeature extends StubFeature<"orders"> {
         static readonly channels = [] as const;
       }
 
-      expect(() => app.register(FakeCartFeature)).toThrow(
-        /namespace.*collision/i
-      );
-    });
-
-    it("register() after start() throws", () => {
       const app = new Application({
-        foundation: EmptyFoundation as unknown as typeof Foundation
+        foundation: EmptyFoundation as unknown as typeof Foundation,
+        features: { cart: CartFeature, orders: OrderFeature }
       });
-      app.register(CartFeature);
       app.start();
 
-      class AnotherFeature extends StubFeature {
-        static readonly namespace = "orders" as const;
-        static readonly channels = [] as const;
-      }
+      // Channels créés sous les clés du manifest — Radio.channel() ne throw pas
+      expect(() => Radio.me().channel("cart")).not.toThrow();
+      expect(() => Radio.me().channel("orders")).not.toThrow();
+    });
 
-      expect(() => app.register(AnotherFeature)).toThrow(/already started/i);
+    it("Application has no register() method anymore (ADR-0039 D-η)", () => {
+      const app = new Application({
+        foundation: EmptyFoundation as unknown as typeof Foundation,
+        features: { cart: CartFeature }
+      });
+      expect(
+        (app as unknown as { register?: unknown }).register
+      ).toBeUndefined();
     });
   });
 
+  // ── 4-phase bootstrap ──────────────────────────────────────────────────
+
   describe("start() — 4-phase bootstrap", () => {
-    it("start() creates channels for registered Features", () => {
+    it("start() creates channels for manifested Features", () => {
       const app = new Application({
-        foundation: EmptyFoundation as unknown as typeof Foundation
+        foundation: EmptyFoundation as unknown as typeof Foundation,
+        features: { cart: CartFeature }
       });
-      app.register(CartFeature);
       app.start();
 
-      // Channel "cart" should exist in Radio
       expect(() => Radio.me().channel("cart")).not.toThrow();
     });
 
     it("I56 — onInit() of every Feature called before Foundation creation", () => {
       const callOrder: string[] = [];
 
-      class OrderedFeature extends StubFeature {
-        static readonly namespace = "ordered" as const;
+      class OrderedFeature extends StubFeature<"ordered"> {
         static readonly channels = [] as const;
         onInit() {
           callOrder.push("feature:onInit");
@@ -152,9 +159,9 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56]", () => {
       }
 
       const app = new Application({
-        foundation: OrderedFoundation as unknown as typeof Foundation
+        foundation: OrderedFoundation as unknown as typeof Foundation,
+        features: { ordered: OrderedFeature }
       });
-      app.register(OrderedFeature);
       app.start();
 
       const initIndex = callOrder.indexOf("feature:onInit");
@@ -164,57 +171,130 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56]", () => {
 
     it("start() can only be called once", () => {
       const app = new Application({
-        foundation: EmptyFoundation as unknown as typeof Foundation
+        foundation: EmptyFoundation as unknown as typeof Foundation,
+        features: { cart: CartFeature }
       });
-      app.register(CartFeature);
       app.start();
 
       expect(() => app.start()).toThrow(/already started/i);
     });
   });
 
+  // ── I23 — dormancy ─────────────────────────────────────────────────────
+
   describe("I23 — Application is dormant at runtime", () => {
     it("Application has no runtime behavior after start()", () => {
       const app = new Application({
-        foundation: EmptyFoundation as unknown as typeof Foundation
+        foundation: EmptyFoundation as unknown as typeof Foundation,
+        features: { cart: CartFeature }
       });
-      app.register(CartFeature);
       app.start();
 
-      expect((app as any).handle).toBeUndefined();
-      expect((app as any).emit).toBeUndefined();
-      expect((app as any).listen).toBeUndefined();
-      expect((app as any).request).toBeUndefined();
+      const runtime = app as unknown as Record<string, unknown>;
+      expect(runtime.handle).toBeUndefined();
+      expect(runtime.emit).toBeUndefined();
+      expect(runtime.listen).toBeUndefined();
+      expect(runtime.request).toBeUndefined();
     });
   });
 
-  describe("Namespace reserved words", () => {
-    it("namespace 'local' is reserved — throws at registration", () => {
-      class BadFeature extends StubFeature {
-        static readonly namespace = "local" as const;
+  // ── Filet runtime du manifest (ADR-0039 — I70/I71) ─────────────────────
+
+  describe("Manifest validation runtime [ADR-0039 — I70, I71]", () => {
+    it("I71 — namespace 'local' is reserved → BonsaiNamespaceError(NAMESPACE_RESERVED)", () => {
+      class BadFeature extends StubFeature<string> {
         static readonly channels = [] as const;
       }
 
-      const app = new Application();
-      expect(() => app.register(BadFeature)).toThrow(/reserved/i);
+      const app = new Application({
+        foundation: EmptyFoundation as unknown as typeof Foundation,
+        // Cast volontaire : simule un manifest construit sans le filet
+        // compile-time `StrictManifest<M>` (cast `as any`, code JS, dynamique).
+        features: { local: BadFeature } as unknown as {
+          cart: typeof CartFeature;
+        }
+      });
+
+      expect(() => app.start()).toThrow(BonsaiNamespaceError);
+      try {
+        app.start();
+      } catch (err) {
+        expect((err as BonsaiNamespaceError).code).toBe("NAMESPACE_RESERVED");
+      }
+    });
+
+    it("Non-camelCase key → BonsaiNamespaceError(NAMESPACE_INVALID_FORMAT)", () => {
+      class BadFeature extends StubFeature<string> {
+        static readonly channels = [] as const;
+      }
+
+      const app = new Application({
+        foundation: EmptyFoundation as unknown as typeof Foundation,
+        features: { "my-cart": BadFeature } as unknown as {
+          cart: typeof CartFeature;
+        }
+      });
+
+      try {
+        app.start();
+        throw new Error("expected throw");
+      } catch (err) {
+        expect(err).toBeInstanceOf(BonsaiNamespaceError);
+        expect((err as BonsaiNamespaceError).code).toBe(
+          "NAMESPACE_INVALID_FORMAT"
+        );
+      }
+    });
+
+    it("I70 — `static channels` referencing an unknown namespace → BonsaiNamespaceError(NAMESPACE_UNKNOWN_REFERENCE)", () => {
+      class GhostListener extends StubFeature<"ghostListener"> {
+        // Référence "catlog" inexistant → filet runtime
+        static readonly channels = ["catlog"] as const;
+      }
+
+      const app = new Application({
+        foundation: EmptyFoundation as unknown as typeof Foundation,
+        features: { ghostListener: GhostListener }
+      });
+
+      try {
+        app.start();
+        throw new Error("expected throw");
+      } catch (err) {
+        expect(err).toBeInstanceOf(BonsaiNamespaceError);
+        expect((err as BonsaiNamespaceError).code).toBe(
+          "NAMESPACE_UNKNOWN_REFERENCE"
+        );
+      }
+    });
+
+    it("Cross-references between manifested Features are accepted", () => {
+      class ListenerFeature extends StubFeature<"listener"> {
+        static readonly channels = ["cart"] as const;
+      }
+
+      const app = new Application({
+        foundation: EmptyFoundation as unknown as typeof Foundation,
+        features: { cart: CartFeature, listener: ListenerFeature }
+      });
+
+      expect(() => app.start()).not.toThrow();
     });
   });
 
-  // ── Bootstrap guards (Étape 5 — durcissement) ────────────────────────────
+  // ── Bootstrap guards ───────────────────────────────────────────────────
 
   describe("Bootstrap guards [I33, I56, ADR-0010]", () => {
     it("start() throws if no Foundation provided (I33)", () => {
-      const app = new Application();
-      app.register(CartFeature);
-
+      const app = new Application({ features: { cart: CartFeature } });
       expect(() => app.start()).toThrow(/no Foundation/i);
     });
 
     it("start() instantiates the Foundation and exposes app.foundation", () => {
       const app = new Application({
-        foundation: EmptyFoundation as unknown as typeof Foundation
+        foundation: EmptyFoundation as unknown as typeof Foundation,
+        features: { cart: CartFeature }
       });
-      app.register(CartFeature);
 
       expect(app.foundation).toBeNull();
       expect(app.started).toBe(false);
@@ -228,11 +308,9 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56]", () => {
     it("Bootstrap order — channels created BEFORE Feature.onInit (Phase 1 < Phase 3)", () => {
       const callOrder: string[] = [];
 
-      class ChannelObserverFeature extends StubFeature {
-        static readonly namespace = "observer" as const;
+      class ChannelObserverFeature extends StubFeature<"observer"> {
         static readonly channels = [] as const;
         onInit() {
-          // Si on arrive ici, le channel doit déjà exister (Phase 1 terminée)
           try {
             Radio.me().channel("observer");
             callOrder.push("channel-exists-at-onInit");
@@ -243,9 +321,9 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56]", () => {
       }
 
       const app = new Application({
-        foundation: EmptyFoundation as unknown as typeof Foundation
+        foundation: EmptyFoundation as unknown as typeof Foundation,
+        features: { observer: ChannelObserverFeature }
       });
-      app.register(ChannelObserverFeature);
       app.start();
 
       expect(callOrder).toEqual(["channel-exists-at-onInit"]);
@@ -254,15 +332,13 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56]", () => {
     it("Bootstrap order — Foundation.attach called AFTER all Features.onInit (Phase 3 < Phase 4)", () => {
       const callOrder: string[] = [];
 
-      class FeatureA extends StubFeature {
-        static readonly namespace = "feat-a" as const;
+      class FeatureA extends StubFeature<"featA"> {
         static readonly channels = [] as const;
         onInit() {
           callOrder.push("featA:onInit");
         }
       }
-      class FeatureB extends StubFeature {
-        static readonly namespace = "feat-b" as const;
+      class FeatureB extends StubFeature<"featB"> {
         static readonly channels = [] as const;
         onInit() {
           callOrder.push("featB:onInit");
@@ -278,10 +354,9 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56]", () => {
       }
 
       const app = new Application({
-        foundation: WatcherFoundation as unknown as typeof Foundation
+        foundation: WatcherFoundation as unknown as typeof Foundation,
+        features: { featA: FeatureA, featB: FeatureB }
       });
-      app.register(FeatureA);
-      app.register(FeatureB);
       app.start();
 
       expect(callOrder).toEqual([
