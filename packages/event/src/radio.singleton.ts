@@ -9,7 +9,7 @@
  * @see RFC 2-architecture/communication.md §8
  */
 
-import { Channel } from "./channel.class";
+import { Channel, type TChannelDefinition, type TChannelToken } from "./channel.class";
 
 export class Radio {
   static #instance: Radio | undefined;
@@ -35,12 +35,28 @@ export class Radio {
     return Radio.#instance;
   }
 
-  /** Obtient ou crée un Channel par namespace. */
+  /**
+   * Obtient ou crée un Channel par namespace (API interne).
+   * Retourne `Channel<TChannelDefinition>` — toutes lanes `Record<string, unknown>`.
+   * Pour un accès typé depuis l'extérieur, utiliser `channelFor(token)`.
+   */
   channel(name: string): Channel {
     if (!this.#channels.has(name)) {
       this.#channels.set(name, new Channel(name));
     }
     return this.#channels.get(name)!;
+  }
+
+  /**
+   * Obtient ou crée un Channel typé via son token (ADR-0040, I77, I79).
+   *
+   * Le cast `as Channel<TDef>` est sûr par I22 : un namespace ne peut être
+   * associé qu'à une seule Feature et donc à un seul `TDef`.
+   */
+  channelFor<TDef extends TChannelDefinition, TNS extends string>(
+    token: TChannelToken<TDef, TNS>
+  ): Channel<TDef> {
+    return this.channel(token.namespace) as Channel<TDef>;
   }
 
   /** Vérifie si un Channel existe pour ce namespace. */
