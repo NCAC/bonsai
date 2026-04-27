@@ -55,6 +55,12 @@ export type {
  * Depuis ADR-0039, le constructeur prend obligatoirement `namespace: TSelfNS`
  * en paramètre — ce qui permet à `StrictManifest<M>` de vérifier au
  * compile-time que la classe est compatible avec sa clé d'enregistrement (I72).
+ *
+ * Ce type n'encode que la signature du constructeur. Les membres `static`
+ * (`channel`, `listens`, `queries` — ADR-0040) font partie du contrat de classe
+ * mais ne peuvent pas être exprimés dans un type constructeur sans intersection
+ * explicite. Leur présence est garantie par convention et par le filet runtime
+ * de `Application.start()` — cf. limitation `abstract static` ci-dessous.
  */
 export type TFeatureClass<
   TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>,
@@ -79,21 +85,35 @@ export type TFeatureClass<
  *   - validé au compile-time par `StrictManifest<M>` au `satisfies`
  *   - validé au runtime par `assertValidNamespace()` (filet — I71)
  *
- * Le générique `TChannel` prévu par la RFC sera ajouté en strate supérieure
- * quand le typage Channel sera mis en place — il s'insérera entre `TEntity`
- * et `TSelfNS`.
+ * Le générique `TChannelDef extends TChannelDefinition` sera inséré en 2ᵉ
+ * position entre `TEntity` et `TSelfNS` lors de l'implémentation d'ADR-0040
+ * (API TypeScript-First). `emit()` et `request()` seront alors pleinement typés.
  */
 export abstract class Feature<
   TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>,
   TSelfNS extends string = string
 > {
   /**
-   * Namespaces externes écoutés par cette Feature (auto-discovery I48).
+   * Namespaces externes écoutés par cette Feature (auto-discovery I48, I2).
+   * Sera remplacé par `listens` et `queries` séparés (ADR-0040).
    *
-   * Reste un `static` parce qu'il participe à la signature de la classe
-   * (lue par `Application.start()` avant toute instanciation) et qu'il est
-   * immuable par classe. Le typage strict via `ExternalOf<TSelfNS>` viendra
-   * avec le paramètre `TChannel` en strate supérieure.
+   * **Pourquoi `static` — deux raisons distinctes selon la propriété :**
+   *
+   * • `channel` (token propre, ADR-0040) — porteur de TYPE consommé sans
+   *   instance. Une View ou Feature externe importe la classe uniquement pour
+   *   son token (`CartFeature.channel`) afin de typer ses appels `trigger()` ou
+   *   `request()`. Un token d'instance obligerait les consommateurs à tenir une
+   *   référence à la Feature, violant la topologie du flux (I1, I4, I12).
+   *
+   * • `listens` / `queries` (ADR-0040, ici `channels`) — invariants de classe,
+   *   identiques pour toute instance (I22 : une seule par namespace). Lus par
+   *   `Application.start()` AVANT instanciation pour valider les dépendances
+   *   croisées et câbler les listeners/repliers au bootstrap.
+   *
+   * **Limitation TypeScript** — `abstract static` n'existe pas.
+   * La présence de ces propriétés ne peut pas être imposée compile-time aux
+   * sous-classes. Filets de sécurité : `TFeatureClass` (type constructeur),
+   * validation runtime dans `Application.start()`, tests de type (`tests/types/`).
    */
   static readonly channels: readonly string[] = [];
 
@@ -280,5 +300,19 @@ export abstract class Feature<
         }
       }
     }
+  }
+}
+
+/** just un test :) */
+
+class MyEntity extends Entity<{ count: number }> {
+  protected defineInitialState(): { count: number } {
+    return { count: 0 };
+  }
+}
+
+class MyFeature extends Feature<MyEntity, "my"> {
+  protected get Entity() {
+    return MyEntity;
   }
 }
