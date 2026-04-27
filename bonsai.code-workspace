@@ -9,6 +9,10 @@
       "name": "Framework"
     },
     {
+      "path": "docs",
+      "name": "Documentation"
+    },
+    {
       "path": "packages",
       "name": "Packages"
     },
