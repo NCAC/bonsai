@@ -318,6 +318,23 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
 
       expect(() => app.start()).not.toThrow();
     });
+
+    it("Feature class with no static listens/queries (plain class cast) — covers ?? [] branches", () => {
+      // Feature base définit toujours listens/queries, donc il faut un stub
+      // sans héritage pour exercer la branche `?? []` (simule cast as any depuis
+      // code JS ou manifest dynamique).
+      const FakeFeature = class {
+        constructor(_ns: string) {}
+        bootstrap(): void {}
+      };
+
+      const app = new Application({
+        foundation: EmptyFoundation as unknown as typeof Foundation,
+        features: { fake: FakeFeature } as any
+      });
+
+      expect(() => app.start()).not.toThrow();
+    });
   });
 
   // ── Bootstrap guards ───────────────────────────────────────────────────

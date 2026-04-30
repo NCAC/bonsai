@@ -205,6 +205,29 @@ describe("View — strate-0 core (ADR-0024 value-first + ADR-0041 pattern)", () 
       const el = document.querySelector("[data-ui='title']") as HTMLElement;
       expect(el.style.color).toBe("red");
     });
+
+    it("TProjectionNode.element() returns the underlying HTMLElement", () => {
+      const view = new TestView();
+      view.mount("[data-view='test']");
+
+      const el = view.getUI("title").element();
+      expect(el).toBeInstanceOf(HTMLElement);
+      expect(el).toBe(document.querySelector("[data-ui='title']"));
+    });
+
+    it("getUI throws when selector is not found in DOM", () => {
+      document.body.innerHTML = `
+        <div data-view="test">
+          <span data-ui="counter">0</span>
+          <button data-ui="toggleBtn">Toggle</button>
+        </div>
+      `;
+      const view = new TestView();
+      view.mount("[data-view='test']");
+
+      // title est déclaré dans uiElements mais absent du DOM
+      expect(() => view.getUI("title")).toThrow(/UI element "title" not found/);
+    });
   });
 
   describe("I4 — View cannot emit (no emit method)", () => {
@@ -225,6 +248,59 @@ describe("View — strate-0 core (ADR-0024 value-first + ADR-0041 pattern)", () 
       view.callTrigger("cart:addItem", { productId: "abc", qty: 1 });
 
       expect(handler).toHaveBeenCalledWith({ productId: "abc", qty: 1 });
+    });
+
+    it("trigger with malformed key (no colon) throws", () => {
+      const view = new TestView();
+      view.mount("[data-view='test']");
+
+      expect(() =>
+        (view as unknown as { callTrigger(k: string, p: unknown): void })
+          .callTrigger("malformed", {})
+      ).toThrow(/Malformed namespaced key/);
+    });
+  });
+
+  describe("request() — effectue une Request synchrone typée (ADR-0041)", () => {
+    type TRequestDeps = {
+      readonly listens:  readonly [];
+      readonly triggers: readonly [];
+      readonly requests: [typeof CartFeatureFake];
+    };
+
+    const requestViewContract = {
+      uiElements: {},
+      listens:  [] as const,
+      triggers: [] as const,
+      requests: ["cart:getCount"] as const
+    } satisfies TViewContract<TRequestDeps>;
+
+    type TRequestViewContract = typeof requestViewContract;
+
+    class RequestView extends View<TRequestDeps, TRequestViewContract> {
+      get contract() {
+        return requestViewContract;
+      }
+      doRequest(): unknown {
+        return this.request("cart:getCount", undefined);
+      }
+    }
+
+    it("request('ns:req', params) returns result from channel replier", () => {
+      document.body.innerHTML = `<div data-view="req"></div>`;
+      const view = new RequestView();
+      view.mount("[data-view='req']");
+
+      Radio.me().channel("cart").reply("getCount", () => 42);
+      expect(view.doRequest()).toBe(42);
+    });
+
+    it("request() returns null when no replier is registered", () => {
+      document.body.innerHTML = `<div data-view="req"></div>`;
+      const view = new RequestView();
+      view.mount("[data-view='req']");
+
+      expect(view.doRequest()).toBeNull();
     });
   });
 
