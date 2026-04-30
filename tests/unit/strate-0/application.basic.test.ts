@@ -25,7 +25,7 @@ import { Application } from "@bonsai/application";
 import { Foundation } from "@bonsai/foundation";
 import { Entity } from "@bonsai/entity";
 import { Feature, BonsaiNamespaceError } from "@bonsai/feature";
-import { Radio, type TChannelDefinition, type TChannelToken } from "@bonsai/event";
+import { Radio, type TChannelDefinition } from "@bonsai/event";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 

@@ -26,7 +26,7 @@
  */
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
-import { Radio, type TChannelDefinition, type TChannelToken } from "@bonsai/event";
+import { Radio, type TChannelToken } from "@bonsai/event";
 import { View, type TViewContract } from "@bonsai/view";
 
 // ─── Fake Feature pour les tests (équivalent minimal à CartFeature.channel) ─
