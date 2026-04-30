@@ -12,7 +12,7 @@
 | **Couche** | Concrete (ephemere) |
 | **Source**    | Historique : RFC-0002-api-contrats-typage §9 |
 | **Statut** | Stable |
-| **ADRs liees** | ADR-0009 (formulaires), ADR-0013 (code reuse), ADR-0014 (SSR/hydratation), ADR-0015 (localState), ADR-0017 (PDR vs VDOM), ADR-0020 (N-instances) |
+| **ADRs liees** | ADR-0024 (value-first), ADR-0026 (rootElement), ADR-0040 (Channel générique), ADR-0041 (pattern consommateur unifié), ADR-0009, ADR-0013, ADR-0014, ADR-0015, ADR-0017, ADR-0020 |
 
 ---
 
@@ -38,220 +38,333 @@
 
 ## 1. Classe abstraite View
 
+La View est paramétrée par deux génériques issus du **pattern consommateur unifié** (ADR-0041) :
+
 ```typescript
+import type {
+  TConsumerDeps,
+  TConsumerContract,
+  TListenCallbacks,
+  TCommandPayload,
+  TRequestParams,
+  TRequestResult,
+} from "@bonsai/feature";
+
 /**
- * TViewParams -- contrainte de validation pour l'objet params View (ADR-0024).
- * Utilise avec `as const satisfies TViewParams<TUI, TOptions>`.
+ * Contrat View -- etend TConsumerContract<TDeps> avec la map uiElements.
  *
- * rootElement N'EST PAS dans TViewParams (ADR-0026) :
- * il est fourni par le Composer via TResolveResult.rootElement.
- *
- * @template TUI — type-level : types d'elements HTML + evenements DOM.
- * @template TOptions — type des options custom de la View.
+ * uiElements : cle logique → selecteur CSS resoluble dans rootElement.
+ * listens / triggers / requests : cles namespacees "ns:name" validees
+ * compile-time par satisfies contre les Features declarees dans TDeps.
  */
-type TViewParams<
-  TUI extends TUIMap<any>,
-  TOptions extends Record<string, unknown> = Record<string, never>
-> = {
-  readonly listen:     readonly TChannelDefinition[];
-  readonly trigger:    readonly TChannelDefinition[];
-  readonly request:    readonly TChannelDefinition[];
-  readonly uiElements: { readonly [K in keyof TUI]: string };
-  readonly behaviors:  readonly (typeof Behavior)[];
-  readonly options:    TOptions;
+type TViewContract<TDeps extends TConsumerDeps> = TConsumerContract<TDeps> & {
+  readonly uiElements: Readonly<Record<string, string>>;
 };
 
 /**
- * TViewCapabilities -- type derive complet (ADR-0024 value-first).
- * Fusionne les types narrow de la valeur (typeof params) et le type
- * purement type-level (TUI) qui n'est pas dans l'objet runtime.
+ * Surface minimale d'une classe View — utilisee par Composer (variance).
+ * Le code applicatif n'utilise jamais ce type directement.
  */
-type TViewCapabilities<
-  TUI extends TUIMap<any>,
-  TParams extends TViewParams<TUI, any>
-> = {
-  readonly listen:     TParams['listen'];
-  readonly trigger:    TParams['trigger'];
-  readonly request:    TParams['request'];
-  readonly ui:         TUI;                    // type-level uniquement
-  readonly uiElements: TParams['uiElements'];
-  readonly behaviors:  TParams['behaviors'];
-  readonly options:    TParams['options'];
-};
+type TViewClass = abstract new () => View<any, any>;
 
-abstract class View<TCapabilities extends TViewCapabilities<TUIMap<any>, any>> {
+abstract class View<
+  TDeps extends TConsumerDeps,
+  TContract extends TViewContract<TDeps>
+> {
   /**
-   * Declaration de la View -- identite et configuration (ADR-0024 value-first).
-   * Abstract = obligatoire. Chaque View concrete le definit.
+   * Manifeste de la View (ADR-0024 value-first + ADR-0041).
+   * Evalue UNE SEULE FOIS au mount() -- le framework stocke le resultat.
+   * Type TContract preserve les types litteraux des tableaux de cles.
+   */
+  abstract get contract(): TContract;
+
+  /**
+   * Le selecteur rootElement injecte au mount (I31).
+   * Fourni par le Composer via TResolveResult.rootElement (ADR-0026).
+   */
+  get rootElement(): string | null;
+
+  /**
+   * Element DOM racine apres mount (I34).
+   * Accessible dans onAttach() et les handlers.
+   * Permet de lire les data-* attributes contextuels (ADR-0024).
+   */
+  protected get el(): HTMLElement | null;
+
+  /**
+   * Monte la View sur un rootElement. Appele par le Composer (I20).
+   * Idempotent -- un second appel est un no-op.
    *
-   * Le const params est valide par `satisfies TViewParams<TUI, TOptions>`
-   * puis le type derive `TViewCapabilities<TUI, typeof params>` est passe
-   * en generic de la classe.
-   *
-   * rootElement n'est PAS dans params (ADR-0026) --
-   * le Composer le fournit via TResolveResult.rootElement.
-   *
-   * Le Composer peut override les options via resolve() -> options (D34).
+   * Sequence :
+   *   1. Lecture unique de get contract() (ADR-0024)
+   *   2. Resolution rootElement dans le DOM
+   *   3. Validation I34 (pas document.body)
+   *   4. Auto-discovery UI handlers D48 (on{UiKey}{DomEvent})
+   *   5. Auto-discovery Event listeners I48 (on{Ns}{Event}Event)
+   *      → throw I82 si handler manquant pour une cle dans contract.listens
+   *   6. onAttach() lifecycle hook
    */
-  abstract get params(): TCapabilities;
-
-  // PAS de abstract get uiEvents() -- D48 (AUTO-UI-EVENT-DISCOVERY)
-  // Le framework auto-derive les handlers depuis TUIMap.
-  // Les handlers conventionnels (on${Key}${Event}) sont detectes au bootstrap.
+  mount(rootSelector: string): void;
 
   /**
-   * Map des templates de projection (compiles depuis .pug).
-   * Trois modes mutuellement exclusifs :
-   * - null           -> Mode A : pas de template, projection via getUI()
-   * - { root: B }    -> Mode B : template complet, possede tout this.el
-   * - { [K]: B }     -> Mode C : fragments (ilots), cles issues de TUI
-   *                   ou B = { template: TProjectionTemplate, select?: fn }
+   * Acces DOM type via getUI(key). Resolution dans le scope rootElement (I40).
+   * Cle invalide (hors uiElements) → erreur compile-time.
+   * Element absent du DOM → throw runtime.
+   * (I39 — aucun querySelector direct autorise)
    */
-  get templates(): TViewTemplates<TCapabilities['ui']> { return null; }
-
-  /** Options effectives = merge(this.params.options, composerOptions). Readonly apres onAttach(). */
-  protected readonly resolvedOptions: Readonly<TCapabilities['options']>;
-
-  /** Element DOM racine -- fourni par le Composer via rootElement (ADR-0026), resolu par le framework */
-  protected readonly el!: HTMLElement;
+  getUI<K extends keyof TContract["uiElements"] & string>(key: K): TProjectionNode;
 
   /**
-   * Nodes de projection -- peuple automatiquement par le framework
-   * dans onAttach() a partir de get templates().
-   * Chaque cle correspond a une cle de templates().
+   * Envoie un Command type via Channel (I4 — View n'a jamais emit()).
+   * key : cle namespacee "ns:cmd" declaree dans contract.triggers.
+   * payload : infere depuis TDeps via TCommandPayload<TDeps, K>.
+   * Cle hors contrat → erreur compile-time.
    */
-  protected readonly nodes!: TViewNodes<TCapabilities['ui']>;
-
-  /**
-   * Resout un @ui par son nom logique.
-   * Le type de retour est TProjectionNode<TUI[K]['el']> ou TProjectionRead<TUI[K]['el']>
-   * selon que le @ui est couvert par un template ou non (I41, D32).
-   * Le type d'element HTML (D35) est propage depuis TUIMap.
-   */
-  protected getUI<K extends keyof TCapabilities['ui'] & string>(key: K):
-    TProjectionNode<TCapabilities['ui'][K]['el']> | TProjectionRead<TCapabilities['ui'][K]['el']>;
-
-  /**
-   * Behaviors attaches a cette View (plugins UI reutilisables).
-   * Retourne un tableau de classes Behavior. Le framework instancie
-   * chaque Behavior au onAttach() et le detruit au onDetach().
-   */
-  get behaviors(): readonly (typeof Behavior)[] { return []; }
-}
-```
-
-> **I30** : la View ne possede **aucun domain state**. Projection pure.
-> **I42** : la View **peut** declarer un state local de presentation (D33) -- type, reactif, encapsule, non-broadcastable.
-> **I31** : le `rootElement` doit exister dans le DOM au moment de `onAttach()` (ADR-0026 : fourni par le Composer, resolu par le framework).
-> **I39** : la View accede au DOM **exclusivement** via `getUI(key)` -- aucun acces DOM brut.
-> **I40** : le scope DOM de la View exclut les sous-arbres des slots declares (D31).
-> **I41** : chaque @ui a une source de mutation unique -- `TProjectionNode` ou `template.project()`, jamais les deux (D32).
-> **D34** : la View declare ses options via `params.options` -- le Composer override via `resolve().options`.
-> **D35** : `TUIMap` contraint le type d'element HTML (`el`), pas le selecteur CSS.
-> **ADR-0024** : pattern value-first (`as const satisfies`) pour la declaration des capacites.
-> **ADR-0026** : `rootElement` n'est **PAS** dans `params` -- il vient du Composer.
-
----
-
-## 2. Declaration des capacites (ADR-0024)
-
-Les capacites d'une View (Channels ecoutes, declenchables, interrogeables,
-elements UI, Behaviors, options) sont declarees dans un **objet params
-value-first** valide par `as const satisfies` (ADR-0024).
-
-Le pattern value-first elimine la double saisie -- la valeur est ecrite une seule
-fois dans un `const`, le type est derive via `typeof`, et le getter `get params()`
-renvoie le const :
-
-```typescript
-const cartViewParams = {
-  listen:     [Cart.channel, Inventory.channel],
-  trigger:    [Cart.channel],
-  request:    [Cart.channel, Pricing.channel],
-  uiElements: {
-    addButton:    '.Cart-addButton',
-    totalDisplay: '.Cart-totalDisplay',
-  },
-  behaviors:  [],
-  options:    {},
-} as const satisfies TViewParams<TCartViewUI>;
-
-type TCartViewCapabilities = TViewCapabilities<TCartViewUI, typeof cartViewParams>;
-
-class CartView extends View<TCartViewCapabilities> {
-  get params() { return cartViewParams; }
-}
-```
-
-> **Enforcement compile-time** : `abstract get params()` est herite de `View`.
-> Un oubli de `get params()` dans une sous-classe est une erreur de compilation
-> immediate (`TS2515: Non-abstract class does not implement inherited abstract member`).
-> Les `static readonly` ne sont plus utilises (ADR-0024 §Rejet Option A).
-
-> Voir §4.2 pour l'exemple complet CartView avec templates et handlers.
-
----
-
-## 3. Types mappes View
-
-Les types suivants permettent au compilateur de verifier que les appels
-`trigger()` et `request()` d'une View ne referencent que des Channels
-declares dans le manifeste `params`, avec les bons payloads et types de retour.
-
-```typescript
-/**
- * Contraint les appels trigger() d'une View aux Commands
- * des Channels declares dans params.trigger (ADR-0024).
- */
-type TViewTriggerCapability<
-  TChannels extends readonly TChannelDefinition[]
-> = {
-  trigger<
-    TTarget extends TChannels[number],
-    K extends keyof TTarget['commands'] & string
-  >(
-    channel: { namespace: TTarget['namespace'] },
-    commandName: K,
-    payload: TTarget['commands'][K]
+  protected trigger<K extends TContract["triggers"][number] & string>(
+    key: K,
+    payload: TCommandPayload<TDeps, K>
   ): void;
+
+  /**
+   * Effectue une Request synchrone typee (ADR-0023, I29).
+   * key : cle namespacee "ns:req" declaree dans contract.requests.
+   * Retourne le resultat type ou null si aucun replier enregistre (D44).
+   */
+  protected request<K extends TContract["requests"][number] & string>(
+    key: K,
+    params: TRequestParams<TDeps, K>
+  ): TRequestResult<TDeps, K> | null;
+
+  /** Hook appele apres le mount. Override dans les sous-classes. */
+  onAttach(): void;
+}
+```
+
+> **I4** : la View n'a **jamais** `emit()` — absent du type.
+> **I30** : la View ne possede **aucun domain state** — projection pure.
+> **I31** : `rootElement` est un selecteur CSS fourni par le Composer (ADR-0026).
+> **I34** : `rootElement` ne peut pas etre `document.body`.
+> **I39** : acces DOM **exclusivement** via `getUI(key)` — aucun acces brut.
+> **I40** : scope DOM = rootElement, hors sous-arbres des slots declares.
+> **I80** : aucun `TChannelToken` dans la surface publique — Channel prive derriere Feature.
+> **I81** : `get contract()` evalue une seule fois au mount, source de verite runtime.
+> **I82** : handler manquant pour une cle `listens` → erreur compile + throw runtime.
+> **ADR-0024** : pattern value-first (`satisfies`) pour la declaration du contrat.
+> **ADR-0026** : `rootElement` n'est **pas** dans `contract` — il vient du Composer.
+
+---
+
+## 2. Pattern consommateur unifie (ADR-0041)
+
+Le pattern s'applique en **4 etapes** a chaque View concrete.
+Il est identique pour Composer et Behavior (I83).
+
+### 2.1 Vue d'ensemble des 4 etapes
+
+```
+Etape 1 — TDeps   : type pur, zero runtime, declare les Feature classes par lane
+Etape 2 — contract : objet runtime valide par satisfies → cles namespacees verifiees
+Etape 3 — TContract : type derive par typeof → preserve les types litteraux
+Etape 4 — classe   : extends + implements → handlers requis par le compilateur
+```
+
+### 2.2 Exemple complet — CartView
+
+```typescript
+import { View, type TViewContract } from "@bonsai/view";
+import { type TListenCallbacks } from "@bonsai/feature";
+import { CartFeature } from "../Cart/cart.feature";
+
+// ─── Etape 1 — TDeps : Features par lane (type pur) ────────────────────────
+// Aucun import runtime ici — types uniquement.
+
+type TCartViewDeps = {
+  readonly listens:  [typeof CartFeature];   // Events ecoutes
+  readonly triggers: [typeof CartFeature];   // Commands envoyees
+  readonly requests: [typeof CartFeature];   // Requests effectuees
+};
+
+// ─── Etape 2 — Contrat : cles namespacees validees par satisfies ────────────
+// satisfies TViewContract<TDeps> verifie compile-time que :
+//   - chaque cle "ns:name" correspond a un Event/Command/Request
+//     de la Feature declaree dans TDeps pour cette lane
+//   - les cles hors contrat sont refusees
+
+const cartViewContract = {
+  uiElements: {
+    addButton:    "[data-ui='addButton']",
+    totalDisplay: "[data-ui='totalDisplay']",
+    emptyMessage: "[data-ui='emptyMessage']",
+  },
+  listens:  ["cart:itemAdded"]  as const,
+  triggers: ["cart:addItem"]    as const,
+  requests: ["cart:getTotal"]   as const,
+} satisfies TViewContract<TCartViewDeps>;
+
+// ─── Etape 3 — Type derive : preserve les types litteraux ──────────────────
+// typeof preserve les valeurs exactes des tableaux (tuple de string literals)
+// pour que TListenCallbacks puisse generer les bons noms de handlers.
+
+type TCartViewContract = typeof cartViewContract;
+
+// ─── Etape 4 — Classe : implements rend les handlers obligatoires ───────────
+// TListenCallbacks<TDeps, TContract> genere une interface avec une methode
+// obligatoire par cle de contract.listens :
+//   "cart:itemAdded" → onCartItemAddedEvent(payload: { productId: string }): void
+//
+// Handler absent → erreur TS2420 immediate.
+// Payload incorrect → erreur TS immediate.
+
+class CartView
+  extends View<TCartViewDeps, TCartViewContract>
+  implements TListenCallbacks<TCartViewDeps, TCartViewContract>
+{
+  get contract() { return cartViewContract; }
+
+  // ── D48 — UI handler : on{UiKey}{DomEvent} ──────────────────────────────
+  // Auto-decouvert depuis uiElements. Aucun mapping manuel.
+  onAddButtonClick(_event: Event): void {
+    // trigger : cle namespacee compilee contre contract.triggers
+    // payload : infere depuis CartFeature.channel (TCartChannelDef.commands.addItem)
+    this.trigger("cart:addItem", { productId: "abc", qty: 1 });
+  }
+
+  // ── I48 / I82 — Event listener : on{Namespace}{EventName}Event ──────────
+  // Requis par implements TListenCallbacks — erreur compile si absent.
+  // payload : infere depuis CartFeature.channel (TCartChannelDef.events.itemAdded)
+  onCartItemAddedEvent(payload: { productId: string }): void {
+    this.getUI("totalDisplay").text(payload.productId);
+  }
+
+  onAttach(): void {
+    // Lecture du contexte DOM — data-* attributes disponibles via this.el
+    const productId = this.el?.dataset.productId ?? "";
+    this.getUI("emptyMessage").visible(productId === "");
+  }
+}
+```
+
+> **Enforcement compile-time** :
+> - `abstract get contract()` : oubli → `TS2515` immediat.
+> - `satisfies TViewContract<TDeps>` : cle hors contrat → erreur compile.
+> - `implements TListenCallbacks<TDeps, TContract>` : handler manquant → `TS2420`.
+> - `trigger("ns:cmd", payload)` : cle hors `contract.triggers` → erreur compile.
+> - `getUI("key")` : cle hors `contract.uiElements` → erreur compile.
+
+### 2.3 Principe : Channel prive derriere Feature (I80)
+
+Le Channel n'est jamais manipule directement par le consommateur.
+Le code applicatif ne voit que les **noms de Features** (`typeof CartFeature`)
+et des **cles namespacees** (`"cart:addItem"`).
+
+```typescript
+// ✅ BON — surface consommateur : classe Feature + cle namespacee
+type TCartViewDeps = { triggers: [typeof CartFeature] };
+this.trigger("cart:addItem", { productId, qty });
+
+// ❌ INTERDIT — exposition directe du token (I80)
+import { CartFeature } from "../Cart/cart.feature";
+const token: TChannelToken<TCartDef, "cart"> = CartFeature.channel; // non
+this.trigger(CartFeature.channel, "addItem", { productId, qty });   // non
+```
+
+---
+
+## 3. Types utilitaires du pattern consommateur
+
+Ces types sont exportes par `@bonsai/feature` et `@bonsai/view`.
+Ils sont utilises dans les 4 etapes du pattern — le developpeur les consomme
+directement (etapes 2 et 4), le compilateur les utilise implicitement (inferences).
+
+### 3.1 Types de l'etape 1 — TDeps
+
+```typescript
+/** Contrainte structurelle minimale : tout objet avec un channel type. */
+type TFeatureRef<TDef = TChannelDefinition, TNS extends string = string> = {
+  readonly channel: TChannelToken<TDef, TNS>;
 };
 
 /**
- * Contraint les appels request() d'une View aux Requests
- * des Channels declares dans params.request (ADR-0024).
- *
- * Retourne T | null **synchrone** (ADR-0023, I29) :
- * le replier ne peut qu'acceder a l'etat de son Entity, deja en memoire.
+ * Shape de TDeps : trois lanes, chacune un tuple de TFeatureRef.
+ * Le developpeur ecrit :
+ *   type TMyDeps = { listens: [typeof CartFeature]; triggers: [typeof CartFeature]; requests: [] }
  */
-type TViewRequestCapability<
-  TChannels extends readonly TChannelDefinition[]
+type TConsumerDeps = {
+  readonly listens:  readonly TFeatureRef[];
+  readonly triggers: readonly TFeatureRef[];
+  readonly requests: readonly TFeatureRef[];
+};
+```
+
+### 3.2 Types de l'etape 2 — satisfies TViewContract
+
+```typescript
+/**
+ * Extrait les cles "ns:eventName" valides depuis un TFeatureRef.
+ * Exemple : TFeatureRef<TCartDef, "cart"> → "cart:itemAdded" | "cart:..."
+ */
+type TNSEventKeys<FC extends TFeatureRef>   = /* ... */;
+type TNSCommandKeys<FC extends TFeatureRef> = /* ... */;
+type TNSRequestKeys<FC extends TFeatureRef> = /* ... */;
+
+/**
+ * Contrat consommateur : trois tableaux de cles namespacees.
+ * Utilise avec satisfies pour valider compile-time les cles declarees.
+ */
+type TConsumerContract<TDeps extends TConsumerDeps> = {
+  readonly listens:  readonly TNSEventKeys<TDeps["listens"][number]>[];
+  readonly triggers: readonly TNSCommandKeys<TDeps["triggers"][number]>[];
+  readonly requests: readonly TNSRequestKeys<TDeps["requests"][number]>[];
+};
+
+/**
+ * Contrat View = TConsumerContract + uiElements.
+ * Utilise dans : const myContract = { ... } satisfies TViewContract<TDeps>
+ */
+type TViewContract<TDeps extends TConsumerDeps> = TConsumerContract<TDeps> & {
+  readonly uiElements: Readonly<Record<string, string>>;
+};
+```
+
+### 3.3 Types de l'etape 4 — implements TListenCallbacks
+
+```typescript
+/**
+ * "cart:itemAdded" → "onCartItemAddedEvent"
+ * Genere le nom de handler par template literal.
+ */
+type THandlerName<K extends string> =
+  K extends `${infer NS}:${infer Ev}`
+    ? `on${Capitalize<NS>}${Capitalize<Ev>}Event` : never;
+
+/**
+ * Payload d'un event depuis TDeps.
+ * Exemple : TEventPayload<TCartViewDeps, "cart:itemAdded"> → { productId: string }
+ */
+type TEventPayload<TDeps, K extends string> = /* distribue sur union de TFeatureRef */;
+
+/**
+ * Interface generee automatiquement depuis contract.listens.
+ * Une methode par cle — obligatoire sur la classe (I82).
+ *
+ * Exemple pour contract.listens = ["cart:itemAdded"] :
+ *   { onCartItemAddedEvent(payload: { productId: string }): void }
+ */
+type TListenCallbacks<
+  TDeps,
+  TContract extends { readonly listens: readonly string[] }
 > = {
-  request<
-    TTarget extends TChannels[number],
-    K extends keyof TTarget['requests'] & string
-  >(
-    channel: { namespace: TTarget['namespace'] },
-    requestName: K
-  ): (TTarget['requests'][K] extends { result: infer R } ? R : never) | null;
+  [K in TContract["listens"][number] as THandlerName<K>]:
+    (payload: TEventPayload<TDeps, K>) => void;
 };
-
-/**
- * Genere les handlers Event optionnels pour une View,
- * depuis les Channels declares dans params.listen (ADR-0024).
- *
- * Reutilise le meme pattern que TEventHandlers (Feature),
- * mais applique au tuple TChannels de la View.
- */
-type TViewEventHandlers<
-  TChannels extends readonly TChannelDefinition[]
-> = TEventHandlers<TChannels>;
 ```
 
 > **Garanties compile-time** :
-> - `trigger()` ne reference que des Commands de Channels declares dans `params.trigger`
-> - `request()` ne reference que des Requests de Channels declares dans `params.request`
-> - Les event handlers `on<Ns><Event>Event()` sont verifies contre les Channels declares dans `params.listen`
-> - `emit()` n'est **jamais** disponible sur une View (I4, D7) -- absent du type
+> - `trigger("ns:cmd", payload)` : cle hors `contract.triggers` → erreur compile.
+> - `request("ns:req", params)` : cle hors `contract.requests` → erreur compile.
+> - Payload de `trigger()` et `request()` : infere exactement depuis `TDeps`.
+> - Handler manquant pour une cle `listens` → `TS2420` via `implements`.
+> - `emit()` **jamais** disponible sur une View (I4) — absent du type.
 
 ---
 
@@ -384,15 +497,15 @@ class CartView extends View<TCartViewCapabilities> {
   //   searchInput + ['input', 'change'] -> onSearchInputInput, onSearchInputChange
   //   totalDisplay + []                 -> aucun handler
 
-  onAddButtonClick(event: MouseEvent & { currentTarget: HTMLButtonElement }): void {
-    this.trigger(Cart.channel, 'addItem', { productId: '...' });
+  onAddButtonClick(_event: Event): void {
+    this.trigger("cart:addItem", { productId: "..." });
   }
 
   onSearchInputInput(event: InputEvent & { currentTarget: HTMLInputElement }): void {
-    this.trigger(Cart.channel, 'search', { query: event.currentTarget.value });
+    this.trigger("cart:search", { query: event.currentTarget.value });
   }
 
-  onSearchInputChange(event: Event & { currentTarget: HTMLInputElement }): void {
+  onSearchInputChange(_event: Event): void {
     // Validation finale a la perte de focus
   }
 }
@@ -525,19 +638,17 @@ Usage en Mode A (pas de template -- mutations N1 uniquement) :
 ```typescript
 // Le developpeur utilise getUI() -> TProjectionNode dans ses handlers Event
 onCartTotalUpdatedEvent(payload: { total: number }): void {
-  this.getUI('totalDisplay').text(`${payload.total} EUR`);
+  this.getUI("totalDisplay").text(`${payload.total} EUR`);
 }
 
 onCartItemAddedEvent(payload: { count: number }): void {
-  this.getUI('badgeCount').text(payload.count);
-  this.getUI('badgeCount').toggleClass('has-items', payload.count > 0);
+  this.getUI("badgeCount").text(String(payload.count));
+  this.getUI("badgeCount").toggleClass("has-items", payload.count > 0);
 }
 
-// Lecture de valeur d'un input (formulaire) -- TProjectionRead
+// trigger : cle namespacee compilee contre contract.triggers
 onSubmitClick(): void {
-  const username = this.getUI('usernameInput').value();
-  const remember = this.getUI('rememberCheckbox').checked();
-  this.trigger(Auth.channel, 'login', { username, remember });
+  this.trigger("auth:login", { username: "...", remember: true });
 }
 ```
 

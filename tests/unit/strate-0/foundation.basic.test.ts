@@ -12,19 +12,28 @@ import { describe, it, expect, beforeEach } from "@jest/globals";
 import { resetDOM } from "../../helpers/dom-setup";
 import { Foundation } from "@bonsai/foundation";
 import { Composer, type TResolveResult } from "@bonsai/composer";
-import { View, type TViewParams } from "@bonsai/view";
+import { View, type TViewContract } from "@bonsai/view";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
-const simpleViewParams = {
-  uiElements: {},
-  listen: [] as readonly string[],
-  trigger: [] as readonly string[]
-} as const satisfies TViewParams;
+type TSimpleViewDeps = {
+  readonly listens:  readonly [];
+  readonly triggers: readonly [];
+  readonly requests: readonly [];
+};
 
-class SimpleView extends View {
-  get params() {
-    return simpleViewParams;
+const simpleViewContract = {
+  uiElements: {},
+  listens:  [] as const,
+  triggers: [] as const,
+  requests: [] as const
+} satisfies TViewContract<TSimpleViewDeps>;
+
+type TSimpleViewContract = typeof simpleViewContract;
+
+class SimpleView extends View<TSimpleViewDeps, TSimpleViewContract> {
+  get contract() {
+    return simpleViewContract;
   }
 }
 

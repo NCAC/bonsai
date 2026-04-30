@@ -26,7 +26,7 @@
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { Feature, isCamelCaseNamespace, isReservedNamespace } from "@bonsai/feature";
 import { Entity, type TJsonSerializable } from "@bonsai/entity";
-import { Radio } from "@bonsai/event";
+import { Radio, type TChannelDefinition, type TChannelToken } from "@bonsai/event";
 
 // ─── Fixtures ──────────────────────────────────────────────────────────────
 
@@ -64,10 +64,14 @@ class PricingEntity extends Entity<TPricingState> {
   }
 }
 
+// Token pour l'accès typé au Channel externe "pricing" (ADR-0040 — I79)
+const PRICING_TOKEN: TChannelToken<TChannelDefinition, "pricing"> = { namespace: "pricing" };
+
 // ─── Features concrètes (fixtures) ────────────────────────────────────────
 
-class CartFeature extends Feature<CartEntity, "cart"> {
-  static readonly channels = ["pricing"] as const;
+class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart"> {
+  static readonly listens = [] as const;
+  static readonly queries = [PRICING_TOKEN] as const;
 
   /** Liaison Feature → Entity concrète (D17 amendé par ADR-0037) */
   protected get Entity() {
@@ -91,7 +95,7 @@ class CartFeature extends Feature<CartEntity, "cart"> {
 
   // C5 — request to external channel (exposed for testing)
   requestPrice(productId: string): number | null {
-    return this.request("pricing", "getItemPrice", { productId }) as
+    return this.request(PRICING_TOKEN, "getItemPrice", { productId }) as
       | number
       | null;
   }
@@ -102,8 +106,9 @@ class CartFeature extends Feature<CartEntity, "cart"> {
   }
 }
 
-class PricingFeature extends Feature<PricingEntity, "pricing"> {
-  static readonly channels = [] as const;
+class PricingFeature extends Feature<PricingEntity, TChannelDefinition, "pricing"> {
+  static readonly listens = [] as const;
+  static readonly queries = [] as const;
 
   protected get Entity() {
     return PricingEntity;
@@ -126,8 +131,11 @@ class CartListenerEntity extends Entity<TCartListenerState> {
 /**
  * Feature qui écoute les events d'un Channel externe (C3 — listen)
  */
-class CartListenerFeature extends Feature<CartListenerEntity, "cartListener"> {
-  static readonly channels = ["cart"] as const;
+const CART_TOKEN: TChannelToken<TChannelDefinition, "cart"> = { namespace: "cart" };
+
+class CartListenerFeature extends Feature<CartListenerEntity, TChannelDefinition, "cartListener"> {
+  static readonly listens = [CART_TOKEN] as const;
+  static readonly queries = [] as const;
 
   protected get Entity() {
     return CartListenerEntity;
@@ -328,8 +336,9 @@ describe("Feature core — Strate 0", () => {
     it("Method named exactly 'on{Channel}Event' (empty eventPascal) is silently skipped", () => {
       // "onCartEvent" = prefix "onCart" + "" + suffix "Event" → eventPascal.length === 0
       // The handler must be skipped without throwing (L272)
-      class ObserverFeature extends Feature<CartEntity, "observer"> {
-        static readonly channels = ["cart"] as const;
+      class ObserverFeature extends Feature<CartEntity, TChannelDefinition, "observer"> {
+        static readonly listens = [CART_TOKEN] as const;
+        static readonly queries = [] as const;
         protected get Entity() {
           return CartEntity;
         }

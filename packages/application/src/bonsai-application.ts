@@ -31,7 +31,7 @@
  * @packageDocumentation
  */
 
-import { Radio } from "@bonsai/event";
+import { Radio, type TChannelDefinition, type TChannelToken } from "@bonsai/event";
 import {
   Feature,
   BonsaiNamespaceError,
@@ -54,7 +54,7 @@ import { Foundation } from "@bonsai/foundation";
  * Le typage strict côté manifest applicatif vit dans `@bonsai/feature`.
  */
 export type TFeaturesManifest = Readonly<
-  Record<string, new (namespace: string) => Feature<any, any>>
+  Record<string, new (namespace: string) => Feature<any, any, any>>
 >;
 
 /**
@@ -81,7 +81,7 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
   #started = false;
   #foundationClass: typeof Foundation | null;
   #foundationInstance: Foundation | null = null;
-  #featureInstances: Feature<any, any>[] = [];
+  #featureInstances: Feature<any, any, any>[] = [];
 
   constructor(options?: TApplicationOptions<M>) {
     this.#foundationClass = options?.foundation ?? null;
@@ -171,8 +171,8 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
    * Vérifications :
    *   - format camelCase de chaque clé (I21 amendé)
    *   - non-réservation de chaque clé (I57, I71)
-   *   - `static channels` de chaque classe ne référence que des clés du manifest
-   *     (I70)
+   *   - `static listens` et `static queries` de chaque classe ne référencent
+   *     que des namespaces connus du manifest (I70, ADR-0040)
    */
   #validateManifest(): void {
     const namespaces = Object.keys(this.#manifest);
@@ -182,13 +182,19 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
       assertValidNamespace(ns);
     }
 
-    // I70 — cohérence des références croisées via `static channels`
+    // I70 — cohérence des références croisées via `static listens` et `static queries`
     const known = new Set(namespaces);
+    type TWithTokens = {
+      listens?: readonly TChannelToken<TChannelDefinition>[];
+      queries?: readonly TChannelToken<TChannelDefinition>[];
+    };
     for (const [ownNs, FeatureClass] of Object.entries(this.#manifest)) {
-      const declared =
-        (FeatureClass as unknown as { channels?: readonly string[] })
-          .channels ?? [];
-      for (const ref of declared) {
+      const cls = FeatureClass as unknown as TWithTokens;
+      const refs = [
+        ...(cls.listens ?? []),
+        ...(cls.queries ?? [])
+      ].map((t) => t.namespace);
+      for (const ref of refs) {
         if (!known.has(ref)) {
           throw new BonsaiNamespaceError(
             "NAMESPACE_UNKNOWN_REFERENCE",

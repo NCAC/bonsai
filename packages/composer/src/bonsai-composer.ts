@@ -32,7 +32,7 @@
  * @packageDocumentation
  */
 
-import { View } from "@bonsai/view";
+import { View, type TViewClass } from "@bonsai/view";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -44,10 +44,14 @@ import { View } from "@bonsai/view";
  *
  * Le champ `view` (et non `viewClass`) est l'identifiant officiel
  * du contrat — alignement RFC composer.md §1.1 + ADR-0020 §6.2 + ADR-0026.
+ *
+ * `TViewClass` est volontairement structurel (variance permissive) — le
+ * Composer ne dépend pas des `TDeps`/`TContract` spécifiques de la View
+ * concrète, seulement de sa surface de mount (cf. ADR-0041 + bonsai-view.ts).
  */
 export type TResolveResult = {
   /** La classe View concrète à instancier */
-  readonly view: typeof View;
+  readonly view: TViewClass;
   /** Sélecteur CSS de l'élément root de la View — dans le scope du Composer (ADR-0026) */
   readonly rootElement: string;
 };

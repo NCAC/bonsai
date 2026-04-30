@@ -47,12 +47,14 @@ Bonsai repose sur un pattern universel, applicable à **chaque composant** du fr
 │       → TEntityStructure   : état jsonifiable (D10)             │
 │                                                                  │
 │     View / Behavior                                             │
-│       → TUIMap : nœuds DOM, type HTML, events autorisés         │
+│       → TConsumerDeps : Features par lane (listens/triggers/…)  │
+│       → TViewContract : cles namespacees "ns:name" validées     │
 │                                                                  │
 │  2. IMPLÉMENTER LA CLASSE (en consommant ces types)             │
 │     Feature → extends Feature<TEntityStructure, TChannel>       │
 │            → implements TRequiredCommandHandlers<TChannel>       │
-│     View   → extends View<[Namespace.Channel, ...], TUIMap>     │
+│     View   → extends View<TDeps, TContract>                     │
+│            → implements TListenCallbacks<TDeps, TContract>       │
 │                                                                  │
 │  3. RÉCOMPENSE AUTOMATIQUE (le compilateur travaille pour vous) │
 │     Feature → handlers onXXXCommand/Event/Request auto-typés    │
@@ -157,9 +159,10 @@ const price = await this.request(Pricing.channel, 'getPrice', { productId }, { m
 // Les metas sont créées automatiquement (corrélation racine, ADR-0016, I54)
 // ══════════════════════════════════════════════════════════════
 
-// trigger() — envoie un Command vers la Feature propriétaire du Channel
-// Signature : trigger(channel, commandName, payload) — PAS de metas
-this.trigger(Cart.channel, 'addItem', { productId, qty });
+// trigger() — envoie un Command via cle namespacee (ADR-0041)
+// Signature : trigger("ns:cmd", payload) — cle validee compile-time
+// La cle doit etre dans contract.triggers ; payload infere depuis TDeps.
+this.trigger("cart:addItem", { productId, qty });
 
 // ══════════════════════════════════════════════════════════════
 // Handlers — reçoivent (payload, metas) — ADR-0016
@@ -712,15 +715,34 @@ type TNodeEditFormViewUI = TUIMap<{
   titleField:     { el: HTMLInputElement;  event: ['input'] };
 }>;
 
-class NodeEditFormView extends View<[NodeEdit.Channel], TNodeEditFormViewUI> {
-  get uiElements() {
-    return {
-      editorJsSlot:   '[data-field-type="editorjs"]', // querySelectorAll → 0, 1, ou N
-      mediaFieldSlot: '[data-field-type="media"]',     // querySelectorAll → 0, 1, ou N
-      submitButton:   '.NodeEditForm-submit',           // → 1 élément
-      titleField:     '.NodeEditForm-titleField',       // → 1 élément
-    };
-  }
+// ─── Etape 1 — TDeps ────────────────────────────────────────────────────────
+type TNodeEditFormViewDeps = {
+  readonly listens:  readonly [];
+  readonly triggers: [typeof NodeEditFeature];
+  readonly requests: readonly [];
+};
+
+// ─── Etape 2 — Contrat ──────────────────────────────────────────────────────
+const nodeEditFormViewContract = {
+  uiElements: {
+    editorJsSlot:   '[data-field-type="editorjs"]',
+    mediaFieldSlot: '[data-field-type="media"]',
+    submitButton:   '.NodeEditForm-submit',
+    titleField:     '.NodeEditForm-titleField',
+  },
+  listens:  [] as const,
+  triggers: ["nodeEdit:submit", "nodeEdit:titleChanged"] as const,
+  requests: [] as const,
+} satisfies TViewContract<TNodeEditFormViewDeps>;
+
+// ─── Etape 3 — Type derive ───────────────────────────────────────────────────
+type TNodeEditFormViewContract = typeof nodeEditFormViewContract;
+
+// ─── Etape 4 — Classe ────────────────────────────────────────────────────────
+class NodeEditFormView
+  extends View<TNodeEditFormViewDeps, TNodeEditFormViewContract>
+{
+  get contract() { return nodeEditFormViewContract; }
 
   get composers() {
     return {
@@ -729,15 +751,14 @@ class NodeEditFormView extends View<[NodeEdit.Channel], TNodeEditFormViewUI> {
     };
   }
 
-  onSubmitButtonClick(e: TUIEventFor<TNodeEditFormViewUI, 'submitButton', 'click'>) {
-    // trigger() : channel token + clé nue (keyof commands) + payload — pas de metas (I54)
-    this.trigger(NodeEdit.channel, 'submit', {});
+  // D48 — UI handlers auto-decouverts depuis uiElements
+  onSubmitButtonClick(_e: Event): void {
+    // trigger : cle namespacee compilee contre contract.triggers (ADR-0041)
+    this.trigger("nodeEdit:submit", {});
   }
 
-  onTitleFieldInput(e: TUIEventFor<TNodeEditFormViewUI, 'titleField', 'input'>) {
-    this.trigger(NodeEdit.channel, 'titleChanged', {
-      value: e.currentTarget.value,
-    });
+  onTitleFieldInput(e: InputEvent & { currentTarget: HTMLInputElement }): void {
+    this.trigger("nodeEdit:titleChanged", { value: e.currentTarget.value });
   }
 }
 ```
