@@ -19,6 +19,7 @@
 
 import { describe, it } from "@jest/globals";
 import { Entity } from "@bonsai/entity";
+import { type TChannelDefinition } from "@bonsai/event";
 import {
   Feature,
   type StrictManifest,
@@ -36,15 +37,17 @@ class NoopEntity extends Entity<TNoopState> {
   }
 }
 
-class CartFeature extends Feature<NoopEntity, "cart"> {
-  static readonly channels = [] as const;
+class CartFeature extends Feature<NoopEntity, TChannelDefinition, "cart"> {
+  static readonly listens = [] as const;
+  static readonly queries = [] as const;
   protected get Entity() {
     return NoopEntity;
   }
 }
 
-class UserFeature extends Feature<NoopEntity, "user"> {
-  static readonly channels = [] as const;
+class UserFeature extends Feature<NoopEntity, TChannelDefinition, "user"> {
+  static readonly listens = [] as const;
+  static readonly queries = [] as const;
   protected get Entity() {
     return NoopEntity;
   }

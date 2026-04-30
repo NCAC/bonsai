@@ -25,7 +25,7 @@ import { Application } from "@bonsai/application";
 import { Foundation } from "@bonsai/foundation";
 import { Entity } from "@bonsai/entity";
 import { Feature, BonsaiNamespaceError } from "@bonsai/feature";
-import { Radio } from "@bonsai/event";
+import { Radio, type TChannelDefinition, type TChannelToken } from "@bonsai/event";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -47,8 +47,9 @@ class CartEntity extends Entity<TCartState> {
   }
 }
 
-class CartFeature extends Feature<CartEntity, "cart"> {
-  static readonly channels = [] as const;
+class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart"> {
+  static readonly listens = [] as const;
+  static readonly queries = [] as const;
   protected get Entity() {
     return CartEntity;
   }
@@ -65,6 +66,7 @@ class NoopEntity extends Entity<TNoopState> {
 }
 abstract class StubFeature<TSelfNS extends string> extends Feature<
   NoopEntity,
+  TChannelDefinition,
   TSelfNS
 > {
   protected get Entity() {
@@ -101,7 +103,8 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
 
     it("start() instantiates each Feature with the namespace from the manifest key (I72)", () => {
       class OrderFeature extends StubFeature<"orders"> {
-        static readonly channels = [] as const;
+        static readonly listens = [] as const;
+        static readonly queries = [] as const;
       }
 
       const app = new Application({
@@ -150,7 +153,8 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       const callOrder: string[] = [];
 
       class OrderedFeature extends StubFeature<"ordered"> {
-        static readonly channels = [] as const;
+        static readonly listens = [] as const;
+        static readonly queries = [] as const;
         onInit() {
           callOrder.push("feature:onInit");
         }
@@ -210,7 +214,8 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
   describe("Manifest validation runtime [ADR-0039 — I70, I71]", () => {
     it("I71 — namespace 'local' is reserved → BonsaiNamespaceError(NAMESPACE_RESERVED)", () => {
       class BadFeature extends StubFeature<string> {
-        static readonly channels = [] as const;
+        static readonly listens = [] as const;
+        static readonly queries = [] as const;
       }
 
       const app = new Application({
@@ -232,7 +237,8 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
 
     it("Non-camelCase key → BonsaiNamespaceError(NAMESPACE_INVALID_FORMAT)", () => {
       class BadFeature extends StubFeature<string> {
-        static readonly channels = [] as const;
+        static readonly listens = [] as const;
+        static readonly queries = [] as const;
       }
 
       const app = new Application({
@@ -253,10 +259,11 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       }
     });
 
-    it("I70 — `static channels` referencing an unknown namespace → BonsaiNamespaceError(NAMESPACE_UNKNOWN_REFERENCE)", () => {
+    it("I70 — `static listens`/`queries` referencing an unknown namespace → BonsaiNamespaceError(NAMESPACE_UNKNOWN_REFERENCE)", () => {
       class GhostListener extends StubFeature<"ghostListener"> {
-        // Référence "catlog" inexistant → filet runtime
-        static readonly channels = ["catlog"] as const;
+        // Référence "catlog" inexistant → filet runtime (ADR-0040)
+        static readonly listens = [{ namespace: "catlog" }] as const;
+        static readonly queries = [] as const;
       }
 
       const app = new Application({
@@ -278,7 +285,8 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
     it("Empty string manifest key → BonsaiNamespaceError(NAMESPACE_INVALID_FORMAT)", () => {
       // Covers the `ns.length === 0` branch in assertValidNamespace (types.ts L156)
       class AnyFeature extends StubFeature<string> {
-        static readonly channels = [] as const;
+        static readonly listens = [] as const;
+        static readonly queries = [] as const;
       }
 
       const app = new Application({
@@ -299,7 +307,8 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
 
     it("Cross-references between manifested Features are accepted", () => {
       class ListenerFeature extends StubFeature<"listener"> {
-        static readonly channels = ["cart"] as const;
+        static readonly listens = [{ namespace: "cart" }] as const;
+        static readonly queries = [] as const;
       }
 
       const app = new Application({
@@ -338,7 +347,8 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       const callOrder: string[] = [];
 
       class ChannelObserverFeature extends StubFeature<"observer"> {
-        static readonly channels = [] as const;
+        static readonly listens = [] as const;
+        static readonly queries = [] as const;
         onInit() {
           try {
             Radio.me().channel("observer");
@@ -362,13 +372,15 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       const callOrder: string[] = [];
 
       class FeatureA extends StubFeature<"featA"> {
-        static readonly channels = [] as const;
+        static readonly listens = [] as const;
+        static readonly queries = [] as const;
         onInit() {
           callOrder.push("featA:onInit");
         }
       }
       class FeatureB extends StubFeature<"featB"> {
-        static readonly channels = [] as const;
+        static readonly listens = [] as const;
+        static readonly queries = [] as const;
         onInit() {
           callOrder.push("featB:onInit");
         }

@@ -27,6 +27,7 @@
  */
 
 import type { Entity, TJsonSerializable } from "@bonsai/entity";
+import type { TChannelDefinition, TChannelToken } from "@bonsai/event";
 import type { CamelCase } from "@bonsai/types";
 import type { Feature } from "./bonsai-feature";
 
@@ -94,7 +95,7 @@ export type StrictManifest<M> = {
   [K in keyof M & string]: K extends CamelCaseNamespace<K>
     ? K extends ReservedNamespace
       ? never
-      : new (namespace: K) => Feature<Entity<TJsonSerializable>, K>
+      : new (namespace: K) => Feature<Entity<TJsonSerializable>, TChannelDefinition, K>
     : never;
 };
 
@@ -133,6 +134,143 @@ export class BonsaiNamespaceError extends Error {
 // ─── Filet runtime ──────────────────────────────────────────────────────────
 
 const CAMEL_CASE_REGEX = /^[a-z][a-zA-Z]*$/;
+
+// ─── Pattern consommateur unifié (ADR-0041) ──────────────────────────────────
+
+/**
+ * Contrainte structurelle minimale pour toute Feature référençable par un
+ * composant consommateur (View, Composer, Behavior).
+ *
+ * En pratique : `typeof CartFeature` (constructeur avec `static readonly channel`)
+ * satisfait ce type. Le Channel reste privé — seul son token est exposé.
+ *
+ * I80 — aucun consommateur ne référence `TChannelToken` directement.
+ */
+export type TFeatureRef<
+  TDef extends TChannelDefinition = TChannelDefinition,
+  TNS extends string = string
+> = { readonly channel: TChannelToken<TDef, TNS> };
+
+/**
+ * Étape 1 du pattern consommateur — type pur, zéro coût runtime.
+ * Déclare quelles Features participent à chaque lane.
+ *
+ * Usage : `type TMyViewDeps = { listens: [typeof CartFeature, typeof UserFeature]; ... }`
+ *
+ * I83 — pattern unifié View / Composer / Behavior.
+ */
+export type TConsumerDeps = {
+  readonly listens:  readonly TFeatureRef[];
+  readonly triggers: readonly TFeatureRef[];
+  readonly requests: readonly TFeatureRef[];
+};
+
+/** Union des clés `"namespace:eventName"` disponibles depuis une Feature ref. */
+export type TNSEventKeys<FC extends TFeatureRef> =
+  FC["channel"] extends TChannelToken<infer D, infer NS>
+    ? `${NS}:${keyof D["events"] & string}`
+    : never;
+
+/** Union des clés `"namespace:commandName"` disponibles depuis une Feature ref. */
+export type TNSCommandKeys<FC extends TFeatureRef> =
+  FC["channel"] extends TChannelToken<infer D, infer NS>
+    ? `${NS}:${keyof D["commands"] & string}`
+    : never;
+
+/** Union des clés `"namespace:requestName"` disponibles depuis une Feature ref. */
+export type TNSRequestKeys<FC extends TFeatureRef> =
+  FC["channel"] extends TChannelToken<infer D, infer NS>
+    ? `${NS}:${keyof D["requests"] & string}`
+    : never;
+
+/**
+ * Étape 2 du pattern consommateur — type du contrat namespacé.
+ * Contraint chaque clé à être valide pour les Features déclarées dans `TDeps`.
+ *
+ * Usage : `const c = { listens: ["cart:itemAdded"] as const } satisfies TConsumerContract<TDeps>`
+ *
+ * I81 — `contract` est la source de vérité complète du consommateur.
+ */
+export type TConsumerContract<TDeps extends TConsumerDeps> = {
+  readonly listens:  readonly TNSEventKeys<TDeps["listens"][number]>[];
+  readonly triggers: readonly TNSCommandKeys<TDeps["triggers"][number]>[];
+  readonly requests: readonly TNSRequestKeys<TDeps["requests"][number]>[];
+};
+
+/**
+ * Dérive le nom du handler depuis une clé namespacée.
+ * `"cart:itemAdded"` → `"onCartItemAddedEvent"`
+ */
+export type THandlerName<K extends string> =
+  K extends `${infer NS}:${infer Ev}`
+    ? `on${Capitalize<NS>}${Capitalize<Ev>}Event`
+    : never;
+
+/** Payload d'un event depuis une clé `"ns:event"` et les deps `listens`. */
+export type TEventPayload<TDeps extends TConsumerDeps, K extends string> =
+  K extends `${infer NS}:${infer Ev}`
+    ? TDeps["listens"][number] extends infer FC
+      ? FC extends TFeatureRef
+        ? FC["channel"] extends TChannelToken<infer D, NS>
+          ? Ev extends keyof D["events"] ? D["events"][Ev] : never
+          : never
+        : never
+      : never
+    : never;
+
+/** Payload d'une command depuis une clé `"ns:cmd"` et les deps `triggers`. */
+export type TCommandPayload<TDeps extends TConsumerDeps, K extends string> =
+  K extends `${infer NS}:${infer Cmd}`
+    ? TDeps["triggers"][number] extends infer FC
+      ? FC extends TFeatureRef
+        ? FC["channel"] extends TChannelToken<infer D, NS>
+          ? Cmd extends keyof D["commands"] ? D["commands"][Cmd] : never
+          : never
+        : never
+      : never
+    : never;
+
+/** Params d'une request depuis une clé `"ns:req"` et les deps `requests`. */
+export type TRequestParams<TDeps extends TConsumerDeps, K extends string> =
+  K extends `${infer NS}:${infer Req}`
+    ? TDeps["requests"][number] extends infer FC
+      ? FC extends TFeatureRef
+        ? FC["channel"] extends TChannelToken<infer D, NS>
+          ? Req extends keyof D["requests"] ? D["requests"][Req]["params"] : never
+          : never
+        : never
+      : never
+    : never;
+
+/** Résultat d'une request depuis une clé `"ns:req"` et les deps `requests`. */
+export type TRequestResult<TDeps extends TConsumerDeps, K extends string> =
+  K extends `${infer NS}:${infer Req}`
+    ? TDeps["requests"][number] extends infer FC
+      ? FC extends TFeatureRef
+        ? FC["channel"] extends TChannelToken<infer D, NS>
+          ? Req extends keyof D["requests"] ? D["requests"][Req]["result"] : never
+          : never
+        : never
+      : never
+    : never;
+
+/**
+ * Étape 3 du pattern consommateur — contrat `implements` pour les handlers d'écoute.
+ * Dérive depuis `TContract["listens"]` les signatures **requises** (non optionnelles).
+ *
+ * Usage : `class MyView extends View<TDeps, TContract> implements TListenCallbacks<TDeps, TContract>`
+ *
+ * I82 — handler manquant → erreur compile.
+ */
+export type TListenCallbacks<
+  TDeps extends TConsumerDeps,
+  TContract extends { readonly listens: readonly string[] }
+> = {
+  [K in TContract["listens"][number] as THandlerName<K>]:
+    (payload: TEventPayload<TDeps, K>) => void;
+};
+
+// ─── Filet runtime ──────────────────────────────────────────────────────────
 
 /** Test runtime du format camelCase. */
 export function isCamelCaseNamespace(ns: string): boolean {

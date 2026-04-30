@@ -2,11 +2,12 @@
  * Fixture — CartFeature, CartEntity, CartView, MainComposer, AppFoundation
  *
  * Mini-domaine "panier" conforme au contrat strate 0 (post-audit 2026-04-21,
- * ADR-0037, ADR-0038). Sert de gate E2E (cf. strate-0.cart-round-trip.test.ts).
+ * ADR-0037, ADR-0038, ADR-0040, ADR-0041). Sert de gate E2E
+ * (cf. strate-0.cart-round-trip.test.ts).
  *
  * Flux complet illustré :
  *   View.click @addButton
- *     => trigger("cart", "addItem", payload)
+ *     => trigger("cart:addItem", payload)
  *     => Channel.handle => CartFeature.onAddItemCommand
  *     => entity.mutate("addItem", recipe)
  *     => emit("itemAdded", { item })
@@ -15,8 +16,9 @@
  */
 
 import { Entity } from "@bonsai/entity";
-import { Feature } from "@bonsai/feature";
-import { View, type TViewParams } from "@bonsai/view";
+import { type TChannelDefinition, type TChannelToken } from "@bonsai/event";
+import { Feature, type TListenCallbacks } from "@bonsai/feature";
+import { View, type TViewContract } from "@bonsai/view";
 import {
   Composer,
   type TResolveResult,
@@ -58,8 +60,10 @@ export class CartEntity extends Entity<TCartState> {
  * CartFeature — `TSelfNS = "cart"` ancre la classe à la clé du manifest
  * applicatif (ADR-0039 — I72). Plus de `static namespace`.
  */
-export class CartFeature extends Feature<CartEntity, "cart"> {
-  static readonly channels = [] as const;
+export class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart"> {
+  static readonly channel: TChannelToken<TChannelDefinition, "cart"> = { namespace: "cart" };
+  static readonly listens = [] as const;
+  static readonly queries = [] as const;
 
   protected get Entity() {
     return CartEntity;
@@ -83,38 +87,52 @@ export class CartFeature extends Feature<CartEntity, "cart"> {
 
 // ─── View ───────────────────────────────────────────────────────────────────
 
-const cartViewParams = {
+// Étape 1 — dépendances par lane (type pur)
+type TCartViewDeps = {
+  readonly listens:  [typeof CartFeature];
+  readonly triggers: [typeof CartFeature];
+  readonly requests: [typeof CartFeature];
+};
+
+// Étape 2 — contrat namespacé (validé par satisfies)
+const cartViewContract = {
   uiElements: {
     itemCount: "[data-ui='itemCount']",
     total: "[data-ui='total']",
     addButton: "[data-ui='addButton']",
     emptyMessage: "[data-ui='emptyMessage']"
   },
-  // Channels écoutés (auto-discovery on{Channel}{EventName}Event — I48)
-  listen: ["cart"] as const,
-  // Channels vers lesquels on peut trigger
-  trigger: ["cart"] as const
-} as const satisfies TViewParams;
+  listens:  ["cart:itemAdded"] as const,
+  triggers: ["cart:addItem"]   as const,
+  requests: [] as const
+} satisfies TViewContract<TCartViewDeps>;
 
-export class CartView extends View {
+// Étape 3 — type dérivé (préserve les littéraux)
+type TCartViewContract = typeof cartViewContract;
+
+// Étape 4 — classe
+export class CartView
+  extends View<TCartViewDeps, TCartViewContract>
+  implements TListenCallbacks<TCartViewDeps, TCartViewContract>
+{
   // Compteur local — la Feature est source de vérité, la View ne stocke
   // qu'un cache d'affichage minimal.
   #itemCount = 0;
 
-  get params(): TViewParams {
-    return cartViewParams;
+  get contract() {
+    return cartViewContract;
   }
 
   // D48 — auto-derived from uiElements.addButton
   onAddButtonClick(_event: Event): void {
-    this.callTrigger("cart", "addItem", {
+    this.callTrigger("cart:addItem", {
       productId: `prod-${this.#itemCount + 1}`,
       qty: 1,
       price: 9.99
     });
   }
 
-  // I48 — auto-derived: on{Channel}{EventName}Event
+  // I48 — requis par implements TListenCallbacks (handler manquant = erreur compile)
   onCartItemAddedEvent(_payload: { item: TCartItem }): void {
     this.#itemCount += 1;
     this.getUI("itemCount").text(String(this.#itemCount));

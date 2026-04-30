@@ -27,25 +27,34 @@
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { resetDOM } from "../../helpers/dom-setup";
 import { Composer, type TResolveResult } from "@bonsai/composer";
-import { View, type TViewParams } from "@bonsai/view";
+import { View, type TViewContract } from "@bonsai/view";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
-const cartViewParams = {
-  uiElements: { title: "[data-ui='title']" },
-  listen: [] as readonly string[],
-  trigger: [] as readonly string[]
-} as const satisfies TViewParams;
+type TEmptyDeps = {
+  readonly listens:  readonly [];
+  readonly triggers: readonly [];
+  readonly requests: readonly [];
+};
 
-class CartView extends View {
-  get params() {
-    return cartViewParams;
+const cartViewContract = {
+  uiElements: { title: "[data-ui='title']" },
+  listens:  [] as const,
+  triggers: [] as const,
+  requests: [] as const
+} satisfies TViewContract<TEmptyDeps>;
+
+type TCartViewContract = typeof cartViewContract;
+
+class CartView extends View<TEmptyDeps, TCartViewContract> {
+  get contract() {
+    return cartViewContract;
   }
 }
 
-class CheckoutView extends View {
-  get params() {
-    return cartViewParams;
+class CheckoutView extends View<TEmptyDeps, TCartViewContract> {
+  get contract() {
+    return cartViewContract;
   }
 }
 

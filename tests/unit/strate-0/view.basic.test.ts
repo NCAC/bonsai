@@ -1,12 +1,12 @@
 /**
  * TDD — View base class (strate-0)
  *
- * Capacités View strate-0 :
- *   - trigger(namespace, commandName, payload) → envoie un Command (I4: pas d'emit)
+ * Capacités View strate-0 (post ADR-0040 + ADR-0041) :
+ *   - trigger("ns:cmd", payload) → envoie un Command (I4: pas d'emit)
  *   - getUI(key) → TProjectionNode pour manipulation DOM N1
- *   - get params() → manifeste ADR-0024 (uiElements, listen, trigger)
+ *   - get contract() → manifeste ADR-0024 + ADR-0041 (uiElements, listens, triggers, requests)
  *   - D48 : auto-discovery UI handlers on{UiKey}{DomEvent}
- *   - I48 : auto-discovery Event listeners on{Channel}{EventName}Event
+ *   - I48 : auto-discovery Event listeners on{Namespace}{EventName}Event
  *   - onAttach() lifecycle hook
  *   - rootElement injecté au mount
  *
@@ -17,39 +17,62 @@
  *   I36 — View ne compose jamais d'autres Views
  *   I39 — Accès DOM via getUI(key) uniquement
  *   I40 — Scope DOM : résolution dans rootElement
- *   I48 — Handlers auto-découverts par convention
+ *   I48 — Handlers déclarés dans contract.listens, câblés par convention
+ *   I80 — Channel privé : aucun TChannelToken dans la surface consommateur
+ *   I82 — Handler manquant pour key déclarée → erreur (compile via implements, runtime via mount)
  *   D48 — UI handlers auto-dérivés depuis uiElements
  *
  * @jest-environment jsdom
  */
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
-import { Radio } from "@bonsai/event";
-import { View, type TViewParams } from "@bonsai/view";
+import { Radio, type TChannelDefinition, type TChannelToken } from "@bonsai/event";
+import { View, type TViewContract } from "@bonsai/view";
 
-// ─── Fixtures : ADR-0024 value-first pattern ─────────────────────────────────
+// ─── Fake Feature pour les tests (équivalent minimal à CartFeature.channel) ─
 
-const testViewParams = {
+type TCartDef = {
+  readonly commands: { addItem: { productId: string; qty: number } };
+  readonly events:   { itemAdded: { item: { qty: number } } };
+  readonly requests: Record<string, { params: unknown; result: unknown }>;
+};
+
+class CartFeatureFake {
+  static readonly channel: TChannelToken<TCartDef, "cart"> = { namespace: "cart" };
+}
+
+// ─── Fixtures : pattern consommateur (ADR-0041) ─────────────────────────────
+
+type TTestViewDeps = {
+  readonly listens:  [typeof CartFeatureFake];
+  readonly triggers: [typeof CartFeatureFake];
+  readonly requests: [typeof CartFeatureFake];
+};
+
+const testViewContract = {
   uiElements: {
     title: "[data-ui='title']",
     counter: "[data-ui='counter']",
     toggleBtn: "[data-ui='toggleBtn']"
   },
-  listen: ["cart"],
-  trigger: ["cart"]
-} as const satisfies TViewParams;
+  listens:  ["cart:itemAdded"] as const,
+  triggers: ["cart:addItem"]   as const,
+  requests: [] as const
+} satisfies TViewContract<TTestViewDeps>;
 
-class TestView extends View {
-  get params() {
-    return testViewParams;
+type TTestViewContract = typeof testViewContract;
+
+class TestView extends View<TTestViewDeps, TTestViewContract> {
+  get contract() {
+    return testViewContract;
   }
 
   // D48 — UI handler: on{UiKey}{DomEvent}
   onToggleBtnClick(_event: Event): void {
-    this.trigger("cart", "addItem", { productId: "abc", qty: 1 });
+    this.trigger("cart:addItem", { productId: "abc", qty: 1 });
   }
 
-  // I48 / C3 — listen external channel event
+  // I48 / C3 — listen external channel event (déclaré dans contract.listens)
   onCartItemAddedEvent(payload: { item: { qty: number } }): void {
     this.getUI("counter").text(String(payload.item.qty));
   }
@@ -73,16 +96,16 @@ function setupDOM(): void {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-describe("View — strate-0 core (ADR-0024 value-first)", () => {
+describe("View — strate-0 core (ADR-0024 value-first + ADR-0041 pattern)", () => {
   beforeEach(() => {
     Radio.reset();
     setupDOM();
   });
 
-  describe("ADR-0024 — get params() manifeste", () => {
-    it("params is read once at mount (abstract getter pattern)", () => {
+  describe("ADR-0024 — get contract() manifeste", () => {
+    it("contract is read once at mount (abstract getter pattern)", () => {
       const view = new TestView();
-      const spy = jest.spyOn(view, "params", "get");
+      const spy = jest.spyOn(view, "contract", "get");
       view.mount("[data-view='test']");
 
       expect(spy).toHaveBeenCalledTimes(1);
@@ -128,6 +151,7 @@ describe("View — strate-0 core (ADR-0024 value-first)", () => {
       const view = new TestView();
       view.mount("[data-view='test']");
 
+      // @ts-expect-error — clé hors uiElements doit échouer compile, on teste le filet runtime
       expect(() => view.getUI("nonexistent")).toThrow(/Unknown UI key/);
     });
 
@@ -186,19 +210,19 @@ describe("View — strate-0 core (ADR-0024 value-first)", () => {
   describe("I4 — View cannot emit (no emit method)", () => {
     it("View has no emit() method", () => {
       const view = new TestView();
-      expect((view as any).emit).toBeUndefined();
+      expect((view as unknown as { emit?: unknown }).emit).toBeUndefined();
     });
   });
 
-  describe("trigger() — sends Command via Channel", () => {
-    it("trigger() calls channel.trigger() on the target namespace", () => {
+  describe("trigger() — sends Command via Channel (I80 — clé namespacée, pas de token)", () => {
+    it("trigger('ns:cmd', payload) calls channel.trigger() on the target namespace", () => {
       const view = new TestView();
       view.mount("[data-view='test']");
 
       const handler = jest.fn();
       Radio.me().channel("cart").handle("addItem", handler);
 
-      view.callTrigger("cart", "addItem", { productId: "abc", qty: 1 });
+      view.callTrigger("cart:addItem", { productId: "abc", qty: 1 });
 
       expect(handler).toHaveBeenCalledWith({ productId: "abc", qty: 1 });
     });
@@ -222,8 +246,8 @@ describe("View — strate-0 core (ADR-0024 value-first)", () => {
     });
   });
 
-  describe("I48 / C3 — Event listener auto-discovery on{Channel}{Event}Event", () => {
-    it("View auto-discovers on{Channel}{EventName}Event handlers at mount", () => {
+  describe("I48 / C3 — Event listener auto-discovery on{Namespace}{Event}Event", () => {
+    it("View câble les handlers déclarés dans contract.listens au mount", () => {
       const view = new TestView();
       view.mount("[data-view='test']");
 
@@ -258,23 +282,99 @@ describe("I34 — rootElement cannot be document.body", () => {
   });
 });
 
-// ─── Contextual params — read data-* from root element ───────────────────────
+// ─── I82 — Handler missing for declared listen → throw at mount ─────────────
 
-describe("ADR-0024 — contextual params from root element dataset", () => {
+describe("I82 — handler manquant pour clé déclarée dans contract.listens", () => {
+  beforeEach(() => {
+    Radio.reset();
+    document.body.innerHTML = `<div data-view="missing"></div>`;
+  });
+
+  it("mount() throws when contract.listens declares a key without matching handler", () => {
+    type TMissingDeps = {
+      readonly listens:  [typeof CartFeatureFake];
+      readonly triggers: readonly [];
+      readonly requests: readonly [];
+    };
+
+    const missingContract = {
+      uiElements: {},
+      listens:  ["cart:itemAdded"] as const,
+      triggers: [] as const,
+      requests: [] as const
+    } satisfies TViewContract<TMissingDeps>;
+
+    type TMissingContract = typeof missingContract;
+
+    // Cette View viole I82 — déclare cart:itemAdded mais n'implémente pas
+    // onCartItemAddedEvent. À la compilation, `implements TListenCallbacks` aurait
+    // refusé cette classe. On contourne pour tester le filet runtime.
+    class MissingHandlerView extends View<TMissingDeps, TMissingContract> {
+      get contract() {
+        return missingContract;
+      }
+    }
+
+    const view = new MissingHandlerView();
+    expect(() => view.mount("[data-view='missing']")).toThrow(
+      /Missing handler "onCartItemAddedEvent"/
+    );
+  });
+
+  it("mount() succeeds when all declared listens have a matching handler", () => {
+    type TOkDeps = {
+      readonly listens:  [typeof CartFeatureFake];
+      readonly triggers: readonly [];
+      readonly requests: readonly [];
+    };
+
+    const okContract = {
+      uiElements: {},
+      listens:  ["cart:itemAdded"] as const,
+      triggers: [] as const,
+      requests: [] as const
+    } satisfies TViewContract<TOkDeps>;
+
+    type TOkContract = typeof okContract;
+
+    class OkView extends View<TOkDeps, TOkContract> {
+      get contract() {
+        return okContract;
+      }
+      onCartItemAddedEvent(_p: { item: { qty: number } }): void {}
+    }
+
+    const view = new OkView();
+    expect(() => view.mount("[data-view='missing']")).not.toThrow();
+  });
+});
+
+// ─── Contextual contract — read data-* from root element ─────────────────────
+
+describe("ADR-0024 — contextual contract read from root element dataset", () => {
   beforeEach(() => {
     Radio.reset();
   });
 
   it("View reads data-* attributes from root element in onAttach() via get el()", () => {
-    class ProductView extends View {
-      readonly #viewParams = {
-        uiElements: { price: "[data-ui='price']" },
-        listen: [] as readonly string[],
-        trigger: [] as readonly string[]
-      } as const satisfies TViewParams;
+    type TProductDeps = {
+      readonly listens:  readonly [];
+      readonly triggers: readonly [];
+      readonly requests: readonly [];
+    };
 
-      get params(): TViewParams {
-        return this.#viewParams;
+    const productContract = {
+      uiElements: { price: "[data-ui='price']" },
+      listens:  [] as const,
+      triggers: [] as const,
+      requests: [] as const
+    } satisfies TViewContract<TProductDeps>;
+
+    type TProductContract = typeof productContract;
+
+    class ProductView extends View<TProductDeps, TProductContract> {
+      get contract() {
+        return productContract;
       }
 
       #productId = "";

@@ -380,11 +380,8 @@ type TInstanceOrT<T> = T extends new (...args: any) => any
  * @credit https://github.com/piotrwitek/utility-types
  * @see https://github.com/Microsoft/TypeScript/issues/27024#issuecomment-421529650
  */
-type IfEquals<X, Y, A = X, B = never> = (<T>() => T extends X
-  ? 1
-  : 2) extends <T>() => T extends Y ? 1 : 2
-  ? A
-  : B;
+type IfEquals<X, Y, A = X, B = never> =
+  (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2 ? A : B;
 
 /**
 Returns a boolean for whether the two given types are equal.
@@ -410,11 +407,10 @@ type Includes<Value extends readonly any[], Item> =
 
 @category Utilities
 */
-type IsEqual<A, B> = (<G>() => G extends A ? 1 : 2) extends <
-  G
->() => G extends B ? 1 : 2
-  ? true
-  : false;
+type IsEqual<A, B> =
+  (<G>() => G extends A ? 1 : 2) extends <G>() => G extends B ? 1 : 2
+    ? true
+    : false;
 
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   k: infer I
@@ -422,11 +418,10 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   ? I
   : never;
 
-type LastOf<T> = UnionToIntersection<
-  T extends any ? () => T : never
-> extends () => infer R
-  ? R
-  : never;
+type LastOf<T> =
+  UnionToIntersection<T extends any ? () => T : never> extends () => infer R
+    ? R
+    : never;
 type Push<T extends any[], V> = [...T, V];
 type TuplifyUnion<
   T,
@@ -452,11 +447,11 @@ type TuplifyUnion<
  */
 
 type StrictArrayOfValues<T extends Record<any, any> | null> =
-  T extends null 
-    ? readonly [] 
+  T extends null
+    ? readonly []
     : T extends Record<any, any>
-    ? Readonly<TuplifyUnion<ValuesType<T>>>
-    : readonly [];
+      ? Readonly<TuplifyUnion<ValuesType<T>>>
+      : readonly [];
 
 /**
  * StrictArrayOfKeys<T>
@@ -489,13 +484,14 @@ type StrictArrayOfKeys<T extends object> = Readonly<
  */
 type ValuesType<
   T extends ReadonlyArray<any> | ArrayLike<any> | Record<any, any>
-> = T extends ReadonlyArray<any>
-  ? T[number]
-  : T extends ArrayLike<any>
-  ? T[number]
-  : T extends object
-  ? T[keyof T]
-  : never;
+> =
+  T extends ReadonlyArray<any>
+    ? T[number]
+    : T extends ArrayLike<any>
+      ? T[number]
+      : T extends object
+        ? T[keyof T]
+        : never;
 
 /**
  * ElementType<T>
@@ -562,10 +558,10 @@ type Whitespace =
 type TObjectKeys<T> = T extends object
   ? (keyof T)[]
   : T extends number
-  ? []
-  : T extends Array<any> | string
-  ? string[]
-  : never;
+    ? []
+    : T extends Array<any> | string
+      ? string[]
+      : never;
 
 type TOneLetter =
   | "a"
@@ -622,6 +618,59 @@ type TOneLetter =
   | "Z";
 
 type TNonEmptyString<T extends string> = "" extends T ? never : T;
+
+/**
+ * Lettre minuscule unique (a–z). Dérivée de `TOneLetter`.
+ */
+type TLowerLetter = Lowercase<TOneLetter>;
+
+/**
+ * Lettre majuscule unique (A–Z). Dérivée de `TOneLetter`.
+ */
+type TUpperLetter = Uppercase<TOneLetter>;
+
+/**
+ * Vrai si `S` est composée exclusivement de lettres (a–z ou A–Z).
+ * `""` est considérée comme valide (cas terminal de la récursion).
+ */
+type TAllLetters<S extends string> = S extends ""
+  ? true
+  : S extends `${infer Head}${infer Tail}`
+    ? Head extends TOneLetter
+      ? TAllLetters<Tail>
+      : false
+    : false;
+
+/**
+ * camelCase plat — première lettre minuscule, reste exclusivement lettres.
+ *
+ * Retourne `S` si `S` est camelCase, sinon `never`. Conçu pour être utilisé
+ * dans un mapped type afin de rejeter au compile-time les clés non
+ * conformes (typiquement : clés d'un manifest applicatif).
+ *
+ * | Entrée          | Résultat        |
+ * | --------------- | --------------- |
+ * | `"cart"`        | `"cart"`        |
+ * | `"userProfile"` | `"userProfile"` |
+ * | `"Cart"`        | `never`         |
+ * | `"my-cart"`     | `never`         |
+ * | `"my_cart"`     | `never`         |
+ * | `"cart2"`       | `never`         |
+ * | `""`            | `never`         |
+ *
+ * Si tolérer les chiffres après la première lettre devient nécessaire,
+ * étendre via une nouvelle variante (`CamelCaseAlnum<S>`) plutôt que
+ * d'élargir ce type — préserver la garantie « lettres seules » pour les
+ * appelants existants.
+ */
+type CamelCase<S extends string> =
+  S extends `${infer First}${infer Rest}`
+    ? First extends TLowerLetter
+      ? TAllLetters<Rest> extends true
+        ? S
+        : never
+      : never
+    : never;
 
 /**
  * @credit https://github.com/sindresorhus/type-fest
@@ -24599,13 +24648,46 @@ declare namespace Immer {
  *
  * Le Channel émet automatiquement un événement `any` après chaque `emit()`.
  *
+ * `Channel` est générique sur `TDef extends TChannelDefinition` (ADR-0040).
+ * La valeur par défaut `TChannelDefinition` (toutes lanes `Record<string, unknown>`)
+ * assure une rétrocompatibilité totale avec le code non-paramétré.
+ *
  * @see RFC 2-architecture/communication.md
  * @see ADR-0003 — Sémantiques runtime Channel
  * @see ADR-0023 — request() synchrone
+ * @see ADR-0040 — API TypeScript-First : TChannelDefinition, TChannelToken
  */
-type TCommandHandler = (payload: unknown) => void;
-type TEventListener = (payload: unknown) => void;
-type TRequestReplier = (params: unknown) => unknown;
+/**
+ * Déclare le contrat complet d'un Channel : toutes les lanes et leurs types.
+ * Chaque Feature déclare son propre `TChannelDefinition` dans son fichier
+ * `.feature.ts` (source de vérité unique, co-localisée — I74).
+ */
+type TChannelDefinition = {
+    readonly commands: Record<string, unknown>;
+    readonly events: Record<string, unknown>;
+    readonly requests: Record<string, {
+        params: unknown;
+        result: unknown;
+    }>;
+};
+/**
+ * Token phantom porté en `static readonly channel` sur chaque Feature.
+ *
+ * Encode à la fois le namespace (runtime) et la définition du Channel
+ * (compile-time). Permet à tout consommateur (View, Feature externe) d'obtenir
+ * un `Channel<TDef>` typé via `Radio.me().channelFor(token)` sans tenir de
+ * référence à une instance Feature (ADR-0040 §Décision).
+ *
+ * `_def` est un champ phantom optionnel — jamais assigné en runtime, présent
+ * uniquement pour que TypeScript distingue structurellement deux tokens portant
+ * des `TDef` différents sur le même namespace.
+ */
+type TChannelToken<TDef extends TChannelDefinition, TNS extends string = string> = {
+    readonly namespace: TNS;
+    readonly _def?: TDef;
+};
+/** Extrait le `TDef` d'un `TChannelToken`. */
+type TTokenDef<T> = T extends TChannelToken<infer TDef, any> ? TDef : never;
 /**
  * Payload de l'événement technique `any`, émis automatiquement
  * après chaque `emit()` d'un Event granulaire.
@@ -24614,38 +24696,33 @@ type TAnyEventPayload = {
     readonly event: string;
     readonly changes: Record<string, unknown>;
 };
-declare class Channel {
+declare class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
+    #private;
     readonly name: string;
-    private readonly commandHandlers;
-    private readonly eventSubjects;
-    private readonly eventSubscriptions;
-    private readonly requestRepliers;
-    private readonly anySubject;
-    private readonly anySubscriptions;
     constructor(name: string);
     /**
-     * Enregistre le handler unique pour un Command. I10 : un seul handler par Command.
-     * @throws DuplicateHandlerError si un handler est déjà enregistré pour ce Command
+     * Enregistre le handler unique pour un Command (I10 — un seul handler).
+     * @throws DuplicateHandlerError si un handler est déjà enregistré.
      */
-    handle(commandName: string, handler: TCommandHandler): void;
+    handle<K extends keyof TDef["commands"] & string>(commandName: K, handler: (payload: TDef["commands"][K]) => void): void;
     /**
      * Émet un Command vers son handler unique.
-     * @throws NoHandlerError si aucun handler n'est enregistré (strate 0 : toujours throw)
+     * @throws NoHandlerError si aucun handler n'est enregistré.
      */
-    trigger(commandName: string, payload: unknown): void;
+    trigger<K extends keyof TDef["commands"] & string>(commandName: K, payload: TDef["commands"][K]): void;
     /**
-     * Enregistre un listener pour un Event. I11 : N listeners autorisés.
+     * Enregistre un listener pour un Event (I11 — N listeners autorisés).
      */
-    listen(eventName: string, listener: TEventListener): void;
+    listen<K extends keyof TDef["events"] & string>(eventName: K, listener: (payload: TDef["events"][K]) => void): void;
     /**
      * Supprime un listener spécifique pour un Event.
      */
-    unlisten(eventName: string, listener: TEventListener): void;
+    unlisten<K extends keyof TDef["events"] & string>(eventName: K, listener: (payload: TDef["events"][K]) => void): void;
     /**
      * Émet un Event vers tous les listeners (1:N).
      * Silencieux si aucun listener. Émet `any` automatiquement après.
      */
-    emit(eventName: string, payload: unknown): void;
+    emit<K extends keyof TDef["events"] & string>(eventName: K, payload: TDef["events"][K]): void;
     /**
      * Enregistre un listener pour l'événement technique `any`.
      */
@@ -24656,19 +24733,19 @@ declare class Channel {
     unlistenAny(listener: (payload: TAnyEventPayload) => void): void;
     /**
      * Enregistre le replier unique pour un type de Request.
-     * @throws DuplicateHandlerError si un replier est déjà enregistré
+     * @throws DuplicateHandlerError si un replier est déjà enregistré.
      */
-    reply(requestName: string, replier: TRequestReplier): void;
+    reply<K extends keyof TDef["requests"] & string>(requestName: K, replier: (params: TDef["requests"][K]["params"]) => TDef["requests"][K]["result"]): void;
     /**
      * Supprime un replier.
      */
-    unreply(requestName: string): void;
+    unreply<K extends keyof TDef["requests"] & string>(requestName: K): void;
     /**
-     * Effectue une Request synchrone. Retourne T | null.
+     * Effectue une Request synchrone. Retourne `TDef['requests'][K]['result'] | null`.
      * - Pas de replier → null (ADR-0023, D44)
      * - Replier qui throw → null, erreur loguée (I55)
      */
-    request(requestName: string, params: unknown): unknown | null;
+    request<K extends keyof TDef["requests"] & string>(requestName: K, params: TDef["requests"][K]["params"]): TDef["requests"][K]["result"] | null;
     /**
      * Supprime tous les handlers, listeners et repliers.
      * Complète les Subjects RxJS.
@@ -24688,15 +24765,24 @@ declare class Channel {
  */
 
 declare class Radio {
-    private static instance;
-    private static constructing;
-    private readonly channels;
+    #private;
     /** Constructeur privé — force le pattern singleton via `me()`. */
     private constructor();
     /** Retourne l'instance unique du Radio. */
     static me(): Radio;
-    /** Obtient ou crée un Channel par namespace. */
+    /**
+     * Obtient ou crée un Channel par namespace (API interne).
+     * Retourne `Channel<TChannelDefinition>` — toutes lanes `Record<string, unknown>`.
+     * Pour un accès typé depuis l'extérieur, utiliser `channelFor(token)`.
+     */
     channel(name: string): Channel;
+    /**
+     * Obtient ou crée un Channel typé via son token (ADR-0040, I77, I79).
+     *
+     * Le cast `as Channel<TDef>` est sûr par I22 : un namespace ne peut être
+     * associé qu'à une seule Feature et donc à un seul `TDef`.
+     */
+    channelFor<TDef extends TChannelDefinition, TNS extends string>(token: TChannelToken<TDef, TNS>): Channel<TDef>;
     /** Vérifie si un Channel existe pour ce namespace. */
     hasChannel(name: string): boolean;
     /** Liste tous les namespaces enregistrés. */
@@ -24710,5 +24796,3528 @@ declare class Radio {
     static reset(): void;
 }
 
-export { Channel, Immer, RXJS, Radio, Valibot };
-export type { AlwaysParameters, AnyFunction, ArrayEntry, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, StrictArrayOfKeys, StrictArrayOfValues, StringDigit, StringHash, TAnyEventPayload, TClass, TConstructor, TDictionary, TDictionaryArray, TDictionaryValue, TEntries, TExcludeKeys, TExcludeValues, TFalsy, TFunctionPropertyNames, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonValue, TLookup, TMapEntry, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TParameters, TPrimitive, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TSetEntry, TuplifyUnion, UnionToIntersection, ValuesType, Whitespace };
+/**
+ * @bonsai/feature — Types & runtime helpers for namespace authority
+ *
+ * Implémente la décision ADR-0039 : autorité, unicité et conformité des
+ * namespaces de Feature.
+ *
+ * Trois rôles assumés par ce module :
+ *   1. Types compile-time (`CamelCaseNamespace<S>`, `StrictManifest<M>`,
+ *      `ValidatedManifest<M>`) qui encodent les invariants I68–I72.
+ *   2. Constante framework `RESERVED_NAMESPACES` (I71) — non configurable
+ *      par l'application.
+ *   3. Filet de sécurité runtime (`assertValidNamespace`,
+ *      `BonsaiNamespaceError`) pour les cas où le compile-time est contourné
+ *      (cast `as any`, code JS, manifest dynamique).
+ *
+ * Invariants couverts :
+ *   I21 (amendé) — namespace unique camelCase plat
+ *   I24 (amendé) — Application valide format + réservés au bootstrap
+ *   I57          — `local` réservé (ADR-0015)
+ *   I68          — namespace porté par le manifest, pas par un `static`
+ *   I69          — manifest = unique source de vérité de l'identité
+ *   I70          — toute référence à un namespace externe DOIT être validée
+ *   I71          — `RESERVED_NAMESPACES` est une constante framework
+ *   I72          — `TSelfNS` doit correspondre à la clé du manifest
+ *
+ * @packageDocumentation
+ */
+
+
+
+// ─── Pattern consommateur unifié (ADR-0041) ──────────────────────────────────
+
+/**
+ * Contrainte structurelle minimale pour toute Feature référençable par un
+ * composant consommateur (View, Composer, Behavior).
+ *
+ * En pratique : `typeof CartFeature` (constructeur avec `static readonly channel`)
+ * satisfait ce type. Le Channel reste privé — seul son token est exposé.
+ *
+ * I80 — aucun consommateur ne référence `TChannelToken` directement.
+ */
+type TFeatureRef$1<
+  TDef extends TChannelDefinition = TChannelDefinition,
+  TNS extends string = string
+> = { readonly channel: TChannelToken<TDef, TNS> };
+
+/**
+ * Étape 1 du pattern consommateur — type pur, zéro coût runtime.
+ * Déclare quelles Features participent à chaque lane.
+ *
+ * Usage : `type TMyViewDeps = { listens: [typeof CartFeature, typeof UserFeature]; ... }`
+ *
+ * I83 — pattern unifié View / Composer / Behavior.
+ */
+type TConsumerDeps$1 = {
+  readonly listens:  readonly TFeatureRef$1[];
+  readonly triggers: readonly TFeatureRef$1[];
+  readonly requests: readonly TFeatureRef$1[];
+};
+
+/** Union des clés `"namespace:eventName"` disponibles depuis une Feature ref. */
+type TNSEventKeys$1<FC extends TFeatureRef$1> =
+  FC["channel"] extends TChannelToken<infer D, infer NS>
+    ? `${NS}:${keyof D["events"] & string}`
+    : never;
+
+/** Union des clés `"namespace:commandName"` disponibles depuis une Feature ref. */
+type TNSCommandKeys$1<FC extends TFeatureRef$1> =
+  FC["channel"] extends TChannelToken<infer D, infer NS>
+    ? `${NS}:${keyof D["commands"] & string}`
+    : never;
+
+/** Union des clés `"namespace:requestName"` disponibles depuis une Feature ref. */
+type TNSRequestKeys$1<FC extends TFeatureRef$1> =
+  FC["channel"] extends TChannelToken<infer D, infer NS>
+    ? `${NS}:${keyof D["requests"] & string}`
+    : never;
+
+/**
+ * Étape 2 du pattern consommateur — type du contrat namespacé.
+ * Contraint chaque clé à être valide pour les Features déclarées dans `TDeps`.
+ *
+ * Usage : `const c = { listens: ["cart:itemAdded"] as const } satisfies TConsumerContract<TDeps>`
+ *
+ * I81 — `contract` est la source de vérité complète du consommateur.
+ */
+type TConsumerContract$1<TDeps extends TConsumerDeps$1> = {
+  readonly listens:  readonly TNSEventKeys$1<TDeps["listens"][number]>[];
+  readonly triggers: readonly TNSCommandKeys$1<TDeps["triggers"][number]>[];
+  readonly requests: readonly TNSRequestKeys$1<TDeps["requests"][number]>[];
+};
+
+/** Payload d'une command depuis une clé `"ns:cmd"` et les deps `triggers`. */
+type TCommandPayload$1<TDeps extends TConsumerDeps$1, K extends string> =
+  K extends `${infer NS}:${infer Cmd}`
+    ? TDeps["triggers"][number] extends infer FC
+      ? FC extends TFeatureRef$1
+        ? FC["channel"] extends TChannelToken<infer D, NS>
+          ? Cmd extends keyof D["commands"] ? D["commands"][Cmd] : never
+          : never
+        : never
+      : never
+    : never;
+
+/** Params d'une request depuis une clé `"ns:req"` et les deps `requests`. */
+type TRequestParams$1<TDeps extends TConsumerDeps$1, K extends string> =
+  K extends `${infer NS}:${infer Req}`
+    ? TDeps["requests"][number] extends infer FC
+      ? FC extends TFeatureRef$1
+        ? FC["channel"] extends TChannelToken<infer D, NS>
+          ? Req extends keyof D["requests"] ? D["requests"][Req]["params"] : never
+          : never
+        : never
+      : never
+    : never;
+
+/** Résultat d'une request depuis une clé `"ns:req"` et les deps `requests`. */
+type TRequestResult$1<TDeps extends TConsumerDeps$1, K extends string> =
+  K extends `${infer NS}:${infer Req}`
+    ? TDeps["requests"][number] extends infer FC
+      ? FC extends TFeatureRef$1
+        ? FC["channel"] extends TChannelToken<infer D, NS>
+          ? Req extends keyof D["requests"] ? D["requests"][Req]["result"] : never
+          : never
+        : never
+      : never
+    : never;
+
+/**
+ * @bonsai/view — View base class
+ *
+ * Strate 0 — Capacités :
+ *   - trigger("ns:cmd", payload) → envoie un Command typé (I4, ADR-0040, ADR-0041)
+ *   - request("ns:req", params)  → interroge un Channel typé (ADR-0040, ADR-0041)
+ *   - getUI(key) → TProjectionNode (mutations DOM chirurgicales N1 — D19)
+ *   - Auto-discovery D48 : on{UiKey}{DomEvent} → addEventListener
+ *   - Auto-discovery I48 : on{Namespace}{EventName}Event → channel.listen
+ *   - onAttach() lifecycle hook
+ *
+ * Pattern consommateur unifié (ADR-0041) :
+ *   - Étape 1 — `type TMyDeps = { listens: [typeof XFeature]; ... }`  (type pur)
+ *   - Étape 2 — `const myContract = { ... } satisfies TViewContract<TMyDeps>`
+ *   - Étape 3 — `type TMyContract = typeof myContract`  (préserve les littéraux)
+ *   - Étape 4 — `class MyView extends View<TMyDeps, TMyContract>
+ *                 implements TListenCallbacks<TMyDeps, TMyContract>`
+ *
+ * Channel reste privé derrière sa Feature (I80) — aucun `TChannelToken` dans
+ * la surface publique.
+ *
+ * Invariants :
+ *   I4  — View n'a JAMAIS emit() — absent du type
+ *   I31 — rootElement est un sélecteur CSS string injecté au mount
+ *   I36 — View ne compose jamais d'autres Views directement
+ *   I39 — Accès DOM exclusivement via getUI(key)
+ *   I40 — Scope DOM : résolution dans rootElement uniquement
+ *   I48 — Handlers auto-découverts par convention de nommage,
+ *         déclarés dans contract.listens, vérifiés par implements TListenCallbacks
+ *   D48 — UI handlers auto-dérivés depuis uiElements
+ *   I75 — Aucun `any` dans la surface publique ; casts internes documentés
+ *   I80 — Aucun TChannelToken dans la surface publique consommateur
+ *   I81 — `contract` est la source de vérité runtime du composant
+ *   I82 — Handler manquant → erreur compile via implements TListenCallbacks
+ *   I83 — Pattern unifié View / Composer / Behavior
+ *
+ * @packageDocumentation
+ */
+
+
+
+/**
+ * Projection Node N1 — mutations DOM chirurgicales.
+ * Chaque méthode opère directement sur l'élément HTML sous-jacent.
+ */
+type TProjectionNode$3 = {
+  /** Sets textContent */
+  text(value: string): void;
+  /** Sets an attribute */
+  attr(name: string, value: string): void;
+  /** Adds or removes a CSS class */
+  toggleClass(className: string, force: boolean): void;
+  /** Shows/hides via display:none */
+  visible(show: boolean): void;
+  /** Sets an inline style property */
+  style(property: string, value: string): void;
+  /** Returns the underlying HTMLElement */
+  element(): HTMLElement;
+};
+
+/**
+ * Contrat View — étend `TConsumerContract<TDeps>` (ADR-0041) avec la map
+ * `uiElements` propre à la couche DOM.
+ *
+ * Les trois lanes (`listens` / `triggers` / `requests`) portent des clés
+ * namespacées `"ns:name"` validées par `satisfies` contre les Features
+ * déclarées dans `TDeps`.
+ */
+type TViewContract$3<TDeps extends TConsumerDeps$1> = TConsumerContract$1<TDeps> & {
+  /** Nœuds DOM manipulables : clé → sélecteur CSS */
+  readonly uiElements: Readonly<Record<string, string>>;
+};
+
+/**
+ * Type structurel d'une classe View concrète, indépendant de ses paramètres
+ * `TDeps` / `TContract`. Utilisé par les composants orchestrateurs (Composer)
+ * qui ne dépendent que de la surface publique de mount, pas du contrat
+ * spécifique d'une View particulière.
+ *
+ * **Pourquoi `any, any`** : les paramètres de type d'une classe générique sont
+ * invariants en TypeScript. `typeof View` (defaults) n'accepterait pas
+ * `typeof CartView` (génériques concrets). `TViewClass` est l'échappatoire
+ * structurelle bornée à cette frontière framework-interne. Le code applicatif
+ * n'utilise jamais ce type — il déclare ses `TDeps`/`TContract` concrets (I80, I83).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TViewClass$3 = abstract new () => View$3<any, any>;
+
+// ─── ProjectionNode factory ──────────────────────────────────────────────────
+
+declare function createProjectionNode(el: HTMLElement): TProjectionNode$3 {
+  return {
+    text(value: string): void {
+      el.textContent = value;
+    },
+    attr(name: string, value: string): void {
+      el.setAttribute(name, value);
+    },
+    toggleClass(className: string, force: boolean): void {
+      el.classList.toggle(className, force);
+    },
+    visible(show: boolean): void {
+      el.style.display = show ? "" : "none";
+    },
+    style(property: string, value: string): void {
+      el.style.setProperty(property, value);
+    },
+    element(): HTMLElement {
+      return el;
+    }
+  };
+}
+
+// ─── Helpers internes ────────────────────────────────────────────────────────
+
+declare function capitalize(s: string): string {
+  return s.length === 0 ? s : s[0].toUpperCase() + s.slice(1);
+}
+
+declare function parseNSKey(key: string): { namespace: string; name: string } {
+  const idx = key.indexOf(":");
+  if (idx <= 0 || idx === key.length - 1) {
+    throw new Error(
+      `[Bonsai View] Malformed namespaced key "${key}". Expected "namespace:name".`
+    );
+  }
+  return { namespace: key.slice(0, idx), name: key.slice(idx + 1) };
+}
+
+// ─── View abstract class ─────────────────────────────────────────────────────
+
+/**
+ * View — couche présentation paramétrée par ses dépendances Feature et
+ * son contrat namespacé (ADR-0041).
+ *
+ * Paramètres de type :
+ *   - `TDeps`     : Features participant à chaque lane (type pur, étape 1)
+ *   - `TContract` : contrat namespacé runtime (étape 2 + 3 — `typeof myContract`)
+ *
+ * Pattern d'usage :
+ * ```ts
+ * type TCartViewDeps = {
+ *   readonly listens:  [typeof CartFeature];
+ *   readonly triggers: [typeof CartFeature];
+ *   readonly requests: [typeof CartFeature];
+ * };
+ *
+ * const cartViewContract = {
+ *   uiElements: { itemCount: "[data-ui='itemCount']", addBtn: "[data-ui='addBtn']" },
+ *   listens:  ["cart:itemAdded"] as const,
+ *   triggers: ["cart:addItem"]  as const,
+ *   requests: [] as const,
+ * } satisfies TViewContract<TCartViewDeps>;
+ *
+ * type TCartViewContract = typeof cartViewContract;
+ *
+ * class CartView
+ *   extends View<TCartViewDeps, TCartViewContract>
+ *   implements TListenCallbacks<TCartViewDeps, TCartViewContract>
+ * {
+ *   get contract() { return cartViewContract; }
+ *
+ *   onAddBtnClick() {
+ *     this.trigger("cart:addItem", { ... });   // ✅ payload inféré
+ *   }
+ *
+ *   onCartItemAddedEvent(payload) { ... }      // ✅ requis par implements
+ * }
+ * ```
+ */
+declare abstract class View$3<
+  TDeps extends TConsumerDeps$1 = TConsumerDeps$1,
+  TContract extends TViewContract$3<TDeps> = TViewContract$3<TDeps>
+> {
+  #rootElement: string | null = null;
+  #rootEl: HTMLElement | null = null;
+  #mounted = false;
+  #uiElements: Readonly<Record<string, string>> = {};
+  #listenKeys: readonly string[] = [];
+
+  // ─── Abstract : ADR-0024 value-first ───────────────────────────────────
+
+  /**
+   * Manifeste de la View (ADR-0024 + ADR-0041).
+   * Évalué UNE SEULE FOIS au mount — le framework destructure et stocke.
+   * Le retour est typé `TContract` pour préserver les types littéraux des
+   * tableaux `listens` / `triggers` / `requests` côté sous-classe.
+   */
+  abstract get contract(): TContract;
+
+  // ─── Public API ────────────────────────────────────────────────────────
+
+  /**
+   * Le sélecteur rootElement injecté au mount (I31).
+   */
+  get rootElement(): string | null {
+    return this.#rootElement;
+  }
+
+  /**
+   * L'élément DOM racine après mount. Disponible dans onAttach() et les
+   * handlers — permet aux sous-classes de lire les data-* attributes (I34).
+   */
+  protected get el(): HTMLElement | null {
+    return this.#rootEl;
+  }
+
+  /**
+   * Monte la View sur un rootElement. Appelé par le Composer.
+   * - Lit `get contract()` une seule fois (ADR-0024)
+   * - Résout le rootElement dans le DOM
+   * - Auto-discover les UI handlers (D48)
+   * - Auto-discover les Event listeners (I48 — pilotés par contract.listens)
+   * - Appelle onAttach()
+   */
+  mount(rootSelector: string): void {
+    if (this.#mounted) return;
+    this.#mounted = true;
+
+    // ADR-0024 : lecture unique du manifeste
+    const contract = this.contract;
+    this.#uiElements = contract.uiElements;
+    // Cast vers readonly string[] pour l'enregistrement runtime (I75) — la
+    // contrainte type-level est portée par TContract.
+    this.#listenKeys = contract.listens as readonly string[];
+
+    this.#rootElement = rootSelector;
+    this.#rootEl = document.querySelector(rootSelector) as HTMLElement;
+
+    // I34: rootElement must not be document.body itself
+    if (this.#rootEl === document.body) {
+      throw new Error(
+        `[Bonsai View] I34 — rootElement cannot be document.body. Provide a child element selector.`
+      );
+    }
+
+    // Auto-discovery
+    this.#registerUIHandlers();
+    this.#registerEventListeners();
+
+    // Lifecycle
+    this.onAttach();
+  }
+
+  /**
+   * I39 — Accès DOM typé via getUI(key). Résout dans le scope du rootElement (I40).
+   * `K` est contraint à `keyof TContract['uiElements']` — clé invalide refusée compile-time.
+   */
+  getUI<K extends keyof TContract["uiElements"] & string>(key: K): TProjectionNode$3 {
+    const selector = this.#uiElements[key];
+    if (!selector) {
+      throw new Error(
+        `[Bonsai View] Unknown UI key "${key}". Declared keys: ${Object.keys(this.#uiElements).join(", ")}`
+      );
+    }
+
+    const el = this.#rootEl!.querySelector(selector) as HTMLElement;
+    if (!el) {
+      throw new Error(
+        `[Bonsai View] UI element "${key}" not found with selector "${selector}" in rootElement "${this.#rootElement}"`
+      );
+    }
+
+    return createProjectionNode(el);
+  }
+
+  /**
+   * Envoie un Command typé via Channel (I4 — View ne peut qu'envoyer,
+   * jamais émettre, ADR-0040 / ADR-0041).
+   *
+   * `key` est une clé namespacée `"ns:cmd"` ; doit appartenir à
+   * `TContract['triggers']`, sinon erreur compile.
+   * Exposé en `protected` — les sous-classes l'appellent depuis les handlers UI.
+   */
+  protected trigger<K extends TContract["triggers"][number] & string>(
+    key: K,
+    payload: TCommandPayload$1<TDeps, K>
+  ): void {
+    const { namespace, name } = parseNSKey(key);
+    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    const ch = Radio.me().channel(namespace) as unknown as Channel;
+    ch.trigger(name, payload);
+  }
+
+  /**
+   * Wrapper public de trigger — utilisé dans les tests pour déclencher depuis
+   * l'extérieur. En production, trigger est appelé depuis les handlers UI.
+   */
+  callTrigger<K extends TContract["triggers"][number] & string>(
+    key: K,
+    payload: TCommandPayload$1<TDeps, K>
+  ): void {
+    this.trigger(key, payload);
+  }
+
+  /**
+   * Effectue une Request synchrone typée vers un Channel déclaré (ADR-0023,
+   * ADR-0040 / ADR-0041). Retourne le résultat typé ou `null` si aucun replier
+   * n'est enregistré côté Feature propriétaire (D44).
+   *
+   * `key` est une clé namespacée `"ns:req"` ; doit appartenir à
+   * `TContract['requests']`, sinon erreur compile.
+   */
+  protected request<K extends TContract["requests"][number] & string>(
+    key: K,
+    params: TRequestParams$1<TDeps, K>
+  ): TRequestResult$1<TDeps, K> | null {
+    const { namespace, name } = parseNSKey(key);
+    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    const ch = Radio.me().channel(namespace) as unknown as Channel;
+    return ch.request(name, params) as TRequestResult<TDeps, K> | null;
+  }
+
+  // ─── Lifecycle hooks ───────────────────────────────────────────────────
+
+  /**
+   * Hook appelé après le mount. Override dans les sous-classes.
+   */
+  onAttach(): void {
+    // Default no-op
+  }
+
+  // ─── Private : Auto-discovery ──────────────────────────────────────────
+
+  /**
+   * D48 — Découvre les méthodes `on{UiKey}{DomEvent}` et les enregistre
+   * comme addEventListener sur les éléments UI correspondants.
+   *
+   * Convention : `onToggleBtnClick` → addEventListener("click") sur uiElements.toggleBtn
+   */
+  #registerUIHandlers(): void {
+    const proto = Object.getPrototypeOf(this);
+    const methods = Object.getOwnPropertyNames(proto) as string[];
+
+    const DOM_EVENTS = [
+      "Click",
+      "Input",
+      "Change",
+      "Submit",
+      "Focus",
+      "Blur",
+      "Keydown",
+      "Keyup",
+      "Keypress",
+      "Mouseenter",
+      "Mouseleave"
+    ];
+
+    for (const uiKey of Object.keys(this.#uiElements)) {
+      const uiKeyPascal = capitalize(uiKey);
+
+      for (const domEvent of DOM_EVENTS) {
+        const handlerName = `on${uiKeyPascal}${domEvent}`;
+        if (methods.includes(handlerName)) {
+          const selector = this.#uiElements[uiKey];
+          const el = this.#rootEl!.querySelector(selector) as HTMLElement;
+          if (el) {
+            el.addEventListener(domEvent.toLowerCase(), (event: Event) => {
+              (this as unknown as Record<string, (e: Event) => void>)[handlerName](event);
+            });
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * I48 — Pour chaque clé `"ns:event"` déclarée dans `contract.listens`,
+   * câble la méthode `on{Ns}{Event}Event` correspondante sur le Channel `ns`.
+   *
+   * Le contrat est piloté par la déclaration : un handler manquant pour une
+   * clé déclarée → throw (parallèle runtime de I82 — `implements TListenCallbacks`
+   * impose la présence à la compilation).
+   */
+  #registerEventListeners(): void {
+    if (this.#listenKeys.length === 0) return;
+
+    for (const key of this.#listenKeys) {
+      const { namespace, name: eventName } = parseNSKey(key);
+      const handlerName = `on${capitalize(namespace)}${capitalize(eventName)}Event`;
+
+      const handler = (this as unknown as Record<string, unknown>)[handlerName];
+      if (typeof handler !== "function") {
+        throw new Error(
+          `[Bonsai View] Missing handler "${handlerName}" for declared listen "${key}". ` +
+            `Add the method or remove "${key}" from contract.listens.`
+        );
+      }
+
+      // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+      const ch = Radio.me().channel(namespace) as unknown as Channel;
+      ch.listen(eventName, (payload: unknown) => {
+        (handler as (p: unknown) => void).call(this, payload);
+      });
+    }
+  }
+}
+
+/**
+ * @bonsai/view — View base class
+ *
+ * Strate 0 — Capacités :
+ *   - trigger("ns:cmd", payload) → envoie un Command typé (I4, ADR-0040, ADR-0041)
+ *   - request("ns:req", params)  → interroge un Channel typé (ADR-0040, ADR-0041)
+ *   - getUI(key) → TProjectionNode (mutations DOM chirurgicales N1 — D19)
+ *   - Auto-discovery D48 : on{UiKey}{DomEvent} → addEventListener
+ *   - Auto-discovery I48 : on{Namespace}{EventName}Event → channel.listen
+ *   - onAttach() lifecycle hook
+ *
+ * Pattern consommateur unifié (ADR-0041) :
+ *   - Étape 1 — `type TMyDeps = { listens: [typeof XFeature]; ... }`  (type pur)
+ *   - Étape 2 — `const myContract = { ... } satisfies TViewContract<TMyDeps>`
+ *   - Étape 3 — `type TMyContract = typeof myContract`  (préserve les littéraux)
+ *   - Étape 4 — `class MyView extends View<TMyDeps, TMyContract>
+ *                 implements TListenCallbacks<TMyDeps, TMyContract>`
+ *
+ * Channel reste privé derrière sa Feature (I80) — aucun `TChannelToken` dans
+ * la surface publique.
+ *
+ * Invariants :
+ *   I4  — View n'a JAMAIS emit() — absent du type
+ *   I31 — rootElement est un sélecteur CSS string injecté au mount
+ *   I36 — View ne compose jamais d'autres Views directement
+ *   I39 — Accès DOM exclusivement via getUI(key)
+ *   I40 — Scope DOM : résolution dans rootElement uniquement
+ *   I48 — Handlers auto-découverts par convention de nommage,
+ *         déclarés dans contract.listens, vérifiés par implements TListenCallbacks
+ *   D48 — UI handlers auto-dérivés depuis uiElements
+ *   I75 — Aucun `any` dans la surface publique ; casts internes documentés
+ *   I80 — Aucun TChannelToken dans la surface publique consommateur
+ *   I81 — `contract` est la source de vérité runtime du composant
+ *   I82 — Handler manquant → erreur compile via implements TListenCallbacks
+ *   I83 — Pattern unifié View / Composer / Behavior
+ *
+ * @packageDocumentation
+ */
+
+
+
+/**
+ * Projection Node N1 — mutations DOM chirurgicales.
+ * Chaque méthode opère directement sur l'élément HTML sous-jacent.
+ */
+type TProjectionNode$2 = {
+  /** Sets textContent */
+  text(value: string): void;
+  /** Sets an attribute */
+  attr(name: string, value: string): void;
+  /** Adds or removes a CSS class */
+  toggleClass(className: string, force: boolean): void;
+  /** Shows/hides via display:none */
+  visible(show: boolean): void;
+  /** Sets an inline style property */
+  style(property: string, value: string): void;
+  /** Returns the underlying HTMLElement */
+  element(): HTMLElement;
+};
+
+/**
+ * Contrat View — étend `TConsumerContract<TDeps>` (ADR-0041) avec la map
+ * `uiElements` propre à la couche DOM.
+ *
+ * Les trois lanes (`listens` / `triggers` / `requests`) portent des clés
+ * namespacées `"ns:name"` validées par `satisfies` contre les Features
+ * déclarées dans `TDeps`.
+ */
+type TViewContract$2<TDeps extends TConsumerDeps$1> = TConsumerContract$1<TDeps> & {
+  /** Nœuds DOM manipulables : clé → sélecteur CSS */
+  readonly uiElements: Readonly<Record<string, string>>;
+};
+
+/**
+ * Type structurel d'une classe View concrète, indépendant de ses paramètres
+ * `TDeps` / `TContract`. Utilisé par les composants orchestrateurs (Composer)
+ * qui ne dépendent que de la surface publique de mount, pas du contrat
+ * spécifique d'une View particulière.
+ *
+ * **Pourquoi `any, any`** : les paramètres de type d'une classe générique sont
+ * invariants en TypeScript. `typeof View` (defaults) n'accepterait pas
+ * `typeof CartView` (génériques concrets). `TViewClass` est l'échappatoire
+ * structurelle bornée à cette frontière framework-interne. Le code applicatif
+ * n'utilise jamais ce type — il déclare ses `TDeps`/`TContract` concrets (I80, I83).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TViewClass$2 = abstract new () => View$2<any, any>;
+
+// ─── View abstract class ─────────────────────────────────────────────────────
+
+/**
+ * View — couche présentation paramétrée par ses dépendances Feature et
+ * son contrat namespacé (ADR-0041).
+ *
+ * Paramètres de type :
+ *   - `TDeps`     : Features participant à chaque lane (type pur, étape 1)
+ *   - `TContract` : contrat namespacé runtime (étape 2 + 3 — `typeof myContract`)
+ *
+ * Pattern d'usage :
+ * ```ts
+ * type TCartViewDeps = {
+ *   readonly listens:  [typeof CartFeature];
+ *   readonly triggers: [typeof CartFeature];
+ *   readonly requests: [typeof CartFeature];
+ * };
+ *
+ * const cartViewContract = {
+ *   uiElements: { itemCount: "[data-ui='itemCount']", addBtn: "[data-ui='addBtn']" },
+ *   listens:  ["cart:itemAdded"] as const,
+ *   triggers: ["cart:addItem"]  as const,
+ *   requests: [] as const,
+ * } satisfies TViewContract<TCartViewDeps>;
+ *
+ * type TCartViewContract = typeof cartViewContract;
+ *
+ * class CartView
+ *   extends View<TCartViewDeps, TCartViewContract>
+ *   implements TListenCallbacks<TCartViewDeps, TCartViewContract>
+ * {
+ *   get contract() { return cartViewContract; }
+ *
+ *   onAddBtnClick() {
+ *     this.trigger("cart:addItem", { ... });   // ✅ payload inféré
+ *   }
+ *
+ *   onCartItemAddedEvent(payload) { ... }      // ✅ requis par implements
+ * }
+ * ```
+ */
+declare abstract class View$2<
+  TDeps extends TConsumerDeps$1 = TConsumerDeps$1,
+  TContract extends TViewContract$2<TDeps> = TViewContract$2<TDeps>
+> {
+  #rootElement: string | null = null;
+  #rootEl: HTMLElement | null = null;
+  #mounted = false;
+  #uiElements: Readonly<Record<string, string>> = {};
+  #listenKeys: readonly string[] = [];
+
+  // ─── Abstract : ADR-0024 value-first ───────────────────────────────────
+
+  /**
+   * Manifeste de la View (ADR-0024 + ADR-0041).
+   * Évalué UNE SEULE FOIS au mount — le framework destructure et stocke.
+   * Le retour est typé `TContract` pour préserver les types littéraux des
+   * tableaux `listens` / `triggers` / `requests` côté sous-classe.
+   */
+  abstract get contract(): TContract;
+
+  // ─── Public API ────────────────────────────────────────────────────────
+
+  /**
+   * Le sélecteur rootElement injecté au mount (I31).
+   */
+  get rootElement(): string | null {
+    return this.#rootElement;
+  }
+
+  /**
+   * L'élément DOM racine après mount. Disponible dans onAttach() et les
+   * handlers — permet aux sous-classes de lire les data-* attributes (I34).
+   */
+  protected get el(): HTMLElement | null {
+    return this.#rootEl;
+  }
+
+  /**
+   * Monte la View sur un rootElement. Appelé par le Composer.
+   * - Lit `get contract()` une seule fois (ADR-0024)
+   * - Résout le rootElement dans le DOM
+   * - Auto-discover les UI handlers (D48)
+   * - Auto-discover les Event listeners (I48 — pilotés par contract.listens)
+   * - Appelle onAttach()
+   */
+  mount(rootSelector: string): void {
+    if (this.#mounted) return;
+    this.#mounted = true;
+
+    // ADR-0024 : lecture unique du manifeste
+    const contract = this.contract;
+    this.#uiElements = contract.uiElements;
+    // Cast vers readonly string[] pour l'enregistrement runtime (I75) — la
+    // contrainte type-level est portée par TContract.
+    this.#listenKeys = contract.listens as readonly string[];
+
+    this.#rootElement = rootSelector;
+    this.#rootEl = document.querySelector(rootSelector) as HTMLElement;
+
+    // I34: rootElement must not be document.body itself
+    if (this.#rootEl === document.body) {
+      throw new Error(
+        `[Bonsai View] I34 — rootElement cannot be document.body. Provide a child element selector.`
+      );
+    }
+
+    // Auto-discovery
+    this.#registerUIHandlers();
+    this.#registerEventListeners();
+
+    // Lifecycle
+    this.onAttach();
+  }
+
+  /**
+   * I39 — Accès DOM typé via getUI(key). Résout dans le scope du rootElement (I40).
+   * `K` est contraint à `keyof TContract['uiElements']` — clé invalide refusée compile-time.
+   */
+  getUI<K extends keyof TContract["uiElements"] & string>(key: K): TProjectionNode$2 {
+    const selector = this.#uiElements[key];
+    if (!selector) {
+      throw new Error(
+        `[Bonsai View] Unknown UI key "${key}". Declared keys: ${Object.keys(this.#uiElements).join(", ")}`
+      );
+    }
+
+    const el = this.#rootEl!.querySelector(selector) as HTMLElement;
+    if (!el) {
+      throw new Error(
+        `[Bonsai View] UI element "${key}" not found with selector "${selector}" in rootElement "${this.#rootElement}"`
+      );
+    }
+
+    return createProjectionNode(el);
+  }
+
+  /**
+   * Envoie un Command typé via Channel (I4 — View ne peut qu'envoyer,
+   * jamais émettre, ADR-0040 / ADR-0041).
+   *
+   * `key` est une clé namespacée `"ns:cmd"` ; doit appartenir à
+   * `TContract['triggers']`, sinon erreur compile.
+   * Exposé en `protected` — les sous-classes l'appellent depuis les handlers UI.
+   */
+  protected trigger<K extends TContract["triggers"][number] & string>(
+    key: K,
+    payload: TCommandPayload$1<TDeps, K>
+  ): void {
+    const { namespace, name } = parseNSKey(key);
+    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    const ch = Radio.me().channel(namespace) as unknown as Channel;
+    ch.trigger(name, payload);
+  }
+
+  /**
+   * Wrapper public de trigger — utilisé dans les tests pour déclencher depuis
+   * l'extérieur. En production, trigger est appelé depuis les handlers UI.
+   */
+  callTrigger<K extends TContract["triggers"][number] & string>(
+    key: K,
+    payload: TCommandPayload$1<TDeps, K>
+  ): void {
+    this.trigger(key, payload);
+  }
+
+  /**
+   * Effectue une Request synchrone typée vers un Channel déclaré (ADR-0023,
+   * ADR-0040 / ADR-0041). Retourne le résultat typé ou `null` si aucun replier
+   * n'est enregistré côté Feature propriétaire (D44).
+   *
+   * `key` est une clé namespacée `"ns:req"` ; doit appartenir à
+   * `TContract['requests']`, sinon erreur compile.
+   */
+  protected request<K extends TContract["requests"][number] & string>(
+    key: K,
+    params: TRequestParams$1<TDeps, K>
+  ): TRequestResult$1<TDeps, K> | null {
+    const { namespace, name } = parseNSKey(key);
+    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    const ch = Radio.me().channel(namespace) as unknown as Channel;
+    return ch.request(name, params) as TRequestResult<TDeps, K> | null;
+  }
+
+  // ─── Lifecycle hooks ───────────────────────────────────────────────────
+
+  /**
+   * Hook appelé après le mount. Override dans les sous-classes.
+   */
+  onAttach(): void {
+    // Default no-op
+  }
+
+  // ─── Private : Auto-discovery ──────────────────────────────────────────
+
+  /**
+   * D48 — Découvre les méthodes `on{UiKey}{DomEvent}` et les enregistre
+   * comme addEventListener sur les éléments UI correspondants.
+   *
+   * Convention : `onToggleBtnClick` → addEventListener("click") sur uiElements.toggleBtn
+   */
+  #registerUIHandlers(): void {
+    const proto = Object.getPrototypeOf(this);
+    const methods = Object.getOwnPropertyNames(proto) as string[];
+
+    const DOM_EVENTS = [
+      "Click",
+      "Input",
+      "Change",
+      "Submit",
+      "Focus",
+      "Blur",
+      "Keydown",
+      "Keyup",
+      "Keypress",
+      "Mouseenter",
+      "Mouseleave"
+    ];
+
+    for (const uiKey of Object.keys(this.#uiElements)) {
+      const uiKeyPascal = capitalize(uiKey);
+
+      for (const domEvent of DOM_EVENTS) {
+        const handlerName = `on${uiKeyPascal}${domEvent}`;
+        if (methods.includes(handlerName)) {
+          const selector = this.#uiElements[uiKey];
+          const el = this.#rootEl!.querySelector(selector) as HTMLElement;
+          if (el) {
+            el.addEventListener(domEvent.toLowerCase(), (event: Event) => {
+              (this as unknown as Record<string, (e: Event) => void>)[handlerName](event);
+            });
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * I48 — Pour chaque clé `"ns:event"` déclarée dans `contract.listens`,
+   * câble la méthode `on{Ns}{Event}Event` correspondante sur le Channel `ns`.
+   *
+   * Le contrat est piloté par la déclaration : un handler manquant pour une
+   * clé déclarée → throw (parallèle runtime de I82 — `implements TListenCallbacks`
+   * impose la présence à la compilation).
+   */
+  #registerEventListeners(): void {
+    if (this.#listenKeys.length === 0) return;
+
+    for (const key of this.#listenKeys) {
+      const { namespace, name: eventName } = parseNSKey(key);
+      const handlerName = `on${capitalize(namespace)}${capitalize(eventName)}Event`;
+
+      const handler = (this as unknown as Record<string, unknown>)[handlerName];
+      if (typeof handler !== "function") {
+        throw new Error(
+          `[Bonsai View] Missing handler "${handlerName}" for declared listen "${key}". ` +
+            `Add the method or remove "${key}" from contract.listens.`
+        );
+      }
+
+      // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+      const ch = Radio.me().channel(namespace) as unknown as Channel;
+      ch.listen(eventName, (payload: unknown) => {
+        (handler as (p: unknown) => void).call(this, payload);
+      });
+    }
+  }
+}
+
+/**
+ * @bonsai/composer — Composer abstract base class
+ *
+ * Strate 0 — Capacités :
+ *   - resolve(event | null) → TResolveResult | null (0/1 View)
+ *   - Slot DOM immutable fourni par le parent (Foundation ou View)
+ *   - Machine à états minimal : idle → active → idle
+ *   - Création d'élément DOM si absent (D30)
+ *   - Diff de transitions §3.1 (5 cas Same/New/null) sans recréation inutile
+ *
+ * Invariants :
+ *   I20  — Seuls Foundation/Composers créent/détruisent des Views
+ *   I35  — Composer n'a aucune écriture DOM (lecture scope autorisée)
+ *   I37  — Un seul type de Composer, gère 0/1 Views en strate 0
+ *   I40  — Scope DOM d'une View exclut les sous-arbres des slots déclarés
+ *
+ * ADRs :
+ *   ADR-0024 — get params() value-first (strate 0 : pas de listen/request)
+ *   ADR-0025 — Pas de lifecycle hooks (ni onMount, ni onUnmount, ni onAttach)
+ *   ADR-0026 — rootElement = string CSS selector only
+ *   ADR-0027 — resolve(event) unique point d'entrée, pas de state local
+ *
+ * Diff §3.1 (RFC composer.md) :
+ *   | resolve() retourne | View montée         | Action                                    |
+ *   | ------------------ | ------------------- | ----------------------------------------- |
+ *   | SameView+SameRoot  | SameView instance   | **No-op** (instance conservée)            |
+ *   | NewView (ou root)  | OldView instance    | **Detach** OldView → **Attach** NewView   |
+ *   | NewView            | null                | **Attach** NewView                        |
+ *   | null               | OldView instance    | **Detach** OldView                        |
+ *   | null               | null                | **No-op**                                 |
+ *
+ * @packageDocumentation
+ */
+
+
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+/**
+ * Résultat de resolve() — décrit la View à instancier.
+ *
+ * Strate 0 (ADR-0028) : pas de tableau (N-instances reportées en strate 1),
+ * pas d'options (D34 reporté).
+ *
+ * Le champ `view` (et non `viewClass`) est l'identifiant officiel
+ * du contrat — alignement RFC composer.md §1.1 + ADR-0020 §6.2 + ADR-0026.
+ *
+ * `TViewClass` est volontairement structurel (variance permissive) — le
+ * Composer ne dépend pas des `TDeps`/`TContract` spécifiques de la View
+ * concrète, seulement de sa surface de mount (cf. ADR-0041 + bonsai-view.ts).
+ */
+type TResolveResult$2 = {
+  /** La classe View concrète à instancier */
+  readonly view: TViewClass$2;
+  /** Sélecteur CSS de l'élément root de la View — dans le scope du Composer (ADR-0026) */
+  readonly rootElement: string;
+};
+
+/**
+ * Options de construction du Composer — fournies par le framework.
+ */
+type TComposerOptions$2 = {
+  /** Sélecteur CSS du slot DOM du Composer — fourni par Foundation ou View parent */
+  readonly rootElement: string;
+};
+
+// ─── Composer abstract class ─────────────────────────────────────────────────
+
+declare abstract class Composer$2 {
+  /** Sélecteur CSS du slot DOM — immutable (ADR-0020) */
+  #rootElement: string;
+
+  /** Référence au slot DOM résolu */
+  #slot: HTMLElement | null = null;
+
+  /** La View actuellement montée (null si resolve() a retourné null) */
+  #currentView: View$2 | null = null;
+
+  /**
+   * Dernier résultat retourné par resolve() — sert de référence pour le diff §3.1.
+   * Null si la dernière sortie était null (ou avant le premier resolve).
+   */
+  #currentResult: TResolveResult$2 | null = null;
+
+  /** Machine à états minimal : idle → active → idle */
+  #state: "idle" | "active" = "idle";
+
+  constructor(options: TComposerOptions$2) {
+    this.#rootElement = options.rootElement;
+  }
+
+  // ─── Public API (framework only) ────────────────────────────────────
+
+  /**
+   * Le sélecteur rootElement (ADR-0026).
+   */
+  get rootElement(): string {
+    return this.#rootElement;
+  }
+
+  /**
+   * Référence au slot DOM résolu. Null avant attach().
+   */
+  get slot(): HTMLElement | null {
+    return this.#slot;
+  }
+
+  /**
+   * La View actuellement montée, ou null.
+   */
+  get currentView(): View$2 | null {
+    return this.#currentView;
+  }
+
+  /**
+   * Attache le Composer à son slot DOM.
+   * Appelé par le framework (Foundation ou Composer parent).
+   * Résout le slot dans le DOM, puis appelle initialResolve().
+   */
+  attach(parentElement: HTMLElement): void {
+    const el = parentElement.querySelector(
+      this.#rootElement
+    ) as HTMLElement | null;
+
+    if (!el) {
+      // D30 — Créer l'élément si absent
+      const created = this.#createElementFromSelector(this.#rootElement);
+      parentElement.appendChild(created);
+      this.#slot = created;
+    } else {
+      this.#slot = el;
+    }
+
+    // Initial resolve — null event = bootstrap
+    this.#performResolve(null);
+  }
+
+  /**
+   * Appelé par le framework quand un Event est dispatché sur un Channel écouté.
+   * En strate 0, pas de listen déclaré — cette méthode est un point d'extension.
+   */
+  performResolve(event: unknown | null): void {
+    this.#performResolve(event);
+  }
+
+  // ─── Abstract ──────────────────────────────────────────────────────────
+
+  /**
+   * Unique point d'entrée — décide quelle View instancier (ADR-0027).
+   *
+   * @param event — l'Event déclencheur (null au premier montage / bootstrap)
+   * @returns TResolveResult pour monter une View, null pour vider le scope
+   */
+  abstract resolve(event: unknown | null): TResolveResult$2 | null;
+
+  // ─── Private ───────────────────────────────────────────────────────────
+
+  /**
+   * Diff §3.1 (RFC composer.md) — applique la transition entre l'état précédent
+   * (`#currentView` + `#currentResult`) et la nouvelle décision retournée par
+   * `resolve(event)`. 5 transitions possibles, aucune recréation inutile.
+   */
+  #performResolve(event: unknown | null): void {
+    const next = this.resolve(event);
+    const prev = this.#currentResult;
+
+    // Transition 5 : null + null → no-op
+    if (next === null && prev === null) {
+      return;
+    }
+
+    // Transition 4 : null + instance → detach
+    if (next === null) {
+      this.#detachCurrent();
+      return;
+    }
+
+    // À ce stade, next !== null
+
+    // Transition 1 : SameView + SameRoot + currentView → no-op
+    // (instance conservée, aucun remount)
+    if (
+      prev !== null &&
+      this.#currentView !== null &&
+      prev.view === next.view &&
+      prev.rootElement === next.rootElement
+    ) {
+      return;
+    }
+
+    // Transition 3 : NewView + null → attach simple
+    if (this.#currentView === null) {
+      this.#attachNew(next);
+      return;
+    }
+
+    // Transition 2 : NewView (ou même viewClass mais rootElement différent)
+    //                + instance existante → detach + attach
+    this.#detachCurrent();
+    this.#attachNew(next);
+  }
+
+  /**
+   * Instancie la View décrite par `result`, la monte sur son rootElement,
+   * et met à jour l'état interne. Appelée par `#performResolve()` uniquement.
+   */
+  #attachNew(result: TResolveResult$2): void {
+    const ViewClass = result.view;
+    const view = new (ViewClass as unknown as new () => View)();
+    view.mount(result.rootElement);
+    this.#currentView = view;
+    this.#currentResult = result;
+    this.#state = "active";
+  }
+
+  /**
+   * Détache la View courante. En strate 0, le Composer n'a pas de subscription
+   * propre à libérer (ADR-0025) — il libère simplement la référence. La RFC §4.2
+   * prévoit `view.onDetach()` en strates ultérieures.
+   *
+   * Note : l'élément DOM créé par D30 (slot du Composer) reste en place — c'est
+   * le slot, pas le rootElement de la View. Seule la View mountée est libérée.
+   */
+  #detachCurrent(): void {
+    this.#currentView = null;
+    this.#currentResult = null;
+    this.#state = "idle";
+  }
+
+  /**
+   * D30 — Parse un sélecteur CSS et crée un élément DOM correspondant.
+   * Simplifié en strate 0 : supporte [attr], [attr='value'], .class, #id, tag.
+   */
+  #createElementFromSelector(selector: string): HTMLElement {
+    let tag = "div";
+    const el = document.createElement(tag);
+
+    // [attr='value'] or [attr="value"]
+    const attrMatches = selector.matchAll(
+      /\[([^\]=]+)(?:=["']([^"']*)["'])?\]/g
+    );
+    for (const match of attrMatches) {
+      el.setAttribute(match[1], match[2] ?? "");
+    }
+
+    // .class
+    const classMatch = selector.match(/\.([a-zA-Z0-9_-]+)/);
+    if (classMatch) {
+      el.classList.add(classMatch[1]);
+    }
+
+    // #id
+    const idMatch = selector.match(/#([a-zA-Z0-9_-]+)/);
+    if (idMatch) {
+      el.id = idMatch[1];
+    }
+
+    return el;
+  }
+}
+
+/**
+ * @bonsai/view — View base class
+ *
+ * Strate 0 — Capacités :
+ *   - trigger("ns:cmd", payload) → envoie un Command typé (I4, ADR-0040, ADR-0041)
+ *   - request("ns:req", params)  → interroge un Channel typé (ADR-0040, ADR-0041)
+ *   - getUI(key) → TProjectionNode (mutations DOM chirurgicales N1 — D19)
+ *   - Auto-discovery D48 : on{UiKey}{DomEvent} → addEventListener
+ *   - Auto-discovery I48 : on{Namespace}{EventName}Event → channel.listen
+ *   - onAttach() lifecycle hook
+ *
+ * Pattern consommateur unifié (ADR-0041) :
+ *   - Étape 1 — `type TMyDeps = { listens: [typeof XFeature]; ... }`  (type pur)
+ *   - Étape 2 — `const myContract = { ... } satisfies TViewContract<TMyDeps>`
+ *   - Étape 3 — `type TMyContract = typeof myContract`  (préserve les littéraux)
+ *   - Étape 4 — `class MyView extends View<TMyDeps, TMyContract>
+ *                 implements TListenCallbacks<TMyDeps, TMyContract>`
+ *
+ * Channel reste privé derrière sa Feature (I80) — aucun `TChannelToken` dans
+ * la surface publique.
+ *
+ * Invariants :
+ *   I4  — View n'a JAMAIS emit() — absent du type
+ *   I31 — rootElement est un sélecteur CSS string injecté au mount
+ *   I36 — View ne compose jamais d'autres Views directement
+ *   I39 — Accès DOM exclusivement via getUI(key)
+ *   I40 — Scope DOM : résolution dans rootElement uniquement
+ *   I48 — Handlers auto-découverts par convention de nommage,
+ *         déclarés dans contract.listens, vérifiés par implements TListenCallbacks
+ *   D48 — UI handlers auto-dérivés depuis uiElements
+ *   I75 — Aucun `any` dans la surface publique ; casts internes documentés
+ *   I80 — Aucun TChannelToken dans la surface publique consommateur
+ *   I81 — `contract` est la source de vérité runtime du composant
+ *   I82 — Handler manquant → erreur compile via implements TListenCallbacks
+ *   I83 — Pattern unifié View / Composer / Behavior
+ *
+ * @packageDocumentation
+ */
+
+
+
+/**
+ * Projection Node N1 — mutations DOM chirurgicales.
+ * Chaque méthode opère directement sur l'élément HTML sous-jacent.
+ */
+type TProjectionNode$1 = {
+  /** Sets textContent */
+  text(value: string): void;
+  /** Sets an attribute */
+  attr(name: string, value: string): void;
+  /** Adds or removes a CSS class */
+  toggleClass(className: string, force: boolean): void;
+  /** Shows/hides via display:none */
+  visible(show: boolean): void;
+  /** Sets an inline style property */
+  style(property: string, value: string): void;
+  /** Returns the underlying HTMLElement */
+  element(): HTMLElement;
+};
+
+/**
+ * Contrat View — étend `TConsumerContract<TDeps>` (ADR-0041) avec la map
+ * `uiElements` propre à la couche DOM.
+ *
+ * Les trois lanes (`listens` / `triggers` / `requests`) portent des clés
+ * namespacées `"ns:name"` validées par `satisfies` contre les Features
+ * déclarées dans `TDeps`.
+ */
+type TViewContract$1<TDeps extends TConsumerDeps$1> = TConsumerContract$1<TDeps> & {
+  /** Nœuds DOM manipulables : clé → sélecteur CSS */
+  readonly uiElements: Readonly<Record<string, string>>;
+};
+
+/**
+ * Type structurel d'une classe View concrète, indépendant de ses paramètres
+ * `TDeps` / `TContract`. Utilisé par les composants orchestrateurs (Composer)
+ * qui ne dépendent que de la surface publique de mount, pas du contrat
+ * spécifique d'une View particulière.
+ *
+ * **Pourquoi `any, any`** : les paramètres de type d'une classe générique sont
+ * invariants en TypeScript. `typeof View` (defaults) n'accepterait pas
+ * `typeof CartView` (génériques concrets). `TViewClass` est l'échappatoire
+ * structurelle bornée à cette frontière framework-interne. Le code applicatif
+ * n'utilise jamais ce type — il déclare ses `TDeps`/`TContract` concrets (I80, I83).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TViewClass$1 = abstract new () => View$1<any, any>;
+
+// ─── View abstract class ─────────────────────────────────────────────────────
+
+/**
+ * View — couche présentation paramétrée par ses dépendances Feature et
+ * son contrat namespacé (ADR-0041).
+ *
+ * Paramètres de type :
+ *   - `TDeps`     : Features participant à chaque lane (type pur, étape 1)
+ *   - `TContract` : contrat namespacé runtime (étape 2 + 3 — `typeof myContract`)
+ *
+ * Pattern d'usage :
+ * ```ts
+ * type TCartViewDeps = {
+ *   readonly listens:  [typeof CartFeature];
+ *   readonly triggers: [typeof CartFeature];
+ *   readonly requests: [typeof CartFeature];
+ * };
+ *
+ * const cartViewContract = {
+ *   uiElements: { itemCount: "[data-ui='itemCount']", addBtn: "[data-ui='addBtn']" },
+ *   listens:  ["cart:itemAdded"] as const,
+ *   triggers: ["cart:addItem"]  as const,
+ *   requests: [] as const,
+ * } satisfies TViewContract<TCartViewDeps>;
+ *
+ * type TCartViewContract = typeof cartViewContract;
+ *
+ * class CartView
+ *   extends View<TCartViewDeps, TCartViewContract>
+ *   implements TListenCallbacks<TCartViewDeps, TCartViewContract>
+ * {
+ *   get contract() { return cartViewContract; }
+ *
+ *   onAddBtnClick() {
+ *     this.trigger("cart:addItem", { ... });   // ✅ payload inféré
+ *   }
+ *
+ *   onCartItemAddedEvent(payload) { ... }      // ✅ requis par implements
+ * }
+ * ```
+ */
+declare abstract class View$1<
+  TDeps extends TConsumerDeps$1 = TConsumerDeps$1,
+  TContract extends TViewContract$1<TDeps> = TViewContract$1<TDeps>
+> {
+  #rootElement: string | null = null;
+  #rootEl: HTMLElement | null = null;
+  #mounted = false;
+  #uiElements: Readonly<Record<string, string>> = {};
+  #listenKeys: readonly string[] = [];
+
+  // ─── Abstract : ADR-0024 value-first ───────────────────────────────────
+
+  /**
+   * Manifeste de la View (ADR-0024 + ADR-0041).
+   * Évalué UNE SEULE FOIS au mount — le framework destructure et stocke.
+   * Le retour est typé `TContract` pour préserver les types littéraux des
+   * tableaux `listens` / `triggers` / `requests` côté sous-classe.
+   */
+  abstract get contract(): TContract;
+
+  // ─── Public API ────────────────────────────────────────────────────────
+
+  /**
+   * Le sélecteur rootElement injecté au mount (I31).
+   */
+  get rootElement(): string | null {
+    return this.#rootElement;
+  }
+
+  /**
+   * L'élément DOM racine après mount. Disponible dans onAttach() et les
+   * handlers — permet aux sous-classes de lire les data-* attributes (I34).
+   */
+  protected get el(): HTMLElement | null {
+    return this.#rootEl;
+  }
+
+  /**
+   * Monte la View sur un rootElement. Appelé par le Composer.
+   * - Lit `get contract()` une seule fois (ADR-0024)
+   * - Résout le rootElement dans le DOM
+   * - Auto-discover les UI handlers (D48)
+   * - Auto-discover les Event listeners (I48 — pilotés par contract.listens)
+   * - Appelle onAttach()
+   */
+  mount(rootSelector: string): void {
+    if (this.#mounted) return;
+    this.#mounted = true;
+
+    // ADR-0024 : lecture unique du manifeste
+    const contract = this.contract;
+    this.#uiElements = contract.uiElements;
+    // Cast vers readonly string[] pour l'enregistrement runtime (I75) — la
+    // contrainte type-level est portée par TContract.
+    this.#listenKeys = contract.listens as readonly string[];
+
+    this.#rootElement = rootSelector;
+    this.#rootEl = document.querySelector(rootSelector) as HTMLElement;
+
+    // I34: rootElement must not be document.body itself
+    if (this.#rootEl === document.body) {
+      throw new Error(
+        `[Bonsai View] I34 — rootElement cannot be document.body. Provide a child element selector.`
+      );
+    }
+
+    // Auto-discovery
+    this.#registerUIHandlers();
+    this.#registerEventListeners();
+
+    // Lifecycle
+    this.onAttach();
+  }
+
+  /**
+   * I39 — Accès DOM typé via getUI(key). Résout dans le scope du rootElement (I40).
+   * `K` est contraint à `keyof TContract['uiElements']` — clé invalide refusée compile-time.
+   */
+  getUI<K extends keyof TContract["uiElements"] & string>(key: K): TProjectionNode$1 {
+    const selector = this.#uiElements[key];
+    if (!selector) {
+      throw new Error(
+        `[Bonsai View] Unknown UI key "${key}". Declared keys: ${Object.keys(this.#uiElements).join(", ")}`
+      );
+    }
+
+    const el = this.#rootEl!.querySelector(selector) as HTMLElement;
+    if (!el) {
+      throw new Error(
+        `[Bonsai View] UI element "${key}" not found with selector "${selector}" in rootElement "${this.#rootElement}"`
+      );
+    }
+
+    return createProjectionNode(el);
+  }
+
+  /**
+   * Envoie un Command typé via Channel (I4 — View ne peut qu'envoyer,
+   * jamais émettre, ADR-0040 / ADR-0041).
+   *
+   * `key` est une clé namespacée `"ns:cmd"` ; doit appartenir à
+   * `TContract['triggers']`, sinon erreur compile.
+   * Exposé en `protected` — les sous-classes l'appellent depuis les handlers UI.
+   */
+  protected trigger<K extends TContract["triggers"][number] & string>(
+    key: K,
+    payload: TCommandPayload$1<TDeps, K>
+  ): void {
+    const { namespace, name } = parseNSKey(key);
+    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    const ch = Radio.me().channel(namespace) as unknown as Channel;
+    ch.trigger(name, payload);
+  }
+
+  /**
+   * Wrapper public de trigger — utilisé dans les tests pour déclencher depuis
+   * l'extérieur. En production, trigger est appelé depuis les handlers UI.
+   */
+  callTrigger<K extends TContract["triggers"][number] & string>(
+    key: K,
+    payload: TCommandPayload$1<TDeps, K>
+  ): void {
+    this.trigger(key, payload);
+  }
+
+  /**
+   * Effectue une Request synchrone typée vers un Channel déclaré (ADR-0023,
+   * ADR-0040 / ADR-0041). Retourne le résultat typé ou `null` si aucun replier
+   * n'est enregistré côté Feature propriétaire (D44).
+   *
+   * `key` est une clé namespacée `"ns:req"` ; doit appartenir à
+   * `TContract['requests']`, sinon erreur compile.
+   */
+  protected request<K extends TContract["requests"][number] & string>(
+    key: K,
+    params: TRequestParams$1<TDeps, K>
+  ): TRequestResult$1<TDeps, K> | null {
+    const { namespace, name } = parseNSKey(key);
+    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    const ch = Radio.me().channel(namespace) as unknown as Channel;
+    return ch.request(name, params) as TRequestResult<TDeps, K> | null;
+  }
+
+  // ─── Lifecycle hooks ───────────────────────────────────────────────────
+
+  /**
+   * Hook appelé après le mount. Override dans les sous-classes.
+   */
+  onAttach(): void {
+    // Default no-op
+  }
+
+  // ─── Private : Auto-discovery ──────────────────────────────────────────
+
+  /**
+   * D48 — Découvre les méthodes `on{UiKey}{DomEvent}` et les enregistre
+   * comme addEventListener sur les éléments UI correspondants.
+   *
+   * Convention : `onToggleBtnClick` → addEventListener("click") sur uiElements.toggleBtn
+   */
+  #registerUIHandlers(): void {
+    const proto = Object.getPrototypeOf(this);
+    const methods = Object.getOwnPropertyNames(proto) as string[];
+
+    const DOM_EVENTS = [
+      "Click",
+      "Input",
+      "Change",
+      "Submit",
+      "Focus",
+      "Blur",
+      "Keydown",
+      "Keyup",
+      "Keypress",
+      "Mouseenter",
+      "Mouseleave"
+    ];
+
+    for (const uiKey of Object.keys(this.#uiElements)) {
+      const uiKeyPascal = capitalize(uiKey);
+
+      for (const domEvent of DOM_EVENTS) {
+        const handlerName = `on${uiKeyPascal}${domEvent}`;
+        if (methods.includes(handlerName)) {
+          const selector = this.#uiElements[uiKey];
+          const el = this.#rootEl!.querySelector(selector) as HTMLElement;
+          if (el) {
+            el.addEventListener(domEvent.toLowerCase(), (event: Event) => {
+              (this as unknown as Record<string, (e: Event) => void>)[handlerName](event);
+            });
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * I48 — Pour chaque clé `"ns:event"` déclarée dans `contract.listens`,
+   * câble la méthode `on{Ns}{Event}Event` correspondante sur le Channel `ns`.
+   *
+   * Le contrat est piloté par la déclaration : un handler manquant pour une
+   * clé déclarée → throw (parallèle runtime de I82 — `implements TListenCallbacks`
+   * impose la présence à la compilation).
+   */
+  #registerEventListeners(): void {
+    if (this.#listenKeys.length === 0) return;
+
+    for (const key of this.#listenKeys) {
+      const { namespace, name: eventName } = parseNSKey(key);
+      const handlerName = `on${capitalize(namespace)}${capitalize(eventName)}Event`;
+
+      const handler = (this as unknown as Record<string, unknown>)[handlerName];
+      if (typeof handler !== "function") {
+        throw new Error(
+          `[Bonsai View] Missing handler "${handlerName}" for declared listen "${key}". ` +
+            `Add the method or remove "${key}" from contract.listens.`
+        );
+      }
+
+      // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+      const ch = Radio.me().channel(namespace) as unknown as Channel;
+      ch.listen(eventName, (payload: unknown) => {
+        (handler as (p: unknown) => void).call(this, payload);
+      });
+    }
+  }
+}
+
+/**
+ * @bonsai/composer — Composer abstract base class
+ *
+ * Strate 0 — Capacités :
+ *   - resolve(event | null) → TResolveResult | null (0/1 View)
+ *   - Slot DOM immutable fourni par le parent (Foundation ou View)
+ *   - Machine à états minimal : idle → active → idle
+ *   - Création d'élément DOM si absent (D30)
+ *   - Diff de transitions §3.1 (5 cas Same/New/null) sans recréation inutile
+ *
+ * Invariants :
+ *   I20  — Seuls Foundation/Composers créent/détruisent des Views
+ *   I35  — Composer n'a aucune écriture DOM (lecture scope autorisée)
+ *   I37  — Un seul type de Composer, gère 0/1 Views en strate 0
+ *   I40  — Scope DOM d'une View exclut les sous-arbres des slots déclarés
+ *
+ * ADRs :
+ *   ADR-0024 — get params() value-first (strate 0 : pas de listen/request)
+ *   ADR-0025 — Pas de lifecycle hooks (ni onMount, ni onUnmount, ni onAttach)
+ *   ADR-0026 — rootElement = string CSS selector only
+ *   ADR-0027 — resolve(event) unique point d'entrée, pas de state local
+ *
+ * Diff §3.1 (RFC composer.md) :
+ *   | resolve() retourne | View montée         | Action                                    |
+ *   | ------------------ | ------------------- | ----------------------------------------- |
+ *   | SameView+SameRoot  | SameView instance   | **No-op** (instance conservée)            |
+ *   | NewView (ou root)  | OldView instance    | **Detach** OldView → **Attach** NewView   |
+ *   | NewView            | null                | **Attach** NewView                        |
+ *   | null               | OldView instance    | **Detach** OldView                        |
+ *   | null               | null                | **No-op**                                 |
+ *
+ * @packageDocumentation
+ */
+
+
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+/**
+ * Résultat de resolve() — décrit la View à instancier.
+ *
+ * Strate 0 (ADR-0028) : pas de tableau (N-instances reportées en strate 1),
+ * pas d'options (D34 reporté).
+ *
+ * Le champ `view` (et non `viewClass`) est l'identifiant officiel
+ * du contrat — alignement RFC composer.md §1.1 + ADR-0020 §6.2 + ADR-0026.
+ *
+ * `TViewClass` est volontairement structurel (variance permissive) — le
+ * Composer ne dépend pas des `TDeps`/`TContract` spécifiques de la View
+ * concrète, seulement de sa surface de mount (cf. ADR-0041 + bonsai-view.ts).
+ */
+type TResolveResult$1 = {
+  /** La classe View concrète à instancier */
+  readonly view: TViewClass$1;
+  /** Sélecteur CSS de l'élément root de la View — dans le scope du Composer (ADR-0026) */
+  readonly rootElement: string;
+};
+
+/**
+ * Options de construction du Composer — fournies par le framework.
+ */
+type TComposerOptions$1 = {
+  /** Sélecteur CSS du slot DOM du Composer — fourni par Foundation ou View parent */
+  readonly rootElement: string;
+};
+
+// ─── Composer abstract class ─────────────────────────────────────────────────
+
+declare abstract class Composer$1 {
+  /** Sélecteur CSS du slot DOM — immutable (ADR-0020) */
+  #rootElement: string;
+
+  /** Référence au slot DOM résolu */
+  #slot: HTMLElement | null = null;
+
+  /** La View actuellement montée (null si resolve() a retourné null) */
+  #currentView: View$1 | null = null;
+
+  /**
+   * Dernier résultat retourné par resolve() — sert de référence pour le diff §3.1.
+   * Null si la dernière sortie était null (ou avant le premier resolve).
+   */
+  #currentResult: TResolveResult$1 | null = null;
+
+  /** Machine à états minimal : idle → active → idle */
+  #state: "idle" | "active" = "idle";
+
+  constructor(options: TComposerOptions$1) {
+    this.#rootElement = options.rootElement;
+  }
+
+  // ─── Public API (framework only) ────────────────────────────────────
+
+  /**
+   * Le sélecteur rootElement (ADR-0026).
+   */
+  get rootElement(): string {
+    return this.#rootElement;
+  }
+
+  /**
+   * Référence au slot DOM résolu. Null avant attach().
+   */
+  get slot(): HTMLElement | null {
+    return this.#slot;
+  }
+
+  /**
+   * La View actuellement montée, ou null.
+   */
+  get currentView(): View$1 | null {
+    return this.#currentView;
+  }
+
+  /**
+   * Attache le Composer à son slot DOM.
+   * Appelé par le framework (Foundation ou Composer parent).
+   * Résout le slot dans le DOM, puis appelle initialResolve().
+   */
+  attach(parentElement: HTMLElement): void {
+    const el = parentElement.querySelector(
+      this.#rootElement
+    ) as HTMLElement | null;
+
+    if (!el) {
+      // D30 — Créer l'élément si absent
+      const created = this.#createElementFromSelector(this.#rootElement);
+      parentElement.appendChild(created);
+      this.#slot = created;
+    } else {
+      this.#slot = el;
+    }
+
+    // Initial resolve — null event = bootstrap
+    this.#performResolve(null);
+  }
+
+  /**
+   * Appelé par le framework quand un Event est dispatché sur un Channel écouté.
+   * En strate 0, pas de listen déclaré — cette méthode est un point d'extension.
+   */
+  performResolve(event: unknown | null): void {
+    this.#performResolve(event);
+  }
+
+  // ─── Abstract ──────────────────────────────────────────────────────────
+
+  /**
+   * Unique point d'entrée — décide quelle View instancier (ADR-0027).
+   *
+   * @param event — l'Event déclencheur (null au premier montage / bootstrap)
+   * @returns TResolveResult pour monter une View, null pour vider le scope
+   */
+  abstract resolve(event: unknown | null): TResolveResult$1 | null;
+
+  // ─── Private ───────────────────────────────────────────────────────────
+
+  /**
+   * Diff §3.1 (RFC composer.md) — applique la transition entre l'état précédent
+   * (`#currentView` + `#currentResult`) et la nouvelle décision retournée par
+   * `resolve(event)`. 5 transitions possibles, aucune recréation inutile.
+   */
+  #performResolve(event: unknown | null): void {
+    const next = this.resolve(event);
+    const prev = this.#currentResult;
+
+    // Transition 5 : null + null → no-op
+    if (next === null && prev === null) {
+      return;
+    }
+
+    // Transition 4 : null + instance → detach
+    if (next === null) {
+      this.#detachCurrent();
+      return;
+    }
+
+    // À ce stade, next !== null
+
+    // Transition 1 : SameView + SameRoot + currentView → no-op
+    // (instance conservée, aucun remount)
+    if (
+      prev !== null &&
+      this.#currentView !== null &&
+      prev.view === next.view &&
+      prev.rootElement === next.rootElement
+    ) {
+      return;
+    }
+
+    // Transition 3 : NewView + null → attach simple
+    if (this.#currentView === null) {
+      this.#attachNew(next);
+      return;
+    }
+
+    // Transition 2 : NewView (ou même viewClass mais rootElement différent)
+    //                + instance existante → detach + attach
+    this.#detachCurrent();
+    this.#attachNew(next);
+  }
+
+  /**
+   * Instancie la View décrite par `result`, la monte sur son rootElement,
+   * et met à jour l'état interne. Appelée par `#performResolve()` uniquement.
+   */
+  #attachNew(result: TResolveResult$1): void {
+    const ViewClass = result.view;
+    const view = new (ViewClass as unknown as new () => View)();
+    view.mount(result.rootElement);
+    this.#currentView = view;
+    this.#currentResult = result;
+    this.#state = "active";
+  }
+
+  /**
+   * Détache la View courante. En strate 0, le Composer n'a pas de subscription
+   * propre à libérer (ADR-0025) — il libère simplement la référence. La RFC §4.2
+   * prévoit `view.onDetach()` en strates ultérieures.
+   *
+   * Note : l'élément DOM créé par D30 (slot du Composer) reste en place — c'est
+   * le slot, pas le rootElement de la View. Seule la View mountée est libérée.
+   */
+  #detachCurrent(): void {
+    this.#currentView = null;
+    this.#currentResult = null;
+    this.#state = "idle";
+  }
+
+  /**
+   * D30 — Parse un sélecteur CSS et crée un élément DOM correspondant.
+   * Simplifié en strate 0 : supporte [attr], [attr='value'], .class, #id, tag.
+   */
+  #createElementFromSelector(selector: string): HTMLElement {
+    let tag = "div";
+    const el = document.createElement(tag);
+
+    // [attr='value'] or [attr="value"]
+    const attrMatches = selector.matchAll(
+      /\[([^\]=]+)(?:=["']([^"']*)["'])?\]/g
+    );
+    for (const match of attrMatches) {
+      el.setAttribute(match[1], match[2] ?? "");
+    }
+
+    // .class
+    const classMatch = selector.match(/\.([a-zA-Z0-9_-]+)/);
+    if (classMatch) {
+      el.classList.add(classMatch[1]);
+    }
+
+    // #id
+    const idMatch = selector.match(/#([a-zA-Z0-9_-]+)/);
+    if (idMatch) {
+      el.id = idMatch[1];
+    }
+
+    return el;
+  }
+}
+
+/**
+ * @bonsai/foundation — Foundation abstract base class
+ *
+ * Strate 0 — Capacités :
+ *   - body  = document.body            (toujours en strate 0, I33)
+ *   - html  = document.documentElement (droit d'altération N1, D27)
+ *   - Déclare les Composers racines via abstract get composers()
+ *     (Readonly<Record<string, typeof Composer>> — ADR-0038)
+ *   - Crée et attache les Composers au bootstrap dans l'ordre d'insertion
+ *     (ES2015+ Object.entries garantit l'ordre des clés string)
+ *   - Hooks onAttach() / onDetach()
+ *
+ * Invariants :
+ *   I33  — Foundation unique par application — cible <body>
+ *   I20  — Seuls Foundation/Composers créent/détruisent des Views
+ *   I34  — rootElement d'une View = enfant de <body>, jamais <body>
+ *   I67  — Stabilité structurelle de Foundation (ADR-0038)
+ *   D27  — Foundation peut altérer html/body en N1 uniquement
+ *
+ * Strate 0 simplifications (ADR-0028) :
+ *   - Pas de TUIMap (ADR-0018 Suspended)
+ *   - Pas d'event delegation globale (strate 1)
+ *   - Pas de params() Channel capabilities (strate 1)
+ *
+ * @packageDocumentation
+ */
+
+
+
+// ─── Foundation abstract class ───────────────────────────────────────────────
+
+declare abstract class Foundation$1 {
+  /** Référence à <body> — toujours document.body en strate 0 (I33) */
+  #body: HTMLElement;
+
+  /** Référence à <html> — droit d'altération N1 (D27, RFC foundation.md §2) */
+  #html: HTMLElement;
+
+  /** Les instances de Composers racines créées au bootstrap */
+  #composerInstances: Composer$1[] = [];
+
+  /** Flag : Foundation déjà attachée */
+  #attached = false;
+
+  constructor() {
+    this.#body = document.body;
+    this.#html = document.documentElement;
+  }
+
+  // ─── Public API ────────────────────────────────────────────────────────
+
+  /**
+   * Référence à <body> — alignement RFC foundation.md §1.
+   * Le développeur peut altérer en N1 (classes, attributs) — D27.
+   */
+  protected get body(): HTMLElement {
+    return this.#body;
+  }
+
+  /**
+   * Référence à <html> — alignement RFC foundation.md §1.
+   * Le développeur peut altérer en N1 (classes, attributs) — D27.
+   */
+  protected get html(): HTMLElement {
+    return this.#html;
+  }
+
+  /**
+   * Les Composer instances créées.
+   */
+  get composerInstances(): readonly Composer$1[] {
+    return this.#composerInstances;
+  }
+
+  /**
+   * Attache la Foundation : résout et crée les Composers racines.
+   * Appelé une seule fois par Application.start().
+   *
+   * Itère sur Object.entries(this.composers) — l'ordre d'insertion des
+   * clés string non numériques est garanti par ES2015+ (§9.1.12).
+   */
+  attach(): void {
+    if (this.#attached) {
+      throw new Error(
+        "[Bonsai Foundation] Foundation already attached — I33 singleton violated"
+      );
+    }
+    this.#attached = true;
+
+    const composersMap = this.composers;
+
+    for (const [selector, ComposerCtor] of Object.entries(composersMap)) {
+      const ComposerClass = ComposerCtor as unknown as new (
+        opts: TComposerOptions
+      ) => Composer;
+      const instance = new ComposerClass({ rootElement: selector });
+      instance.attach(this.#body);
+      this.#composerInstances.push(instance);
+    }
+
+    this.onAttach();
+  }
+
+  // ─── Abstract ──────────────────────────────────────────────────────────
+
+  /**
+   * Déclare les Composers racines de Foundation — ADR-0038.
+   *
+   * Clés = sélecteurs CSS dans <body> (string libre, validé runtime).
+   * Valeurs = classes Composer concrètes.
+   *
+   * Layout stable et persistant — typiquement 3-5 entrées
+   * (#header, #main, #footer, #aside...). Évalué une seule fois au bootstrap (I67).
+   *
+   * Pour la composition dynamique : déléguer à une View dédiée via View.composers + PDR
+   * (cf. ADR-0038 §6.3 — Pattern délégation).
+   */
+  abstract get composers(): Readonly<Record<string, typeof Composer$1>>;
+
+  // ─── Lifecycle hooks ───────────────────────────────────────────────────
+
+  /**
+   * Hook appelé après résolution des Composers racines.
+   * Surcharger pour brancher des écouteurs DOM globaux (resize, scroll, etc.).
+   * Default no-op.
+   */
+  onAttach(): void {
+    // Default no-op
+  }
+
+  /**
+   * Hook appelé au shutdown — symétrique de onAttach().
+   * Surcharger pour débrancher les écouteurs DOM globaux installés dans onAttach().
+   * Default no-op.
+   *
+   * NB : non invoqué automatiquement en strate 0 (pas de shutdown formalisé) ;
+   * point d'extension pour la strate 1.
+   */
+  onDetach(): void {
+    // Default no-op
+  }
+}
+
+/**
+ * @bonsai/entity — Entity base class
+ *
+ * Strate 0 — Implémentation ADR-0001 :
+ *   - mutate(intent, recipe) via Immer.produce
+ *   - changedKeys par comparaison shallow avant/après
+ *   - Détection no-op (pas de notification si state inchangé)
+ *   - Notification catch-all onAnyEntityUpdated (I51)
+ *   - initialState getter (D17)
+ *
+ * NOTE strate 0 : pas de produceWithPatches, pas de per-key handlers,
+ * pas de ré-entrance FIFO, pas de toJSON/fromJSON.
+ */
+
+
+
+// ─── Types publics ───────────────────────────────────────────────────────────
+
+/**
+ * Contrainte structurelle : le state d'une Entity doit être JsonSerializable (I46).
+ */
+type TJsonSerializable =
+  | string
+  | number
+  | boolean
+  | null
+  | TJsonSerializable[]
+  | { [key: string]: TJsonSerializable };
+
+/**
+ * Paramètres optionnels passés à mutate() — payload + metas (traçabilité).
+ */
+type TMutationParams = {
+  payload?: unknown;
+  metas?: Record<string, unknown>;
+};
+
+/**
+ * Événement émis après une mutation réussie (non no-op).
+ * Reçu par les listeners onAnyEntityUpdated.
+ */
+type TEntityEvent<
+  TStructure extends TJsonSerializable = TJsonSerializable
+> = {
+  readonly intent: string;
+  readonly params: TMutationParams | null;
+  readonly changedKeys: string[];
+  readonly previousState: TStructure;
+  readonly nextState: TStructure;
+  readonly timestamp: number;
+};
+
+/**
+ * Signature du listener catch-all.
+ */
+type TEntityUpdateListener<
+  TStructure extends TJsonSerializable = TJsonSerializable
+> = (event: TEntityEvent<TStructure>) => void;
+
+// ─── Classe abstraite Entity ─────────────────────────────────────────────────
+
+/**
+ * Entity — Conteneur d'état immutable d'une Feature (I6, I22, I46).
+ *
+ * Classe abstraite : les sous-classes doivent implémenter `get initialState()`.
+ *
+ * @template TStructure - Le type du state, contraint à TJsonSerializable.
+ */
+declare abstract class Entity<TStructure extends TJsonSerializable> {
+  /**
+   * State courant de l'Entity. Accessible en lecture par les sous-classes
+   * et par le code qui détient une référence à l'Entity.
+   */
+  #state!: TStructure;
+
+  /**
+   * Copie du state initial pour pouvoir le retourner via `initialState` (D17).
+   */
+  #initialState!: TStructure;
+
+  /**
+   * Listeners catch-all (I51).
+   */
+  #listeners: Array<TEntityUpdateListener<TStructure>> = [];
+
+  /**
+   * Flag d'initialisation (lazy init pour contourner la restriction abstraite).
+   */
+  #initialized = false;
+
+  constructor() {
+    // L'initialisation réelle est faite dans #ensureInitialized()
+    // car TS interdit l'accès aux propriétés abstraites dans le constructeur.
+    this.#ensureInitialized();
+  }
+
+  #ensureInitialized(): void {
+    if (!this.#initialized) {
+      this.#initialState = this.defineInitialState();
+      this.#state = this.#initialState;
+      this.#initialized = true;
+    }
+  }
+
+  // ─── Abstract ────────────────────────────────────────────────────────
+
+  /**
+   * Retourne l'état initial de l'Entity.
+   * Chaque sous-classe concrète DOIT implémenter ce getter.
+   */
+  protected abstract defineInitialState(): TStructure;
+
+  // ─── Public API ──────────────────────────────────────────────────────
+
+  /**
+   * State courant (lecture seule depuis l'extérieur).
+   */
+  get state(): TStructure {
+    return this.#state;
+  }
+
+  /**
+   * Retourne l'état initial tel que défini à la construction (D17).
+   * Accessible publiquement pour reset ou comparaison.
+   */
+  get initialState(): TStructure {
+    return this.#initialState;
+  }
+
+  /**
+   * Mutation immutable via Immer (ADR-0001).
+   *
+   * Overload 1 : mutate(intent, recipe)
+   * Overload 2 : mutate(intent, params, recipe)
+   *
+   * Détecte les no-ops par comparaison shallow des clés de 1er niveau.
+   * Si aucune clé n'a changé → pas de notification.
+   */
+  mutate(intent: string, recipe: (draft: Draft<TStructure>) => void): void;
+  mutate(
+    intent: string,
+    params: TMutationParams,
+    recipe: (draft: Draft<TStructure>) => void
+  ): void;
+  mutate(
+    intent: string,
+    paramsOrRecipe: TMutationParams | ((draft: Draft<TStructure>) => void),
+    maybeRecipe?: (draft: Draft<TStructure>) => void
+  ): void {
+    // Résolution des overloads
+    let params: TMutationParams | null = null;
+    let recipe: (draft: Draft<TStructure>) => void;
+
+    if (typeof paramsOrRecipe === "function") {
+      recipe = paramsOrRecipe;
+    } else {
+      params = paramsOrRecipe;
+      recipe = maybeRecipe!;
+    }
+
+    const previousState = this.#state;
+
+    // Immer produce — mutation immutable
+    const nextState = Immer.produce(previousState, recipe);
+
+    // Détection no-op : comparaison shallow des clés de 1er niveau
+    const changedKeys = this.#computeChangedKeys(previousState, nextState);
+
+    if (changedKeys.length === 0) {
+      // No-op — pas de notification
+      return;
+    }
+
+    // Mise à jour du state
+    this.#state = nextState;
+
+    // Notification catch-all (I51)
+    const event: TEntityEvent<TStructure> = {
+      intent,
+      params,
+      changedKeys,
+      previousState,
+      nextState,
+      timestamp: Date.now()
+    };
+
+    for (const listener of this.#listeners) {
+      listener(event);
+    }
+  }
+
+  /**
+   * Enregistre un listener catch-all (I51).
+   * Appelé après chaque mutation non no-op.
+   */
+  onAnyEntityUpdated(listener: TEntityUpdateListener<TStructure>): void {
+    this.#listeners.push(listener);
+  }
+
+  // ─── Private ─────────────────────────────────────────────────────────
+
+  /**
+   * Comparaison shallow des clés de premier niveau entre deux states.
+   * Retourne la liste des clés dont la référence a changé.
+   */
+  #computeChangedKeys(prev: TStructure, next: TStructure): string[] {
+    if (prev === next) return [];
+
+    // TStructure est un objet (garanti par l'usage)
+    const prevObj = prev as Record<string, unknown>;
+    const nextObj = next as Record<string, unknown>;
+
+    const keys = new Set([...Object.keys(prevObj), ...Object.keys(nextObj)]);
+    const changed: string[] = [];
+
+    for (const key of keys) {
+      if (prevObj[key] !== nextObj[key]) {
+        changed.push(key);
+      }
+    }
+
+    return changed;
+  }
+}
+
+/**
+ * @bonsai/feature — Types & runtime helpers for namespace authority
+ *
+ * Implémente la décision ADR-0039 : autorité, unicité et conformité des
+ * namespaces de Feature.
+ *
+ * Trois rôles assumés par ce module :
+ *   1. Types compile-time (`CamelCaseNamespace<S>`, `StrictManifest<M>`,
+ *      `ValidatedManifest<M>`) qui encodent les invariants I68–I72.
+ *   2. Constante framework `RESERVED_NAMESPACES` (I71) — non configurable
+ *      par l'application.
+ *   3. Filet de sécurité runtime (`assertValidNamespace`,
+ *      `BonsaiNamespaceError`) pour les cas où le compile-time est contourné
+ *      (cast `as any`, code JS, manifest dynamique).
+ *
+ * Invariants couverts :
+ *   I21 (amendé) — namespace unique camelCase plat
+ *   I24 (amendé) — Application valide format + réservés au bootstrap
+ *   I57          — `local` réservé (ADR-0015)
+ *   I68          — namespace porté par le manifest, pas par un `static`
+ *   I69          — manifest = unique source de vérité de l'identité
+ *   I70          — toute référence à un namespace externe DOIT être validée
+ *   I71          — `RESERVED_NAMESPACES` est une constante framework
+ *   I72          — `TSelfNS` doit correspondre à la clé du manifest
+ *
+ * @packageDocumentation
+ */
+
+
+
+// ─── Pattern consommateur unifié (ADR-0041) ──────────────────────────────────
+
+/**
+ * Contrainte structurelle minimale pour toute Feature référençable par un
+ * composant consommateur (View, Composer, Behavior).
+ *
+ * En pratique : `typeof CartFeature` (constructeur avec `static readonly channel`)
+ * satisfait ce type. Le Channel reste privé — seul son token est exposé.
+ *
+ * I80 — aucun consommateur ne référence `TChannelToken` directement.
+ */
+type TFeatureRef<
+  TDef extends TChannelDefinition = TChannelDefinition,
+  TNS extends string = string
+> = { readonly channel: TChannelToken<TDef, TNS> };
+
+/**
+ * Étape 1 du pattern consommateur — type pur, zéro coût runtime.
+ * Déclare quelles Features participent à chaque lane.
+ *
+ * Usage : `type TMyViewDeps = { listens: [typeof CartFeature, typeof UserFeature]; ... }`
+ *
+ * I83 — pattern unifié View / Composer / Behavior.
+ */
+type TConsumerDeps = {
+  readonly listens:  readonly TFeatureRef[];
+  readonly triggers: readonly TFeatureRef[];
+  readonly requests: readonly TFeatureRef[];
+};
+
+/** Union des clés `"namespace:eventName"` disponibles depuis une Feature ref. */
+type TNSEventKeys<FC extends TFeatureRef> =
+  FC["channel"] extends TChannelToken<infer D, infer NS>
+    ? `${NS}:${keyof D["events"] & string}`
+    : never;
+
+/** Union des clés `"namespace:commandName"` disponibles depuis une Feature ref. */
+type TNSCommandKeys<FC extends TFeatureRef> =
+  FC["channel"] extends TChannelToken<infer D, infer NS>
+    ? `${NS}:${keyof D["commands"] & string}`
+    : never;
+
+/** Union des clés `"namespace:requestName"` disponibles depuis une Feature ref. */
+type TNSRequestKeys<FC extends TFeatureRef> =
+  FC["channel"] extends TChannelToken<infer D, infer NS>
+    ? `${NS}:${keyof D["requests"] & string}`
+    : never;
+
+/**
+ * Étape 2 du pattern consommateur — type du contrat namespacé.
+ * Contraint chaque clé à être valide pour les Features déclarées dans `TDeps`.
+ *
+ * Usage : `const c = { listens: ["cart:itemAdded"] as const } satisfies TConsumerContract<TDeps>`
+ *
+ * I81 — `contract` est la source de vérité complète du consommateur.
+ */
+type TConsumerContract<TDeps extends TConsumerDeps> = {
+  readonly listens:  readonly TNSEventKeys<TDeps["listens"][number]>[];
+  readonly triggers: readonly TNSCommandKeys<TDeps["triggers"][number]>[];
+  readonly requests: readonly TNSRequestKeys<TDeps["requests"][number]>[];
+};
+
+/** Payload d'une command depuis une clé `"ns:cmd"` et les deps `triggers`. */
+type TCommandPayload<TDeps extends TConsumerDeps, K extends string> =
+  K extends `${infer NS}:${infer Cmd}`
+    ? TDeps["triggers"][number] extends infer FC
+      ? FC extends TFeatureRef
+        ? FC["channel"] extends TChannelToken<infer D, NS>
+          ? Cmd extends keyof D["commands"] ? D["commands"][Cmd] : never
+          : never
+        : never
+      : never
+    : never;
+
+/** Params d'une request depuis une clé `"ns:req"` et les deps `requests`. */
+type TRequestParams<TDeps extends TConsumerDeps, K extends string> =
+  K extends `${infer NS}:${infer Req}`
+    ? TDeps["requests"][number] extends infer FC
+      ? FC extends TFeatureRef
+        ? FC["channel"] extends TChannelToken<infer D, NS>
+          ? Req extends keyof D["requests"] ? D["requests"][Req]["params"] : never
+          : never
+        : never
+      : never
+    : never;
+
+/** Résultat d'une request depuis une clé `"ns:req"` et les deps `requests`. */
+type TRequestResult<TDeps extends TConsumerDeps, K extends string> =
+  K extends `${infer NS}:${infer Req}`
+    ? TDeps["requests"][number] extends infer FC
+      ? FC extends TFeatureRef
+        ? FC["channel"] extends TChannelToken<infer D, NS>
+          ? Req extends keyof D["requests"] ? D["requests"][Req]["result"] : never
+          : never
+        : never
+      : never
+    : never;
+
+/**
+ * @bonsai/feature — Feature base class
+ *
+ * Strate 0 — Les 5 capacités :
+ *   C1 — emit(event, payload) sur son propre Channel (typé TChannelDef, ADR-0040)
+ *   C2 — handle(command) via auto-discovery des méthodes on{Name}Command
+ *   C3 — listen(event) sur Channels externes déclarés via on{Channel}{EventName}Event
+ *   C4 — reply(request) via auto-discovery des méthodes on{Name}Request
+ *   C5 — request(token, name, params) vers Channels déclarés (typé via token, ADR-0040)
+ *
+ * Invariants :
+ *   I1  — Feature ne peut emit() que sur son propre Channel
+ *   I2  — Feature peut listen les Events des Channels externes déclarés
+ *   I3  — Feature ne peut reply que sur son propre Channel
+ *   I5  — Entity n'est accessible que par sa Feature propriétaire
+ *   I12 — Aucune Feature ne peut emit sur le Channel d'une autre
+ *   I21 — Chaque Feature DOIT être enregistrée dans le manifest applicatif
+ *         sous une clé namespace unique camelCase plat (amendé ADR-0039)
+ *   I22 — Relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte
+ *   I48 — Handlers auto-découverts par convention de nommage
+ *   I68 — Le namespace est porté par le manifest applicatif, pas par
+ *         un `static` sur la classe Feature (ADR-0039)
+ *   I72 — `TSelfNS` doit correspondre exactement à la clé sous laquelle
+ *         la Feature est enregistrée dans le manifest (ADR-0039)
+ *   I73 — TChannelDef est la source de vérité des types du Channel (ADR-0040)
+ *   I74 — TChannelDef est déclaré dans le fichier .feature.ts de la Feature
+ *   I75 — Aucun `any` dans la surface publique ; casts internes documentés
+ *   I76 — `static readonly channel` porte le token du Channel propre
+ *   I77 — `static readonly listens` déclare les tokens des Channels écoutés
+ *   I79 — `static readonly queries` déclare les tokens des Channels interrogés
+ *
+ * @packageDocumentation
+ */
+
+
+
+// ─── Feature abstract class ──────────────────────────────────────────────────
+
+/**
+ * Feature — unité métier paramétrée par sa classe Entity, son contrat Channel
+ * et son namespace.
+ *
+ * Paramètres de type :
+ *   - `TEntity`     : la classe Entity (ADR-0037 — encode I22 au type-level)
+ *   - `TChannelDef` : le contrat du Channel propre — types de commandes, events,
+ *                     requests (ADR-0040 — I73, I74). Par défaut `TChannelDefinition`
+ *                     (toutes lanes `Record<string, unknown>`) pour une utilisation
+ *                     non paramétrée rétrocompatible.
+ *   - `TSelfNS`     : le namespace sous lequel cette Feature s'attend à être
+ *                     enregistrée dans le manifest applicatif (ADR-0039 — I72).
+ *                     Par défaut `string` pour les sous-classes non paramétrées.
+ *
+ * **Le namespace n'est plus déclaré sur la classe** (`static namespace`
+ * supprimé, ADR-0039 — I68). Il est :
+ *   - injecté par le constructeur (immuabilité dès construction)
+ *   - dérivé de la clé du manifest applicatif (source de vérité — I69)
+ *   - validé au compile-time par `StrictManifest<M>` au `satisfies`
+ *   - validé au runtime par `assertValidNamespace()` (filet — I71)
+ */
+declare abstract class Feature<
+  TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>,
+  TChannelDef extends TChannelDefinition = TChannelDefinition,
+  TSelfNS extends string = string
+> {
+  /**
+   * Tokens des Channels externes écoutés par cette Feature (C3 — ADR-0040, I77).
+   *
+   * **Pourquoi `static` — deux raisons distinctes selon la propriété :**
+   *
+   * • `channel` (token propre, ADR-0040 — I76) — porteur de TYPE consommé sans
+   *   instance. Une View ou Feature externe importe la classe uniquement pour
+   *   son token (`CartFeature.channel`) afin de typer ses appels `trigger()` ou
+   *   `request()`. Un token d'instance obligerait les consommateurs à tenir une
+   *   référence à la Feature, violant la topologie du flux (I1, I4, I12).
+   *   Ce token n'est pas déclaré sur la classe abstraite — chaque Feature concrète
+   *   le déclare dans son fichier `.feature.ts` (I74, I76).
+   *
+   * • `listens` / `queries` — invariants de classe, identiques pour toute instance
+   *   (I22 : une seule par namespace). Lus par `Application.start()` AVANT
+   *   instanciation pour valider les dépendances croisées et câbler les
+   *   listeners/repliers au bootstrap.
+   *
+   * **Limitation TypeScript** — `abstract static` n'existe pas.
+   * La présence de ces propriétés ne peut pas être imposée compile-time aux
+   * sous-classes. Filets de sécurité : `TFeatureClass` (type constructeur),
+   * validation runtime dans `Application.start()`, tests de type (`tests/types/`).
+   */
+  static readonly listens: readonly TChannelToken<TChannelDefinition, string>[] = [];
+
+  /**
+   * Tokens des Channels externes interrogés par cette Feature (C5 — ADR-0040, I79).
+   *
+   * **Pourquoi `static` :** identique à `listens` — invariant de classe lu
+   * avant instanciation pour validation des dépendances croisées.
+   *
+   * **Limitation TypeScript** — `abstract static` n'existe pas.
+   * Voir commentaire de `listens` ci-dessus.
+   */
+  static readonly queries: readonly TChannelToken<TChannelDefinition, string>[] = [];
+
+  readonly #namespace: TSelfNS;
+  #entity!: TEntity;
+  // Canal propre — assigné au bootstrap, cast sûr par I22 (1 namespace = 1 TDef).
+  #channel!: Channel<TChannelDef>;
+  #bootstrapped = false;
+
+  // ─── Constructor ───────────────────────────────────────────────────────
+
+  /**
+   * Crée une Feature attachée au namespace passé en paramètre.
+   *
+   * Appelé exclusivement par `Application.start()` qui transmet la clé du
+   * manifest. L'instanciation manuelle (tests) doit aussi passer le namespace.
+   *
+   * @throws `BonsaiNamespaceError` si le namespace est invalide ou réservé.
+   */
+  constructor(namespace: TSelfNS) {
+    assertValidNamespace(namespace);
+    this.#namespace = namespace;
+  }
+
+  // ─── Abstract ──────────────────────────────────────────────────────────
+
+  /**
+   * Liaison Feature → Entity concrète (D17 amendé par ADR-0037).
+   *
+   * Chaque Feature concrète DOIT fournir ce getter retournant le constructeur
+   * de son Entity. Le retour est typé par TEntity (la classe concrète), ce qui
+   * permet à `this.entity` d'être typé sans cast.
+   */
+  protected abstract get Entity(): new () => TEntity;
+
+  // ─── Public API ────────────────────────────────────────────────────────
+
+  /**
+   * Le namespace de cette instance — immuable, défini au constructeur.
+   * Typé `TSelfNS` (string littéral si la Feature est paramétrée).
+   */
+  get namespace(): TSelfNS {
+    return this.#namespace;
+  }
+
+  /**
+   * Accès à l'Entity (I5 — propriétaire exclusif).
+   * Typée par la classe concrète (TEntity) grâce à ADR-0037.
+   */
+  get entity(): TEntity {
+    return this.#entity;
+  }
+
+  /**
+   * Bootstrap : crée l'Entity, enregistre les handlers sur le Channel,
+   * et appelle onInit(). Appelé par Application ou manuellement en test.
+   */
+  bootstrap(): void {
+    if (this.#bootstrapped) return;
+    this.#bootstrapped = true;
+
+    // Cast sûr par I22 : 1 namespace = 1 Feature = 1 TDef (I75).
+    this.#channel = Radio.me().channel(this.#namespace) as unknown as Channel<TChannelDef>;
+
+    // I22 — Création de l'Entity 1:1 via le getter Entity (D17 amendé par ADR-0037)
+    const EntityCtor = this.Entity;
+    this.#entity = new EntityCtor();
+
+    // Auto-discovery des handlers (I48)
+    this.#registerCommandHandlers();
+    this.#registerRequestRepliers();
+    this.#registerEventListeners();
+
+    // Lifecycle
+    this.onInit();
+  }
+
+  // ─── Capacités (C1–C5) ─────────────────────────────────────────────────
+
+  /**
+   * C1 — Émet un Event typé sur le propre Channel de cette Feature (I1, I12, ADR-0040).
+   */
+  protected emit<K extends keyof TChannelDef["events"] & string>(
+    eventName: K,
+    payload: TChannelDef["events"][K]
+  ): void {
+    this.#channel.emit(eventName, payload);
+  }
+
+  /**
+   * C5 — Effectue une Request typée vers un Channel déclaré (I17, ADR-0040).
+   * Retourne le résultat typé ou null (ADR-0023).
+   */
+  protected request<
+    TDef extends TChannelDefinition,
+    TNS extends string,
+    K extends keyof TDef["requests"] & string
+  >(
+    token: TChannelToken<TDef, TNS>,
+    requestName: K,
+    params: TDef["requests"][K]["params"]
+  ): TDef["requests"][K]["result"] | null {
+    return Radio.me().channelFor(token).request(requestName, params);
+  }
+
+  // ─── Lifecycle hooks ───────────────────────────────────────────────────
+
+  /**
+   * Hook appelé après le bootstrap. Override dans les sous-classes.
+   */
+  onInit(): void {
+    // Default no-op — subclasses override
+  }
+
+  // ─── Private : Auto-discovery (I48) ────────────────────────────────────
+
+  /**
+   * Découvre les méthodes `on{Name}Command` et les enregistre comme handlers
+   * sur le Channel propre de cette Feature (C2).
+   *
+   * Convention : `onAddItemCommand` → commande "addItem"
+   */
+  #registerCommandHandlers(): void {
+    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    const ch = this.#channel as unknown as Channel;
+    const proto = Object.getPrototypeOf(this);
+    const methods = Object.getOwnPropertyNames(proto) as string[];
+
+    for (const method of methods) {
+      const match = method.match(/^on([A-Z][a-zA-Z]*)Command$/);
+      if (match) {
+        const commandName = match[1][0].toLowerCase() + match[1].slice(1);
+        ch.handle(commandName, (payload: unknown) => {
+          (this as unknown as Record<string, (p: unknown) => void>)[method](payload);
+        });
+      }
+    }
+  }
+
+  /**
+   * Découvre les méthodes `on{Name}Request` et les enregistre comme repliers
+   * sur le Channel propre de cette Feature (C4, I3).
+   *
+   * Convention : `onGetTotalRequest` → request "getTotal"
+   */
+  #registerRequestRepliers(): void {
+    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    const ch = this.#channel as unknown as Channel;
+    const proto = Object.getPrototypeOf(this);
+    const methods = Object.getOwnPropertyNames(proto) as string[];
+
+    for (const method of methods) {
+      const match = method.match(/^on([A-Z][a-zA-Z]*)Request$/);
+      if (match) {
+        const requestName = match[1][0].toLowerCase() + match[1].slice(1);
+        ch.reply(requestName, (params: unknown) => {
+          return (this as unknown as Record<string, (p: unknown) => unknown>)[method](params);
+        });
+      }
+    }
+  }
+
+  /**
+   * Découvre les méthodes `on{Channel}{EventName}Event` et les enregistre
+   * comme listeners sur les Channels déclarés via `static listens` (C3, I2,
+   * ADR-0040 — I77).
+   *
+   * Convention : `onCartItemAddedEvent` avec `static listens = [CartFeature.channel]`
+   * → écoute "itemAdded" sur le Channel "cart"
+   *
+   * Le pattern est : on + ChannelName(PascalCase) + EventName(PascalCase) + Event
+   */
+  #registerEventListeners(): void {
+    const listenTokens = (this.constructor as typeof Feature).listens;
+    if (listenTokens.length === 0) return;
+
+    const proto = Object.getPrototypeOf(this);
+    const methods = Object.getOwnPropertyNames(proto) as string[];
+
+    for (const token of listenTokens) {
+      const channelName = token.namespace;
+      const channelPascal = channelName[0].toUpperCase() + channelName.slice(1);
+      const prefix = `on${channelPascal}`;
+      const suffix = "Event";
+
+      // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+      const ch = Radio.me().channel(channelName) as unknown as Channel;
+
+      for (const method of methods) {
+        if (method.startsWith(prefix) && method.endsWith(suffix)) {
+          const eventPascal = method.slice(prefix.length, -suffix.length);
+          if (eventPascal.length === 0) continue;
+
+          const eventName = eventPascal[0].toLowerCase() + eventPascal.slice(1);
+
+          ch.listen(eventName, (payload: unknown) => {
+            (this as unknown as Record<string, (p: unknown) => void>)[method](payload);
+          });
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @bonsai/view — View base class
+ *
+ * Strate 0 — Capacités :
+ *   - trigger("ns:cmd", payload) → envoie un Command typé (I4, ADR-0040, ADR-0041)
+ *   - request("ns:req", params)  → interroge un Channel typé (ADR-0040, ADR-0041)
+ *   - getUI(key) → TProjectionNode (mutations DOM chirurgicales N1 — D19)
+ *   - Auto-discovery D48 : on{UiKey}{DomEvent} → addEventListener
+ *   - Auto-discovery I48 : on{Namespace}{EventName}Event → channel.listen
+ *   - onAttach() lifecycle hook
+ *
+ * Pattern consommateur unifié (ADR-0041) :
+ *   - Étape 1 — `type TMyDeps = { listens: [typeof XFeature]; ... }`  (type pur)
+ *   - Étape 2 — `const myContract = { ... } satisfies TViewContract<TMyDeps>`
+ *   - Étape 3 — `type TMyContract = typeof myContract`  (préserve les littéraux)
+ *   - Étape 4 — `class MyView extends View<TMyDeps, TMyContract>
+ *                 implements TListenCallbacks<TMyDeps, TMyContract>`
+ *
+ * Channel reste privé derrière sa Feature (I80) — aucun `TChannelToken` dans
+ * la surface publique.
+ *
+ * Invariants :
+ *   I4  — View n'a JAMAIS emit() — absent du type
+ *   I31 — rootElement est un sélecteur CSS string injecté au mount
+ *   I36 — View ne compose jamais d'autres Views directement
+ *   I39 — Accès DOM exclusivement via getUI(key)
+ *   I40 — Scope DOM : résolution dans rootElement uniquement
+ *   I48 — Handlers auto-découverts par convention de nommage,
+ *         déclarés dans contract.listens, vérifiés par implements TListenCallbacks
+ *   D48 — UI handlers auto-dérivés depuis uiElements
+ *   I75 — Aucun `any` dans la surface publique ; casts internes documentés
+ *   I80 — Aucun TChannelToken dans la surface publique consommateur
+ *   I81 — `contract` est la source de vérité runtime du composant
+ *   I82 — Handler manquant → erreur compile via implements TListenCallbacks
+ *   I83 — Pattern unifié View / Composer / Behavior
+ *
+ * @packageDocumentation
+ */
+
+
+
+/**
+ * Projection Node N1 — mutations DOM chirurgicales.
+ * Chaque méthode opère directement sur l'élément HTML sous-jacent.
+ */
+type TProjectionNode = {
+  /** Sets textContent */
+  text(value: string): void;
+  /** Sets an attribute */
+  attr(name: string, value: string): void;
+  /** Adds or removes a CSS class */
+  toggleClass(className: string, force: boolean): void;
+  /** Shows/hides via display:none */
+  visible(show: boolean): void;
+  /** Sets an inline style property */
+  style(property: string, value: string): void;
+  /** Returns the underlying HTMLElement */
+  element(): HTMLElement;
+};
+
+/**
+ * Contrat View — étend `TConsumerContract<TDeps>` (ADR-0041) avec la map
+ * `uiElements` propre à la couche DOM.
+ *
+ * Les trois lanes (`listens` / `triggers` / `requests`) portent des clés
+ * namespacées `"ns:name"` validées par `satisfies` contre les Features
+ * déclarées dans `TDeps`.
+ */
+type TViewContract<TDeps extends TConsumerDeps> = TConsumerContract<TDeps> & {
+  /** Nœuds DOM manipulables : clé → sélecteur CSS */
+  readonly uiElements: Readonly<Record<string, string>>;
+};
+
+/**
+ * Type structurel d'une classe View concrète, indépendant de ses paramètres
+ * `TDeps` / `TContract`. Utilisé par les composants orchestrateurs (Composer)
+ * qui ne dépendent que de la surface publique de mount, pas du contrat
+ * spécifique d'une View particulière.
+ *
+ * **Pourquoi `any, any`** : les paramètres de type d'une classe générique sont
+ * invariants en TypeScript. `typeof View` (defaults) n'accepterait pas
+ * `typeof CartView` (génériques concrets). `TViewClass` est l'échappatoire
+ * structurelle bornée à cette frontière framework-interne. Le code applicatif
+ * n'utilise jamais ce type — il déclare ses `TDeps`/`TContract` concrets (I80, I83).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TViewClass = abstract new () => View<any, any>;
+
+// ─── View abstract class ─────────────────────────────────────────────────────
+
+/**
+ * View — couche présentation paramétrée par ses dépendances Feature et
+ * son contrat namespacé (ADR-0041).
+ *
+ * Paramètres de type :
+ *   - `TDeps`     : Features participant à chaque lane (type pur, étape 1)
+ *   - `TContract` : contrat namespacé runtime (étape 2 + 3 — `typeof myContract`)
+ *
+ * Pattern d'usage :
+ * ```ts
+ * type TCartViewDeps = {
+ *   readonly listens:  [typeof CartFeature];
+ *   readonly triggers: [typeof CartFeature];
+ *   readonly requests: [typeof CartFeature];
+ * };
+ *
+ * const cartViewContract = {
+ *   uiElements: { itemCount: "[data-ui='itemCount']", addBtn: "[data-ui='addBtn']" },
+ *   listens:  ["cart:itemAdded"] as const,
+ *   triggers: ["cart:addItem"]  as const,
+ *   requests: [] as const,
+ * } satisfies TViewContract<TCartViewDeps>;
+ *
+ * type TCartViewContract = typeof cartViewContract;
+ *
+ * class CartView
+ *   extends View<TCartViewDeps, TCartViewContract>
+ *   implements TListenCallbacks<TCartViewDeps, TCartViewContract>
+ * {
+ *   get contract() { return cartViewContract; }
+ *
+ *   onAddBtnClick() {
+ *     this.trigger("cart:addItem", { ... });   // ✅ payload inféré
+ *   }
+ *
+ *   onCartItemAddedEvent(payload) { ... }      // ✅ requis par implements
+ * }
+ * ```
+ */
+declare abstract class View<
+  TDeps extends TConsumerDeps = TConsumerDeps,
+  TContract extends TViewContract<TDeps> = TViewContract<TDeps>
+> {
+  #rootElement: string | null = null;
+  #rootEl: HTMLElement | null = null;
+  #mounted = false;
+  #uiElements: Readonly<Record<string, string>> = {};
+  #listenKeys: readonly string[] = [];
+
+  // ─── Abstract : ADR-0024 value-first ───────────────────────────────────
+
+  /**
+   * Manifeste de la View (ADR-0024 + ADR-0041).
+   * Évalué UNE SEULE FOIS au mount — le framework destructure et stocke.
+   * Le retour est typé `TContract` pour préserver les types littéraux des
+   * tableaux `listens` / `triggers` / `requests` côté sous-classe.
+   */
+  abstract get contract(): TContract;
+
+  // ─── Public API ────────────────────────────────────────────────────────
+
+  /**
+   * Le sélecteur rootElement injecté au mount (I31).
+   */
+  get rootElement(): string | null {
+    return this.#rootElement;
+  }
+
+  /**
+   * L'élément DOM racine après mount. Disponible dans onAttach() et les
+   * handlers — permet aux sous-classes de lire les data-* attributes (I34).
+   */
+  protected get el(): HTMLElement | null {
+    return this.#rootEl;
+  }
+
+  /**
+   * Monte la View sur un rootElement. Appelé par le Composer.
+   * - Lit `get contract()` une seule fois (ADR-0024)
+   * - Résout le rootElement dans le DOM
+   * - Auto-discover les UI handlers (D48)
+   * - Auto-discover les Event listeners (I48 — pilotés par contract.listens)
+   * - Appelle onAttach()
+   */
+  mount(rootSelector: string): void {
+    if (this.#mounted) return;
+    this.#mounted = true;
+
+    // ADR-0024 : lecture unique du manifeste
+    const contract = this.contract;
+    this.#uiElements = contract.uiElements;
+    // Cast vers readonly string[] pour l'enregistrement runtime (I75) — la
+    // contrainte type-level est portée par TContract.
+    this.#listenKeys = contract.listens as readonly string[];
+
+    this.#rootElement = rootSelector;
+    this.#rootEl = document.querySelector(rootSelector) as HTMLElement;
+
+    // I34: rootElement must not be document.body itself
+    if (this.#rootEl === document.body) {
+      throw new Error(
+        `[Bonsai View] I34 — rootElement cannot be document.body. Provide a child element selector.`
+      );
+    }
+
+    // Auto-discovery
+    this.#registerUIHandlers();
+    this.#registerEventListeners();
+
+    // Lifecycle
+    this.onAttach();
+  }
+
+  /**
+   * I39 — Accès DOM typé via getUI(key). Résout dans le scope du rootElement (I40).
+   * `K` est contraint à `keyof TContract['uiElements']` — clé invalide refusée compile-time.
+   */
+  getUI<K extends keyof TContract["uiElements"] & string>(key: K): TProjectionNode {
+    const selector = this.#uiElements[key];
+    if (!selector) {
+      throw new Error(
+        `[Bonsai View] Unknown UI key "${key}". Declared keys: ${Object.keys(this.#uiElements).join(", ")}`
+      );
+    }
+
+    const el = this.#rootEl!.querySelector(selector) as HTMLElement;
+    if (!el) {
+      throw new Error(
+        `[Bonsai View] UI element "${key}" not found with selector "${selector}" in rootElement "${this.#rootElement}"`
+      );
+    }
+
+    return createProjectionNode(el);
+  }
+
+  /**
+   * Envoie un Command typé via Channel (I4 — View ne peut qu'envoyer,
+   * jamais émettre, ADR-0040 / ADR-0041).
+   *
+   * `key` est une clé namespacée `"ns:cmd"` ; doit appartenir à
+   * `TContract['triggers']`, sinon erreur compile.
+   * Exposé en `protected` — les sous-classes l'appellent depuis les handlers UI.
+   */
+  protected trigger<K extends TContract["triggers"][number] & string>(
+    key: K,
+    payload: TCommandPayload<TDeps, K>
+  ): void {
+    const { namespace, name } = parseNSKey(key);
+    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    const ch = Radio.me().channel(namespace) as unknown as Channel;
+    ch.trigger(name, payload);
+  }
+
+  /**
+   * Wrapper public de trigger — utilisé dans les tests pour déclencher depuis
+   * l'extérieur. En production, trigger est appelé depuis les handlers UI.
+   */
+  callTrigger<K extends TContract["triggers"][number] & string>(
+    key: K,
+    payload: TCommandPayload<TDeps, K>
+  ): void {
+    this.trigger(key, payload);
+  }
+
+  /**
+   * Effectue une Request synchrone typée vers un Channel déclaré (ADR-0023,
+   * ADR-0040 / ADR-0041). Retourne le résultat typé ou `null` si aucun replier
+   * n'est enregistré côté Feature propriétaire (D44).
+   *
+   * `key` est une clé namespacée `"ns:req"` ; doit appartenir à
+   * `TContract['requests']`, sinon erreur compile.
+   */
+  protected request<K extends TContract["requests"][number] & string>(
+    key: K,
+    params: TRequestParams<TDeps, K>
+  ): TRequestResult<TDeps, K> | null {
+    const { namespace, name } = parseNSKey(key);
+    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    const ch = Radio.me().channel(namespace) as unknown as Channel;
+    return ch.request(name, params) as TRequestResult<TDeps, K> | null;
+  }
+
+  // ─── Lifecycle hooks ───────────────────────────────────────────────────
+
+  /**
+   * Hook appelé après le mount. Override dans les sous-classes.
+   */
+  onAttach(): void {
+    // Default no-op
+  }
+
+  // ─── Private : Auto-discovery ──────────────────────────────────────────
+
+  /**
+   * D48 — Découvre les méthodes `on{UiKey}{DomEvent}` et les enregistre
+   * comme addEventListener sur les éléments UI correspondants.
+   *
+   * Convention : `onToggleBtnClick` → addEventListener("click") sur uiElements.toggleBtn
+   */
+  #registerUIHandlers(): void {
+    const proto = Object.getPrototypeOf(this);
+    const methods = Object.getOwnPropertyNames(proto) as string[];
+
+    const DOM_EVENTS = [
+      "Click",
+      "Input",
+      "Change",
+      "Submit",
+      "Focus",
+      "Blur",
+      "Keydown",
+      "Keyup",
+      "Keypress",
+      "Mouseenter",
+      "Mouseleave"
+    ];
+
+    for (const uiKey of Object.keys(this.#uiElements)) {
+      const uiKeyPascal = capitalize(uiKey);
+
+      for (const domEvent of DOM_EVENTS) {
+        const handlerName = `on${uiKeyPascal}${domEvent}`;
+        if (methods.includes(handlerName)) {
+          const selector = this.#uiElements[uiKey];
+          const el = this.#rootEl!.querySelector(selector) as HTMLElement;
+          if (el) {
+            el.addEventListener(domEvent.toLowerCase(), (event: Event) => {
+              (this as unknown as Record<string, (e: Event) => void>)[handlerName](event);
+            });
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * I48 — Pour chaque clé `"ns:event"` déclarée dans `contract.listens`,
+   * câble la méthode `on{Ns}{Event}Event` correspondante sur le Channel `ns`.
+   *
+   * Le contrat est piloté par la déclaration : un handler manquant pour une
+   * clé déclarée → throw (parallèle runtime de I82 — `implements TListenCallbacks`
+   * impose la présence à la compilation).
+   */
+  #registerEventListeners(): void {
+    if (this.#listenKeys.length === 0) return;
+
+    for (const key of this.#listenKeys) {
+      const { namespace, name: eventName } = parseNSKey(key);
+      const handlerName = `on${capitalize(namespace)}${capitalize(eventName)}Event`;
+
+      const handler = (this as unknown as Record<string, unknown>)[handlerName];
+      if (typeof handler !== "function") {
+        throw new Error(
+          `[Bonsai View] Missing handler "${handlerName}" for declared listen "${key}". ` +
+            `Add the method or remove "${key}" from contract.listens.`
+        );
+      }
+
+      // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+      const ch = Radio.me().channel(namespace) as unknown as Channel;
+      ch.listen(eventName, (payload: unknown) => {
+        (handler as (p: unknown) => void).call(this, payload);
+      });
+    }
+  }
+}
+
+/**
+ * @bonsai/composer — Composer abstract base class
+ *
+ * Strate 0 — Capacités :
+ *   - resolve(event | null) → TResolveResult | null (0/1 View)
+ *   - Slot DOM immutable fourni par le parent (Foundation ou View)
+ *   - Machine à états minimal : idle → active → idle
+ *   - Création d'élément DOM si absent (D30)
+ *   - Diff de transitions §3.1 (5 cas Same/New/null) sans recréation inutile
+ *
+ * Invariants :
+ *   I20  — Seuls Foundation/Composers créent/détruisent des Views
+ *   I35  — Composer n'a aucune écriture DOM (lecture scope autorisée)
+ *   I37  — Un seul type de Composer, gère 0/1 Views en strate 0
+ *   I40  — Scope DOM d'une View exclut les sous-arbres des slots déclarés
+ *
+ * ADRs :
+ *   ADR-0024 — get params() value-first (strate 0 : pas de listen/request)
+ *   ADR-0025 — Pas de lifecycle hooks (ni onMount, ni onUnmount, ni onAttach)
+ *   ADR-0026 — rootElement = string CSS selector only
+ *   ADR-0027 — resolve(event) unique point d'entrée, pas de state local
+ *
+ * Diff §3.1 (RFC composer.md) :
+ *   | resolve() retourne | View montée         | Action                                    |
+ *   | ------------------ | ------------------- | ----------------------------------------- |
+ *   | SameView+SameRoot  | SameView instance   | **No-op** (instance conservée)            |
+ *   | NewView (ou root)  | OldView instance    | **Detach** OldView → **Attach** NewView   |
+ *   | NewView            | null                | **Attach** NewView                        |
+ *   | null               | OldView instance    | **Detach** OldView                        |
+ *   | null               | null                | **No-op**                                 |
+ *
+ * @packageDocumentation
+ */
+
+
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+/**
+ * Résultat de resolve() — décrit la View à instancier.
+ *
+ * Strate 0 (ADR-0028) : pas de tableau (N-instances reportées en strate 1),
+ * pas d'options (D34 reporté).
+ *
+ * Le champ `view` (et non `viewClass`) est l'identifiant officiel
+ * du contrat — alignement RFC composer.md §1.1 + ADR-0020 §6.2 + ADR-0026.
+ *
+ * `TViewClass` est volontairement structurel (variance permissive) — le
+ * Composer ne dépend pas des `TDeps`/`TContract` spécifiques de la View
+ * concrète, seulement de sa surface de mount (cf. ADR-0041 + bonsai-view.ts).
+ */
+type TResolveResult = {
+  /** La classe View concrète à instancier */
+  readonly view: TViewClass;
+  /** Sélecteur CSS de l'élément root de la View — dans le scope du Composer (ADR-0026) */
+  readonly rootElement: string;
+};
+
+/**
+ * Options de construction du Composer — fournies par le framework.
+ */
+type TComposerOptions = {
+  /** Sélecteur CSS du slot DOM du Composer — fourni par Foundation ou View parent */
+  readonly rootElement: string;
+};
+
+// ─── Composer abstract class ─────────────────────────────────────────────────
+
+declare abstract class Composer {
+  /** Sélecteur CSS du slot DOM — immutable (ADR-0020) */
+  #rootElement: string;
+
+  /** Référence au slot DOM résolu */
+  #slot: HTMLElement | null = null;
+
+  /** La View actuellement montée (null si resolve() a retourné null) */
+  #currentView: View | null = null;
+
+  /**
+   * Dernier résultat retourné par resolve() — sert de référence pour le diff §3.1.
+   * Null si la dernière sortie était null (ou avant le premier resolve).
+   */
+  #currentResult: TResolveResult | null = null;
+
+  /** Machine à états minimal : idle → active → idle */
+  #state: "idle" | "active" = "idle";
+
+  constructor(options: TComposerOptions) {
+    this.#rootElement = options.rootElement;
+  }
+
+  // ─── Public API (framework only) ────────────────────────────────────
+
+  /**
+   * Le sélecteur rootElement (ADR-0026).
+   */
+  get rootElement(): string {
+    return this.#rootElement;
+  }
+
+  /**
+   * Référence au slot DOM résolu. Null avant attach().
+   */
+  get slot(): HTMLElement | null {
+    return this.#slot;
+  }
+
+  /**
+   * La View actuellement montée, ou null.
+   */
+  get currentView(): View | null {
+    return this.#currentView;
+  }
+
+  /**
+   * Attache le Composer à son slot DOM.
+   * Appelé par le framework (Foundation ou Composer parent).
+   * Résout le slot dans le DOM, puis appelle initialResolve().
+   */
+  attach(parentElement: HTMLElement): void {
+    const el = parentElement.querySelector(
+      this.#rootElement
+    ) as HTMLElement | null;
+
+    if (!el) {
+      // D30 — Créer l'élément si absent
+      const created = this.#createElementFromSelector(this.#rootElement);
+      parentElement.appendChild(created);
+      this.#slot = created;
+    } else {
+      this.#slot = el;
+    }
+
+    // Initial resolve — null event = bootstrap
+    this.#performResolve(null);
+  }
+
+  /**
+   * Appelé par le framework quand un Event est dispatché sur un Channel écouté.
+   * En strate 0, pas de listen déclaré — cette méthode est un point d'extension.
+   */
+  performResolve(event: unknown | null): void {
+    this.#performResolve(event);
+  }
+
+  // ─── Abstract ──────────────────────────────────────────────────────────
+
+  /**
+   * Unique point d'entrée — décide quelle View instancier (ADR-0027).
+   *
+   * @param event — l'Event déclencheur (null au premier montage / bootstrap)
+   * @returns TResolveResult pour monter une View, null pour vider le scope
+   */
+  abstract resolve(event: unknown | null): TResolveResult | null;
+
+  // ─── Private ───────────────────────────────────────────────────────────
+
+  /**
+   * Diff §3.1 (RFC composer.md) — applique la transition entre l'état précédent
+   * (`#currentView` + `#currentResult`) et la nouvelle décision retournée par
+   * `resolve(event)`. 5 transitions possibles, aucune recréation inutile.
+   */
+  #performResolve(event: unknown | null): void {
+    const next = this.resolve(event);
+    const prev = this.#currentResult;
+
+    // Transition 5 : null + null → no-op
+    if (next === null && prev === null) {
+      return;
+    }
+
+    // Transition 4 : null + instance → detach
+    if (next === null) {
+      this.#detachCurrent();
+      return;
+    }
+
+    // À ce stade, next !== null
+
+    // Transition 1 : SameView + SameRoot + currentView → no-op
+    // (instance conservée, aucun remount)
+    if (
+      prev !== null &&
+      this.#currentView !== null &&
+      prev.view === next.view &&
+      prev.rootElement === next.rootElement
+    ) {
+      return;
+    }
+
+    // Transition 3 : NewView + null → attach simple
+    if (this.#currentView === null) {
+      this.#attachNew(next);
+      return;
+    }
+
+    // Transition 2 : NewView (ou même viewClass mais rootElement différent)
+    //                + instance existante → detach + attach
+    this.#detachCurrent();
+    this.#attachNew(next);
+  }
+
+  /**
+   * Instancie la View décrite par `result`, la monte sur son rootElement,
+   * et met à jour l'état interne. Appelée par `#performResolve()` uniquement.
+   */
+  #attachNew(result: TResolveResult): void {
+    const ViewClass = result.view;
+    const view = new (ViewClass as unknown as new () => View)();
+    view.mount(result.rootElement);
+    this.#currentView = view;
+    this.#currentResult = result;
+    this.#state = "active";
+  }
+
+  /**
+   * Détache la View courante. En strate 0, le Composer n'a pas de subscription
+   * propre à libérer (ADR-0025) — il libère simplement la référence. La RFC §4.2
+   * prévoit `view.onDetach()` en strates ultérieures.
+   *
+   * Note : l'élément DOM créé par D30 (slot du Composer) reste en place — c'est
+   * le slot, pas le rootElement de la View. Seule la View mountée est libérée.
+   */
+  #detachCurrent(): void {
+    this.#currentView = null;
+    this.#currentResult = null;
+    this.#state = "idle";
+  }
+
+  /**
+   * D30 — Parse un sélecteur CSS et crée un élément DOM correspondant.
+   * Simplifié en strate 0 : supporte [attr], [attr='value'], .class, #id, tag.
+   */
+  #createElementFromSelector(selector: string): HTMLElement {
+    let tag = "div";
+    const el = document.createElement(tag);
+
+    // [attr='value'] or [attr="value"]
+    const attrMatches = selector.matchAll(
+      /\[([^\]=]+)(?:=["']([^"']*)["'])?\]/g
+    );
+    for (const match of attrMatches) {
+      el.setAttribute(match[1], match[2] ?? "");
+    }
+
+    // .class
+    const classMatch = selector.match(/\.([a-zA-Z0-9_-]+)/);
+    if (classMatch) {
+      el.classList.add(classMatch[1]);
+    }
+
+    // #id
+    const idMatch = selector.match(/#([a-zA-Z0-9_-]+)/);
+    if (idMatch) {
+      el.id = idMatch[1];
+    }
+
+    return el;
+  }
+}
+
+/**
+ * @bonsai/foundation — Foundation abstract base class
+ *
+ * Strate 0 — Capacités :
+ *   - body  = document.body            (toujours en strate 0, I33)
+ *   - html  = document.documentElement (droit d'altération N1, D27)
+ *   - Déclare les Composers racines via abstract get composers()
+ *     (Readonly<Record<string, typeof Composer>> — ADR-0038)
+ *   - Crée et attache les Composers au bootstrap dans l'ordre d'insertion
+ *     (ES2015+ Object.entries garantit l'ordre des clés string)
+ *   - Hooks onAttach() / onDetach()
+ *
+ * Invariants :
+ *   I33  — Foundation unique par application — cible <body>
+ *   I20  — Seuls Foundation/Composers créent/détruisent des Views
+ *   I34  — rootElement d'une View = enfant de <body>, jamais <body>
+ *   I67  — Stabilité structurelle de Foundation (ADR-0038)
+ *   D27  — Foundation peut altérer html/body en N1 uniquement
+ *
+ * Strate 0 simplifications (ADR-0028) :
+ *   - Pas de TUIMap (ADR-0018 Suspended)
+ *   - Pas d'event delegation globale (strate 1)
+ *   - Pas de params() Channel capabilities (strate 1)
+ *
+ * @packageDocumentation
+ */
+
+
+
+// ─── Foundation abstract class ───────────────────────────────────────────────
+
+declare abstract class Foundation {
+  /** Référence à <body> — toujours document.body en strate 0 (I33) */
+  #body: HTMLElement;
+
+  /** Référence à <html> — droit d'altération N1 (D27, RFC foundation.md §2) */
+  #html: HTMLElement;
+
+  /** Les instances de Composers racines créées au bootstrap */
+  #composerInstances: Composer[] = [];
+
+  /** Flag : Foundation déjà attachée */
+  #attached = false;
+
+  constructor() {
+    this.#body = document.body;
+    this.#html = document.documentElement;
+  }
+
+  // ─── Public API ────────────────────────────────────────────────────────
+
+  /**
+   * Référence à <body> — alignement RFC foundation.md §1.
+   * Le développeur peut altérer en N1 (classes, attributs) — D27.
+   */
+  protected get body(): HTMLElement {
+    return this.#body;
+  }
+
+  /**
+   * Référence à <html> — alignement RFC foundation.md §1.
+   * Le développeur peut altérer en N1 (classes, attributs) — D27.
+   */
+  protected get html(): HTMLElement {
+    return this.#html;
+  }
+
+  /**
+   * Les Composer instances créées.
+   */
+  get composerInstances(): readonly Composer[] {
+    return this.#composerInstances;
+  }
+
+  /**
+   * Attache la Foundation : résout et crée les Composers racines.
+   * Appelé une seule fois par Application.start().
+   *
+   * Itère sur Object.entries(this.composers) — l'ordre d'insertion des
+   * clés string non numériques est garanti par ES2015+ (§9.1.12).
+   */
+  attach(): void {
+    if (this.#attached) {
+      throw new Error(
+        "[Bonsai Foundation] Foundation already attached — I33 singleton violated"
+      );
+    }
+    this.#attached = true;
+
+    const composersMap = this.composers;
+
+    for (const [selector, ComposerCtor] of Object.entries(composersMap)) {
+      const ComposerClass = ComposerCtor as unknown as new (
+        opts: TComposerOptions
+      ) => Composer;
+      const instance = new ComposerClass({ rootElement: selector });
+      instance.attach(this.#body);
+      this.#composerInstances.push(instance);
+    }
+
+    this.onAttach();
+  }
+
+  // ─── Abstract ──────────────────────────────────────────────────────────
+
+  /**
+   * Déclare les Composers racines de Foundation — ADR-0038.
+   *
+   * Clés = sélecteurs CSS dans <body> (string libre, validé runtime).
+   * Valeurs = classes Composer concrètes.
+   *
+   * Layout stable et persistant — typiquement 3-5 entrées
+   * (#header, #main, #footer, #aside...). Évalué une seule fois au bootstrap (I67).
+   *
+   * Pour la composition dynamique : déléguer à une View dédiée via View.composers + PDR
+   * (cf. ADR-0038 §6.3 — Pattern délégation).
+   */
+  abstract get composers(): Readonly<Record<string, typeof Composer>>;
+
+  // ─── Lifecycle hooks ───────────────────────────────────────────────────
+
+  /**
+   * Hook appelé après résolution des Composers racines.
+   * Surcharger pour brancher des écouteurs DOM globaux (resize, scroll, etc.).
+   * Default no-op.
+   */
+  onAttach(): void {
+    // Default no-op
+  }
+
+  /**
+   * Hook appelé au shutdown — symétrique de onAttach().
+   * Surcharger pour débrancher les écouteurs DOM globaux installés dans onAttach().
+   * Default no-op.
+   *
+   * NB : non invoqué automatiquement en strate 0 (pas de shutdown formalisé) ;
+   * point d'extension pour la strate 1.
+   */
+  onDetach(): void {
+    // Default no-op
+  }
+}
+
+/**
+ * @bonsai/application — Application class
+ *
+ * Strate 0 (refondu ADR-0039) — Capacités :
+ *   - constructor({ foundation, features }) — déclare le manifest applicatif
+ *   - start() — bootstrap en 4 phases simplifiées :
+ *       Phase 0: Validation runtime du manifest (filet ADR-0039)
+ *       Phase 1: Channels (crée les channels de chaque Feature)
+ *       Phase 2: Entities (instanciées par les Features)
+ *       Phase 3: Features (new FeatureClass(ns), bootstrap, onInit)
+ *       Phase 4: Foundation (composers → views, attach)
+ *
+ * Invariants :
+ *   I23  — Application est dormante au runtime (pas de handle/emit/listen/request)
+ *   I24  — Le manifest garantit l'unicité au compile-time ; Application valide
+ *          format + réservés + cohérence des `channels` au bootstrap (amendé ADR-0039)
+ *   I33  — Application sans Foundation ne peut rien afficher
+ *   I56  — onInit() de chaque Feature appelé avant la création de la Foundation
+ *   I68  — Le namespace est porté par le manifest, pas par un static (ADR-0039)
+ *   I69  — Le manifest est l'unique source de vérité de l'identité (ADR-0039)
+ *   I70  — Toute référence à un namespace externe DOIT être validée
+ *          contre le manifest (ADR-0039)
+ *   I71  — `RESERVED_NAMESPACES` est une constante framework (ADR-0039)
+ *
+ * Strate 0 simplifications :
+ *   - Pas de stop()
+ *   - Pas de SSR (serverState)
+ *   - Pas de DevTools
+ *   - Pas de BonsaiRegistry ESM
+ *
+ * @packageDocumentation
+ */
+
+
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+/**
+ * Manifest de Features applicatives — type structurel laxe accepté au runtime
+ * par `Application`. La cohérence stricte (camelCase, mots réservés, accord
+ * `TSelfNS ↔ clé`) est portée côté appelant par `StrictManifest<M>` au
+ * `satisfies` (cf. ADR-0039 §Décision et `@bonsai/feature/types`).
+ *
+ * Application n'a besoin ici que de :
+ *   - clés `string` (les namespaces)
+ *   - valeurs = constructeurs `(namespace) => Feature`
+ *
+ * Le typage strict côté manifest applicatif vit dans `@bonsai/feature`.
+ */
+type TFeaturesManifest = Readonly<
+  Record<string, new (namespace: string) => Feature<any, any, any>>
+>;
+
+/**
+ * Options du constructeur Application — strate 0 minimal.
+ *
+ * - `foundation` : classe Foundation concrète (obligatoire pour `start()` —
+ *   I33 lève sinon).
+ * - `features` : manifest applicatif (clé = namespace, valeur = classe Feature).
+ *   La validation compile-time se fait côté appelant via
+ *   `satisfies StrictManifest<AppManifest>` ; Application n'effectue qu'un
+ *   filet runtime au `start()`.
+ */
+type TApplicationOptions<
+  M extends TFeaturesManifest = TFeaturesManifest
+> = {
+  readonly foundation?: typeof Foundation;
+  readonly features?: M;
+};
+
+// ─── Application class ───────────────────────────────────────────────────────
+
+declare class Application<M extends TFeaturesManifest = TFeaturesManifest> {
+  readonly #manifest: M;
+  #started = false;
+  #foundationClass: typeof Foundation | null;
+  #foundationInstance: Foundation | null = null;
+  #featureInstances: Feature<any, any, any>[] = [];
+
+  constructor(options?: TApplicationOptions<M>) {
+    this.#foundationClass = options?.foundation ?? null;
+    this.#manifest = options?.features ?? ({} as M);
+  }
+
+  // ─── Public API ────────────────────────────────────────────────────────
+
+  /**
+   * Bootstrap en 4 phases simplifiées (strate 0).
+   * Ne peut être appelé qu'une seule fois.
+   *
+   * Phases :
+   *   Phase 0 — Validation runtime du manifest (filet ADR-0039) :
+   *             format camelCase, mots réservés, références `static channels`.
+   *   Phase 1 — Channels  : `Radio.channel(namespace)` pour chaque Feature
+   *   Phase 2 — Entities  : (créées implicitement par Feature.bootstrap)
+   *   Phase 3 — Features  : `new FeatureClass(namespace)` + `bootstrap()` (I56)
+   *   Phase 4 — Foundation: `Foundation.attach()` qui orchestre Composers → Views
+   *
+   * @throws si appelée deux fois (strate 0 : pas de re-bootstrap)
+   * @throws `BonsaiNamespaceError` si le manifest viole les invariants (filet
+   *   runtime — le compile-time est censé l'avoir déjà attrapé via
+   *   `StrictManifest<M>`).
+   * @throws si aucune Foundation n'a été fournie au constructeur (I33).
+   */
+  start(): void {
+    if (this.#started) {
+      throw new Error("[Bonsai Application] Cannot start() — already started");
+    }
+    if (this.#foundationClass === null) {
+      throw new Error(
+        "[Bonsai Application] Cannot start() — no Foundation provided. " +
+          "Pass { foundation: MyFoundation } to the Application constructor (I33)."
+      );
+    }
+
+    // ── Phase 0 — Validation runtime du manifest (ADR-0039 — I70/I71) ───
+    this.#validateManifest();
+
+    this.#started = true;
+
+    const entries = Object.entries(this.#manifest) as Array<
+      [string, new (namespace: string) => Feature<any, any>]
+    >;
+
+    // Phase 1: Channels — crée le channel de chaque Feature dans Radio
+    for (const [namespace] of entries) {
+      Radio.me().channel(namespace);
+    }
+
+    // Phase 2: Entities — créées par chaque Feature dans bootstrap()
+
+    // Phase 3: Features — instancie avec le namespace du manifest, bootstrap
+    // (auto-discovery handlers I48), appelle onInit (I56)
+    for (const [namespace, FeatureClass] of entries) {
+      const instance = new FeatureClass(namespace);
+      this.#featureInstances.push(instance);
+      instance.bootstrap();
+    }
+
+    // Phase 4: Views — Foundation → Composers → Views
+    const FoundationClass = this
+      .#foundationClass as unknown as new () => Foundation;
+    this.#foundationInstance = new FoundationClass();
+    this.#foundationInstance.attach();
+  }
+
+  /** La Foundation instanciée (après start). */
+  get foundation(): Foundation | null {
+    return this.#foundationInstance;
+  }
+
+  /** Indique si l'application a démarré. */
+  get started(): boolean {
+    return this.#started;
+  }
+
+  // ─── Private — Filet runtime (ADR-0039 §Décision) ──────────────────────
+
+  /**
+   * Valide le manifest avant tout side-effect. Filet de sécurité — la
+   * majorité de ces violations sont déjà attrapées au compile-time par
+   * `StrictManifest<M>` côté appelant (cf. `@bonsai/feature/types`). Reste
+   * utile pour : cast `as any`, manifest dynamique, code JS pur.
+   *
+   * Vérifications :
+   *   - format camelCase de chaque clé (I21 amendé)
+   *   - non-réservation de chaque clé (I57, I71)
+   *   - `static listens` et `static queries` de chaque classe ne référencent
+   *     que des namespaces connus du manifest (I70, ADR-0040)
+   */
+  #validateManifest(): void {
+    const namespaces = Object.keys(this.#manifest);
+
+    // I21/I57/I71 — délègue à assertValidNamespace
+    for (const ns of namespaces) {
+      assertValidNamespace(ns);
+    }
+
+    // I70 — cohérence des références croisées via `static listens` et `static queries`
+    const known = new Set(namespaces);
+    type TWithTokens = {
+      listens?: readonly TChannelToken<TChannelDefinition>[];
+      queries?: readonly TChannelToken<TChannelDefinition>[];
+    };
+    for (const [ownNs, FeatureClass] of Object.entries(this.#manifest)) {
+      const cls = FeatureClass as unknown as TWithTokens;
+      const refs = [
+        ...(cls.listens ?? []),
+        ...(cls.queries ?? [])
+      ].map((t) => t.namespace);
+      for (const ref of refs) {
+        if (!known.has(ref)) {
+          throw new BonsaiNamespaceError(
+            "NAMESPACE_UNKNOWN_REFERENCE",
+            `Feature "${ownNs}" declares unknown channel "${ref}". ` +
+              `Known namespaces: ${namespaces.join(", ")}`
+          );
+        }
+      }
+    }
+  }
+}
+
+export { Application, Channel, Composer$2 as Composer, Foundation$1 as Foundation, Immer, RXJS, Radio, Valibot, View$3 as View, capitalize, createProjectionNode, parseNSKey };
+export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, StrictArrayOfKeys, StrictArrayOfValues, StringDigit, StringHash, TAllLetters, TAnyEventPayload, TApplicationOptions, TChannelDefinition, TChannelToken, TClass, TComposerOptions$2 as TComposerOptions, TConstructor, TDictionary, TDictionaryArray, TDictionaryValue, TEntries, TExcludeKeys, TExcludeValues, TFalsy, TFeaturesManifest, TFunctionPropertyNames, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonValue, TLookup, TLowerLetter, TMapEntry, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TParameters, TPrimitive, TProjectionNode$3 as TProjectionNode, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TResolveResult$2 as TResolveResult, TSetEntry, TTokenDef, TUpperLetter, TViewClass$3 as TViewClass, TViewContract$3 as TViewContract, TuplifyUnion, UnionToIntersection, ValuesType, Whitespace };
