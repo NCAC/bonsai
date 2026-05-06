@@ -40,47 +40,90 @@ Bonsai repose sur un pattern universel, applicable à **chaque composant** du fr
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│  1. DÉCLARER LES TYPES (le contrat)                             │
+│  1. DÉCLARER LES MODULES CONTRACTUELS (header du fichier)       │
 │                                                                  │
 │     Feature / Entity                                            │
 │       → TChannelDefinition : Commands, Events, Requests typés   │
 │       → TEntityStructure   : état jsonifiable (D10)             │
 │                                                                  │
-│     View / Behavior                                             │
-│       → TConsumerDeps : Features par lane (listens/triggers/…)  │
-│       → TViewContract : cles namespacees "ns:name" validées     │
+│     View / Behavior / Composer (consommateurs — ADR-0042)       │
+│       → TFeatureContract : Features consommées (Feature-groupé) │
+│       → TUIContract      : nœuds DOM + events (View/Behavior)   │
+│       → TUIElements<TUI> : sélecteurs CSS (overridable D34)     │
 │                                                                  │
-│  2. IMPLÉMENTER LA CLASSE (en consommant ces types)             │
-│     Feature → extends Feature<TEntityStructure, TChannel>       │
-│            → implements TRequiredCommandHandlers<TChannel>       │
-│     View   → extends View<TDeps, TContract>                     │
-│            → implements TListenCallbacks<TDeps, TContract>       │
+│  2. COMPOSER LE CONTRAT DU COMPOSANT (un alias type)            │
+│     View      → type TXxxContract = TViewContract<F, U>         │
+│     Composer  → type TXxxContract = TComposerContract<F>        │
+│     Behavior  → type TXxxContract = TBehaviorContract<F, U>     │
 │                                                                  │
-│  3. RÉCOMPENSE AUTOMATIQUE (le compilateur travaille pour vous) │
-│     Feature → handlers onXXXCommand/Event/Request auto-typés    │
-│            → payloads typés, retours vérifiés compile-time      │
-│     View   → handlers onXXXClick/Input auto-générés (D48)       │
-│            → getUI() : TProjectionNode<HTMLButtonElement>       │
+│  3. IMPLÉMENTER LA CLASSE — un générique, un implements (C2/C3) │
+│     class XxxView                                               │
+│       extends View<TXxxContract>                                │
+│       implements TViewCallbacks<TXxxContract>                   │
+│                                                                  │
+│  4. RÉCOMPENSE AUTOMATIQUE (le compilateur travaille pour vous) │
+│     Feature → handlers onXxxCommand/Event/Request auto-typés    │
+│     View   → onXxxClick/Input requis si events DOM déclarés     │
+│           → onNsEventEvent requis si listens déclarées          │
+│           → getUI(k).element() : TProjectionNode<TEl> typé      │
 │     Tous   → Refactoring : renommer un symbole = erreur partout │
-│            → Zéro runtime surprise : tout vérifié au build      │
+│           → Zéro runtime surprise : tout vérifié au build       │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-> **Principe** : ce que l'on « perd » en verbosité et en rigueur initiale,
-> on le **gagne** dans l'implémentation — autocomplétion IDE, handlers
-> auto-découverts, typage des paramètres et des valeurs de retour,
-> refactoring sûr à l'échelle du projet.
+> **Principe** : ce que l'on « perd » en verbosité initiale dans le header,
+> on le **gagne** dans l'implémentation — autocomplétion IDE, handlers requis
+> par `implements`, payloads et retours typés, refactoring sûr à l'échelle.
+
+### Règle universelle : symétrie `Contract` / `Callbacks` (ADR-0042 C15, I88)
+
+> **Règle absolue** : pour chaque composant Bonsai, le package qui l'expose
+> DOIT fournir **deux types publics** :
+>
+> - `T{Component}Contract` — ce que le composant **déclare** (Features
+>   consommées, UI manipulée, capacités).
+> - `T{Component}Callbacks<TC>` — ce que le composant **doit implémenter**
+>   (handlers `on*` dérivés du contrat, requis par `implements`).
+>
+> **« On respecte toujours un contrat signé. »** Une déclaration sans
+> son contrat d'implémentation est interdite — elle exposerait des capacités
+> non-honorées.
+
+| Composant | Contract | Callbacks |
+|-----------|----------|-----------|
+| **View** | `TViewContract<F, U>` | `TViewCallbacks<TVC>` |
+| **Behavior** | `TBehaviorContract<F, U, ...>` | `TBehaviorCallbacks<TBC>` |
+| **Composer** | `TComposerContract<F>` | `TComposerCallbacks<TCC>` |
+| **Foundation** | `TFoundationContract` | `TFoundationCallbacks<TFC>` |
+
+Le développeur applicatif écrit toujours la paire dans la signature de classe :
+
+```ts
+class XxxView
+  extends View<TXxxContract>                     // ← contrat déclaré
+  implements TViewCallbacks<TXxxContract>        // ← contrat implémenté
+{
+  // Le compilateur exige tous les handlers `on*` dérivés du contrat.
+  // Un handler manquant → erreur compile (I88).
+}
+```
+
+Les types intermédiaires (`TFeatureContract`, `TUIContract`, …) sont des
+**modules contractuels** réutilisables entre composants. Le développeur
+applicatif les compose dans le header, mais sa **surface d'API** reste la
+paire `Contract` + `Callbacks` du composant qu'il écrit.
 
 ### Conséquence sur les conventions de ce guide
 
 Les sections qui suivent sont ordonnées par **niveau d'abstraction décroissant** :
-d'abord les conventions API et TypeScript (le contrat, la source de vérité),
+d'abord les conventions API et TypeScript (les modules contractuels, source de vérité),
 puis les conventions de nommage (la cohérence), et enfin les conventions
 DOM/CSS/HTML (le détail d'implémentation).
 
-Les sélecteurs CSS, les `id`, les `data-*` sont des **détails d'implémentation**
-qui vivent dans `get params()` — overridables par le Composer (D34). Les types
-(`TUIMap`, `TChannelDefinition`, `TEntityStructure`) sont le contrat immuable.
+Les **sélecteurs CSS**, les `id`, les `data-*` sont des **détails d'implémentation**
+qui vivent dans `get uiElements()` — overridables par le Composer (D34, ADR-0042 C7).
+Les modules contractuels (`TFeatureContract`, `TUIContract`, `TChannelDefinition`,
+`TEntityStructure`) sont le contrat immuable.
 
 ---
 
