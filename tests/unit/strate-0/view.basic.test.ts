@@ -449,6 +449,68 @@ describe("I82 — handler manquant pour clé déclarée dans features[NS].listen
   });
 });
 
+// ─── I84 — uiEvents interactif sans uiElements / sans handler DOM ───────────
+
+describe("I84 — filet runtime des handlers DOM (events non vides)", () => {
+  beforeEach(() => {
+    Radio.reset();
+    document.body.innerHTML = `
+      <div data-view="missing-ui">
+        <button data-ui="addBtn">Add</button>
+      </div>
+    `;
+  });
+
+  it("mount() throws when uiEvents declares a key absent from uiElements", () => {
+    const features = {} as const satisfies TFeatureContract;
+    const uiEvents = {
+      addBtn: ui<HTMLButtonElement>()(["click"])
+    } satisfies TUIContract;
+    // Viole compile-time : la clé `addBtn` est absente de uiElements.
+    // On contourne via cast pour exercer le filet runtime (line 510).
+    const uiElementsBroken = {} as TUIElements<typeof uiEvents>;
+
+    type TBrokenContract = TViewContract<typeof features, typeof uiEvents>;
+
+    class BrokenElementsView extends View<TBrokenContract> {
+      get features()   { return features; }
+      get uiEvents()   { return uiEvents; }
+      get uiElements() { return uiElementsBroken; }
+      onAddBtnClick(_e: MouseEvent): void {}
+    }
+
+    const view = new BrokenElementsView();
+    expect(() => view.mount("[data-view='missing-ui']")).toThrow(
+      /UI key "addBtn" declared in uiEvents but missing in uiElements/
+    );
+  });
+
+  it("mount() throws when a declared DOM event has no matching on{Key}{Event} handler", () => {
+    const features = {} as const satisfies TFeatureContract;
+    const uiEvents = {
+      addBtn: ui<HTMLButtonElement>()(["click"])
+    } satisfies TUIContract;
+    const uiElements = {
+      addBtn: "[data-ui='addBtn']"
+    } satisfies TUIElements<typeof uiEvents>;
+
+    type TMissingHandlerContract = TViewContract<typeof features, typeof uiEvents>;
+
+    // Viole compile-time : `implements TViewCallbacks` aurait imposé
+    // `onAddBtnClick`. Filet runtime à line 520.
+    class MissingDomHandlerView extends View<TMissingHandlerContract> {
+      get features()   { return features; }
+      get uiEvents()   { return uiEvents; }
+      get uiElements() { return uiElements; }
+    }
+
+    const view = new MissingDomHandlerView();
+    expect(() => view.mount("[data-view='missing-ui']")).toThrow(
+      /Missing handler "onAddBtnClick" for declared event "click" on ui\.addBtn/
+    );
+  });
+});
+
 // ─── Contextual contract — read data-* from root element ─────────────────────
 
 describe("ADR-0024 — contextual contract read from root element dataset", () => {
