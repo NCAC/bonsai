@@ -113,7 +113,7 @@ Un ADR Accepted signifie : **la décision architecturale est prise** — si/quan
 | Channel basic | ADR-0003, ADR-0023 | trigger() 1:1, emit() 1:N, request() sync T\|null |
 | Entity basic | ADR-0001 | mutate() + Immer produce, catch-all, no-op, initialState |
 | Feature | ADR-0024 | 5 capacités, auto-découverte handlers, onInit() |
-| View basic | ADR-0024, ADR-0017 | trigger(), getUI() N1, handlers D48, onAttach(), params manifeste |
+| View basic | ADR-0024, ADR-0017, ADR-0042 | trigger(), getUI() N1 typé `TProjectionNode<TEl>`, handlers D48 (channel + UI) compile-time via `TViewCallbacks<TVC>`, onAttach(), pattern modulaire `TFeatureContract` + `TUIContract` + `TUIElements` |
 | Application basic | ADR-0010 | register(), start() 4 phases |
 | Foundation minimal | — | rootElement = document.body, Composers racines |
 | Composer basic | ADR-0025, ADR-0026, ADR-0027 | resolve(event), 0/1 View, rootElement string CSS |
@@ -125,6 +125,7 @@ Un ADR Accepted signifie : **la décision architecturale est prise** — si/quan
 | Entity full | ADR-0001 | produceWithPatches, per-key handlers, ré-entrance FIFO, toJSON/fromJSON, eventLog (opt-in) |
 | Metas complet | ADR-0005, ADR-0016 | correlationId, causationId, hop, origin — propagation explicite |
 | Channel enrichi | ADR-0003, ADR-0002 | Anti-boucle I9, isolation erreurs listeners, noHandler configurable |
+| View modulaire | **ADR-0042** | `TViewContract<F, U>` composé de `TFeatureContract` (Feature-groupé) + `TUIContract` (events DOM typés) + `TUIElements` (sélecteurs CSS overridables D34). `getUI(k).element() → TEl` typé via phantom. Handlers channel + DOM enforcés compile-time via `TViewCallbacks<TVC>`. Un générique unique, un `implements` unique. Pattern modulaire fondateur réutilisé par Composer/Behavior. |
 | View templates | ADR-0017 | N2/N3, pipeline selector → project(), event `any`, onDetach() |
 | Composer N-instances | ADR-0020, ADR-0027 | Retour tableau, diff rootElement+viewClass, cascade destruction, 5 états |
 | Foundation complète | — | Event delegation globale, capacités Channel |

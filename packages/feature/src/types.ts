@@ -1,8 +1,13 @@
 /**
- * @bonsai/feature — Types & runtime helpers for namespace authority
+ * @bonsai/feature — Types & runtime helpers
  *
- * Implémente la décision ADR-0039 : autorité, unicité et conformité des
- * namespaces de Feature.
+ * Implémente :
+ *   - ADR-0039 : autorité, unicité et conformité des namespaces de Feature.
+ *   - ADR-0042 : pattern modulaire de contrat consommateur — `TFeatureContract`
+ *     Feature-groupé + helpers d'aplatissement (`TFlatListens`, `TFlatTriggers`,
+ *     `TFlatRequests`) + extracteurs de payload (`TEventPayloadFor`,
+ *     `TCommandPayloadFor`, `TRequestParamsFor`, `TRequestResultFor`) +
+ *     `TChannelCallbacks` (handlers requis dérivés du contrat).
  *
  * Trois rôles assumés par ce module :
  *   1. Types compile-time (`CamelCaseNamespace<S>`, `StrictManifest<M>`,
@@ -22,13 +27,18 @@
  *   I70          — toute référence à un namespace externe DOIT être validée
  *   I71          — `RESERVED_NAMESPACES` est une constante framework
  *   I72          — `TSelfNS` doit correspondre à la clé du manifest
+ *   I81 (ADR-0042) — `get features()` est la source de vérité runtime
+ *   I82 (ADR-0042) — `implements TViewCallbacks<TVC>` impose les handlers
+ *   I83 (ADR-0042) — pattern modulaire `T{Component}Contract` réutilisable
+ *   I87 (ADR-0042) — clé d'objet ≡ namespace de la Feature référencée
+ *   I88 (ADR-0042) — symétrie Contract/Callbacks
  *
  * @packageDocumentation
  */
 
 import type { Entity, TJsonSerializable } from "@bonsai/entity";
 import type { TChannelDefinition, TChannelToken } from "@bonsai/event";
-import type { CamelCase } from "@bonsai/types";
+import type { CamelCase, UnionToIntersection } from "@bonsai/types";
 import type { Feature } from "./bonsai-feature";
 
 // ─── Mots réservés (I71, ADR-0015) ──────────────────────────────────────────
@@ -95,7 +105,9 @@ export type StrictManifest<M> = {
   [K in keyof M & string]: K extends CamelCaseNamespace<K>
     ? K extends ReservedNamespace
       ? never
-      : new (namespace: K) => Feature<Entity<TJsonSerializable>, TChannelDefinition, K>
+      : new (
+          namespace: K
+        ) => Feature<Entity<TJsonSerializable>, TChannelDefinition, K>
     : never;
 };
 
@@ -135,7 +147,7 @@ export class BonsaiNamespaceError extends Error {
 
 const CAMEL_CASE_REGEX = /^[a-z][a-zA-Z]*$/;
 
-// ─── Pattern consommateur unifié (ADR-0041) ──────────────────────────────────
+// ─── Pattern consommateur modulaire (ADR-0042) ──────────────────────────────
 
 /**
  * Contrainte structurelle minimale pour toute Feature référençable par un
@@ -152,123 +164,207 @@ export type TFeatureRef<
 > = { readonly channel: TChannelToken<TDef, TNS> };
 
 /**
- * Étape 1 du pattern consommateur — type pur, zéro coût runtime.
- * Déclare quelles Features participent à chaque lane.
+ * `TFeatureRef` contraint à un namespace donné (ADR-0042 C10, I87).
  *
- * Usage : `type TMyViewDeps = { listens: [typeof CartFeature, typeof UserFeature]; ... }`
+ * Utilisé par `TFeatureContract` pour imposer compile-time que la clé d'objet
+ * (`cart`, `user`) corresponde au namespace de la Feature référencée :
  *
- * I83 — pattern unifié View / Composer / Behavior.
+ * ```ts
+ * const features = {
+ *   cart: { feature: UserFeature, ... },  // ❌ erreur compile — "cart" ≠ "user"
+ * } satisfies TFeatureContract;
+ * ```
  */
-export type TConsumerDeps = {
-  readonly listens:  readonly TFeatureRef[];
-  readonly triggers: readonly TFeatureRef[];
-  readonly requests: readonly TFeatureRef[];
-};
-
-/** Union des clés `"namespace:eventName"` disponibles depuis une Feature ref. */
-export type TNSEventKeys<FC extends TFeatureRef> =
-  FC["channel"] extends TChannelToken<infer D, infer NS>
-    ? `${NS}:${keyof D["events"] & string}`
-    : never;
-
-/** Union des clés `"namespace:commandName"` disponibles depuis une Feature ref. */
-export type TNSCommandKeys<FC extends TFeatureRef> =
-  FC["channel"] extends TChannelToken<infer D, infer NS>
-    ? `${NS}:${keyof D["commands"] & string}`
-    : never;
-
-/** Union des clés `"namespace:requestName"` disponibles depuis une Feature ref. */
-export type TNSRequestKeys<FC extends TFeatureRef> =
-  FC["channel"] extends TChannelToken<infer D, infer NS>
-    ? `${NS}:${keyof D["requests"] & string}`
-    : never;
+export type TFeatureRefForNS<NS extends string> = TFeatureRef<
+  TChannelDefinition,
+  NS
+>;
 
 /**
- * Étape 2 du pattern consommateur — type du contrat namespacé.
- * Contraint chaque clé à être valide pour les Features déclarées dans `TDeps`.
+ * Module contractuel Feature — Feature-groupé (ADR-0042).
  *
- * Usage : `const c = { listens: ["cart:itemAdded"] as const } satisfies TConsumerContract<TDeps>`
+ * Une entrée par Feature consommée. La clé d'objet DOIT correspondre au
+ * namespace de la Feature référencée par `feature` (validation par
+ * `TFeatureRefForNS<NS>` — I87).
  *
- * I81 — `contract` est la source de vérité complète du consommateur.
+ * Pour chaque Feature :
+ *   - `feature`  : ref runtime (`typeof XxxFeature`) — extrait
+ *                  channel/events/commands/requests via le token
+ *   - `listens`  : noms d'events sans préfixe namespace (la clé EST le NS)
+ *   - `triggers` : noms de commands sans préfixe namespace
+ *   - `requests` : noms de requests sans préfixe namespace
+ *
+ * Le mapped type `[NS in string]` capture chaque clé littérale et instancie
+ * `TFeatureRefForNS<NS>` per-key — c'est ce qui produit l'erreur compile
+ * sur incohérence clé/namespace.
+ *
+ * Usage :
+ *
+ * ```ts
+ * const cartViewFeatures = {
+ *   cart: {
+ *     feature:  CartFeature,
+ *     listens:  ["itemAdded"]  as const,
+ *     triggers: ["addItem"]    as const,
+ *     requests: []             as const,
+ *   },
+ *   user: {
+ *     feature:  UserFeature,
+ *     listens:  ["profileUpdated"] as const,
+ *     triggers: []                 as const,
+ *     requests: ["getProfile"]     as const,
+ *   },
+ * } satisfies TFeatureContract;
+ * ```
+ *
+ * I81 — source de vérité runtime du composant consommateur.
+ * I83 — module réutilisable par View / Composer / Behavior.
+ * I87 — clé ≡ namespace, contrôle compile-time.
  */
-export type TConsumerContract<TDeps extends TConsumerDeps> = {
-  readonly listens:  readonly TNSEventKeys<TDeps["listens"][number]>[];
-  readonly triggers: readonly TNSCommandKeys<TDeps["triggers"][number]>[];
-  readonly requests: readonly TNSRequestKeys<TDeps["requests"][number]>[];
+export type TFeatureContract = {
+  readonly [NS in string]: {
+    readonly feature: TFeatureRefForNS<NS>;
+    readonly listens: readonly string[];
+    readonly triggers: readonly string[];
+    readonly requests: readonly string[];
+  };
 };
 
-/**
- * Dérive le nom du handler depuis une clé namespacée.
- * `"cart:itemAdded"` → `"onCartItemAddedEvent"`
- */
-export type THandlerName<K extends string> =
-  K extends `${infer NS}:${infer Ev}`
-    ? `on${Capitalize<NS>}${Capitalize<Ev>}Event`
-    : never;
-
-/** Payload d'un event depuis une clé `"ns:event"` et les deps `listens`. */
-export type TEventPayload<TDeps extends TConsumerDeps, K extends string> =
-  K extends `${infer NS}:${infer Ev}`
-    ? TDeps["listens"][number] extends infer FC
-      ? FC extends TFeatureRef
-        ? FC["channel"] extends TChannelToken<infer D, NS>
-          ? Ev extends keyof D["events"] ? D["events"][Ev] : never
-          : never
-        : never
-      : never
-    : never;
-
-/** Payload d'une command depuis une clé `"ns:cmd"` et les deps `triggers`. */
-export type TCommandPayload<TDeps extends TConsumerDeps, K extends string> =
-  K extends `${infer NS}:${infer Cmd}`
-    ? TDeps["triggers"][number] extends infer FC
-      ? FC extends TFeatureRef
-        ? FC["channel"] extends TChannelToken<infer D, NS>
-          ? Cmd extends keyof D["commands"] ? D["commands"][Cmd] : never
-          : never
-        : never
-      : never
-    : never;
-
-/** Params d'une request depuis une clé `"ns:req"` et les deps `requests`. */
-export type TRequestParams<TDeps extends TConsumerDeps, K extends string> =
-  K extends `${infer NS}:${infer Req}`
-    ? TDeps["requests"][number] extends infer FC
-      ? FC extends TFeatureRef
-        ? FC["channel"] extends TChannelToken<infer D, NS>
-          ? Req extends keyof D["requests"] ? D["requests"][Req]["params"] : never
-          : never
-        : never
-      : never
-    : never;
-
-/** Résultat d'une request depuis une clé `"ns:req"` et les deps `requests`. */
-export type TRequestResult<TDeps extends TConsumerDeps, K extends string> =
-  K extends `${infer NS}:${infer Req}`
-    ? TDeps["requests"][number] extends infer FC
-      ? FC extends TFeatureRef
-        ? FC["channel"] extends TChannelToken<infer D, NS>
-          ? Req extends keyof D["requests"] ? D["requests"][Req]["result"] : never
-          : never
-        : never
-      : never
-    : never;
+// ─── Helpers d'aplatissement (clés flat-préfixées) ──────────────────────────
 
 /**
- * Étape 3 du pattern consommateur — contrat `implements` pour les handlers d'écoute.
- * Dérive depuis `TContract["listens"]` les signatures **requises** (non optionnelles).
+ * Aplatit toutes les `listens` du contrat en union de clés `"ns:event"`.
  *
- * Usage : `class MyView extends View<TDeps, TContract> implements TListenCallbacks<TDeps, TContract>`
- *
- * I82 — handler manquant → erreur compile.
+ * @example
+ *   TFlatListens<{ cart: { listens: ["itemAdded"] }; user: { listens: ["profileUpdated"] } }>
+ *   → "cart:itemAdded" | "user:profileUpdated"
  */
-export type TListenCallbacks<
-  TDeps extends TConsumerDeps,
-  TContract extends { readonly listens: readonly string[] }
-> = {
-  [K in TContract["listens"][number] as THandlerName<K>]:
-    (payload: TEventPayload<TDeps, K>) => void;
-};
+export type TFlatListens<F extends TFeatureContract> = {
+  [NS in keyof F & string]: F[NS]["listens"][number] extends infer E
+    ? E extends string
+      ? `${NS}:${E}`
+      : never
+    : never;
+}[keyof F & string];
+
+/** Aplatit toutes les `triggers` en union de clés `"ns:cmd"`. */
+export type TFlatTriggers<F extends TFeatureContract> = {
+  [NS in keyof F & string]: F[NS]["triggers"][number] extends infer C
+    ? C extends string
+      ? `${NS}:${C}`
+      : never
+    : never;
+}[keyof F & string];
+
+/** Aplatit toutes les `requests` en union de clés `"ns:req"`. */
+export type TFlatRequests<F extends TFeatureContract> = {
+  [NS in keyof F & string]: F[NS]["requests"][number] extends infer R
+    ? R extends string
+      ? `${NS}:${R}`
+      : never
+    : never;
+}[keyof F & string];
+
+// ─── Extracteurs de payload depuis une clé flat-préfixée ───────────────────
+
+/**
+ * Payload d'un event depuis une clé `"ns:event"` et le contrat Feature.
+ *
+ * Résolution :
+ *   1. Décompose `K` en `${NS}:${E}` via template literal.
+ *   2. Extrait la définition `D` du Channel via le token static.
+ *   3. Lit `D["events"][E]`.
+ */
+export type TEventPayloadFor<
+  F extends TFeatureContract,
+  K extends string
+> = K extends `${infer NS}:${infer E}`
+  ? NS extends keyof F
+    ? F[NS]["feature"]["channel"] extends TChannelToken<infer D, NS>
+      ? E extends keyof D["events"]
+        ? D["events"][E]
+        : never
+      : never
+    : never
+  : never;
+
+/** Payload d'une command depuis une clé `"ns:cmd"`. */
+export type TCommandPayloadFor<
+  F extends TFeatureContract,
+  K extends string
+> = K extends `${infer NS}:${infer C}`
+  ? NS extends keyof F
+    ? F[NS]["feature"]["channel"] extends TChannelToken<infer D, NS>
+      ? C extends keyof D["commands"]
+        ? D["commands"][C]
+        : never
+      : never
+    : never
+  : never;
+
+/** Params d'une request depuis une clé `"ns:req"`. */
+export type TRequestParamsFor<
+  F extends TFeatureContract,
+  K extends string
+> = K extends `${infer NS}:${infer R}`
+  ? NS extends keyof F
+    ? F[NS]["feature"]["channel"] extends TChannelToken<infer D, NS>
+      ? R extends keyof D["requests"]
+        ? D["requests"][R]["params"]
+        : never
+      : never
+    : never
+  : never;
+
+/** Résultat d'une request depuis une clé `"ns:req"`. */
+export type TRequestResultFor<
+  F extends TFeatureContract,
+  K extends string
+> = K extends `${infer NS}:${infer R}`
+  ? NS extends keyof F
+    ? F[NS]["feature"]["channel"] extends TChannelToken<infer D, NS>
+      ? R extends keyof D["requests"]
+        ? D["requests"][R]["result"]
+        : never
+      : never
+    : never
+  : never;
+
+// ─── Channel handlers (D48 channel) ──────────────────────────────────────────
+
+/**
+ * Dérive le nom du handler channel depuis un namespace + event name.
+ * Convention D48 channel : `on{NS}{EventName}Event` (suffixe `Event` conservé
+ * pour anti-collision avec les handlers DOM, ADR-0042 C13).
+ *
+ * @example
+ *   TChannelHandlerName<"cart", "itemAdded">  → "onCartItemAddedEvent"
+ */
+export type TChannelHandlerName<
+  NS extends string,
+  E extends string
+> = `on${Capitalize<NS>}${Capitalize<E>}Event`;
+
+/**
+ * Handlers channel REQUIS pour un `TFeatureContract` — un par event déclaré
+ * dans `listens` de chaque Feature.
+ *
+ * Symétrie Contract/Callbacks (ADR-0042 C15, I88) : pour chaque entrée dans
+ * `features[NS].listens`, le compilateur impose la présence de la méthode
+ * `on{NS}{EventName}Event` avec la signature exacte `(payload, metas) => void`.
+ *
+ * Le payload est résolu via `TEventPayloadFor` — typé par le `TChannelDefinition`
+ * de la Feature.
+ */
+export type TChannelCallbacks<F extends TFeatureContract> = UnionToIntersection<
+  {
+    [NS in keyof F & string]: {
+      [E in F[NS]["listens"][number] as TChannelHandlerName<NS, E & string>]: (
+        payload: TEventPayloadFor<F, `${NS}:${E & string}`>
+      ) => void;
+    };
+  }[keyof F & string]
+>;
 
 // ─── Filet runtime ──────────────────────────────────────────────────────────
 

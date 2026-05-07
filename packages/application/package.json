@@ -11,6 +11,7 @@
   },
   "main": "src/bonsai-application.ts",
   "types": "src/bonsai-application.ts",
+  "src": "./src/bonsai-application.ts",
   "dependencies": {
     "@bonsai/event": "workspace:^",
     "@bonsai/feature": "workspace:^",
