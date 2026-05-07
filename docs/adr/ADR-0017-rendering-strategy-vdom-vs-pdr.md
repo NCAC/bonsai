@@ -2,7 +2,7 @@
 
 | Champ | Valeur |
 |-------|--------|
-| **Statut** | 🟢 Accepted |
+| **Statut** | 🔵 Tested |
 | **Date** | 2026-03-26 |
 | **Décideurs** | @ncac |
 | **RFC liées** | [RFC-0001](../rfc/1-philosophie.md) (D19, I31, I38, I39, I40, I41), [RFC-0002 §9.4](../rfc/6-transversal/conventions-typage.md) (PDR), [RFC-0003](../rfc/5-rendu.md) (compilateur, ProjectionList, selectors), [ADR-0012](ADR-0012-virtualized-list.md) (VirtualizedList), [ADR-0014](ADR-0014-ssr-hydration-strategy.md) (SSR hydration), [ADR-0015](ADR-0015-local-state-mechanism.md) (localState) |
@@ -865,3 +865,4 @@ select: (data) => {
 |------|------------|
 | 2026-03-26 | Création (Proposed) — formalisation de la décision VDOM vs PDR |
 | 2026-03-26 | **Accepted** — Q1 résolu (Q1-B : state complet par ref live → D46), Q2 résolu (Q2-A : pas de pool) |
+| 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

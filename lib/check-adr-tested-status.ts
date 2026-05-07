@@ -135,21 +135,17 @@ function main(): void {
 
   const candidates: AdrInfo[] = [];
   const partial:    { adr: AdrInfo; missing: number[] }[] = [];
-  const semCandidates: AdrInfo[] = [];
+  const uncovered:  AdrInfo[] = [];
   const tested: AdrInfo[] = adrs.filter((a) => a.status === "Tested");
 
   for (const adr of adrs) {
     if (adr.status !== "Accepted") continue;
+    if (!adr.hasInvariantsLine || adr.invariants.length === 0) continue; // C-Sem / C-Proc — review manuelle
 
-    if (adr.hasInvariantsLine && adr.invariants.length > 0) {
-      const missing = adr.invariants.filter((i) => !cited.has(i));
-      if (missing.length === 0) candidates.push(adr);
-      else if (missing.length < adr.invariants.length) partial.push({ adr, missing });
-      // else: aucun invariant cité — silencieux (ADR sans couverture, normal en cours d'implémentation)
-    } else {
-      // C-Sem ou C-Proc — review manuelle
-      semCandidates.push(adr);
-    }
+    const missing = adr.invariants.filter((i) => !cited.has(i));
+    if (missing.length === 0) candidates.push(adr);
+    else if (missing.length < adr.invariants.length) partial.push({ adr, missing });
+    else uncovered.push(adr);
   }
 
   const lines: string[] = [];
@@ -176,11 +172,21 @@ function main(): void {
     lines.push("");
   }
 
+  if (uncovered.length > 0) {
+    lines.push(`❌ ${uncovered.length} ADR(s) sans citation d'aucun de leurs invariants :`);
+    for (const adr of uncovered) {
+      lines.push(
+        `   ADR-${adr.id} — invariants : [I${adr.invariants.join(", I")}]`
+      );
+    }
+    lines.push("");
+  }
+
   if (tested.length > 0) {
     lines.push(`🔵 ${tested.length} ADR(s) déjà Tested.`);
   }
 
-  if (candidates.length === 0 && partial.length === 0) {
+  if (candidates.length === 0 && partial.length === 0 && uncovered.length === 0) {
     lines.push("✅ Aucun ADR Accepted avec invariants impactés en attente de promotion.");
   }
 

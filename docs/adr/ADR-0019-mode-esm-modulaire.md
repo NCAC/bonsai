@@ -4,7 +4,7 @@
 
 | Champ | Valeur |
 |-------|--------|
-| **Statut** | 🟢 Accepted |
+| **Statut** | 🔵 Tested |
 | **Date** | 2026-04-01 |
 | **Décideurs** | @ncac |
 | **RFC liée** | [RFC-0001-architecture-fondamentale](../rfc/1-philosophie.md), [RFC-0002 §7 Application](../rfc/6-transversal/conventions-typage.md#7-application) |
@@ -626,3 +626,4 @@ bonsai build --check
 |------|------------|
 | 2026-04-01 | Création — issu de Partie I de [`reflexion-2026-03-30.md`](../archive/explorations/reflexion-2026-03-30.md#partie-i--mode-esm-modulaire-et-mode-bundle-iife). Numéro ADR-0019 (anciennement occupé par l'ADR Extension Points, renommée ADR-0021). QO-ESM-1 et QO-ESM-3 stabilisées dans ce document. QO-ESM-2 déléguée à ADR-0020. |
 | 2026-04-01 | Ajout contraintes C7 (`.d.ts` obligatoire) et C8 (outillage de build officiel). Ajout §8 : artefacts de distribution, deux modes de build (IIFE vs ESM+`.d.ts`), `tsconfig` de référence, règles de nommage, CLI `bonsai build`. Passage en Accepted. |
+| 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

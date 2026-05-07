@@ -2,7 +2,7 @@
 
 | Champ | Valeur |
 |-------|--------|
-| **Statut** | 🟢 Accepted |
+| **Statut** | 🔵 Tested |
 | **Date** | 2026-03-18 |
 | **Décideurs** | @ncac |
 | **RFC liée** | RFC-0002-entity |
@@ -505,3 +505,4 @@ this.entity.mutate(draft => {...});       // Complexe
 |------|------------|
 | 2026-03-17 | Création (Proposed) — 5 options documentées |
 | 2026-03-18 | **Accepted** — API unique `mutate(intent, params?, recipe)` avec Immer |
+| 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

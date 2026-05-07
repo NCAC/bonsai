@@ -4,7 +4,7 @@
 
 | Champ | Valeur |
 |-------|--------|
-| **Statut** | 🟢 Accepted |
+| **Statut** | 🔵 Tested |
 | **Date** | 2026-04-01 |
 | **Décideurs** | @ncac |
 | **RFC liée** | [RFC-0002 §9 Composer](../rfc/6-transversal/conventions-typage.md#9-composer), [RFC-0001-composants](../rfc/2-architecture/README.md) |
@@ -660,3 +660,4 @@ class BadNodeEditFormView extends View {
 |------|------------|
 | 2026-04-01 | Création — issu de `reflexion-composition-dynamique-heterogene.md` §3–§11. Formalise les décisions stabilisées lors de la réflexion du 2026-03-30/31. |
 | 2026-04-01 | 🟢 **Accepted** — corrections A1–A4 (§9.7→§12.1–12.3, QO-CDH-4 harmonisé, Source retirée, §1.7→§4.7). Propagation downstream (RFC-0002 §9.6/§12, RFC-0001-invariants-decisions) planifiée comme tâches de suivi. |
+| 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

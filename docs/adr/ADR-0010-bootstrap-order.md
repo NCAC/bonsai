@@ -2,7 +2,7 @@
 
 | Champ | Valeur |
 |-------|--------|
-| **Statut** | 🟢 Accepted |
+| **Statut** | 🔵 Tested |
 | **Date** | 2026-03-18 |
 | **Décideurs** | @ncac |
 | **RFC liée** | RFC-0001 §5.1 |
@@ -607,3 +607,4 @@ app.lazyPhase('adminFeatures', async ({ channels }) => {
 | 2026-03-18 | Création (Proposed) — Phases recommandé |
 | 2026-03-23 | Accepté — Option C retenue (bootstrap par phases explicites) |
 | 2026-04-01 | Note de compatibilité ADR-0019 : le Mode ESM Modulaire ajoute une **pré-étape** `BonsaiRegistry.collect() → app.register() × N` **avant** `app.start()`. Les phases 1–6 restent intactes. Voir ADR-0019 §7 pour le détail. |
+| 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |
