@@ -2,10 +2,11 @@
 
 | Champ | Valeur |
 |-------|--------|
-| **Statut** | 🟡 Proposed / 🟢 Accepted / 🟠 Suspended / ⚪ Superseded |
+| **Statut** | 🟡 Proposed / 🟢 Accepted / 🔵 Tested / 🟠 Suspended / ⚪ Superseded |
 | **Date** | YYYY-MM-DD |
 | **Décideurs** | @auteur |
 | **RFC liée** | RFC-XXXX |
+| **Invariants impactés** | I1, I2, ... *(supprimer la ligne si l'ADR n'a pas d'invariants — voir ADR-0043 pour la trichotomie de testabilité)* |
 
 ---
 
@@ -139,3 +140,4 @@ Nous choisissons **Option X** parce que :
 |------|------------|
 | YYYY-MM-DD | Création (Proposed) |
 | YYYY-MM-DD | Accepted après review |
+| YYYY-MM-DD | Tested — invariants prouvés par la suite de tests (cf. ADR-0043) |

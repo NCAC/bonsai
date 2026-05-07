@@ -53,13 +53,14 @@
 
 ## Statuts
 
-| Icône | Statut         | Description                                    |
-| ----- | -------------- | ---------------------------------------------- |
-| 🟡    | **Proposed**   | ADR rédigé, en attente de décision             |
-| 🟢    | **Accepted**   | Décision prise, ADR figé                       |
-| 🟠    | **Suspended**  | ADR proposé, bloqué par une dépendance externe |
-| ⚪    | **Superseded** | Remplacé par un autre ADR                      |
-| ⏳    | **À rédiger**  | Identifié comme nécessaire                     |
+| Icône | Statut         | Description                                                                                            |
+| ----- | -------------- | ------------------------------------------------------------------------------------------------------ |
+| 🟡    | **Proposed**   | ADR rédigé, en attente de décision                                                                     |
+| 🟢    | **Accepted**   | Décision prise, ADR figé                                                                               |
+| 🔵    | **Tested**     | Invariants prouvés par la suite de tests (cf. [ADR-0043](ADR-0043-adr-tested-status-as-proof-gate.md)) |
+| 🟠    | **Suspended**  | ADR proposé, bloqué par une dépendance externe                                                         |
+| ⚪    | **Superseded** | Remplacé par un autre ADR                                                                              |
+| ⏳    | **À rédiger**  | Identifié comme nécessaire                                                                             |
 
 ---
 
@@ -69,10 +70,16 @@
 1. PROPOSED   → ADR rédigé, options documentées
 2. REVIEW     → Discussion, ajustements
 3. ACCEPTED   → Décision prise, ADR figé (date + décideurs)
-4. SUPERSEDED → Remplacé par un autre ADR (lien vers successeur)
+4. TESTED     → Invariants prouvés par tests citant I<N> (ADR-0043)
+5. SUPERSEDED → Remplacé par un autre ADR (lien vers successeur)
 ```
 
-**Règle fondamentale** : Un ADR ACCEPTED ne se modifie plus. Si la décision change, on crée un nouvel ADR qui SUPERSEDES l'ancien.
+**Règle fondamentale** : Un ADR `Accepted` ou `Tested` ne se modifie plus. Si la décision change, on crée un nouvel ADR qui supersède l'ancien. La transition `Accepted → Tested` n'est pas une modification de la décision — c'est la matérialisation de sa preuve par les tests (ADR-0030).
+
+**Trichotomie de testabilité** (ADR-0043) :
+- ADR avec `Invariants impactés` → `Tested` requiert citation `I<N>` (bare token avec frontière de mot, ou `[I<N>]`) dans les tests pour chaque ID.
+- ADR sans invariants mais avec sémantique runtime → `Tested` requiert couverture de la sémantique (jugement, sans citation d'ID).
+- ADR purement process/structurel (phasage, périmètre, conventions doc, monorepo, i18n, workflow) → reste `Accepted` perpétuellement (état terminal).
 
 ---
 
