@@ -6,7 +6,7 @@
 
 | Champ | Valeur |
 |-------|--------|
-| **Statut** | 🟢 Accepted |
+| **Statut** | 🔵 Tested |
 | **Date** | 2026-04-07 |
 | **Décideurs** | @ncac |
 | **RFC liée** | [composer.md](../rfc/4-couche-concrete/composer.md), [communication.md](../rfc/2-architecture/communication.md) §8.2, [lifecycle.md](../rfc/2-architecture/lifecycle.md) §4 |
@@ -703,3 +703,4 @@ TypeScript refuse `event.name` dans le body — cohérent.
 | Date | Changement |
 |------|------------|
 | 2026-04-07 | Création (Proposed) — suite à l'analyse d'élégance du contrat Composer |
+| 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

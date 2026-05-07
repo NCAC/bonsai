@@ -30,20 +30,25 @@ rembourse integralement en DX — et ce pour **chaque composant** :
 |       -> TChannelDefinition : Commands, Events, Requests types    |
 |       -> TEntityStructure   : etat jsonifiable                    |
 |                                                                   |
-|     View / Behavior                                               |
-|       -> TUIMap : noeuds DOM, type HTML, events autorises         |
-|         (les CSS selectors ne viennent qu'en dernier)             |
+|     View / Behavior (pattern modulaire ADR-0042)                  |
+|       -> TFeatureContract : map { ns -> { feature, listens, ... }}|
+|       -> TUIContract      : map { uiKey -> ui<TEl>()(events) }    |
+|       -> TUIElements<TUI> : map { uiKey -> selecteur CSS }        |
+|       -> TViewContract<F,U> : composition { features: F; ui: U }  |
 |                                                                   |
 |  2. IMPLEMENTER LA CLASSE                                         |
-|     Feature -> extends Feature<TEntityClass, TChannel>            |
-|            -> implements TRequiredCommandHandlers<TChannel>        |
-|     View   -> extends View<TViewCapabilities> (ADR-0024)          |
+|     Feature -> extends Feature<TEntityClass, TChannelDef, TSelfNS>|
+|            -> static channel: TChannelToken<TChannelDef, TSelfNS> |
+|            -> handlers onXxxCommand/Request auto-decouverts (I48) |
+|     View   -> extends View<TViewContract<F, U>>                   |
+|            -> implements TViewCallbacks<TVC>  (I88, ADR-0042)     |
 |                                                                   |
 |  3. RECOMPENSE AUTOMATIQUE                                        |
 |     Feature -> handlers onXXXCommand/Event/Request auto-types     |
 |            -> payloads types, retours verifies compile-time        |
-|     View   -> handlers onXXXClick/Input auto-generes (D48)        |
-|            -> getUI() : TProjectionNode<HTMLButtonElement>         |
+|     View   -> handlers on{NS}{Event}Event imposes par TVC.features|
+|            -> handlers on{UIKey}{DomEvent} imposes par TVC.ui     |
+|            -> getUI(k): TProjectionNode<TEl> (TEl extrait du TUIEntry)|
 |     Tous   -> Refactoring : renommer un symbole = erreur partout  |
 |            -> Zero runtime surprise : tout verifie au build       |
 +------------------------------------------------------------------+

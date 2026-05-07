@@ -8,10 +8,21 @@
 |-------------------|--------------------------------------------------|
 | **Périmètre**     | Code applicatif framework (Views, Features, Entities, Channels, DOM) |
 | **Ne couvre pas** | La pipeline de build (voir [BUILD-CODING-STYLE](BUILD-CODING-STYLE.md)) |
-| **Statut**        | 🟢 Active                                        |
+| **Statut**        | 🟢 Active — exemples antérieurs à ADR-0039/0040/0042 marqués comme historiques (cf. encadré ci-dessous) |
 | **Créé le**       | 2026-03-17                                        |
-| **Mis à jour**    | 2026-04-20                                        |
-| **Dépend de**     | RFC-0001, RFC-0002, ADR-0001, ADR-0005            |
+| **Mis à jour**    | 2026-05-07                                        |
+| **Dépend de**     | RFC-0001, RFC-0002, ADR-0001, ADR-0005, **ADR-0039**, **ADR-0040**, **ADR-0042** |
+
+> **⚠ État du guide (2026-05-07)** — Plusieurs exemples utilisent encore
+> `this.request(Pricing.channel, ...)` (forme `Channel<TDef>` non-typée
+> historique), `TUIMap` (pré-ADR-0042) et `BonsaiRegistry.registerFeature(...)`
+> (Mode ESM Modulaire — Strate 2). Les patterns courants à utiliser :
+>
+>   - **Feature** : `class extends Feature<E, TDef, "ns">` avec `static readonly channel: TChannelToken<TDef, "ns">` (ADR-0040). Plus de `static namespace` (I68 / ADR-0039).
+>   - **Manifest applicatif** : `new Application({ foundation, features }).start()` où `features satisfies StrictManifest<AppManifest>`.
+>   - **View** : `extends View<TViewContract<F, U>>` + `implements TViewCallbacks<TVC>` (ADR-0042 — I88). Trois getters : `features` / `uiEvents` / `uiElements`. Plus de `params` / `TUIMap` / `TViewParams` / `TViewCapabilities`.
+>   - **Helper UI** : `ui<TEl>()(events)` curryfié (I85).
+>   - **callTrigger / callRequest** : `this.callTrigger("ns:cmd", payload)` / `this.callRequest("ns:req", params)` — plus de `Channel.channel` token explicite côté View.
 
 > ### Périmètre
 > Ce guide s'applique au **code applicatif** écrit avec le framework Bonsai :

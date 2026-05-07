@@ -5,6 +5,19 @@
 
 [← Retour aux guides](../README.md)
 
+> **⚠ État du guide (2026-05-07)** — Les exemples de ce document datent
+> d'avant ADR-0039 (manifest applicatif typé) et ADR-0042 (pattern modulaire
+> consommateur). Les patterns illustrés (`static readonly namespace`,
+> `TUIMap`, `TBehaviorParams<TUI>`, `Behavior<[Channels], TUI>`) doivent être
+> lus comme **historiques**. Les briques courantes à utiliser pour
+> implémenter un FormBehavior (Strate 2) sont :
+>
+>   - **Feature** : `class extends Feature<E, TDef, "ns">` + `static readonly channel: TChannelToken<TDef, "ns">` (ADR-0040). Plus de `static namespace` (I68).
+>   - **Pattern modulaire ADR-0042** : `features: TFeatureContract` + `uiEvents: TUIContract` + `uiElements: TUIElements<typeof uiEvents>` + `extends X<TXxxContract>` + `implements TXxxCallbacks<TXxxContract>` (I88).
+>   - **Manifest applicatif** : `new Application({ foundation, features }).start()` avec `satisfies StrictManifest<AppManifest>` (ADR-0039).
+>
+> Le guide sera réécrit à la livraison de FormBehavior (ADR-0009 — Strate 2).
+
 ---
 
 | Champ          | Valeur                                                                                                                                                     |

@@ -221,14 +221,12 @@ type TAnyEventPayload = {
 ### 8.1 Resolution des declarations
 
 Au bootstrap (`start()`), Radio execute la resolution.
-Les instances Channel existent deja -- creees lors des `register()` (D15).
+Les instances Channel existent deja -- creees lors de la **Phase 1 du bootstrap** à partir du manifest applicatif (ADR-0039 — D15).
 
 1. **Collecte** toutes les déclarations :
-   - `Feature.namespace`, `Feature.listen`, `Feature.request`
-   - `View.params` : `listen`, `trigger`, `request` (ADR-0024 value-first)
-   - `Behavior.params` : `listen`, `trigger`, `request`
-   - `Foundation.params` : `listen`, `trigger`, `request`
-   - `Composer.params` : `listen`, `request` (ADR-0024 value-first)
+   - **Feature** : namespace fourni par le manifest applicatif (ADR-0039) ; les channels externes écoutés sont déclarés via `static channels: readonly string[]` (ADR-0040 — `Channel<TDef>` typé) ; les handlers sont auto-découverts par convention `on{Name}Command/Request/Event` (I48)
+   - **View / Behavior** : pattern modulaire ADR-0042 — `features: TFeatureContract` (Feature-groupé : `{ ns: { feature, listens, triggers, requests } }`) + `uiEvents: TUIContract` + `uiElements: TUIElements<typeof uiEvents>`
+   - **Foundation** / **Composer** : `Readonly<Record<string, typeof Composer>>` pour `composers` (ADR-0038 — I67) ; déclarations channel via le pattern modulaire ADR-0042 quand applicable
 
 2. **Resout les tokens** : chaque `Namespace.channel` reference en
    `listen`/`trigger`/`request` est associe a l'instance Channel
@@ -246,7 +244,7 @@ Les instances Channel existent deja -- creees lors des `register()` (D15).
 
 **Pour chaque Feature enregistree :**
 
-1. Recuperer l'instance Channel deja creee au `register()` (D15)
+1. Recuperer l'instance Channel deja creee à la Phase 1 du bootstrap (D15, ADR-0039)
 2. Introspecter les methodes `onXXX`
 3. Pour chaque `onXxxCommand` -> enregistrer dans le registre `commandHandlers`
 4. Pour chaque `onXxxRequest` -> enregistrer dans le registre `requestRepliers`
@@ -343,35 +341,41 @@ const app = createApplication({
 
 > **Note** : `requestTimeout` a été supprimé — `request()` est synchrone (D9 révisé par [ADR-0023](../../adr/ADR-0023-request-reply-sync-vs-async.md)). Le replier lit l'état de son Entity en mémoire, aucun timeout n'a de sens.
 
-### 9.6 Channel runtime — infrastructure interne (D15)
+### 9.6 Channel runtime — infrastructure interne (D15, post-ADR-0039)
 
-L'instance runtime `Channel` est un objet **interne au framework**, créé automatiquement
-lors de `Application.register()` (D15). Le développeur ne la voit jamais.
+L'instance runtime `Channel<TDef>` (ADR-0040 — typé) est un objet **interne au framework**, créé automatiquement par `Radio.channel(namespace)` lors de la **Phase 1 du bootstrap**, à partir des entrées du **manifest applicatif** passé au constructeur d'`Application` (ADR-0039). Le développeur ne la voit jamais.
 
 | Facette | Nature | Visibilité |
 |---------|--------|------------|
 | `TChannelDefinition` (type) | Contrat de communication tri-lane | Public — exporté |
-| `Channel` (classe runtime) | Registres de handlers, dispatch | Interne framework — jamais exposé |
+| `TChannelToken<TDef, NS>` (token) | Discriminant `{ namespace: NS }` typé | Public — exposé via `Feature.channel` (ADR-0040) |
+| `Channel<TDef>` (classe runtime) | Registres de handlers, dispatch typé | Interne framework — jamais exposé (I80) |
 
 ```
-  Développeur                            Framework
-  ────────────                            ─────────
-  Cart.Channel (type)          →   compile-time only
-  Cart.channel (token)         →   { namespace: 'cart' }
-       │  app.register(CartFeature)
-       └───────────────────────────→   Channel<Cart.Channel>
-                                       │  commandHandlers: Map
-                                       │  eventListeners: Map
-                                       │  requestRepliers: Map
-                                       └─ instance interne, jamais exposée
+  Développeur                                   Framework
+  ────────────                                   ─────────
+  type TCartDef                       →   compile-time only
+  CartFeature.channel: TChannelToken  →   { namespace: 'cart' } typé
+       │  manifest applicatif :
+       │    const features = {
+       │      cart: CartFeature,
+       │    } satisfies StrictManifest<AppManifest>
+       │  new Application({ foundation, features }).start()
+       └────────────────────────────────────→   Phase 1 — Radio.channel('cart')
+                                                ↓
+                                                Channel<TCartDef>
+                                                │  commandHandlers : Map<string, Handler>
+                                                │  eventListeners  : Map<string, Set<Listener>>
+                                                │  requestRepliers : Map<string, Replier>
+                                                └─ instance interne, jamais exposée (I80)
 ```
 
 | Étape | Déclencheur | Action |
 |-------|-------------|--------|
-| **Création** | `app.register(FeatureClass)` | Lit le namespace, crée l'instance Channel, l'enregistre dans Radio |
-| **Câblage** | `app.start()` — bootstrap étape 3 | Introspecte `onXXX`, peuple les registres |
-| **Actif** | Bootstrap étape 5+ | Dispatch les messages entre composants |
-| **Destruction** | `app.stop()` | Vide les registres, déréférence le Channel |
+| **Création** | `app.start()` — Phase 1 | Pour chaque entrée du manifest, `Radio.channel(namespace)` crée le `Channel<TDef>` |
+| **Câblage** | `app.start()` — Phase 3 (Features) | `Feature.bootstrap()` introspecte les `on{Name}Command/Request/Event` (I48), peuple les registres |
+| **Actif** | Phase 4+ | Dispatch typé des messages (Commands unicast / Events broadcast / Requests sync) |
+| **Destruction** | (Strate 2 — `app.stop()`) | Vide les registres, déréférence le Channel |
 
 > L'implémentation runtime peut s'appuyer sur **rxjs** (Subjects, Observables) pour le
 > dispatch et le multicasting. C'est un détail d'implémentation interne — le développeur

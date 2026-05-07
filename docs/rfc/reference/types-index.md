@@ -49,22 +49,44 @@
 | `CommandPayload<TChannel, TName>` | Extrait le type de payload d'un Command | [conventions-typage.md](../6-transversal/conventions-typage.md) |
 | `RequestResult<TChannel, TName>` | Extrait le type de resultat d'un Request (via `infer`) | [conventions-typage.md](../6-transversal/conventions-typage.md) |
 | `declareChannel<T>(ns)` | Utilitaire framework : cree un token leger (`{ namespace }`) type comme `T` | [feature.md](../3-couche-abstraite/feature.md) |
-| `Channel<TDef>` | Classe runtime **interne** au framework — registres de handlers, dispatch, garde-fous. Creee au `register()`, jamais exposee (D15) | [communication.md](../2-architecture/communication.md) |
-| TS `namespace` | Construct TypeScript regroupant Channel, State et token sous un nom unique (D14) | [feature.md](../3-couche-abstraite/feature.md) |
+| `Channel<TDef>` | Classe runtime **interne** au framework (ADR-0040 — typée par `TChannelDefinition`) — registres de handlers, dispatch, garde-fous. Créée à la **Phase 1 du bootstrap** depuis le manifest applicatif (ADR-0039 — D15), jamais exposée (I80) | [communication.md](../2-architecture/communication.md) |
+| `TChannelToken<TDef, NS>` | Token discriminant `{ namespace: NS }` typé par `TDef`. Exposé par `Feature.channel` static (ADR-0040). C'est l'unique pont entre la classe Feature et son contrat de communication | [feature.md](../3-couche-abstraite/feature.md), [communication.md](../2-architecture/communication.md) |
 
-## Types View et UI
+## Types View et UI (ADR-0042 — pattern modulaire)
+
+> **Pré-ADR-0042 : `TUIMap`, `TUIEventFor`, `TViewParams`, `TViewCapabilities`, `TAutoUIEventHandlers`, `TViewTriggerCapability`, `TViewRequestCapability`, `TViewEventHandlers` ont été supprimés.**
+> Le pattern actuel décompose le contrat en **trois modules** indépendants composés par `TViewContract<F, U>`.
+
+### Module Features — TFeatureContract
 
 | Type | Definition | Source |
 |------|------------|--------|
-| `TUIMap<T>` | Contrat de type UI : table de tous les elements DOM avec type d'element HTML (`el`) et evenements autorises (`event`). La cle `root` est **interdite**. Le selecteur CSS n'est pas dans TUIMap (D35) | [view.md](../4-couche-concrete/view.md) |
-| `TUIElements<TUI>` | Table de correspondance nom logique -> selecteur CSS (string libre). Vit dans `params.uiElements`, overridable par le Composer (D34) | [view.md](../4-couche-concrete/view.md) |
-| `TUIEventFor<TUI, K, E>` | Helper type — resout le type d'evenement DOM + `currentTarget` type par l'element HTML declare dans TUIMap (D35) | [view.md](../4-couche-concrete/view.md) |
-| `TViewParams<TUI, TOptions>` | Contrainte de validation pour l'objet params View (ADR-0024). `{ listen, trigger, request, uiElements, behaviors, options }`. `rootElement` n'est **PAS** dans TViewParams (ADR-0026 : fourni par le Composer). Utilisé avec `as const satisfies` pour valider la forme sans élargir les types | [view.md](../4-couche-concrete/view.md) |
-| `TViewCapabilities<TUI, TParams>` | Type dérivé complet d'une View (ADR-0024 value-first). Fusionne les types narrow de la valeur (`typeof params`) et le type purement type-level (`TUI`). Generic de la classe `View<TCapabilities>` | [view.md](../4-couche-concrete/view.md) |
-| `TAutoUIEventHandlers<TUI>` | D48 — Mapped type qui genere automatiquement les signatures de handlers UI depuis TUIMap. Chaque combinaison (cle x event) produit un handler optionnel `on${Capitalize<Key>}${Capitalize<Event>}`. Remplace l'ancien `TUIEvents` | [view.md](../4-couche-concrete/view.md) |
-| `TViewTriggerCapability<TChannels>` | Contraint les appels `trigger()` d'une View aux Commands des Channels declares en `trigger` | [view.md](../4-couche-concrete/view.md) |
-| `TViewRequestCapability<TChannels>` | Contraint les appels `request()` d'une View aux Requests des Channels declares en `request` | [view.md](../4-couche-concrete/view.md) |
-| `TViewEventHandlers<TChannels>` | Alias de `TEventHandlers<TChannels>` — handlers Event optionnels pour les Views | [view.md](../4-couche-concrete/view.md) |
+| `TFeatureContract` | Map `{ namespace → { feature, listens, triggers, requests } }` (ADR-0042). La clé d'objet ≡ le namespace (I87) ; `feature` est `TFeatureRefForNS<NS>` ; les trois lanes sont des `readonly string[]` | [feature.md](../3-couche-abstraite/feature.md), [view.md](../4-couche-concrete/view.md) |
+| `TFeatureRef<TDef, NS>` | Référence Feature : tout objet exposant `channel: TChannelToken<TDef, NS>` (ADR-0040) | [feature.md](../3-couche-abstraite/feature.md) |
+| `TFeatureRefForNS<NS>` | Référence Feature dont le namespace est imposé par la clé du contrat (I87 — vérifié compile-time) | [feature.md](../3-couche-abstraite/feature.md) |
+| `TFlatListens<F>` / `TFlatTriggers<F>` / `TFlatRequests<F>` | Mapped types : aplatissent `TFeatureContract` en map `"ns:event"` → payload. Alimentent les signatures de `callTrigger` / `callRequest` et la génération des handlers | [feature.md](../3-couche-abstraite/feature.md) |
+| `TCommandPayloadFor<F, K>` / `TEventPayloadFor<F, K>` / `TRequestParamsFor<F, K>` / `TRequestResultFor<F, K>` | Extracteurs de payload typé pour une clé `"ns:name"` du contrat | [feature.md](../3-couche-abstraite/feature.md) |
+| `TChannelCallbacks<F>` | Mapped type : signature des handlers `on{NS}{Event}Event` requise par `implements`. Symétrie avec `F.{ns}.listens` (D48 channel) | [feature.md](../3-couche-abstraite/feature.md) |
+
+### Module UI — TUIContract et TUIElements
+
+| Type | Definition | Source |
+|------|------------|--------|
+| `TUIEntry<TEl, TEvts>` | Entrée UI typée : `{ events: TEvts; _el?: TEl }`. Phantom `_el?` encode `TEl` sans allocation runtime (I85). `events: []` = non-interactif explicite (I86) | [view.md](../4-couche-concrete/view.md) |
+| `ui<TEl>()(events)` | Helper curryfié — unique mécanisme de construction d'une `TUIEntry` (I85). La forme curryfiée préserve l'inférence littérale de `events` quand `TEl` est explicité | [view.md](../4-couche-concrete/view.md) |
+| `TUIContract` | `Readonly<Record<string, TUIEntry>>` — module contractuel UI composé par `TViewContract.ui` | [view.md](../4-couche-concrete/view.md) |
+| `TUIElements<TUI>` | Mapped type sur `TUI` : table sélecteurs CSS clé → string. Toute clé orpheline ou manquante → erreur compile (D34) | [view.md](../4-couche-concrete/view.md) |
+| `ExtractEl<TEntry>` | Extrait `TEl` d'une `TUIEntry` via le phantom — utilisé par `getUI(key)` pour préserver le sous-type DOM | [view.md](../4-couche-concrete/view.md) |
+| `TDOMEventFor<S>` | Mappe un nom d'event DOM (`"click"`) vers son type natif (`MouseEvent`) via `HTMLElementEventMap` | [view.md](../4-couche-concrete/view.md) |
+| `TUIEntryHandlers<TKey, TEntry>` / `TUICallbacks<U>` | Génèrent les signatures `on{Key}{Event}` requises par `implements` à partir de `TUIContract`. Symétrie Contract/Callbacks (I88, D48 UI) | [view.md](../4-couche-concrete/view.md) |
+
+### Composition View
+
+| Type | Definition | Source |
+|------|------------|--------|
+| `TViewContract<F, U>` | Composition `{ features: F; ui: U }` (ADR-0042). Un seul générique sur la classe : `View<TVC>` | [view.md](../4-couche-concrete/view.md) |
+| `TViewCallbacks<TVC>` | Clause `implements` unique : `TChannelCallbacks<F> & TUICallbacks<U>` (I88). Couple imposé : `extends View<TVC>` + `implements TViewCallbacks<TVC>` | [view.md](../4-couche-concrete/view.md) |
+| `TViewClass` | `abstract new (...args: any[]) => View<any>` — surface structurelle d'une classe View concrète, indépendante de son contrat. Utilisée par le Composer (variance) | [view.md](../4-couche-concrete/view.md) |
 
 ## Types Projection DOM Reactive
 
@@ -78,12 +100,11 @@
 | `TProjectionTemplate` | Type d'un template compile — objet `{ setup, project, create }` genere par le compilateur PugJS -> PDR | [5-rendu.md](../5-rendu.md) |
 | `TViewNodes<TUI>` | Objet peuple automatiquement par le framework dans `onAttach()`. Chaque cle correspond a une cle de `get templates()` | [view.md](../4-couche-concrete/view.md) |
 
-## Types Behavior
+## Types Behavior (ADR-0042 — pattern modulaire)
 
-| Type | Definition | Source |
-|------|------------|--------|
-| `TBehaviorParams<TUI>` | Type de base des params de tout Behavior : `{ uiElements: TUIElements<TUI> }`. Pas de `rootElement`. Extensible avec des params custom primitifs (D36) | [behavior.md](../4-couche-concrete/behavior.md) |
-| `TBehaviorTemplates<TUI>` | Templates du Behavior — `null` ou `{ [K in keyof TUI]?: TViewTemplateBinding }`. Mode C uniquement (ilots sur ses propres cles ui). Mode B (template root) interdit (D36) | [behavior.md](../4-couche-concrete/behavior.md) |
+> **Pré-ADR-0042 : `TBehaviorParams`, `TBehaviorTemplates` ont été supprimés.**
+> Le pattern actuel est identique à celui de View (I83) : `TFeatureContract` + `TUIContract` + `TUIElements`.
+> La classe Behavior (Strate 2) est paramétrée par un seul générique de type `TBehaviorContract` analogue à `TViewContract`. Elle réutilise `TChannelCallbacks` + `TUICallbacks` pour son `implements`.
 
 ## Types Composer
 

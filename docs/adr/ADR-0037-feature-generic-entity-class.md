@@ -2,7 +2,7 @@
 
 | Champ                   | Valeur                                                                                                                                                                    |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Statut**              | � Accepted                                                                                                                                                                |
+| **Statut**              | 🔵 Tested                                                                                                                                                                |
 | **Date**                | 2026-04-21                                                                                                                                                                |
 | **Décideurs**           | @ncac                                                                                                                                                                     |
 | **RFC liée**            | [feature.md](../rfc/3-couche-abstraite/feature.md), [entity.md](../rfc/3-couche-abstraite/entity.md), [conventions-typage.md](../rfc/6-transversal/conventions-typage.md) |
@@ -357,3 +357,4 @@ class CartFeature
 | Date       | Changement                                                                     |
 | ---------- | ------------------------------------------------------------------------------ | --- | ---------- | ------------------------------------------- |
 | 2026-04-21 | Création (Proposed) — déclenchée par les casts répétés dans les tests strate-0 |     | 2026-04-21 | Accepted après relecture — Option B retenue |
+| 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

@@ -39,7 +39,7 @@ référencée dans toute la documentation.
 
 | Terme               | Définition |
 |----------------------|------------|
-| **Application**      | Instance persistante légère. Point d'entrée et de sortie du framework. Orchestre le bootstrap (enregistrement Features, vérification unicité namespaces, câblage Radio, création Foundation et Composers) et le shutdown (destruction propre). Dormante au runtime — aucun rôle actif. Détient la configuration globale (D6). En Mode ESM Modulaire, la pré-étape `BonsaiRegistry.collect()` alimente `register()` avant `start()` (ADR-0019). |
+| **Application**      | Instance persistante légère. Point d'entrée et de sortie du framework. Construite via `new Application({ foundation, features })` où `features` est le **manifest applicatif typé** (ADR-0039 — clé = namespace). Orchestre le bootstrap en 4 phases (Channels → Entities implicites → Features+`bootstrap()`/`onInit` → Foundation.attach) et le shutdown (Strate 2). Dormante au runtime — aucun rôle actif (D6). Aucun `register()` runtime (ADR-0039). |
 | **Behavior**         | Plugin UI réutilisable et **aveugle** (D36), attaché à une View. Enrichit le comportement visuel (interactions DOM, animations) via ses propres clés ui, ses propres handlers UI auto-dérivés depuis `TUIMap` (D48), ses propres Channels et ses propres templates Mode C (îlots). Aucun **domain state** (I30). localState de présentation autorisé sous 5 contraintes (I42, D37). N'a aucun accès à sa View hôte — pas de `this.view` (I44). Alt. N1+N2 sur ses propres clés ui uniquement (I45). Pas de slots, pas de Composers. Ne peut jamais utiliser `emit()` (D7). Cycle de vie lié à sa View. |
 | **BonsaiRegistry**   | Singleton du runtime Bonsai, exporté par `bonsai.esm.js`. Point de collecte des modules ESM : chaque module appelle `registerFeature()` / `registerView()` etc. au top-level, puis l'Application appelle `collect()` pour obtenir un snapshot immuable. Le registry est verrouillé après `collect()`. Existe uniquement en Mode ESM Modulaire (ADR-0019). Nature : composant runtime, comme Radio. |
 | **Channel**          | Contrat de communication typé d'une Feature. Définit trois voies (tri-lane) : commands (1:1), events (1:N), requests (1:1 **synchrone**, D9 révisé par [ADR-0023](../../adr/ADR-0023-request-reply-sync-vs-async.md)). Identifié par le namespace de sa Feature propriétaire. |
@@ -64,10 +64,20 @@ référencée dans toute la documentation.
 | **TProjectionRead**   | Type de lecture seule sur un @ui DOM : `value()`, `checked()`, `getAttr()`, `getText()`, `hasClass()`. Retourné par `getUI(key)` pour les @ui couverts par un template (N2/N3). |
 | **Module contractuel** | (ADR-0042) Brique réutilisable de contrat consommateur : `TFeatureContract` (Feature-groupé : channels par Feature), `TUIContract` (entrées DOM typées avec events), `TUIElements<TUI>` (sélecteurs CSS overridables D34). Chaque composant compose son propre `T{Component}Contract` à partir des modules dont il a besoin (View = features+ui, Composer = features seul, Behavior = features+ui+spécificités, Foundation = vide en strate 0). |
 | **TFeatureContract** | Module contractuel des interactions channel **Feature-groupées** (ADR-0042). Une entrée par Feature consommée : `{ feature: typeof CartFeature; listens: ["itemAdded"]; triggers: ["addItem"]; requests: [] }`. La clé d'objet (`cart`) DOIT correspondre au namespace de la Feature (I87). Remplace `TConsumerDeps` (lane-groupé d'ADR-0041, supprimé). |
+| **TFeatureRef<TDef, NS>** | Contrainte structurelle minimale d'une référence Feature (ADR-0040, ADR-0042) : tout objet exposant `channel: TChannelToken<TDef, NS>`. Sert de borne supérieure dans `TFeatureContract` et les types dérivés. |
+| **TFeatureRefForNS<NS>** | Spécialisation de `TFeatureRef` où le namespace est imposé par la clé du contrat (I87). Utilisé dans la signature de `TFeatureContract` pour vérifier compile-time que `channel.namespace === clé`. |
+| **TFlatListens<F> / TFlatTriggers<F> / TFlatRequests<F>** | Mapped types qui aplatissent un `TFeatureContract` Feature-groupé en map plate `"namespace:eventName"` → payload (ADR-0042). Alimentent les signatures des méthodes consommateur (`callTrigger`, `callRequest`) et la génération des handlers requis. |
+| **TCommandPayloadFor<F, K>** | Extracteur de payload typé pour une clé `"ns:cmd"` du contrat (ADR-0042). Utilisé dans la signature de `callTrigger` pour inférer exactement le payload depuis la classe Feature référencée. |
+| **TEventPayloadFor<F, K>** | Extracteur de payload typé pour une clé `"ns:event"` du contrat (ADR-0042). Utilisé dans la signature des handlers `on{NS}{Event}Event` générés par `TChannelCallbacks`. |
+| **TRequestParamsFor<F, K> / TRequestResultFor<F, K>** | Extracteurs des params et du résultat typés pour une clé `"ns:req"` du contrat (ADR-0042). Utilisés dans la signature de `callRequest`. |
+| **TChannelCallbacks<F>** | Mapped type qui génère depuis `TFeatureContract` les signatures `on{NS}{Event}Event(payload): void` requises par `implements` (ADR-0042 — D48 channel). Symétrie : pour chaque clé de `F.{ns}.listens`, un handler imposé. |
+| **TUIEntry<TEl, TEvts>** | Entrée UI typée d'un `TUIContract` (ADR-0042) : `{ events: TEvts; _el?: TEl }`. Le phantom `_el?` encode `TEl` sans allocation runtime (I85). `events: []` = entrée non-interactive explicite (I86). Construit via `ui<TEl>()(events)`. |
+| **TUICallbacks<U>** | Mapped type qui génère depuis `TUIContract` les signatures `on{UIKey}{DomEvent}` requises par `implements` (ADR-0042 — D48 UI). Pour chaque clé `K` d'`U` et chaque event `E ∈ U[K].events`, un handler `on${Capitalize<K>}${Capitalize<E>}(e: TDOMEventFor<E>)` imposé. |
 | **TUIContract** | Module contractuel des nœuds DOM typés (ADR-0042). `Readonly<Record<string, TUIEntry>>` où chaque `TUIEntry<TEl, TEvts>` porte les events DOM (`["click"]`) et un phantom `_el?: TEl` pour le typage de `getUI(k).element() → TEl`. Le sélecteur CSS n'est PAS dans ce module — il vit dans `TUIElements`. |
 | **TUIElements<TUI>** | Map nom → sélecteur CSS, contraint aux clés de `TUI` (ADR-0042). Vit dans le getter concret `get uiElements()` — overridable par le Composer via `resolve() → options.uiElements` (D34, D35). |
 | **TViewContract<F, U>** | Contrat View composé : `{ features: F; ui: U }` où F extends `TFeatureContract` et U extends `TUIContract` (ADR-0042). Un seul générique sur `View<TVC>`. |
 | **TViewCallbacks<TVC>** | Contrat `implements` unique (ADR-0042 C3, I88) : intersection de `TChannelCallbacks<F>` (handlers `on{NS}{Event}Event` requis) et `TUICallbacks<U>` (handlers `on{UIKey}{DomEvent}` requis pour events non-vides). Symétrie totale channel ↔ DOM. |
+| **TViewClass** | Surface structurelle d'une classe View concrète, indépendante de son contrat : `abstract new (...args: any[]) => View<any>` (ADR-0042). Utilisée par les composants orchestrateurs (Composer, Foundation) qui ne dépendent que de la surface publique de `mount()`, pas du `TViewContract` spécifique. Un seul `any` (vs `<any, any>` avant ADR-0042) — un seul générique sur la classe. |
 | **Feature-groupé** | (ADR-0042) Forme de déclaration des interactions channel où chaque Feature consommée est une clé d'objet portant ses lanes (`{ cart: { listens: [...], triggers: [...], requests: [...] } }`). Élimine la répétition du préfixe namespace (`"cart:"`) et co-localise tout ce qui concerne une Feature. Remplace la forme lane-groupée d'ADR-0041 (`{ listens: ["cart:itemAdded"], triggers: [...] }`). |
 | **Helper `ui<TEl>()(events)`** | (ADR-0042 I85) Fonction factory curryfiée qui construit une `TUIEntry<TEl, TEvts>`. `TEl` annoté explicitement, `events` inféré littéralement via `const TEvts`. La forme curryfiée contourne une limitation TypeScript (le `const` modifier ne préserve pas le littéral si un seul type arg explicite + défauts). |
 | **Symétrie Contract/Callbacks** | (ADR-0042 C15, I88) Règle universelle : tout package Bonsai exposant un `T{Component}Contract` DOIT exposer un `T{Component}Callbacks<TC>` correspondant. Les composants concrets écrivent toujours la paire `extends X<TXxxContract>` + `implements TXxxCallbacks<TXxxContract>`. « On respecte toujours un contrat signé. » |
@@ -227,12 +237,14 @@ Questions architecturales. Chaque question est soit résolue (✅), soit en atte
 | Composer | `XComposer` | `SidebarComposer`, `MainContentComposer`, `HeaderComposer` |
 | Foundation | `AppFoundation` (unique) | `AppFoundation` |
 
-### Namespace Feature (clé d'identité universelle)
+### Namespace Feature (clé d'identité universelle, ADR-0039)
 
 - Format : **`camelCase` plat** — pas de hiérarchie, pas de `/` ni `.`
-- Déclaration : **explicite** dans la définition de la Feature (`static namespace = 'cart'`)
-- Unicité : **obligatoire** dans toute l'application — collision = erreur au bootstrap
-- Rôle triple : identité du Channel, clé de l'Entity dans le store logique, préfixe des messages
+- Réservés : `'local'` (I71), `'router'` (I28) — interdits par `StrictManifest<M>` (compile-time)
+- Déclaration : **portée par le manifest applicatif typé** (clé d'objet — I68). Aucun `static namespace` sur la classe Feature. Le namespace est passé au constructeur `(namespace) => Feature<...>` lors de la Phase 3 du bootstrap
+- Conformité : `TSelfNS` du paramètre générique de la classe Feature **doit** correspondre à la clé du manifest (I72) — vérifié compile-time par `StrictManifest<AppManifest>`
+- Unicité : garantie par la nature `Record` du manifest (I22) — collision impossible compile-time
+- Rôle triple : identité du Channel (`Radio.channel(namespace)`), clé du store logique d'Entity, préfixe des messages (`namespace:messageName`)
 
 ### Nommage des messages
 

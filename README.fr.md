@@ -39,9 +39,10 @@ La plupart des frameworks frontend te _laissent_ structurer une app. Bonsai te *
 ## Aperçu rapide
 
 ```ts
-// Feature — possède le state, gère les commands, émet des events
-class CartFeature extends Feature<CartEntity> {
-  static readonly namespace = "cart" as const;
+// Feature — possède le state, gère les commands, émet des events.
+// Le namespace vient du manifest applicatif typé (ADR-0039) — plus de `static namespace`.
+class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
+  static readonly channel: TChannelToken<TCartDef, "cart"> = { namespace: "cart" };
   protected get Entity() { return CartEntity; }
 
   onAddItemCommand(payload: TCartItem): void {
@@ -53,20 +54,48 @@ class CartFeature extends Feature<CartEntity> {
   }
 }
 
-// View — uniquement DOM, ne possède jamais de state
-class CartView extends View {
-  get params() { return cartViewParams; }
+// View — contrat modulaire (ADR-0042) : features + uiEvents + uiElements.
+const cartViewFeatures = {
+  cart: { feature: CartFeature, listens: ["itemAdded"] as const,
+          triggers: ["addItem"] as const, requests: [] as const },
+} satisfies TFeatureContract;
 
-  // Auto-dérivé depuis uiElements.addButton + event DOM "click"
+const cartViewUiEvents = {
+  addButton: ui<HTMLButtonElement>()(["click"]),
+  itemCount: ui<HTMLSpanElement>()([]),
+} satisfies TUIContract;
+
+const cartViewUiElements = {
+  addButton: "[data-ui='addButton']",
+  itemCount: "[data-ui='itemCount']",
+} satisfies TUIElements<typeof cartViewUiEvents>;
+
+type TCartViewContract = TViewContract<typeof cartViewFeatures, typeof cartViewUiEvents>;
+
+class CartView
+  extends View<TCartViewContract>
+  implements TViewCallbacks<TCartViewContract>
+{
+  get features()   { return cartViewFeatures;   }
+  get uiEvents()   { return cartViewUiEvents;   }
+  get uiElements() { return cartViewUiElements; }
+
+  // Imposé par `events: ["click"]` sur addButton (vérifié compile-time — I88).
   onAddButtonClick(): void {
-    this.callTrigger("cart", "addItem", { productId: "p1", qty: 1, price: 9.99 });
+    this.callTrigger("cart:addItem", { productId: "p1", qty: 1, price: 9.99 });
   }
 
-  // Auto-dérivé depuis le channel écouté "cart" + event "itemAdded"
-  onCartItemAddedEvent(payload: { item: TCartItem }): void {
+  // Imposé par cart.listens: ["itemAdded"] (vérifié compile-time — I82).
+  onCartItemAddedEvent(_payload: { item: TCartItem }): void {
     this.getUI("itemCount").text(String(this.#count++));
   }
 }
+
+// Bootstrap — manifest applicatif typé (ADR-0039).
+new Application({
+  foundation: AppFoundation,
+  features:   { cart: CartFeature } satisfies StrictManifest<{ cart: unknown }>,
+}).start();
 ```
 
 ## Architecture en 30 secondes

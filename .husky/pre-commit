@@ -14,4 +14,8 @@ pnpm test:regression || {
   exit 1
 }
 
+# ── Informatif : statut Tested des ADRs (ADR-0043) ────────
+# Non-bloquant — purement indicatif.
+npx tsx lib/check-adr-tested-status.ts || true
+
 echo "✅ Pre-commit checks passed."

@@ -37,7 +37,7 @@
  *   I82 — Handler manquant → erreur compile via `implements TViewCallbacks`
  *   I83 — Pattern modulaire `T{Component}Contract` réutilisable
  *   I84 — `events: [E, ...]` non-vide impose les handlers DOM correspondants
- *   I85 — `ui<TEl>(events)` est l'unique helper pour TUIEntry
+ *   I85 — `ui<TEl>()(events)` est l'unique helper pour TUIEntry (forme curryfiée)
  *   I86 — `events` toujours présent dans TUIEntry (pas d'optionnel)
  *   I87 — clé d'objet ≡ namespace de la Feature référencée
  *   I88 — symétrie Contract/Callbacks
@@ -286,8 +286,8 @@ function parseNSKey(key: string): { namespace: string; name: string } {
  * } satisfies TFeatureContract;
  *
  * const cartViewUiEvents = {
- *   total:  ui<HTMLSpanElement>([]),
- *   addBtn: ui<HTMLButtonElement>(["click"]),
+ *   total:  ui<HTMLSpanElement>()([]),
+ *   addBtn: ui<HTMLButtonElement>()(["click"]),
  * } satisfies TUIContract;
  *
  * const cartViewUiElements = {

@@ -9,12 +9,28 @@
 | Champ | Valeur |
 |-------|--------|
 | **Composant** | Behavior |
-| **Couche** | Concrete (ephemere) |
+| **Couche** | Concrete (éphémère) |
 | **Source**    | Historique : RFC-0002-api-contrats-typage §10 |
-| **Statut** | Stable |
-| **ADRs liees** | ADR-0007 (contrat Behavior), ADR-0009 (formulaires), ADR-0013 (code reuse), ADR-0015 (localState) |
+| **Statut** | RFC anticipée — Strate 2 (ADR-0028). Pattern modulaire ADR-0042 applicable (cf. encadré ci-dessous). |
+| **ADRs liées** | **ADR-0042 (pattern modulaire — applicable à Behavior par I83)**, ADR-0007 (contrat Behavior), ADR-0009 (formulaires), ADR-0013 (code reuse), ADR-0015 (localState), ADR-0040 (Channel générique) |
 
-> Q7 resolu (D36) : le contrat Behavior est **stabilise**.
+> Q7 résolu (D36) : le contrat Behavior est **stabilisé**.
+
+> **⚠ Mise à jour ADR-0042 (2026-05-06)** — Behavior n'est pas encore implémentée
+> (livraison prévue Strate 2). Les exemples ci-dessous qui utilisent encore
+> `TUIMap`, `TBehaviorParams<TUI>`, `Behavior<[Channels], TUI>` (forme
+> pré-ADR-0042) doivent être lus comme **historiques**. Le pattern à adopter
+> pour l'implémentation Behavior est le **pattern modulaire ADR-0042**,
+> identique à celui de View (I83) :
+>
+>   - Module 1 : `features: TFeatureContract` — Feature-groupé
+>   - Module 2 : `uiEvents: TUIContract` — `ui<TEl>()(events)` typé
+>   - Module 3 : `uiElements: TUIElements<typeof uiEvents>` — sélecteurs CSS
+>   - Composition : `class XBehavior extends Behavior<TBehaviorContract<F, U>> implements TBehaviorCallbacks<TBC>`
+>
+> Les sections suivantes seront **réécrites au démarrage de la Strate 2**, en
+> alignement strict sur l'API livrée. Cf. [view.md §1–3](view.md#1-classe-abstraite-view)
+> pour le pattern modulaire courant déjà implémenté côté View.
 
 ---
 

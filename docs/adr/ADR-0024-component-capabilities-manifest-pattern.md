@@ -2,7 +2,7 @@
 
 | Champ | Valeur |
 |-------|--------|
-| **Statut** | 🟢 Accepted |
+| **Statut** | 🔵 Tested |
 | **Date** | 2026-04-03 |
 | **Amendé le** | 2026-04-07 |
 | **Décideurs** | @ncac |
@@ -626,3 +626,4 @@ de plus que `this` polymorphique, Bonsai utilise un seul generic
 |------|------------|
 | 2026-04-03 | Création (Proposed) — suite à l'audit des déclarations `static readonly` |
 | 2026-04-03 | V1 résolu (consommation unique) — marionext recadré comme prototype |
+| 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

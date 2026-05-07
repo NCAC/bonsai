@@ -39,9 +39,10 @@ Most frontend frameworks let you _structure_ an app. Bonsai **forces** you to st
 ## Quick taste
 
 ```ts
-// Feature — owns state, handles commands, emits events
-class CartFeature extends Feature<CartEntity> {
-  static readonly namespace = "cart" as const;
+// Feature — owns state, handles commands, emits events.
+// Namespace comes from the typed application manifest (ADR-0039) — no `static namespace`.
+class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
+  static readonly channel: TChannelToken<TCartDef, "cart"> = { namespace: "cart" };
   protected get Entity() { return CartEntity; }
 
   onAddItemCommand(payload: TCartItem): void {
@@ -53,20 +54,48 @@ class CartFeature extends Feature<CartEntity> {
   }
 }
 
-// View — DOM-only, never owns state
-class CartView extends View {
-  get params() { return cartViewParams; }
+// View — modular contract (ADR-0042): features + uiEvents + uiElements.
+const cartViewFeatures = {
+  cart: { feature: CartFeature, listens: ["itemAdded"] as const,
+          triggers: ["addItem"] as const, requests: [] as const },
+} satisfies TFeatureContract;
 
-  // Auto-derived from uiElements.addButton + DOM event "click"
+const cartViewUiEvents = {
+  addButton: ui<HTMLButtonElement>()(["click"]),
+  itemCount: ui<HTMLSpanElement>()([]),
+} satisfies TUIContract;
+
+const cartViewUiElements = {
+  addButton: "[data-ui='addButton']",
+  itemCount: "[data-ui='itemCount']",
+} satisfies TUIElements<typeof cartViewUiEvents>;
+
+type TCartViewContract = TViewContract<typeof cartViewFeatures, typeof cartViewUiEvents>;
+
+class CartView
+  extends View<TCartViewContract>
+  implements TViewCallbacks<TCartViewContract>
+{
+  get features()   { return cartViewFeatures;   }
+  get uiEvents()   { return cartViewUiEvents;   }
+  get uiElements() { return cartViewUiElements; }
+
+  // Required by `events: ["click"]` on addButton (compile-time enforced — I88).
   onAddButtonClick(): void {
-    this.callTrigger("cart", "addItem", { productId: "p1", qty: 1, price: 9.99 });
+    this.callTrigger("cart:addItem", { productId: "p1", qty: 1, price: 9.99 });
   }
 
-  // Auto-derived from listened channel "cart" + event "itemAdded"
-  onCartItemAddedEvent(payload: { item: TCartItem }): void {
+  // Required by cart.listens: ["itemAdded"] (compile-time enforced — I82).
+  onCartItemAddedEvent(_payload: { item: TCartItem }): void {
     this.getUI("itemCount").text(String(this.#count++));
   }
 }
+
+// Bootstrap — typed application manifest (ADR-0039).
+new Application({
+  foundation: AppFoundation,
+  features:   { cart: CartFeature } satisfies StrictManifest<{ cart: unknown }>,
+}).start();
 ```
 
 ## Architecture in 30 seconds

@@ -2,7 +2,7 @@
 
 | Champ | Valeur |
 |-------|--------|
-| **Statut** | 🟢 Accepted |
+| **Statut** | 🔵 Tested |
 | **Date** | 2026-04-03 |
 | **Décideurs** | @ncac |
 | **RFC liée** | [communication.md](../rfc/2-architecture/communication.md) |
@@ -253,3 +253,4 @@ Cet anti-pattern est donc documenté **explicitement** dans [anti-patterns.md](.
 |------|------------|
 | 2026-04-02 | Création (Proposed) — issue de la discussion sur l'asynchronicité de `request()` |
 | 2026-04-03 | **Accepted** — Option B retenue. Seule la couche abstraite fait de l'async. Async dans View/Behavior = anti-pattern (code review). Révision D9 + D44 propagée |
+| 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

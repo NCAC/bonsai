@@ -2,7 +2,7 @@
 
 | Champ         | Valeur           |
 | ------------- | ---------------- |
-| **Statut**    | 🟢 Accepted      |
+| **Statut**    | 🔵 Tested      |
 | **Date**      | 2026-03-18       |
 | **Décideurs** | @ncac            |
 | **RFC liée**  | RFC-0002-channel |
@@ -818,3 +818,4 @@ if (price === null) {
 | 2026-03-18 | **Accepted** — Toutes les décisions validées                                                                                                                                                                      |
 | 2026-04-03 | **Amendement ADR-0023** — Request Lane sync : timeout supprimé, erreur → `null` sync, implémentation amendée, I29 révisé                                                                                          |
 | 2026-04-17 | **Amendement observabilité + frontière compile/runtime** — §Observabilité Request Lane (I65, ErrorReporter dev/prod), §Frontière compile-time/runtime (I66, matrice ESM vs bundle). Suite à feedback review PR #2 |
+| 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

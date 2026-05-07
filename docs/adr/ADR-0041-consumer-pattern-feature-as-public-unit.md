@@ -2,7 +2,7 @@
 
 | Champ                   | Valeur                                                                                                                   |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **Statut**              | 🟡 Proposed                                                                                                              |
+| **Statut**              | 🟢 Accepted                                                                                                              |
 | **Date**                | 2026-04-30                                                                                                               |
 | **Décideurs**           | @ncac                                                                                                                    |
 | **RFC liées**           | [communication.md](../rfc/2-architecture/communication.md), [invariants.md](../rfc/reference/invariants.md)             |
@@ -507,3 +507,4 @@ Le même pattern s'applique à `Composer` et `Behavior` sans modification — se
 | ---------- | -------------------------------------------------------------------------------------------- |
 | 2026-04-29 | Création (Proposed) — ADR-0041 initial sur `TListenEntry` et declaration merging             |
 | 2026-04-30 | Réécriture profonde — principe Feature-as-public-unit, pattern consommateur unifié, suppression declaration merging, types `TConsumerDeps`/`TConsumerContract`/`TListenCallbacks` |
+| 2026-05-07 | 🟢 **Accepted** — code mergé sur `develop` (PR #15 et #16) |

@@ -180,45 +180,66 @@ function declareChannel<T extends TChannelDefinition>(ns: T["namespace"]): T {
 }
 ```
 
-### Pattern namespace TypeScript (D14)
+### Pattern actuel — `Channel<TDef>` typé sur la classe Feature (ADR-0040, ADR-0039, ADR-0042)
 
-Chaque Feature exporte un **TS `namespace`** qui regroupe Channel, State et token :
+**Le pattern « TS `namespace` regroupant Channel/State/token » (D14, pré-ADR-0040) est superseded.** Le pattern actuel exporte directement la classe Feature avec son token statique :
 
 ```typescript
-export namespace Cart {
-  export type Channel = TChannelDefinition & {
-    readonly namespace: "cart";
-    readonly commands: {
-      addItem: { productId: string; qty: number };
-      removeItem: { productId: string };
-      clear: void;
-    };
-    readonly events: {
-      itemAdded: { productId: string; qty: number };
-      itemRemoved: { productId: string };
-      cleared: void;
-    };
-    readonly requests: {
-      items: { params: void; result: CartItem[] };
-      total: { params: void; result: number };
-    };
-  };
+import { Feature, type TChannelToken, type TChannelDefinition } from "@bonsai/feature";
+import { Entity } from "@bonsai/entity";
 
-  export type State = TEntityStructure & {
-    items: Array<{ productId: string; qty: number }>;
-    total: number;
+// Type Channel (compile-time uniquement) — peut rester local au fichier.
+type TCartDef = {
+  readonly commands: {
+    addItem: { productId: string; qty: number };
+    removeItem: { productId: string };
   };
+  readonly events: {
+    itemAdded: { productId: string; qty: number };
+    itemRemoved: { productId: string };
+  };
+  readonly requests: {
+    getItemCount: { params: void; result: number };
+    getTotal: { params: void; result: number };
+  };
+};
 
-  export const channel = declareChannel<Channel>("cart");
+// Entity co-localisée (D13).
+class CartEntity extends Entity<{ items: TCartItem[]; total: number }> {
+  protected defineInitialState() { return { items: [], total: 0 }; }
+}
+
+// Feature paramétrée par <TEntityClass, TChannelDefinition, TSelfNS>.
+// `TSelfNS = "cart"` ancre la classe à la clé du manifest applicatif (ADR-0039 — I72).
+// AUCUN `static namespace` (I68) — le namespace vient du constructeur via le manifest.
+export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
+  // Token typé exposé par convention (ADR-0040) — sert d'identifiant pour les
+  // consommateurs (`TFeatureContract.{ns}.feature`) sans exposer la classe Channel.
+  static readonly channel: TChannelToken<TCartDef, "cart"> = { namespace: "cart" };
+
+  // Channels externes écoutés (ADR-0040) — déclaration value-first.
+  static readonly listens = [] as const;
+
+  protected get Entity() { return CartEntity; }
+
+  // C2 — Command handler auto-découvert par convention (I48).
+  onAddItemCommand(payload: TCartDef["commands"]["addItem"]): void {
+    this.entity.mutate("addItem", (draft) => { /* ... */ });
+    this.emit("itemAdded", { productId: payload.productId, qty: payload.qty });
+  }
+
+  // C4 — Reply auto-découvert.
+  onGetItemCountRequest(): number {
+    return this.entity.state.items.length;
+  }
 }
 ```
 
-> `Cart.Channel` pour le type, `Cart.channel` pour le token runtime.
-> Un seul import `{ Cart }` suffit pour tout.
-
-**Pourquoi le mot-clé `namespace` ?** C'est le seul construct TypeScript qui
-réunit **types et valeurs** sous un même nom. Un objet plain ne peut pas
-contenir de types ; une déclaration `type` ne peut pas contenir de valeurs.
+> **Pourquoi plus de `namespace Cart`** ? Le manifest applicatif (ADR-0039) est désormais l'autorité unique des namespaces — il n'a aucun besoin de regrouper « types + valeurs » sous un nom commun, parce que :
+> - Le **type Channel** (`TCartDef`) reste compile-time, importé directement.
+> - Le **token runtime** (`CartFeature.channel`) est porté par la classe elle-même (ADR-0040).
+> - Le **namespace** (`"cart"`) vit comme `TSelfNS` paramétré sur la classe (I72) ET comme clé du manifest (I68).
+> - Les **consommateurs** (View/Behavior/Composer) référencent `typeof CartFeature` dans `TFeatureContract.{ns}.feature` (ADR-0042) — pas de `Cart.Channel` à propager.
 
 ### Co-localisation Channel/Feature (D13)
 
