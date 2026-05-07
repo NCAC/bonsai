@@ -28,7 +28,7 @@
 > | `Application.stop()` / shutdown ordonnée                             | Strate 2     | —                   |
 > | DevTools hooks                                                       | Strate 2     | —                   |
 >
-> **Strate 0 — périmètre effectif** : `Application` exporte `register(FeatureClass)` (validation namespace I24, mot réservé `'local'`), et `start(): void` synchrone en **4 phases** (Channels → Entities implicites → Features+`onInit` (I56) → Foundation.attach). Foundation **obligatoire** au start (I33). `app.foundation` et `app.started` exposés en lecture. Aucun runtime API (I23).
+> **Strate 0 — périmètre effectif (post-ADR-0039)** : `Application` est instanciée via `new Application({ foundation, features })`. Le **manifest applicatif typé** (`features`) est l'autorité unique des namespaces (I68–I72) — vérifié compile-time par `StrictManifest<M>` (camelCase plat, non-réservé, `TSelfNS` aligné sur la clé). Aucun `static namespace` sur les classes Feature (I68). `start(): void` synchrone en **4 phases** (Channels → Entities implicites → Features+`bootstrap()`/`onInit` (I56) → Foundation.attach). Foundation **obligatoire** au start (I33). `app.started` exposé en lecture. Aucun runtime API (I23).
 >
 > Voir aussi : [ADR-0028](../../adr/ADR-0028-implementation-phasing-strategy.md), [ADR-0010](../../adr/ADR-0010-bootstrap-phases.md).
 
@@ -119,50 +119,92 @@ type TBootstrapOptions = {
 ## 2. Classe Application
 
 ```typescript
-class Application {
+import type { StrictManifest, AppNamespace } from "@bonsai/feature";
+import type { Foundation } from "@bonsai/foundation";
+
+/**
+ * Manifest applicatif typé (ADR-0039) — l'autorité unique des namespaces.
+ *
+ * - Clé : namespace (validé camelCase, non-réservé, par `StrictManifest<M>`)
+ * - Valeur : constructeur Feature `(namespace) => Feature<...>`
+ *
+ * Le compile-time vérifie via `satisfies StrictManifest<AppManifest>` que
+ * la classe Feature exposée a `TSelfNS` aligné sur la clé (I72).
+ */
+type TFeaturesManifest = Readonly<
+  Record<string, new (namespace: string) => Feature<any, any, any>>
+>;
+
+type TApplicationOptions<M extends TFeaturesManifest = TFeaturesManifest> = {
+  /** Foundation concrète — obligatoire au `start()` (I33). */
+  readonly foundation?: typeof Foundation;
+  /** Manifest applicatif (clé = namespace, valeur = classe Feature). */
+  readonly features?: M;
+};
+
+class Application<M extends TFeaturesManifest = TFeaturesManifest> {
   /**
-   * Enregistre une Feature aupres de l'application.
-   *
-   * Effet interne (D15) : le framework lit le token namespace
-   * de la Feature et cree l'instance Channel runtime correspondante
-   * (si elle n'existe pas deja). Le Channel est stocke dans Radio
-   * et n'est jamais expose au developpeur.
+   * Construit une Application — déclare le manifest applicatif (ADR-0039).
+   * Aucun side-effect ici ; le bootstrap a lieu dans `start()`.
    */
-  register(feature: typeof Feature): void;
+  constructor(options?: TApplicationOptions<M>);
 
   /**
-   * Demarre l'application — execute la sequence de bootstrap
-   * par phases (ADR-0010).
+   * Démarre l'application — bootstrap synchrone en 4 phases (ADR-0010 simplifié strate 0) :
    *
-   * Si `options.serverState` est fourni (ADR-0014), le framework
-   * pre-peuple les Entities silencieusement avant la phase `'features'`.
+   *   Phase 0 — Validation runtime du manifest (filet ADR-0039 — I70/I71/I72)
+   *   Phase 1 — Channels   : `Radio.channel(namespace)` pour chaque entrée
+   *   Phase 2 — Entities   : créées implicitement par `Feature.bootstrap()`
+   *   Phase 3 — Features   : `new FeatureClass(namespace)` + `bootstrap()` + `onInit` (I56)
+   *   Phase 4 — Foundation : `new FoundationClass()` puis `attach()`
    *
-   * @throws BootstrapError si une phase echoue
+   * @throws si appelée deux fois (pas de re-bootstrap en strate 0)
+   * @throws `BonsaiNamespaceError` si le manifest viole les invariants
+   *         (filet runtime — le compile-time aurait dû l'attraper)
+   * @throws si aucune `foundation` n'a été fournie au constructeur (I33).
    */
-  async start(options?: TBootstrapOptions): Promise<void>;
+  start(): void;
 
-  /**
-   * Arrete l'application — execute la sequence de shutdown
-   * en ordre inverse des phases de bootstrap (ADR-0010).
-   */
-  async stop(): Promise<void>;
-
-  /** Contexte applicatif — disponible apres `start()` */
-  readonly context: TAppContext;
+  /** Vrai après un `start()` réussi. Lecture seule. */
+  readonly started: boolean;
 }
 ```
+
+> **Pas de `register()`** (ADR-0039) — l'enregistrement statique est remplacé par la
+> déclaration value-first du manifest dans le constructeur. Le namespace n'est plus
+> porté par un `static namespace = "..."` sur la classe Feature (I68) mais par la
+> clé du manifest, transmise au constructeur de la Feature `(namespace: string)`.
 
 ---
 
 ## 3. API de bootstrap (ADR-0010)
 
-### `register(FeatureClass)`
+### Manifest applicatif typé (ADR-0039) — remplace `register()`
 
-- Stocke la reference a la classe Feature
-- Lit `Feature.namespace` (derive du token `Namespace.channel`)
-- Cree l'instance `Channel<TChannelDef>` interne (D15) et l'enregistre dans Radio
-- Verifie l'unicite du namespace (I21, I24) — collision = erreur immediate
-- Verifie que le namespace n'est pas `'local'` (I57) ni `'router'` (I28) — reserves
+```typescript
+// type-manifest — l'identité de chaque namespace, sans aucun import de classe.
+export type AppManifest = {
+  cart: unknown;
+  user: unknown;
+};
+export type AppNamespace = keyof AppManifest;
+
+// value-manifest — déclaré au point d'entrée de l'app.
+// `satisfies StrictManifest<AppManifest>` valide compile-time :
+//   • clé camelCase (I21) et non réservée (I71 — `local` interdit)
+//   • clé en correspondance 1:1 avec AppManifest (I24)
+//   • TSelfNS de la classe Feature aligné sur la clé (I72)
+const features = {
+  cart: CartFeature,
+  user: UserFeature,
+} satisfies StrictManifest<AppManifest>;
+
+new Application({ foundation: AppFoundation, features }).start();
+```
+
+- Le **manifest** porte les namespaces ; la classe Feature reçoit son namespace via le constructeur (`new FeatureClass(namespace)`).
+- L'**unicité** des namespaces est garantie par la nature même d'un `Record` (I22) ; le compile-time empêche les collisions.
+- Les namespaces réservés (`'local'` — I57, I71 ; `'router'` — I28) sont rejetés au compile-time par `StrictManifest<M>`, et un filet runtime au `start()` lève `BonsaiNamespaceError` si la validation compile-time a été contournée.
 
 ### `start(options?)`
 
@@ -171,7 +213,7 @@ Si une phase echoue, le bootstrap s'arrete immediatement avec un `BootstrapError
 
 | Phase | `PhaseKey`   | Etapes internes                                                                                                                                                                                                                                                                     |
 | ----- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | `'config'`   | Verification que `register()` a ete appele au moins une fois. Chargement de la configuration.                                                                                                                                                                                       |
+| 1     | `'config'`   | Validation runtime du manifest (filet ADR-0039 — `StrictManifest<M>` aurait dû l'attraper compile-time). Chargement de la configuration.                                                                                                                                          |
 | 2     | `'channels'` | Resolution des declarations (`listen`, `request`) — verifie que les Channels references existent dans Radio. Cablage Radio (introspection `onXXX`, peuplement des registres).                                                                                                       |
 | 3     | `'entities'` | Instanciation des Entities via D17. Instanciation Router. **Si `options.serverState` est fourni** (ADR-0014 H5), le framework itere sur chaque entree et pre-peuple l'Entity correspondante via `entity.populateFromServer(state)` — silencieusement, sans notifications ni Events. |
 | 4     | `'features'` | Couche abstraite active — `onInit()` de chaque Feature. Les Entities sont deja peuplees (soit via `serverState`, soit avec `initialState`).                                                                                                                                         |
