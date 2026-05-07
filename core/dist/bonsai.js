@@ -14719,22 +14719,27 @@ _Radio_instance = { value: void 0 };
 _Radio_constructing = { value: false };
 
 /**
- * @bonsai/view — View base class
+ * @bonsai/view — View base class (ADR-0042)
  *
- * Strate 0 — Capacités :
- *   - trigger("ns:cmd", payload) → envoie un Command typé (I4, ADR-0040, ADR-0041)
- *   - request("ns:req", params)  → interroge un Channel typé (ADR-0040, ADR-0041)
- *   - getUI(key) → TProjectionNode (mutations DOM chirurgicales N1 — D19)
- *   - Auto-discovery D48 : on{UiKey}{DomEvent} → addEventListener
- *   - Auto-discovery I48 : on{Namespace}{EventName}Event → channel.listen
+ * Strate 1 — Capacités :
+ *   - trigger("ns:cmd", payload) → envoie un Command typé via Channel
+ *   - request("ns:req", params)  → interroge un Channel typé
+ *   - getUI(key) → TProjectionNode<TEl> typé au sous-type HTMLElement (phantom)
+ *   - Auto-discovery D48 channel : on{NS}{Event}Event → channel.listen
+ *   - Auto-discovery D48 UI      : on{UIKey}{DomEvent} → addEventListener
  *   - onAttach() lifecycle hook
  *
- * Pattern consommateur unifié (ADR-0041) :
- *   - Étape 1 — `type TMyDeps = { listens: [typeof XFeature]; ... }`  (type pur)
- *   - Étape 2 — `const myContract = { ... } satisfies TViewContract<TMyDeps>`
- *   - Étape 3 — `type TMyContract = typeof myContract`  (préserve les littéraux)
- *   - Étape 4 — `class MyView extends View<TMyDeps, TMyContract>
- *                 implements TListenCallbacks<TMyDeps, TMyContract>`
+ * Pattern modulaire ADR-0042 :
+ *   1. `const features satisfies TFeatureContract` — Feature-groupé
+ *   2. `const uiEvents satisfies TUIContract`      — events DOM + phantom TEl
+ *   3. `const uiElements satisfies TUIElements<typeof uiEvents>` — sélecteurs
+ *   4. `type TVC = TViewContract<typeof features, typeof uiEvents>`
+ *   5. `class XxxView extends View<TVC> implements TViewCallbacks<TVC>`
+ *
+ * Trois getters abstraits :
+ *   - `get features()`   → Feature refs + lanes (structurel, non-overridable)
+ *   - `get uiEvents()`   → events DOM + phantom TEl (structurel)
+ *   - `get uiElements()` → sélecteurs CSS (overridable par Composer D34)
  *
  * Channel reste privé derrière sa Feature (I80) — aucun `TChannelToken` dans
  * la surface publique.
@@ -14745,18 +14750,37 @@ _Radio_constructing = { value: false };
  *   I36 — View ne compose jamais d'autres Views directement
  *   I39 — Accès DOM exclusivement via getUI(key)
  *   I40 — Scope DOM : résolution dans rootElement uniquement
- *   I48 — Handlers auto-découverts par convention de nommage,
- *         déclarés dans contract.listens, vérifiés par implements TListenCallbacks
- *   D48 — UI handlers auto-dérivés depuis uiElements
+ *   I48 — Handlers auto-découverts par convention de nommage
  *   I75 — Aucun `any` dans la surface publique ; casts internes documentés
  *   I80 — Aucun TChannelToken dans la surface publique consommateur
- *   I81 — `contract` est la source de vérité runtime du composant
- *   I82 — Handler manquant → erreur compile via implements TListenCallbacks
- *   I83 — Pattern unifié View / Composer / Behavior
+ *   I81 — `features` / `uiEvents` / `uiElements` sont les sources de vérité
+ *   I82 — Handler manquant → erreur compile via `implements TViewCallbacks`
+ *   I83 — Pattern modulaire `T{Component}Contract` réutilisable
+ *   I84 — `events: [E, ...]` non-vide impose les handlers DOM correspondants
+ *   I85 — `ui<TEl>(events)` est l'unique helper pour TUIEntry
+ *   I86 — `events` toujours présent dans TUIEntry (pas d'optionnel)
+ *   I87 — clé d'objet ≡ namespace de la Feature référencée
+ *   I88 — symétrie Contract/Callbacks
  *
  * @packageDocumentation
  */
-var _View_instances, _View_rootElement, _View_rootEl, _View_mounted, _View_uiElements, _View_listenKeys, _View_registerUIHandlers, _View_registerEventListeners;
+var _View_instances, _View_rootElement, _View_rootEl, _View_mounted, _View_uiSelectors, _View_uiDomEvents, _View_features, _View_registerUIHandlers, _View_registerChannelListeners;
+/**
+ * Helper de construction d'une entrée UI (I85 — unique mécanisme).
+ *
+ * Encode le sous-type TEl via le phantom `_el?` et capture les events runtime.
+ * Forme curryfiée nécessaire pour préserver l'inférence littérale de `events`
+ * tout en spécifiant `TEl` explicitement (limitation TypeScript : `const T`
+ * sur un paramètre ne préserve pas le littéral si un autre paramètre est
+ * passé explicitement avec un défaut).
+ *
+ * @example ui<HTMLButtonElement>()(["click"])           // interactif
+ * @example ui<HTMLSpanElement>()([])                    // non-interactif explicite
+ * @example ui<HTMLInputElement>()(["input", "change"])  // 2 handlers requis
+ */
+function ui() {
+    return (events) => ({ events });
+}
 // ─── ProjectionNode factory ──────────────────────────────────────────────────
 function createProjectionNode(el) {
     return {
@@ -14791,43 +14815,56 @@ function parseNSKey(key) {
     }
     return { namespace: key.slice(0, idx), name: key.slice(idx + 1) };
 }
-// ─── View abstract class ─────────────────────────────────────────────────────
+// ─── View abstract class (ADR-0042) ─────────────────────────────────────────
 /**
- * View — couche présentation paramétrée par ses dépendances Feature et
- * son contrat namespacé (ADR-0041).
- *
- * Paramètres de type :
- *   - `TDeps`     : Features participant à chaque lane (type pur, étape 1)
- *   - `TContract` : contrat namespacé runtime (étape 2 + 3 — `typeof myContract`)
+ * View — couche présentation paramétrée par un seul générique : `TViewContract`.
  *
  * Pattern d'usage :
+ *
  * ```ts
- * type TCartViewDeps = {
- *   readonly listens:  [typeof CartFeature];
- *   readonly triggers: [typeof CartFeature];
- *   readonly requests: [typeof CartFeature];
- * };
+ * import { CartFeature } from "../Cart/cart.feature";
+ * import { View, ui, type TViewContract, type TViewCallbacks,
+ *   type TFeatureContract, type TUIContract, type TUIElements
+ * } from "@bonsai/view";
  *
- * const cartViewContract = {
- *   uiElements: { itemCount: "[data-ui='itemCount']", addBtn: "[data-ui='addBtn']" },
- *   listens:  ["cart:itemAdded"] as const,
- *   triggers: ["cart:addItem"]  as const,
- *   requests: [] as const,
- * } satisfies TViewContract<TCartViewDeps>;
+ * const cartViewFeatures = {
+ *   cart: {
+ *     feature:  CartFeature,
+ *     listens:  ["itemAdded"]  as const,
+ *     triggers: ["addItem"]    as const,
+ *     requests: []             as const,
+ *   },
+ * } satisfies TFeatureContract;
  *
- * type TCartViewContract = typeof cartViewContract;
+ * const cartViewUiEvents = {
+ *   total:  ui<HTMLSpanElement>([]),
+ *   addBtn: ui<HTMLButtonElement>(["click"]),
+ * } satisfies TUIContract;
+ *
+ * const cartViewUiElements = {
+ *   total:  ".cart-total",
+ *   addBtn: "#add-btn",
+ * } satisfies TUIElements<typeof cartViewUiEvents>;
+ *
+ * type TCartViewContract = TViewContract<
+ *   typeof cartViewFeatures,
+ *   typeof cartViewUiEvents
+ * >;
  *
  * class CartView
- *   extends View<TCartViewDeps, TCartViewContract>
- *   implements TListenCallbacks<TCartViewDeps, TCartViewContract>
+ *   extends View<TCartViewContract>
+ *   implements TViewCallbacks<TCartViewContract>
  * {
- *   get contract() { return cartViewContract; }
+ *   get features()   { return cartViewFeatures; }
+ *   get uiEvents()   { return cartViewUiEvents; }
+ *   get uiElements() { return cartViewUiElements; }
  *
- *   onAddBtnClick() {
- *     this.trigger("cart:addItem", { ... });   // ✅ payload inféré
+ *   onCartItemAddedEvent(p: { id: string; qty: number }): void {
+ *     this.getUI("total").text(`${p.qty} items`);  // → TProjectionNode<HTMLSpanElement>
  *   }
- *
- *   onCartItemAddedEvent(payload) { ... }      // ✅ requis par implements
+ *   onAddBtnClick(e: MouseEvent): void {
+ *     this.trigger("cart:addItem", { id: "p1", qty: 1 });  // ✅ payload inféré
+ *   }
  * }
  * ```
  */
@@ -14837,13 +14874,12 @@ class View {
         _View_rootElement.set(this, null);
         _View_rootEl.set(this, null);
         _View_mounted.set(this, false);
-        _View_uiElements.set(this, {});
-        _View_listenKeys.set(this, []);
+        _View_uiSelectors.set(this, {});
+        _View_uiDomEvents.set(this, {});
+        _View_features.set(this, {});
     }
     // ─── Public API ────────────────────────────────────────────────────────
-    /**
-     * Le sélecteur rootElement injecté au mount (I31).
-     */
+    /** Le sélecteur rootElement injecté au mount (I31). */
     get rootElement() {
         return __classPrivateFieldGet(this, _View_rootElement, "f");
     }
@@ -14856,22 +14892,26 @@ class View {
     }
     /**
      * Monte la View sur un rootElement. Appelé par le Composer.
-     * - Lit `get contract()` une seule fois (ADR-0024)
+     * - Lit `get features()` / `get uiEvents()` / `get uiElements()` une seule fois (ADR-0024)
      * - Résout le rootElement dans le DOM
-     * - Auto-discover les UI handlers (D48)
-     * - Auto-discover les Event listeners (I48 — pilotés par contract.listens)
+     * - Auto-discover les UI handlers (D48 UI — pilotés par uiEvents[k].events)
+     * - Auto-discover les Channel listeners (D48 channel — pilotés par features[NS].listens)
      * - Appelle onAttach()
      */
     mount(rootSelector) {
         if (__classPrivateFieldGet(this, _View_mounted, "f"))
             return;
         __classPrivateFieldSet(this, _View_mounted, true, "f");
-        // ADR-0024 : lecture unique du manifeste
-        const contract = this.contract;
-        __classPrivateFieldSet(this, _View_uiElements, contract.uiElements, "f");
-        // Cast vers readonly string[] pour l'enregistrement runtime (I75) — la
-        // contrainte type-level est portée par TContract.
-        __classPrivateFieldSet(this, _View_listenKeys, contract.listens, "f");
+        // ADR-0024 : lecture unique des modules contractuels
+        __classPrivateFieldSet(this, _View_features, this.features, "f");
+        __classPrivateFieldSet(this, _View_uiSelectors, this.uiElements, "f");
+        // Extraction des events DOM par clé UI (runtime D48)
+        const uiEvents = this.uiEvents;
+        const domEventsMap = {};
+        for (const key of Object.keys(uiEvents)) {
+            domEventsMap[key] = uiEvents[key].events;
+        }
+        __classPrivateFieldSet(this, _View_uiDomEvents, domEventsMap, "f");
         __classPrivateFieldSet(this, _View_rootElement, rootSelector, "f");
         __classPrivateFieldSet(this, _View_rootEl, document.querySelector(rootSelector), "f");
         // I34: rootElement must not be document.body itself
@@ -14880,18 +14920,19 @@ class View {
         }
         // Auto-discovery
         __classPrivateFieldGet(this, _View_instances, "m", _View_registerUIHandlers).call(this);
-        __classPrivateFieldGet(this, _View_instances, "m", _View_registerEventListeners).call(this);
+        __classPrivateFieldGet(this, _View_instances, "m", _View_registerChannelListeners).call(this);
         // Lifecycle
         this.onAttach();
     }
     /**
-     * I39 — Accès DOM typé via getUI(key). Résout dans le scope du rootElement (I40).
-     * `K` est contraint à `keyof TContract['uiElements']` — clé invalide refusée compile-time.
+     * I39 — Accès DOM typé via `getUI(key)`. Résout dans le scope du rootElement (I40).
+     * Le retour est `TProjectionNode<TEl>` où `TEl` est extrait du phantom `_el?`
+     * de l'entrée UI déclarée — `element()` retourne le vrai sous-type HTML.
      */
     getUI(key) {
-        const selector = __classPrivateFieldGet(this, _View_uiElements, "f")[key];
+        const selector = __classPrivateFieldGet(this, _View_uiSelectors, "f")[key];
         if (!selector) {
-            throw new Error(`[Bonsai View] Unknown UI key "${key}". Declared keys: ${Object.keys(__classPrivateFieldGet(this, _View_uiElements, "f")).join(", ")}`);
+            throw new Error(`[Bonsai View] Unknown UI key "${key}". Declared keys: ${Object.keys(__classPrivateFieldGet(this, _View_uiSelectors, "f")).join(", ")}`);
         }
         const el = __classPrivateFieldGet(this, _View_rootEl, "f").querySelector(selector);
         if (!el) {
@@ -14900,11 +14941,10 @@ class View {
         return createProjectionNode(el);
     }
     /**
-     * Envoie un Command typé via Channel (I4 — View ne peut qu'envoyer,
-     * jamais émettre, ADR-0040 / ADR-0041).
+     * Envoie un Command typé via Channel (I4 — View ne peut qu'envoyer).
      *
      * `key` est une clé namespacée `"ns:cmd"` ; doit appartenir à
-     * `TContract['triggers']`, sinon erreur compile.
+     * `TFlatTriggers<TVC["features"]>`, sinon erreur compile.
      * Exposé en `protected` — les sous-classes l'appellent depuis les handlers UI.
      */
     trigger(key, payload) {
@@ -14921,12 +14961,12 @@ class View {
         this.trigger(key, payload);
     }
     /**
-     * Effectue une Request synchrone typée vers un Channel déclaré (ADR-0023,
-     * ADR-0040 / ADR-0041). Retourne le résultat typé ou `null` si aucun replier
-     * n'est enregistré côté Feature propriétaire (D44).
+     * Effectue une Request synchrone typée vers un Channel déclaré.
+     * Retourne le résultat typé ou `null` si aucun replier n'est enregistré
+     * côté Feature propriétaire (D44).
      *
      * `key` est une clé namespacée `"ns:req"` ; doit appartenir à
-     * `TContract['requests']`, sinon erreur compile.
+     * `TFlatRequests<TVC["features"]>`, sinon erreur compile.
      */
     request(key, params) {
         const { namespace, name } = parseNSKey(key);
@@ -14935,60 +14975,55 @@ class View {
         return ch.request(name, params);
     }
     // ─── Lifecycle hooks ───────────────────────────────────────────────────
-    /**
-     * Hook appelé après le mount. Override dans les sous-classes.
-     */
+    /** Hook appelé après le mount. Override dans les sous-classes. */
     onAttach() {
         // Default no-op
     }
 }
-_View_rootElement = new WeakMap(), _View_rootEl = new WeakMap(), _View_mounted = new WeakMap(), _View_uiElements = new WeakMap(), _View_listenKeys = new WeakMap(), _View_instances = new WeakSet(), _View_registerUIHandlers = function _View_registerUIHandlers() {
+_View_rootElement = new WeakMap(), _View_rootEl = new WeakMap(), _View_mounted = new WeakMap(), _View_uiSelectors = new WeakMap(), _View_uiDomEvents = new WeakMap(), _View_features = new WeakMap(), _View_instances = new WeakSet(), _View_registerUIHandlers = function _View_registerUIHandlers() {
     const proto = Object.getPrototypeOf(this);
     const methods = Object.getOwnPropertyNames(proto);
-    const DOM_EVENTS = [
-        "Click",
-        "Input",
-        "Change",
-        "Submit",
-        "Focus",
-        "Blur",
-        "Keydown",
-        "Keyup",
-        "Keypress",
-        "Mouseenter",
-        "Mouseleave"
-    ];
-    for (const uiKey of Object.keys(__classPrivateFieldGet(this, _View_uiElements, "f"))) {
+    for (const uiKey of Object.keys(__classPrivateFieldGet(this, _View_uiDomEvents, "f"))) {
+        const events = __classPrivateFieldGet(this, _View_uiDomEvents, "f")[uiKey];
+        if (events.length === 0)
+            continue; // C9 — non-interactif
         const uiKeyPascal = capitalize(uiKey);
-        for (const domEvent of DOM_EVENTS) {
-            const handlerName = `on${uiKeyPascal}${domEvent}`;
-            if (methods.includes(handlerName)) {
-                const selector = __classPrivateFieldGet(this, _View_uiElements, "f")[uiKey];
-                const el = __classPrivateFieldGet(this, _View_rootEl, "f").querySelector(selector);
-                if (el) {
-                    el.addEventListener(domEvent.toLowerCase(), (event) => {
-                        this[handlerName](event);
-                    });
-                }
+        const selector = __classPrivateFieldGet(this, _View_uiSelectors, "f")[uiKey];
+        if (!selector) {
+            throw new Error(`[Bonsai View] UI key "${uiKey}" declared in uiEvents but missing in uiElements.`);
+        }
+        const el = __classPrivateFieldGet(this, _View_rootEl, "f").querySelector(selector);
+        if (!el)
+            continue; // pas d'élément = pas de listener (silencieux)
+        for (const domEvent of events) {
+            const handlerName = `on${uiKeyPascal}${capitalize(domEvent)}`;
+            if (!methods.includes(handlerName)) {
+                throw new Error(`[Bonsai View] Missing handler "${handlerName}" for declared event "${domEvent}" on ui.${uiKey}. ` +
+                    `Add the method or remove "${domEvent}" from uiEvents.${uiKey}.events.`);
             }
+            el.addEventListener(domEvent, (event) => {
+                this[handlerName](event);
+            });
         }
     }
-}, _View_registerEventListeners = function _View_registerEventListeners() {
-    if (__classPrivateFieldGet(this, _View_listenKeys, "f").length === 0)
-        return;
-    for (const key of __classPrivateFieldGet(this, _View_listenKeys, "f")) {
-        const { namespace, name: eventName } = parseNSKey(key);
-        const handlerName = `on${capitalize(namespace)}${capitalize(eventName)}Event`;
-        const handler = this[handlerName];
-        if (typeof handler !== "function") {
-            throw new Error(`[Bonsai View] Missing handler "${handlerName}" for declared listen "${key}". ` +
-                `Add the method or remove "${key}" from contract.listens.`);
-        }
-        // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+}, _View_registerChannelListeners = function _View_registerChannelListeners() {
+    for (const namespace of Object.keys(__classPrivateFieldGet(this, _View_features, "f"))) {
+        const entry = __classPrivateFieldGet(this, _View_features, "f")[namespace];
+        const listens = entry.listens;
+        if (listens.length === 0)
+            continue;
         const ch = Radio.me().channel(namespace);
-        ch.listen(eventName, (payload) => {
-            handler.call(this, payload);
-        });
+        for (const eventName of listens) {
+            const handlerName = `on${capitalize(namespace)}${capitalize(eventName)}Event`;
+            const handler = this[handlerName];
+            if (typeof handler !== "function") {
+                throw new Error(`[Bonsai View] Missing handler "${handlerName}" for declared listen "${namespace}:${eventName}". ` +
+                    `Add the method or remove "${eventName}" from features.${namespace}.listens.`);
+            }
+            ch.listen(eventName, (payload) => {
+                handler.call(this, payload);
+            });
+        }
     }
 };
 
@@ -15260,10 +15295,15 @@ class Foundation {
 _Foundation_body = new WeakMap(), _Foundation_html = new WeakMap(), _Foundation_composerInstances = new WeakMap(), _Foundation_attached = new WeakMap();
 
 /**
- * @bonsai/feature — Types & runtime helpers for namespace authority
+ * @bonsai/feature — Types & runtime helpers
  *
- * Implémente la décision ADR-0039 : autorité, unicité et conformité des
- * namespaces de Feature.
+ * Implémente :
+ *   - ADR-0039 : autorité, unicité et conformité des namespaces de Feature.
+ *   - ADR-0042 : pattern modulaire de contrat consommateur — `TFeatureContract`
+ *     Feature-groupé + helpers d'aplatissement (`TFlatListens`, `TFlatTriggers`,
+ *     `TFlatRequests`) + extracteurs de payload (`TEventPayloadFor`,
+ *     `TCommandPayloadFor`, `TRequestParamsFor`, `TRequestResultFor`) +
+ *     `TChannelCallbacks` (handlers requis dérivés du contrat).
  *
  * Trois rôles assumés par ce module :
  *   1. Types compile-time (`CamelCaseNamespace<S>`, `StrictManifest<M>`,
@@ -15283,6 +15323,11 @@ _Foundation_body = new WeakMap(), _Foundation_html = new WeakMap(), _Foundation_
  *   I70          — toute référence à un namespace externe DOIT être validée
  *   I71          — `RESERVED_NAMESPACES` est une constante framework
  *   I72          — `TSelfNS` doit correspondre à la clé du manifest
+ *   I81 (ADR-0042) — `get features()` est la source de vérité runtime
+ *   I82 (ADR-0042) — `implements TViewCallbacks<TVC>` impose les handlers
+ *   I83 (ADR-0042) — pattern modulaire `T{Component}Contract` réutilisable
+ *   I87 (ADR-0042) — clé d'objet ≡ namespace de la Feature référencée
+ *   I88 (ADR-0042) — symétrie Contract/Callbacks
  *
  * @packageDocumentation
  */
@@ -15686,4 +15731,4 @@ _Application_manifest = new WeakMap(), _Application_started = new WeakMap(), _Ap
     }
 };
 
-export { Application, Channel, Composer, Foundation, immer$1 as Immer, index$1 as RXJS, Radio, index as Valibot, View };
+export { Application, Channel, Composer, Foundation, immer$1 as Immer, index$1 as RXJS, Radio, index as Valibot, View, ui };

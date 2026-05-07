@@ -17,8 +17,17 @@
 
 import { Entity } from "@bonsai/entity";
 import { type TChannelDefinition, type TChannelToken } from "@bonsai/event";
-import { Feature, type TListenCallbacks } from "@bonsai/feature";
-import { View, type TViewContract } from "@bonsai/view";
+import {
+  Feature,
+  type TFeatureContract
+} from "@bonsai/feature";
+import {
+  View, ui,
+  type TViewContract,
+  type TViewCallbacks,
+  type TUIContract,
+  type TUIElements
+} from "@bonsai/view";
 import {
   Composer,
   type TResolveResult,
@@ -85,46 +94,55 @@ export class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart">
   }
 }
 
-// ─── View ───────────────────────────────────────────────────────────────────
+// ─── View (ADR-0042 — pattern modulaire) ────────────────────────────────────
 
-// Étape 1 — dépendances par lane (type pur)
-type TCartViewDeps = {
-  readonly listens:  [typeof CartFeature];
-  readonly triggers: [typeof CartFeature];
-  readonly requests: [typeof CartFeature];
-};
+// Étape 1 — Feature contract (Feature-groupé)
+const cartViewFeatures = {
+  cart: {
+    feature:  CartFeature,
+    listens:  ["itemAdded"] as const,
+    triggers: ["addItem"]   as const,
+    requests: []            as const
+  }
+} satisfies TFeatureContract;
 
-// Étape 2 — contrat namespacé (validé par satisfies)
-const cartViewContract = {
-  uiElements: {
-    itemCount: "[data-ui='itemCount']",
-    total: "[data-ui='total']",
-    addButton: "[data-ui='addButton']",
-    emptyMessage: "[data-ui='emptyMessage']"
-  },
-  listens:  ["cart:itemAdded"] as const,
-  triggers: ["cart:addItem"]   as const,
-  requests: [] as const
-} satisfies TViewContract<TCartViewDeps>;
+// Étape 2 — UI contract (events DOM + phantom TEl)
+const cartViewUiEvents = {
+  itemCount:    ui<HTMLElement>()([]),
+  total:        ui<HTMLElement>()([]),
+  addButton:    ui<HTMLButtonElement>()(["click"]),
+  emptyMessage: ui<HTMLElement>()([])
+} satisfies TUIContract;
 
-// Étape 3 — type dérivé (préserve les littéraux)
-type TCartViewContract = typeof cartViewContract;
+// Étape 3 — sélecteurs CSS (overridable D34)
+const cartViewUiElements = {
+  itemCount:    "[data-ui='itemCount']",
+  total:        "[data-ui='total']",
+  addButton:    "[data-ui='addButton']",
+  emptyMessage: "[data-ui='emptyMessage']"
+} satisfies TUIElements<typeof cartViewUiEvents>;
 
-// Étape 4 — classe
+// Étape 4 — type composé
+type TCartViewContract = TViewContract<
+  typeof cartViewFeatures,
+  typeof cartViewUiEvents
+>;
+
+// Étape 5 — classe (un générique, un implements)
 export class CartView
-  extends View<TCartViewDeps, TCartViewContract>
-  implements TListenCallbacks<TCartViewDeps, TCartViewContract>
+  extends View<TCartViewContract>
+  implements TViewCallbacks<TCartViewContract>
 {
   // Compteur local — la Feature est source de vérité, la View ne stocke
   // qu'un cache d'affichage minimal.
   #itemCount = 0;
 
-  get contract() {
-    return cartViewContract;
-  }
+  get features()   { return cartViewFeatures; }
+  get uiEvents()   { return cartViewUiEvents; }
+  get uiElements() { return cartViewUiElements; }
 
-  // D48 — auto-derived from uiElements.addButton
-  onAddButtonClick(_event: Event): void {
+  // D48 UI — handler requis par TViewCallbacks (events: ["click"] sur addButton)
+  onAddButtonClick(_event: MouseEvent): void {
     this.callTrigger("cart:addItem", {
       productId: `prod-${this.#itemCount + 1}`,
       qty: 1,
@@ -132,7 +150,7 @@ export class CartView
     });
   }
 
-  // I48 — requis par implements TListenCallbacks (handler manquant = erreur compile)
+  // D48 channel — handler requis par TViewCallbacks (cart.listens: ["itemAdded"])
   onCartItemAddedEvent(_payload: { item: TCartItem }): void {
     this.#itemCount += 1;
     this.getUI("itemCount").text(String(this.#itemCount));

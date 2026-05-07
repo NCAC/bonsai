@@ -11,6 +11,7 @@
   },
   "main": "src/bonsai-foundation.ts",
   "types": "src/bonsai-foundation.ts",
+  "src": "./src/bonsai-foundation.ts",
   "dependencies": {
     "@bonsai/composer": "workspace:^"
   }

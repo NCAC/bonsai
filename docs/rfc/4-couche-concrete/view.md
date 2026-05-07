@@ -11,8 +11,19 @@
 | **Composant** | View |
 | **Couche** | Concrete (ephemere) |
 | **Source**    | Historique : RFC-0002-api-contrats-typage §9 |
-| **Statut** | Stable |
-| **ADRs liees** | ADR-0024 (value-first), ADR-0026 (rootElement), ADR-0040 (Channel générique), ADR-0041 (pattern consommateur unifié), ADR-0009, ADR-0013, ADR-0014, ADR-0015, ADR-0017, ADR-0020 |
+| **Statut** | Stable (sections 1–3 en cours de réécriture post-ADR-0042) |
+| **ADRs liees** | **ADR-0042 (pattern modulaire — actuel)**, ADR-0024 (value-first), ADR-0026 (rootElement), ADR-0040 (Channel générique), ADR-0041 (pattern consommateur unifié — superseded pour les types par ADR-0042), ADR-0009, ADR-0013, ADR-0014, ADR-0015, ADR-0017, ADR-0020 |
+
+> **⚠ Mise à jour ADR-0042 (2026-05-06)**
+>
+> Le pattern documenté dans les sections **1–3** (`TConsumerDeps`, `TListenCallbacks`,
+> `View<TDeps, TContract>`, `uiElements: Record<string, string>`) est **superseded**.
+> Le pattern courant — modulaire, Feature-groupé, un seul générique, un seul `implements` —
+> est documenté en **§4.2** et complètement spécifié dans
+> [ADR-0042](../../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md).
+>
+> La réécriture complète des §1–3 est planifiée comme suite des actions de l'ADR-0042 ;
+> en attendant, **§4.2 fait foi** sur le pattern d'API consommateur applicable.
 
 ---
 
@@ -391,73 +402,87 @@ Le `rootElement` d'une View est fourni par le **Composer** via `TResolveResult.r
 > - Si l'element existe → hydratation (SSR, H1)
 > - Si l'element n'existe pas → le framework parse le selecteur CSS et cree l'element (D30, ADR-0026 §3)
 
-### 4.2 UIElements et UIEvents
+### 4.2 UIElements et UIEvents (ADR-0042 — pattern modulaire)
 
-La View **DOIT** declarer ses noeuds d'interaction DOM et leurs evenements.
+La View **DOIT** déclarer ses nœuds d'interaction DOM et leurs événements.
+ADR-0042 introduit trois **modules contractuels** complémentaires :
+
+| Module | Rôle | Mutable au runtime ? |
+|--------|------|---------------------|
+| `TFeatureContract` | Interactions channel par Feature (listens / triggers / requests Feature-groupés) | Non — structurel |
+| `TUIContract` | Nœuds DOM avec **type HTML** + **events DOM déclarés** (sans sélecteurs) | Non — structurel |
+| `TUIElements<TUI>` | Map nom → **sélecteur CSS** (overridable par Composer D34) | Oui — overridable au mount |
+
+La séparation `TUIContract` ↔ `TUIElements` est essentielle :
+- Les **events DOM** (`["click"]`) sont compile-time + runtime — ils pilotent `TViewCallbacks` (handlers requis) ET `addEventListener` au mount. Ils vivent dans le contrat type-level.
+- Les **sélecteurs CSS** (`"#add-btn"`) sont uniquement runtime — un détail d'implémentation que le Composer peut surcharger via `resolve() → options.uiElements` (D34, D35). Ils vivent dans un getter concret séparé.
 
 ```typescript
-// -- 1. Contrat de type -- quels noeuds, quel type HTML, quels evenements possibles --
-
-/**
- * TUIMap : contrat structurel de la View.
- * - `el`    : type d'element HTML (HTMLButtonElement, HTMLInputElement, etc.)
- * - `event` : evenements DOM autorises (tuple de noms d'evenements)
- *
- * La cle `root` est INTERDITE -- reservee pour get templates().
- * Le selecteur CSS n'est PAS dans TUIMap -- c'est un detail d'implementation
- * qui vit dans params.uiElements (D34, D35).
- */
-type TUIMap<T extends Record<string, { el: HTMLElement; event: string[] }>> =
-  'root' extends keyof T ? never : T;
-
-// Exemple concret :
-type TCartViewUI = TUIMap<{
-  addButton:    { el: HTMLButtonElement;  event: ['click'] };
-  totalDisplay: { el: HTMLSpanElement;    event: [] };
-  searchInput:  { el: HTMLInputElement;   event: ['input', 'change'] };
-  itemList:     { el: HTMLUListElement;   event: [] };
-}>;
-
-// -- 2. Auto-discovery des handlers (D48 -- AUTO-UI-EVENT-DISCOVERY) --
-// La recompense directe du contrat TUIMap : le framework derive automatiquement
-// les handlers -- aucun mapping manuel requis.
-//   cle 'addButton' + event 'click'  -> methode onAddButtonClick
-//   cle 'searchInput' + event 'input' -> methode onSearchInputInput
+// ── Module TUIContract — entrées UI typées (sans sélecteurs) ──────────────
 //
-// Convention : on${Capitalize<Key>}${Capitalize<Event>}
-// Meme pattern que D12 (handlers Feature auto-decouverts via onXXX).
-// get uiEvents() N'EXISTE PLUS -- le mapping est automatique.
+// Chaque entrée porte :
+//   - events : événements DOM déclarés (OBLIGATOIRE — `[]` = non-interactif)
+//   - _el?   : phantom TEl (compile-time only) pour le typage de getUI(k).element() → TEl
+//
+// Helper `ui<TEl>()(events)` (forme curryfiée pour préserver l'inférence littérale) :
 
-/**
- * TAutoUIEventHandlers -- genere automatiquement les signatures de handlers
- * depuis le TUIMap. Chaque combinaison (cle x event) produit un handler optionnel.
- */
-type TAutoUIEventHandlers<TUI extends TUIMap<any>> = Partial<{
-  [K in keyof TUI as TUI[K]['event'] extends readonly (infer E extends string)[]
-    ? `on${Capitalize<K & string>}${Capitalize<E>}`
-    : never
-  ]: (event: TUIEventFor<TUI, K & string, TUI[K]['event'][number]>) => void;
-}>;
+const cartViewUiEvents = {
+  addButton:    ui<HTMLButtonElement>()(["click"]),                // interactif
+  totalDisplay: ui<HTMLSpanElement>()([]),                          // non-interactif explicite
+  searchInput:  ui<HTMLInputElement>()(["input", "change"]),        // 2 handlers requis
+  itemList:     ui<HTMLUListElement>()([])
+} satisfies TUIContract;
 
-// -- 3. Helper -- type d'evenement DOM infere depuis TUIMap --
+// ── Module TUIElements — sélecteurs CSS overridables (D34) ────────────────
+//
+// Les clés sont contraintes à matcher TUIContract — aucun orphelin possible.
 
-/**
- * Resout le type d'evenement DOM + currentTarget type par l'element HTML declare.
- * Ex: TUIEventFor<TCartViewUI, 'addButton', 'click'>
- *   -> MouseEvent & { currentTarget: HTMLButtonElement }
- */
-type TUIEventFor<
-  TUI extends TUIMap<any>,
-  K extends keyof TUI & string,
-  E extends TUI[K]['event'][number] & keyof HTMLElementEventMap
-> = HTMLElementEventMap[E] & { currentTarget: TUI[K]['el'] };
+const cartViewUiElements = {
+  addButton:    ".Cart-addButton",
+  totalDisplay: ".Cart-totalDisplay",
+  searchInput:  ".Cart-searchInput",
+  itemList:     ".Cart-itemList"
+} satisfies TUIElements<typeof cartViewUiEvents>;
 
-// -- 4. Resolution -- selecteurs CSS associes aux noms logiques --
-
-type TUIElements<TUI extends TUIMap<any>> = {
-  [K in keyof TUI]: string;
-};
+// ── Auto-discovery D48 UI ──────────────────────────────────────────────────
+//
+// Le framework dérive les handlers DOM requis depuis `uiEvents[k].events` :
+//   addButton + "click"  → onAddButtonClick(e: MouseEvent)
+//   searchInput + "input" → onSearchInputInput(e: Event)
+//
+// Convention : on{UIKey}{DomEvent} (sans suffixe — un click reste un click).
+// `events: []` ne génère aucun handler requis.
+//
+// Symétrie Contract/Callbacks (I84/I88) : déclarer `events: ["click"]` est un
+// engagement compile-time — `implements TViewCallbacks<TVC>` impose la méthode.
 ```
+
+**Sémantique `querySelectorAll`** : le framework résout chaque sélecteur de `uiElements` via `querySelectorAll` dans le scope de la View. Une clé correspond donc à 0, 1 ou N éléments DOM :
+
+- Pour les **events DOM** : la délégation s'applique à TOUS les éléments matchés. Un seul handler `onProductItemAddToBasketClick` couvre N éléments `.ProductItem-addToBasket`.
+- Pour `get composers()` : si une clé est déclarée dans `get composers()`, le framework instancie N Composers — un par élément matché (ADR-0020).
+
+**Override par Composer (D34)** :
+
+```typescript
+// Le Composer peut surcharger les sélecteurs via resolve()
+class MainComposer extends Composer {
+  resolve(_event: unknown | null): TResolveResult | null {
+    return {
+      view: CartView,
+      rootElement: "[data-view='cart']",
+      options: { uiElements: { addButton: "#new-add-btn" } }   // override
+    };
+  }
+}
+```
+
+Le développeur applicatif n'écrit **jamais** de cast manuel — le pattern modulaire garantit que :
+1. `getUI("addButton").element() → HTMLButtonElement` (typage du sous-type via phantom)
+2. `onAddButtonClick(e: MouseEvent)` est requis si `events: ["click"]`
+3. Les sélecteurs sont overridables sans toucher au contrat type-level
+
+Pour le pattern complet (5 étapes : `features` + `uiEvents` + `uiElements` + alias `TVC` + classe), voir [ADR-0042](../../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md) §Exemple applicatif complet.
 
 **Semantique querySelectorAll** : le framework resout chaque selecteur via `querySelectorAll` dans le scope de la View. Une cle TUIMap correspond donc a 0, 1, ou N elements DOM :
 

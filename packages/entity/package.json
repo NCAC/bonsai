@@ -5,6 +5,7 @@
   "type": "module",
   "main": "./src/bonsai-entity.ts",
   "types": "./src/bonsai-entity.ts",
+  "src": "./src/bonsai-entity.ts",
   "dependencies": {
     "@bonsai/immer": "workspace:^"
   }

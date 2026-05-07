@@ -5,6 +5,7 @@
   "type": "module",
   "main": "src/bonsai-feature.ts",
   "types": "src/bonsai-feature.ts",
+  "src": "./src/bonsai-feature.ts",
   "dependencies": {
     "@bonsai/entity": "workspace:^",
     "@bonsai/event": "workspace:^",

@@ -12,29 +12,29 @@ import { describe, it, expect, beforeEach } from "@jest/globals";
 import { resetDOM } from "../../helpers/dom-setup";
 import { Foundation } from "@bonsai/foundation";
 import { Composer, type TResolveResult } from "@bonsai/composer";
-import { View, type TViewContract } from "@bonsai/view";
+import {
+  View,
+  type TViewContract,
+  type TUIContract,
+  type TUIElements
+} from "@bonsai/view";
+import type { TFeatureContract } from "@bonsai/feature";
 
-// ─── Fixtures ────────────────────────────────────────────────────────────────
+// ─── Fixtures (ADR-0042 — pattern modulaire) ─────────────────────────────────
 
-type TSimpleViewDeps = {
-  readonly listens:  readonly [];
-  readonly triggers: readonly [];
-  readonly requests: readonly [];
-};
+const emptyFeatures = {} as const satisfies TFeatureContract;
+const emptyUiEvents = {} as const satisfies TUIContract;
+const emptyUiElements = {} as const satisfies TUIElements<typeof emptyUiEvents>;
 
-const simpleViewContract = {
-  uiElements: {},
-  listens:  [] as const,
-  triggers: [] as const,
-  requests: [] as const
-} satisfies TViewContract<TSimpleViewDeps>;
+type TSimpleViewContract = TViewContract<
+  typeof emptyFeatures,
+  typeof emptyUiEvents
+>;
 
-type TSimpleViewContract = typeof simpleViewContract;
-
-class SimpleView extends View<TSimpleViewDeps, TSimpleViewContract> {
-  get contract() {
-    return simpleViewContract;
-  }
+class SimpleView extends View<TSimpleViewContract> {
+  get features()   { return emptyFeatures; }
+  get uiEvents()   { return emptyUiEvents; }
+  get uiElements() { return emptyUiElements; }
 }
 
 class MainComposer extends Composer {

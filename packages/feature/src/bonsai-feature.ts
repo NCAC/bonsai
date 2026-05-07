@@ -56,18 +56,22 @@ export type {
   ValidatedManifest,
   StrictManifest,
   TBonsaiNamespaceErrorCode,
+  // ── Modules contractuels (ADR-0042) ──────────────────────────────────────
   TFeatureRef,
-  TConsumerDeps,
-  TNSEventKeys,
-  TNSCommandKeys,
-  TNSRequestKeys,
-  TConsumerContract,
-  THandlerName,
-  TEventPayload,
-  TCommandPayload,
-  TRequestParams,
-  TRequestResult,
-  TListenCallbacks
+  TFeatureRefForNS,
+  TFeatureContract,
+  // Helpers d'aplatissement
+  TFlatListens,
+  TFlatTriggers,
+  TFlatRequests,
+  // Extracteurs de payload
+  TEventPayloadFor,
+  TCommandPayloadFor,
+  TRequestParamsFor,
+  TRequestResultFor,
+  // Channel callbacks (symétrie Contract/Callbacks — I88)
+  TChannelHandlerName,
+  TChannelCallbacks
 } from "./types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -142,7 +146,10 @@ export abstract class Feature<
    * sous-classes. Filets de sécurité : `TFeatureClass` (type constructeur),
    * validation runtime dans `Application.start()`, tests de type (`tests/types/`).
    */
-  static readonly listens: readonly TChannelToken<TChannelDefinition, string>[] = [];
+  static readonly listens: readonly TChannelToken<
+    TChannelDefinition,
+    string
+  >[] = [];
 
   /**
    * Tokens des Channels externes interrogés par cette Feature (C5 — ADR-0040, I79).
@@ -153,7 +160,10 @@ export abstract class Feature<
    * **Limitation TypeScript** — `abstract static` n'existe pas.
    * Voir commentaire de `listens` ci-dessus.
    */
-  static readonly queries: readonly TChannelToken<TChannelDefinition, string>[] = [];
+  static readonly queries: readonly TChannelToken<
+    TChannelDefinition,
+    string
+  >[] = [];
 
   readonly #namespace: TSelfNS;
   #entity!: TEntity;
@@ -214,7 +224,9 @@ export abstract class Feature<
     this.#bootstrapped = true;
 
     // Cast sûr par I22 : 1 namespace = 1 Feature = 1 TDef (I75).
-    this.#channel = Radio.me().channel(this.#namespace) as unknown as Channel<TChannelDef>;
+    this.#channel = Radio.me().channel(
+      this.#namespace
+    ) as unknown as Channel<TChannelDef>;
 
     // I22 — Création de l'Entity 1:1 via le getter Entity (D17 amendé par ADR-0037)
     const EntityCtor = this.Entity;
@@ -285,7 +297,9 @@ export abstract class Feature<
       if (match) {
         const commandName = match[1][0].toLowerCase() + match[1].slice(1);
         ch.handle(commandName, (payload: unknown) => {
-          (this as unknown as Record<string, (p: unknown) => void>)[method](payload);
+          (this as unknown as Record<string, (p: unknown) => void>)[method](
+            payload
+          );
         });
       }
     }
@@ -308,7 +322,9 @@ export abstract class Feature<
       if (match) {
         const requestName = match[1][0].toLowerCase() + match[1].slice(1);
         ch.reply(requestName, (params: unknown) => {
-          return (this as unknown as Record<string, (p: unknown) => unknown>)[method](params);
+          return (this as unknown as Record<string, (p: unknown) => unknown>)[
+            method
+          ](params);
         });
       }
     }
@@ -348,7 +364,9 @@ export abstract class Feature<
           const eventName = eventPascal[0].toLowerCase() + eventPascal.slice(1);
 
           ch.listen(eventName, (payload: unknown) => {
-            (this as unknown as Record<string, (p: unknown) => void>)[method](payload);
+            (this as unknown as Record<string, (p: unknown) => void>)[method](
+              payload
+            );
           });
         }
       }

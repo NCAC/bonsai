@@ -8,7 +8,14 @@ libraries:
   # @bonsai/remeda supprimé (ADR-0031 C3 — hors API publique Bonsai)
 
 # Packages: Our in-house packages with possible interdependencies
+# Order = topological (dependencies first)
 packages:
   - "@bonsai/types"
   - "@bonsai/event"
-  # Add other packages here as needed
+  - "@bonsai/error"
+  - "@bonsai/entity"
+  - "@bonsai/feature"
+  - "@bonsai/view"
+  - "@bonsai/composer"
+  - "@bonsai/foundation"
+  - "@bonsai/application"

@@ -27,35 +27,41 @@
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { resetDOM } from "../../helpers/dom-setup";
 import { Composer, type TResolveResult } from "@bonsai/composer";
-import { View, type TViewContract } from "@bonsai/view";
+import {
+  View, ui,
+  type TViewContract,
+  type TUIContract,
+  type TUIElements
+} from "@bonsai/view";
+import type { TFeatureContract } from "@bonsai/feature";
 
-// ─── Fixtures ────────────────────────────────────────────────────────────────
+// ─── Fixtures (ADR-0042 — pattern modulaire) ─────────────────────────────────
 
-type TEmptyDeps = {
-  readonly listens:  readonly [];
-  readonly triggers: readonly [];
-  readonly requests: readonly [];
-};
+const emptyFeatures = {} as const satisfies TFeatureContract;
 
-const cartViewContract = {
-  uiElements: { title: "[data-ui='title']" },
-  listens:  [] as const,
-  triggers: [] as const,
-  requests: [] as const
-} satisfies TViewContract<TEmptyDeps>;
+const cartViewUiEvents = {
+  title: ui<HTMLElement>()([])
+} satisfies TUIContract;
 
-type TCartViewContract = typeof cartViewContract;
+const cartViewUiElements = {
+  title: "[data-ui='title']"
+} satisfies TUIElements<typeof cartViewUiEvents>;
 
-class CartView extends View<TEmptyDeps, TCartViewContract> {
-  get contract() {
-    return cartViewContract;
-  }
+type TCartViewContract = TViewContract<
+  typeof emptyFeatures,
+  typeof cartViewUiEvents
+>;
+
+class CartView extends View<TCartViewContract> {
+  get features()   { return emptyFeatures; }
+  get uiEvents()   { return cartViewUiEvents; }
+  get uiElements() { return cartViewUiElements; }
 }
 
-class CheckoutView extends View<TEmptyDeps, TCartViewContract> {
-  get contract() {
-    return cartViewContract;
-  }
+class CheckoutView extends View<TCartViewContract> {
+  get features()   { return emptyFeatures; }
+  get uiEvents()   { return cartViewUiEvents; }
+  get uiElements() { return cartViewUiElements; }
 }
 
 class ProgrammableComposer extends Composer {
