@@ -119,7 +119,7 @@ src/
 - Metas causales (`correlationId`, `causationId`, `hop`) — stub
 - Anti-boucle I9 (`hop > maxHops`)
 - `noHandler` configurable par mode (dev/prod)
-- Generics `TChannelDefinition` typés — arrive avec Feature
+- ~~Generics `TChannelDefinition` typés~~ — **livré** par [ADR-0040](../../docs/adr/ADR-0040-typescript-first-api-channel-definition-typed.md) : `Channel<TDef>` strictement typé, `TChannelToken<TDef, NS>` exposé par `Feature.channel`
 
 ---
 
