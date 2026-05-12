@@ -25219,26 +25219,85 @@ declare abstract class Feature<TEntity extends Entity<TJsonSerializable> = Entit
  *   I82 — Handler manquant → erreur compile via `implements TViewCallbacks`
  *   I83 — Pattern modulaire `T{Component}Contract` réutilisable
  *   I84 — `events: [E, ...]` non-vide impose les handlers DOM correspondants
- *   I85 — `ui<TEl>(events)` est l'unique helper pour TUIEntry
- *   I86 — `events` toujours présent dans TUIEntry (pas d'optionnel)
+ *   I85 — `ui<TEl>()(events)` est l'unique helper pour TUIEntry (forme curryfiée)
+ *   I86 — `events` toujours présent dans TUIEntry (pas d'optionnel) ; ReadonlyArray<TEventsFor<TEl>> sans doublons
  *   I87 — clé d'objet ≡ namespace de la Feature référencée
  *   I88 — symétrie Contract/Callbacks
+ *   I89 — tout nom d'event déclaré appartient à TEventsFor<TEl> ⊆ keyof HTMLElementEventMap (ADR-0044/0045)
+ *   I90 — pas de doublons dans TUIEntry["events"] — double-binding interdit (ADR-0044)
+ *   I91 — TEventsFor<TEl> est le mapping sémantique officiel Bonsai élément→events (ADR-0045)
  *
  * @packageDocumentation
  */
 
 /**
+ * Events de pointeur : souris, touch, pointer API, molette.
+ * Universels — disponibles sur tout HTMLElement interactif.
+ */
+type TUIPointerEvents = "auxclick" | "click" | "contextmenu" | "dblclick" | "mousedown" | "mouseenter" | "mouseleave" | "mousemove" | "mouseout" | "mouseover" | "mouseup" | "gotpointercapture" | "lostpointercapture" | "pointercancel" | "pointerdown" | "pointerenter" | "pointerleave" | "pointermove" | "pointerout" | "pointerover" | "pointerup" | "touchcancel" | "touchend" | "touchmove" | "touchstart" | "wheel";
+/** Events focus : éléments focusables (boutons, inputs, liens, tabindex). */
+type TUIFocusEvents = "blur" | "focus" | "focusin" | "focusout";
+/** Events clavier : éléments recevant du texte ou des raccourcis. */
+type TUIKeyboardEvents = "beforeinput" | "compositionend" | "compositionstart" | "compositionupdate" | "keydown" | "keypress" | "keyup";
+/** Events presse-papiers. */
+type TUIClipboardEvents = "copy" | "cut" | "paste";
+/** Events drag & drop. */
+type TUIDragEvents = "drag" | "dragend" | "dragenter" | "dragleave" | "dragover" | "dragstart" | "drop";
+/** Events animation CSS et transition CSS. */
+type TUIAnimationEvents = "animationcancel" | "animationend" | "animationiteration" | "animationstart" | "transitioncancel" | "transitionend" | "transitionrun" | "transitionstart";
+/**
+ * Base universelle : events disponibles sur TOUT HTMLElement.
+ * Composition de toutes les catégories non-spécialisées.
+ */
+type TUIBaseEvents = TUIPointerEvents | TUIFocusEvents | TUIKeyboardEvents | TUIClipboardEvents | TUIDragEvents | TUIAnimationEvents;
+/**
+ * Events de valeur : éléments portant une valeur éditable.
+ * Spécifiques à HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement.
+ */
+type TUIFormValueEvents = "change" | "input" | "invalid" | "select" | "selectionchange" | "selectstart";
+/** Events de formulaire-conteneur : HTMLFormElement uniquement. */
+type TUIFormContainerEvents = "formdata" | "reset" | "submit";
+/**
+ * Events de défilement : éléments avec overflow scroll.
+ * NON inclus dans TUIBaseEvents — un bouton ne défile pas.
+ */
+type TUIScrollEvents = "scroll" | "scrollend";
+/** Events media : audio et vidéo. */
+type TUIMediaEvents = "abort" | "canplay" | "canplaythrough" | "cuechange" | "durationchange" | "emptied" | "ended" | "error" | "loadeddata" | "loadedmetadata" | "loadstart" | "pause" | "play" | "playing" | "progress" | "ratechange" | "seeked" | "seeking" | "stalled" | "suspend" | "timeupdate" | "volumechange" | "waiting";
+/** Events de bascule : details, dialog. */
+type TUIToggleEvents = "beforetoggle" | "cancel" | "close" | "toggle";
+/**
+ * Mapping sémantique : sous-type HTMLElement → events DOM autorisés. (ADR-0045)
+ *
+ * - Éléments connus : liste positive d'events sémantiquement cohérents.
+ * - Fallback HTMLElement générique : union large (toutes catégories — non-régressif).
+ *
+ * Intentionnellement plus strict que lib.dom.d.ts pour les éléments connus.
+ * `TEventsFor<TEl>` est un sous-type de `keyof HTMLElementEventMap` (I89).
+ *
+ * @see ADR-0045
+ */
+type TEventsFor<TEl extends HTMLElement> = TEl extends HTMLInputElement | HTMLTextAreaElement ? TUIBaseEvents | TUIFormValueEvents : TEl extends HTMLSelectElement ? TUIBaseEvents | "change" | "input" | "invalid" : TEl extends HTMLFormElement ? TUIBaseEvents | TUIFormValueEvents | TUIFormContainerEvents : TEl extends HTMLButtonElement | HTMLAnchorElement ? TUIBaseEvents : TEl extends HTMLVideoElement ? TUIBaseEvents | TUIMediaEvents | TUIScrollEvents | "enterpictureinpicture" | "leavepictureinpicture" : TEl extends HTMLAudioElement ? TUIBaseEvents | TUIMediaEvents : TEl extends HTMLDetailsElement ? TUIBaseEvents | "toggle" | "beforetoggle" : TEl extends HTMLDialogElement ? TUIBaseEvents | TUIToggleEvents : TEl extends HTMLDivElement | HTMLElement | HTMLUListElement | HTMLOListElement | HTMLTableElement ? TUIBaseEvents | TUIScrollEvents : TUIBaseEvents | TUIFormValueEvents | TUIFormContainerEvents | TUIScrollEvents | TUIMediaEvents | TUIToggleEvents;
+/**
+ * Interdit les doublons dans un tuple readonly. (ADR-0044)
+ *
+ * Un doublon dans `events` entraînerait un double `addEventListener` au mount.
+ * Si `T` contient un doublon → retourne `false` → `ui()()` attend `never`.
+ */
+type HasNoDuplicates<T extends readonly unknown[], Seen extends readonly unknown[] = readonly []> = T extends readonly [infer H, ...infer R extends readonly unknown[]] ? H extends Seen[number] ? false : HasNoDuplicates<R, readonly [H, ...Seen]> : true;
+/**
  * Entrée UI typée.
  *
  * - `events` : événements DOM déclarés (OBLIGATOIRE — C5 / I86)
  *              `[]` = élément non-interactif explicite (projection seule).
+ *              Contraint à `TEventsFor<TEl>` — noms valides + cohérence sémantique (I89 / I91).
  * - `_el?`   : phantom TEl (compile-time only, jamais alloué au runtime).
  *              Permet à `getUI(k).element()` de retourner `TEl` au lieu de
  *              `HTMLElement` générique.
  *
  * AUCUN sélecteur CSS ici — il vit dans `get uiElements()` (overridable D34).
  */
-type TUIEntry<TEl extends HTMLElement = HTMLElement, TEvts extends readonly string[] = readonly string[]> = {
+type TUIEntry<TEl extends HTMLElement = HTMLElement, TEvts extends ReadonlyArray<TEventsFor<TEl>> = ReadonlyArray<TEventsFor<TEl>>> = {
     readonly events: TEvts;
     readonly _el?: TEl;
 };
@@ -25251,11 +25310,15 @@ type TUIEntry<TEl extends HTMLElement = HTMLElement, TEvts extends readonly stri
  * sur un paramètre ne préserve pas le littéral si un autre paramètre est
  * passé explicitement avec un défaut).
  *
+ * Contraintes (ADR-0044 + ADR-0045) :
+ *  - `TEvts` ⊆ `TEventsFor<TEl>` — noms valides + sémantique cohérente
+ *  - `HasNoDuplicates<TEvts>` — interdit le double-binding addEventListener
+ *
  * @example ui<HTMLButtonElement>()(["click"])           // interactif
  * @example ui<HTMLSpanElement>()([])                    // non-interactif explicite
  * @example ui<HTMLInputElement>()(["input", "change"])  // 2 handlers requis
  */
-declare function ui<TEl extends HTMLElement = HTMLElement>(): <const TEvts extends readonly string[]>(events: TEvts) => TUIEntry<TEl, TEvts>;
+declare function ui<TEl extends HTMLElement = HTMLElement>(): <const TEvts extends ReadonlyArray<TEventsFor<TEl>>>(events: HasNoDuplicates<TEvts> extends true ? TEvts : never) => TUIEntry<TEl, TEvts>;
 /**
  * Module contractuel UI — clés → entrées typées (ADR-0042).
  * Une View ou Behavior compose ce module avec un `TFeatureContract`.
@@ -25293,7 +25356,10 @@ type TProjectionNode<TEl extends HTMLElement = HTMLElement> = {
 };
 /**
  * Mappe un nom d'événement DOM vers son type natif dans HTMLElementEventMap.
- * Fallback sur `Event` si le nom n'est pas connu.
+ *
+ * La branche `: Event` couvre les événements de sous-maps spécifiques non
+ * présents dans `HTMLElementEventMap` base (ex: `"enterpictureinpicture"` de
+ * `HTMLVideoElementEventMap`). Elle reste nécessaire même avec ADR-0044/0045.
  */
 type TDOMEventFor<S extends string> = S extends keyof HTMLElementEventMap ? HTMLElementEventMap[S] : Event;
 /**
@@ -25364,8 +25430,8 @@ type TViewClass = abstract new (...args: any[]) => View<any>;
  * } satisfies TFeatureContract;
  *
  * const cartViewUiEvents = {
- *   total:  ui<HTMLSpanElement>([]),
- *   addBtn: ui<HTMLButtonElement>(["click"]),
+ *   total:  ui<HTMLSpanElement>()([]),
+ *   addBtn: ui<HTMLButtonElement>()(["click"]),
  * } satisfies TUIContract;
  *
  * const cartViewUiElements = {
@@ -25726,4 +25792,4 @@ declare class Application<M extends TFeaturesManifest = TFeaturesManifest> {
 }
 
 export { Application, Channel, Composer, Foundation, Immer, RXJS, Radio, Valibot, View, ui };
-export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractEl, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, StrictArrayOfKeys, StrictArrayOfValues, StringDigit, StringHash, TAllLetters, TAnyEventPayload, TApplicationOptions, TChannelDefinition, TChannelToken, TClass, TComposerOptions, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntries, TExcludeKeys, TExcludeValues, TFalsy, TFeaturesManifest, TFunctionPropertyNames, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonValue, TLookup, TLowerLetter, TMapEntry, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TParameters, TPrimitive, TProjectionNode, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TResolveResult, TSetEntry, TTokenDef, TUICallbacks, TUIContract, TUIElements, TUIEntry, TUIEntryHandlers, TUpperLetter, TViewCallbacks, TViewClass, TViewContract, TuplifyUnion, UnionToIntersection, ValuesType, Whitespace };
+export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, StrictArrayOfKeys, StrictArrayOfValues, StringDigit, StringHash, TAllLetters, TAnyEventPayload, TApplicationOptions, TChannelDefinition, TChannelToken, TClass, TComposerOptions, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntries, TEventsFor, TExcludeKeys, TExcludeValues, TFalsy, TFeaturesManifest, TFunctionPropertyNames, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonValue, TLookup, TLowerLetter, TMapEntry, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TParameters, TPrimitive, TProjectionNode, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TResolveResult, TSetEntry, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewClass, TViewContract, TuplifyUnion, UnionToIntersection, ValuesType, Whitespace };
