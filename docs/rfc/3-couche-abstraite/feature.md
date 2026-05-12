@@ -16,10 +16,10 @@
 > ### Statut normatif
 >
 > Ce document fait foi pour le **contrat Feature** : classe abstraite, 5 capacités, handlers `onXXX`, cycle de vie.
-> Il fait également foi pour la **pratique de déclaration Channel** : `TChannelDefinition`, `declareChannel`,
-> pattern namespace TS (D14), co-localisation (D13).
-> Les mutations Entity utilisent `mutate(intent, params?, recipe)` conformément à [ADR-0001](../../adr/ADR-0001-entity-diff-notification-strategy.md).
+> Il fait également foi pour la **pratique de déclaration Channel** : `TChannelDefinition`, `TChannelToken`, `static readonly channel` (ADR-0040), co-localisation (D13, I74).
+> Les mutations Entity utilisent `mutate(intent, recipe)` (strate 0) — la signature `(intent, params?, recipe)` avec metas est cible strate 1 ([ADR-0001](../../adr/ADR-0001-entity-diff-notification-strategy.md), ADR-0028 §148).
 > L'identité de la Feature (namespace) est portée par le **manifest applicatif** (I68–I72) conformément à [ADR-0039](../../adr/ADR-0039-namespace-authority-and-uniqueness.md) — la classe Feature ne déclare **plus** de `static readonly namespace`.
+> Le **pattern historique D14** (`export namespace Cart {…}` + `declareChannel`) est **supersédé** par ADR-0040 (token statique direct sur la classe).
 > Pour le **concept Channel** (tri-lane, événement `any`, sémantiques runtime) → voir [communication.md](../2-architecture/communication.md).
 
 ---
@@ -123,84 +123,82 @@ abstract class Feature<
 > **Pas de self-type récursif (`Feature<Self, ...>`)** :
 > Contrairement au pattern `Class<Child extends Class<Child>>` où la classe
 > abstraite reçoit le type concret en générique (nécessaire quand la
-> vérification des handlers introspection les méthodes de la classe concrète
-> via `keyof Child`), Bonsai utilise `implements TRequiredCommandHandlers<TChannel>`.
+> vérification des handlers introspecte les méthodes de la classe concrète
+> via `keyof Child`), Bonsai dérive les contrats **uniquement** depuis la
+> `TChannelDefinition` — sans connaître le type concret de la Feature.
 >
-> La différence clé :
+> Côté **View** (ADR-0042, I88), la cohérence est imposée compile-time via
+> `implements TViewCallbacks<TVC>` (handlers DOM + channel dérivés du
+> contrat). Côté **Feature**, en strate 0, il n'y a pas de clause
+> `implements` équivalente — la cohérence des handlers `on{Cmd}Command` /
+> `on{Req}Request` / `on{NS}{Event}Event` est vérifiée au bootstrap par
+> auto-discovery (I48). Une cohérence compile-time côté Feature
+> (`TCommandHandlers<TDef>` / `TRequestHandlers<TDef>`) est un sujet
+> strate 1+ — voir hors-scope ADR-0040.
 >
-> - **Introspection du type concret** : `RequiredHandlers<Self, Channel>` — a besoin de `Self`
-> - **Génération depuis le contrat** : `RequiredHandlers<Channel>` — le Channel seul suffit
->
-> Bonsai choisit la seconde approche. Les signatures des méthodes `onXXX`
-> sont générées **uniquement depuis la `TChannelDefinition`**, sans connaître
-> le type concret de la Feature. Le `implements` vérifie que la classe
-> satisfait ces signatures. Résultat : `Feature<TEntityClass, TChannel>`
-> — deux génériques au lieu de trois, zéro récursion.
->
-> Pour les cas où un retour typé `this` est nécessaire (chaînage, etc.),
-> TypeScript fournit le type polymorphe `this` nativement, sans F-bounded.
+> Résultat : `Feature<TEntity, TChannelDef, TSelfNS>` — trois génériques
+> (Entity, Channel, namespace), zéro récursion. Pour les cas où un retour
+> typé `this` est nécessaire (chaînage), TypeScript fournit le type
+> polymorphe `this` nativement, sans F-bounded.
 
 ---
 
-## 2. Déclaration Channel — pratique (D13, D14)
+## 2. Déclaration Channel — pratique (D13, ADR-0040)
 
 > Pour le **concept Channel** (tri-lane, événement `any`, sémantiques runtime) → voir [communication.md](../2-architecture/communication.md).
 > Cette section couvre la **pratique** : comment déclarer un Channel, le type `TChannelDefinition`,
-> l'utilitaire `declareChannel`, le pattern namespace TS et la co-localisation.
+> le pattern token statique sur la classe Feature (ADR-0040) et la co-localisation (D13).
 
 ### Type `TChannelDefinition`
 
-Un Channel a **deux facettes** :
+Un Channel a **trois facettes** distinctes :
 
-| Facette                     | Nature                            | Visibilité                              |
-| --------------------------- | --------------------------------- | --------------------------------------- |
-| `TChannelDefinition` (type) | Contrat de communication tri-lane | Public — exporté dans le TS `namespace` |
-| `Channel` (classe runtime)  | Registres de handlers, dispatch   | Interne framework — jamais exposé (D15) |
+| Facette                          | Nature                                              | Visibilité                                  |
+| -------------------------------- | --------------------------------------------------- | ------------------------------------------- |
+| `TChannelDefinition` (type)      | Contrat tri-lane (commands / events / requests)     | Public — co-localisé dans `*.feature.ts` (I74) |
+| `TChannelToken<TDef, NS>` (type) | Pont typé classe Feature ↔ contrat (ADR-0040, I73)  | Public — exposé via `static readonly channel` |
+| `Channel<TDef>` (classe runtime) | Registres de handlers, dispatch                     | Interne framework — jamais exposé (D15, I80) |
 
-Le développeur ne manipule que le **type** et le **token**. L'instance runtime est un détail d'implémentation.
+Le développeur applicatif manipule **uniquement** le type `TChannelDefinition` et le token statique. L'instance runtime `Channel<TDef>` est un détail d'implémentation, créé au bootstrap par `Application` depuis le manifest (ADR-0039).
 
 ```typescript
+// @bonsai/event — packages/event/src/channel.class.ts
 type TChannelDefinition = {
-  readonly namespace: string;
   readonly commands: Record<string, unknown>;
-  readonly events: Record<string, unknown>;
+  readonly events:   Record<string, unknown>;
   readonly requests: Record<string, { params: unknown; result: unknown }>;
+};
+
+type TChannelToken<TDef extends TChannelDefinition, NS extends string = string> = {
+  readonly namespace: NS;
+  readonly _def?: TDef;   // phantom — jamais assigné runtime, sert au compile-time
 };
 ```
 
-### Utilitaire `declareChannel`
+> **Le `namespace` n'est PAS sur `TChannelDefinition`** — il vit sur `TChannelToken<TDef, NS>` (paramètre de type `NS`). Cette séparation découple le contrat de communication (les lanes typées) de l'identité applicative (la clé du manifest, ADR-0039 — I68).
+
+### Pattern `Channel<TDef>` typé sur la classe Feature (ADR-0040, ADR-0039, ADR-0042)
+
+> **Le pattern historique « TS `namespace` regroupant Channel/State/token » (D14, pré-ADR-0040) est supersédé.** Plus de `export namespace Cart {…}`, plus de `declareChannel<T>(ns)`. La classe Feature porte directement son token statique.
 
 ```typescript
-/**
- * Crée un token de référence Channel typé.
- * Léger à runtime ({ namespace }), complet au type-level (TChannel).
- */
-function declareChannel<T extends TChannelDefinition>(ns: T["namespace"]): T {
-  return { namespace: ns } as T;
-}
-```
-
-### Pattern actuel — `Channel<TDef>` typé sur la classe Feature (ADR-0040, ADR-0039, ADR-0042)
-
-**Le pattern « TS `namespace` regroupant Channel/State/token » (D14, pré-ADR-0040) est superseded.** Le pattern actuel exporte directement la classe Feature avec son token statique :
-
-```typescript
-import { Feature, type TChannelToken, type TChannelDefinition } from "@bonsai/feature";
+import { Feature } from "@bonsai/feature";
+import { type TChannelDefinition, type TChannelToken } from "@bonsai/event";
 import { Entity } from "@bonsai/entity";
 
-// Type Channel (compile-time uniquement) — peut rester local au fichier.
+// Type Channel (compile-time uniquement) — co-localisé au fichier.
 type TCartDef = {
   readonly commands: {
-    addItem: { productId: string; qty: number };
+    addItem:    { productId: string; qty: number };
     removeItem: { productId: string };
   };
   readonly events: {
-    itemAdded: { productId: string; qty: number };
+    itemAdded:   { productId: string; qty: number };
     itemRemoved: { productId: string };
   };
   readonly requests: {
     getItemCount: { params: void; result: number };
-    getTotal: { params: void; result: number };
+    getTotal:     { params: void; result: number };
   };
 };
 
@@ -209,35 +207,39 @@ class CartEntity extends Entity<{ items: TCartItem[]; total: number }> {
   protected defineInitialState() { return { items: [], total: 0 }; }
 }
 
-// Feature paramétrée par <TEntityClass, TChannelDefinition, TSelfNS>.
-// `TSelfNS = "cart"` ancre la classe à la clé du manifest applicatif (ADR-0039 — I72).
-// AUCUN `static namespace` (I68) — le namespace vient du constructeur via le manifest.
+// Feature paramétrée par <TEntityClass, TChannelDef, TSelfNS> (ADR-0040, ADR-0037).
+// `TSelfNS = "cart"` ancre la classe à la clé du manifest applicatif (ADR-0039, I72).
+// AUCUN `static namespace` (I68) — le namespace est injecté au constructeur.
 export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
-  // Token typé exposé par convention (ADR-0040) — sert d'identifiant pour les
-  // consommateurs (`TFeatureContract.{ns}.feature`) sans exposer la classe Channel.
+  // Token typé exposé en `static readonly channel` (ADR-0040, I73) —
+  // référencé par les consommateurs via `TFeatureContract.{ns}.feature` (ADR-0042).
   static readonly channel: TChannelToken<TCartDef, "cart"> = { namespace: "cart" };
 
-  // Channels externes écoutés (ADR-0040) — déclaration value-first.
-  static readonly listens = [] as const;
+  // Tokens des Channels externes ÉCOUTÉS — Events entrants (C3, I77).
+  static readonly listens: readonly TChannelToken<TChannelDefinition, string>[] = [];
+
+  // Tokens des Channels externes INTERROGÉS — Requests sortantes (C5, I79).
+  static readonly queries: readonly TChannelToken<TChannelDefinition, string>[] = [];
 
   protected get Entity() { return CartEntity; }
 
-  // C2 — Command handler auto-découvert par convention (I48).
+  // C2 — Command handler auto-découvert par convention de nommage (I48).
+  // Strate 0 : signature `(payload) => void` sans metas (ADR-0040 §615).
   onAddItemCommand(payload: TCartDef["commands"]["addItem"]): void {
     this.entity.mutate("addItem", (draft) => { /* ... */ });
     this.emit("itemAdded", { productId: payload.productId, qty: payload.qty });
   }
 
   // C4 — Reply auto-découvert.
-  onGetItemCountRequest(): number {
+  onGetItemCountRequest(_params: void): number {
     return this.entity.state.items.length;
   }
 }
 ```
 
-> **Pourquoi plus de `namespace Cart`** ? Le manifest applicatif (ADR-0039) est désormais l'autorité unique des namespaces — il n'a aucun besoin de regrouper « types + valeurs » sous un nom commun, parce que :
+> **Pourquoi plus de `namespace Cart` ni de `declareChannel`** ? Le manifest applicatif (ADR-0039) est désormais l'autorité unique des namespaces. Il n'y a plus besoin de regrouper « types + valeurs » sous un nom commun :
 > - Le **type Channel** (`TCartDef`) reste compile-time, importé directement.
-> - Le **token runtime** (`CartFeature.channel`) est porté par la classe elle-même (ADR-0040).
+> - Le **token runtime** (`CartFeature.channel`) est porté par la classe elle-même (ADR-0040, I73).
 > - Le **namespace** (`"cart"`) vit comme `TSelfNS` paramétré sur la classe (I72) ET comme clé du manifest (I68).
 > - Les **consommateurs** (View/Behavior/Composer) référencent `typeof CartFeature` dans `TFeatureContract.{ns}.feature` (ADR-0042) — pas de `Cart.Channel` à propager.
 
@@ -265,41 +267,43 @@ Cart/
 
 ## 3. Déclarations statiques
 
-> **Décision D11** : les déclarations Channel se font via le **token
-> `Namespace.channel`** (D14), pas via la classe Feature elle-même.
+> **Décision D11 amendée par [ADR-0040](../../adr/ADR-0040-typescript-first-api-channel-definition-typed.md)** : chaque Feature expose son contrat via un `static readonly channel: TChannelToken<TDef, NS>` (I73). Les Channels externes consommés sont déclarés via `static readonly listens` (Events) et `static readonly queries` (Requests) — listes de `TChannelToken`.
 >
-> **Amendement [ADR-0039](../../adr/ADR-0039-namespace-authority-and-uniqueness.md)** :
-> la classe Feature ne déclare **plus** de `static readonly namespace`.
-> L'identité de la Feature est portée par la **clé du manifest applicatif**
-> (I68, I69) et **injectée au constructeur** au bootstrap (I68, option c).
-> Le paramètre de type `TSelfNS` — troisième paramètre de `Feature<_, _, TSelfNS>`
-> — déclare en signature le namespace attendu, vérifié contre la clé du manifest
-> par `StrictManifest<M>` au `satisfies` (I72).
+> **Amendement [ADR-0039](../../adr/ADR-0039-namespace-authority-and-uniqueness.md)** : la classe Feature ne déclare **plus** de `static readonly namespace` (I68). L'identité est portée par la **clé du manifest applicatif** (I68, I69) et **injectée au constructeur** (I68, option c). Le paramètre de type `TSelfNS` déclare en signature le namespace attendu, vérifié contre la clé du manifest par `StrictManifest<M>` au `satisfies` (I72).
 
 ```typescript
-class CartFeature
-  extends Feature<CartEntity, Cart.Channel, "cart">
-  implements
-    TRequiredCommandHandlers<Cart.Channel>,
-    TRequiredRequestHandlers<Cart.Channel>
-{
-  // ❌ Plus de `static readonly namespace = Cart.channel.namespace` — I68, ADR-0039.
-  //    Le namespace est porté par la clé du manifest applicatif et TSelfNS.
+import { Feature } from "@bonsai/feature";
+import { type TChannelDefinition, type TChannelToken } from "@bonsai/event";
+import { InventoryFeature } from "../Inventory/inventory.feature";
+import { PricingFeature } from "../Pricing/pricing.feature";
+import { UserFeature } from "../User/user.feature";
 
-  /** Liaison Feature → Entity concrète (D17 amendé par ADR-0037) */
-  protected get Entity() {
-    return CartEntity;
-  }
+class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
+  // ❌ Plus de `static readonly namespace = "cart"` — I68, ADR-0039.
+  //    Le namespace est injecté au constructeur via le manifest applicatif.
 
-  /** Channels externes écoutés — Events uniquement (C3) */
-  static readonly listen = [Inventory.channel, Pricing.channel] as const;
+  /** Token du Channel propre (I73, ADR-0040) — pont typé vers `TCartDef`. */
+  static readonly channel: TChannelToken<TCartDef, "cart"> = { namespace: "cart" };
 
-  /** Channels externes interrogeables — Requests uniquement (C5) */
-  static readonly request = [User.channel] as const;
+  /** Channels externes écoutés — Events uniquement (C3, I77). Pluriel. */
+  static readonly listens: readonly TChannelToken<TChannelDefinition, string>[] = [
+    InventoryFeature.channel,
+    PricingFeature.channel,
+  ];
 
-  // ... les méthodes onXXX requises par implements (voir §4)
+  /** Channels externes interrogés — Requests uniquement (C5, I79). Pluriel. */
+  static readonly queries: readonly TChannelToken<TChannelDefinition, string>[] = [
+    UserFeature.channel,
+  ];
+
+  /** Liaison Feature → Entity concrète (D17 amendé par ADR-0037). */
+  protected get Entity() { return CartEntity; }
+
+  // ... les méthodes onXXX auto-découvertes (voir §5)
 }
 ```
+
+> **Limitation TypeScript — `abstract static` n'existe pas** : la présence de `static readonly channel`, `listens`, `queries` ne peut pas être imposée compile-time aux sous-classes. Filets de sécurité : type `TFeatureClass` (constructeur typé), validation runtime au bootstrap, tests de type (`tests/types/`). Cf. `packages/feature/src/bonsai-feature.ts:144-167`.
 
 ### Manifest applicatif (ADR-0039)
 
@@ -344,17 +348,9 @@ app.start();
 > **`Application.register()` est supprimée** (I69, D-η ADR-0039). L'enregistrement
 > se fait exclusivement via le manifest passé au constructeur d'Application.
 
-> **Note ADR-0024** : les Features conservent `static readonly listen` et `static readonly request`
-> car le framework lit ces déclarations depuis la **classe** (pas l'instance) lors du câblage
-> au bootstrap (étape 5, D6). Ce pattern est distinct du value-first ADR-0024 qui s'applique
-> aux composants de la couche concrète (View, Composer, Behavior, Foundation) dont les
-> déclarations sont lues depuis l'instance via `get params()`.
+> **Note ADR-0024** : les Features conservent les déclarations `static readonly listens` et `static readonly queries` car le framework les lit depuis la **classe** (pas l'instance) au bootstrap (étape 5, D6). Ce pattern est distinct du value-first ADR-0024 qui s'applique aux composants de la couche concrète (View, Composer, Behavior, Foundation) dont les déclarations sont lues depuis l'instance via `get features()` / `get uiEvents()` / `get uiElements()` (ADR-0042).
 
-> **DX** : grâce à `implements TRequiredCommandHandlers<Cart.Channel>`,
-> l'IDE signale immédiatement si un handler manque ou si un
-> payload a le mauvais type. L'autocomplétion propose les méthodes
-> `onAddItemCommand`, `onRemoveItemCommand`, `onClearCommand`
-> directement depuis la définition du Channel.
+> **DX — asymétrie compile-time avec View** : contrairement à View qui dispose de `implements TViewCallbacks<TVC>` (ADR-0042 — handlers vérifiés compile-time), Feature **n'a pas** d'`implements` pour les handlers `on{Cmd}Command` / `on{Req}Request`. La présence des handlers est vérifiée au bootstrap (auto-discovery I48, filets runtime). Une cohérence compile-time côté Feature est un sujet strate 1+ — voir hors-scope ADR-0040 §549. Pour l'instant : autocomplétion IDE limitée aux signatures dérivées du `TChannelDefinition` consommé dans `this.emit(name, payload)` et `this.entity.mutate(intent, recipe)`.
 
 <!--
   Le Channel propre est toujours implicite pour emit (C1),
@@ -399,76 +395,49 @@ protected emit<K extends keyof TChannel['events'] & string>(
 > Seule la Feature propriétaire peut `emit()` sur son Channel (I1, I12).
 > Les Views/Behaviors n'ont **jamais** accès à `emit()` (I4, D7).
 
-### C2 — `handle` : implicite via convention `onXXX` (§4)
+### C2 — `handle` : implicite via convention `onXXX` (§5)
 
-Pas de méthode `handle()` explicite — les Commands entrants sont
-routés automatiquement vers les méthodes `onXxxCommand()` (D12).
-Les signatures sont forcées par `implements TRequiredCommandHandlers<TChannel>`.
+Pas de méthode `handle()` explicite — les Commands entrants sont routés automatiquement vers les méthodes `onXxxCommand()` (D12, I48). Auto-discovery au bootstrap (`#registerCommandHandlers()`). Pas d'`implements` côté Feature en strate 0 — voir asymétrie compile-time avec View documentée en §3.
 
-### C3 — `listen` : implicite via convention `onXXX` (§4)
+### C3 — `listen` : implicite via convention `onXXX` (§5)
 
-Pas de méthode `listen()` explicite — les Events des Channels
-déclarés en `static readonly listen` sont routés vers `on<Namespace><EventName>Event()` (D12).
+Pas de méthode `listen()` explicite — les Events des Channels déclarés en `static readonly listens` sont routés vers `on<Namespace><EventName>Event()` (D12, I48). Auto-discovery au bootstrap (`#registerEventListeners()`).
 
-### C4 — `reply` : implicite via convention `onXXX` (§4)
+### C4 — `reply` : implicite via convention `onXXX` (§5)
 
-Pas de méthode `reply()` explicite — les Requests entrantes
-sont routées vers `onXxxRequest()` qui retourne `T | null` synchrone (D9 révisé par ADR-0023).
-Les signatures sont forcées par `implements TRequiredRequestHandlers<TChannel>`.
+Pas de méthode `reply()` explicite — les Requests entrantes sont routées vers `onXxxRequest()` qui retourne `T | null` synchrone (D9 révisé par ADR-0023). Auto-discovery au bootstrap (`#registerRequestRepliers()`).
 
-### C5 — `request()` : lire le state d'une Feature externe
+### C5 — `request()` : interroger une Feature externe
+
+Signature actuelle (cf. `packages/feature/src/bonsai-feature.ts:260-269`) :
 
 ```typescript
 /**
- * Interroge un Channel externe déclaré en `static readonly request`.
+ * Interroge un Channel externe via son token (I79, ADR-0040).
  *
- * - channel : token du Channel cible (Namespace.channel)
- * - requestName : clé de TTargetChannel['requests']
- * - options.metas : metas reçues par le handler, propagées explicitement (ADR-0016, I7, I54)
- * - Retourne `T | null` synchrone (D9 révisé par ADR-0023, I29 révisé)
- *   `null` si le replier throw ou si le Channel n'est pas enregistré (D44 révisé)
+ * - token       : `TChannelToken<TDef, TNS>` — typiquement `OtherFeature.channel`
+ * - requestName : clé de TDef['requests'] (vérifiée compile-time, I76)
+ * - params      : typé depuis TDef['requests'][K]['params']
+ * - Retourne    : TDef['requests'][K]['result'] | null
+ *                 `null` si le replier throw ou si le Channel n'est pas enregistré (D44 révisé)
+ *
+ * Strate 0 : signature sans metas (ADR-0040 §615). Strate 1 ajoutera
+ *            `options: { metas: TMessageMetas }` via un ADR dédié.
  */
 protected request<
-  TTarget extends TChannelDefinition,
-  K extends keyof TTarget['requests'] & string
+  TDef extends TChannelDefinition,
+  TNS extends string,
+  K extends keyof TDef['requests'] & string
 >(
-  channel: { namespace: TTarget['namespace'] },
+  token: TChannelToken<TDef, TNS>,
   requestName: K,
-  params: TTarget['requests'][K] extends { params: infer P } ? P : never,
-  options: { metas: TMessageMetas }
-): (TTarget['requests'][K] extends { result: infer R } ? R : never) | null;
+  params: TDef['requests'][K]['params']
+): TDef['requests'][K]['result'] | null;
 ```
 
-> `request()` est la seule capacité **sortante** explicite (avec `emit`).
-> Les 3 autres (handle, listen, reply) sont implicites via les conventions `onXXX`.
+> `request()` est la **seule capacité sortante explicite** côté Feature (avec `emit` qui agit sur le propre Channel). Les trois autres (handle, listen, reply) sont implicites via les conventions `onXXX` auto-découvertes (I48).
 
-### Signature de `trigger()` — côté View/Behavior
-
-Pour complétude, voici la signature de `trigger()` disponible
-dans le contexte d'une View ou d'un Behavior (pas d'une Feature) :
-
-```typescript
-/**
- * Envoie un Command sur un Channel déclaré dans `params.trigger` de la View/Behavior (ADR-0024).
- *
- * - channel : token du Channel cible (Namespace.channel)
- * - commandName : clé de TTargetChannel['commands']
- * - payload : typé depuis TTargetChannel['commands'][commandName]
- * - Les metas sont créées automatiquement par le framework (corrélation racine, ADR-0016, I54)
- * - Cardinalité : 1:1 (un seul handler = la Feature propriétaire)
- */
-protected trigger<
-  TTarget extends TChannelDefinition,
-  K extends keyof TTarget['commands'] & string
->(
-  channel: { namespace: TTarget['namespace'] },
-  commandName: K,
-  payload: TTarget['commands'][K]
-): void;
-```
-
-> `trigger()` est la primitive de la couche concrète (D7).
-> Elle crée une nouvelle chaîne causale (correlationId, hop=0).
+> **Comparaison avec `View.trigger("ns:cmd", payload)`** : côté View/Behavior, l'API consommateur passe par une **clé namespacée flat** (ADR-0042) au lieu d'un token explicite — voir [view.md §1](../4-couche-concrete/view.md). L'asymétrie est volontaire : Feature a un import direct de la classe consommée (couplage de code accepté), View consomme exclusivement via `TFeatureContract` (Channel privé derrière Feature, I80).
 
 ---
 
@@ -482,207 +451,197 @@ protected trigger<
 
 | Type                       | Pattern                           | Paramètre                                    | Retour                            | Exemple                                                                      |
 | -------------------------- | --------------------------------- | -------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------------- |
-| **Command** (C2 handle)    | `on<MessageName>Command`          | `payload: T, metas: TMessageMetas`           | `void`                            | `onAddItemCommand(payload: AddItemPayload, metas: TMessageMetas)`            |
-| **Event** (C3 listen)      | `on<ChannelName><EventName>Event` | `payload: T, metas: TMessageMetas`           | `void`                            | `onInventoryStockUpdatedEvent(payload: StockPayload, metas: TMessageMetas)`  |
-| **Request** (C4 reply)     | `on<RequestName>Request`          | `void` ou `payload: T, metas: TMessageMetas` | `T \| null` (D9 révisé, ADR-0023) | `onTotalRequest(params: void, metas: TMessageMetas): number \| null`         |
+| **Command** (C2 handle)    | `on<MessageName>Command`          | `payload: T` (strate 0) — `payload: T, metas: TMessageMetas` (cible strate 1) | `void`                            | `onAddItemCommand(payload: AddItemPayload)`                                  |
+| **Event** (C3 listen)      | `on<ChannelName><EventName>Event` | `payload: T` (strate 0) — `payload: T, metas: TMessageMetas` (cible strate 1) | `void`                            | `onInventoryStockUpdatedEvent(payload: StockPayload)`                        |
+| **Request** (C4 reply)     | `on<RequestName>Request`          | `params: P` ou `void` (strate 0) — `+ metas: TMessageMetas` (cible strate 1)  | `T \| null` (D9 révisé, ADR-0023) | `onTotalRequest(params: void): number \| null`                               |
 | **Entity per-key** (D16)   | `on<Key>EntityUpdated`            | `prev: T, next: T, patches: Patch[]`         | `void`                            | `onItemsEntityUpdated(prev: CartItem[], next: CartItem[], patches: Patch[])` |
 | **Entity catch-all** (D16) | `onAnyEntityUpdated`              | `event: TEntityEvent`                        | `void`                            | `onAnyEntityUpdated(event: TEntityEvent)`                                    |
+
+> **Phasage strate 0 → strate 1 sur les metas** (ADR-0028 §148, ADR-0040 §615) : en strate 0 actuelle, les handlers Command/Event/Request reçoivent uniquement le payload (1 paramètre). Le second paramètre `metas: TMessageMetas` (`correlationId`, `causationId`, `hop`, `origin`, `timestamp` — cf. [glossaire](../reference/glossaire.md)) sera ajouté en strate 1 via un ADR dédié amendant ADR-0040. Les exemples ci-dessous montrent la signature **strate 0 actuelle**.
 
 > Pour les Entity handlers, voir [RFC-0002-entity §6 Notifications](../3-couche-abstraite/entity.md#6-notifications-entity--feature).
 
 ### Exemples
 
 ```typescript
-class CartFeature
-  extends Feature<CartEntity, Cart.Channel, "cart">
-  implements
-    TRequiredCommandHandlers<Cart.Channel>,
-    TRequiredRequestHandlers<Cart.Channel>
-{
+import { Feature } from "@bonsai/feature";
+import { type TChannelDefinition, type TChannelToken } from "@bonsai/event";
+import { InventoryFeature } from "../Inventory/inventory.feature";
+import { PricingFeature } from "../Pricing/pricing.feature";
+
+class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
   // namespace injecté au constructeur via le manifest applicatif (ADR-0039, I68)
-  protected get Entity() {
-    return CartEntity;
-  }
-  static readonly listen = [Inventory.channel] as const;
-  static readonly request = [Pricing.channel] as const;
+  static readonly channel: TChannelToken<TCartDef, "cart"> = { namespace: "cart" };
+  static readonly listens: readonly TChannelToken<TChannelDefinition, string>[] = [
+    InventoryFeature.channel,
+  ];
+  static readonly queries: readonly TChannelToken<TChannelDefinition, string>[] = [
+    PricingFeature.channel,
+  ];
+
+  protected get Entity() { return CartEntity; }
 
   // ── C2 handle : Commands entrants sur son propre Channel ──
 
   /** Reçoit le Command cart:addItem — déclenché par une View via trigger() */
-  onAddItemCommand(
-    payload: { productId: string; qty: number },
-    metas: TMessageMetas
-  ): void {
+  onAddItemCommand(payload: { productId: string; qty: number }): void {
     // Mute l'Entity via mutate(), puis émet un Event
-    this.entity.mutate("cart:addItem", { payload, metas }, (draft) => {
+    this.entity.mutate("addItem", (draft) => {
       draft.items.push({ productId: payload.productId, qty: payload.qty });
     });
-    this.emit(
-      "itemAdded",
-      { productId: payload.productId, qty: payload.qty },
-      { metas }
-    );
+    this.emit("itemAdded", { productId: payload.productId, qty: payload.qty });
   }
 
   /** Reçoit le Command cart:removeItem */
-  onRemoveItemCommand(
-    payload: { productId: string },
-    metas: TMessageMetas
-  ): void {
-    this.entity.mutate("cart:removeItem", { payload, metas }, (draft) => {
+  onRemoveItemCommand(payload: { productId: string }): void {
+    this.entity.mutate("removeItem", (draft) => {
       draft.items = draft.items.filter(
         (i) => i.productId !== payload.productId
       );
     });
-    this.emit("itemRemoved", { productId: payload.productId }, { metas });
+    this.emit("itemRemoved", { productId: payload.productId });
   }
 
   // ── C3 listen : Events d'autres Features ──
 
   /** Écoute l'Event inventory:stockUpdated */
-  onInventoryStockUpdatedEvent(
-    payload: { productId: string; stock: number },
-    metas: TMessageMetas
-  ): void {
+  onInventoryStockUpdatedEvent(payload: { productId: string; stock: number }): void {
     if (payload.stock === 0) {
-      this.entity.mutate("cart:markOutOfStock", { payload, metas }, (draft) => {
+      this.entity.mutate("markOutOfStock", (draft) => {
         const item = draft.items.find((i) => i.productId === payload.productId);
         if (item) item.outOfStock = true;
       });
-      this.emit("itemOutOfStock", { productId: payload.productId }, { metas });
+      this.emit("itemOutOfStock", { productId: payload.productId });
     }
   }
 
   // ── C4 reply : Requests entrantes sur son propre Channel ──
 
-  /** Répond au Request cart:items — délègue à l'Entity (§5 query) */
-  onItemsRequest(params: void, metas: TMessageMetas): CartItem[] | null {
-    return this.entity.getItems();
+  /** Répond au Request cart:items — délègue à l'Entity */
+  onItemsRequest(_params: void): CartItem[] | null {
+    return this.entity.query.getItems();
   }
 
-  /** Répond au Request cart:total — délègue à l'Entity (§5 query) */
-  onTotalRequest(params: void, metas: TMessageMetas): number | null {
-    return this.entity.getTotal();
+  /** Répond au Request cart:total — délègue à l'Entity */
+  onTotalRequest(_params: void): number | null {
+    return this.entity.query.getTotal();
   }
 }
 ```
 
 ### Workflow complet : types → implémentation → récompense
 
-Exemple end-to-end illustrant la philosophie TypeScript-first :
+Exemple end-to-end illustrant la philosophie TypeScript-first (ADR-0040, ADR-0039, ADR-0042) :
 
 ```typescript
 // ────────────────────────────────────────────────────────────
-// ÉTAPE 1 — Déclarer les types dans un namespace TS
+// ÉTAPE 1 — Déclarer le type Channel (co-localisé, D13, I74)
 // ────────────────────────────────────────────────────────────
 
-export namespace Cart {
-  // 1a. Le contrat de communication (Channel)
-  export type Channel = TChannelDefinition & {
-    readonly namespace: "cart";
-    readonly commands: {
-      addItem: { productId: string; qty: number };
-      removeItem: { productId: string };
-      clear: void;
-    };
-    readonly events: {
-      itemAdded: { productId: string; qty: number };
-      itemRemoved: { productId: string };
-      itemOutOfStock: { productId: string };
-      totalUpdated: { total: number; previous: number };
-      cleared: void;
-    };
-    readonly requests: {
-      items: {
-        params: void;
-        result: Array<{ productId: string; qty: number }>;
-      };
-      total: { params: void; result: number };
-    };
-  };
+import { Feature } from "@bonsai/feature";
+import { type TChannelDefinition, type TChannelToken } from "@bonsai/event";
+import { Entity, type TEntityStructure } from "@bonsai/entity";
 
-  // 1b. L'état (Entity) — TEntityStructure concrète (= TJsonSerializable)
-  export type State = TEntityStructure & {
-    items: Array<{ productId: string; qty: number }>;
-    total: number;
-    lastUpdated: number;
+// 1a. Le contrat de communication (TChannelDefinition pur — sans namespace).
+type TCartDef = {
+  readonly commands: {
+    addItem:    { productId: string; qty: number };
+    removeItem: { productId: string };
+    clear:      void;
   };
+  readonly events: {
+    itemAdded:      { productId: string; qty: number };
+    itemRemoved:    { productId: string };
+    itemOutOfStock: { productId: string };
+    totalUpdated:   { total: number; previous: number };
+    cleared:        void;
+  };
+  readonly requests: {
+    items: { params: void; result: Array<{ productId: string; qty: number }> };
+    total: { params: void; result: number };
+  };
+};
 
-  // 1c. Token de référence
-  export const channel = declareChannel<Channel>("cart");
+// 1b. L'état (Entity) — TEntityStructure concrète (= TJsonSerializable).
+type TCartState = TEntityStructure & {
+  items: Array<{ productId: string; qty: number; outOfStock?: boolean }>;
+  total: number;
+  lastUpdated: number;
+};
+
+class CartEntity extends Entity<TCartState> {
+  protected defineInitialState(): TCartState {
+    return { items: [], total: 0, lastUpdated: 0 };
+  }
 }
 
 // ────────────────────────────────────────────────────────────
-// ÉTAPE 2 — Implémenter la classe
-//   Le compilateur vérifie que CHAQUE méthode requise
-//   par implements est présente avec le bon type.
+// ÉTAPE 2 — Implémenter la classe Feature
+//
+// Note : pas d'`implements` côté Feature en strate 0 (asymétrie
+// volontaire avec View qui dispose de `TViewCallbacks`). La présence
+// des handlers est vérifiée au bootstrap (auto-discovery I48).
 // ────────────────────────────────────────────────────────────
 
-class CartFeature
-  extends Feature<CartEntity, Cart.Channel, "cart">
-  implements
-    TRequiredCommandHandlers<Cart.Channel>,
-    TRequiredRequestHandlers<Cart.Channel>
-{
+class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
   // namespace injecté au constructeur via le manifest applicatif (ADR-0039, I68)
-  protected get Entity() {
-    return CartEntity;
-  }
+  static readonly channel: TChannelToken<TCartDef, "cart"> = { namespace: "cart" };
+  static readonly listens: readonly TChannelToken<TChannelDefinition, string>[] = [];
+  static readonly queries: readonly TChannelToken<TChannelDefinition, string>[] = [];
 
-  // ── Commands (obligatoires par implements) ──
+  protected get Entity() { return CartEntity; }
 
-  onAddItemCommand(
-    payload: { productId: string; qty: number },
-    metas: TMessageMetas
-  ): void {
-    this.entity.mutate("cart:addItem", { payload, metas }, (draft) => {
+  // ── Commands ──
+
+  onAddItemCommand(payload: { productId: string; qty: number }): void {
+    this.entity.mutate("addItem", (draft) => {
       draft.items.push({ productId: payload.productId, qty: payload.qty });
     });
-    this.emit("itemAdded", payload, { metas });
+    this.emit("itemAdded", payload);
   }
 
-  onRemoveItemCommand(
-    payload: { productId: string },
-    metas: TMessageMetas
-  ): void {
-    this.entity.mutate("cart:removeItem", { payload, metas }, (draft) => {
+  onRemoveItemCommand(payload: { productId: string }): void {
+    this.entity.mutate("removeItem", (draft) => {
       draft.items = draft.items.filter(
         (i) => i.productId !== payload.productId
       );
     });
-    this.emit("itemRemoved", payload, { metas });
+    this.emit("itemRemoved", payload);
   }
 
-  onClearCommand(payload: void, metas: TMessageMetas): void {
-    this.entity.mutate("cart:clear", (draft) => {
-      draft.items = [];
-    });
-    this.emit("cleared", undefined, { metas });
+  onClearCommand(_payload: void): void {
+    this.entity.mutate("clear", (draft) => { draft.items = []; });
+    this.emit("cleared", undefined);
   }
 
-  // ── Requests (obligatoires par implements) ──
+  // ── Requests ──
 
   onItemsRequest(
-    params: void,
-    metas: TMessageMetas
+    _params: void
   ): Array<{ productId: string; qty: number }> | null {
-    return this.entity.getItems();
+    return this.entity.query.getItems();
   }
 
-  onTotalRequest(params: void, metas: TMessageMetas): number | null {
-    return this.entity.getTotal();
+  onTotalRequest(_params: void): number | null {
+    return this.entity.query.getTotal();
   }
 }
 
 // ────────────────────────────────────────────────────────────
-// ÉTAPE 3 — Récompense (DX gratuite)
+// ÉTAPE 3 — Récompense (DX TypeScript-first)
 //
-//   ✓ Si on oublie onClearCommand → erreur TS compile-time
-//   ✓ Si on met le mauvais type de payload → erreur TS
-//   ✓ Si on emit un Event non déclaré → erreur TS
-//   ✓ Si on renomme un Command dans Cart.Channel
-//     → erreur dans toutes les classes qui l'implémentent
-//   ✓ Autocomplétion des noms de méthodes dans l'IDE
+//   ✓ this.emit("foo", …)     → erreur TS si "foo" ∉ TCartDef.events
+//   ✓ this.emit("itemAdded", { qty: "1" }) → erreur TS sur le payload
+//   ✓ Si on renomme un event dans TCartDef → erreur en cascade chez
+//     tous les consommateurs qui le listen via TFeatureContract (ADR-0042)
+//   ✓ Autocomplétion des clés de TCartDef.events / .requests dans
+//     this.emit(…) et this.entity.mutate(…)
+//
+// ⚠ Limitation strate 0 — handler manquant côté Feature :
+//   Si on oublie onClearCommand alors que TCartDef.commands.clear existe,
+//   le compilateur ne le signale pas (pas d'`implements TCommandHandlers`).
+//   Le bootstrap throw au mount (I48 — auto-discovery échoue à câbler
+//   "clear"). Cohérence compile-time côté Feature = sujet strate 1+.
 // ────────────────────────────────────────────────────────────
 ```
 
@@ -722,24 +681,27 @@ class CartFeature
 
 ```typescript
 abstract class Feature<
-  TEntityClass extends Entity<TJsonSerializable>,
-  TChannel extends TChannelDefinition
+  TEntity extends Entity<TJsonSerializable>,
+  TChannelDef extends TChannelDefinition,
+  TSelfNS extends string = string
 > {
   /**
-   * Constructeur de l'Entity concrète — obligatoire (D17 amendé par ADR-0037).
-   * La Feature concrète retourne sa classe Entity via ce getter.
-   * Le retour est typé par TEntityClass : `this.entity` est typé par
+   * Constructeur de l'Entity concrète — getter abstrait obligatoire
+   * (D17 amendé par ADR-0037). Chaque Feature concrète retourne sa classe
+   * Entity. Le retour est typé par TEntity : `this.entity` est typé par
    * la classe concrète, plus aucun cast nécessaire pour accéder à `query`.
    */
-  protected abstract get Entity(): new () => TEntityClass;
+  protected abstract get Entity(): new () => TEntity;
 
-  /** Accès direct à l'Entity — Feature est le seul propriétaire (I6) */
-  protected readonly entity: TEntityClass;
+  /** Accès direct à l'Entity — Feature est le seul propriétaire (I6, I22). */
+  get entity(): TEntity { /* ... */ }
 
-  /** Instanciation automatique dans le constructeur (D17) */
-  constructor() {
-    this.entity = new this.Entity();
-  }
+  /**
+   * Constructeur (cf. §1) — reçoit le namespace injecté par Application
+   * au bootstrap (ADR-0039, I68 option c). L'Entity est créée par
+   * `bootstrap()` (Phase 3), pas par le constructeur lui-même.
+   */
+  constructor(namespace: TSelfNS) { /* ... */ }
 }
 ```
 
@@ -748,16 +710,17 @@ abstract class Feature<
   C'est la seule exception au découplage par Channel :
   la relation Feature ↔ Entity est directe, pas événementielle.
 
-  Le getter `abstract get Entity()` (D17) garantit au compile-time
-  que chaque Feature concrète fournit son constructeur Entity.
-  La base class instancie automatiquement via `new this.Entity()`.
+  Le getter `abstract get Entity()` (D17 amendé par ADR-0037) garantit
+  au compile-time que chaque Feature concrète fournit son constructeur
+  Entity. La base class instancie via `new EntityCtor()` lors de
+  `bootstrap()` (cf. packages/feature/src/bonsai-feature.ts:222-242).
 
   Le getter (et non une propriété) est nécessaire car les
   initialiseurs de propriétés s'exécutent après super() —
   un getter sur le prototype est déjà résolu dans le constructeur parent.
 
   Aucun autre composant n'a accès à `this.entity` :
-  - Les Views/Behaviors lisent le state via request() (C5)
+  - Les Views/Behaviors lisent le state via callRequest() (C5)
   - Les autres Features lisent via request() (C5, D3)
   - Personne ne mute l'Entity sauf la Feature propriétaire (I6)
 -->
@@ -776,20 +739,19 @@ pas des Events sur un Channel. Le framework les appelle directement.
 
 ```typescript
 abstract class Feature<
-  TEntityClass extends Entity<TJsonSerializable>,
-  TChannel extends TChannelDefinition
+  TEntity extends Entity<TJsonSerializable>,
+  TChannelDef extends TChannelDefinition,
+  TSelfNS extends string = string
 > {
-  protected abstract get Entity(): new () => TEntityClass;
-  protected readonly entity: TEntityClass;
+  protected abstract get Entity(): new () => TEntity;
+  get entity(): TEntity { /* ... */ }
 
-  constructor() {
-    this.entity = new this.Entity();
-  }
+  constructor(namespace: TSelfNS) { /* ... cf. §1 ... */ }
 
-  /** Appelé par le framework après instanciation et câblage (bootstrap étape 5) */
+  /** Appelé par le framework après instanciation et câblage (bootstrap étape 5). */
   protected onInit(): void | Promise<void> {}
 
-  /** Appelé par le framework au shutdown avant destruction */
+  /** Appelé par le framework au shutdown avant destruction. */
   protected onDestroy(): void | Promise<void> {}
 }
 ```
@@ -1026,7 +988,7 @@ onItemsEntityUpdated(prev, next, patches) {
 Chaque Feature (et View) peut surcharger `onError()` pour un comportement custom :
 
 ```typescript
-class CartFeature extends Feature<CartEntity, Cart.Channel> {
+class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
   protected onError(error: BonsaiError): void {
     if (error instanceof RequestError && error.request === "pricing:getPrice") {
       this.useCachedPrice(); // Retry avec cache
