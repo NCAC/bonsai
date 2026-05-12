@@ -6,7 +6,7 @@
 | **Date**               | 2026-05-06 |
 | **Décideurs**          | @ncac |
 | **RFC liées**          | [view.md](../rfc/4-couche-concrete/view.md), [invariants.md](../rfc/reference/invariants.md), [glossaire.md](../rfc/reference/glossaire.md) |
-| **ADR liées**          | [ADR-0041](ADR-0041-consumer-pattern-feature-as-public-unit.md) (supersédée pour les types `TConsumerDeps` / `TConsumerContract` / `TListenCallbacks`), [ADR-0040](ADR-0040-channel-as-only-public-channel-token.md), [ADR-0039](ADR-0039-application-manifest-namespace-authority.md), [ADR-0029](ADR-0029-v1-scope-freeze.md) |
+| **ADR liées**          | [ADR-0041](ADR-0041-consumer-pattern-feature-as-public-unit.md) (supersédée pour les types `TConsumerDeps` / `TConsumerContract` / `TListenCallbacks`), [ADR-0040](ADR-0040-typescript-first-api-channel-definition-typed.md), [ADR-0039](ADR-0039-namespace-authority-and-uniqueness.md), [ADR-0029](ADR-0029-v1-scope-freeze.md) |
 | **Décisions amendées** | ADR-0041 — `TConsumerDeps` (lane-groupé) → `TFeatureContract` (Feature-groupé) ; `TConsumerContract<TDeps>` fusionné dans `TFeatureContract` ; `TListenCallbacks` remplacé par `TViewCallbacks` (qui couvre channel + DOM). ADR-0029 — entrée « View basic » strate 1 enrichie ; pattern modulaire `TXxxContract` ajouté en fondation strate 1+. |
 | **Invariants impactés** | I81, I82, I83 (reformulés) — I84, I85, I86, I87 (nouveaux) |
 
@@ -166,9 +166,9 @@ const cartViewFeatures = {
 
 ```ts
 const cartViewUiEvents = {
-  total:    ui<HTMLSpanElement>([]),                    // C5 : non-interactif explicite
-  addBtn:   ui<HTMLButtonElement>(["click"]),           // C4 : onAddBtnClick requis
-  qtyInput: ui<HTMLInputElement>(["input", "change"]),  // C4 : 2 handlers requis
+  total:    ui<HTMLSpanElement>()([]),                    // C5 : non-interactif explicite
+  addBtn:   ui<HTMLButtonElement>()(["click"]),           // C4 : onAddBtnClick requis
+  qtyInput: ui<HTMLInputElement>()(["input", "change"]),  // C4 : 2 handlers requis
 } satisfies TUIContract;
 ```
 
@@ -406,18 +406,21 @@ export type TUIEntry<
 };
 
 /**
- * Helper de construction.
+ * Helper de construction (forme curryfiée — voir note ci-dessous).
  *
- * @example ui<HTMLButtonElement>(["click"])     // interactif
- * @example ui<HTMLSpanElement>([])              // non-interactif explicite
- * @example ui<HTMLInputElement>(["input", "change"])
+ * @example ui<HTMLButtonElement>()(["click"])           // interactif
+ * @example ui<HTMLSpanElement>()([])                    // non-interactif explicite
+ * @example ui<HTMLInputElement>()(["input", "change"])
+ *
+ * NOTE — Pourquoi la forme curryfiée :
+ *   Le modifier `const` sur `TEvts` perd l'inférence littérale du tuple
+ *   si un autre paramètre de type est passé explicitement avec un défaut
+ *   (ce qui est le cas de `TEl`). La forme curryfiée isole `TEl`
+ *   dans la première application, puis `TEvts` dans la seconde —
+ *   l'inférence littérale est préservée. Voir aussi ADR-0044/0045.
  */
-export function ui<
-  TEl extends HTMLElement = HTMLElement,
-  const TEvts extends readonly string[] = readonly string[]
->(events: TEvts): TUIEntry<TEl, TEvts> {
-  return { events } as TUIEntry<TEl, TEvts>;
-}
+export function ui<TEl extends HTMLElement = HTMLElement>():
+  <const TEvts extends readonly string[]>(events: TEvts) => TUIEntry<TEl, TEvts>;
 
 // ─── TUIContract + TUIElements ───────────────────────────────────────────────
 
@@ -597,9 +600,9 @@ const cartViewFeatures = {
 } satisfies TFeatureContract;
 
 const cartViewUiEvents = {
-  total:    ui<HTMLSpanElement>([]),
-  addBtn:   ui<HTMLButtonElement>(["click"]),
-  qtyInput: ui<HTMLInputElement>(["input", "change"]),
+  total:    ui<HTMLSpanElement>()([]),
+  addBtn:   ui<HTMLButtonElement>()(["click"]),
+  qtyInput: ui<HTMLInputElement>()(["input", "change"]),
 } satisfies TUIContract;
 
 const cartViewUiElements = {
@@ -690,7 +693,7 @@ class CartView ... { /* sans onAddBtnClick */ }  // ❌ TViewCallbacks impose on
 | Réf  | Contenu |
 | ---- | ------- |
 | I84  | Tout élément UI déclaré dans `contract.ui` avec `events: [E, ...]` non-vide DOIT avoir ses handlers DOM implémentés via `implements TViewCallbacks<TVC>`. `events: []` déclare explicitement un élément non-interactif — aucun handler requis. |
-| I85  | `ui<TEl>(events)` est l'unique helper pour déclarer une entrée UI. L'écriture directe `{ events: [...] }` est admise mais perd le phantom `TEl` — `getUI()` retourne `TProjectionNode<HTMLElement>` au lieu du sous-type. Préférer `ui<HTMLElement>(...)` pour l'exhaustivité. |
+| I85  | `ui<TEl>()(events)` (forme curryfiée) est l'unique helper pour déclarer une entrée UI. L'écriture directe `{ events: [...] }` est admise mais perd le phantom `TEl` — `getUI()` retourne `TProjectionNode<HTMLElement>` au lieu du sous-type. Préférer `ui<HTMLElement>()(...)` pour l'exhaustivité. La forme curryfiée est requise par une limitation TypeScript : un `const TEvts` perd l'inférence littérale si un autre paramètre de type est explicite avec un défaut. |
 | I86  | `TUIEntry["events"]` est TOUJOURS présent et TOUJOURS un tableau (possiblement vide). L'absence du champ est une erreur compile (pas d'optionnel). |
 | I87  | Dans `TFeatureContract`, la clé d'objet (`cart`, `user`) DOIT correspondre au `namespace` de la Feature référencée par `feature`. Incohérence (`cart: { feature: UserFeature, ... }`) → erreur compile via `TFeatureRefForNS<NS>`. |
 | I88  | **Symétrie Contract/Callbacks** : pour tout type `T{Component}Contract` exposé par un package Bonsai, le même package DOIT exposer un type `T{Component}Callbacks<TC>` qui dérive les handlers `on*` requis. Un composant concret écrit toujours la paire `extends X<TXxxContract>` + `implements TXxxCallbacks<TXxxContract>`. Un contrat sans Callbacks (déclaration sans engagement) est interdit. |

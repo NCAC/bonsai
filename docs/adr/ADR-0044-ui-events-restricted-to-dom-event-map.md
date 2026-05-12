@@ -2,7 +2,7 @@
 
 | Champ                   | Valeur                                                                                                                                  |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **Statut**              | 🟡 Proposed                                                                                                                             |
+| **Statut**              | 🔵 Tested                                                                                                                               |
 | **Date**                | 2026-05-07                                                                                                                              |
 | **Décideurs**           | @NCAC                                                                                                                                   |
 | **RFC liée**            | [view.md](../rfc/4-couche-concrete/view.md)                                                                                             |
@@ -134,6 +134,8 @@ ui<HTMLFormElement>()(["submit", "submit"]);
 
 ## Historique
 
-| Date       | Changement             |
-| ---------- | ---------------------- |
-| 2026-05-07 | Création (🟡 Proposed) |
+| Date       | Changement                                                                          |
+| ---------- | ----------------------------------------------------------------------------------- |
+| 2026-05-07 | Création (🟡 Proposed)                                                              |
+| 2026-05-12 | 🟢 Accepted — décision validée                                                      |
+| 2026-05-12 | 🔵 Tested — I90 cité dans `tests/types/strate-0/view-contract.types.test.ts` (ADR-0043 critère C-Inv) ; I86 amendé prouvé via `HasNoDuplicates<TEvts>` |

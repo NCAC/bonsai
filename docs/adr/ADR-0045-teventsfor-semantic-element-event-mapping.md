@@ -2,7 +2,7 @@
 
 | Champ                   | Valeur                                                                                                                              |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| **Statut**              | 🟡 Proposed                                                                                                                         |
+| **Statut**              | 🔵 Tested                                                                                                                           |
 | **Date**                | 2026-05-07                                                                                                                          |
 | **Décideurs**           | @NCAC                                                                                                                               |
 | **RFC liée**            | [view.md](../rfc/4-couche-concrete/view.md)                                                                                         |
@@ -429,6 +429,8 @@ ui<HTMLButtonElement>()(["play"]);
 
 ## Historique
 
-| Date       | Changement                                                                 |
-| ---------- | -------------------------------------------------------------------------- |
-| 2026-05-07 | Création (🟡 Proposed) — résolution de Q1 (ADR-0044) via `TEventsFor<TEl>` |
+| Date       | Changement                                                                                          |
+| ---------- | --------------------------------------------------------------------------------------------------- |
+| 2026-05-07 | Création (🟡 Proposed) — résolution de Q1 (ADR-0044) via `TEventsFor<TEl>`                          |
+| 2026-05-12 | 🟢 Accepted — décision validée                                                                      |
+| 2026-05-12 | 🔵 Tested — I89/I91 cités dans `tests/types/strate-0/view-contract.types.test.ts` (ADR-0043 critère C-Inv) |
