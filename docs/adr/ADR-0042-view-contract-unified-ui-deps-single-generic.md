@@ -206,12 +206,14 @@ class CartView
   get uiElements() { return cartViewUiElements; }   // ← overridable par Composer (D34)
 
   // ── Channel handlers — D48 channel : on{NS}{Event}Event ─────────────
-  onCartItemAddedEvent(p: { id: string; qty: number }, m: TEventMetas): void {
+  // Signature strate 0 : `(payload) => void` (ADR-0040 §615 — metas hors-scope strate 0).
+  // Strate 1 ajoutera `metas: TMessageMetas` en second paramètre, via ADR dédié.
+  onCartItemAddedEvent(p: { id: string; qty: number }): void {
     this.getUI("total").text(`${p.qty} items`);     // → TProjectionNode<HTMLSpanElement>
     this.getUI("addBtn").element();                  // → HTMLButtonElement
   }
-  onCartItemRemovedEvent(p: { id: string }, m: TEventMetas): void { ... }
-  onUserProfileUpdatedEvent(p: { name: string }, m: TEventMetas): void { ... }
+  onCartItemRemovedEvent(p: { id: string }): void { ... }
+  onUserProfileUpdatedEvent(p: { name: string }): void { ... }
 
   // ── DOM handlers — D48 UI : on{UIKey}{DomEvent} ─────────────────────
   onAddBtnClick(e: MouseEvent): void {
@@ -377,10 +379,12 @@ export type TChannelHandlerName<NS extends string, E extends string> =
  * Handlers channel REQUIS — un par event déclaré dans `listens` de chaque Feature.
  * Utilise UnionToIntersection pour produire l'intersection de tous les handlers.
  */
+// Strate 0 : signature sans metas (ADR-0040 §615 — metas hors-scope strate 0).
+// Strate 1 ajoutera `metas: TMessageMetas` en second paramètre via ADR dédié.
 export type TChannelCallbacks<F extends TFeatureContract> = UnionToIntersection<{
   [NS in keyof F & string]: {
     [E in F[NS]["listens"][number] as TChannelHandlerName<NS, E & string>]:
-      (payload: TEventPayloadFor<F, `${NS}:${E & string}`>, metas: TEventMetas) => void
+      (payload: TEventPayloadFor<F, `${NS}:${E & string}`>) => void
   }
 }[keyof F & string]>;
 ```
@@ -580,7 +584,6 @@ import {
   type TUIContract,
   type TUIElements,
 } from "@bonsai/view";
-import type { TEventMetas } from "@bonsai/event";
 
 // === HEADER : 3 valeurs satisfying des modules contractuels, 1 type composé ===
 
@@ -627,14 +630,15 @@ class CartView
   get uiElements() { return cartViewUiElements; }
 
   // ── Channel handlers (D48 channel : on{NS}{EventName}Event) ───────────────
-  onCartItemAddedEvent(p: { id: string; qty: number }, m: TEventMetas): void {
+  // Strate 0 : signature `(payload) => void` sans metas (ADR-0040 §615).
+  onCartItemAddedEvent(p: { id: string; qty: number }): void {
     this.getUI("total").text(`${p.qty} items`);     // → TProjectionNode<HTMLSpanElement>
     this.getUI("addBtn").element();                  // → HTMLButtonElement ✅
   }
-  onCartItemRemovedEvent(p: { id: string }, m: TEventMetas): void {
+  onCartItemRemovedEvent(p: { id: string }): void {
     this.getUI("total").text("...");
   }
-  onUserProfileUpdatedEvent(p: { name: string }, m: TEventMetas): void {
+  onUserProfileUpdatedEvent(p: { name: string }): void {
     this.getUI("total").attr("data-user", p.name);
   }
 
