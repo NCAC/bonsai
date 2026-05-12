@@ -1,5 +1,5 @@
 /**
- * Tests de type — Verrou compile-time du contrat View (ADR-0040 + ADR-0042)
+ * Tests de type — Verrou compile-time du contrat View (ADR-0040 + ADR-0042 + ADR-0044 + ADR-0045)
  *
  * Ces tests ne s'exécutent **pas** au runtime — ils vérifient que TypeScript
  * rejette correctement tout usage de View qui sort du contrat modulaire
@@ -17,6 +17,9 @@
  *   - I80 : Channel privé — aucun TChannelToken dans la surface consommateur.
  *   - I84 : events: ["click"] sur un élément impose onXxxClick.
  *   - I87 : clé d'objet ≡ namespace de la Feature référencée.
+ *   - I90 (ADR-0044) : doublons dans events[] → HasNoDuplicates retourne never.
+ *   - I89/I91 (ADR-0045) : TEventsFor<TEl> — events incohérents avec le
+ *     sous-type d'élément → erreur compile ; fallback HTMLElement permissif.
  *
  * @jest-environment node
  */
@@ -289,6 +292,35 @@ const _key_ns_loose = {
   }
 } satisfies TFeatureContract;
 
+// ─── ADR-0044 — HasNoDuplicates : doublons dans events[] → never ────────────
+
+// ❌ Doublon → HasNoDuplicates<TEvts> extends false → paramètre de type never (I90).
+// @ts-expect-error — "submit" apparaît deux fois → never.
+const _duplicates_ko = ui<HTMLFormElement>()(["submit", "submit"]);
+
+// ✅ Pas de doublon → compilation normale.
+const _duplicates_ok = ui<HTMLFormElement>()(["submit", "reset"]);
+
+// ─── ADR-0045 — TEventsFor<TEl> : restriction sémantique par sous-type ──────
+
+// ✅ Cas positifs — events cohérents avec le sous-type déclaré.
+// La vérification est que ces lignes compilent sans erreur.
+const _semantic_btn_ok    = ui<HTMLButtonElement>()(["click", "mouseenter", "keydown"]);  // TUIBaseEvents ✅
+const _semantic_input_ok  = ui<HTMLInputElement>()(["change", "input", "focus"]);         // TUIFormValueEvents ✅
+const _semantic_video_ok  = ui<HTMLVideoElement>()(["play", "pause", "ended"]);           // TUIMediaEvents ✅
+const _semantic_div_ok    = ui<HTMLDivElement>()(["scroll", "click"]);                    // TUIScrollEvents ✅
+const _semantic_generic_ok = ui<HTMLElement>()(["scroll", "click", "keydown"]); // TUIBaseEvents | TUIScrollEvents ✅
+
+// ❌ Cas négatifs — events sémantiquement incohérents avec le sous-type.
+// @ts-expect-error — "change" n'est pas dans TUIBaseEvents (HTMLButtonElement ne porte pas de valeur — I89/I91).
+const _semantic_ko_1 = ui<HTMLButtonElement>()(["change"]);
+
+// @ts-expect-error — "scroll" n'est pas dans TUIBaseEvents | TUIFormValueEvents (HTMLInputElement — I91).
+const _semantic_ko_2 = ui<HTMLInputElement>()(["scroll"]);
+
+// @ts-expect-error — "play" n'est pas dans TUIBaseEvents (HTMLButtonElement — I91).
+const _semantic_ko_3 = ui<HTMLButtonElement>()(["play"]);
+
 // ─── Tests Jest factices — la vraie preuve est compile-time ─────────────────
 
 describe("View contract — compile-time enforcement (ADR-0040 + ADR-0042)", () => {
@@ -304,6 +336,22 @@ describe("View contract — compile-time enforcement (ADR-0040 + ADR-0042)", () 
     void UIHandlerMissing;
     void _key_ns_loose;
   });
+
+  it("ADR-0044 : HasNoDuplicates — doublons dans events[] → erreur compile (I90)", () => {
+    void _duplicates_ko;
+    void _duplicates_ok;
+  });
+
+  it("ADR-0045 : TEventsFor<TEl> — restriction sémantique par sous-type (I89/I91)", () => {
+    void _semantic_btn_ok;
+    void _semantic_input_ok;
+    void _semantic_video_ok;
+    void _semantic_div_ok;
+    void _semantic_generic_ok;
+    void _semantic_ko_1;
+    void _semantic_ko_2;
+    void _semantic_ko_3;
+  });
 });
 
 // Empêche TS d'enlever les déclarations inutilisées dans certains réglages stricts.
@@ -315,5 +363,15 @@ export type _Pin =
   | typeof CartHandlerMissing
   | typeof UIHandlerOK
   | typeof UIHandlerMissing
+  | typeof _duplicates_ko
+  | typeof _duplicates_ok
+  | typeof _semantic_btn_ok
+  | typeof _semantic_input_ok
+  | typeof _semantic_video_ok
+  | typeof _semantic_div_ok
+  | typeof _semantic_generic_ok
+  | typeof _semantic_ko_1
+  | typeof _semantic_ko_2
+  | typeof _semantic_ko_3
   | TChannelDefinition
   | typeof UserFeature;

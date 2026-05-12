@@ -364,6 +364,8 @@ ui<HTMLButtonElement>()(["play"]);
 
 > `TEventsFor<TEl>` est le mapping officiel Bonsai entre sous-types d'éléments HTML et leurs événements DOM sémantiquement cohérents. Ce type vit dans `@bonsai/view` et est maintenu par l'équipe Bonsai. Toute modification nécessite un amendement documenté de cet ADR. Pour les sous-types non listés explicitement dans le type conditionnel, le fallback `TUIBaseEvents | ...` (union large) s'applique — aucune régression.
 
+> **Note d'implémentation** : TypeScript évalue `TEventsFor<HTMLElement>` (type générique non-spécialisé) dans la branche des conteneurs scrollables (`TUIBaseEvents | TUIScrollEvents`) plutôt que dans le fallback explicite, en raison du typage structurel de `HTMLDivElement` (ses propriétés additionnelles sont optionnelles). Ce comportement est **acceptable** : `HTMLElement` non-spécialisé accepte `TUIBaseEvents | TUIScrollEvents`, ce qui couvre les cas d'usage courants. Pour un fallback large explicite, utiliser un sous-type concret (`HTMLDivElement`) ou migrer vers `TEl = HTMLElement` uniquement si nécessaire.
+
 ---
 
 ## Conséquences
