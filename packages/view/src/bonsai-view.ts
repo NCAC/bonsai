@@ -658,17 +658,6 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
   }
 
   /**
-   * Wrapper public de trigger — utilisé dans les tests pour déclencher depuis
-   * l'extérieur. En production, trigger est appelé depuis les handlers UI.
-   */
-  callTrigger<K extends TFlatTriggers<TVC["features"]> & string>(
-    key: K,
-    payload: TCommandPayloadFor<TVC["features"], K>
-  ): void {
-    this.trigger(key, payload);
-  }
-
-  /**
    * Effectue une Request synchrone typée vers un Channel déclaré.
    * Retourne le résultat typé ou `null` si aucun replier n'est enregistré
    * côté Feature propriétaire (D44).

@@ -28,7 +28,8 @@ import { describe, it } from "@jest/globals";
 import { type TChannelToken, type TChannelDefinition } from "@bonsai/event";
 import type { TFeatureContract } from "@bonsai/feature";
 import {
-  View, ui,
+  View,
+  ui,
   type TViewContract,
   type TViewCallbacks,
   type TUIContract,
@@ -39,32 +40,36 @@ import {
 
 type TCartChannelDef = {
   readonly commands: { addItem: { productId: string; qty: number } };
-  readonly events:   { itemAdded: { productId: string } };
+  readonly events: { itemAdded: { productId: string } };
   readonly requests: { getCount: { params: void; result: number } };
 };
 
 type TUserChannelDef = {
   readonly commands: { signIn: { email: string } };
-  readonly events:   { signedIn: { userId: string } };
+  readonly events: { signedIn: { userId: string } };
   readonly requests: { getProfile: { params: void; result: { name: string } } };
 };
 
 class CartFeature {
-  static readonly channel: TChannelToken<TCartChannelDef, "cart"> = { namespace: "cart" };
+  static readonly channel: TChannelToken<TCartChannelDef, "cart"> = {
+    namespace: "cart"
+  };
 }
 
 class UserFeature {
-  static readonly channel: TChannelToken<TUserChannelDef, "user"> = { namespace: "user" };
+  static readonly channel: TChannelToken<TUserChannelDef, "user"> = {
+    namespace: "user"
+  };
 }
 
 // ─── View qui déclare cart pour les trois lanes ─────────────────────────────
 
 const cartOnlyFeatures = {
   cart: {
-    feature:  CartFeature,
-    listens:  ["itemAdded"] as const,
-    triggers: ["addItem"]   as const,
-    requests: ["getCount"]  as const
+    feature: CartFeature,
+    listens: ["itemAdded"] as const,
+    triggers: ["addItem"] as const,
+    requests: ["getCount"] as const
   }
 } satisfies TFeatureContract;
 
@@ -85,33 +90,39 @@ class CartOnlyView
   extends View<TCartOnlyContract>
   implements TViewCallbacks<TCartOnlyContract>
 {
-  get features()   { return cartOnlyFeatures; }
-  get uiEvents()   { return cartOnlyUiEvents; }
-  get uiElements() { return cartOnlyUiElements; }
+  get features() {
+    return cartOnlyFeatures;
+  }
+  get uiEvents() {
+    return cartOnlyUiEvents;
+  }
+  get uiElements() {
+    return cartOnlyUiElements;
+  }
 
   // ── trigger() — clé namespacée déclarée, payload bien typé ─────────────
   callOK_trigger(): void {
-    this.callTrigger("cart:addItem", { productId: "abc", qty: 1 }); // ✅
+    this.trigger("cart:addItem", { productId: "abc", qty: 1 }); // ✅
   }
 
   callKO_triggerUnknownNamespace(): void {
     // @ts-expect-error — "user:signIn" n'est pas dans features.user (user absent).
-    this.callTrigger("user:signIn", { email: "x@y" });
+    this.trigger("user:signIn", { email: "x@y" });
   }
 
   callKO_triggerUnknownCommand(): void {
     // @ts-expect-error — "cart:noSuchCommand" n'existe pas dans cart.triggers.
-    this.callTrigger("cart:noSuchCommand", { productId: "x", qty: 1 });
+    this.trigger("cart:noSuchCommand", { productId: "x", qty: 1 });
   }
 
   callKO_triggerWrongPayload(): void {
     // @ts-expect-error — qty doit être un number.
-    this.callTrigger("cart:addItem", { productId: "x", qty: "1" });
+    this.trigger("cart:addItem", { productId: "x", qty: "1" });
   }
 
   callKO_triggerListenAsTrigger(): void {
     // @ts-expect-error — "cart:itemAdded" est dans listens, pas triggers.
-    this.callTrigger("cart:itemAdded", { productId: "x" });
+    this.trigger("cart:itemAdded", { productId: "x" });
   }
 
   // ── request() — clé namespacée déclarée, params + result typés ─────────
@@ -139,15 +150,17 @@ class CartOnlyView
 
 const listenOnlyFeatures = {
   cart: {
-    feature:  CartFeature,
-    listens:  ["itemAdded"] as const,
-    triggers: []            as const,
-    requests: []            as const
+    feature: CartFeature,
+    listens: ["itemAdded"] as const,
+    triggers: [] as const,
+    requests: [] as const
   }
 } satisfies TFeatureContract;
 
 const listenOnlyUiEvents = {} as const satisfies TUIContract;
-const listenOnlyUiElements = {} as const satisfies TUIElements<typeof listenOnlyUiEvents>;
+const listenOnlyUiElements = {} as const satisfies TUIElements<
+  typeof listenOnlyUiEvents
+>;
 
 type TListenOnlyContract = TViewContract<
   typeof listenOnlyFeatures,
@@ -158,13 +171,19 @@ class ListenOnlyView
   extends View<TListenOnlyContract>
   implements TViewCallbacks<TListenOnlyContract>
 {
-  get features()   { return listenOnlyFeatures; }
-  get uiEvents()   { return listenOnlyUiEvents; }
-  get uiElements() { return listenOnlyUiElements; }
+  get features() {
+    return listenOnlyFeatures;
+  }
+  get uiEvents() {
+    return listenOnlyUiEvents;
+  }
+  get uiElements() {
+    return listenOnlyUiElements;
+  }
 
   callKO_anyTrigger(): void {
     // @ts-expect-error — features.cart.triggers est vide, aucune clé valide.
-    this.callTrigger("cart:addItem", { productId: "x", qty: 1 });
+    this.trigger("cart:addItem", { productId: "x", qty: 1 });
   }
 
   onCartItemAddedEvent(_payload: { productId: string }): void {}
@@ -174,15 +193,17 @@ class ListenOnlyView
 
 const handlerFeatures = {
   cart: {
-    feature:  CartFeature,
-    listens:  ["itemAdded"] as const,
-    triggers: []            as const,
-    requests: []            as const
+    feature: CartFeature,
+    listens: ["itemAdded"] as const,
+    triggers: [] as const,
+    requests: [] as const
   }
 } satisfies TFeatureContract;
 
 const handlerUiEvents = {} as const satisfies TUIContract;
-const handlerUiElements = {} as const satisfies TUIElements<typeof handlerUiEvents>;
+const handlerUiElements = {} as const satisfies TUIElements<
+  typeof handlerUiEvents
+>;
 
 type THandlerContract = TViewContract<
   typeof handlerFeatures,
@@ -194,9 +215,15 @@ class CartHandlerOK
   extends View<THandlerContract>
   implements TViewCallbacks<THandlerContract>
 {
-  get features()   { return handlerFeatures; }
-  get uiEvents()   { return handlerUiEvents; }
-  get uiElements() { return handlerUiElements; }
+  get features() {
+    return handlerFeatures;
+  }
+  get uiEvents() {
+    return handlerUiEvents;
+  }
+  get uiElements() {
+    return handlerUiElements;
+  }
 
   onCartItemAddedEvent(payload: { productId: string }): void {
     void payload.productId;
@@ -208,9 +235,15 @@ class CartHandlerKO
   extends View<THandlerContract>
   implements TViewCallbacks<THandlerContract>
 {
-  get features()   { return handlerFeatures; }
-  get uiEvents()   { return handlerUiEvents; }
-  get uiElements() { return handlerUiElements; }
+  get features() {
+    return handlerFeatures;
+  }
+  get uiEvents() {
+    return handlerUiEvents;
+  }
+  get uiElements() {
+    return handlerUiElements;
+  }
 
   // @ts-expect-error — { wrong: number } n'est pas { productId: string }.
   onCartItemAddedEvent(payload: { wrong: number }): void {
@@ -224,9 +257,15 @@ class CartHandlerMissing
   extends View<THandlerContract>
   implements TViewCallbacks<THandlerContract>
 {
-  get features()   { return handlerFeatures; }
-  get uiEvents()   { return handlerUiEvents; }
-  get uiElements() { return handlerUiElements; }
+  get features() {
+    return handlerFeatures;
+  }
+  get uiEvents() {
+    return handlerUiEvents;
+  }
+  get uiElements() {
+    return handlerUiElements;
+  }
   // onCartItemAddedEvent intentionnellement absent
 }
 
@@ -250,9 +289,15 @@ class UIHandlerOK
   extends View<TUIHandlerContract>
   implements TViewCallbacks<TUIHandlerContract>
 {
-  get features()   { return uiHandlerFeatures; }
-  get uiEvents()   { return uiHandlerUiEvents; }
-  get uiElements() { return uiHandlerUiElements; }
+  get features() {
+    return uiHandlerFeatures;
+  }
+  get uiEvents() {
+    return uiHandlerUiEvents;
+  }
+  get uiElements() {
+    return uiHandlerUiElements;
+  }
 
   onSaveBtnClick(_e: MouseEvent): void {}
 }
@@ -263,9 +308,15 @@ class UIHandlerMissing
   extends View<TUIHandlerContract>
   implements TViewCallbacks<TUIHandlerContract>
 {
-  get features()   { return uiHandlerFeatures; }
-  get uiEvents()   { return uiHandlerUiEvents; }
-  get uiElements() { return uiHandlerUiElements; }
+  get features() {
+    return uiHandlerFeatures;
+  }
+  get uiEvents() {
+    return uiHandlerUiEvents;
+  }
+  get uiElements() {
+    return uiHandlerUiElements;
+  }
   // onSaveBtnClick intentionnellement absent
 }
 
@@ -285,10 +336,10 @@ class UIHandlerMissing
 
 const _key_ns_loose = {
   cart: {
-    feature:  CartFeature,
-    listens:  []   as const,
-    triggers: []   as const,
-    requests: []   as const
+    feature: CartFeature,
+    listens: [] as const,
+    triggers: [] as const,
+    requests: [] as const
   }
 } satisfies TFeatureContract;
 
@@ -305,10 +356,14 @@ const _duplicates_ok = ui<HTMLFormElement>()(["submit", "reset"]);
 
 // ✅ Cas positifs — events cohérents avec le sous-type déclaré.
 // La vérification est que ces lignes compilent sans erreur.
-const _semantic_btn_ok    = ui<HTMLButtonElement>()(["click", "mouseenter", "keydown"]);  // TUIBaseEvents ✅
-const _semantic_input_ok  = ui<HTMLInputElement>()(["change", "input", "focus"]);         // TUIFormValueEvents ✅
-const _semantic_video_ok  = ui<HTMLVideoElement>()(["play", "pause", "ended"]);           // TUIMediaEvents ✅
-const _semantic_div_ok    = ui<HTMLDivElement>()(["scroll", "click"]);                    // TUIScrollEvents ✅
+const _semantic_btn_ok = ui<HTMLButtonElement>()([
+  "click",
+  "mouseenter",
+  "keydown"
+]); // TUIBaseEvents ✅
+const _semantic_input_ok = ui<HTMLInputElement>()(["change", "input", "focus"]); // TUIFormValueEvents ✅
+const _semantic_video_ok = ui<HTMLVideoElement>()(["play", "pause", "ended"]); // TUIMediaEvents ✅
+const _semantic_div_ok = ui<HTMLDivElement>()(["scroll", "click"]); // TUIScrollEvents ✅
 const _semantic_generic_ok = ui<HTMLElement>()(["scroll", "click", "keydown"]); // TUIBaseEvents | TUIScrollEvents ✅
 
 // ❌ Cas négatifs — events sémantiquement incohérents avec le sous-type.
