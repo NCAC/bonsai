@@ -351,10 +351,15 @@ export type TChannelHandlerName<
  *
  * Symétrie Contract/Callbacks (ADR-0042 C15, I88) : pour chaque entrée dans
  * `features[NS].listens`, le compilateur impose la présence de la méthode
- * `on{NS}{EventName}Event` avec la signature exacte `(payload, metas) => void`.
+ * `on{NS}{EventName}Event` avec la signature exacte `(payload) => void`.
  *
  * Le payload est résolu via `TEventPayloadFor` — typé par le `TChannelDefinition`
  * de la Feature.
+ *
+ * Note strate 0/1 : ADR-0040 §615 met les metas hors-scope strate 0. Le second
+ * paramètre `metas: TMessageMetas` sera ajouté à la signature en strate 1, via
+ * un ADR dédié amendant ADR-0040 et ADR-0042. Le code actuel est volontairement
+ * sans metas.
  */
 export type TChannelCallbacks<F extends TFeatureContract> = UnionToIntersection<
   {
