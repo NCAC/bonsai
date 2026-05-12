@@ -143,7 +143,7 @@ export class CartView
 
   // D48 UI — handler requis par TViewCallbacks (events: ["click"] sur addButton)
   onAddButtonClick(_event: MouseEvent): void {
-    this.callTrigger("cart:addItem", {
+    this.trigger("cart:addItem", {
       productId: `prod-${this.#itemCount + 1}`,
       qty: 1,
       price: 9.99

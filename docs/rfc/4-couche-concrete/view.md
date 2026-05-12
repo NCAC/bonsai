@@ -117,16 +117,18 @@ abstract class View<TVC extends TViewContract = TViewContract> {
   /**
    * Envoie un Command via Channel (I4 — View n'a jamais `emit()`).
    * Clé namespacée `"ns:cmd"` validée contre `TFlatTriggers<F>`. Payload inféré.
+   * `protected` — appelée depuis les handlers UI de la sous-classe.
    */
-  protected callTrigger<K extends keyof TFlatTriggers<TVC["features"]> & string>(
+  protected trigger<K extends TFlatTriggers<TVC["features"]> & string>(
     key: K,
     payload: TCommandPayloadFor<TVC["features"], K>
   ): void;
 
   /**
    * Effectue une Request synchrone (ADR-0023, I29). Retour `T | null` si pas de replier.
+   * `protected` — appelée depuis les handlers UI de la sous-classe.
    */
-  protected callRequest<K extends keyof TFlatRequests<TVC["features"]> & string>(
+  protected request<K extends TFlatRequests<TVC["features"]> & string>(
     key: K,
     params: TRequestParamsFor<TVC["features"], K>
   ): TRequestResultFor<TVC["features"], K> | null;
@@ -241,7 +243,7 @@ class CartView
   onAddButtonClick(_event: MouseEvent): void {
     // Clé namespacée vérifiée contre TFlatTriggers<typeof cartViewFeatures>.
     // Payload inféré depuis CartFeature.channel (TCartDef.commands.addItem).
-    this.callTrigger("cart:addItem", { productId: "abc", qty: 1 });
+    this.trigger("cart:addItem", { productId: "abc", qty: 1 });
   }
 
   // ── D48 channel — handler imposé par cart.listens: ["itemAdded"] ─────────
@@ -261,8 +263,8 @@ class CartView
 > - `extends View<TVC>` ET `implements TViewCallbacks<TVC>` : couple obligatoire (I88).
 > - `satisfies TFeatureContract` : clé hors d'un Channel → erreur compile.
 > - `satisfies TUIElements<typeof uiEvents>` : clé orpheline ou manquante → erreur compile.
-> - `callTrigger("ns:cmd", payload)` : clé hors `TFlatTriggers<F>` → erreur compile.
-> - `callRequest("ns:req", params)` : clé hors `TFlatRequests<F>` → erreur compile.
+> - `trigger("ns:cmd", payload)` : clé hors `TFlatTriggers<F>` → erreur compile.
+> - `request("ns:req", params)` : clé hors `TFlatRequests<F>` → erreur compile.
 > - `getUI("key")` : clé hors `TVC["ui"]` → erreur compile ; sous-type `TEl` préservé.
 
 ### 2.3 Principe : Channel privé derrière Feature (I80)
@@ -272,11 +274,11 @@ Le Channel n'est jamais manipulé directement par le consommateur. Le code appli
 ```typescript
 // ✅ BON — surface consommateur : référence Feature + clé namespacée
 const features = { cart: { feature: CartFeature, listens: [...], ... } };
-this.callTrigger("cart:addItem", { productId, qty });
+this.trigger("cart:addItem", { productId, qty });
 
 // ❌ INTERDIT — exposition directe du token (I80)
 const token: TChannelToken<TCartDef, "cart"> = CartFeature.channel; // non
-this.callTrigger(CartFeature.channel, "addItem", { productId, qty }); // non
+this.trigger(CartFeature.channel, "addItem", { productId, qty }); // non
 ```
 
 ---
@@ -332,7 +334,7 @@ type TRequestParamsFor<F extends TFeatureContract, K extends string>;
 type TRequestResultFor<F extends TFeatureContract, K extends string>;
 ```
 
-Ces aplatisseurs alimentent la signature des méthodes `callTrigger` / `callRequest` côté View et la signature des handlers `on{NS}{Event}Event` côté `TChannelCallbacks`.
+Ces aplatisseurs alimentent la signature des méthodes `trigger` / `request` côté View et la signature des handlers `on{NS}{Event}Event` côté `TChannelCallbacks`.
 
 ### 3.3 Types du Module 2 — `TUIContract` et `ui<TEl>()`
 
@@ -414,8 +416,8 @@ type TViewCallbacks<TVC extends TViewContract> =
 ```
 
 > **Garanties compile-time** :
-> - `callTrigger("ns:cmd", payload)` : clé hors `TFlatTriggers<F>` → erreur compile.
-> - `callRequest("ns:req", params)` : clé hors `TFlatRequests<F>` → erreur compile.
+> - `trigger("ns:cmd", payload)` : clé hors `TFlatTriggers<F>` → erreur compile.
+> - `request("ns:req", params)` : clé hors `TFlatRequests<F>` → erreur compile.
 > - Payload inféré exactement depuis le `Channel<TDef>` de la Feature référencée.
 > - Handler manquant pour une clé `listens` → `TS2420` via `implements TViewCallbacks`.
 > - Handler manquant pour un event DOM (`events: ["click"]`) → `TS2420` via `implements TViewCallbacks`.

@@ -22,7 +22,7 @@
 >   - **Manifest applicatif** : `new Application({ foundation, features }).start()` où `features satisfies StrictManifest<AppManifest>`.
 >   - **View** : `extends View<TViewContract<F, U>>` + `implements TViewCallbacks<TVC>` (ADR-0042 — I88). Trois getters : `features` / `uiEvents` / `uiElements`. Plus de `params` / `TUIMap` / `TViewParams` / `TViewCapabilities`.
 >   - **Helper UI** : `ui<TEl>()(events)` curryfié (I85).
->   - **callTrigger / callRequest** : `this.callTrigger("ns:cmd", payload)` / `this.callRequest("ns:req", params)` — plus de `Channel.channel` token explicite côté View.
+>   - **trigger / request** : `this.trigger("ns:cmd", payload)` / `this.request("ns:req", params)` (méthodes `protected`) — plus de `Channel.channel` token explicite côté View.
 
 > ### Périmètre
 > Ce guide s'applique au **code applicatif** écrit avec le framework Bonsai :
