@@ -1,7 +1,7 @@
 /**
  * @bonsai/view - Version 0.0.1
  * Bundled by Bonsai Build System
- * Date: 2026-05-07T09:44:45.485Z
+ * Date: 2026-05-07T21:06:43.080Z
  */
 import { Radio } from '@bonsai/event';
 
@@ -79,10 +79,13 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
  *   I82 — Handler manquant → erreur compile via `implements TViewCallbacks`
  *   I83 — Pattern modulaire `T{Component}Contract` réutilisable
  *   I84 — `events: [E, ...]` non-vide impose les handlers DOM correspondants
- *   I85 — `ui<TEl>(events)` est l'unique helper pour TUIEntry
- *   I86 — `events` toujours présent dans TUIEntry (pas d'optionnel)
+ *   I85 — `ui<TEl>()(events)` est l'unique helper pour TUIEntry (forme curryfiée)
+ *   I86 — `events` toujours présent dans TUIEntry (pas d'optionnel) ; ReadonlyArray<TEventsFor<TEl>> sans doublons
  *   I87 — clé d'objet ≡ namespace de la Feature référencée
  *   I88 — symétrie Contract/Callbacks
+ *   I89 — tout nom d'event déclaré appartient à TEventsFor<TEl> ⊆ keyof HTMLElementEventMap (ADR-0044/0045)
+ *   I90 — pas de doublons dans TUIEntry["events"] — double-binding interdit (ADR-0044)
+ *   I91 — TEventsFor<TEl> est le mapping sémantique officiel Bonsai élément→events (ADR-0045)
  *
  * @packageDocumentation
  */
@@ -95,6 +98,10 @@ var _View_instances, _View_rootElement, _View_rootEl, _View_mounted, _View_uiSel
  * tout en spécifiant `TEl` explicitement (limitation TypeScript : `const T`
  * sur un paramètre ne préserve pas le littéral si un autre paramètre est
  * passé explicitement avec un défaut).
+ *
+ * Contraintes (ADR-0044 + ADR-0045) :
+ *  - `TEvts` ⊆ `TEventsFor<TEl>` — noms valides + sémantique cohérente
+ *  - `HasNoDuplicates<TEvts>` — interdit le double-binding addEventListener
  *
  * @example ui<HTMLButtonElement>()(["click"])           // interactif
  * @example ui<HTMLSpanElement>()([])                    // non-interactif explicite
@@ -159,8 +166,8 @@ function parseNSKey(key) {
  * } satisfies TFeatureContract;
  *
  * const cartViewUiEvents = {
- *   total:  ui<HTMLSpanElement>([]),
- *   addBtn: ui<HTMLButtonElement>(["click"]),
+ *   total:  ui<HTMLSpanElement>()([]),
+ *   addBtn: ui<HTMLButtonElement>()(["click"]),
  * } satisfies TUIContract;
  *
  * const cartViewUiElements = {
