@@ -6,6 +6,22 @@
 
 ---
 
+> **⚠ État du document (2026-05-13)** — Le Router est une Feature **strate 2+**
+> non encore implémentée. Les exemples de ce document datent d'avant
+> [ADR-0039](../../adr/ADR-0039-namespace-authority-and-uniqueness.md)
+> (manifest applicatif typé) et [ADR-0040](../../adr/ADR-0040-typescript-first-api-channel-definition-typed.md)
+> (Channel générique). Les patterns illustrés (`static readonly namespace`,
+> `Feature<TEntity, TChannel>`) doivent être lus comme **historiques**.
+>
+> Les briques courantes à utiliser au moment de la livraison du Router seront :
+>
+>   - **Feature** : `class extends Feature<E, TDef, "router">` + `static readonly channel: TChannelToken<TDef, "router">` (ADR-0040). Plus de `static namespace` (I68).
+>   - **Identité** : la clé `"router"` du manifest applicatif est l'autorité unique du namespace, réservée par le framework (I28, I68).
+>
+> Le document sera réécrit à la livraison du Router.
+
+---
+
 > **D8** : le Router est une spécialisation interne de Feature.
 > **I28** : le namespace `router` est réservé — aucune Feature utilisateur ne peut l'utiliser.
 

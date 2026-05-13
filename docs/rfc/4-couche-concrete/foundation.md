@@ -102,7 +102,7 @@ abstract class Foundation<
    * Composers racines -- cles = selecteurs CSS dans <body>.
    *
    * Contrat different de View.composers() : les cles ne sont pas des
-   * entrees TUIMap (la Foundation n'a pas de TUIMap) mais des
+   * entrees uiElements (la Foundation n'a pas de TUIContract) mais des
    * selecteurs CSS resolus via document.body.querySelector().
    */
   abstract get composers(): Record<string, typeof Composer>;

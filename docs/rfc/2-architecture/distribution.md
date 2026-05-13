@@ -46,6 +46,18 @@ app.start();
 
 ## 3. Mode ESM Modulaire — BonsaiRegistry
 
+> **⚠ État de la section (2026-05-13)** — Le Mode ESM Modulaire est une cible
+> **strate 2+** non encore implémentée. Les exemples ci-dessous (`app.register(f)`,
+> `BonsaiRegistry.collect()`, `registerFeature()`) datent d'avant
+> [ADR-0039](../../adr/ADR-0039-namespace-authority-and-uniqueness.md) (manifest
+> applicatif typé) et doivent être lus comme **historiques**.
+>
+> À la livraison, le bootstrap ESM utilisera le même manifest applicatif typé
+> que le Mode IIFE (§2 ci-dessus) : `new Application({ foundation, features })`
+> où `features satisfies StrictManifest<AppManifest>`. Le `BonsaiRegistry`
+> alimentera ce manifest à partir des modules `register*()` collectés, mais
+> ne remplacera pas l'API `Application` publique. Aucun `app.register(f)`.
+
 En Mode ESM, les composants Bonsai sont distribues comme des modules ES natifs,
 charges par le navigateur via `<script type="module">`. Le `BonsaiRegistry`
 collecte les declarations de ces modules avant que l'Application lance le bootstrap.
