@@ -1,7 +1,7 @@
 /**
  * @bonsai/application - Version 0.0.1
  * Bundled by Bonsai Build System
- * Date: 2026-05-07T09:44:59.718Z
+ * Date: 2026-05-13T20:26:20.686Z
  */
 import { Radio } from '@bonsai/event';
 import { assertValidNamespace, BonsaiNamespaceError } from '@bonsai/feature';
@@ -148,6 +148,25 @@ _Application_manifest = new WeakMap(), _Application_started = new WeakMap(), _Ap
     // I21/I57/I71 — délègue à assertValidNamespace
     for (const ns of namespaces) {
         assertValidNamespace(ns);
+    }
+    for (const [ownNs, FeatureClass] of Object.entries(__classPrivateFieldGet(this, _Application_manifest, "f"))) {
+        const cls = FeatureClass;
+        const token = cls.channel;
+        if (token === undefined ||
+            token === null ||
+            typeof token !== "object" ||
+            typeof token.namespace !== "string") {
+            throw new BonsaiNamespaceError("FEATURE_MISSING_CHANNEL", `Feature "${ownNs}" does not declare \`static readonly channel: ` +
+                `TChannelToken<TDef, "${ownNs}">\` (I73 — ADR-0040). Add ` +
+                `\`static readonly channel = { namespace: "${ownNs}" }\` ` +
+                `to the class.`);
+        }
+        if (token.namespace !== ownNs) {
+            throw new BonsaiNamespaceError("FEATURE_CHANNEL_NAMESPACE_MISMATCH", `Feature registered under "${ownNs}" declares ` +
+                `channel.namespace="${token.namespace}" — must match the manifest ` +
+                `key (I22, I73). The channel token namespace and the manifest key ` +
+                `are the authoritative identity of the Feature.`);
+        }
     }
     // I70 — cohérence des références croisées via `static listens` et `static queries`
     const known = new Set(namespaces);

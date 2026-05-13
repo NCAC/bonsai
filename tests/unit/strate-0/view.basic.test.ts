@@ -20,6 +20,9 @@
  *   I80 — Channel privé : aucun TChannelToken dans la surface consommateur
  *   I81 — features/uiEvents/uiElements sont les sources de vérité runtime
  *   I82 — Handler manquant → erreur (compile via implements, runtime via mount)
+ *   I83 — Pattern modulaire ADR-0042 en 5 étapes appliqué à TestView (features
+ *         + uiEvents + uiElements + TViewContract + View<TVC> + implements
+ *         TViewCallbacks<TVC>) — utilisé par toutes les fixtures de ce fichier
  *   I84 — events: [E,...] non-vide impose les handlers DOM correspondants
  *   I87 — Clé d'objet ≡ namespace de la Feature référencée
  *
@@ -85,7 +88,7 @@ class TestView extends View<TTestViewContract> {
 
   // D48 UI — handler requis (events: ["click"] sur toggleBtn)
   onToggleBtnClick(_event: MouseEvent): void {
-    this.callTrigger("cart:addItem", { productId: "abc", qty: 1 });
+    this.trigger("cart:addItem", { productId: "abc", qty: 1 });
   }
 
   // D48 channel — handler requis (cart.listens: ["itemAdded"])
@@ -265,7 +268,9 @@ describe("View — strate-0 core (ADR-0024 value-first + ADR-0042 modulaire)", (
       const handler = jest.fn();
       Radio.me().channel("cart").handle("addItem", handler);
 
-      view.callTrigger("cart:addItem", { productId: "abc", qty: 1 });
+      // `trigger` est `protected` ; cast pour exercer le runtime depuis l'extérieur.
+      (view as unknown as { trigger(k: string, p: unknown): void })
+        .trigger("cart:addItem", { productId: "abc", qty: 1 });
 
       expect(handler).toHaveBeenCalledWith({ productId: "abc", qty: 1 });
     });
@@ -275,8 +280,8 @@ describe("View — strate-0 core (ADR-0024 value-first + ADR-0042 modulaire)", (
       view.mount("[data-view='test']");
 
       expect(() =>
-        (view as unknown as { callTrigger(k: string, p: unknown): void })
-          .callTrigger("malformed", {})
+        (view as unknown as { trigger(k: string, p: unknown): void })
+          .trigger("malformed", {})
       ).toThrow(/Malformed namespaced key/);
     });
   });

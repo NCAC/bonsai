@@ -117,16 +117,18 @@ abstract class View<TVC extends TViewContract = TViewContract> {
   /**
    * Envoie un Command via Channel (I4 — View n'a jamais `emit()`).
    * Clé namespacée `"ns:cmd"` validée contre `TFlatTriggers<F>`. Payload inféré.
+   * `protected` — appelée depuis les handlers UI de la sous-classe.
    */
-  protected callTrigger<K extends keyof TFlatTriggers<TVC["features"]> & string>(
+  protected trigger<K extends TFlatTriggers<TVC["features"]> & string>(
     key: K,
     payload: TCommandPayloadFor<TVC["features"], K>
   ): void;
 
   /**
    * Effectue une Request synchrone (ADR-0023, I29). Retour `T | null` si pas de replier.
+   * `protected` — appelée depuis les handlers UI de la sous-classe.
    */
-  protected callRequest<K extends keyof TFlatRequests<TVC["features"]> & string>(
+  protected request<K extends TFlatRequests<TVC["features"]> & string>(
     key: K,
     params: TRequestParamsFor<TVC["features"], K>
   ): TRequestResultFor<TVC["features"], K> | null;
@@ -241,7 +243,7 @@ class CartView
   onAddButtonClick(_event: MouseEvent): void {
     // Clé namespacée vérifiée contre TFlatTriggers<typeof cartViewFeatures>.
     // Payload inféré depuis CartFeature.channel (TCartDef.commands.addItem).
-    this.callTrigger("cart:addItem", { productId: "abc", qty: 1 });
+    this.trigger("cart:addItem", { productId: "abc", qty: 1 });
   }
 
   // ── D48 channel — handler imposé par cart.listens: ["itemAdded"] ─────────
@@ -261,8 +263,8 @@ class CartView
 > - `extends View<TVC>` ET `implements TViewCallbacks<TVC>` : couple obligatoire (I88).
 > - `satisfies TFeatureContract` : clé hors d'un Channel → erreur compile.
 > - `satisfies TUIElements<typeof uiEvents>` : clé orpheline ou manquante → erreur compile.
-> - `callTrigger("ns:cmd", payload)` : clé hors `TFlatTriggers<F>` → erreur compile.
-> - `callRequest("ns:req", params)` : clé hors `TFlatRequests<F>` → erreur compile.
+> - `trigger("ns:cmd", payload)` : clé hors `TFlatTriggers<F>` → erreur compile.
+> - `request("ns:req", params)` : clé hors `TFlatRequests<F>` → erreur compile.
 > - `getUI("key")` : clé hors `TVC["ui"]` → erreur compile ; sous-type `TEl` préservé.
 
 ### 2.3 Principe : Channel privé derrière Feature (I80)
@@ -272,11 +274,11 @@ Le Channel n'est jamais manipulé directement par le consommateur. Le code appli
 ```typescript
 // ✅ BON — surface consommateur : référence Feature + clé namespacée
 const features = { cart: { feature: CartFeature, listens: [...], ... } };
-this.callTrigger("cart:addItem", { productId, qty });
+this.trigger("cart:addItem", { productId, qty });
 
 // ❌ INTERDIT — exposition directe du token (I80)
 const token: TChannelToken<TCartDef, "cart"> = CartFeature.channel; // non
-this.callTrigger(CartFeature.channel, "addItem", { productId, qty }); // non
+this.trigger(CartFeature.channel, "addItem", { productId, qty }); // non
 ```
 
 ---
@@ -332,7 +334,7 @@ type TRequestParamsFor<F extends TFeatureContract, K extends string>;
 type TRequestResultFor<F extends TFeatureContract, K extends string>;
 ```
 
-Ces aplatisseurs alimentent la signature des méthodes `callTrigger` / `callRequest` côté View et la signature des handlers `on{NS}{Event}Event` côté `TChannelCallbacks`.
+Ces aplatisseurs alimentent la signature des méthodes `trigger` / `request` côté View et la signature des handlers `on{NS}{Event}Event` côté `TChannelCallbacks`.
 
 ### 3.3 Types du Module 2 — `TUIContract` et `ui<TEl>()`
 
@@ -414,8 +416,8 @@ type TViewCallbacks<TVC extends TViewContract> =
 ```
 
 > **Garanties compile-time** :
-> - `callTrigger("ns:cmd", payload)` : clé hors `TFlatTriggers<F>` → erreur compile.
-> - `callRequest("ns:req", params)` : clé hors `TFlatRequests<F>` → erreur compile.
+> - `trigger("ns:cmd", payload)` : clé hors `TFlatTriggers<F>` → erreur compile.
+> - `request("ns:req", params)` : clé hors `TFlatRequests<F>` → erreur compile.
 > - Payload inféré exactement depuis le `Channel<TDef>` de la Feature référencée.
 > - Handler manquant pour une clé `listens` → `TS2420` via `implements TViewCallbacks`.
 > - Handler manquant pour un event DOM (`events: ["click"]`) → `TS2420` via `implements TViewCallbacks`.
@@ -528,65 +530,21 @@ Le développeur applicatif n'écrit **jamais** de cast manuel — le pattern mod
 
 Pour le pattern complet (5 étapes : `features` + `uiEvents` + `uiElements` + alias `TVC` + classe), voir [ADR-0042](../../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md) §Exemple applicatif complet.
 
-**Semantique querySelectorAll** : le framework resout chaque selecteur via `querySelectorAll` dans le scope de la View. Une cle TUIMap correspond donc a 0, 1, ou N elements DOM :
+**Sémantique `querySelectorAll`** : le framework résout chaque sélecteur d'`uiElements` via `querySelectorAll` dans le scope de la View. Une clé d'`uiEvents` correspond donc à 0, 1 ou N éléments DOM :
 
-- Pour **uiEvents** : la delegation d'evenements s'applique a TOUS les elements matches. Un seul handler `onProductItemAddToBasketClick` couvre N elements `.ProductItem-addToBasket`.
-- Pour **get composers()** : si une cle est declaree dans `get composers()`, le framework instancie N Composers -- un par element matche (ADR-0020).
+- Pour les **events DOM** (`events: ["click"]`) : la délégation s'applique à TOUS les éléments matchés. Un seul handler `onProductItemClick` couvre N éléments `.ProductItem`.
+- Pour `get composers()` : si une clé est déclarée comme slot, le framework instancie N Composers — un par élément matché (ADR-0020, I37).
 
-La View expose `params` via un getter (ADR-0024 value-first). **`get uiEvents()` n'existe plus** -- le framework auto-derive les handlers depuis `TUIMap` (D48) :
-
-```typescript
-type TCartViewUI = TUIMap<{
-  addButton:    { el: HTMLButtonElement;  event: ['click'] };
-  totalDisplay: { el: HTMLSpanElement;    event: [] };
-  searchInput:  { el: HTMLInputElement;   event: ['input', 'change'] };
-}>;
-
-const cartViewParams = {
-  listen:     [Cart.channel],
-  trigger:    [Cart.channel],
-  request:    [],
-  uiElements: {
-    addButton:    '.Cart-addButton',
-    totalDisplay: '.Cart-totalDisplay',
-    searchInput:  '.Cart-searchInput',
-  },
-  behaviors:  [],
-  options:    {},
-} as const satisfies TViewParams<TCartViewUI>;
-
-type TCartViewCapabilities = TViewCapabilities<TCartViewUI, typeof cartViewParams>;
-
-class CartView extends View<TCartViewCapabilities> {
-  get params() { return cartViewParams; }
-
-  // PAS DE get uiEvents() -- D48 (AUTO-UI-EVENT-DISCOVERY)
-  // TUIMap declare :
-  //   addButton   + ['click']           -> onAddButtonClick
-  //   searchInput + ['input', 'change'] -> onSearchInputInput, onSearchInputChange
-  //   totalDisplay + []                 -> aucun handler
-
-  onAddButtonClick(_event: Event): void {
-    this.trigger("cart:addItem", { productId: "..." });
-  }
-
-  onSearchInputInput(event: InputEvent & { currentTarget: HTMLInputElement }): void {
-    this.trigger("cart:search", { query: event.currentTarget.value });
-  }
-
-  onSearchInputChange(_event: Event): void {
-    // Validation finale a la perte de focus
-  }
-}
-```
-
-> **Garanties** :
-> - `TUIMap` contraint au niveau type que seuls les evenements declares peuvent etre branches
-> - `TUIMap` interdit la cle `root` (reservee pour `get templates()`)
-> - `TUIMap` type l'element HTML -- `getUI()` retourne `TProjectionNode<HTMLButtonElement>` (D35)
-> - **D48** : `TAutoUIEventHandlers<TUI>` genere les signatures de handlers depuis `TUIMap` -- TypeScript verifie la signature de chaque handler
-> - Le framework verifie au **bootstrap** que chaque combinaison (cle x event) a un handler correspondant. Absence = erreur explicite
-> - Les selecteurs CSS vivent dans `params.uiElements`, overridables par le Composer (D34)
+> **Garanties compile-time du pattern modulaire** :
+> - `TUIContract` (via `ui<TEl>()(events)`) contraint au type-level les events DOM autorisés (ADR-0044/0045 — `TEventsFor<TEl>` sans doublons).
+> - `TUIElements<typeof uiEvents>` garantit la bijection clés DOM ↔ sélecteurs CSS — pas d'orphelin.
+> - `getUI(key)` est typé via `ExtractEl<TUI[K]>` — `getUI("addButton").element() → HTMLButtonElement`.
+> - `implements TViewCallbacks<TVC>` impose les handlers DOM (`on{Key}{DomEvent}`) requis par `events: [...]` non-vide (I84, I88).
+> - Les sélecteurs CSS vivent dans `get uiElements()`, **overridables** par le Composer via `resolve() → options.uiElements` (D34, D35).
+>
+> **Garanties bootstrap (filets runtime)** :
+> - Chaque clé d'`uiEvents[k]` doit avoir une entrée correspondante dans `uiElements` — sinon throw au mount.
+> - Chaque event DOM déclaré (`events: [E, ...]`) doit avoir son handler implémenté — filet runtime même si `as any` contourne `TViewCallbacks`.
 
 ### 4.3 Delegation d'evenements
 
@@ -628,24 +586,26 @@ La View accede aux noeuds DOM **exclusivement** via `getUI(key)`, jamais via
 > d'un slot, c'est une erreur au bootstrap.
 
 ```typescript
-abstract class View<TCapabilities extends TViewCapabilities<TUIMap<any>, any>> {
+abstract class View<TVC extends TViewContract = TViewContract> {
   /**
-   * Resout un @ui par son nom logique.
-   * Resolution paresseuse + cache : querySelector une seule fois.
-   * Si le noeud n'existe pas dans le DOM, jette une erreur.
+   * Résout un @ui par son nom logique.
+   * Résolution paresseuse + cache : querySelector une seule fois.
+   * Si le nœud n'existe pas dans le DOM, jette une erreur.
    *
-   * Le type de retour depend de la couverture template :
-   * - @ui SANS template -> TProjectionNode (lecture + mutation N1)
+   * Le type de retour dépend de la couverture template :
+   * - @ui SANS template -> TProjectionNode<TEl> (lecture + mutation N1)
    * - @ui AVEC template -> TProjectionRead (lecture seule)
    *
-   * Source de mutation unique par @ui garanti par le type system (I41).
+   * Source de mutation unique par @ui garantie par le type system (I41).
    *
-   * Le framework derive les overloads a partir des cles presentes
-   * dans get templates(). TCapabilities['ui'] contraint les cles autorisees.
+   * Le framework dérive les overloads à partir des clés présentes
+   * dans get templates(). `TVC["ui"]` (TUIContract) contraint les clés
+   * autorisées et `ExtractEl<TVC["ui"][K]>` extrait le sous-type DOM
+   * via le phantom `_el?` de l'entrée UI (I85).
    */
-  protected getUI<K extends keyof TCapabilities['ui'] & string>(
+  getUI<K extends keyof TVC["ui"] & string>(
     key: K
-  ): TProjectionNode<TCapabilities['ui'][K]['el']> | TProjectionRead;
+  ): TProjectionNode<ExtractEl<TVC["ui"][K]>> | TProjectionRead;
 }
 ```
 
@@ -728,29 +688,29 @@ Trois modes **mutuellement exclusifs** :
 
 ```typescript
 /**
- * Mode A : null -- pas de template.
+ * Mode A : null — pas de template.
  *   La View utilise getUI() manuellement dans ses handlers.
  *
- * Mode B : { root: Binding } -- template complet.
- *   Le template possede TOUT le contenu de this.el.
- *   Aucune autre cle autorisee.
+ * Mode B : { root: Binding } — template complet.
+ *   Le template possède TOUT le contenu de this.el.
+ *   Aucune autre clé autorisée.
  *
- * Mode C : { [K in keyof TUI]?: Binding } -- fragments (ilots).
- *   Chaque cle est un @ui declare dans TUIMap.
- *   Le template possede le contenu INTERIEUR de l'element @ui.
- *   Le reste du DOM serveur est intouche.
- *   La cle `root` est interdite (gardee par TUIMap).
+ * Mode C : { [K in keyof TUI]?: Binding } — fragments (îlots).
+ *   Chaque clé est un @ui déclaré dans `uiEvents` (TUIContract, ADR-0042).
+ *   Le template possède le contenu INTÉRIEUR de l'élément @ui.
+ *   Le reste du DOM serveur est intouché.
+ *   La clé `root` est interdite (réservée au Mode B).
  */
 type TViewTemplateBinding<TData = unknown> = {
   template: TProjectionTemplate<any, TData>;
   /**
-   * Selector optionnel : active l'auto-reactivite (RFC-0003 SS2.3/SS7.2).
+   * Selector optionnel : active l'auto-réactivité (RFC-0003 §2.3/§7.2).
    * Si absent, le template est statique (projection initiale seulement).
    */
   select?: (data: Record<string, any>) => TData | undefined;
 };
 
-type TViewTemplates<TUI extends TUIMap<any>> =
+type TViewTemplates<TUI extends TUIContract = TUIContract> =
   | null                                                 // Mode A
   | { root: TViewTemplateBinding }                       // Mode B
   | { [K in keyof TUI & string]?: TViewTemplateBinding }; // Mode C
@@ -856,51 +816,79 @@ par `@ui` declare, avec l'analyse de dependance sur `data.*` :
 - Noeuds **dynamiques** -> inclus dans `setup()` + `project()`
 - Noeuds **conditionnels** (`if/else`) -> gestion de bascule de branche
 
-Usage dans la View :
+Usage dans la View (pattern modulaire ADR-0042) :
 
 ```typescript
 import {
+  View, ui,
+  type TViewContract, type TViewCallbacks,
+  type TUIContract, type TUIElements,
+} from '@bonsai/view';
+import type { TFeatureContract } from '@bonsai/feature';
+import { AuthFeature } from '../Auth/auth.feature';
+import { CartFeature } from '../Cart/cart.feature';
+import {
   loginContainerTemplate,
-  cartBadgeTemplate
+  cartBadgeTemplate,
 } from './AccountView.template';
 
-type TAccountViewUI = TUIMap<{
-  loginContainer: { el: HTMLDivElement;    event: [] };
-  loginInput:     { el: HTMLInputElement;  event: [] };
-  loginButton:    { el: HTMLButtonElement; event: ['click'] };
-  logoutButton:   { el: HTMLButtonElement; event: ['click'] };
-  cartBadge:      { el: HTMLSpanElement;   event: [] };
-  nav:            { el: HTMLElement;       event: ['click'] };
-}>;
+// ═══ Étape 1 — Module Features (channel par Feature) ═══
 
-// ═══ ETAPE 1 -- Valeur concrete (ecrite UNE SEULE FOIS, ADR-0024) ═══
-
-const accountViewParams = {
-  listen:     [Auth.channel, Cart.channel],
-  trigger:    [Auth.channel],
-  request:    [],
-  uiElements: {
-    loginContainer: '.AccountView-loginZone',
-    loginInput:     '.AccountView-loginInput',
-    loginButton:    '.AccountView-loginButton',
-    logoutButton:   '.AccountView-logoutButton',
-    cartBadge:      '.AccountView-cartBadge',
-    nav:            '.AccountView-nav',
+const accountViewFeatures = {
+  auth: {
+    feature:  AuthFeature,
+    listens:  ['stateChanged']  as const,
+    triggers: ['login', 'logout'] as const,
+    requests: []                 as const,
   },
-  behaviors:  [],
-  options:    {},
-} as const satisfies TViewParams<TAccountViewUI>;
+  cart: {
+    feature:  CartFeature,
+    listens:  ['itemAdded', 'itemRemoved'] as const,
+    triggers: []                            as const,
+    requests: []                            as const,
+  },
+} satisfies TFeatureContract;
 
-// ═══ ETAPE 2 -- Type derive (ZERO repetition) ═══
+// ═══ Étape 2 — Module UI events (TUIContract typé via ui<TEl>()) ═══
 
-type TAccountViewCapabilities = TViewCapabilities<TAccountViewUI, typeof accountViewParams>;
+const accountViewUiEvents = {
+  loginContainer: ui<HTMLDivElement>()([]),                    // pas d'event direct — couvert par template
+  loginInput:     ui<HTMLInputElement>()([]),                  // lecture only via getUI().value()
+  loginButton:    ui<HTMLButtonElement>()(['click']),
+  logoutButton:   ui<HTMLButtonElement>()(['click']),
+  cartBadge:      ui<HTMLSpanElement>()([]),                   // couvert par template
+  nav:            ui<HTMLElement>()(['click']),
+} satisfies TUIContract;
 
-// ═══ ETAPE 3 -- Classe (getter trivial) ═══
+// ═══ Étape 3 — Module sélecteurs CSS (overridable D34) ═══
 
-class AccountView extends View<TAccountViewCapabilities> {
-  get params() { return accountViewParams; }
+const accountViewUiElements = {
+  loginContainer: '.AccountView-loginZone',
+  loginInput:     '.AccountView-loginInput',
+  loginButton:    '.AccountView-loginButton',
+  logoutButton:   '.AccountView-logoutButton',
+  cartBadge:      '.AccountView-cartBadge',
+  nav:            '.AccountView-nav',
+} satisfies TUIElements<typeof accountViewUiEvents>;
 
-  // Mode C -- seules les zones reactives ont un template
+// ═══ Étape 4 — Type composé ═══
+
+type TAccountViewContract = TViewContract<
+  typeof accountViewFeatures,
+  typeof accountViewUiEvents
+>;
+
+// ═══ Étape 5 — Classe (un générique, un implements) ═══
+
+class AccountView
+  extends View<TAccountViewContract>
+  implements TViewCallbacks<TAccountViewContract>
+{
+  get features()   { return accountViewFeatures;   }
+  get uiEvents()   { return accountViewUiEvents;   }
+  get uiElements() { return accountViewUiElements; }
+
+  // Mode C — seules les zones réactives ont un template
   get templates() {
     return {
       loginContainer: {
@@ -915,39 +903,43 @@ class AccountView extends View<TAccountViewCapabilities> {
           ? { itemCount: data.cart.itemCount }
           : undefined,
       },
-      // pas de `nav` -> la nav est SSR pur, aucune projection
+      // pas de `nav` → la nav est SSR pur, aucune projection
     };
   }
 
-  // this.nodes est auto-peuple par le framework :
-  // this.nodes.loginContainer -> setup() appele sur getUI('loginContainer')
-  // this.nodes.cartBadge      -> setup() appele sur getUI('cartBadge')
+  // ── Channel handlers (D48 channel — imposés par TViewCallbacks) ─────────
+  onAuthStateChangedEvent(_p: { isAuthenticated: boolean }): void { /* ... */ }
+  onCartItemAddedEvent(_p: { id: string; qty: number }): void { /* ... */ }
+  onCartItemRemovedEvent(_p: { id: string }): void { /* ... */ }
 
-  // loginInput n'a PAS de template -> getUI retourne TProjectionNode
-  onLoginButtonClick(): void {
+  // ── DOM handlers (D48 UI — imposés par TViewCallbacks) ──────────────────
+  // loginInput n'a PAS de template → getUI retourne TProjectionNode<HTMLInputElement>
+  onLoginButtonClick(_e: MouseEvent): void {
     const username = this.getUI('loginInput').value();
-    this.trigger(Auth.channel, 'login', { username });
+    this.trigger('auth:login', { username, password: '' });
   }
 
-  onLogoutButtonClick(): void {
-    this.trigger(Auth.channel, 'logout', {});
+  onLogoutButtonClick(_e: MouseEvent): void {
+    this.trigger('auth:logout', undefined);
   }
 
-  // loginContainer a un template -> getUI retourne TProjectionRead
-  // this.getUI('loginContainer').text('...') -> ERREUR compile-time
+  onNavClick(_e: MouseEvent): void { /* ... */ }
+
+  // loginContainer a un template → getUI retourne TProjectionRead
+  // this.getUI('loginContainer').text('...') → ERREUR compile-time (I41)
   // (Property 'text' does not exist on type 'TProjectionRead')
 }
 ```
 
-> **Separation des responsabilites** :
+> **Séparation des responsabilités** :
 > ```
-> .view.ts           = QUOI -> types TUI, uiElements, uiEvents, handlers, templates()
-> .template.pug      = COMMENT -> logique de rendu (projections, conditions, boucles)
+> .view.ts      = QUOI    → modules `features` / `uiEvents` / `uiElements`, handlers, templates()
+> .template.pug = COMMENT → logique de rendu (projections, conditions, boucles)
 > ```
 >
-> En Mode C, le DOM serveur est la source de verite structurelle.
-> Les fragments `.pug` ne decrivent que les **ilots reactifs**.
-> Le reste du HTML (nav, footer, contenu statique) est 100% SSR, intouche.
+> En Mode C, le DOM serveur est la source de vérité structurelle.
+> Les fragments `.pug` ne décrivent que les **îlots réactifs**.
+> Le reste du HTML (nav, footer, contenu statique) est 100% SSR, intouché.
 
 ### 4.8 Flux d'execution complet
 
@@ -999,7 +991,7 @@ class AccountView extends View<TAccountViewCapabilities> {
 |  Interaction utilisateur :                        |
 |  1. click sur @ui.addButton                      |
 |  2. Delegation -> View.onAddButtonClick(event)    |
-|  3. this.trigger(Cart.channel, 'addItem', {...}) |
+|  3. this.trigger("cart:addItem", {...}) — clé flat |
 |                                                  |
 +--------------------------------------------------+
                         |
@@ -1028,14 +1020,14 @@ pas des Events Channel. Ils sont declenches par la Foundation ou les Composers.
 | `onRender()` | Apres chaque projection | Post-processing DOM (focus, scroll, animations) |
 
 ```typescript
-abstract class View<TCapabilities extends TViewCapabilities<TUIMap<any>, any>> {
-  /** Appele par Foundation/Composer apres insertion dans le DOM */
+abstract class View<TVC extends TViewContract = TViewContract> {
+  /** Appelé par Foundation/Composer après insertion dans le DOM */
   protected onAttach(): void {}
 
-  /** Appele par Foundation/Composer avant retrait du DOM */
+  /** Appelé par Foundation/Composer avant retrait du DOM */
   protected onDetach(): void {}
 
-  /** Appele apres chaque rendu */
+  /** Appelé après chaque rendu */
   protected onRender(): void {}
 }
 ```
@@ -1074,35 +1066,56 @@ created -> wired -> attached -> detached -> [destroyed]
 > et que la cle est dans `get composers()`, le framework instancie **N Composers**
 > -- un par element matche. Chaque instance recoit son element DOM comme scope.
 
-La View declare des **slots de composition** via `get composers()` :
+La View déclare des **slots de composition** via `get composers()`. Pattern modulaire ADR-0042 :
 
 ```typescript
-const mainViewParams = {
-  listen:     [Cart.channel],
-  trigger:    [], request: [], behaviors: [], options: {},
-  uiElements: {
-    sidebarSlot: '#sidebar-slot',
-    contentSlot: '#content-slot',
-    itemList:    '.MainView-itemList',
+const mainViewFeatures = {
+  cart: {
+    feature:  CartFeature,
+    listens:  ['itemAdded'] as const,
+    triggers: []            as const,
+    requests: []            as const,
   },
-} as const satisfies TViewParams<TMainViewUI>;
+} satisfies TFeatureContract;
 
-type TMainViewCapabilities = TViewCapabilities<TMainViewUI, typeof mainViewParams>;
+const mainViewUiEvents = {
+  sidebarSlot: ui<HTMLDivElement>()([]),                // slot — pas d'event direct
+  contentSlot: ui<HTMLDivElement>()([]),                // slot — pas d'event direct
+  itemList:    ui<HTMLUListElement>()([]),
+} satisfies TUIContract;
 
-class MainView extends View<TMainViewCapabilities> {
-  get params() { return mainViewParams; }
+const mainViewUiElements = {
+  sidebarSlot: '#sidebar-slot',
+  contentSlot: '#content-slot',
+  itemList:    '.MainView-itemList',
+} satisfies TUIElements<typeof mainViewUiEvents>;
+
+type TMainViewContract = TViewContract<
+  typeof mainViewFeatures,
+  typeof mainViewUiEvents
+>;
+
+class MainView
+  extends View<TMainViewContract>
+  implements TViewCallbacks<TMainViewContract>
+{
+  get features()   { return mainViewFeatures;   }
+  get uiEvents()   { return mainViewUiEvents;   }
+  get uiElements() { return mainViewUiElements; }
 
   /**
-   * Declaration des Composers de composition.
+   * Déclaration des Composers de composition.
    *
-   * Cles : DOIVENT correspondre a des entrees dans get uiElements().
-   * Valeurs : constructeurs de Composer importes.
+   * Clés : DOIVENT correspondre à des entrées dans `uiEvents` (donc
+   *        également dans `uiElements`, par contrainte `TUIElements<TUI>`).
+   * Valeurs : constructeurs de Composer importés.
    *
-   * Le framework resout l'element @ui correspondant comme slot
-   * pour le Composer. Le Composer decide ensuite quelle View instancier.
+   * Le framework résout l'élément @ui correspondant comme slot pour
+   * le Composer. Le Composer décide ensuite quelle View instancier.
    *
-   * Semantique N-instances (ADR-0020) : si querySelectorAll(selecteur) matche
-   * N elements, le framework instancie N Composers -- un par element matche.
+   * Sémantique N-instances (ADR-0020) : si `querySelectorAll(selecteur)`
+   * matche N éléments, le framework instancie N Composers — un par
+   * élément matché.
    */
   get composers() {
     return {
@@ -1110,50 +1123,66 @@ class MainView extends View<TMainViewCapabilities> {
       contentSlot: ContentComposer,
     };
   }
+
+  // Channel handler imposé par features.cart.listens
+  onCartItemAddedEvent(_p: { id: string; qty: number }): void { /* ... */ }
 }
 ```
 
-#### Semantique N-instances -- composition typee par attribut (ADR-0020)
+#### Sémantique N-instances — composition typée par attribut (ADR-0020)
 
 ```typescript
-const nodeEditFormViewParams = {
-  listen:     [], trigger: [], request: [], behaviors: [], options: {},
-  uiElements: {
-    formActions:  '.node-form__actions',
-    editorJsSlot: '[data-field-type="editorjs"]',
-    // querySelectorAll -> 2 elements
-    mediaSlot:    '[data-field-type="media"]',
-    // querySelectorAll -> 1 element
-  },
-} as const satisfies TViewParams<TNodeEditFormViewUI>;
+const nodeEditFormViewFeatures = {} satisfies TFeatureContract;
 
-type TNodeEditFormViewCapabilities = TViewCapabilities<TNodeEditFormViewUI, typeof nodeEditFormViewParams>;
+const nodeEditFormViewUiEvents = {
+  formActions:  ui<HTMLDivElement>()([]),
+  editorJsSlot: ui<HTMLDivElement>()([]),
+  mediaSlot:    ui<HTMLDivElement>()([]),
+} satisfies TUIContract;
 
-class NodeEditFormView extends View<TNodeEditFormViewCapabilities> {
-  get params() { return nodeEditFormViewParams; }
+const nodeEditFormViewUiElements = {
+  formActions:  '.node-form__actions',
+  editorJsSlot: '[data-field-type="editorjs"]',
+  // querySelectorAll → 2 éléments → 2 instances de EditorJsComposer
+  mediaSlot:    '[data-field-type="media"]',
+  // querySelectorAll → 1 élément → 1 instance de MediaFieldComposer
+} satisfies TUIElements<typeof nodeEditFormViewUiEvents>;
+
+type TNodeEditFormViewContract = TViewContract<
+  typeof nodeEditFormViewFeatures,
+  typeof nodeEditFormViewUiEvents
+>;
+
+class NodeEditFormView
+  extends View<TNodeEditFormViewContract>
+  implements TViewCallbacks<TNodeEditFormViewContract>
+{
+  get features()   { return nodeEditFormViewFeatures;   }
+  get uiEvents()   { return nodeEditFormViewUiEvents;   }
+  get uiElements() { return nodeEditFormViewUiElements; }
 
   get composers() {
     return {
-      editorJsSlot: EditorJsComposer,   // -> 2 instances (2 elements matches)
-      mediaSlot:    MediaFieldComposer,  // -> 1 instance (1 element matche)
+      editorJsSlot: EditorJsComposer,   // → 2 instances (2 éléments matchés)
+      mediaSlot:    MediaFieldComposer, // → 1 instance (1 élément matché)
     };
   }
 }
 ```
 
-> **Ce que ce mecanisme n'est PAS** : ce n'est pas de la composition cachee.
-> `TUIMap` est compile-time, `uiElements` est resolu au bootstrap,
+> **Ce que ce mécanisme n'est PAS** : ce n'est pas de la composition cachée.
+> `TUIContract` est compile-time, `uiElements` est résolu au bootstrap,
 > `composers` est statique, la logique de composition est dans le Composer (D21).
-> La View reste aveugle au nombre d'elements matches au runtime.
+> La View reste aveugle au nombre d'éléments matchés au runtime.
 
 > **I36** : la View **ne compose jamais** d'autres Views.
-> Elle declare des slots et des Composers associes, mais la decision
-> d'instanciation est entierement portee par le Composer (D21).
+> Elle déclare des slots et des Composers associés, mais la décision
+> d'instanciation est entièrement portée par le Composer (D21).
 >
 > **Contrat** :
-> - Les cles de `get composers()` sont typees par `keyof TUI` -- le compilateur verifie que chaque cle existe dans `get uiElements()`
-> - Les valeurs sont des constructeurs de Composer (`typeof Composer`)
-> - Le getter est coherent avec les autres getters View (D17) : `rootElement`, `uiElements`, `uiEvents`, `templates`, `composers`
+> - Les clés de `get composers()` sont typées par `keyof TVC["ui"]` — le compilateur vérifie que chaque clé existe dans `uiEvents` (et donc dans `uiElements`).
+> - Les valeurs sont des constructeurs de Composer (`typeof Composer`).
+> - Les getters View suivent ADR-0024 value-first : `rootElement` (Composer), `features`, `uiEvents`, `uiElements`, `templates`, `composers`.
 
 ---
 
@@ -1224,15 +1253,15 @@ type TLocalKeyHandlers<TLocal extends TJsonSerializable> = {
 };
 ```
 
-### 7.2 Classe View -- API localState complete
+### 7.2 Classe View — API localState complète
 
-La declaration **COMPLETE** de View avec le localState.
-La classe prend un generic `TCapabilities` (ADR-0024) et un generic optionnel
-`TLocal` pour le state de presentation local (I42, ADR-0015).
+La déclaration **COMPLÈTE** de View avec le localState.
+La classe prend un générique `TVC` (le contrat View — ADR-0042) et un générique
+optionnel `TLocal` pour le state de présentation local (I42, ADR-0015).
 
 ```typescript
 abstract class View<
-  TCapabilities extends TViewCapabilities<TUIMap<any>, any>,
+  TVC extends TViewContract = TViewContract,
   TLocal extends TJsonSerializable = never
 > {
   /**
@@ -1321,40 +1350,62 @@ type TWizardLocalState = {
   isSubmitting: boolean;
 };
 
-// ═══ Value-first (ADR-0024) ═══
+// ═══ Pattern modulaire (ADR-0042 + ADR-0024 value-first) ═══
 
-const wizardViewParams = {
-  listen:     [Wizard.channel],
-  trigger:    [Wizard.channel],
-  request:    [],
-  uiElements: {
-    stepIndicator: '.WizardView-stepIndicator',
-    progressBar:   '.WizardView-progressBar',
-    nextButton:    '.WizardView-next',
-    prevButton:    '.WizardView-prev',
-    submitButton:  '.WizardView-submit',
+const wizardViewFeatures = {
+  wizard: {
+    feature:  WizardFeature,
+    listens:  []                         as const,
+    triggers: ['submit']                 as const,
+    requests: []                         as const,
   },
-  behaviors:  [],
-  options:    {},
-} as const satisfies TViewParams<TWizardUI>;
+} satisfies TFeatureContract;
 
-type TWizardViewCapabilities = TViewCapabilities<TWizardUI, typeof wizardViewParams>;
+const wizardViewUiEvents = {
+  stepIndicator: ui<HTMLDivElement>()([]),                    // mutation N1 directe
+  progressBar:   ui<HTMLDivElement>()([]),                    // mutation N1 directe
+  nextButton:    ui<HTMLButtonElement>()(['click']),
+  prevButton:    ui<HTMLButtonElement>()(['click']),
+  submitButton:  ui<HTMLButtonElement>()(['click']),
+  stepContent:   ui<HTMLDivElement>()([]),                    // couvert par template N2
+  errorList:     ui<HTMLUListElement>()([]),                  // couvert par template N2
+} satisfies TUIContract;
 
-class WizardView extends View<TWizardViewCapabilities, TWizardLocalState> {
-  get params() { return wizardViewParams; }
+const wizardViewUiElements = {
+  stepIndicator: '.WizardView-stepIndicator',
+  progressBar:   '.WizardView-progressBar',
+  nextButton:    '.WizardView-next',
+  prevButton:    '.WizardView-prev',
+  submitButton:  '.WizardView-submit',
+  stepContent:   '.WizardView-stepContent',
+  errorList:     '.WizardView-errorList',
+} satisfies TUIElements<typeof wizardViewUiEvents>;
+
+type TWizardViewContract = TViewContract<
+  typeof wizardViewFeatures,
+  typeof wizardViewUiEvents
+>;
+
+class WizardView
+  extends View<TWizardViewContract, TWizardLocalState>
+  implements TViewCallbacks<TWizardViewContract>
+{
+  get features()   { return wizardViewFeatures;   }
+  get uiEvents()   { return wizardViewUiEvents;   }
+  get uiElements() { return wizardViewUiElements; }
 
   protected get localState(): TWizardLocalState {
     return { currentStep: 0, validationErrors: [], isSubmitting: false };
   }
 
-  // -- Callbacks N1 (optionnels -- auto-decouverts par le framework, D12) --
+  // ── Callbacks N1 (optionnels — auto-découverts par le framework, D12) ──
 
-  onLocalCurrentStepUpdated({ actual, previous }: TLocalUpdate<number>): void {
-    this.getUI('stepIndicator').dataset.step = String(actual);
-    this.getUI('progressBar').style.width = `${(actual / 3) * 100}%`;
+  onLocalCurrentStepUpdated({ actual, previous: _ }: TLocalUpdate<number>): void {
+    this.getUI('stepIndicator').attr('data-step', String(actual));
+    this.getUI('progressBar').style('width', `${(actual / 3) * 100}%`);
   }
 
-  // -- Templates avec selectors N2/N3 --
+  // ── Templates avec selectors N2/N3 (Mode C) ──
 
   get templates() {
     return {
@@ -1369,22 +1420,22 @@ class WizardView extends View<TWizardViewCapabilities, TWizardLocalState> {
     };
   }
 
-  // -- Mutations --
+  // ── DOM handlers (D48 UI — imposés par TViewCallbacks) ──
 
-  onNextClick(): void {
+  onNextButtonClick(_e: MouseEvent): void {
     this.updateLocal(draft => {
       draft.currentStep += 1;
       draft.validationErrors = [];
     });
   }
 
-  onPrevClick(): void {
+  onPrevButtonClick(_e: MouseEvent): void {
     this.updateLocal(draft => { draft.currentStep -= 1; });
   }
 
-  async onSubmitClick(): Promise<void> {
+  onSubmitButtonClick(_e: MouseEvent): void {
     this.updateLocal(draft => { draft.isSubmitting = true; });
-    this.trigger(Wizard.channel, 'submit', { step: this.local.currentStep });
+    this.trigger('wizard:submit', { step: this.local.currentStep });
   }
 }
 ```

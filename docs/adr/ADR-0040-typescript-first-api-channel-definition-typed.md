@@ -2,7 +2,7 @@
 
 | Champ                   | Valeur                                                                                                                                                                                                              |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Statut**              | 🟢 Accepted                                                                                                                                                                                                         |
+| **Statut**              | 🔵 Tested                                                                                                                                                                                                           |
 | **Date**                | 2026-04-27                                                                                                                                                                                                          |
 | **Décideurs**           | @ncac                                                                                                                                                                                                               |
 | **RFC liées**           | [communication.md](../rfc/2-architecture/communication.md), [feature.md](../rfc/3-couche-abstraite/feature.md), [invariants.md](../rfc/reference/invariants.md)                                                     |
@@ -637,3 +637,4 @@ Le `TChannelDefinition` déclaré dans le fichier `.feature.ts` du domaine (co-l
 | Date       | Changement            |
 | ---------- | --------------------- |
 | 2026-04-27 | Création et acceptation (Proposed → Accepted) |
+| 2026-05-13 | 🔵 **Tested** — I73 / I74 cités dans `tests/e2e/strate-0.cart-round-trip.test.ts` (CartFeature canonique avec `static readonly channel` + TDef co-localisé) ; I75 / I76 / I77 / I78 / I79 cités dans `tests/types/strate-0/view-contract.types.test.ts` et `tests/unit/strate-0/feature.basic.test.ts`. Critère C-Inv d'ADR-0043 satisfait. |

@@ -64,7 +64,7 @@
 | `TFeatureContract` | Map `{ namespace → { feature, listens, triggers, requests } }` (ADR-0042). La clé d'objet ≡ le namespace (I87) ; `feature` est `TFeatureRefForNS<NS>` ; les trois lanes sont des `readonly string[]` | [feature.md](../3-couche-abstraite/feature.md), [view.md](../4-couche-concrete/view.md) |
 | `TFeatureRef<TDef, NS>` | Référence Feature : tout objet exposant `channel: TChannelToken<TDef, NS>` (ADR-0040) | [feature.md](../3-couche-abstraite/feature.md) |
 | `TFeatureRefForNS<NS>` | Référence Feature dont le namespace est imposé par la clé du contrat (I87 — vérifié compile-time) | [feature.md](../3-couche-abstraite/feature.md) |
-| `TFlatListens<F>` / `TFlatTriggers<F>` / `TFlatRequests<F>` | Mapped types : aplatissent `TFeatureContract` en map `"ns:event"` → payload. Alimentent les signatures de `callTrigger` / `callRequest` et la génération des handlers | [feature.md](../3-couche-abstraite/feature.md) |
+| `TFlatListens<F>` / `TFlatTriggers<F>` / `TFlatRequests<F>` | Mapped types : aplatissent `TFeatureContract` en map `"ns:event"` → payload. Alimentent les signatures de `trigger` / `request` et la génération des handlers | [feature.md](../3-couche-abstraite/feature.md) |
 | `TCommandPayloadFor<F, K>` / `TEventPayloadFor<F, K>` / `TRequestParamsFor<F, K>` / `TRequestResultFor<F, K>` | Extracteurs de payload typé pour une clé `"ns:name"` du contrat | [feature.md](../3-couche-abstraite/feature.md) |
 | `TChannelCallbacks<F>` | Mapped type : signature des handlers `on{NS}{Event}Event` requise par `implements`. Symétrie avec `F.{ns}.listens` (D48 channel) | [feature.md](../3-couche-abstraite/feature.md) |
 

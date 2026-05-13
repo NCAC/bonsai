@@ -2,7 +2,7 @@
 
 | Champ                   | Valeur                                                                                                                   |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **Statut**              | 🟢 Accepted                                                                                                              |
+| **Statut**              | 🔵 Tested                                                                                                                |
 | **Date**                | 2026-04-30                                                                                                               |
 | **Décideurs**           | @ncac                                                                                                                    |
 | **RFC liées**           | [communication.md](../rfc/2-architecture/communication.md), [invariants.md](../rfc/reference/invariants.md)             |
@@ -508,3 +508,4 @@ Le même pattern s'applique à `Composer` et `Behavior` sans modification — se
 | 2026-04-29 | Création (Proposed) — ADR-0041 initial sur `TListenEntry` et declaration merging             |
 | 2026-04-30 | Réécriture profonde — principe Feature-as-public-unit, pattern consommateur unifié, suppression declaration merging, types `TConsumerDeps`/`TConsumerContract`/`TListenCallbacks` |
 | 2026-05-07 | 🟢 **Accepted** — code mergé sur `develop` (PR #15 et #16) |
+| 2026-05-13 | 🔵 **Tested** — I48 cité dans `feature.basic.test.ts` ; I80 / I81 / I82 cités dans `tests/unit/strate-0/view.basic.test.ts` ; I83 cité dans `view.basic.test.ts` et `tests/e2e/strate-0.cart-round-trip.test.ts`. Critère C-Inv d'ADR-0043 satisfait. Note : les types `TConsumerDeps` / `TConsumerContract` / `TListenCallbacks` ont été supersédés par ADR-0042 (pattern modulaire) — l'ADR-0041 reste Tested pour ses principes structurants (Feature-as-public-unit, I80–I83). |

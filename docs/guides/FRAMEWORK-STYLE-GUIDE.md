@@ -22,7 +22,7 @@
 >   - **Manifest applicatif** : `new Application({ foundation, features }).start()` où `features satisfies StrictManifest<AppManifest>`.
 >   - **View** : `extends View<TViewContract<F, U>>` + `implements TViewCallbacks<TVC>` (ADR-0042 — I88). Trois getters : `features` / `uiEvents` / `uiElements`. Plus de `params` / `TUIMap` / `TViewParams` / `TViewCapabilities`.
 >   - **Helper UI** : `ui<TEl>()(events)` curryfié (I85).
->   - **callTrigger / callRequest** : `this.callTrigger("ns:cmd", payload)` / `this.callRequest("ns:req", params)` — plus de `Channel.channel` token explicite côté View.
+>   - **trigger / request** : `this.trigger("ns:cmd", payload)` / `this.request("ns:req", params)` (méthodes `protected`) — plus de `Channel.channel` token explicite côté View.
 
 > ### Périmètre
 > Ce guide s'applique au **code applicatif** écrit avec le framework Bonsai :
@@ -761,43 +761,62 @@ dashboards configurables, configurateurs produit.
 
 #### TypeScript — déclaratif, compile-time
 
+Pattern modulaire ADR-0042 : trois modules (`TFeatureContract`, `TUIContract`,
+`TUIElements`) composés en un `TViewContract` puis injecté comme **unique
+générique** sur `View<TVC>` avec `implements TViewCallbacks<TVC>` (I88).
+
 ```typescript
-type TNodeEditFormViewUI = TUIMap<{
-  editorJsSlot:   { el: HTMLDivElement;    event: [] };
-  mediaFieldSlot: { el: HTMLDivElement;    event: [] };
-  submitButton:   { el: HTMLButtonElement; event: ['click'] };
-  titleField:     { el: HTMLInputElement;  event: ['input'] };
-}>;
+import {
+  View, ui,
+  type TViewContract, type TViewCallbacks,
+  type TUIContract, type TUIElements,
+} from "@bonsai/view";
+import type { TFeatureContract } from "@bonsai/feature";
+import { NodeEditFeature } from "../NodeEdit/nodeEdit.feature";
 
-// ─── Etape 1 — TDeps ────────────────────────────────────────────────────────
-type TNodeEditFormViewDeps = {
-  readonly listens:  readonly [];
-  readonly triggers: [typeof NodeEditFeature];
-  readonly requests: readonly [];
-};
-
-// ─── Etape 2 — Contrat ──────────────────────────────────────────────────────
-const nodeEditFormViewContract = {
-  uiElements: {
-    editorJsSlot:   '[data-field-type="editorjs"]',
-    mediaFieldSlot: '[data-field-type="media"]',
-    submitButton:   '.NodeEditForm-submit',
-    titleField:     '.NodeEditForm-titleField',
+// ─── Module 1 — TFeatureContract : Features groupées par namespace ──────────
+const nodeEditFormViewFeatures = {
+  nodeEdit: {
+    feature:  NodeEditFeature,
+    listens:  []                                as const,
+    triggers: ["submit", "titleChanged"]        as const,
+    requests: []                                as const,
   },
-  listens:  [] as const,
-  triggers: ["nodeEdit:submit", "nodeEdit:titleChanged"] as const,
-  requests: [] as const,
-} satisfies TViewContract<TNodeEditFormViewDeps>;
+} satisfies TFeatureContract;
 
-// ─── Etape 3 — Type derive ───────────────────────────────────────────────────
-type TNodeEditFormViewContract = typeof nodeEditFormViewContract;
+// ─── Module 2 — TUIContract : UI events typés ───────────────────────────────
+// `events: []` = slot non-interactif (mount Composer, mutation N1 directe, etc.) — I86.
+const nodeEditFormViewUiEvents = {
+  editorJsSlot:   ui<HTMLDivElement>()([]),
+  mediaFieldSlot: ui<HTMLDivElement>()([]),
+  submitButton:   ui<HTMLButtonElement>()(["click"]),
+  titleField:     ui<HTMLInputElement>()(["input"]),
+} satisfies TUIContract;
 
-// ─── Etape 4 — Classe ────────────────────────────────────────────────────────
+// ─── Module 3 — TUIElements : sélecteurs CSS, 1:1 avec uiEvents ─────────────
+const nodeEditFormViewUiElements = {
+  editorJsSlot:   '[data-field-type="editorjs"]',
+  mediaFieldSlot: '[data-field-type="media"]',
+  submitButton:   '.NodeEditForm-submit',
+  titleField:     '.NodeEditForm-titleField',
+} satisfies TUIElements<typeof nodeEditFormViewUiEvents>;
+
+// ─── Composition — TViewContract dérivé par typeof ──────────────────────────
+type TNodeEditFormViewContract = TViewContract<
+  typeof nodeEditFormViewFeatures,
+  typeof nodeEditFormViewUiEvents
+>;
+
+// ─── Classe — un seul générique, un seul implements (I88) ───────────────────
 class NodeEditFormView
-  extends View<TNodeEditFormViewDeps, TNodeEditFormViewContract>
+  extends View<TNodeEditFormViewContract>
+  implements TViewCallbacks<TNodeEditFormViewContract>
 {
-  get contract() { return nodeEditFormViewContract; }
+  get features()   { return nodeEditFormViewFeatures;   }
+  get uiEvents()   { return nodeEditFormViewUiEvents;   }
+  get uiElements() { return nodeEditFormViewUiElements; }
 
+  // Composition N-instances (ADR-0020) — clés ⊆ keyof uiEvents.
   get composers() {
     return {
       editorJsSlot:   EditorJsComposer,    // 1 instance par [data-field-type="editorjs"]
@@ -805,12 +824,13 @@ class NodeEditFormView
     };
   }
 
-  // D48 — UI handlers auto-decouverts depuis uiElements
-  onSubmitButtonClick(_e: Event): void {
-    // trigger : cle namespacee compilee contre contract.triggers (ADR-0041)
+  // D48 UI — handler imposé par events: ["click"] sur submitButton.
+  onSubmitButtonClick(_e: MouseEvent): void {
+    // Clé namespacée vérifiée contre TFlatTriggers<typeof nodeEditFormViewFeatures>.
     this.trigger("nodeEdit:submit", {});
   }
 
+  // D48 UI — handler imposé par events: ["input"] sur titleField.
   onTitleFieldInput(e: InputEvent & { currentTarget: HTMLInputElement }): void {
     this.trigger("nodeEdit:titleChanged", { value: e.currentTarget.value });
   }
@@ -825,9 +845,9 @@ class NodeEditFormView
 
 | Élément | Visible | Vérifié |
 |---------|---------|--------|
-| Types de slots | `TUIMap` | compile-time — TypeScript |
+| Types de slots | `TUIContract` | compile-time — TypeScript |
 | Sélecteurs CSS | `uiElements` | bootstrap — erreur si sélecteur invalide |
-| Composer par type | `get composers()` | compile-time — clé doit exister dans `keyof TUI` |
+| Composer par type | `get composers()` | compile-time — clé doit exister dans `keyof TVC["ui"]` |
 
 La View sait **quels types** elle accepte (statique), pas **combien** d'instances
 (déterminé par le DOM au runtime). C'est la séparation correcte des responsabilités.

@@ -1,7 +1,7 @@
 /**
  * @bonsai/feature - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-05-07T09:44:40.043Z
+ * Date: 2026-05-13T20:26:15.733Z
  */
 import { Radio } from '@bonsai/event';
 
@@ -154,12 +154,19 @@ function assertValidNamespace(ns) {
  *         un `static` sur la classe Feature (ADR-0039)
  *   I72 — `TSelfNS` doit correspondre exactement à la clé sous laquelle
  *         la Feature est enregistrée dans le manifest (ADR-0039)
- *   I73 — TChannelDef est la source de vérité des types du Channel (ADR-0040)
- *   I74 — TChannelDef est déclaré dans le fichier .feature.ts de la Feature
- *   I75 — Aucun `any` dans la surface publique ; casts internes documentés
- *   I76 — `static readonly channel` porte le token du Channel propre
- *   I77 — `static readonly listens` déclare les tokens des Channels écoutés
- *   I79 — `static readonly queries` déclare les tokens des Channels interrogés
+ *   I73 — Chaque Feature concrète DOIT exposer `static readonly channel:
+ *         TChannelToken<TChannelDef, TSelfNS>` — pont entre la classe et son
+ *         Channel typé (ADR-0040)
+ *   I74 — `TChannelDef` co-localisé dans le fichier `.feature.ts` du domaine
+ *         (pas de `.channel.ts` séparé) (ADR-0040)
+ *   I75 — Aucun `any`/`unknown` dans la surface publique de Channel/Feature/
+ *         View ; casts internes documentés et délimités (ADR-0040)
+ *   I76 — `Channel.{trigger,emit,request,handle,listen,reply}` strictement
+ *         typés par `TDef` — clé = `keyof TDef[lane]`, jamais `string` libre
+ *         (ADR-0040)
+ *   I79 — `Feature.request()` accepte uniquement un `TChannelToken` typé ;
+ *         `static readonly listens`/`channels` portent ces tokens pour
+ *         déclaration au bootstrap (ADR-0040)
  *
  * @packageDocumentation
  */
@@ -172,7 +179,7 @@ var _Feature_instances, _Feature_namespace, _Feature_entity, _Feature_channel, _
  * Paramètres de type :
  *   - `TEntity`     : la classe Entity (ADR-0037 — encode I22 au type-level)
  *   - `TChannelDef` : le contrat du Channel propre — types de commandes, events,
- *                     requests (ADR-0040 — I73, I74). Par défaut `TChannelDefinition`
+ *                     requests (ADR-0040 — I74, I76). Par défaut `TChannelDefinition`
  *                     (toutes lanes `Record<string, unknown>`) pour une utilisation
  *                     non paramétrée rétrocompatible.
  *   - `TSelfNS`     : le namespace sous lequel cette Feature s'attend à être
@@ -318,17 +325,17 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
     }
 };
 /**
- * Tokens des Channels externes écoutés par cette Feature (C3 — ADR-0040, I77).
+ * Tokens des Channels externes écoutés par cette Feature (C3 — I2, ADR-0040).
  *
  * **Pourquoi `static` — deux raisons distinctes selon la propriété :**
  *
- * • `channel` (token propre, ADR-0040 — I76) — porteur de TYPE consommé sans
+ * • `channel` (token propre, ADR-0040 — I73) — porteur de TYPE consommé sans
  *   instance. Une View ou Feature externe importe la classe uniquement pour
  *   son token (`CartFeature.channel`) afin de typer ses appels `trigger()` ou
  *   `request()`. Un token d'instance obligerait les consommateurs à tenir une
  *   référence à la Feature, violant la topologie du flux (I1, I4, I12).
  *   Ce token n'est pas déclaré sur la classe abstraite — chaque Feature concrète
- *   le déclare dans son fichier `.feature.ts` (I74, I76).
+ *   le déclare dans son fichier `.feature.ts` (I73, I74).
  *
  * • `listens` / `queries` — invariants de classe, identiques pour toute instance
  *   (I22 : une seule par namespace). Lus par `Application.start()` AVANT
@@ -342,7 +349,7 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
  */
 Feature.listens = [];
 /**
- * Tokens des Channels externes interrogés par cette Feature (C5 — ADR-0040, I79).
+ * Tokens des Channels externes interrogés par cette Feature (C5 — I17, ADR-0040 — supporte I79).
  *
  * **Pourquoi `static` :** identique à `listens` — invariant de classe lu
  * avant instanciation pour validation des dépendances croisées.

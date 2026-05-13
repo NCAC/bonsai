@@ -1,7 +1,7 @@
 /**
  * @bonsai/view - Version 0.0.1
  * Bundled by Bonsai Build System
- * Date: 2026-05-07T21:06:43.080Z
+ * Date: 2026-05-13T18:01:10.547Z
  */
 import { Radio } from '@bonsai/event';
 
@@ -281,13 +281,6 @@ class View {
         // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
         const ch = Radio.me().channel(namespace);
         ch.trigger(name, payload);
-    }
-    /**
-     * Wrapper public de trigger — utilisé dans les tests pour déclencher depuis
-     * l'extérieur. En production, trigger est appelé depuis les handlers UI.
-     */
-    callTrigger(key, payload) {
-        this.trigger(key, payload);
     }
     /**
      * Effectue une Request synchrone typée vers un Channel déclaré.
