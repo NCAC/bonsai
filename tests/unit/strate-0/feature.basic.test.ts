@@ -14,6 +14,7 @@
  *   I48  — Handlers = méthodes on<Name><Command|Event|Request> auto-découvertes
  *   I68  — Le namespace est porté par le manifest, pas par un static (ADR-0039)
  *   I72  — TSelfNS doit correspondre à la clé du manifest (ADR-0039)
+ *   I79  — Feature.request accepte uniquement un TChannelToken typé (ADR-0040 — cf. ligne 70)
  *
  * Capacités strate 0 :
  *   C2 — handle(command) via auto-discovery

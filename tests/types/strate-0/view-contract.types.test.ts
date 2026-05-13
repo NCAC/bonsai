@@ -14,8 +14,26 @@
  *     TFlatRequests<features> ; params + result typés.
  *   - implements TViewCallbacks<TVC> : handler manquant ou payload mal typé
  *     → erreur compile (channel handlers ET DOM handlers — symétrie I88).
+ *   - I73 : CartFeature/UserFeature déclarent `static readonly channel:
+ *     TChannelToken<TDef, NS>` (cf. lignes 53-63) — porteur de TYPE consommé
+ *     sans instance ; les Views typent leurs appels via ce token.
+ *   - I75 : aucun `any` / `unknown` dans la surface publique exercée — les
+ *     génériques de View, TFeatureContract, TUIContract, TChannelToken sont
+ *     strictement typés (le fichier compile sous `--strict` sans cast).
+ *   - I76 : `Channel<TDef>` accepte uniquement `keyof TDef['commands' |
+ *     'events' | 'requests']` — testé indirectement via les `@ts-expect-error`
+ *     sur `trigger`/`request` qui dépendent structurellement de `Channel<TDef>`.
+ *   - I77 : `View.trigger("ns:cmd")` rejette toute clé hors `TFlatTriggers<F>`
+ *     (cf. callKO_triggerUnknownNamespace/UnknownCommand/ListenAsTrigger).
+ *   - I78 : `View.getUI(key)` rejette toute clé hors `keyof TVC["ui"]` — la
+ *     contrainte est sur la signature elle-même de `View.getUI` ; toute clé
+ *     littérale absente du contrat est rejetée par le compilateur.
  *   - I80 : Channel privé — aucun TChannelToken dans la surface consommateur.
  *   - I84 : events: ["click"] sur un élément impose onXxxClick.
+ *   - I85 : `ui<TEl>()(events)` est l'unique helper officiel — chaque fixture
+ *     du fichier utilise la forme curryfiée (cf. lignes 77, 277, etc.).
+ *   - I86 : champ `events` toujours présent (tableau, possiblement vide),
+ *     sous-typé à `TEventsFor<TEl>` sans doublons (cf. I89/I90/I91 ci-dessous).
  *   - I87 : clé d'objet ≡ namespace de la Feature référencée.
  *   - I90 (ADR-0044) : doublons dans events[] → HasNoDuplicates retourne never.
  *   - I89/I91 (ADR-0045) : TEventsFor<TEl> — events incohérents avec le
