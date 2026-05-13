@@ -25031,10 +25031,15 @@ type TChannelHandlerName<NS extends string, E extends string> = `on${Capitalize<
  *
  * Symétrie Contract/Callbacks (ADR-0042 C15, I88) : pour chaque entrée dans
  * `features[NS].listens`, le compilateur impose la présence de la méthode
- * `on{NS}{EventName}Event` avec la signature exacte `(payload, metas) => void`.
+ * `on{NS}{EventName}Event` avec la signature exacte `(payload) => void`.
  *
  * Le payload est résolu via `TEventPayloadFor` — typé par le `TChannelDefinition`
  * de la Feature.
+ *
+ * Note strate 0/1 : ADR-0040 §615 met les metas hors-scope strate 0. Le second
+ * paramètre `metas: TMessageMetas` sera ajouté à la signature en strate 1, via
+ * un ADR dédié amendant ADR-0040 et ADR-0042. Le code actuel est volontairement
+ * sans metas.
  */
 type TChannelCallbacks<F extends TFeatureContract> = UnionToIntersection<{
     [NS in keyof F & string]: {
@@ -25508,11 +25513,6 @@ declare abstract class View<TVC extends TViewContract = TViewContract> {
      * Exposé en `protected` — les sous-classes l'appellent depuis les handlers UI.
      */
     protected trigger<K extends TFlatTriggers<TVC["features"]> & string>(key: K, payload: TCommandPayloadFor<TVC["features"], K>): void;
-    /**
-     * Wrapper public de trigger — utilisé dans les tests pour déclencher depuis
-     * l'extérieur. En production, trigger est appelé depuis les handlers UI.
-     */
-    callTrigger<K extends TFlatTriggers<TVC["features"]> & string>(key: K, payload: TCommandPayloadFor<TVC["features"], K>): void;
     /**
      * Effectue une Request synchrone typée vers un Channel déclaré.
      * Retourne le résultat typé ou `null` si aucun replier n'est enregistré

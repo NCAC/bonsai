@@ -82,7 +82,7 @@ class CartView
 
   // Imposé par `events: ["click"]` sur addButton (vérifié compile-time — I88).
   onAddButtonClick(): void {
-    this.callTrigger("cart:addItem", { productId: "p1", qty: 1, price: 9.99 });
+    this.trigger("cart:addItem", { productId: "p1", qty: 1, price: 9.99 });
   }
 
   // Imposé par cart.listens: ["itemAdded"] (vérifié compile-time — I82).

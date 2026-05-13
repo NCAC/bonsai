@@ -82,7 +82,7 @@ class CartView
 
   // Required by `events: ["click"]` on addButton (compile-time enforced — I88).
   onAddButtonClick(): void {
-    this.callTrigger("cart:addItem", { productId: "p1", qty: 1, price: 9.99 });
+    this.trigger("cart:addItem", { productId: "p1", qty: 1, price: 9.99 });
   }
 
   // Required by cart.listens: ["itemAdded"] (compile-time enforced — I82).
