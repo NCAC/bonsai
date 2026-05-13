@@ -124,7 +124,9 @@ export type TBonsaiNamespaceErrorCode =
   | "NAMESPACE_INVALID_FORMAT"
   | "NAMESPACE_RESERVED"
   | "NAMESPACE_DUPLICATE"
-  | "NAMESPACE_UNKNOWN_REFERENCE";
+  | "NAMESPACE_UNKNOWN_REFERENCE"
+  | "FEATURE_MISSING_CHANNEL"
+  | "FEATURE_CHANNEL_NAMESPACE_MISMATCH";
 
 /**
  * Erreur typée pour toute violation détectée au runtime.

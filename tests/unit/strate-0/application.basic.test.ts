@@ -11,6 +11,10 @@
  *   I69  — Le manifest est l'unique source de vérité de l'identité (ADR-0039)
  *   I70  — Toute référence à un namespace externe DOIT être validée (ADR-0039)
  *   I71  — `RESERVED_NAMESPACES` est une constante framework (ADR-0039)
+ *   I73  — Filet runtime — chaque Feature DOIT exposer `static readonly channel:
+ *          TChannelToken<TDef, TSelfNS>` ; le manifest key DOIT correspondre à
+ *          `channel.namespace` (ADR-0040). Tests négatifs explicites :
+ *          FEATURE_MISSING_CHANNEL et FEATURE_CHANNEL_NAMESPACE_MISMATCH
  *
  * Sémantiques strate 0 :
  *   - constructor({ foundation, features }) — déclare le manifest applicatif
@@ -25,7 +29,11 @@ import { Application } from "@bonsai/application";
 import { Foundation } from "@bonsai/foundation";
 import { Entity } from "@bonsai/entity";
 import { Feature, BonsaiNamespaceError } from "@bonsai/feature";
-import { Radio, type TChannelDefinition } from "@bonsai/event";
+import {
+  Radio,
+  type TChannelDefinition,
+  type TChannelToken
+} from "@bonsai/event";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -48,6 +56,8 @@ class CartEntity extends Entity<TCartState> {
 }
 
 class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart"> {
+  // I73 — token propre, requis par le filet runtime d'Application.start()
+  static readonly channel: TChannelToken<TChannelDefinition, "cart"> = { namespace: "cart" };
   static readonly listens = [] as const;
   static readonly queries = [] as const;
   protected get Entity() {
@@ -103,6 +113,7 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
 
     it("start() instantiates each Feature with the namespace from the manifest key (I72)", () => {
       class OrderFeature extends StubFeature<"orders"> {
+        static readonly channel: TChannelToken<TChannelDefinition, "orders"> = { namespace: "orders" };
         static readonly listens = [] as const;
         static readonly queries = [] as const;
       }
@@ -153,6 +164,7 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       const callOrder: string[] = [];
 
       class OrderedFeature extends StubFeature<"ordered"> {
+        static readonly channel: TChannelToken<TChannelDefinition, "ordered"> = { namespace: "ordered" };
         static readonly listens = [] as const;
         static readonly queries = [] as const;
         onInit() {
@@ -261,6 +273,8 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
 
     it("I70 — `static listens`/`queries` referencing an unknown namespace → BonsaiNamespaceError(NAMESPACE_UNKNOWN_REFERENCE)", () => {
       class GhostListener extends StubFeature<"ghostListener"> {
+        // I73 — token propre (sinon FEATURE_MISSING_CHANNEL avant le test cible)
+        static readonly channel: TChannelToken<TChannelDefinition, "ghostListener"> = { namespace: "ghostListener" };
         // Référence "catlog" inexistant → filet runtime (ADR-0040)
         static readonly listens = [{ namespace: "catlog" }] as const;
         static readonly queries = [] as const;
@@ -305,8 +319,69 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       }
     });
 
+    it("I73 — Feature without `static readonly channel` → BonsaiNamespaceError(FEATURE_MISSING_CHANNEL)", () => {
+      // Test négatif explicite : prouve I73 par contradiction. ADR-0040 exige
+      // `static readonly channel` sur chaque Feature concrète. Le filet runtime
+      // d'Application.start() rejette une Feature qui ne le déclare pas.
+      class NoChannelFeature extends StubFeature<"noChannel"> {
+        // Pas de `static readonly channel` — viole I73.
+        static readonly listens = [] as const;
+        static readonly queries = [] as const;
+      }
+
+      const app = new Application({
+        foundation: EmptyFoundation as unknown as typeof Foundation,
+        features: { noChannel: NoChannelFeature }
+      });
+
+      try {
+        app.start();
+        throw new Error("expected throw");
+      } catch (err) {
+        expect(err).toBeInstanceOf(BonsaiNamespaceError);
+        expect((err as BonsaiNamespaceError).code).toBe(
+          "FEATURE_MISSING_CHANNEL"
+        );
+        // Le message doit citer I73 et la classe fautive (DX, debug)
+        expect((err as Error).message).toMatch(/noChannel/);
+        expect((err as Error).message).toMatch(/I73/);
+      }
+    });
+
+    it("I73 — Feature.channel.namespace must match the manifest key → BonsaiNamespaceError(FEATURE_CHANNEL_NAMESPACE_MISMATCH)", () => {
+      // Test négatif explicite : prouve l'invariant 1:1:1 (I22) au niveau du
+      // token Channel. Si une Feature est enregistrée sous "cart" mais déclare
+      // `static readonly channel = { namespace: "different" }`, le filet runtime
+      // rejette pour préserver l'identité unique.
+      class MismatchFeature extends StubFeature<string> {
+        static readonly channel: TChannelToken<TChannelDefinition, "different"> = { namespace: "different" };
+        static readonly listens = [] as const;
+        static readonly queries = [] as const;
+      }
+
+      const app = new Application({
+        foundation: EmptyFoundation as unknown as typeof Foundation,
+        features: { cart: MismatchFeature } as unknown as {
+          cart: typeof CartFeature;
+        }
+      });
+
+      try {
+        app.start();
+        throw new Error("expected throw");
+      } catch (err) {
+        expect(err).toBeInstanceOf(BonsaiNamespaceError);
+        expect((err as BonsaiNamespaceError).code).toBe(
+          "FEATURE_CHANNEL_NAMESPACE_MISMATCH"
+        );
+        expect((err as Error).message).toMatch(/cart/);
+        expect((err as Error).message).toMatch(/different/);
+      }
+    });
+
     it("Cross-references between manifested Features are accepted", () => {
       class ListenerFeature extends StubFeature<"listener"> {
+        static readonly channel: TChannelToken<TChannelDefinition, "listener"> = { namespace: "listener" };
         static readonly listens = [{ namespace: "cart" }] as const;
         static readonly queries = [] as const;
       }
@@ -322,8 +397,11 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
     it("Feature class with no static listens/queries (plain class cast) — covers ?? [] branches", () => {
       // Feature base définit toujours listens/queries, donc il faut un stub
       // sans héritage pour exercer la branche `?? []` (simule cast as any depuis
-      // code JS ou manifest dynamique).
+      // code JS ou manifest dynamique). Le `static readonly channel` reste
+      // requis par I73 — sans lui, le filet runtime throw FEATURE_MISSING_CHANNEL
+      // avant d'atteindre les branches `?? []`.
       const FakeFeature = class {
+        static readonly channel = { namespace: "fake" };
         constructor(_ns: string) {}
         bootstrap(): void {}
       };
@@ -364,6 +442,7 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       const callOrder: string[] = [];
 
       class ChannelObserverFeature extends StubFeature<"observer"> {
+        static readonly channel: TChannelToken<TChannelDefinition, "observer"> = { namespace: "observer" };
         static readonly listens = [] as const;
         static readonly queries = [] as const;
         onInit() {
@@ -389,6 +468,7 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       const callOrder: string[] = [];
 
       class FeatureA extends StubFeature<"featA"> {
+        static readonly channel: TChannelToken<TChannelDefinition, "featA"> = { namespace: "featA" };
         static readonly listens = [] as const;
         static readonly queries = [] as const;
         onInit() {
@@ -396,6 +476,7 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
         }
       }
       class FeatureB extends StubFeature<"featB"> {
+        static readonly channel: TChannelToken<TChannelDefinition, "featB"> = { namespace: "featB" };
         static readonly listens = [] as const;
         static readonly queries = [] as const;
         onInit() {
