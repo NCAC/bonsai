@@ -171,6 +171,8 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
    * Vérifications :
    *   - format camelCase de chaque clé (I21 amendé)
    *   - non-réservation de chaque clé (I57, I71)
+   *   - chaque classe Feature expose un `static readonly channel` (I73, ADR-0040)
+   *   - `channel.namespace` correspond à la clé du manifest (I22, I73)
    *   - `static listens` et `static queries` de chaque classe ne référencent
    *     que des namespaces connus du manifest (I70, ADR-0040)
    */
@@ -182,14 +184,45 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
       assertValidNamespace(ns);
     }
 
-    // I70 — cohérence des références croisées via `static listens` et `static queries`
-    const known = new Set(namespaces);
-    type TWithTokens = {
+    // I73 — chaque Feature DOIT exposer `static readonly channel`
+    // I22 — channel.namespace doit correspondre à la clé du manifest
+    type TWithChannel = {
+      channel?: TChannelToken<TChannelDefinition>;
       listens?: readonly TChannelToken<TChannelDefinition>[];
       queries?: readonly TChannelToken<TChannelDefinition>[];
     };
     for (const [ownNs, FeatureClass] of Object.entries(this.#manifest)) {
-      const cls = FeatureClass as unknown as TWithTokens;
+      const cls = FeatureClass as unknown as TWithChannel;
+      const token = cls.channel;
+      if (
+        token === undefined ||
+        token === null ||
+        typeof token !== "object" ||
+        typeof (token as { namespace?: unknown }).namespace !== "string"
+      ) {
+        throw new BonsaiNamespaceError(
+          "FEATURE_MISSING_CHANNEL",
+          `Feature "${ownNs}" does not declare \`static readonly channel: ` +
+            `TChannelToken<TDef, "${ownNs}">\` (I73 — ADR-0040). Add ` +
+            `\`static readonly channel = { namespace: "${ownNs}" }\` ` +
+            `to the class.`
+        );
+      }
+      if (token.namespace !== ownNs) {
+        throw new BonsaiNamespaceError(
+          "FEATURE_CHANNEL_NAMESPACE_MISMATCH",
+          `Feature registered under "${ownNs}" declares ` +
+            `channel.namespace="${token.namespace}" — must match the manifest ` +
+            `key (I22, I73). The channel token namespace and the manifest key ` +
+            `are the authoritative identity of the Feature.`
+        );
+      }
+    }
+
+    // I70 — cohérence des références croisées via `static listens` et `static queries`
+    const known = new Set(namespaces);
+    for (const [ownNs, FeatureClass] of Object.entries(this.#manifest)) {
+      const cls = FeatureClass as unknown as TWithChannel;
       const refs = [
         ...(cls.listens ?? []),
         ...(cls.queries ?? [])

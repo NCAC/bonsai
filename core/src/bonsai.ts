@@ -83,6 +83,9 @@ export * from "@bonsai/immer";
 // @bonsai/event — Channel, Radio, EventTrigger
 export * from "@bonsai/event";
 
+// @bonsai/feature — Feature base class, BonsaiNamespaceError, TFeatureContract, etc.
+export * from "@bonsai/feature";
+
 // @bonsai/view — View base class
 export * from "@bonsai/view";
 
