@@ -14,7 +14,14 @@
  *   I48  — Handlers = méthodes on<Name><Command|Event|Request> auto-découvertes
  *   I68  — Le namespace est porté par le manifest, pas par un static (ADR-0039)
  *   I72  — TSelfNS doit correspondre à la clé du manifest (ADR-0039)
- *   I79  — Feature.request accepte uniquement un TChannelToken typé (ADR-0040 — cf. ligne 70)
+ *   I73  — Chaque Feature concrète DOIT exposer `static readonly channel:
+ *          TChannelToken<TDef, TSelfNS>` — exercé par CartFeature / PricingFeature /
+ *          CartListenerFeature ci-dessous (ADR-0040)
+ *   I74  — TChannelDef co-localisé dans le fichier `.feature.ts` du domaine —
+ *          ici, toutes les Features inline cohabitent avec leurs TChannelDef
+ *          dans ce seul fichier de test (équivalent fixture) (ADR-0040)
+ *   I79  — Feature.request accepte uniquement un TChannelToken typé
+ *          (ADR-0040 — cf. PRICING_TOKEN ligne 68 + requestPrice ligne 99)
  *
  * Capacités strate 0 :
  *   C2 — handle(command) via auto-discovery
@@ -71,6 +78,8 @@ const PRICING_TOKEN: TChannelToken<TChannelDefinition, "pricing"> = { namespace:
 // ─── Features concrètes (fixtures) ────────────────────────────────────────
 
 class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart"> {
+  // I73 — token propre exposé pour les consommateurs typés (View, Feature externe)
+  static readonly channel: TChannelToken<TChannelDefinition, "cart"> = { namespace: "cart" };
   static readonly listens = [] as const;
   static readonly queries = [PRICING_TOKEN] as const;
 
@@ -108,6 +117,8 @@ class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart"> {
 }
 
 class PricingFeature extends Feature<PricingEntity, TChannelDefinition, "pricing"> {
+  // I73 — token propre exposé pour les consommateurs typés
+  static readonly channel: TChannelToken<TChannelDefinition, "pricing"> = { namespace: "pricing" };
   static readonly listens = [] as const;
   static readonly queries = [] as const;
 
@@ -132,10 +143,11 @@ class CartListenerEntity extends Entity<TCartListenerState> {
 /**
  * Feature qui écoute les events d'un Channel externe (C3 — listen)
  */
-const CART_TOKEN: TChannelToken<TChannelDefinition, "cart"> = { namespace: "cart" };
-
 class CartListenerFeature extends Feature<CartListenerEntity, TChannelDefinition, "cartListener"> {
-  static readonly listens = [CART_TOKEN] as const;
+  // I73 — token propre exposé même pour une Feature purement listener
+  static readonly channel: TChannelToken<TChannelDefinition, "cartListener"> = { namespace: "cartListener" };
+  // I79 — listens utilise le token typé de la Feature externe (CartFeature.channel)
+  static readonly listens = [CartFeature.channel] as const;
   static readonly queries = [] as const;
 
   protected get Entity() {
@@ -338,7 +350,9 @@ describe("Feature core — Strate 0", () => {
       // "onCartEvent" = prefix "onCart" + "" + suffix "Event" → eventPascal.length === 0
       // The handler must be skipped without throwing (L272)
       class ObserverFeature extends Feature<CartEntity, TChannelDefinition, "observer"> {
-        static readonly listens = [CART_TOKEN] as const;
+        // I73 — token propre exposé
+        static readonly channel: TChannelToken<TChannelDefinition, "observer"> = { namespace: "observer" };
+        static readonly listens = [CartFeature.channel] as const;
         static readonly queries = [] as const;
         protected get Entity() {
           return CartEntity;
