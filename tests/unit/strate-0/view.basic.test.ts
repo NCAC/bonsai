@@ -20,6 +20,9 @@
  *   I80 — Channel privé : aucun TChannelToken dans la surface consommateur
  *   I81 — features/uiEvents/uiElements sont les sources de vérité runtime
  *   I82 — Handler manquant → erreur (compile via implements, runtime via mount)
+ *   I83 — Pattern modulaire ADR-0042 en 5 étapes appliqué à TestView (features
+ *         + uiEvents + uiElements + TViewContract + View<TVC> + implements
+ *         TViewCallbacks<TVC>) — utilisé par toutes les fixtures de ce fichier
  *   I84 — events: [E,...] non-vide impose les handlers DOM correspondants
  *   I87 — Clé d'objet ≡ namespace de la Feature référencée
  *

@@ -23,6 +23,18 @@
  *
  * Invariants prouvés (par transitivité) :
  *   I1, I10, I11, I22, I25, I26, I31, I39, I48, I51
+ *   I73 — CartFeature déclare `static readonly channel: TChannelToken<TDef, "cart">`
+ *         (cf. tests/fixtures/cart-feature.fixture.ts — sans cette déclaration,
+ *         Application.start() ne peut pas câbler le Channel propre).
+ *   I74 — `TChannelDefinition` co-localisé dans le fichier `.feature.ts` du
+ *         domaine (CartEntity + CartFeature + CartView dans le même fichier).
+ *   I83 — Pattern modulaire ADR-0042 en 5 étapes appliqué à CartView : features
+ *         (TFeatureContract) + uiEvents (TUIContract) + uiElements (TUIElements)
+ *         + TViewContract dérivé + View<TVC> + implements TViewCallbacks<TVC>.
+ *   I85 — Le helper `ui<TEl>()(events)` curryfié est l'unique forme de
+ *         construction des `TUIEntry` dans la fixture.
+ *   I86 — Champ `events` toujours présent et toujours un tableau (`[]` ou
+ *         `["click"]`) — la fixture l'exerce dans les deux modes.
  *   + D48, D17, D30, ADR-0023, ADR-0024, ADR-0025, ADR-0026, ADR-0027
  *
  * @jest-environment jsdom

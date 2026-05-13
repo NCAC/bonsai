@@ -2,7 +2,7 @@
 
 | Champ                  | Valeur |
 | ---------------------- | ------ |
-| **Statut**             | 🟢 Accepted |
+| **Statut**             | 🔵 Tested |
 | **Date**               | 2026-05-06 |
 | **Décideurs**          | @ncac |
 | **RFC liées**          | [view.md](../rfc/4-couche-concrete/view.md), [invariants.md](../rfc/reference/invariants.md), [glossaire.md](../rfc/reference/glossaire.md) |
@@ -771,3 +771,4 @@ Note : Behavior (strate 2) et Composer (strate 1+) réutiliseront `TFeatureContr
 | 2026-05-04 | v1 — `TViewContract` unifié (deps + listens + triggers + requests + ui), `ui<TEl>(selector, events)` avec sélecteur dans le contrat (Proposed) |
 | 2026-05-06 | v2 — Réécriture complète. Pattern modulaire (`TFeatureContract` Feature-groupé + `TUIContract` + `TUIElements`). Sélecteurs sortis du contrat (D34). `ui<TEl>(events)` sans sélecteur. Trois getters séparés (`features`, `uiEvents`, `uiElements`). Suffixe `Event` conservé sur D48 channel. Validation stricte clé/namespace. Suppression nette des types ADR-0041 (`TConsumerDeps`, `TConsumerContract`, `TListenCallbacks`). |
 | 2026-05-07 | 🟢 **Accepted** — code mergé sur `develop` (PR #15 et #16) |
+| 2026-05-13 | 🔵 **Tested** — invariants ADR-0042 désormais tous cités dans la suite strate 0 : I81 / I82 (`view.basic.test.ts`), I83 (`view.basic.test.ts` + `cart-round-trip.test.ts`), I84 / I87 / I88 (`view.basic.test.ts` + `view-contract.types.test.ts`), I85 / I86 (`view-contract.types.test.ts` + `cart-round-trip.test.ts`). Critère C-Inv d'ADR-0043 satisfait. |
