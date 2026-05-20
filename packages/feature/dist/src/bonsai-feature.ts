@@ -1,7 +1,7 @@
 /**
  * @bonsai/feature - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-05-13T20:26:15.733Z
+ * Date: 2026-05-20T09:37:09.139Z
  */
 import { Radio } from '@bonsai/event';
 
@@ -165,8 +165,12 @@ function assertValidNamespace(ns) {
  *         typés par `TDef` — clé = `keyof TDef[lane]`, jamais `string` libre
  *         (ADR-0040)
  *   I79 — `Feature.request()` accepte uniquement un `TChannelToken` typé ;
- *         `static readonly listens`/`channels` portent ces tokens pour
- *         déclaration au bootstrap (ADR-0040)
+ *         `abstract get listens()`/`abstract get queries()` portent ces tokens
+ *         comme déclarations instance (ADR-0040, amendé ADR-0046 — I93)
+ *   I93 — `listens` et `queries` sont des `abstract get` instance sur Feature
+ *         (ADR-0046 — TS2515 si absent sur une classe concrète)
+ *   I94 — Le constructeur de Feature est inerte : assertValidNamespace + #namespace
+ *         uniquement. Aucun side-effect Radio/Entity.
  *
  * @packageDocumentation
  */
@@ -299,7 +303,7 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
         }
     }
 }, _Feature_registerEventListeners = function _Feature_registerEventListeners() {
-    const listenTokens = this.constructor.listens;
+    const listenTokens = this.listens;
     if (listenTokens.length === 0)
         return;
     const proto = Object.getPrototypeOf(this);
@@ -324,39 +328,5 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
         }
     }
 };
-/**
- * Tokens des Channels externes écoutés par cette Feature (C3 — I2, ADR-0040).
- *
- * **Pourquoi `static` — deux raisons distinctes selon la propriété :**
- *
- * • `channel` (token propre, ADR-0040 — I73) — porteur de TYPE consommé sans
- *   instance. Une View ou Feature externe importe la classe uniquement pour
- *   son token (`CartFeature.channel`) afin de typer ses appels `trigger()` ou
- *   `request()`. Un token d'instance obligerait les consommateurs à tenir une
- *   référence à la Feature, violant la topologie du flux (I1, I4, I12).
- *   Ce token n'est pas déclaré sur la classe abstraite — chaque Feature concrète
- *   le déclare dans son fichier `.feature.ts` (I73, I74).
- *
- * • `listens` / `queries` — invariants de classe, identiques pour toute instance
- *   (I22 : une seule par namespace). Lus par `Application.start()` AVANT
- *   instanciation pour valider les dépendances croisées et câbler les
- *   listeners/repliers au bootstrap.
- *
- * **Limitation TypeScript** — `abstract static` n'existe pas.
- * La présence de ces propriétés ne peut pas être imposée compile-time aux
- * sous-classes. Filets de sécurité : `TFeatureClass` (type constructeur),
- * validation runtime dans `Application.start()`, tests de type (`tests/types/`).
- */
-Feature.listens = [];
-/**
- * Tokens des Channels externes interrogés par cette Feature (C5 — I17, ADR-0040 — supporte I79).
- *
- * **Pourquoi `static` :** identique à `listens` — invariant de classe lu
- * avant instanciation pour validation des dépendances croisées.
- *
- * **Limitation TypeScript** — `abstract static` n'existe pas.
- * Voir commentaire de `listens` ci-dessus.
- */
-Feature.queries = [];
 
 export { BonsaiNamespaceError, Feature, RESERVED_NAMESPACES, assertValidNamespace, isCamelCaseNamespace, isReservedNamespace };

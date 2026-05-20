@@ -57,9 +57,15 @@ class CartEntity extends Entity<TCartState> {
 
 class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart"> {
   // I73 — token propre, requis par le filet runtime d'Application.start()
-  static readonly channel: TChannelToken<TChannelDefinition, "cart"> = { namespace: "cart" };
-  static readonly listens = [] as const;
-  static readonly queries = [] as const;
+  static readonly channel: TChannelToken<TChannelDefinition, "cart"> = {
+    namespace: "cart"
+  };
+  get listens() {
+    return [] as const;
+  }
+  get queries() {
+    return [] as const;
+  }
   protected get Entity() {
     return CartEntity;
   }
@@ -113,9 +119,15 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
 
     it("start() instantiates each Feature with the namespace from the manifest key (I72)", () => {
       class OrderFeature extends StubFeature<"orders"> {
-        static readonly channel: TChannelToken<TChannelDefinition, "orders"> = { namespace: "orders" };
-        static readonly listens = [] as const;
-        static readonly queries = [] as const;
+        static readonly channel: TChannelToken<TChannelDefinition, "orders"> = {
+          namespace: "orders"
+        };
+        get listens() {
+          return [] as const;
+        }
+        get queries() {
+          return [] as const;
+        }
       }
 
       const app = new Application({
@@ -164,9 +176,14 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       const callOrder: string[] = [];
 
       class OrderedFeature extends StubFeature<"ordered"> {
-        static readonly channel: TChannelToken<TChannelDefinition, "ordered"> = { namespace: "ordered" };
-        static readonly listens = [] as const;
-        static readonly queries = [] as const;
+        static readonly channel: TChannelToken<TChannelDefinition, "ordered"> =
+          { namespace: "ordered" };
+        get listens() {
+          return [] as const;
+        }
+        get queries() {
+          return [] as const;
+        }
         onInit() {
           callOrder.push("feature:onInit");
         }
@@ -226,8 +243,12 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
   describe("Manifest validation runtime [ADR-0039 — I70, I71]", () => {
     it("I71 — namespace 'local' is reserved → BonsaiNamespaceError(NAMESPACE_RESERVED)", () => {
       class BadFeature extends StubFeature<string> {
-        static readonly listens = [] as const;
-        static readonly queries = [] as const;
+        get listens() {
+          return [] as const;
+        }
+        get queries() {
+          return [] as const;
+        }
       }
 
       const app = new Application({
@@ -249,8 +270,12 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
 
     it("Non-camelCase key → BonsaiNamespaceError(NAMESPACE_INVALID_FORMAT)", () => {
       class BadFeature extends StubFeature<string> {
-        static readonly listens = [] as const;
-        static readonly queries = [] as const;
+        get listens() {
+          return [] as const;
+        }
+        get queries() {
+          return [] as const;
+        }
       }
 
       const app = new Application({
@@ -271,13 +296,20 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       }
     });
 
-    it("I70 — `static listens`/`queries` referencing an unknown namespace → BonsaiNamespaceError(NAMESPACE_UNKNOWN_REFERENCE)", () => {
+    it("I70 — `listens`/`queries` (instance, Phase 0c) referencing an unknown namespace → BonsaiNamespaceError(NAMESPACE_UNKNOWN_REFERENCE)", () => {
       class GhostListener extends StubFeature<"ghostListener"> {
         // I73 — token propre (sinon FEATURE_MISSING_CHANNEL avant le test cible)
-        static readonly channel: TChannelToken<TChannelDefinition, "ghostListener"> = { namespace: "ghostListener" };
+        static readonly channel: TChannelToken<
+          TChannelDefinition,
+          "ghostListener"
+        > = { namespace: "ghostListener" };
         // Référence "catlog" inexistant → filet runtime (ADR-0040)
-        static readonly listens = [{ namespace: "catlog" }] as const;
-        static readonly queries = [] as const;
+        get listens() {
+          return [{ namespace: "catlog" }] as const;
+        }
+        get queries() {
+          return [] as const;
+        }
       }
 
       const app = new Application({
@@ -299,8 +331,12 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
     it("Empty string manifest key → BonsaiNamespaceError(NAMESPACE_INVALID_FORMAT)", () => {
       // Covers the `ns.length === 0` branch in assertValidNamespace (types.ts L156)
       class AnyFeature extends StubFeature<string> {
-        static readonly listens = [] as const;
-        static readonly queries = [] as const;
+        get listens() {
+          return [] as const;
+        }
+        get queries() {
+          return [] as const;
+        }
       }
 
       const app = new Application({
@@ -325,8 +361,12 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       // d'Application.start() rejette une Feature qui ne le déclare pas.
       class NoChannelFeature extends StubFeature<"noChannel"> {
         // Pas de `static readonly channel` — viole I73.
-        static readonly listens = [] as const;
-        static readonly queries = [] as const;
+        get listens() {
+          return [] as const;
+        }
+        get queries() {
+          return [] as const;
+        }
       }
 
       const app = new Application({
@@ -354,9 +394,16 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       // `static readonly channel = { namespace: "different" }`, le filet runtime
       // rejette pour préserver l'identité unique.
       class MismatchFeature extends StubFeature<string> {
-        static readonly channel: TChannelToken<TChannelDefinition, "different"> = { namespace: "different" };
-        static readonly listens = [] as const;
-        static readonly queries = [] as const;
+        static readonly channel: TChannelToken<
+          TChannelDefinition,
+          "different"
+        > = { namespace: "different" };
+        get listens() {
+          return [] as const;
+        }
+        get queries() {
+          return [] as const;
+        }
       }
 
       const app = new Application({
@@ -381,9 +428,14 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
 
     it("Cross-references between manifested Features are accepted", () => {
       class ListenerFeature extends StubFeature<"listener"> {
-        static readonly channel: TChannelToken<TChannelDefinition, "listener"> = { namespace: "listener" };
-        static readonly listens = [{ namespace: "cart" }] as const;
-        static readonly queries = [] as const;
+        static readonly channel: TChannelToken<TChannelDefinition, "listener"> =
+          { namespace: "listener" };
+        get listens() {
+          return [{ namespace: "cart" }] as const;
+        }
+        get queries() {
+          return [] as const;
+        }
       }
 
       const app = new Application({
@@ -394,15 +446,20 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       expect(() => app.start()).not.toThrow();
     });
 
-    it("Feature class with no static listens/queries (plain class cast) — covers ?? [] branches", () => {
-      // Feature base définit toujours listens/queries, donc il faut un stub
-      // sans héritage pour exercer la branche `?? []` (simule cast as any depuis
-      // code JS ou manifest dynamique). Le `static readonly channel` reste
-      // requis par I73 — sans lui, le filet runtime throw FEATURE_MISSING_CHANNEL
-      // avant d'atteindre les branches `?? []`.
+    it("Feature class with get listens()/queries() returning [] — Phase 0c accepts empty arrays", () => {
+      // Depuis ADR-0046 (I93), listens/queries sont des abstract get instance.
+      // Les branches `?? []` ont disparu — Phase 0c lit directement instance.listens
+      // et instance.queries. Ce test vérifie qu'une Feature avec des tableaux vides
+      // est acceptée sans throw.
       const FakeFeature = class {
         static readonly channel = { namespace: "fake" };
         constructor(_ns: string) {}
+        get listens() {
+          return [] as const;
+        }
+        get queries() {
+          return [] as const;
+        }
         bootstrap(): void {}
       };
 
@@ -442,9 +499,14 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       const callOrder: string[] = [];
 
       class ChannelObserverFeature extends StubFeature<"observer"> {
-        static readonly channel: TChannelToken<TChannelDefinition, "observer"> = { namespace: "observer" };
-        static readonly listens = [] as const;
-        static readonly queries = [] as const;
+        static readonly channel: TChannelToken<TChannelDefinition, "observer"> =
+          { namespace: "observer" };
+        get listens() {
+          return [] as const;
+        }
+        get queries() {
+          return [] as const;
+        }
         onInit() {
           try {
             Radio.me().channel("observer");
@@ -468,17 +530,29 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       const callOrder: string[] = [];
 
       class FeatureA extends StubFeature<"featA"> {
-        static readonly channel: TChannelToken<TChannelDefinition, "featA"> = { namespace: "featA" };
-        static readonly listens = [] as const;
-        static readonly queries = [] as const;
+        static readonly channel: TChannelToken<TChannelDefinition, "featA"> = {
+          namespace: "featA"
+        };
+        get listens() {
+          return [] as const;
+        }
+        get queries() {
+          return [] as const;
+        }
         onInit() {
           callOrder.push("featA:onInit");
         }
       }
       class FeatureB extends StubFeature<"featB"> {
-        static readonly channel: TChannelToken<TChannelDefinition, "featB"> = { namespace: "featB" };
-        static readonly listens = [] as const;
-        static readonly queries = [] as const;
+        static readonly channel: TChannelToken<TChannelDefinition, "featB"> = {
+          namespace: "featB"
+        };
+        get listens() {
+          return [] as const;
+        }
+        get queries() {
+          return [] as const;
+        }
         onInit() {
           callOrder.push("featB:onInit");
         }

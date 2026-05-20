@@ -1,14 +1,14 @@
 # ADR-0040 : API TypeScript-First — `TChannelDefinition`, `ChannelToken` et projections UI typées
 
-| Champ                   | Valeur                                                                                                                                                                                                              |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Statut**              | 🔵 Tested                                                                                                                                                                                                           |
-| **Date**                | 2026-04-27                                                                                                                                                                                                          |
-| **Décideurs**           | @ncac                                                                                                                                                                                                               |
-| **RFC liées**           | [communication.md](../rfc/2-architecture/communication.md), [feature.md](../rfc/3-couche-abstraite/feature.md), [invariants.md](../rfc/reference/invariants.md)                                                     |
+| Champ                   | Valeur                                                                                                                                                                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Statut**              | 🔵 Tested                                                                                                                                                                                                                            |
+| **Date**                | 2026-04-27                                                                                                                                                                                                                           |
+| **Décideurs**           | @ncac                                                                                                                                                                                                                                |
+| **RFC liées**           | [communication.md](../rfc/2-architecture/communication.md), [feature.md](../rfc/3-couche-abstraite/feature.md), [invariants.md](../rfc/reference/invariants.md)                                                                      |
 | **ADR liées**           | [ADR-0003](ADR-0003-channel-runtime-semantics.md), [ADR-0024](ADR-0024-component-capabilities-manifest-pattern.md), [ADR-0037](ADR-0037-feature-generic-entity-class.md), [ADR-0039](ADR-0039-namespace-authority-and-uniqueness.md) |
-| **Décisions amendées**  | ADR-0037 (troisième paramètre `TChannel` désormais obligatoire), ADR-0024 (`TViewParams` → `TUIMap<T>` paramétré)                                                                                                   |
-| **Invariants impactés** | I1, I2, I3, I4, I12 (formulation renforcée) — I73 à I79 (nouveaux)                                                                                                                                                 |
+| **Décisions amendées**  | ADR-0037 (troisième paramètre `TChannel` désormais obligatoire), ADR-0024 (`TViewParams` → `TUIMap<T>` paramétré)                                                                                                                    |
+| **Invariants impactés** | I1, I2, I3, I4, I12 (formulation renforcée) — I73 à I79 (nouveaux)                                                                                                                                                                   |
 
 ---
 
@@ -19,6 +19,7 @@ La strate 0 est livrée et son gate E2E est vert. Avant d'entamer la strate 1, u
 ### État actuel — les surfaces non typées
 
 **`Channel` (`@bonsai/event`)** :
+
 ```ts
 // Toutes les lanes utilisent unknown — aucun lien entre nom et type
 handle(commandName: string, handler: (payload: unknown) => void): void
@@ -30,6 +31,7 @@ request(requestName: string, params: unknown): unknown | null
 ```
 
 **`Feature` (`@bonsai/feature`)** :
+
 ```ts
 protected emit(eventName: string, payload: unknown): void     // noms libres, payloads opaques
 protected request(ns: string, name: string, params: unknown): unknown | null // cross-feature aveugle
@@ -37,6 +39,7 @@ protected request(ns: string, name: string, params: unknown): unknown | null // 
 ```
 
 **`View` (`@bonsai/view`)** :
+
 ```ts
 getUI(key: string): TProjectionNode           // clé libre, retour non différencié
 protected trigger(ns: string, cmd: string, payload: unknown): void  // tout libre
@@ -44,13 +47,13 @@ protected trigger(ns: string, cmd: string, payload: unknown): void  // tout libr
 
 ### Conséquences pratiques
 
-| Symptôme | Source |
-| -------- | ------ |
-| Faute de frappe sur un nom de commande → silence au runtime | `string` libre partout |
-| Payload d'un handler non typé → cast manuel systématique | `unknown` sur toutes les lanes |
-| `getUI("submitButtom")` compile → crash au runtime | `string` libre sur `getUI()` |
-| `request()` retourne `unknown` → cast obligatoire au call-site | absence de TDef sur Channel |
-| Renommer un event → aucune cascade d'erreurs TS | aucun lien symbolique |
+| Symptôme                                                       | Source                         |
+| -------------------------------------------------------------- | ------------------------------ |
+| Faute de frappe sur un nom de commande → silence au runtime    | `string` libre partout         |
+| Payload d'un handler non typé → cast manuel systématique       | `unknown` sur toutes les lanes |
+| `getUI("submitButtom")` compile → crash au runtime             | `string` libre sur `getUI()`   |
+| `request()` retourne `unknown` → cast obligatoire au call-site | absence de TDef sur Channel    |
+| Renommer un event → aucune cascade d'erreurs TS                | aucun lien symbolique          |
 
 ### Ce que le Style Guide promet déjà
 
@@ -96,14 +99,24 @@ La strate 0 est la dernière opportunité de corriger les signatures avant que l
 ```ts
 // @bonsai/event — Channel avec type params par méthode
 export class Channel {
-  handle<TPayload = unknown>(name: string, handler: (p: TPayload) => void): void;
+  handle<TPayload = unknown>(
+    name: string,
+    handler: (p: TPayload) => void
+  ): void;
   trigger<TPayload = unknown>(name: string, payload: TPayload): void;
   emit<TPayload = unknown>(name: string, payload: TPayload): void;
-  listen<TPayload = unknown>(name: string, listener: (p: TPayload) => void): void;
-  reply<TParams = unknown, TResult = unknown>(
-    name: string, replier: (p: TParams) => TResult
+  listen<TPayload = unknown>(
+    name: string,
+    listener: (p: TPayload) => void
   ): void;
-  request<TParams = unknown, TResult = unknown>(name: string, params: TParams): TResult | null;
+  reply<TParams = unknown, TResult = unknown>(
+    name: string,
+    replier: (p: TParams) => TResult
+  ): void;
+  request<TParams = unknown, TResult = unknown>(
+    name: string,
+    params: TParams
+  ): TResult | null;
 }
 
 // Usage — chaque call-site doit annoter explicitement
@@ -115,13 +128,13 @@ channel.trigger<{ id: string; qty: number }>("addItem", { id: "1", qty: 2 }); //
 channel.trigger<{ id: string; qty: number }>("addItemm", { id: "1", qty: 2 }); // COMPILE — faute de frappe silencieuse
 ```
 
-| Avantages | Inconvénients |
-| --------- | ------------- |
-| + Migration à coût minimal (surface publique quasi-inchangée) | - Aucun lien entre le **nom** du message et son type — fautes de frappe silencieuses |
-| + Aucune nouvelle structure de type à déclarer | - Autocomplétion inexistante sur les noms de commandes/events |
-| + Rétrocompatibilité totale | - `request()` retourne `TResult \| null` mais `TResult` est libre — cast encore nécessaire |
-| + Simple à implémenter | - Répétition des annotations à chaque call-site |
-| | - Violation directe du principe « Types d'abord » : la déclaration n'est pas séparée de l'implémentation |
+| Avantages                                                     | Inconvénients                                                                                            |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| + Migration à coût minimal (surface publique quasi-inchangée) | - Aucun lien entre le **nom** du message et son type — fautes de frappe silencieuses                     |
+| + Aucune nouvelle structure de type à déclarer                | - Autocomplétion inexistante sur les noms de commandes/events                                            |
+| + Rétrocompatibilité totale                                   | - `request()` retourne `TResult \| null` mais `TResult` est libre — cast encore nécessaire               |
+| + Simple à implémenter                                        | - Répétition des annotations à chaque call-site                                                          |
+|                                                               | - Violation directe du principe « Types d'abord » : la déclaration n'est pas séparée de l'implémentation |
 
 ---
 
@@ -138,31 +151,35 @@ export type TChannelDefinition = {
 };
 
 export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
-  handle<K extends keyof TDef['commands'] & string>(
+  handle<K extends keyof TDef["commands"] & string>(
     name: K,
-    handler: (payload: TDef['commands'][K]) => void
+    handler: (payload: TDef["commands"][K]) => void
   ): void;
 
-  trigger<K extends keyof TDef['commands'] & string>(
-    name: K, payload: TDef['commands'][K]
-  ): void;
-
-  emit<K extends keyof TDef['events'] & string>(
-    name: K, payload: TDef['events'][K]
-  ): void;
-
-  listen<K extends keyof TDef['events'] & string>(
-    name: K, listener: (payload: TDef['events'][K]) => void
-  ): void;
-
-  reply<K extends keyof TDef['requests'] & string>(
+  trigger<K extends keyof TDef["commands"] & string>(
     name: K,
-    replier: (p: TDef['requests'][K]['params']) => TDef['requests'][K]['result']
+    payload: TDef["commands"][K]
   ): void;
 
-  request<K extends keyof TDef['requests'] & string>(
-    name: K, params: TDef['requests'][K]['params']
-  ): TDef['requests'][K]['result'] | null;
+  emit<K extends keyof TDef["events"] & string>(
+    name: K,
+    payload: TDef["events"][K]
+  ): void;
+
+  listen<K extends keyof TDef["events"] & string>(
+    name: K,
+    listener: (payload: TDef["events"][K]) => void
+  ): void;
+
+  reply<K extends keyof TDef["requests"] & string>(
+    name: K,
+    replier: (p: TDef["requests"][K]["params"]) => TDef["requests"][K]["result"]
+  ): void;
+
+  request<K extends keyof TDef["requests"] & string>(
+    name: K,
+    params: TDef["requests"][K]["params"]
+  ): TDef["requests"][K]["result"] | null;
 }
 
 // @bonsai/feature — emit typé, request vers l'extérieur encore opaque
@@ -172,13 +189,16 @@ export abstract class Feature<
   TSelfNS extends string = string
 > {
   // ✅ emit typé — noms et payloads contraints
-  protected emit<K extends keyof TChannelDef['events'] & string>(
-    name: K, payload: TChannelDef['events'][K]
+  protected emit<K extends keyof TChannelDef["events"] & string>(
+    name: K,
+    payload: TChannelDef["events"][K]
   ): void;
 
   // ❌ request cross-feature — toujours opaque, pas de TDef cible
   protected request(
-    targetNs: string, name: string, params: unknown
+    targetNs: string,
+    name: string,
+    params: unknown
   ): unknown | null;
 }
 
@@ -189,12 +209,12 @@ export abstract class View {
 }
 ```
 
-| Avantages | Inconvénients |
-| --------- | ------------- |
-| + `emit()` et handlers de commandes pleinement typés | - `request()` cross-feature reste `unknown | null` — cast au call-site |
-| + Autocomplétion sur les noms de messages **du propre channel** | - `trigger()` depuis View reste une `string` libre |
+| Avantages                                                         | Inconvénients                                               |
+| ----------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------- |
+| + `emit()` et handlers de commandes pleinement typés              | - `request()` cross-feature reste `unknown                  | null` — cast au call-site |
+| + Autocomplétion sur les noms de messages **du propre channel**   | - `trigger()` depuis View reste une `string` libre          |
 | + `TChannelDefinition` est la fondation pour une évolution future | - `getUI(key)` non typé — clé libre, retour non différencié |
-| + Migration progressive des Features existantes | - La moitié du problème est résolue, l'autre reste entière |
+| + Migration progressive des Features existantes                   | - La moitié du problème est résolue, l'autre reste entière  |
 
 ---
 
@@ -208,7 +228,7 @@ export abstract class View {
 // Contrat structurel d'un Channel — déclare toutes ses lanes
 export type TChannelDefinition = {
   readonly commands: Record<string, unknown>;
-  readonly events:   Record<string, unknown>;
+  readonly events: Record<string, unknown>;
   readonly requests: Record<string, { params: unknown; result: unknown }>;
 };
 
@@ -234,37 +254,37 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
   constructor(public readonly name: string) {}
 
   // Lane 1 — Commands
-  handle<K extends keyof TDef['commands'] & string>(
+  handle<K extends keyof TDef["commands"] & string>(
     name: K,
-    handler: (payload: TDef['commands'][K]) => void
+    handler: (payload: TDef["commands"][K]) => void
   ): void;
 
-  trigger<K extends keyof TDef['commands'] & string>(
+  trigger<K extends keyof TDef["commands"] & string>(
     name: K,
-    payload: TDef['commands'][K]
+    payload: TDef["commands"][K]
   ): void;
 
   // Lane 2 — Events
-  listen<K extends keyof TDef['events'] & string>(
+  listen<K extends keyof TDef["events"] & string>(
     name: K,
-    listener: (payload: TDef['events'][K]) => void
+    listener: (payload: TDef["events"][K]) => void
   ): void;
 
-  emit<K extends keyof TDef['events'] & string>(
+  emit<K extends keyof TDef["events"] & string>(
     name: K,
-    payload: TDef['events'][K]
+    payload: TDef["events"][K]
   ): void;
 
   // Lane 3 — Requests
-  reply<K extends keyof TDef['requests'] & string>(
+  reply<K extends keyof TDef["requests"] & string>(
     name: K,
-    replier: (p: TDef['requests'][K]['params']) => TDef['requests'][K]['result']
+    replier: (p: TDef["requests"][K]["params"]) => TDef["requests"][K]["result"]
   ): void;
 
-  request<K extends keyof TDef['requests'] & string>(
+  request<K extends keyof TDef["requests"] & string>(
     name: K,
-    params: TDef['requests'][K]['params']
-  ): TDef['requests'][K]['result'] | null;
+    params: TDef["requests"][K]["params"]
+  ): TDef["requests"][K]["result"] | null;
 }
 ```
 
@@ -281,21 +301,21 @@ export abstract class Feature<
   static readonly channel: TChannelToken<TChannelDefinition, string>;
 
   // C1 — emit typé sur le propre Channel (I1, I12)
-  protected emit<K extends keyof TChannelDef['events'] & string>(
+  protected emit<K extends keyof TChannelDef["events"] & string>(
     eventName: K,
-    payload: TChannelDef['events'][K]
+    payload: TChannelDef["events"][K]
   ): void;
 
   // C5 — request typé via token cross-feature (I17)
   protected request<
     TDef extends TChannelDefinition,
     TNS extends string,
-    K extends keyof TDef['requests'] & string
+    K extends keyof TDef["requests"] & string
   >(
     token: TChannelToken<TDef, TNS>,
     requestName: K,
-    params: TDef['requests'][K]['params']
-  ): TDef['requests'][K]['result'] | null;
+    params: TDef["requests"][K]["params"]
+  ): TDef["requests"][K]["result"] | null;
 }
 
 // ── Types utilitaires de dérivation des handlers ─────────────────────────────
@@ -303,8 +323,9 @@ export abstract class Feature<
 // Dérive le contrat des handlers de commandes à partir de TChannelDef
 // Utilisé avec `implements` pour la vérification compile-time (I48 renforcé)
 export type TCommandHandlers<TDef extends TChannelDefinition> = {
-  [K in keyof TDef['commands'] & string as `on${Capitalize<K>}Command`]:
-    (payload: TDef['commands'][K]) => void;
+  [K in keyof TDef["commands"] & string as `on${Capitalize<K>}Command`]: (
+    payload: TDef["commands"][K]
+  ) => void;
 };
 
 // Dérive le contrat des handlers d'events entrants (Channel externe)
@@ -312,8 +333,10 @@ export type TExternalEventHandlers<
   TDef extends TChannelDefinition,
   TNS extends string
 > = {
-  [K in keyof TDef['events'] & string as `on${Capitalize<TNS>}${Capitalize<K>}Event`]:
-    (payload: TDef['events'][K]) => void;
+  [K in keyof TDef["events"] &
+    string as `on${Capitalize<TNS>}${Capitalize<K>}Event`]: (
+    payload: TDef["events"][K]
+  ) => void;
 };
 ```
 
@@ -330,26 +353,29 @@ export type TUIEntry = {
 export type TUIMap<T extends Record<string, TUIEntry>> = T;
 
 // TProjectionNodeFor<TEl> — version typée retournée par getUI()
-export type TProjectionNodeFor<TEl extends HTMLElement = HTMLElement> =
-  Omit<TProjectionNode, 'element'> & { element(): TEl };
+export type TProjectionNodeFor<TEl extends HTMLElement = HTMLElement> = Omit<
+  TProjectionNode,
+  "element"
+> & { element(): TEl };
 
 // View générique sur ses tokens d'écoute et sa carte UI
 export abstract class View<
-  TListenTokens extends readonly TChannelToken<TChannelDefinition, string>[] = [],
+  TListenTokens extends readonly TChannelToken<TChannelDefinition, string>[] =
+    [],
   TUI extends Record<string, TUIEntry> = Record<string, TUIEntry>
 > {
   // getUI : clé contrainte aux keyof TUI, retour différencié par type HTML
-  getUI<K extends keyof TUI & string>(key: K): TProjectionNodeFor<TUI[K]['el']>;
+  getUI<K extends keyof TUI & string>(key: K): TProjectionNodeFor<TUI[K]["el"]>;
 
   // trigger : clé de commande contrainte au TDef du token cible (I4 — jamais emit)
   protected trigger<
     TDef extends TChannelDefinition,
     TNS extends string,
-    K extends keyof TDef['commands'] & string
+    K extends keyof TDef["commands"] & string
   >(
     token: TChannelToken<TDef, TNS>,
     commandName: K,
-    payload: TDef['commands'][K]
+    payload: TDef["commands"][K]
   ): void;
 }
 ```
@@ -362,14 +388,14 @@ export abstract class View<
 // Étape 1 : Déclarer les types (le contrat)
 export type TCartChannelDef = {
   readonly commands: {
-    addItem:    { id: string; qty: number };
+    addItem: { id: string; qty: number };
     removeItem: { id: string };
-    clear:      void;
+    clear: void;
   };
   readonly events: {
-    itemAdded:   { id: string; qty: number };
+    itemAdded: { id: string; qty: number };
     itemRemoved: { id: string };
-    cleared:     void;
+    cleared: void;
   };
   readonly requests: {
     getTotal: { params: void; result: number };
@@ -384,10 +410,12 @@ export class CartFeature
 {
   // Token statique — référence typée pour tout consommateur
   static readonly channel: TChannelToken<TCartChannelDef, "cart"> = {
-    namespace: "cart",
+    namespace: "cart"
   };
 
-  protected get Entity() { return CartEntity; }
+  protected get Entity() {
+    return CartEntity;
+  }
 
   // Étape 3 : Récompense — handlers inférés, payloads typés
   onAddItemCommand(payload: { id: string; qty: number }): void {
@@ -400,7 +428,7 @@ export class CartFeature
 
   onRemoveItemCommand(payload: { id: string }): void {
     this.entity.mutate("cart:removeItem", (draft) => {
-      draft.items = draft.items.filter(i => i.id !== payload.id);
+      draft.items = draft.items.filter((i) => i.id !== payload.id);
     });
     this.emit("itemRemoved", { id: payload.id });
   }
@@ -412,13 +440,19 @@ export class CartFeature
 
 // ── pricing.feature.ts ───────────────────────────────────────────────────────
 // (une Feature qui interroge CartFeature)
-export class PricingFeature extends Feature<PricingEntity, TPricingChannelDef, "pricing"> {
+export class PricingFeature extends Feature<
+  PricingEntity,
+  TPricingChannelDef,
+  "pricing"
+> {
   static readonly channel: TChannelToken<TPricingChannelDef, "pricing"> = {
-    namespace: "pricing",
+    namespace: "pricing"
   };
   static readonly channels = ["cart"] as const; // satisfies ExternalOf<"pricing">[]
 
-  protected get Entity() { return PricingEntity; }
+  protected get Entity() {
+    return PricingEntity;
+  }
 
   onComputeDiscountCommand(payload: { threshold: number }): void {
     // ✅ request typé via token — total est number | null
@@ -432,9 +466,9 @@ export class PricingFeature extends Feature<PricingEntity, TPricingChannelDef, "
 // ── CartView.view.ts ─────────────────────────────────────────────────────────
 // Étape 1 : Déclarer la carte UI
 export type TCartViewUI = TUIMap<{
-  addButton:  { el: HTMLButtonElement; event: ['click'] };
-  totalLabel: { el: HTMLSpanElement;   event: [] };
-  clearBtn:   { el: HTMLButtonElement; event: ['click'] };
+  addButton: { el: HTMLButtonElement; event: ["click"] };
+  totalLabel: { el: HTMLSpanElement; event: [] };
+  clearBtn: { el: HTMLButtonElement; event: ["click"] };
 }>;
 
 // Étape 2 : Implémenter la View
@@ -442,12 +476,12 @@ export class CartView extends View<[typeof CartFeature.channel], TCartViewUI> {
   get params() {
     return {
       uiElements: {
-        addButton:  ".CartView-addBtn",
+        addButton: ".CartView-addBtn",
         totalLabel: ".CartView-total",
-        clearBtn:   ".CartView-clearBtn",
+        clearBtn: ".CartView-clearBtn"
       },
-      listen:  ["cart"],
-      trigger: ["cart"],
+      listen: ["cart"],
+      trigger: ["cart"]
     } as const;
   }
 
@@ -457,7 +491,7 @@ export class CartView extends View<[typeof CartFeature.channel], TCartViewUI> {
     // this.trigger(CartFeature.channel, "addItemm", ...);  // ❌ TS error : clé inexistante
   }
 
-  onCartItemAddedEvent(payload: TCartChannelDef['events']['itemAdded']): void {
+  onCartItemAddedEvent(payload: TCartChannelDef["events"]["itemAdded"]): void {
     // ✅ payload est { id: string; qty: number }
     this.getUI("totalLabel").element().textContent = `+${payload.qty}`;
     // this.getUI("totalLabelX");  // ❌ TS error : clé inexistante dans TCartViewUI
@@ -465,33 +499,33 @@ export class CartView extends View<[typeof CartFeature.channel], TCartViewUI> {
 }
 ```
 
-| Avantages | Inconvénients |
-| --------- | ------------- |
-| + Aucun `unknown` ni `string` libre dans les surfaces publiques | - Verbosité initiale : `TCartChannelDef` à déclarer avant la classe |
-| + Autocomplétion sur tous les noms de messages (commandes, events, requests) | - `static readonly channel` à déclarer manuellement (statics non hérités des type params) |
-| + `getUI()` typé par élément HTML → `HTMLButtonElement`, `HTMLInputElement`, etc. | - `TListenTokens` sur View : verbosité à la déclaration |
-| + `request()` cross-feature retourne le bon type sans cast | - Propagation des generics : `Feature<E, TDef, NS>` partout dans les signatures de test |
-| + Renommer un event = cascade d'erreurs TS à tous les consommateurs | |
-| + `implements TCommandHandlers<TDef>` : l'IDE suggère les handlers attendus | |
-| + Conforme au Style Guide §1 dans son intégralité | |
+| Avantages                                                                         | Inconvénients                                                                             |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| + Aucun `unknown` ni `string` libre dans les surfaces publiques                   | - Verbosité initiale : `TCartChannelDef` à déclarer avant la classe                       |
+| + Autocomplétion sur tous les noms de messages (commandes, events, requests)      | - `static readonly channel` à déclarer manuellement (statics non hérités des type params) |
+| + `getUI()` typé par élément HTML → `HTMLButtonElement`, `HTMLInputElement`, etc. | - `TListenTokens` sur View : verbosité à la déclaration                                   |
+| + `request()` cross-feature retourne le bon type sans cast                        | - Propagation des generics : `Feature<E, TDef, NS>` partout dans les signatures de test   |
+| + Renommer un event = cascade d'erreurs TS à tous les consommateurs               |                                                                                           |
+| + `implements TCommandHandlers<TDef>` : l'IDE suggère les handlers attendus       |                                                                                           |
+| + Conforme au Style Guide §1 dans son intégralité                                 |                                                                                           |
 
 ---
 
 ## Analyse comparative
 
-| Critère | A — Partiel | B — Sans token | C — Complet |
-| ------- | ----------- | -------------- | ----------- |
-| Noms de messages typés (commandes propres) | ❌ | ⭐⭐⭐ | ⭐⭐⭐ |
-| Noms de messages typés (cross-feature) | ❌ | ❌ | ⭐⭐⭐ |
-| Payloads des handlers inférés | ⭐ (annotation manuelle) | ⭐⭐ (propre channel) | ⭐⭐⭐ |
-| `request()` typé (retour concret) | ❌ | ❌ | ⭐⭐⭐ |
-| `trigger()` typé depuis View | ❌ | ❌ | ⭐⭐⭐ |
-| `getUI(key)` à clé contrainte + élément HTML | ❌ | ❌ | ⭐⭐⭐ |
-| Refactoring sûr (renommage cascade) | ❌ | ⭐⭐ (partiel) | ⭐⭐⭐ |
-| Conformité « Types d'abord, récompense ensuite » | ⭐ | ⭐⭐ | ⭐⭐⭐ |
-| Coût de migration | ⭐⭐⭐ (nul) | ⭐⭐ | ⭐⭐ |
-| Verbosité côté applicatif | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ (compensée par inférence) |
-| Performance TypeScript (checker) | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ (à surveiller) |
+| Critère                                          | A — Partiel              | B — Sans token        | C — Complet                    |
+| ------------------------------------------------ | ------------------------ | --------------------- | ------------------------------ |
+| Noms de messages typés (commandes propres)       | ❌                       | ⭐⭐⭐                | ⭐⭐⭐                         |
+| Noms de messages typés (cross-feature)           | ❌                       | ❌                    | ⭐⭐⭐                         |
+| Payloads des handlers inférés                    | ⭐ (annotation manuelle) | ⭐⭐ (propre channel) | ⭐⭐⭐                         |
+| `request()` typé (retour concret)                | ❌                       | ❌                    | ⭐⭐⭐                         |
+| `trigger()` typé depuis View                     | ❌                       | ❌                    | ⭐⭐⭐                         |
+| `getUI(key)` à clé contrainte + élément HTML     | ❌                       | ❌                    | ⭐⭐⭐                         |
+| Refactoring sûr (renommage cascade)              | ❌                       | ⭐⭐ (partiel)        | ⭐⭐⭐                         |
+| Conformité « Types d'abord, récompense ensuite » | ⭐                       | ⭐⭐                  | ⭐⭐⭐                         |
+| Coût de migration                                | ⭐⭐⭐ (nul)             | ⭐⭐                  | ⭐⭐                           |
+| Verbosité côté applicatif                        | ⭐⭐⭐                   | ⭐⭐                  | ⭐⭐ (compensée par inférence) |
+| Performance TypeScript (checker)                 | ⭐⭐⭐                   | ⭐⭐⭐                | ⭐⭐ (à surveiller)            |
 
 ---
 
@@ -557,40 +591,40 @@ Le `TChannelDefinition` déclaré dans le fichier `.feature.ts` du domaine (co-l
 
 ### Nouveaux invariants
 
-| Réf | Contenu |
-| --- | ------- |
-| I73 | Chaque Feature DOIT déclarer un `static readonly channel: TChannelToken<TChannelDef, TSelfNS>` exposant son contrat de communication. |
-| I74 | Le `TChannelDefinition` d'une Feature est co-localisé dans le fichier `.feature.ts` du domaine — il n'existe pas de fichier `.channel.ts` séparé. |
-| I75 | Aucun `any` ni `unknown` n'est autorisé dans les signatures publiques de `Channel`, `Feature` ou `View` — les casts sont isolés dans l'implémentation interne. |
+| Réf | Contenu                                                                                                                                                                                                                              |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| I73 | Chaque Feature DOIT déclarer un `static readonly channel: TChannelToken<TChannelDef, TSelfNS>` exposant son contrat de communication.                                                                                                |
+| I74 | Le `TChannelDefinition` d'une Feature est co-localisé dans le fichier `.feature.ts` du domaine — il n'existe pas de fichier `.channel.ts` séparé.                                                                                    |
+| I75 | Aucun `any` ni `unknown` n'est autorisé dans les signatures publiques de `Channel`, `Feature` ou `View` — les casts sont isolés dans l'implémentation interne.                                                                       |
 | I76 | `Channel.trigger()`, `Channel.emit()`, `Channel.request()`, `Channel.handle()`, `Channel.listen()`, `Channel.reply()` sont strictement typés par `TDef` — le nom de message est une `keyof TDef['lane']`, jamais une `string` libre. |
-| I77 | `View.trigger()` accepte uniquement un `TChannelToken` — jamais un namespace `string` libre. |
-| I78 | `View.getUI(key)` accepte uniquement une clé déclarée dans `TUI` — jamais une `string` libre. |
-| I79 | `Feature.request()` accepte uniquement un `TChannelToken` — jamais un namespace `string` libre. |
+| I77 | `View.trigger()` accepte uniquement un `TChannelToken` — jamais un namespace `string` libre.                                                                                                                                         |
+| I78 | `View.getUI(key)` accepte uniquement une clé déclarée dans `TUI` — jamais une `string` libre.                                                                                                                                        |
+| I79 | `Feature.request()` accepte uniquement un `TChannelToken` — jamais un namespace `string` libre.                                                                                                                                      |
 
 ### Invariants renforcés
 
-| Réf | Formulation précédente | Formulation renforcée |
-| --- | ---------------------- | --------------------- |
-| I1 | Feature ne peut emit() que sur son propre Channel | emit() est typé contre `TChannelDef['events']` — noms et payloads vérifiés compile-time |
-| I4 | View n'a jamais emit() — absent du type | View.trigger() est typé via TChannelToken — la signature contractuelle exclut emit() |
+| Réf | Formulation précédente                             | Formulation renforcée                                                                         |
+| --- | -------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| I1  | Feature ne peut emit() que sur son propre Channel  | emit() est typé contre `TChannelDef['events']` — noms et payloads vérifiés compile-time       |
+| I4  | View n'a jamais emit() — absent du type            | View.trigger() est typé via TChannelToken — la signature contractuelle exclut emit()          |
 | I48 | Handlers auto-découverts par convention de nommage | Handlers auto-découverts **et** vérifiés compile-time via `implements TCommandHandlers<TDef>` |
 
 ### Impact sur le code existant
 
-| Fichier | Changement requis |
-| ------- | ----------------- |
-| `packages/event/src/channel.class.ts` | Rendre `Channel` générique sur `TDef extends TChannelDefinition` ; typer toutes les méthodes des 3 lanes |
-| `packages/event/src/bonsai-event.ts` | Exporter `TChannelDefinition`, `TChannelToken`, `TTokenDef` |
-| `packages/event/src/radio.class.ts` | Ajouter `channelFor<TDef>(token: TChannelToken<TDef>): Channel<TDef>` |
-| `packages/feature/src/bonsai-feature.ts` | Insérer `TChannelDef` en 2e paramètre, typer `emit()` et `request()`, ajouter `static channel` abstrait |
-| `packages/feature/src/bonsai-feature.ts` | Exporter `TCommandHandlers<TDef>`, `TExternalEventHandlers<TDef, TNS>` |
-| `packages/view/src/bonsai-view.ts` | Paramétrer `View` sur `TListenTokens` et `TUI extends Record<string, TUIEntry>` ; typer `getUI()` et `trigger()` |
-| `packages/view/src/bonsai-view.ts` | Exporter `TUIMap<T>`, `TUIEntry`, `TProjectionNodeFor<TEl>` |
-| `tests/fixtures/cart-feature.fixture.ts` | Ajouter `TCartChannelDef`, `static channel`, `implements TCommandHandlers<TCartChannelDef>` |
-| `tests/unit/strate-0/channel.basic.test.ts` | Adapter les appels de test aux nouvelles signatures génériques |
-| `tests/unit/strate-0/feature.basic.test.ts` | Idem |
-| `tests/unit/strate-0/view.basic.test.ts` | Idem |
-| `tests/types/` | Ajouter tests compile-time : clé inexistante → `@ts-expect-error`, payload incorrect → `@ts-expect-error` |
+| Fichier                                     | Changement requis                                                                                                |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `packages/event/src/channel.class.ts`       | Rendre `Channel` générique sur `TDef extends TChannelDefinition` ; typer toutes les méthodes des 3 lanes         |
+| `packages/event/src/bonsai-event.ts`        | Exporter `TChannelDefinition`, `TChannelToken`, `TTokenDef`                                                      |
+| `packages/event/src/radio.class.ts`         | Ajouter `channelFor<TDef>(token: TChannelToken<TDef>): Channel<TDef>`                                            |
+| `packages/feature/src/bonsai-feature.ts`    | Insérer `TChannelDef` en 2e paramètre, typer `emit()` et `request()`, ajouter `static channel` abstrait          |
+| `packages/feature/src/bonsai-feature.ts`    | Exporter `TCommandHandlers<TDef>`, `TExternalEventHandlers<TDef, TNS>`                                           |
+| `packages/view/src/bonsai-view.ts`          | Paramétrer `View` sur `TListenTokens` et `TUI extends Record<string, TUIEntry>` ; typer `getUI()` et `trigger()` |
+| `packages/view/src/bonsai-view.ts`          | Exporter `TUIMap<T>`, `TUIEntry`, `TProjectionNodeFor<TEl>`                                                      |
+| `tests/fixtures/cart-feature.fixture.ts`    | Ajouter `TCartChannelDef`, `static channel`, `implements TCommandHandlers<TCartChannelDef>`                      |
+| `tests/unit/strate-0/channel.basic.test.ts` | Adapter les appels de test aux nouvelles signatures génériques                                                   |
+| `tests/unit/strate-0/feature.basic.test.ts` | Idem                                                                                                             |
+| `tests/unit/strate-0/view.basic.test.ts`    | Idem                                                                                                             |
+| `tests/types/`                              | Ajouter tests compile-time : clé inexistante → `@ts-expect-error`, payload incorrect → `@ts-expect-error`        |
 
 ---
 
@@ -634,7 +668,8 @@ Le `TChannelDefinition` déclaré dans le fichier `.feature.ts` du domaine (co-l
 
 ## Historique
 
-| Date       | Changement            |
-| ---------- | --------------------- |
-| 2026-04-27 | Création et acceptation (Proposed → Accepted) |
-| 2026-05-13 | 🔵 **Tested** — I73 / I74 cités dans `tests/e2e/strate-0.cart-round-trip.test.ts` (CartFeature canonique avec `static readonly channel` + TDef co-localisé) ; I75 / I76 / I77 / I78 / I79 cités dans `tests/types/strate-0/view-contract.types.test.ts` et `tests/unit/strate-0/feature.basic.test.ts`. Critère C-Inv d'ADR-0043 satisfait. |
+| Date       | Changement                                                                                                                                                                                                                                                                                                                                                                                         |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-04-27 | Création et acceptation (Proposed → Accepted)                                                                                                                                                                                                                                                                                                                                                      |
+| 2026-05-13 | 🔵 **Tested** — I73 / I74 cités dans `tests/e2e/strate-0.cart-round-trip.test.ts` (CartFeature canonique avec `static readonly channel` + TDef co-localisé) ; I75 / I76 / I77 / I78 / I79 cités dans `tests/types/strate-0/view-contract.types.test.ts` et `tests/unit/strate-0/feature.basic.test.ts`. Critère C-Inv d'ADR-0043 satisfait.                                                        |
+| 2026-05-19 | **Amendé par [ADR-0046](ADR-0046-feature-contract-refonte.md)** — I79 reformulé (I93) : la syntaxe `static readonly listens`/`static readonly queries` est remplacée par `abstract get listens()`/`abstract get queries()` (déclarations instance). La sémantique « tokens portés par `listens`/`queries` » est préservée ; seule la syntaxe change. `static readonly channel` (I73) est inchangé. |

@@ -16,13 +16,15 @@
  */
 
 import { Entity } from "@bonsai/entity";
-import { type TChannelDefinition, type TChannelToken } from "@bonsai/event";
+import { type TChannelToken } from "@bonsai/event";
 import {
   Feature,
-  type TFeatureContract
+  type TFeatureContract,
+  type TFeatureCallbacks
 } from "@bonsai/feature";
 import {
-  View, ui,
+  View,
+  ui,
   type TViewContract,
   type TViewCallbacks,
   type TUIContract,
@@ -63,16 +65,41 @@ export class CartEntity extends Entity<TCartState> {
   }
 }
 
+// ─── Channel definition (ADR-0040 — I74 : co-localisé dans le fichier feature) ─
+
+export type TCartChannelDef = {
+  commands: {
+    addItem: TCartItem;
+  };
+  events: {
+    itemAdded: { item: TCartItem };
+  };
+  requests: {
+    getItemCount: { params: null; result: number };
+  };
+};
+
+const cartListens = [] as const;
+
 // ─── Feature ────────────────────────────────────────────────────────────────
 
 /**
  * CartFeature — `TSelfNS = "cart"` ancre la classe à la clé du manifest
  * applicatif (ADR-0039 — I72). Plus de `static namespace`.
  */
-export class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart"> {
-  static readonly channel: TChannelToken<TChannelDefinition, "cart"> = { namespace: "cart" };
-  static readonly listens = [] as const;
-  static readonly queries = [] as const;
+export class CartFeature
+  extends Feature<CartEntity, TCartChannelDef, "cart">
+  implements TFeatureCallbacks<TCartChannelDef, typeof cartListens>
+{
+  static readonly channel: TChannelToken<TCartChannelDef, "cart"> = {
+    namespace: "cart"
+  };
+  get listens() {
+    return cartListens;
+  }
+  get queries() {
+    return [] as const;
+  }
 
   protected get Entity() {
     return CartEntity;
@@ -89,7 +116,7 @@ export class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart">
   }
 
   // C4 — Reply auto-discovered
-  onGetItemCountRequest(): number {
+  onGetItemCountRequest(_params: null): number {
     return this.entity.query.getItemCount();
   }
 }
@@ -99,26 +126,26 @@ export class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart">
 // Étape 1 — Feature contract (Feature-groupé)
 const cartViewFeatures = {
   cart: {
-    feature:  CartFeature,
-    listens:  ["itemAdded"] as const,
-    triggers: ["addItem"]   as const,
-    requests: []            as const
+    feature: CartFeature,
+    listens: ["itemAdded"] as const,
+    triggers: ["addItem"] as const,
+    requests: [] as const
   }
 } satisfies TFeatureContract;
 
 // Étape 2 — UI contract (events DOM + phantom TEl)
 const cartViewUiEvents = {
-  itemCount:    ui<HTMLElement>()([]),
-  total:        ui<HTMLElement>()([]),
-  addButton:    ui<HTMLButtonElement>()(["click"]),
+  itemCount: ui<HTMLElement>()([]),
+  total: ui<HTMLElement>()([]),
+  addButton: ui<HTMLButtonElement>()(["click"]),
   emptyMessage: ui<HTMLElement>()([])
 } satisfies TUIContract;
 
 // Étape 3 — sélecteurs CSS (overridable D34)
 const cartViewUiElements = {
-  itemCount:    "[data-ui='itemCount']",
-  total:        "[data-ui='total']",
-  addButton:    "[data-ui='addButton']",
+  itemCount: "[data-ui='itemCount']",
+  total: "[data-ui='total']",
+  addButton: "[data-ui='addButton']",
   emptyMessage: "[data-ui='emptyMessage']"
 } satisfies TUIElements<typeof cartViewUiEvents>;
 
@@ -137,9 +164,15 @@ export class CartView
   // qu'un cache d'affichage minimal.
   #itemCount = 0;
 
-  get features()   { return cartViewFeatures; }
-  get uiEvents()   { return cartViewUiEvents; }
-  get uiElements() { return cartViewUiElements; }
+  get features() {
+    return cartViewFeatures;
+  }
+  get uiEvents() {
+    return cartViewUiEvents;
+  }
+  get uiElements() {
+    return cartViewUiElements;
+  }
 
   // D48 UI — handler requis par TViewCallbacks (events: ["click"] sur addButton)
   onAddButtonClick(_event: MouseEvent): void {

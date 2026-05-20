@@ -32,7 +32,8 @@
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { Radio, type TChannelToken } from "@bonsai/event";
 import {
-  View, ui,
+  View,
+  ui,
   type TViewContract,
   type TUIContract,
   type TUIElements
@@ -43,48 +44,57 @@ import type { TFeatureContract } from "@bonsai/feature";
 
 type TCartDef = {
   readonly commands: { addItem: { productId: string; qty: number } };
-  readonly events:   { itemAdded: { item: { qty: number } } };
+  readonly events: { itemAdded: { item: { qty: number } } };
   readonly requests: {
     getCount: { params: undefined; result: number };
   };
 };
 
 class CartFeatureFake {
-  static readonly channel: TChannelToken<TCartDef, "cart"> = { namespace: "cart" };
+  static readonly channel: TChannelToken<TCartDef, "cart"> = {
+    namespace: "cart"
+  };
 }
 
 // ─── Fixtures : pattern modulaire (ADR-0042) ────────────────────────────────
 
 const testFeatures = {
   cart: {
-    feature:  CartFeatureFake,
-    listens:  ["itemAdded"] as const,
-    triggers: ["addItem"]   as const,
-    requests: []            as const
+    feature: CartFeatureFake,
+    listens: ["itemAdded"] as const,
+    triggers: ["addItem"] as const,
+    requests: [] as const
   }
 } satisfies TFeatureContract;
 
+type TTestFeatures = typeof testFeatures;
+
 const testUiEvents = {
-  title:     ui<HTMLElement>()([]),
-  counter:   ui<HTMLElement>()([]),
+  title: ui<HTMLElement>()([]),
+  counter: ui<HTMLElement>()([]),
   toggleBtn: ui<HTMLButtonElement>()(["click"])
 } satisfies TUIContract;
 
-const testUiElements = {
-  title:     "[data-ui='title']",
-  counter:   "[data-ui='counter']",
-  toggleBtn: "[data-ui='toggleBtn']"
-} satisfies TUIElements<typeof testUiEvents>;
+type TTestUIEvents = typeof testUiEvents;
 
-type TTestViewContract = TViewContract<
-  typeof testFeatures,
-  typeof testUiEvents
->;
+const testUiElements = {
+  title: "[data-ui='title']",
+  counter: "[data-ui='counter']",
+  toggleBtn: "[data-ui='toggleBtn']"
+} satisfies TUIElements<TTestUIEvents>;
+
+type TTestViewContract = TViewContract<TTestFeatures, TTestUIEvents>;
 
 class TestView extends View<TTestViewContract> {
-  get features()   { return testFeatures; }
-  get uiEvents()   { return testUiEvents; }
-  get uiElements() { return testUiElements; }
+  get features() {
+    return testFeatures;
+  }
+  get uiEvents() {
+    return testUiEvents;
+  }
+  get uiElements() {
+    return testUiElements;
+  }
 
   // D48 UI — handler requis (events: ["click"] sur toggleBtn)
   onToggleBtnClick(_event: MouseEvent): void {
@@ -269,8 +279,10 @@ describe("View — strate-0 core (ADR-0024 value-first + ADR-0042 modulaire)", (
       Radio.me().channel("cart").handle("addItem", handler);
 
       // `trigger` est `protected` ; cast pour exercer le runtime depuis l'extérieur.
-      (view as unknown as { trigger(k: string, p: unknown): void })
-        .trigger("cart:addItem", { productId: "abc", qty: 1 });
+      (view as unknown as { trigger(k: string, p: unknown): void }).trigger(
+        "cart:addItem",
+        { productId: "abc", qty: 1 }
+      );
 
       expect(handler).toHaveBeenCalledWith({ productId: "abc", qty: 1 });
     });
@@ -280,8 +292,10 @@ describe("View — strate-0 core (ADR-0024 value-first + ADR-0042 modulaire)", (
       view.mount("[data-view='test']");
 
       expect(() =>
-        (view as unknown as { trigger(k: string, p: unknown): void })
-          .trigger("malformed", {})
+        (view as unknown as { trigger(k: string, p: unknown): void }).trigger(
+          "malformed",
+          {}
+        )
       ).toThrow(/Malformed namespaced key/);
     });
   });
@@ -289,15 +303,17 @@ describe("View — strate-0 core (ADR-0024 value-first + ADR-0042 modulaire)", (
   describe("request() — effectue une Request synchrone typée (ADR-0042)", () => {
     const requestFeatures = {
       cart: {
-        feature:  CartFeatureFake,
-        listens:  []            as const,
-        triggers: []            as const,
-        requests: ["getCount"]  as const
+        feature: CartFeatureFake,
+        listens: [] as const,
+        triggers: [] as const,
+        requests: ["getCount"] as const
       }
     } satisfies TFeatureContract;
 
     const requestUiEvents = {} as const satisfies TUIContract;
-    const requestUiElements = {} as const satisfies TUIElements<typeof requestUiEvents>;
+    const requestUiElements = {} as const satisfies TUIElements<
+      typeof requestUiEvents
+    >;
 
     type TRequestViewContract = TViewContract<
       typeof requestFeatures,
@@ -305,9 +321,15 @@ describe("View — strate-0 core (ADR-0024 value-first + ADR-0042 modulaire)", (
     >;
 
     class RequestView extends View<TRequestViewContract> {
-      get features()   { return requestFeatures; }
-      get uiEvents()   { return requestUiEvents; }
-      get uiElements() { return requestUiElements; }
+      get features() {
+        return requestFeatures;
+      }
+      get uiEvents() {
+        return requestUiEvents;
+      }
+      get uiElements() {
+        return requestUiElements;
+      }
 
       doRequest(): unknown {
         return this.request("cart:getCount", undefined);
@@ -319,7 +341,9 @@ describe("View — strate-0 core (ADR-0024 value-first + ADR-0042 modulaire)", (
       const view = new RequestView();
       view.mount("[data-view='req']");
 
-      Radio.me().channel("cart").reply("getCount", () => 42);
+      Radio.me()
+        .channel("cart")
+        .reply("getCount", () => 42);
       expect(view.doRequest()).toBe(42);
     });
 
@@ -397,15 +421,17 @@ describe("I82 — handler manquant pour clé déclarée dans features[NS].listen
   it("mount() throws when features.cart.listens declares a key without matching handler", () => {
     const missingFeatures = {
       cart: {
-        feature:  CartFeatureFake,
-        listens:  ["itemAdded"] as const,
-        triggers: []            as const,
-        requests: []            as const
+        feature: CartFeatureFake,
+        listens: ["itemAdded"] as const,
+        triggers: [] as const,
+        requests: [] as const
       }
     } satisfies TFeatureContract;
 
     const missingUiEvents = {} as const satisfies TUIContract;
-    const missingUiElements = {} as const satisfies TUIElements<typeof missingUiEvents>;
+    const missingUiElements = {} as const satisfies TUIElements<
+      typeof missingUiEvents
+    >;
 
     type TMissingContract = TViewContract<
       typeof missingFeatures,
@@ -416,9 +442,15 @@ describe("I82 — handler manquant pour clé déclarée dans features[NS].listen
     // pas onCartItemAddedEvent. À la compilation, `implements TViewCallbacks`
     // aurait refusé cette classe. On contourne pour tester le filet runtime.
     class MissingHandlerView extends View<TMissingContract> {
-      get features()   { return missingFeatures; }
-      get uiEvents()   { return missingUiEvents; }
-      get uiElements() { return missingUiElements; }
+      get features() {
+        return missingFeatures;
+      }
+      get uiEvents() {
+        return missingUiEvents;
+      }
+      get uiElements() {
+        return missingUiElements;
+      }
     }
 
     const view = new MissingHandlerView();
@@ -430,10 +462,10 @@ describe("I82 — handler manquant pour clé déclarée dans features[NS].listen
   it("mount() succeeds when all declared listens have a matching handler", () => {
     const okFeatures = {
       cart: {
-        feature:  CartFeatureFake,
-        listens:  ["itemAdded"] as const,
-        triggers: []            as const,
-        requests: []            as const
+        feature: CartFeatureFake,
+        listens: ["itemAdded"] as const,
+        triggers: [] as const,
+        requests: [] as const
       }
     } satisfies TFeatureContract;
 
@@ -443,9 +475,15 @@ describe("I82 — handler manquant pour clé déclarée dans features[NS].listen
     type TOkContract = TViewContract<typeof okFeatures, typeof okUiEvents>;
 
     class OkView extends View<TOkContract> {
-      get features()   { return okFeatures; }
-      get uiEvents()   { return okUiEvents; }
-      get uiElements() { return okUiElements; }
+      get features() {
+        return okFeatures;
+      }
+      get uiEvents() {
+        return okUiEvents;
+      }
+      get uiElements() {
+        return okUiElements;
+      }
       onCartItemAddedEvent(_p: { item: { qty: number } }): void {}
     }
 
@@ -478,9 +516,15 @@ describe("I84 — filet runtime des handlers DOM (events non vides)", () => {
     type TBrokenContract = TViewContract<typeof features, typeof uiEvents>;
 
     class BrokenElementsView extends View<TBrokenContract> {
-      get features()   { return features; }
-      get uiEvents()   { return uiEvents; }
-      get uiElements() { return uiElementsBroken; }
+      get features() {
+        return features;
+      }
+      get uiEvents() {
+        return uiEvents;
+      }
+      get uiElements() {
+        return uiElementsBroken;
+      }
       onAddBtnClick(_e: MouseEvent): void {}
     }
 
@@ -499,14 +543,23 @@ describe("I84 — filet runtime des handlers DOM (events non vides)", () => {
       addBtn: "[data-ui='addBtn']"
     } satisfies TUIElements<typeof uiEvents>;
 
-    type TMissingHandlerContract = TViewContract<typeof features, typeof uiEvents>;
+    type TMissingHandlerContract = TViewContract<
+      typeof features,
+      typeof uiEvents
+    >;
 
     // Viole compile-time : `implements TViewCallbacks` aurait imposé
     // `onAddBtnClick`. Filet runtime à line 520.
     class MissingDomHandlerView extends View<TMissingHandlerContract> {
-      get features()   { return features; }
-      get uiEvents()   { return uiEvents; }
-      get uiElements() { return uiElements; }
+      get features() {
+        return features;
+      }
+      get uiEvents() {
+        return uiEvents;
+      }
+      get uiElements() {
+        return uiElements;
+      }
     }
 
     const view = new MissingDomHandlerView();
@@ -538,9 +591,15 @@ describe("ADR-0024 — contextual contract read from root element dataset", () =
     >;
 
     class ProductView extends View<TProductContract> {
-      get features()   { return productFeatures; }
-      get uiEvents()   { return productUiEvents; }
-      get uiElements() { return productUiElements; }
+      get features() {
+        return productFeatures;
+      }
+      get uiEvents() {
+        return productUiEvents;
+      }
+      get uiElements() {
+        return productUiElements;
+      }
 
       #productId = "";
       get productId(): string {

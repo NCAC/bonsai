@@ -33,8 +33,12 @@
  *         typés par `TDef` — clé = `keyof TDef[lane]`, jamais `string` libre
  *         (ADR-0040)
  *   I79 — `Feature.request()` accepte uniquement un `TChannelToken` typé ;
- *         `static readonly listens`/`channels` portent ces tokens pour
- *         déclaration au bootstrap (ADR-0040)
+ *         `abstract get listens()`/`abstract get queries()` portent ces tokens
+ *         comme déclarations instance (ADR-0040, amendé ADR-0046 — I93)
+ *   I93 — `listens` et `queries` sont des `abstract get` instance sur Feature
+ *         (ADR-0046 — TS2515 si absent sur une classe concrète)
+ *   I94 — Le constructeur de Feature est inerte : assertValidNamespace + #namespace
+ *         uniquement. Aucun side-effect Radio/Entity.
  *
  * @packageDocumentation
  */
@@ -78,7 +82,14 @@ export type {
   TRequestResultFor,
   // Channel callbacks (symétrie Contract/Callbacks — I88)
   TChannelHandlerName,
-  TChannelCallbacks
+  TChannelCallbacks,
+  // Feature callbacks (ADR-0046 — M2 — symétrie I88 portée à Feature)
+  TCommandCallbacks,
+  TRequestCallbacks,
+  TListenCallbacks,
+  TFeatureCallbacks,
+  // Feature class constraint (ADR-0046 — M3 — I95)
+  TStrictFeatureClass
 } from "./types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -131,46 +142,26 @@ export abstract class Feature<
   TSelfNS extends string = string
 > {
   /**
-   * Tokens des Channels externes écoutés par cette Feature (C3 — I2, ADR-0040).
+   * Tokens des Channels externes écoutés par cette Feature (C3 — I2, ADR-0040,
+   * amendé ADR-0046 — I93).
    *
-   * **Pourquoi `static` — deux raisons distinctes selon la propriété :**
+   * Déclaration **instance** (`abstract get`) depuis ADR-0046 — symétrie avec
+   * les `abstract get` de View (ADR-0042). Chaque Feature concrète DOIT
+   * implémenter ce getter (TS2515 sinon).
    *
-   * • `channel` (token propre, ADR-0040 — I73) — porteur de TYPE consommé sans
-   *   instance. Une View ou Feature externe importe la classe uniquement pour
-   *   son token (`CartFeature.channel`) afin de typer ses appels `trigger()` ou
-   *   `request()`. Un token d'instance obligerait les consommateurs à tenir une
-   *   référence à la Feature, violant la topologie du flux (I1, I4, I12).
-   *   Ce token n'est pas déclaré sur la classe abstraite — chaque Feature concrète
-   *   le déclare dans son fichier `.feature.ts` (I73, I74).
-   *
-   * • `listens` / `queries` — invariants de classe, identiques pour toute instance
-   *   (I22 : une seule par namespace). Lus par `Application.start()` AVANT
-   *   instanciation pour valider les dépendances croisées et câbler les
-   *   listeners/repliers au bootstrap.
-   *
-   * **Limitation TypeScript** — `abstract static` n'existe pas.
-   * La présence de ces propriétés ne peut pas être imposée compile-time aux
-   * sous-classes. Filets de sécurité : `TFeatureClass` (type constructeur),
-   * validation runtime dans `Application.start()`, tests de type (`tests/types/`).
+   * Les tokens retournés sont lus par `Application.start()` en Phase 0c,
+   * APRÈS instanciation pure (ctor inerte — I94) et AVANT tout side-effect
+   * Radio/Entity, pour valider les dépendances croisées (I70 amendé).
    */
-  static readonly listens: readonly TChannelToken<
-    TChannelDefinition,
-    string
-  >[] = [];
+  abstract get listens(): readonly TChannelToken<TChannelDefinition, string>[];
 
   /**
-   * Tokens des Channels externes interrogés par cette Feature (C5 — I17, ADR-0040 — supporte I79).
+   * Tokens des Channels externes interrogés par cette Feature (C5 — I17,
+   * ADR-0040, amendé ADR-0046 — I93).
    *
-   * **Pourquoi `static` :** identique à `listens` — invariant de classe lu
-   * avant instanciation pour validation des dépendances croisées.
-   *
-   * **Limitation TypeScript** — `abstract static` n'existe pas.
-   * Voir commentaire de `listens` ci-dessus.
+   * Déclaration **instance** (`abstract get`) depuis ADR-0046 — voir `listens`.
    */
-  static readonly queries: readonly TChannelToken<
-    TChannelDefinition,
-    string
-  >[] = [];
+  abstract get queries(): readonly TChannelToken<TChannelDefinition, string>[];
 
   readonly #namespace: TSelfNS;
   #entity!: TEntity;
@@ -339,16 +330,16 @@ export abstract class Feature<
 
   /**
    * Découvre les méthodes `on{Channel}{EventName}Event` et les enregistre
-   * comme listeners sur les Channels déclarés via `static listens` (C3, I2,
-   * I48, ADR-0040).
+   * comme listeners sur les Channels déclarés via `get listens()` (C3, I2,
+   * I48, ADR-0040, amendé ADR-0046 — I93).
    *
-   * Convention : `onCartItemAddedEvent` avec `static listens = [CartFeature.channel]`
+   * Convention : `onCartItemAddedEvent` avec `get listens() { return [CartFeature.channel]; }`
    * → écoute "itemAdded" sur le Channel "cart"
    *
    * Le pattern est : on + ChannelName(PascalCase) + EventName(PascalCase) + Event
    */
   #registerEventListeners(): void {
-    const listenTokens = (this.constructor as typeof Feature).listens;
+    const listenTokens = this.listens;
     if (listenTokens.length === 0) return;
 
     const proto = Object.getPrototypeOf(this);

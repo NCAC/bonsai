@@ -24969,8 +24969,33 @@ type ValidatedManifest<M> = {
  * } satisfies StrictManifest<AppManifest>;
  * ```
  */
+/**
+ * Contrainte compile-time d'une classe Feature enregistrable dans un manifest.
+ *
+ * Exige (ADR-0046 — M3, I95 reformulé) :
+ *   - Un constructeur `(namespace: TNS) => Feature<…, TDef, TNS>` — force
+ *     `TSelfNS === TNS` (I72).
+ *   - Un membre statique `channel: TChannelToken<TDef, TNS>` — présence ET
+ *     alignement `channel.namespace === TNS` au compile-time (I73/I74/I22).
+ *
+ * **La couverture des handlers n'est PAS imposée ici** (ADR-0046 §Décision) :
+ * un manifest type-only à valeurs `unknown` (ADR-0039) ne permet pas d'extraire
+ * `TDef` par clé, donc aucune inférence de handlers n'est possible au point
+ * manifest. La couverture est garantie par I92 (`implements TFeatureCallbacks`
+ * sur chaque classe — symétrie View/ADR-0042) + filet runtime auto-discovery.
+ *
+ * @example
+ * ```ts
+ * // ✅ CartFeature satisfait TStrictFeatureClass<"cart">
+ * // ❌ Classe sans static channel → erreur compile
+ * // ❌ channel.namespace ≠ "cart" → erreur compile
+ * ```
+ */
+type TStrictFeatureClass<TNS extends string, TDef extends TChannelDefinition = TChannelDefinition> = (new (namespace: TNS) => Feature<Entity<TJsonSerializable>, TDef, TNS>) & {
+    readonly channel: TChannelToken<TDef, TNS>;
+};
 type StrictManifest<M> = {
-    [K in keyof M & string]: K extends CamelCaseNamespace<K> ? K extends ReservedNamespace ? never : new (namespace: K) => Feature<Entity<TJsonSerializable>, TChannelDefinition, K> : never;
+    [K in keyof M & string]: K extends CamelCaseNamespace<K> ? K extends ReservedNamespace ? never : TStrictFeatureClass<K, TChannelDefinition> : never;
 };
 /**
  * Codes d'erreur stables pour les violations de l'invariant namespace.
@@ -25128,6 +25153,66 @@ type TChannelCallbacks<F extends TFeatureContract> = UnionToIntersection<{
         [E in F[NS]["listens"][number] as TChannelHandlerName<NS, E & string>]: (payload: TEventPayloadFor<F, `${NS}:${E & string}`>) => void;
     };
 }[keyof F & string]>;
+/**
+ * Handlers command REQUIS pour une Feature concrète.
+ *
+ * Convention D48 command : `on{Cmd}Command` (suffixe `Command`).
+ * Pour chaque commande `K ∈ keyof TDef["commands"]`, impose la méthode
+ * `onKCommand(payload: TDef["commands"][K]): void`.
+ *
+ * @example
+ *   TCommandCallbacks<{ commands: { addItem: { productId: string } }; ... }>
+ *   → { onAddItemCommand(payload: { productId: string }): void }
+ */
+type TCommandCallbacks<TDef extends TChannelDefinition> = {
+    [K in keyof TDef["commands"] & string as `on${Capitalize<K>}Command`]: (payload: TDef["commands"][K]) => void;
+};
+/**
+ * Handlers request REQUIS pour une Feature concrète.
+ *
+ * Convention D48 request : `on{Req}Request` (suffixe `Request`).
+ * Pour chaque request `K ∈ keyof TDef["requests"]`, impose la méthode
+ * `onKRequest(params: TDef["requests"][K]["params"]): TDef["requests"][K]["result"]`.
+ */
+type TRequestCallbacks<TDef extends TChannelDefinition> = {
+    [K in keyof TDef["requests"] & string as `on${Capitalize<K>}Request`]: (params: TDef["requests"][K]["params"]) => TDef["requests"][K]["result"];
+};
+/**
+ * Handlers listen REQUIS pour chaque token `TListens[number]`.
+ *
+ * Convention D48 channel : `on{NS}{EventName}Event` — le préfixe namespace
+ * différencie les events de Channels distincts (anti-collision).
+ *
+ * **`UnionToIntersection` OBLIGATOIRE** (cf. POC QA-0046 §9.5 + Annexe §2 ADR-0046).
+ * Sans wrapper : la distributivité du conditionnel produit une union d'objets
+ * `{ …cart } | { …wishlist }` que TS refuse comme cible `implements` (TS2422).
+ * `UnionToIntersection` fusionne les objets en intersection, rendant le type
+ * utilisable comme target `implements`.
+ */
+type TListenCallbacks<TListens extends readonly TChannelToken<TChannelDefinition, string>[]> = UnionToIntersection<TListens[number] extends infer Tok ? Tok extends TChannelToken<infer DEF, infer NS> ? {
+    [E in keyof DEF["events"] & string as `on${Capitalize<NS & string>}${Capitalize<E>}Event`]: (payload: DEF["events"][E]) => void;
+} : never : never>;
+/**
+ * Type d'enforcement compile-time des handlers d'une Feature concrète.
+ *
+ * Symétrie Contract/Callbacks (ADR-0046 — M2, I88 élargi, I92) :
+ * `implements TFeatureCallbacks<TDef, TListens>` impose au compilateur
+ * la présence et la signature exacte de TOUS les handlers dérivés :
+ *   - `onXxxCommand`        pour chaque `K ∈ keyof TDef["commands"]`
+ *   - `onXxxRequest`        pour chaque `K ∈ keyof TDef["requests"]`
+ *   - `on{NS}{Evt}Event`    pour chaque `(token, event) ∈ TListens`
+ *
+ * Handler oublié → TS2515 ; signature fautive → TS2416.
+ *
+ * @example
+ * ```ts
+ * class CartFeature
+ *   extends Feature<CartEntity, TCartChannelDef, "cart">
+ *   implements TFeatureCallbacks<TCartChannelDef, typeof cartListens>
+ * { … }
+ * ```
+ */
+type TFeatureCallbacks<TDef extends TChannelDefinition, TListens extends readonly TChannelToken<TChannelDefinition, string>[] = readonly []> = TCommandCallbacks<TDef> & TRequestCallbacks<TDef> & TListenCallbacks<TListens>;
 /** Test runtime du format camelCase. */
 declare function isCamelCaseNamespace(ns: string): boolean;
 /** Test runtime de réservation. */
@@ -25176,8 +25261,12 @@ declare function assertValidNamespace(ns: string): void;
  *         typés par `TDef` — clé = `keyof TDef[lane]`, jamais `string` libre
  *         (ADR-0040)
  *   I79 — `Feature.request()` accepte uniquement un `TChannelToken` typé ;
- *         `static readonly listens`/`channels` portent ces tokens pour
- *         déclaration au bootstrap (ADR-0040)
+ *         `abstract get listens()`/`abstract get queries()` portent ces tokens
+ *         comme déclarations instance (ADR-0040, amendé ADR-0046 — I93)
+ *   I93 — `listens` et `queries` sont des `abstract get` instance sur Feature
+ *         (ADR-0046 — TS2515 si absent sur une classe concrète)
+ *   I94 — Le constructeur de Feature est inerte : assertValidNamespace + #namespace
+ *         uniquement. Aucun side-effect Radio/Entity.
  *
  * @packageDocumentation
  */
@@ -25220,39 +25309,25 @@ type TFeatureClass<TEntity extends Entity<TJsonSerializable> = Entity<TJsonSeria
 declare abstract class Feature<TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>, TChannelDef extends TChannelDefinition = TChannelDefinition, TSelfNS extends string = string> {
     #private;
     /**
-     * Tokens des Channels externes écoutés par cette Feature (C3 — I2, ADR-0040).
+     * Tokens des Channels externes écoutés par cette Feature (C3 — I2, ADR-0040,
+     * amendé ADR-0046 — I93).
      *
-     * **Pourquoi `static` — deux raisons distinctes selon la propriété :**
+     * Déclaration **instance** (`abstract get`) depuis ADR-0046 — symétrie avec
+     * les `abstract get` de View (ADR-0042). Chaque Feature concrète DOIT
+     * implémenter ce getter (TS2515 sinon).
      *
-     * • `channel` (token propre, ADR-0040 — I73) — porteur de TYPE consommé sans
-     *   instance. Une View ou Feature externe importe la classe uniquement pour
-     *   son token (`CartFeature.channel`) afin de typer ses appels `trigger()` ou
-     *   `request()`. Un token d'instance obligerait les consommateurs à tenir une
-     *   référence à la Feature, violant la topologie du flux (I1, I4, I12).
-     *   Ce token n'est pas déclaré sur la classe abstraite — chaque Feature concrète
-     *   le déclare dans son fichier `.feature.ts` (I73, I74).
-     *
-     * • `listens` / `queries` — invariants de classe, identiques pour toute instance
-     *   (I22 : une seule par namespace). Lus par `Application.start()` AVANT
-     *   instanciation pour valider les dépendances croisées et câbler les
-     *   listeners/repliers au bootstrap.
-     *
-     * **Limitation TypeScript** — `abstract static` n'existe pas.
-     * La présence de ces propriétés ne peut pas être imposée compile-time aux
-     * sous-classes. Filets de sécurité : `TFeatureClass` (type constructeur),
-     * validation runtime dans `Application.start()`, tests de type (`tests/types/`).
+     * Les tokens retournés sont lus par `Application.start()` en Phase 0c,
+     * APRÈS instanciation pure (ctor inerte — I94) et AVANT tout side-effect
+     * Radio/Entity, pour valider les dépendances croisées (I70 amendé).
      */
-    static readonly listens: readonly TChannelToken<TChannelDefinition, string>[];
+    abstract get listens(): readonly TChannelToken<TChannelDefinition, string>[];
     /**
-     * Tokens des Channels externes interrogés par cette Feature (C5 — I17, ADR-0040 — supporte I79).
+     * Tokens des Channels externes interrogés par cette Feature (C5 — I17,
+     * ADR-0040, amendé ADR-0046 — I93).
      *
-     * **Pourquoi `static` :** identique à `listens` — invariant de classe lu
-     * avant instanciation pour validation des dépendances croisées.
-     *
-     * **Limitation TypeScript** — `abstract static` n'existe pas.
-     * Voir commentaire de `listens` ci-dessus.
+     * Déclaration **instance** (`abstract get`) depuis ADR-0046 — voir `listens`.
      */
-    static readonly queries: readonly TChannelToken<TChannelDefinition, string>[];
+    abstract get queries(): readonly TChannelToken<TChannelDefinition, string>[];
     /**
      * Crée une Feature attachée au namespace passé en paramètre.
      *
@@ -25823,11 +25898,13 @@ declare abstract class Foundation {
  *
  * Strate 0 (refondu ADR-0039) — Capacités :
  *   - constructor({ foundation, features }) — déclare le manifest applicatif
- *   - start() — bootstrap en 4 phases simplifiées :
- *       Phase 0: Validation runtime du manifest (filet ADR-0039)
+ *   - start() — bootstrap en phases réordonnées (ADR-0046) :
+ *       Phase 0a: Validation format namespace (assertValidNamespace)
+ *       Phase 0b: Instanciation pure des Features (ctor inerte — I94) + sentinel
+ *       Phase 0c: Lecture instance.listens/queries — validation références croisées (I70)
  *       Phase 1: Channels (crée les channels de chaque Feature)
  *       Phase 2: Entities (instanciées par les Features)
- *       Phase 3: Features (new FeatureClass(ns), bootstrap, onInit)
+ *       Phase 3: Features (bootstrap() + onInit() sur les instances Phase 0b)
  *       Phase 4: Foundation (composers → views, attach)
  *
  * Invariants :
@@ -25838,9 +25915,11 @@ declare abstract class Foundation {
  *   I56  — onInit() de chaque Feature appelé avant la création de la Foundation
  *   I68  — Le namespace est porté par le manifest, pas par un static (ADR-0039)
  *   I69  — Le manifest est l'unique source de vérité de l'identité (ADR-0039)
- *   I70  — Toute référence à un namespace externe DOIT être validée
- *          contre le manifest (ADR-0039)
+ *   I70  — Toute référence à un namespace externe DOIT être validée contre
+ *          le manifest — lue depuis instance.listens/queries (amendé ADR-0046)
  *   I71  — `RESERVED_NAMESPACES` est une constante framework (ADR-0039)
+ *   I94  — Le constructeur de Feature est inerte : sentinel Phase 0b détecte
+ *          tout side-effect Radio inattendu (ADR-0046)
  *
  * Strate 0 simplifications :
  *   - Pas de stop()
@@ -25882,16 +25961,16 @@ declare class Application<M extends TFeaturesManifest = TFeaturesManifest> {
     #private;
     constructor(options?: TApplicationOptions<M>);
     /**
-     * Bootstrap en 4 phases simplifiées (strate 0).
+     * Bootstrap en phases réordonnées (ADR-0046 — M1).
      * Ne peut être appelé qu'une seule fois.
      *
      * Phases :
-     *   Phase 0 — Validation runtime du manifest (filet ADR-0039) :
-     *             format camelCase, mots réservés, références `static channels`.
-     *   Phase 1 — Channels  : `Radio.channel(namespace)` pour chaque Feature
-     *   Phase 2 — Entities  : (créées implicitement par Feature.bootstrap)
-     *   Phase 3 — Features  : `new FeatureClass(namespace)` + `bootstrap()` (I56)
-     *   Phase 4 — Foundation: `Foundation.attach()` qui orchestre Composers → Views
+     *   Phase 0a — Validation format namespace (assertValidNamespace + I73/I22)
+     *   Phase 0b — Instanciation pure (ctor inerte I94) + sentinel Radio
+     *   Phase 0c — Lecture instance.listens/queries — validation références (I70)
+     *   Phase 1  — Channels  : `Radio.channel(namespace)` pour chaque Feature
+     *   Phase 3  — Features  : `bootstrap()` sur les instances de Phase 0b (I56)
+     *   Phase 4  — Foundation: `Foundation.attach()` (Composers → Views)
      *
      * @throws si appelée deux fois (strate 0 : pas de re-bootstrap)
      * @throws `BonsaiNamespaceError` si le manifest viole les invariants (filet
@@ -25907,4 +25986,4 @@ declare class Application<M extends TFeaturesManifest = TFeaturesManifest> {
 }
 
 export { Application, BonsaiNamespaceError, Channel, Composer, Feature, Foundation, Immer, RESERVED_NAMESPACES, RXJS, Radio, Valibot, View, assertValidNamespace, isCamelCaseNamespace, isReservedNamespace, ui };
-export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, CamelCaseNamespace, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, ReservedNamespace, StrictArrayOfKeys, StrictArrayOfValues, StrictManifest, StringDigit, StringHash, TAllLetters, TAnyEventPayload, TApplicationOptions, TBonsaiNamespaceErrorCode, TChannelCallbacks, TChannelDefinition, TChannelHandlerName, TChannelToken, TClass, TCommandPayloadFor, TComposerOptions, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntries, TEventPayloadFor, TEventsFor, TExcludeKeys, TExcludeValues, TFalsy, TFeatureClass, TFeatureContract, TFeatureRef, TFeatureRefForNS, TFeaturesManifest, TFlatListens, TFlatRequests, TFlatTriggers, TFunctionPropertyNames, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonValue, TLookup, TLowerLetter, TMapEntry, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TParameters, TPrimitive, TProjectionNode, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TRequestParamsFor, TRequestResultFor, TResolveResult, TSetEntry, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewClass, TViewContract, TuplifyUnion, UnionToIntersection, ValidatedManifest, ValuesType, Whitespace };
+export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, CamelCaseNamespace, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, ReservedNamespace, StrictArrayOfKeys, StrictArrayOfValues, StrictManifest, StringDigit, StringHash, TAllLetters, TAnyEventPayload, TApplicationOptions, TBonsaiNamespaceErrorCode, TChannelCallbacks, TChannelDefinition, TChannelHandlerName, TChannelToken, TClass, TCommandCallbacks, TCommandPayloadFor, TComposerOptions, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntries, TEventPayloadFor, TEventsFor, TExcludeKeys, TExcludeValues, TFalsy, TFeatureCallbacks, TFeatureClass, TFeatureContract, TFeatureRef, TFeatureRefForNS, TFeaturesManifest, TFlatListens, TFlatRequests, TFlatTriggers, TFunctionPropertyNames, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonValue, TListenCallbacks, TLookup, TLowerLetter, TMapEntry, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TParameters, TPrimitive, TProjectionNode, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TRequestCallbacks, TRequestParamsFor, TRequestResultFor, TResolveResult, TSetEntry, TStrictFeatureClass, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewClass, TViewContract, TuplifyUnion, UnionToIntersection, ValidatedManifest, ValuesType, Whitespace };
