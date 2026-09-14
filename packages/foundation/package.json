@@ -3,14 +3,14 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "main": "./src/bonsai-foundation.ts",
+  "types": "./src/bonsai-foundation.ts",
   "exports": {
     ".": {
       "types": "./src/bonsai-foundation.ts",
       "default": "./src/bonsai-foundation.ts"
     }
   },
-  "main": "src/bonsai-foundation.ts",
-  "types": "src/bonsai-foundation.ts",
   "src": "./src/bonsai-foundation.ts",
   "dependencies": {
     "@bonsai/composer": "workspace:^"

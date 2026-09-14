@@ -1,8 +1,7 @@
-export const RXJS = (function () {
 /**
  * @bonsai/rxjs - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2025-10-30T07:15:27.069Z
+ * Date: 2026-05-20T12:01:38.554Z
  */
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -2779,7 +2778,7 @@ function argsOrArgArray(args) {
     return args.length === 1 && isArray(args[0]) ? args[0] : args;
 }
 
-function onErrorResumeNext$1() {
+function onErrorResumeNext() {
     var sources = [];
     for (var _i = 0; _i < arguments.length; _i++) {
         sources[_i] = arguments[_i];
@@ -2824,11 +2823,11 @@ function filter(predicate, thisArg) {
     });
 }
 
-function partition$1(source, predicate, thisArg) {
+function partition(source, predicate, thisArg) {
     return [filter(predicate, thisArg)(innerFrom(source)), filter(not(predicate, thisArg))(innerFrom(source))];
 }
 
-function race$1() {
+function race() {
     var sources = [];
     for (var _i = 0; _i < arguments.length; _i++) {
         sources[_i] = arguments[_i];
@@ -3815,9 +3814,8 @@ function onErrorResumeNextWith() {
         sources[_i] = arguments[_i];
     }
     var nextSources = argsOrArgArray(sources);
-    return function (source) { return onErrorResumeNext$1.apply(void 0, __spreadArray([source], __read(nextSources))); };
+    return function (source) { return onErrorResumeNext.apply(void 0, __spreadArray([source], __read(nextSources))); };
 }
-var onErrorResumeNext = onErrorResumeNextWith;
 
 function pairwise() {
     return operate(function (source, subscriber) {
@@ -4806,7 +4804,7 @@ function zipWith() {
     return zip.apply(void 0, __spreadArray([], __read(otherInputs)));
 }
 
-var RxjsOriginal = /*#__PURE__*/Object.freeze({
+var index = /*#__PURE__*/Object.freeze({
     __proto__: null,
     ArgumentOutOfRangeError: ArgumentOutOfRangeError,
     AsyncSubject: AsyncSubject,
@@ -4916,11 +4914,11 @@ var RxjsOriginal = /*#__PURE__*/Object.freeze({
     observable: observable,
     observeOn: observeOn,
     of: of,
-    onErrorResumeNext: onErrorResumeNext$1,
+    onErrorResumeNext: onErrorResumeNext,
     onErrorResumeNextWith: onErrorResumeNextWith,
     pairs: pairs,
     pairwise: pairwise,
-    partition: partition$1,
+    partition: partition,
     pipe: pipe,
     pluck: pluck,
     publish: publish,
@@ -4929,7 +4927,7 @@ var RxjsOriginal = /*#__PURE__*/Object.freeze({
     publishReplay: publishReplay,
     queue: queue,
     queueScheduler: queueScheduler,
-    race: race$1,
+    race: race,
     raceWith: raceWith,
     range: range,
     reduce: reduce,
@@ -4983,144 +4981,4 @@ var RxjsOriginal = /*#__PURE__*/Object.freeze({
     zipWith: zipWith
 });
 
-function partition(predicate, thisArg) {
-    return function (source) {
-        return [filter(predicate, thisArg)(source), filter(not(predicate, thisArg))(source)];
-    };
-}
-
-function race() {
-    var args = [];
-    for (var _i = 0; _i < arguments.length; _i++) {
-        args[_i] = arguments[_i];
-    }
-    return raceWith.apply(void 0, __spreadArray([], __read(argsOrArgArray(args))));
-}
-
-var operators = /*#__PURE__*/Object.freeze({
-    __proto__: null,
-    audit: audit,
-    auditTime: auditTime,
-    buffer: buffer,
-    bufferCount: bufferCount,
-    bufferTime: bufferTime,
-    bufferToggle: bufferToggle,
-    bufferWhen: bufferWhen,
-    catchError: catchError,
-    combineAll: combineAll,
-    combineLatest: combineLatest,
-    combineLatestAll: combineLatestAll,
-    combineLatestWith: combineLatestWith,
-    concat: concat,
-    concatAll: concatAll,
-    concatMap: concatMap,
-    concatMapTo: concatMapTo,
-    concatWith: concatWith,
-    connect: connect,
-    count: count,
-    debounce: debounce,
-    debounceTime: debounceTime,
-    defaultIfEmpty: defaultIfEmpty,
-    delay: delay,
-    delayWhen: delayWhen,
-    dematerialize: dematerialize,
-    distinct: distinct,
-    distinctUntilChanged: distinctUntilChanged,
-    distinctUntilKeyChanged: distinctUntilKeyChanged,
-    elementAt: elementAt,
-    endWith: endWith,
-    every: every,
-    exhaust: exhaust,
-    exhaustAll: exhaustAll,
-    exhaustMap: exhaustMap,
-    expand: expand,
-    filter: filter,
-    finalize: finalize,
-    find: find,
-    findIndex: findIndex,
-    first: first,
-    flatMap: flatMap,
-    groupBy: groupBy,
-    ignoreElements: ignoreElements,
-    isEmpty: isEmpty,
-    last: last,
-    map: map,
-    mapTo: mapTo,
-    materialize: materialize,
-    max: max,
-    merge: merge,
-    mergeAll: mergeAll,
-    mergeMap: mergeMap,
-    mergeMapTo: mergeMapTo,
-    mergeScan: mergeScan,
-    mergeWith: mergeWith,
-    min: min,
-    multicast: multicast,
-    observeOn: observeOn,
-    onErrorResumeNext: onErrorResumeNext,
-    pairwise: pairwise,
-    partition: partition,
-    pluck: pluck,
-    publish: publish,
-    publishBehavior: publishBehavior,
-    publishLast: publishLast,
-    publishReplay: publishReplay,
-    race: race,
-    raceWith: raceWith,
-    reduce: reduce,
-    refCount: refCount,
-    repeat: repeat,
-    repeatWhen: repeatWhen,
-    retry: retry,
-    retryWhen: retryWhen,
-    sample: sample,
-    sampleTime: sampleTime,
-    scan: scan,
-    sequenceEqual: sequenceEqual,
-    share: share,
-    shareReplay: shareReplay,
-    single: single,
-    skip: skip,
-    skipLast: skipLast,
-    skipUntil: skipUntil,
-    skipWhile: skipWhile,
-    startWith: startWith,
-    subscribeOn: subscribeOn,
-    switchAll: switchAll,
-    switchMap: switchMap,
-    switchMapTo: switchMapTo,
-    switchScan: switchScan,
-    take: take,
-    takeLast: takeLast,
-    takeUntil: takeUntil,
-    takeWhile: takeWhile,
-    tap: tap,
-    throttle: throttle,
-    throttleTime: throttleTime,
-    throwIfEmpty: throwIfEmpty,
-    timeInterval: timeInterval,
-    timeout: timeout,
-    timeoutWith: timeoutWith,
-    timestamp: timestamp,
-    toArray: toArray,
-    window: window,
-    windowCount: windowCount,
-    windowTime: windowTime,
-    windowToggle: windowToggle,
-    windowWhen: windowWhen,
-    withLatestFrom: withLatestFrom,
-    zip: zip,
-    zipAll: zipAll,
-    zipWith: zipWith
-});
-
-// Importer toutes les fonctionnalités de rxjs
-// Créer un objet qui regroupe toutes les fonctionnalités
-const RXJS = {
-    ...RxjsOriginal,
-    operators
-};
-
-
-  return { ...RXJS };
-})();
+export { index as RXJS };

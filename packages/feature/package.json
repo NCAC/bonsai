@@ -3,8 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "src/bonsai-feature.ts",
-  "types": "src/bonsai-feature.ts",
+  "main": "./src/bonsai-feature.ts",
+  "types": "./src/bonsai-feature.ts",
+  "exports": {
+    ".": {
+      "types": "./src/bonsai-feature.ts",
+      "default": "./src/bonsai-feature.ts"
+    }
+  },
   "src": "./src/bonsai-feature.ts",
   "dependencies": {
     "@bonsai/entity": "workspace:^",

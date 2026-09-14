@@ -1,7 +1,7 @@
 /**
  * @bonsai/application - Version 0.0.1
  * Bundled by Bonsai Build System
- * Date: 2026-05-20T05:19:54.908Z
+ * Date: 2026-05-20T12:02:04.493Z
  */
 import { Radio } from '@bonsai/event';
 import { BonsaiNamespaceError, assertValidNamespace } from '@bonsai/feature';
