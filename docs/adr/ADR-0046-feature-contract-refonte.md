@@ -2,7 +2,7 @@
 
 | Champ   | Valeur           |
 | ------- | ---------------- |
-| **Statut**  | 🟢 Accepted  |
+| **Statut**  | 🔵 Tested  |
 | **Date**  | 2026-05-18     |
 | **Décideurs**   | @NCAC    |
 | **RFC liées**           | [feature.md](../rfc/3-couche-abstraite/feature.md), [invariants.md](../rfc/reference/invariants.md), [glossaire.md](../rfc/reference/glossaire.md)                                                                                                                                                                               |
