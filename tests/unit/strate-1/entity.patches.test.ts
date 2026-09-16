@@ -97,6 +97,22 @@ describe("Entity patches — Strate 1a [I97]", () => {
     expect(entity.state.total).toBe(0);
   });
 
+  it("recipe that throws a non-Error value still raises MutationError (String(error) fallback)", () => {
+    const entity = new CartEntity();
+    const stateBefore = entity.state;
+
+    expect(() =>
+      entity.mutate("boom", (draft) => {
+        draft.total = 999;
+        // eslint-disable-next-line @typescript-eslint/no-throw-literal
+        throw "recipe failure — not an Error instance";
+      })
+    ).toThrow(MutationError);
+
+    expect(entity.state).toBe(stateBefore);
+    expect(entity.state.total).toBe(0);
+  });
+
   it("catch-all listener receives previousState/nextState alongside patches", () => {
     const entity = new CartEntity();
     let received: TEntityEvent<TCartState> | undefined;
