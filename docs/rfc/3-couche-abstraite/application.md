@@ -21,16 +21,27 @@
 > | Élément                                                              | Strate cible | Sections concernées |
 > | -------------------------------------------------------------------- | ------------ | ------------------- |
 > | Bootstrap async (`start(): Promise<void>`) + `BootstrapError` typée  | Strate 1     | §1, §2              |
-> | Phases `'config'` et `'start'` (6 phases au total au lieu de 4)      | Strate 1     | §1                  |
+> | Phases `'config'` et `'start'` du contrat cible (6 phases ADR-0010, vs la séquence 0a/0b/0c/1/3/4 de strate 0 — cf. encadré §3) | Strate 1     | §1, §3              |
 > | `TBootstrapOptions.serverState` (SSR hydratation, ADR-0014)          | Strate 1     | §1                  |
 > | `TApplicationConfig` complet (`mode`, `debug`, providers, registry…) | Strate 1     | §1                  |
 > | `BonsaiRegistry` ESM modulaire (ADR-0019)                            | Strate 2     | §3                  |
 > | `Application.stop()` / shutdown ordonnée                             | Strate 2     | —                   |
 > | DevTools hooks                                                       | Strate 2     | —                   |
 >
-> **Strate 0 — périmètre effectif (post-ADR-0039)** : `Application` est instanciée via `new Application({ foundation, features })`. Le **manifest applicatif typé** (`features`) est l'autorité unique des namespaces (I68–I72) — vérifié compile-time par `StrictManifest<M>` (camelCase plat, non-réservé, `TSelfNS` aligné sur la clé). Aucun `static namespace` sur les classes Feature (I68). `start(): void` synchrone en **4 phases** (Channels → Entities implicites → Features+`bootstrap()`/`onInit` (I56) → Foundation.attach). Foundation **obligatoire** au start (I33). `app.started` exposé en lecture. Aucun runtime API (I23).
+> **Strate 0 — périmètre effectif (post-[ADR-0046](../../adr/ADR-0046-feature-contract-refonte.md))** : `Application` est instanciée via `new Application({ foundation, features })`. Le **manifest applicatif typé** (`features`) est l'autorité unique des namespaces (I68–I72) — vérifié compile-time par `StrictManifest<M>` (camelCase plat, non-réservé, `TSelfNS` aligné sur la clé). Aucun `static namespace` sur les classes Feature (I68). `start(): void` synchrone en **six étapes réordonnées** (ADR-0046, pas « 4 phases ») :
 >
-> Voir aussi : [ADR-0028](../../adr/ADR-0028-implementation-phasing-strategy.md), [ADR-0010](../../adr/ADR-0010-bootstrap-phases.md).
+> | Étape | Contenu | Invariants |
+> | ----- | ------- | ---------- |
+> | **0a** | Validation format namespace + `channel` (filet `#validateManifest`) | I70, I71, I73 |
+> | **0b** | Instanciation pure de chaque Feature (`new FeatureClass(ns)`) — sentinel : aucun Channel créé/supprimé dans Radio pendant le `new` | I94 |
+> | **0c** | Lecture `instance.listens`/`instance.queries` — validation des références croisées, AVANT tout side-effect Radio | I70 (amendé), I93 |
+> | **1** | Channels — `Radio.channel(namespace)` pour chaque entrée du manifest | — |
+> | **3** | Features — `instance.bootstrap()` (câble les handlers, instancie l'Entity, appelle `onInit()`) | I56, I48 |
+> | **4** | Foundation — `new FoundationClass()` puis `attach()` (Composers → Views) | I33 |
+>
+> Il n'y a pas d'étape « Phase 2 » distincte : l'Entity est instanciée à l'intérieur de `Feature#bootstrap()` (étape 3), pas par `Application` elle-même — la numérotation saute volontairement de 1 à 3 pour rester alignée sur le code source (`packages/application/src/bonsai-application.ts`). Foundation **obligatoire** au start (I33). `app.started` exposé en lecture. Aucun runtime API (I23).
+>
+> Voir aussi : [ADR-0028](../../adr/ADR-0028-implementation-phasing-strategy.md), [ADR-0010](../../adr/ADR-0010-bootstrap-order.md), [ADR-0046](../../adr/ADR-0046-feature-contract-refonte.md) (réordonnancement 0a/0b/0c).
 
 ## 1. Types de bootstrap (ADR-0010)
 
@@ -150,13 +161,25 @@ class Application<M extends TFeaturesManifest = TFeaturesManifest> {
   constructor(options?: TApplicationOptions<M>);
 
   /**
-   * Démarre l'application — bootstrap synchrone en 4 phases (ADR-0010 simplifié strate 0) :
+   * Démarre l'application — bootstrap synchrone réordonné par
+   * [ADR-0046](../../adr/ADR-0046-feature-contract-refonte.md) (ADR-0010 simplifié
+   * strate 0) :
    *
-   *   Phase 0 — Validation runtime du manifest (filet ADR-0039 — I70/I71/I72)
-   *   Phase 1 — Channels   : `Radio.channel(namespace)` pour chaque entrée
-   *   Phase 2 — Entities   : créées implicitement par `Feature.bootstrap()`
-   *   Phase 3 — Features   : `new FeatureClass(namespace)` + `bootstrap()` + `onInit` (I56)
-   *   Phase 4 — Foundation : `new FoundationClass()` puis `attach()`
+   *   Phase 0a — Validation format namespace + `channel` (filet — I70/I71/I73)
+   *   Phase 0b — Instanciation pure de chaque Feature (`new FeatureClass(ns)`) —
+   *              sentinel : aucun side-effect Radio pendant le `new` (I94)
+   *   Phase 0c — Lecture `instance.listens`/`instance.queries` — validation des
+   *              références croisées, AVANT tout side-effect Radio (I70 amendé, I93)
+   *   Phase 1  — Channels   : `Radio.channel(namespace)` pour chaque entrée
+   *   Phase 3  — Features   : `instance.bootstrap()` — câble les handlers,
+   *              instancie l'Entity, appelle `onInit()` (I56)
+   *   Phase 4  — Foundation : `new FoundationClass()` puis `attach()`
+   *
+   * Pas de « Phase 2 » distincte : l'Entity est instanciée par
+   * `Feature#bootstrap()` (Phase 3), pas par `Application`. L'instanciation des
+   * Features elle-même a lieu **avant** les Channels (Phase 0b, pas Phase 3) —
+   * c'est ce réordonnancement qui permet le sentinel I94 (le ctor ne doit
+   * produire aucun side-effect Radio observable).
    *
    * @throws si appelée deux fois (pas de re-bootstrap en strate 0)
    * @throws `BonsaiNamespaceError` si le manifest viole les invariants
@@ -219,6 +242,9 @@ Si une phase echoue, le bootstrap s'arrete immediatement avec un `BootstrapError
 | 4     | `'features'` | Couche abstraite active — `onInit()` de chaque Feature. Les Entities sont deja peuplees (soit via `serverState`, soit avec `initialState`).                                                                                                                                         |
 | 5     | `'views'`    | Creation Foundation (couche concrete commence). Pour chaque View : detection du mode SSR vs SPA **par noeud** (ADR-0014 H1). `setup()` hydrate le DOM existant (H2), `create()` genere le DOM en SPA (D30). Resolution recursive des Composers et Views.                            |
 | 6     | `'start'`    | Application dormante — evenement start (optionnel, voir Q9).                                                                                                                                                                                                                        |
+
+> **⚠️ Écart non résolu avec la séquence strate 0 (ADR-0046)** — question ouverte, à trancher lors de la formalisation du bootstrap async (strate 1) :
+> le tableau ci-dessus place l'instanciation des Entities dans `'entities'` (phase 3) et l'activation des Features dans `'features'` (phase 4) — après Channels (phase 2). La séquence **strate 0 réellement implémentée** (§2, encadré §Périmètre) instancie les Features **avant** les Channels (Phase 0b), précisément pour que le sentinel I94 (« ctor inerte ») puisse observer qu'aucun Channel n'a été créé/supprimé pendant le `new`. Ce réordonnancement n'a pas d'équivalent explicite dans `'config'`/`'channels'` ci-dessus : soit `'config'` doit être scindée (0a validation / 0b instanciation / 0c validation croisée) lors du passage à l'async strate 1, soit le sentinel I94 doit être repensé pour le contrat cible. Non tranché — ne pas présumer de la décision ici.
 
 ### Diagramme de dependances entre phases
 

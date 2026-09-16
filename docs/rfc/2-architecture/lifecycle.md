@@ -67,26 +67,24 @@ Le framework garantit un **nettoyage automatique et complet** à la destruction 
 
 ---
 
-## 3. Bootstrap — 6 phases
+## 3. Bootstrap
 
-> Résumé de [ADR-0010](../../adr/ADR-0010-bootstrap-order.md).
+> Résumé de [ADR-0010](../../adr/ADR-0010-bootstrap-order.md). Table de phases
+> détaillée (strate 0 réelle **et** contrat cible 6 phases) → [application.md §2–§3](../3-couche-abstraite/application.md).
+> **Ne pas dupliquer la table de phases ici** — une description indépendante
+> a par le passé divergé du code réel ; ce document ne porte que les
+> garanties de haut niveau, la table détaillée vit dans un seul endroit.
 
-Le démarrage de l'application suit un ordre **strict et déterministe** :
+Le démarrage de l'application suit un ordre **strict et déterministe**. Il n'y
+a plus de `register()` explicite depuis [ADR-0039](../../adr/ADR-0039-namespace-authority-and-uniqueness.md) —
+les Features sont déclarées par le **manifest applicatif** passé au constructeur
+d'`Application`, et instanciées/câblées par `start()` :
 
-```
-Phase 1  register()      Enregistrer les Features (namespace, Entity, Channel)
-Phase 2  validate()      Vérifier l'unicité des namespaces (I21), pas de collision
-Phase 3  wire()          Radio résout les déclarations, câble les Channels
-Phase 4  init()          Appeler onInit() sur chaque Feature (séquentiel, async OK)
-Phase 5  foundation()    Créer la Foundation, résoudre les Composers racines
-Phase 6  mount()         Créer les Views/Behaviors initiaux, attacher au DOM
-```
-
-| Phase | Garantie |
+| Étape (résumé) | Garantie |
 |-------|----------|
-| 1–3 | La couche abstraite est **complètement câblée** avant toute instanciation concrète |
-| 4 | Chaque `onInit()` peut faire un fetch async — le bootstrap attend la résolution |
-| 5–6 | Les Views sont créées **après** que toutes les Entities ont leur état initial |
+| Validation + instanciation des Features (manifest, ctor inerte — I94) | La couche abstraite est **complètement câblée** avant toute instanciation concrète |
+| `onInit()` de chaque Feature | Séquentiel — un `onInit()` async fait attendre le bootstrap avant la Feature suivante |
+| Foundation → Composers → Views | Les Views sont créées **après** que toutes les Entities ont leur état initial |
 
 > **Invariant de séquence** : aucune View ne peut envoyer de `trigger()` avant
 > que toutes les Features soient en état `active`. Le bootstrap le garantit
