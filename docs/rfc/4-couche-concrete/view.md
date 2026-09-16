@@ -1,37 +1,37 @@
 # View — Composant de rendu et d'interaction UI
 
-> **Projection DOM Reactive, UIMap typee, delegation d'evenements, localState**
+> **Projection DOM réactive, UIMap typée, délégation d'événements, localState**
 
-[<- Retour couche concrete](README.md) | [-> Behavior](behavior.md) | [5-rendu.md (PDR complete)](../5-rendu.md)
+[<- Retour couche concrète](README.md) | [-> Behavior](behavior.md) | [5-rendu.md (PDR complète)](../5-rendu.md)
 
 ---
 
 | Champ | Valeur |
 |-------|--------|
 | **Composant** | View |
-| **Couche** | Concrete (éphémère) |
+| **Couche** | Concrète (éphémère) |
 | **Source**    | Historique : RFC-0002-api-contrats-typage §9 |
 | **Statut** | Stable — pattern modulaire ADR-0042 (Tested via `tests/unit/strate-0/view.basic.test.ts`) |
 | **ADRs liées** | **ADR-0042 (pattern modulaire courant)**, ADR-0024 (value-first), ADR-0026 (rootElement), ADR-0040 (Channel générique), ADR-0041 (pattern consommateur unifié — superseded par ADR-0042 pour les types `TConsumerDeps`/`TConsumerContract`/`TListenCallbacks`), ADR-0009, ADR-0013, ADR-0014, ADR-0015, ADR-0017, ADR-0020 |
 
 ---
 
-## Table des matieres
+## Table des matières
 
 1. [Classe abstraite View](#1-classe-abstraite-view)
 2. [Pattern modulaire ADR-0042](#2-pattern-modulaire-adr-0042)
 3. [Types utilitaires du pattern modulaire](#3-types-utilitaires-du-pattern-modulaire)
 4. [Contrat de rendu PDR](#4-contrat-de-rendu-pdr)
    - [Point d'ancrage DOM](#41-point-dancrage-dom)
-   - [UIElements et UIEvents](#42-uielements-et-uievents)
-   - [Delegation d'evenements](#43-delegation-devenements)
-   - [getUI()](#44-getui--primitive-de-projection-typee)
+   - [UIElements et UIEvents](#42-uielements-et-uievents-adr-0042--pattern-modulaire)
+   - [Délégation d'événements](#43-délégation-dévénements)
+   - [getUI()](#44-getui--primitive-de-projection-typée)
    - [get templates()](#45-get-templates--trois-modes-de-rendu)
    - [TProjectionTemplate](#46-tprojectiontemplate)
-   - [Templates partiels Mode C](#47-templates-partiels-mode-c)
-   - [Flux d'execution complet](#48-flux-dexecution-complet)
+   - [Templates partiels Mode C](#47-templates-partiels-mode-c--syntaxe-pugjs-uixxx)
+   - [Flux d'exécution complet](#48-flux-dexécution-complet)
 5. [Cycle de vie passif](#5-cycle-de-vie-passif)
-6. [Declaration des Composers](#6-declaration-des-composers)
+6. [Déclaration des Composers](#6-déclaration-des-composers)
 7. [API localState](#7-api-localstate)
 
 ---
@@ -176,7 +176,7 @@ Chaque module est typé indépendamment et déclaré via `as const satisfies`. L
 - les clés `features[NS].listens / triggers / requests` correspondent à des Events/Commands/Requests de la Feature référencée par `feature` (ADR-0040 — `Channel<TDef>` est typé)
 - les clés d'`uiElements` sont **exactement** celles d'`uiEvents` (mapped type contraint)
 - chaque event DOM listé dans `events: [...]` impose un handler `on{Key}{Event}` sur la classe (ADR-0042 C15, I88)
-- chaque clé `features[NS].listens` impose un handler `on{NS}{Event}Event` (D48 channel)
+- chaque clé `features[NS].listens` impose un handler `on{NS}{Event}Event` (D12 channel)
 
 ### 2.2 Exemple complet — CartView
 
@@ -226,7 +226,7 @@ type TCartViewContract = TViewContract<
 
 // ─── Classe — un seul générique, un seul implements ─────────────────────────
 // `implements TViewCallbacks<TCartViewContract>` impose à la fois :
-//   • les handlers channel (D48 channel) : `on{NS}{Event}Event`
+//   • les handlers channel (D12 channel) : `on{NS}{Event}Event`
 //   • les handlers DOM     (D48 UI)      : `on{UIKey}{DomEvent}`
 //
 // Handler absent → erreur TS2420 immédiate. Symétrie Contract/Callbacks (I88).
@@ -246,7 +246,7 @@ class CartView
     this.trigger("cart:addItem", { productId: "abc", qty: 1 });
   }
 
-  // ── D48 channel — handler imposé par cart.listens: ["itemAdded"] ─────────
+  // ── D12 channel — handler imposé par cart.listens: ["itemAdded"] ─────────
   onCartItemAddedEvent(payload: { item: { qty: number } }): void {
     this.getUI("totalDisplay").text(String(payload.item.qty));
   }
@@ -402,7 +402,7 @@ type TViewContract<
 type TUICallbacks<U extends TUIContract>;
 
 /**
- * Handlers channel générés par symétrie depuis `TFeatureContract` (D48 channel).
+ * Handlers channel générés par symétrie depuis `TFeatureContract` (D12 channel).
  * `cart.listens: ["itemAdded"]` → exige `onCartItemAddedEvent(p): void`.
  */
 type TChannelCallbacks<F extends TFeatureContract>;
@@ -546,7 +546,7 @@ Pour le pattern complet (5 étapes : `features` + `uiEvents` + `uiElements` + al
 > - Chaque clé d'`uiEvents[k]` doit avoir une entrée correspondante dans `uiElements` — sinon throw au mount.
 > - Chaque event DOM déclaré (`events: [E, ...]`) doit avoir son handler implémenté — filet runtime même si `as any` contourne `TViewCallbacks`.
 
-### 4.3 Delegation d'evenements
+### 4.3 Délégation d'événements
 
 Le framework utilise la **delegation d'evenements** : un seul listener par type
 d'evenement est attache sur `this.el`. Quand un evenement DOM bulle, le framework
@@ -575,7 +575,7 @@ Avantages :
 - **Performance** : 3 listeners (click, input, submit) au lieu de N x 3
 - **Cleanup** : 3 `removeEventListener` dans `onDetach()` au lieu de N x 3
 
-### 4.4 getUI() -- Primitive de projection typee
+### 4.4 getUI() — Primitive de projection typée
 
 La View accede aux noeuds DOM **exclusivement** via `getUI(key)`, jamais via
 `querySelector`, `getElementById` ou tout autre acces DOM brut (I39).
@@ -681,7 +681,7 @@ onSubmitClick(): void {
 }
 ```
 
-### 4.5 get templates() -- Trois modes de rendu
+### 4.5 get templates() — Trois modes de rendu
 
 La View declare ses templates de projection via `get templates()`.
 Trois modes **mutuellement exclusifs** :
@@ -741,13 +741,17 @@ type TProjectionTemplate<TNodes = any, TData = any> = {
 Le framework peuple automatiquement `this.nodes` dans `onAttach()` :
 
 ```typescript
-// INTERNE FRAMEWORK -- le developpeur ne voit jamais ce code
+// INTERNE FRAMEWORK — le développeur ne voit jamais ce code
+//
+// Strate 0 (ADR-0028) : `TResolveResult = { view, rootElement }` — le Composer
+// ne fournit PAS d'options de construction (cf. packages/composer/src/bonsai-composer.ts
+// « pas d'options (D34 reporté) »). Seul `rootElement` (sélecteur CSS, ADR-0026)
+// transite du Composer vers la View. Pas de `view.params`/`get params()` — ce
+// getter unique est remplacé par les trois getters `features`/`uiEvents`/
+// `uiElements` (ADR-0042).
 
-function attachView(view: View, rootElement: string, composerOptions?: Partial<TViewOptions>): void {
-  // 1. Merge options <- composerOptions (D34)
-  view.resolvedOptions = { ...view.params.options, ...composerOptions };
-
-  // 2. Resoudre rootElement -> el (ADR-0026 : string du Composer)
+function attachView(view: View, rootElement: string): void {
+  // 1. Résoudre rootElement -> el (ADR-0026 : string fourni par le Composer)
   view.el = slot.querySelector(rootElement);
   if (!view.el) {
     // Element absent -> parser le selecteur CSS et creer l'element (ADR-0026 §3, D30)
@@ -755,7 +759,7 @@ function attachView(view: View, rootElement: string, composerOptions?: Partial<T
     slot.appendChild(view.el);
   }
 
-  // 3. Peupler nodes depuis templates()
+  // 2. Peupler nodes depuis templates() — sélecteurs lus depuis `view.uiElements` (ADR-0042)
   const templates = view.templates;
 
   if (templates === null) {
@@ -775,13 +779,13 @@ function attachView(view: View, rootElement: string, composerOptions?: Partial<T
     view.nodes = nodes;
   }
 
-  // 3. Delegation d'evenements + cablage onXXX
+  // 3. Délégation d'événements + câblage onXXX
   bindUIEvents(view);
   view.onAttach();
 }
 ```
 
-### 4.7 Templates partiels Mode C -- Syntaxe PugJS `@ui.xxx`
+### 4.7 Templates partiels Mode C — Syntaxe PugJS `@ui.xxx`
 
 En Mode C, le developpeur ecrit un ou plusieurs **fragments PugJS** qui ciblent
 chacun un `@ui` specifique. Le reste du DOM serveur est intouche.
@@ -907,7 +911,7 @@ class AccountView
     };
   }
 
-  // ── Channel handlers (D48 channel — imposés par TViewCallbacks) ─────────
+  // ── Channel handlers (D12 channel — imposés par TViewCallbacks) ─────────
   onAuthStateChangedEvent(_p: { isAuthenticated: boolean }): void { /* ... */ }
   onCartItemAddedEvent(_p: { id: string; qty: number }): void { /* ... */ }
   onCartItemRemovedEvent(_p: { id: string }): void { /* ... */ }
@@ -941,7 +945,7 @@ class AccountView
 > Les fragments `.pug` ne décrivent que les **îlots réactifs**.
 > Le reste du HTML (nav, footer, contenu statique) est 100% SSR, intouché.
 
-### 4.8 Flux d'execution complet
+### 4.8 Flux d'exécution complet
 
 ```
 +------------------ BOOTSTRAP -------------------+
@@ -1036,7 +1040,7 @@ abstract class View<TVC extends TViewContract = TViewContract> {
 > ni de sa destruction. Ces hooks sont des **notifications passives**,
 > pas des decisions.
 
-### 5.1 Machine a etats
+### 5.1 Machine à états
 
 ```
 created -> wired -> attached -> detached -> [destroyed]
@@ -1059,7 +1063,7 @@ created -> wired -> attached -> detached -> [destroyed]
 
 ---
 
-## 6. Declaration des Composers
+## 6. Déclaration des Composers
 
 > **ADR-0020 (Accepted)** : la semantique de `get composers()` est etendue
 > au N-instances. Si un selecteur `uiElements` matche N elements DOM,
@@ -1192,7 +1196,7 @@ class NodeEditFormView
 > Immer produit un etat immutable, et deux mecanismes complementaires
 > assurent la reactivite (dual N1/N2-N3).
 
-### 7.0 Arbre de decision : localState vs domain state
+### 7.0 Arbre de décision : localState vs domain state
 
 ```
 Q1. Ce state pourrait-il interesser un autre composant ?
@@ -1292,7 +1296,7 @@ abstract class View<
 }
 ```
 
-### 7.3 Mecanisme dual N1/N2-N3
+### 7.3 Mécanisme dual N1/N2-N3
 
 | Niveau | Mecanisme | Quand utiliser | Declenchement |
 |--------|-----------|----------------|---------------|
@@ -1335,7 +1339,7 @@ updateLocal(recipe)
 | `detached` | localState nettoye (reference supprimee). `this.local` n'est plus accessible. |
 | `destroyed` | GC libere la memoire |
 
-### 7.6 Observabilite (DevTools)
+### 7.6 Observabilité (DevTools)
 
 Le localState **N'EST PAS** dans `app.snapshot()` (etat volatile, RFC-0004).
 En mode `debug: true`, les mutations localState sont logguees dans la console
