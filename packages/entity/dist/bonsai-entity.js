@@ -1,9 +1,10 @@
 /**
  * @bonsai/entity - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-05-20T12:01:49.424Z
+ * Date: 2026-09-14T16:47:58.565Z
  */
 import { Immer } from '@bonsai/immer';
+import { EntityReentrancyError, MutationError } from '@bonsai/error';
 
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -43,17 +44,25 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 /**
  * @bonsai/entity — Entity base class
  *
- * Strate 0 — Implémentation ADR-0001 :
- *   - mutate(intent, recipe) via Immer.produce
- *   - changedKeys par comparaison shallow avant/après
- *   - Détection no-op (pas de notification si state inchangé)
- *   - Notification catch-all onAnyEntityUpdated (I51)
+ * Implémentation ADR-0001 (🔵 Tested) :
+ *   - mutate(intent, params?, recipe) via Immer produceWithPatches
+ *   - changedKeys dérivées depuis les patches (1er segment de path)
+ *   - Détection no-op (aucun patch produit → pas de notification)
+ *   - Notification catch-all onAnyEntityUpdated (I51) — event enrichi
+ *     (patches, inversePatches, payload, metas)
+ *   - Ré-entrance FIFO bornée par maxEntityNotificationDepth (I98,
+ *     ADR-0028 strate 1a) — cf. RFC entity.md §Ré-entrance
+ *   - MutationError si la recipe throw (rollback Immer automatique,
+ *     ADR-0002)
  *   - initialState getter (D17)
  *
- * NOTE strate 0 : pas de produceWithPatches, pas de per-key handlers,
- * pas de ré-entrance FIFO, pas de toJSON/fromJSON.
+ * NOTE : les handlers per-key `on<Key>EntityUpdated` ne sont PAS dispatchés
+ * ici — c'est la responsabilité de `Feature#registerEntityHandlers` (I96),
+ * qui s'abonne à `onAnyEntityUpdated` et route en interne. Entity ne connaît
+ * jamais sa Feature (I5, I6).
  */
-var _Entity_instances, _Entity_state, _Entity_initialState, _Entity_listeners, _Entity_initialized, _Entity_ensureInitialized, _Entity_computeChangedKeys;
+var _Entity_instances, _Entity_state, _Entity_initialState, _Entity_listeners, _Entity_initialized, _Entity_draining, _Entity_cycleDepth, _Entity_queue, _Entity_ensureInitialized, _Entity_runCycle;
+Immer.enablePatches();
 // ─── Classe abstraite Entity ─────────────────────────────────────────────────
 /**
  * Entity — Conteneur d'état immutable d'une Feature (I6, I22, I46).
@@ -82,9 +91,24 @@ class Entity {
          * Flag d'initialisation (lazy init pour contourner la restriction abstraite).
          */
         _Entity_initialized.set(this, false);
+        // ─── Ré-entrance FIFO (I98) ────────────────────────────────────────────
+        /** `true` pendant qu'un cycle mutate → notify est en cours (pilote externe). */
+        _Entity_draining.set(this, false);
+        /** Profondeur du cycle en cours (1 = appel externe, incrémenté par dépilement). */
+        _Entity_cycleDepth.set(this, 0);
+        /** File FIFO des mutations déclenchées pendant une notification. */
+        _Entity_queue.set(this, []);
         // L'initialisation réelle est faite dans #ensureInitialized()
         // car TS interdit l'accès aux propriétés abstraites dans le constructeur.
         __classPrivateFieldGet(this, _Entity_instances, "m", _Entity_ensureInitialized).call(this);
+    }
+    // ─── Configuration overridable ─────────────────────────────────────────
+    /**
+     * Profondeur maximale de ré-entrance (I98, ADR-0028 strate 1a — défaut 3).
+     * Overridable par une sous-classe concrète pour un cas d'usage avancé.
+     */
+    get maxEntityNotificationDepth() {
+        return 3;
     }
     // ─── Public API ──────────────────────────────────────────────────────
     /**
@@ -111,58 +135,83 @@ class Entity {
             params = paramsOrRecipe;
             recipe = maybeRecipe;
         }
-        const previousState = __classPrivateFieldGet(this, _Entity_state, "f");
-        // Immer produce — mutation immutable
-        const nextState = Immer.produce(previousState, recipe);
-        // Détection no-op : comparaison shallow des clés de 1er niveau
-        const changedKeys = __classPrivateFieldGet(this, _Entity_instances, "m", _Entity_computeChangedKeys).call(this, previousState, nextState);
-        if (changedKeys.length === 0) {
-            // No-op — pas de notification
-            return;
+        // Ré-entrance : un cycle est déjà en cours — mise en file (I98)
+        if (__classPrivateFieldGet(this, _Entity_draining, "f")) {
+            const wouldBeDepth = __classPrivateFieldGet(this, _Entity_cycleDepth, "f") + __classPrivateFieldGet(this, _Entity_queue, "f").length + 1;
+            if (wouldBeDepth > this.maxEntityNotificationDepth) {
+                throw new EntityReentrancyError(`Ré-entrance Entity au-delà de maxEntityNotificationDepth (${this.maxEntityNotificationDepth}) — intent "${intent}"`, "I98", "Entity", "Vérifier qu'un handler entity ne déclenche pas une boucle de mutations en cascade.");
+            }
+            __classPrivateFieldGet(this, _Entity_queue, "f").push({ intent, params, recipe });
+            return null;
         }
-        // Mise à jour du state
-        __classPrivateFieldSet(this, _Entity_state, nextState, "f");
-        // Notification catch-all (I51)
-        const event = {
-            intent,
-            params,
-            changedKeys,
-            previousState,
-            nextState,
-            timestamp: Date.now()
-        };
-        for (const listener of __classPrivateFieldGet(this, _Entity_listeners, "f")) {
-            listener(event);
+        // Appel externe — ce mutate() pilote tout le cycle (premier + file)
+        __classPrivateFieldSet(this, _Entity_draining, true, "f");
+        __classPrivateFieldSet(this, _Entity_cycleDepth, 1, "f");
+        try {
+            const firstEvent = __classPrivateFieldGet(this, _Entity_instances, "m", _Entity_runCycle).call(this, intent, params, recipe);
+            while (__classPrivateFieldGet(this, _Entity_queue, "f").length > 0) {
+                __classPrivateFieldSet(this, _Entity_cycleDepth, __classPrivateFieldGet(this, _Entity_cycleDepth, "f") + 1, "f");
+                const next = __classPrivateFieldGet(this, _Entity_queue, "f").shift();
+                __classPrivateFieldGet(this, _Entity_instances, "m", _Entity_runCycle).call(this, next.intent, next.params, next.recipe);
+            }
+            return firstEvent;
+        }
+        finally {
+            __classPrivateFieldSet(this, _Entity_draining, false, "f");
+            __classPrivateFieldSet(this, _Entity_cycleDepth, 0, "f");
+            __classPrivateFieldGet(this, _Entity_queue, "f").length = 0;
         }
     }
     /**
      * Enregistre un listener catch-all (I51).
-     * Appelé après chaque mutation non no-op.
+     * Appelé après chaque mutation non no-op. Pas d'isolation d'erreur ici —
+     * les exceptions d'un listener se propagent jusqu'à l'appelant externe de
+     * `mutate()` (I98 s'appuie sur cette propagation). L'isolation
+     * `BroadcastError` est une responsabilité du dispatch Feature (I96).
      */
     onAnyEntityUpdated(listener) {
         __classPrivateFieldGet(this, _Entity_listeners, "f").push(listener);
     }
 }
-_Entity_state = new WeakMap(), _Entity_initialState = new WeakMap(), _Entity_listeners = new WeakMap(), _Entity_initialized = new WeakMap(), _Entity_instances = new WeakSet(), _Entity_ensureInitialized = function _Entity_ensureInitialized() {
+_Entity_state = new WeakMap(), _Entity_initialState = new WeakMap(), _Entity_listeners = new WeakMap(), _Entity_initialized = new WeakMap(), _Entity_draining = new WeakMap(), _Entity_cycleDepth = new WeakMap(), _Entity_queue = new WeakMap(), _Entity_instances = new WeakSet(), _Entity_ensureInitialized = function _Entity_ensureInitialized() {
     if (!__classPrivateFieldGet(this, _Entity_initialized, "f")) {
         __classPrivateFieldSet(this, _Entity_initialState, this.defineInitialState(), "f");
         __classPrivateFieldSet(this, _Entity_state, __classPrivateFieldGet(this, _Entity_initialState, "f"), "f");
         __classPrivateFieldSet(this, _Entity_initialized, true, "f");
     }
-}, _Entity_computeChangedKeys = function _Entity_computeChangedKeys(prev, next) {
-    if (prev === next)
-        return [];
-    // TStructure est un objet (garanti par l'usage)
-    const prevObj = prev;
-    const nextObj = next;
-    const keys = new Set([...Object.keys(prevObj), ...Object.keys(nextObj)]);
-    const changed = [];
-    for (const key of keys) {
-        if (prevObj[key] !== nextObj[key]) {
-            changed.push(key);
-        }
+}, _Entity_runCycle = function _Entity_runCycle(intent, params, recipe) {
+    const previousState = __classPrivateFieldGet(this, _Entity_state, "f");
+    let nextState;
+    let patches;
+    let inversePatches;
+    try {
+        [nextState, patches, inversePatches] = Immer.produceWithPatches(previousState, recipe);
     }
-    return changed;
+    catch (error) {
+        throw new MutationError(`Recipe throw pour l'intent "${intent}" — state conservé (rollback Immer)`, "ADR-0002", "Entity", error instanceof Error ? error.message : String(error));
+    }
+    if (patches.length === 0) {
+        // No-op — pas de notification
+        return null;
+    }
+    // changedKeys dérivées du 1er segment de path des patches (I97)
+    const changedKeys = [...new Set(patches.map((p) => String(p.path[0])))];
+    __classPrivateFieldSet(this, _Entity_state, nextState, "f");
+    const event = {
+        intent,
+        payload: params?.payload,
+        metas: params?.metas,
+        changedKeys,
+        patches,
+        inversePatches,
+        previousState,
+        nextState,
+        timestamp: Date.now()
+    };
+    for (const listener of __classPrivateFieldGet(this, _Entity_listeners, "f")) {
+        listener(event);
+    }
+    return event;
 };
 
 export { Entity };

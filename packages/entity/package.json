@@ -13,6 +13,7 @@
   },
   "src": "./src/bonsai-entity.ts",
   "dependencies": {
+    "@bonsai/error": "workspace:^",
     "@bonsai/immer": "workspace:^"
   }
 }

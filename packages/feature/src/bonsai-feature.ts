@@ -39,17 +39,27 @@
  *         (ADR-0046 — TS2515 si absent sur une classe concrète)
  *   I94 — Le constructeur de Feature est inerte : assertValidNamespace + #namespace
  *         uniquement. Aucun side-effect Radio/Entity.
+ *   I96 — Handlers Entity `on<Key>EntityUpdated`/`onAnyEntityUpdated` auto-
+ *         découverts sur la Feature (même mécanisme que I48), dispatchés par
+ *         ordre alphabétique des `changedKeys` puis catch-all. Clé inconnue
+ *         → erreur bootstrap. Handler qui throw → isolé (BroadcastError,
+ *         ADR-0002), notification suivante non interrompue (ADR-0028 strate 1a)
  *
  * @packageDocumentation
  */
 
-import { Entity, type TJsonSerializable } from "@bonsai/entity";
+import {
+  Entity,
+  type TEntityEvent,
+  type TJsonSerializable
+} from "@bonsai/entity";
 import {
   Radio,
   type Channel,
   type TChannelDefinition,
   type TChannelToken
 } from "@bonsai/event";
+import { BroadcastError, hardInvariant } from "@bonsai/error";
 import { assertValidNamespace } from "./types";
 
 // ─── Re-exports — surface publique du package ───────────────────────────────
@@ -234,6 +244,7 @@ export abstract class Feature<
     this.#registerCommandHandlers();
     this.#registerRequestRepliers();
     this.#registerEventListeners();
+    this.#registerEntityHandlers();
 
     // Lifecycle
     this.onInit();
@@ -367,6 +378,92 @@ export abstract class Feature<
             );
           });
         }
+      }
+    }
+  }
+
+  /**
+   * Découvre les méthodes `on{Key}EntityUpdated` et s'abonne une fois à
+   * `entity.onAnyEntityUpdated()` pour les dispatcher (I96, ADR-0028 strate 1a).
+   *
+   * Convention : `onItemsEntityUpdated` avec une clé `items` sur le state
+   * de l'Entity → appelé à chaque mutation qui change `items`.
+   * `onAnyEntityUpdated` (catch-all) est câblé sans vérification de clé.
+   *
+   * Filet runtime : une méthode `on<Key>EntityUpdated` dont `<Key>` ne
+   * correspond à aucune clé du state de l'Entity → erreur bootstrap.
+   */
+  #registerEntityHandlers(): void {
+    const proto = Object.getPrototypeOf(this);
+    const methods = Object.getOwnPropertyNames(proto) as string[];
+    const stateKeys = new Set(Object.keys(this.#entity.state as object));
+
+    for (const method of methods) {
+      const match = method.match(/^on([A-Z][a-zA-Z]*)EntityUpdated$/);
+      if (!match || match[1] === "Any") continue;
+
+      const key = match[1][0].toLowerCase() + match[1].slice(1);
+      hardInvariant(
+        stateKeys.has(key),
+        `Feature "${this.#namespace}" declares entity handler "${method}" for unknown key "${key}"`,
+        "I96",
+        this.#namespace
+      );
+    }
+
+    this.#entity.onAnyEntityUpdated((event: TEntityEvent) => {
+      this.#dispatchEntityEvent(event);
+    });
+  }
+
+  /**
+   * Route un `TEntityEvent` vers les handlers per-key (ordre alphabétique
+   * des `changedKeys`) puis le catch-all, s'ils existent. Chaque appel est
+   * isolé : un throw devient une `BroadcastError` loggée, la notification
+   * continue (ADR-0002, I96).
+   */
+  #dispatchEntityEvent(event: TEntityEvent): void {
+    const self = this as unknown as Record<
+      string,
+      (...args: unknown[]) => void
+    >;
+
+    for (const key of [...event.changedKeys].sort()) {
+      const handlerName = `on${key[0].toUpperCase()}${key.slice(1)}EntityUpdated`;
+      if (typeof self[handlerName] !== "function") continue;
+
+      const keyPatches = event.patches.filter(
+        (p) => String(p.path[0]) === key
+      );
+      const prev = (event.previousState as Record<string, unknown>)[key];
+      const next = (event.nextState as Record<string, unknown>)[key];
+
+      try {
+        self[handlerName](prev, next, keyPatches);
+      } catch (error) {
+        console.error(
+          new BroadcastError(
+            `Entity handler "${handlerName}" threw for intent "${event.intent}"`,
+            "ADR-0002",
+            this.#namespace
+          ),
+          error
+        );
+      }
+    }
+
+    if (typeof self["onAnyEntityUpdated"] === "function") {
+      try {
+        self["onAnyEntityUpdated"](event);
+      } catch (error) {
+        console.error(
+          new BroadcastError(
+            `Entity handler "onAnyEntityUpdated" threw for intent "${event.intent}"`,
+            "ADR-0002",
+            this.#namespace
+          ),
+          error
+        );
       }
     }
   }

@@ -14,6 +14,7 @@
   "src": "./src/bonsai-feature.ts",
   "dependencies": {
     "@bonsai/entity": "workspace:^",
+    "@bonsai/error": "workspace:^",
     "@bonsai/event": "workspace:^",
     "@bonsai/types": "workspace:^"
   }

@@ -24799,15 +24799,22 @@ declare class Radio {
 /**
  * @bonsai/entity — Entity base class
  *
- * Strate 0 — Implémentation ADR-0001 :
- *   - mutate(intent, recipe) via Immer.produce
- *   - changedKeys par comparaison shallow avant/après
- *   - Détection no-op (pas de notification si state inchangé)
- *   - Notification catch-all onAnyEntityUpdated (I51)
+ * Implémentation ADR-0001 (🔵 Tested) :
+ *   - mutate(intent, params?, recipe) via Immer produceWithPatches
+ *   - changedKeys dérivées depuis les patches (1er segment de path)
+ *   - Détection no-op (aucun patch produit → pas de notification)
+ *   - Notification catch-all onAnyEntityUpdated (I51) — event enrichi
+ *     (patches, inversePatches, payload, metas)
+ *   - Ré-entrance FIFO bornée par maxEntityNotificationDepth (I98,
+ *     ADR-0028 strate 1a) — cf. RFC entity.md §Ré-entrance
+ *   - MutationError si la recipe throw (rollback Immer automatique,
+ *     ADR-0002)
  *   - initialState getter (D17)
  *
- * NOTE strate 0 : pas de produceWithPatches, pas de per-key handlers,
- * pas de ré-entrance FIFO, pas de toJSON/fromJSON.
+ * NOTE : les handlers per-key `on<Key>EntityUpdated` ne sont PAS dispatchés
+ * ici — c'est la responsabilité de `Feature#registerEntityHandlers` (I96),
+ * qui s'abonne à `onAnyEntityUpdated` et route en interne. Entity ne connaît
+ * jamais sa Feature (I5, I6).
  */
 
 /**
@@ -24825,12 +24832,16 @@ type TMutationParams = {
 };
 /**
  * Événement émis après une mutation réussie (non no-op).
- * Reçu par les listeners onAnyEntityUpdated.
+ * Reçu par les listeners onAnyEntityUpdated, et dispatché par Feature vers
+ * les handlers per-key/catch-all (I96).
  */
 type TEntityEvent<TStructure extends TJsonSerializable = TJsonSerializable> = {
     readonly intent: string;
-    readonly params: TMutationParams | null;
+    readonly payload?: unknown;
+    readonly metas?: Record<string, unknown>;
     readonly changedKeys: string[];
+    readonly patches: Patch[];
+    readonly inversePatches: Patch[];
     readonly previousState: TStructure;
     readonly nextState: TStructure;
     readonly timestamp: number;
@@ -24855,6 +24866,11 @@ declare abstract class Entity<TStructure extends TJsonSerializable> {
      */
     protected abstract defineInitialState(): TStructure;
     /**
+     * Profondeur maximale de ré-entrance (I98, ADR-0028 strate 1a — défaut 3).
+     * Overridable par une sous-classe concrète pour un cas d'usage avancé.
+     */
+    protected get maxEntityNotificationDepth(): number;
+    /**
      * State courant (lecture seule depuis l'extérieur).
      */
     get state(): TStructure;
@@ -24864,19 +24880,31 @@ declare abstract class Entity<TStructure extends TJsonSerializable> {
      */
     get initialState(): TStructure;
     /**
-     * Mutation immutable via Immer (ADR-0001).
+     * Mutation immutable via Immer produceWithPatches (ADR-0001, I97).
      *
      * Overload 1 : mutate(intent, recipe)
      * Overload 2 : mutate(intent, params, recipe)
      *
-     * Détecte les no-ops par comparaison shallow des clés de 1er niveau.
-     * Si aucune clé n'a changé → pas de notification.
+     * Détecte les no-ops : si aucun patch n'est produit → pas de notification,
+     * retourne `null`.
+     *
+     * Ré-entrance (I98) : si appelé pendant un cycle de notification en cours,
+     * la mutation est mise en file FIFO et exécutée après la fin du cycle
+     * courant — retourne `null` immédiatement (l'event n'est pas disponible
+     * synchrone). Throw `EntityReentrancyError` si `maxEntityNotificationDepth`
+     * serait dépassé.
+     *
+     * @throws MutationError si la recipe throw (state intact, rollback Immer).
+     * @throws EntityReentrancyError si la profondeur max de ré-entrance est dépassée.
      */
-    mutate(intent: string, recipe: (draft: Draft<TStructure>) => void): void;
-    mutate(intent: string, params: TMutationParams, recipe: (draft: Draft<TStructure>) => void): void;
+    mutate(intent: string, recipe: (draft: Draft<TStructure>) => void): TEntityEvent<TStructure> | null;
+    mutate(intent: string, params: TMutationParams, recipe: (draft: Draft<TStructure>) => void): TEntityEvent<TStructure> | null;
     /**
      * Enregistre un listener catch-all (I51).
-     * Appelé après chaque mutation non no-op.
+     * Appelé après chaque mutation non no-op. Pas d'isolation d'erreur ici —
+     * les exceptions d'un listener se propagent jusqu'à l'appelant externe de
+     * `mutate()` (I98 s'appuie sur cette propagation). L'isolation
+     * `BroadcastError` est une responsabilité du dispatch Feature (I96).
      */
     onAnyEntityUpdated(listener: TEntityUpdateListener<TStructure>): void;
 }
@@ -25267,6 +25295,11 @@ declare function assertValidNamespace(ns: string): void;
  *         (ADR-0046 — TS2515 si absent sur une classe concrète)
  *   I94 — Le constructeur de Feature est inerte : assertValidNamespace + #namespace
  *         uniquement. Aucun side-effect Radio/Entity.
+ *   I96 — Handlers Entity `on<Key>EntityUpdated`/`onAnyEntityUpdated` auto-
+ *         découverts sur la Feature (même mécanisme que I48), dispatchés par
+ *         ordre alphabétique des `changedKeys` puis catch-all. Clé inconnue
+ *         → erreur bootstrap. Handler qui throw → isolé (BroadcastError,
+ *         ADR-0002), notification suivante non interrompue (ADR-0028 strate 1a)
  *
  * @packageDocumentation
  */

@@ -1,9 +1,10 @@
 /**
  * @bonsai/feature - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-05-20T12:01:50.146Z
+ * Date: 2026-09-14T16:47:59.741Z
  */
 import { Radio } from '@bonsai/event';
+import { hardInvariant, BroadcastError } from '@bonsai/error';
 
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -171,10 +172,15 @@ function assertValidNamespace(ns) {
  *         (ADR-0046 — TS2515 si absent sur une classe concrète)
  *   I94 — Le constructeur de Feature est inerte : assertValidNamespace + #namespace
  *         uniquement. Aucun side-effect Radio/Entity.
+ *   I96 — Handlers Entity `on<Key>EntityUpdated`/`onAnyEntityUpdated` auto-
+ *         découverts sur la Feature (même mécanisme que I48), dispatchés par
+ *         ordre alphabétique des `changedKeys` puis catch-all. Clé inconnue
+ *         → erreur bootstrap. Handler qui throw → isolé (BroadcastError,
+ *         ADR-0002), notification suivante non interrompue (ADR-0028 strate 1a)
  *
  * @packageDocumentation
  */
-var _Feature_instances, _Feature_namespace, _Feature_entity, _Feature_channel, _Feature_bootstrapped, _Feature_registerCommandHandlers, _Feature_registerRequestRepliers, _Feature_registerEventListeners;
+var _Feature_instances, _Feature_namespace, _Feature_entity, _Feature_channel, _Feature_bootstrapped, _Feature_registerCommandHandlers, _Feature_registerRequestRepliers, _Feature_registerEventListeners, _Feature_registerEntityHandlers, _Feature_dispatchEntityEvent;
 // ─── Feature abstract class ──────────────────────────────────────────────────
 /**
  * Feature — unité métier paramétrée par sa classe Entity, son contrat Channel
@@ -249,6 +255,7 @@ class Feature {
         __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerCommandHandlers).call(this);
         __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerRequestRepliers).call(this);
         __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerEventListeners).call(this);
+        __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerEntityHandlers).call(this);
         // Lifecycle
         this.onInit();
     }
@@ -325,6 +332,44 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
                     this[method](payload);
                 });
             }
+        }
+    }
+}, _Feature_registerEntityHandlers = function _Feature_registerEntityHandlers() {
+    const proto = Object.getPrototypeOf(this);
+    const methods = Object.getOwnPropertyNames(proto);
+    const stateKeys = new Set(Object.keys(__classPrivateFieldGet(this, _Feature_entity, "f").state));
+    for (const method of methods) {
+        const match = method.match(/^on([A-Z][a-zA-Z]*)EntityUpdated$/);
+        if (!match || match[1] === "Any")
+            continue;
+        const key = match[1][0].toLowerCase() + match[1].slice(1);
+        hardInvariant(stateKeys.has(key), `Feature "${__classPrivateFieldGet(this, _Feature_namespace, "f")}" declares entity handler "${method}" for unknown key "${key}"`, "I96", __classPrivateFieldGet(this, _Feature_namespace, "f"));
+    }
+    __classPrivateFieldGet(this, _Feature_entity, "f").onAnyEntityUpdated((event) => {
+        __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_dispatchEntityEvent).call(this, event);
+    });
+}, _Feature_dispatchEntityEvent = function _Feature_dispatchEntityEvent(event) {
+    const self = this;
+    for (const key of [...event.changedKeys].sort()) {
+        const handlerName = `on${key[0].toUpperCase()}${key.slice(1)}EntityUpdated`;
+        if (typeof self[handlerName] !== "function")
+            continue;
+        const keyPatches = event.patches.filter((p) => String(p.path[0]) === key);
+        const prev = event.previousState[key];
+        const next = event.nextState[key];
+        try {
+            self[handlerName](prev, next, keyPatches);
+        }
+        catch (error) {
+            console.error(new BroadcastError(`Entity handler "${handlerName}" threw for intent "${event.intent}"`, "ADR-0002", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
+        }
+    }
+    if (typeof self["onAnyEntityUpdated"] === "function") {
+        try {
+            self["onAnyEntityUpdated"](event);
+        }
+        catch (error) {
+            console.error(new BroadcastError(`Entity handler "onAnyEntityUpdated" threw for intent "${event.intent}"`, "ADR-0002", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
         }
     }
 };
