@@ -40,7 +40,7 @@ référencée dans toute la documentation.
 | Terme               | Définition |
 |----------------------|------------|
 | **Application**      | Instance persistante légère. Point d'entrée et de sortie du framework. Construite via `new Application({ foundation, features })` où `features` est le **manifest applicatif typé** (ADR-0039 — clé = namespace). Orchestre le bootstrap en 4 phases (Channels → Entities implicites → Features+`bootstrap()`/`onInit` → Foundation.attach) et le shutdown (Strate 2). Dormante au runtime — aucun rôle actif (D6). Aucun `register()` runtime (ADR-0039). |
-| **Behavior**         | Plugin UI réutilisable et **aveugle** (D36), attaché à une View. Enrichit le comportement visuel (interactions DOM, animations) via ses propres clés ui, ses propres handlers UI auto-dérivés depuis `TUIMap` (D48), ses propres Channels et ses propres templates Mode C (îlots). Aucun **domain state** (I30). localState de présentation autorisé sous 5 contraintes (I42, D37). N'a aucun accès à sa View hôte — pas de `this.view` (I44). Alt. N1+N2 sur ses propres clés ui uniquement (I45). Pas de slots, pas de Composers. Ne peut jamais utiliser `emit()` (D7). Cycle de vie lié à sa View. |
+| **Behavior**         | Plugin UI réutilisable et **aveugle** (D36), attaché à une View. Enrichit le comportement visuel (interactions DOM, animations) via ses propres clés ui, ses propres handlers UI auto-dérivés depuis son contrat UI (`TUIContract`, D48 amendé [ADR-0042](../../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md)), ses propres Channels et ses propres templates Mode C (îlots). Aucun **domain state** (I30). localState de présentation autorisé sous 5 contraintes (I42, D37). N'a aucun accès à sa View hôte — pas de `this.view` (I44). Alt. N1+N2 sur ses propres clés ui uniquement (I45). Pas de slots, pas de Composers. Ne peut jamais utiliser `emit()` (D7). Cycle de vie lié à sa View. |
 | **BonsaiRegistry**   | Singleton du runtime Bonsai, exporté par `bonsai.esm.js`. Point de collecte des modules ESM : chaque module appelle `registerFeature()` / `registerView()` etc. au top-level, puis l'Application appelle `collect()` pour obtenir un snapshot immuable. Le registry est verrouillé après `collect()`. Existe uniquement en Mode ESM Modulaire (ADR-0019). Nature : composant runtime, comme Radio. |
 | **Channel**          | Contrat de communication typé d'une Feature. Définit trois voies (tri-lane) : commands (1:1), events (1:N), requests (1:1 **synchrone**, D9 révisé par [ADR-0023](../../adr/ADR-0023-request-reply-sync-vs-async.md)). Identifié par le namespace de sa Feature propriétaire. |
 | **Channel Declaration** | Déclaration statique dans la définition d'un composant des Channels avec lesquels il interagit. Constitue le contrat de dépendances de communication du composant (D1). |
@@ -137,8 +137,9 @@ Questions architecturales. Chaque question est soit résolue (✅), soit en atte
 ### [Q7] ~~Behavior : périmètre et responsabilités~~ → ✅ Résolu (D36, D37, D38)
 
 > **Décision** : Le Behavior est un **plugin UI réutilisable et aveugle** (D36).
-> Il déclare ses propres clés ui (TUIMap), ses propres handlers UI auto-dérivés
-> depuis `TUIMap` (D48, convention `on${Capitalize<Key>}${Capitalize<Event>}`),
+> Il déclare ses propres clés ui (`TUIContract`, [ADR-0042](../../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md) —
+> pattern modulaire, comme la View, I83), ses propres handlers UI auto-dérivés
+> (D48, convention `on${Capitalize<Key>}${Capitalize<Event>}`),
 > ses propres templates Mode C (îlots sur ses clés ui), et ses propres Channels.
 >
 > **Réponses aux questions ouvertes** :
@@ -148,7 +149,7 @@ Questions architecturales. Chaque question est soit résolue (✅), soit en atte
 > 3. **Capacités Channel** : Propres et indépendantes (trigger, listen, request). Jamais `emit()` (D7).
 > 4. **Relation avec la View** : Enrichissement déclaré par la View (`get behaviors()`). Le Behavior est aveugle — aucun `this.view` (I44).
 >
-> **Concurrence d'altération DOM** : résolue par I43 — les clés TUIMap du Behavior ne doivent pas entrer en collision avec celles de la View. Vérifié au bootstrap.
+> **Concurrence d'altération DOM** : résolue par I43 — les clés UI du Behavior (`TUIContract`) ne doivent pas entrer en collision avec celles de la View. Vérifié au bootstrap.
 > **Concurrence d'event handlers** : non problématique — View et Behavior peuvent écouter le même événement DOM sur des clés ui différentes.
 >
 > **localState** : autorisé sous les mêmes 5 contraintes I42 que la View (D37).
@@ -159,26 +160,38 @@ Questions architecturales. Chaque question est soit résolue (✅), soit en atte
 >
 > ```typescript
 > // Behavior générique, branchable sur n'importe quelle View (D36)
-> type TTrackingUI = TUIMap<{
->   trackedElement: { el: HTMLElement; event: ['click'] };
-> }>;
+> // Pattern modulaire ADR-0042 (I83) — Behavior compose les DEUX modules
+> // (TFeatureContract + TUIContract), comme la View.
+> const trackingFeatures = {
+>   analytics: {
+>     feature:  AnalyticsFeature,
+>     listens:  []                    as const,
+>     triggers: ['trackInteraction']  as const,
+>     requests: []                    as const,
+>   },
+> } satisfies TFeatureContract;
 >
-> class TrackingBehavior extends Behavior<[Analytics.Channel], TTrackingUI> {
->   static readonly trigger = [Analytics.channel] as const;
+> const trackingUiEvents = {
+>   trackedElement: ui<HTMLElement>()(['click']),
+> } satisfies TUIContract;
 >
->   get params() {
->     return {
->       uiElements: { trackedElement: '[data-tracking-type]' }
->     };
->   }
+> const trackingUiElements = {
+>   trackedElement: '[data-tracking-type]',
+> } satisfies TUIElements<typeof trackingUiEvents>;
 >
->   // PAS de get uiEvents() — D48 (AUTO-UI-EVENT-DISCOVERY)
->   // Le framework auto-dérive le handler depuis TUIMap :
->   //   clé 'trackedElement' + event 'click' → onTrackedElementClick
+> class TrackingBehavior extends Behavior<typeof trackingFeatures, typeof trackingUiEvents> {
+>   get features()   { return trackingFeatures;   }
+>   get uiEvents()   { return trackingUiEvents;   }
+>   get uiElements() { return trackingUiElements; }
 >
->   onTrackedElementClick(e: TUIEventFor<TTrackingUI, 'trackedElement', 'click'>) {
->     const el = e.currentTarget; // typé HTMLElement
->     this.trigger(Analytics.channel, 'trackInteraction', {
+>   // Handler imposé compile-time par `events: ['click']` (I88) — pas de
+>   // `get uiEvents()` manuel nom→handler (ce pattern-là reste supprimé par D48).
+>   // Convention D48 : clé 'trackedElement' + event 'click' → onTrackedElementClick
+>
+>   onTrackedElementClick(e: MouseEvent & { currentTarget: HTMLElement }) {
+>     const el = e.currentTarget;
+>     // Clé namespacée flat, vérifiée contre TFlatTriggers<typeof trackingFeatures> (I77).
+>     this.trigger('analytics:trackInteraction', {
 >       type: el.getAttribute('data-tracking-type'),
 >       value: el.getAttribute('data-tracking-value')
 >     });
@@ -187,8 +200,8 @@ Questions architecturales. Chaque question est soit résolue (✅), soit en atte
 > ```
 >
 > **Caractéristiques de ce pattern** :
-> - ✅ TUIMap propre — aucune collision possible avec les clés ui de la View hôte (I43)
-> - ✅ Handlers auto-dérivés depuis TUIMap (D48) — pas de `get uiEvents()` manuel
+> - ✅ `TUIContract` propre — aucune collision possible avec les clés ui de la View hôte (I43)
+> - ✅ Handlers auto-dérivés depuis `uiEvents` (D48, amendé ADR-0042) — pas de mapping manuel nom→handler
 > - ✅ Aucun `this.view` — le Behavior est aveugle (I44)
 > - ✅ **Générique** : branchable sur n'importe quelle View
 > - ✅ Channels déclarés indépendamment de la View hôte

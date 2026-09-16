@@ -609,24 +609,46 @@ Justification :
 La View gère les interactions utilisateur sur les items **via delegation sur le conteneur**,
 jamais via des listeners individuels sur chaque élément.
 
+> **Terminologie** : `TUIMap` (D35) est remplacé par le pattern modulaire
+> `TUIContract` + `TUIElements<TUI>` depuis [ADR-0042](../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md)
+> (`get params()` unique est lui aussi remplacé par les trois getters `features`/`uiEvents`/`uiElements`).
+> L'exemple ci-dessous se concentre sur l'auto-discovery DOM (D48) — le pattern
+> modulaire complet (avec `TFeatureContract` et `implements TViewCallbacks`) est
+> documenté dans [view.md §2.2](4-couche-concrete/view.md#22-exemple-complet--cartview).
+
 ```typescript
-// ── TUIMap : contrat structurel de la CartView ──
-// Chaque clé = un nœud d'interaction, le framework auto-dérive les handlers (D48)
-type TCartViewUI = TUIMap<{
-  items:              { el: HTMLUListElement;   event: [] };              // Conteneur liste
-  removeButton:       { el: HTMLButtonElement;  event: ['click'] };       // → onRemoveButtonClick
-  increaseQtyButton:  { el: HTMLButtonElement;  event: ['click'] };       // → onIncreaseQtyButtonClick
-  decreaseQtyButton:  { el: HTMLButtonElement;  event: ['click'] };       // → onDecreaseQtyButtonClick
-  qtyInput:           { el: HTMLInputElement;   event: ['input'] };       // → onQtyInputInput
-}>;
+import { View, ui, type TUIContract, type TUIElements } from "@bonsai/view";
+
+// ── Module 2 — TUIContract : contrat structurel de la CartView (ADR-0042) ──
+// Chaque clé = un nœud d'interaction ; `ui<TEl>()(events)` déclare le
+// sous-type HTML ET les events DOM (I85). Le framework auto-dérive les
+// handlers depuis cette déclaration (D48, amendé ADR-0042).
+const cartViewUiEvents = {
+  items:              ui<HTMLUListElement>()([]),           // Conteneur liste — non-interactif (I86)
+  removeButton:       ui<HTMLButtonElement>()(["click"]),   // → onRemoveButtonClick
+  increaseQtyButton:  ui<HTMLButtonElement>()(["click"]),   // → onIncreaseQtyButtonClick
+  decreaseQtyButton:  ui<HTMLButtonElement>()(["click"]),   // → onDecreaseQtyButtonClick
+  qtyInput:           ui<HTMLInputElement>()(["input"]),    // → onQtyInputInput
+} satisfies TUIContract;
+
+// ── Module 3 — TUIElements : sélecteurs CSS, 1:1 avec uiEvents ──
+const cartViewUiElements = {
+  items:              "[data-ui='items']",
+  removeButton:       "[data-ui='removeButton']",
+  increaseQtyButton:  "[data-ui='increaseQtyButton']",
+  decreaseQtyButton:  "[data-ui='decreaseQtyButton']",
+  qtyInput:           "[data-ui='qtyInput']",
+} satisfies TUIElements<typeof cartViewUiEvents>;
 
 class CartView extends View<TCartViewCapabilities> {
-  get params() { return cartViewParams; }
+  get uiEvents()   { return cartViewUiEvents;   }
+  get uiElements() { return cartViewUiElements; }
 
   // ══════════════════════════════════════════════════════════════════
-  // PAS DE get uiEvents() — D48 (AUTO-UI-EVENT-DISCOVERY)
-  //
-  // Le framework introspecte TUIMap et découvre les handlers par convention :
+  // `get uiEvents()` expose le contrat (value-first, ADR-0024) — ce
+  // N'EST PAS la map manuelle nom→handler que D48 supprimait à l'origine.
+  // Le framework introspecte `TUIContract` et découvre les handlers par
+  // convention :
   //   clé 'increaseQtyButton' + event 'click'
   //   → cherche méthode on${Capitalize<key>}${Capitalize<event>}
   //   → onIncreaseQtyButtonClick
@@ -645,7 +667,7 @@ class CartView extends View<TCartViewCapabilities> {
   }
 
   // ────────────────────────────────────────────────────────────────────
-  // Handlers auto-dérivés depuis TUIMap (D48)
+  // Handlers auto-dérivés depuis `uiEvents` (D48, amendé ADR-0042)
   // Noms conventionnels : on${Capitalize<key>}${Capitalize<event>}
   // Le framework vérifie leur existence au bootstrap
   // ────────────────────────────────────────────────────────────────────
@@ -708,21 +730,27 @@ items.forEach(item => {
   item.el.addEventListener('click', () => this.onRemove(item.id));
 });
 
-// ❌ OBSOLÈTE — get uiEvents() manuel (avant D48)
-get uiEvents() {
-  return {
-    'click @ui.removeButton': 'onRemoveButtonClick',
-  } as const;
+// ❌ OBSOLÈTE — mapping manuel nom→handler (pré-D48, jamais réintroduit)
+class LegacyView {
+  getUIEvents() {
+    return {
+      'click @ui.removeButton': 'onRemoveButtonClick',
+    } as const;
+  }
 }
-// Problème : mapping manuel redondant avec TUIMap, source de désynchronisation.
+// Problème : mapping manuel redondant avec la déclaration UI, source de
+// désynchronisation. C'est CE pattern que D48 a supprimé — pas `get uiEvents()`
+// en tant que tel, qui a été réintroduit par ADR-0042 avec un sens différent
+// (voir encadré « Terminologie » en tête de §6.4).
 
-// ✅ CORRECT — D48 : TUIMap déclare tout, le framework câble automatiquement
-type TCartViewUI = TUIMap<{
-  removeButton: { el: HTMLButtonElement; event: ['click'] };
-  //                                             ^^^^^^^^^
+// ✅ CORRECT — D48 (amendé ADR-0042) : `get uiEvents()` expose le TUIContract,
+// le framework câble automatiquement les handlers depuis cette déclaration
+const cartViewUiEvents = {
+  removeButton: ui<HTMLButtonElement>()(["click"]),
+  //                                      ^^^^^^^
   // Le framework dérive : onRemoveButtonClick(event: MouseEvent)
   // et attache via délégation sur this.el + closest(@ui.removeButton)
-}>;
+} satisfies TUIContract;
 ```
 
 ### 6.5 Anti-pattern : muter les données pour filtrer/trier
