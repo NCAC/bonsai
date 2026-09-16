@@ -1,7 +1,7 @@
 /**
  * @bonsai/view - Version 0.0.1
  * Bundled by Bonsai Build System
- * Date: 2026-05-20T12:01:54.307Z
+ * Date: 2026-09-16T10:43:19.657Z
  */
 import { Radio } from '@bonsai/event';
 
