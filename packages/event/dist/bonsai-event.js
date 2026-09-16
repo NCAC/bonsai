@@ -1,7 +1,7 @@
 /**
  * @bonsai/event - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-04-29T13:26:10.202Z
+ * Date: 2026-05-20T12:01:46.177Z
  */
 import { RXJS } from '@bonsai/rxjs';
 import { DuplicateHandlerError, NoHandlerError, ListenerError } from '@bonsai/error';

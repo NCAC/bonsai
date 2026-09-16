@@ -14400,6 +14400,15 @@ class BonsaiError extends Error {
         this.name = "BonsaiError";
     }
 }
+/**
+ * `onXxxEntityUpdated()` handler a throw — state conservé, notification continue.
+ */
+class BroadcastError extends BonsaiError {
+    constructor() {
+        super(...arguments);
+        this.name = "BroadcastError";
+    }
+}
 // ═══════════════════════════════════════════════════════════════
 // Channel Layer (Communication)
 // ═══════════════════════════════════════════════════════════════
@@ -14428,6 +14437,34 @@ class DuplicateHandlerError extends BonsaiError {
     constructor() {
         super(...arguments);
         this.name = "DuplicateHandlerError";
+    }
+}
+
+/**
+ * Fonctions de validation du framework Bonsai.
+ *
+ * - `invariant()` : assertion runtime, strippable en prod via `__DEV__`
+ * - `hardInvariant()` : assertion NON-strippable — erreurs structurelles fatales
+ * - `warning()` : log conditionnel `__DEV__` only, ne throw jamais
+ *
+ * @see ADR-0004 — Validation Modes
+ */
+/**
+ * Assertion NON-strippable — reste en production.
+ *
+ * Utiliser pour les erreurs structurelles fatales détectées au bootstrap
+ * (namespace dupliqué I21, handler Command dupliqué I10, etc.).
+ * Un `hardInvariant` qui échoue signifie que le framework est dans un
+ * état incohérent — il DOIT throw, même en production.
+ *
+ * @param condition - Si `false`, throw une `BonsaiError`
+ * @param message - Message d'erreur descriptif
+ * @param invariantId - Identifiant de l'invariant violé
+ * @param component - Namespace ou nom du composant concerné (optionnel)
+ */
+function hardInvariant(condition, message, invariantId = "", component = "") {
+    if (!condition) {
+        throw new BonsaiError(message, invariantId, component);
     }
 }
 
@@ -14843,12 +14880,21 @@ function assertValidNamespace(ns) {
  *         typés par `TDef` — clé = `keyof TDef[lane]`, jamais `string` libre
  *         (ADR-0040)
  *   I79 — `Feature.request()` accepte uniquement un `TChannelToken` typé ;
- *         `static readonly listens`/`channels` portent ces tokens pour
- *         déclaration au bootstrap (ADR-0040)
+ *         `abstract get listens()`/`abstract get queries()` portent ces tokens
+ *         comme déclarations instance (ADR-0040, amendé ADR-0046 — I93)
+ *   I93 — `listens` et `queries` sont des `abstract get` instance sur Feature
+ *         (ADR-0046 — TS2515 si absent sur une classe concrète)
+ *   I94 — Le constructeur de Feature est inerte : assertValidNamespace + #namespace
+ *         uniquement. Aucun side-effect Radio/Entity.
+ *   I96 — Handlers Entity `on<Key>EntityUpdated`/`onAnyEntityUpdated` auto-
+ *         découverts sur la Feature (même mécanisme que I48), dispatchés par
+ *         ordre alphabétique des `changedKeys` puis catch-all. Clé inconnue
+ *         → erreur bootstrap. Handler qui throw → isolé (BroadcastError,
+ *         ADR-0002), notification suivante non interrompue (ADR-0028 strate 1a)
  *
  * @packageDocumentation
  */
-var _Feature_instances, _Feature_namespace, _Feature_entity, _Feature_channel, _Feature_bootstrapped, _Feature_registerCommandHandlers, _Feature_registerRequestRepliers, _Feature_registerEventListeners;
+var _Feature_instances, _Feature_namespace, _Feature_entity, _Feature_channel, _Feature_bootstrapped, _Feature_registerCommandHandlers, _Feature_registerRequestRepliers, _Feature_registerEventListeners, _Feature_registerEntityHandlers, _Feature_dispatchEntityEvent;
 // ─── Feature abstract class ──────────────────────────────────────────────────
 /**
  * Feature — unité métier paramétrée par sa classe Entity, son contrat Channel
@@ -14923,6 +14969,7 @@ class Feature {
         __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerCommandHandlers).call(this);
         __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerRequestRepliers).call(this);
         __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerEventListeners).call(this);
+        __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerEntityHandlers).call(this);
         // Lifecycle
         this.onInit();
     }
@@ -14977,7 +15024,7 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
         }
     }
 }, _Feature_registerEventListeners = function _Feature_registerEventListeners() {
-    const listenTokens = this.constructor.listens;
+    const listenTokens = this.listens;
     if (listenTokens.length === 0)
         return;
     const proto = Object.getPrototypeOf(this);
@@ -15001,41 +15048,45 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
             }
         }
     }
+}, _Feature_registerEntityHandlers = function _Feature_registerEntityHandlers() {
+    const proto = Object.getPrototypeOf(this);
+    const methods = Object.getOwnPropertyNames(proto);
+    const stateKeys = new Set(Object.keys(__classPrivateFieldGet(this, _Feature_entity, "f").state));
+    for (const method of methods) {
+        const match = method.match(/^on([A-Z][a-zA-Z]*)EntityUpdated$/);
+        if (!match || match[1] === "Any")
+            continue;
+        const key = match[1][0].toLowerCase() + match[1].slice(1);
+        hardInvariant(stateKeys.has(key), `Feature "${__classPrivateFieldGet(this, _Feature_namespace, "f")}" declares entity handler "${method}" for unknown key "${key}"`, "I96", __classPrivateFieldGet(this, _Feature_namespace, "f"));
+    }
+    __classPrivateFieldGet(this, _Feature_entity, "f").onAnyEntityUpdated((event) => {
+        __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_dispatchEntityEvent).call(this, event);
+    });
+}, _Feature_dispatchEntityEvent = function _Feature_dispatchEntityEvent(event) {
+    const self = this;
+    for (const key of [...event.changedKeys].sort()) {
+        const handlerName = `on${key[0].toUpperCase()}${key.slice(1)}EntityUpdated`;
+        if (typeof self[handlerName] !== "function")
+            continue;
+        const keyPatches = event.patches.filter((p) => String(p.path[0]) === key);
+        const prev = event.previousState[key];
+        const next = event.nextState[key];
+        try {
+            self[handlerName](prev, next, keyPatches);
+        }
+        catch (error) {
+            console.error(new BroadcastError(`Entity handler "${handlerName}" threw for intent "${event.intent}"`, "ADR-0002", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
+        }
+    }
+    if (typeof self["onAnyEntityUpdated"] === "function") {
+        try {
+            self["onAnyEntityUpdated"](event);
+        }
+        catch (error) {
+            console.error(new BroadcastError(`Entity handler "onAnyEntityUpdated" threw for intent "${event.intent}"`, "ADR-0002", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
+        }
+    }
 };
-/**
- * Tokens des Channels externes écoutés par cette Feature (C3 — I2, ADR-0040).
- *
- * **Pourquoi `static` — deux raisons distinctes selon la propriété :**
- *
- * • `channel` (token propre, ADR-0040 — I73) — porteur de TYPE consommé sans
- *   instance. Une View ou Feature externe importe la classe uniquement pour
- *   son token (`CartFeature.channel`) afin de typer ses appels `trigger()` ou
- *   `request()`. Un token d'instance obligerait les consommateurs à tenir une
- *   référence à la Feature, violant la topologie du flux (I1, I4, I12).
- *   Ce token n'est pas déclaré sur la classe abstraite — chaque Feature concrète
- *   le déclare dans son fichier `.feature.ts` (I73, I74).
- *
- * • `listens` / `queries` — invariants de classe, identiques pour toute instance
- *   (I22 : une seule par namespace). Lus par `Application.start()` AVANT
- *   instanciation pour valider les dépendances croisées et câbler les
- *   listeners/repliers au bootstrap.
- *
- * **Limitation TypeScript** — `abstract static` n'existe pas.
- * La présence de ces propriétés ne peut pas être imposée compile-time aux
- * sous-classes. Filets de sécurité : `TFeatureClass` (type constructeur),
- * validation runtime dans `Application.start()`, tests de type (`tests/types/`).
- */
-Feature.listens = [];
-/**
- * Tokens des Channels externes interrogés par cette Feature (C5 — I17, ADR-0040 — supporte I79).
- *
- * **Pourquoi `static` :** identique à `listens` — invariant de classe lu
- * avant instanciation pour validation des dépendances croisées.
- *
- * **Limitation TypeScript** — `abstract static` n'existe pas.
- * Voir commentaire de `listens` ci-dessus.
- */
-Feature.queries = [];
 
 /**
  * @bonsai/view — View base class (ADR-0042)
@@ -15618,11 +15669,13 @@ _Foundation_body = new WeakMap(), _Foundation_html = new WeakMap(), _Foundation_
  *
  * Strate 0 (refondu ADR-0039) — Capacités :
  *   - constructor({ foundation, features }) — déclare le manifest applicatif
- *   - start() — bootstrap en 4 phases simplifiées :
- *       Phase 0: Validation runtime du manifest (filet ADR-0039)
+ *   - start() — bootstrap en phases réordonnées (ADR-0046) :
+ *       Phase 0a: Validation format namespace (assertValidNamespace)
+ *       Phase 0b: Instanciation pure des Features (ctor inerte — I94) + sentinel
+ *       Phase 0c: Lecture instance.listens/queries — validation références croisées (I70)
  *       Phase 1: Channels (crée les channels de chaque Feature)
  *       Phase 2: Entities (instanciées par les Features)
- *       Phase 3: Features (new FeatureClass(ns), bootstrap, onInit)
+ *       Phase 3: Features (bootstrap() + onInit() sur les instances Phase 0b)
  *       Phase 4: Foundation (composers → views, attach)
  *
  * Invariants :
@@ -15633,9 +15686,11 @@ _Foundation_body = new WeakMap(), _Foundation_html = new WeakMap(), _Foundation_
  *   I56  — onInit() de chaque Feature appelé avant la création de la Foundation
  *   I68  — Le namespace est porté par le manifest, pas par un static (ADR-0039)
  *   I69  — Le manifest est l'unique source de vérité de l'identité (ADR-0039)
- *   I70  — Toute référence à un namespace externe DOIT être validée
- *          contre le manifest (ADR-0039)
+ *   I70  — Toute référence à un namespace externe DOIT être validée contre
+ *          le manifest — lue depuis instance.listens/queries (amendé ADR-0046)
  *   I71  — `RESERVED_NAMESPACES` est une constante framework (ADR-0039)
+ *   I94  — Le constructeur de Feature est inerte : sentinel Phase 0b détecte
+ *          tout side-effect Radio inattendu (ADR-0046)
  *
  * Strate 0 simplifications :
  *   - Pas de stop()
@@ -15660,16 +15715,16 @@ class Application {
     }
     // ─── Public API ────────────────────────────────────────────────────────
     /**
-     * Bootstrap en 4 phases simplifiées (strate 0).
+     * Bootstrap en phases réordonnées (ADR-0046 — M1).
      * Ne peut être appelé qu'une seule fois.
      *
      * Phases :
-     *   Phase 0 — Validation runtime du manifest (filet ADR-0039) :
-     *             format camelCase, mots réservés, références `static channels`.
-     *   Phase 1 — Channels  : `Radio.channel(namespace)` pour chaque Feature
-     *   Phase 2 — Entities  : (créées implicitement par Feature.bootstrap)
-     *   Phase 3 — Features  : `new FeatureClass(namespace)` + `bootstrap()` (I56)
-     *   Phase 4 — Foundation: `Foundation.attach()` qui orchestre Composers → Views
+     *   Phase 0a — Validation format namespace (assertValidNamespace + I73/I22)
+     *   Phase 0b — Instanciation pure (ctor inerte I94) + sentinel Radio
+     *   Phase 0c — Lecture instance.listens/queries — validation références (I70)
+     *   Phase 1  — Channels  : `Radio.channel(namespace)` pour chaque Feature
+     *   Phase 3  — Features  : `bootstrap()` sur les instances de Phase 0b (I56)
+     *   Phase 4  — Foundation: `Foundation.attach()` (Composers → Views)
      *
      * @throws si appelée deux fois (strate 0 : pas de re-bootstrap)
      * @throws `BonsaiNamespaceError` si le manifest viole les invariants (filet
@@ -15685,20 +15740,46 @@ class Application {
             throw new Error("[Bonsai Application] Cannot start() — no Foundation provided. " +
                 "Pass { foundation: MyFoundation } to the Application constructor (I33).");
         }
-        // ── Phase 0 — Validation runtime du manifest (ADR-0039 — I70/I71) ───
+        // ── Phase 0a — Validation format + channel (ADR-0039 — I70/I71/I73) ───
         __classPrivateFieldGet(this, _Application_instances, "m", _Application_validateManifest).call(this);
         __classPrivateFieldSet(this, _Application_started, true, "f");
         const entries = Object.entries(__classPrivateFieldGet(this, _Application_manifest, "f"));
+        // ── Phase 0b — Instanciation pure + sentinel I94 ─────────────────────────
+        // Le ctor de Feature est inerte (I94) : assertValidNamespace + #namespace.
+        // Sentinel : aucun Channel ne doit être créé/supprimé dans Radio pendant le new.
+        for (const [namespace, FeatureClass] of entries) {
+            const nssBefore = Radio.me().getChannelNames();
+            const instance = new FeatureClass(namespace);
+            const nssAfter = Radio.me().getChannelNames();
+            if (nssBefore.length !== nssAfter.length) {
+                throw new Error(`[Bonsai Application] Feature "${namespace}" constructor is not inert —` +
+                    ` Radio was mutated during new ${FeatureClass.name}("${namespace}").` +
+                    ` Move all Radio/Entity calls out of the constructor (I94 — ADR-0046).`);
+            }
+            __classPrivateFieldGet(this, _Application_featureInstances, "f").push(instance);
+        }
+        // ── Phase 0c — Validation références croisées via instance (I70 amendé) ───
+        // listens + queries lus depuis les instances (abstract get — I93).
+        // Exécuté AVANT Phase 1 (création des Channels) — aucun side-effect Radio.
+        const known = new Set(entries.map(([ns]) => ns));
+        for (let i = 0; i < entries.length; i++) {
+            const [ownNs] = entries[i];
+            const instance = __classPrivateFieldGet(this, _Application_featureInstances, "f")[i];
+            const refs = [...instance.listens, ...instance.queries].map((t) => t.namespace);
+            for (const ref of refs) {
+                if (!known.has(ref)) {
+                    throw new BonsaiNamespaceError("NAMESPACE_UNKNOWN_REFERENCE", `Feature "${ownNs}" declares unknown channel "${ref}". ` +
+                        `Known namespaces: ${[...known].join(", ")}`);
+                }
+            }
+        }
         // Phase 1: Channels — crée le channel de chaque Feature dans Radio
         for (const [namespace] of entries) {
             Radio.me().channel(namespace);
         }
-        // Phase 2: Entities — créées par chaque Feature dans bootstrap()
-        // Phase 3: Features — instancie avec le namespace du manifest, bootstrap
-        // (auto-discovery handlers I48), appelle onInit (I56)
-        for (const [namespace, FeatureClass] of entries) {
-            const instance = new FeatureClass(namespace);
-            __classPrivateFieldGet(this, _Application_featureInstances, "f").push(instance);
+        // Phase 3: Features — bootstrap sur les instances de Phase 0b
+        // (auto-discovery handlers I48, entity, onInit I56)
+        for (const instance of __classPrivateFieldGet(this, _Application_featureInstances, "f")) {
             instance.bootstrap();
         }
         // Phase 4: Views — Foundation → Composers → Views
@@ -15738,21 +15819,6 @@ _Application_manifest = new WeakMap(), _Application_started = new WeakMap(), _Ap
                 `channel.namespace="${token.namespace}" — must match the manifest ` +
                 `key (I22, I73). The channel token namespace and the manifest key ` +
                 `are the authoritative identity of the Feature.`);
-        }
-    }
-    // I70 — cohérence des références croisées via `static listens` et `static queries`
-    const known = new Set(namespaces);
-    for (const [ownNs, FeatureClass] of Object.entries(__classPrivateFieldGet(this, _Application_manifest, "f"))) {
-        const cls = FeatureClass;
-        const refs = [
-            ...(cls.listens ?? []),
-            ...(cls.queries ?? [])
-        ].map((t) => t.namespace);
-        for (const ref of refs) {
-            if (!known.has(ref)) {
-                throw new BonsaiNamespaceError("NAMESPACE_UNKNOWN_REFERENCE", `Feature "${ownNs}" declares unknown channel "${ref}". ` +
-                    `Known namespaces: ${namespaces.join(", ")}`);
-            }
         }
     }
 };

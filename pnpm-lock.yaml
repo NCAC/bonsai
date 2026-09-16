@@ -20,6 +20,9 @@ importers:
       '@bonsai/entity':
         specifier: workspace:^
         version: link:packages/entity
+      '@bonsai/error':
+        specifier: workspace:^
+        version: link:packages/error
       '@bonsai/event':
         specifier: workspace:^
         version: link:packages/event
@@ -210,6 +213,9 @@ importers:
 
   packages/entity:
     dependencies:
+      '@bonsai/error':
+        specifier: workspace:^
+        version: link:../error
       '@bonsai/immer':
         specifier: workspace:^
         version: link:../immer
@@ -237,6 +243,9 @@ importers:
       '@bonsai/entity':
         specifier: workspace:^
         version: link:../entity
+      '@bonsai/error':
+        specifier: workspace:^
+        version: link:../error
       '@bonsai/event':
         specifier: workspace:^
         version: link:../event

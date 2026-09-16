@@ -7,8 +7,14 @@
     "name": "NCAC",
     "email": "dev.ncac@gmail.com"
   },
-  "main": "./dist/valibot.js",
+  "main": "./src/valibot.ts",
   "types": "./src/valibot.ts",
+  "exports": {
+    ".": {
+      "types": "./src/valibot.ts",
+      "default": "./src/valibot.ts"
+    }
+  },
   "src": "./src/valibot.ts",
   "namespace": "Valibot",
   "bonsaiUpstream": "valibot"

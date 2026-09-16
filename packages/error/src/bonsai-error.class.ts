@@ -34,6 +34,14 @@ export class MutationError extends BonsaiError {
   override readonly name = "MutationError";
 }
 
+/**
+ * `mutate()` appelé pendant un cycle de notification alors que la profondeur
+ * de ré-entrance dépasse `maxEntityNotificationDepth` (ADR-0028 strate 1a).
+ */
+export class EntityReentrancyError extends BonsaiError {
+  override readonly name = "EntityReentrancyError";
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Feature Layer (Logic)
 // ═══════════════════════════════════════════════════════════════

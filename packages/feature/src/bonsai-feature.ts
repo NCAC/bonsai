@@ -33,19 +33,33 @@
  *         typés par `TDef` — clé = `keyof TDef[lane]`, jamais `string` libre
  *         (ADR-0040)
  *   I79 — `Feature.request()` accepte uniquement un `TChannelToken` typé ;
- *         `static readonly listens`/`channels` portent ces tokens pour
- *         déclaration au bootstrap (ADR-0040)
+ *         `abstract get listens()`/`abstract get queries()` portent ces tokens
+ *         comme déclarations instance (ADR-0040, amendé ADR-0046 — I93)
+ *   I93 — `listens` et `queries` sont des `abstract get` instance sur Feature
+ *         (ADR-0046 — TS2515 si absent sur une classe concrète)
+ *   I94 — Le constructeur de Feature est inerte : assertValidNamespace + #namespace
+ *         uniquement. Aucun side-effect Radio/Entity.
+ *   I96 — Handlers Entity `on<Key>EntityUpdated`/`onAnyEntityUpdated` auto-
+ *         découverts sur la Feature (même mécanisme que I48), dispatchés par
+ *         ordre alphabétique des `changedKeys` puis catch-all. Clé inconnue
+ *         → erreur bootstrap. Handler qui throw → isolé (BroadcastError,
+ *         ADR-0002), notification suivante non interrompue (ADR-0028 strate 1a)
  *
  * @packageDocumentation
  */
 
-import { Entity, type TJsonSerializable } from "@bonsai/entity";
+import {
+  Entity,
+  type TEntityEvent,
+  type TJsonSerializable
+} from "@bonsai/entity";
 import {
   Radio,
   type Channel,
   type TChannelDefinition,
   type TChannelToken
 } from "@bonsai/event";
+import { BroadcastError, hardInvariant } from "@bonsai/error";
 import { assertValidNamespace } from "./types";
 
 // ─── Re-exports — surface publique du package ───────────────────────────────
@@ -78,7 +92,14 @@ export type {
   TRequestResultFor,
   // Channel callbacks (symétrie Contract/Callbacks — I88)
   TChannelHandlerName,
-  TChannelCallbacks
+  TChannelCallbacks,
+  // Feature callbacks (ADR-0046 — M2 — symétrie I88 portée à Feature)
+  TCommandCallbacks,
+  TRequestCallbacks,
+  TListenCallbacks,
+  TFeatureCallbacks,
+  // Feature class constraint (ADR-0046 — M3 — I95)
+  TStrictFeatureClass
 } from "./types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -131,46 +152,26 @@ export abstract class Feature<
   TSelfNS extends string = string
 > {
   /**
-   * Tokens des Channels externes écoutés par cette Feature (C3 — I2, ADR-0040).
+   * Tokens des Channels externes écoutés par cette Feature (C3 — I2, ADR-0040,
+   * amendé ADR-0046 — I93).
    *
-   * **Pourquoi `static` — deux raisons distinctes selon la propriété :**
+   * Déclaration **instance** (`abstract get`) depuis ADR-0046 — symétrie avec
+   * les `abstract get` de View (ADR-0042). Chaque Feature concrète DOIT
+   * implémenter ce getter (TS2515 sinon).
    *
-   * • `channel` (token propre, ADR-0040 — I73) — porteur de TYPE consommé sans
-   *   instance. Une View ou Feature externe importe la classe uniquement pour
-   *   son token (`CartFeature.channel`) afin de typer ses appels `trigger()` ou
-   *   `request()`. Un token d'instance obligerait les consommateurs à tenir une
-   *   référence à la Feature, violant la topologie du flux (I1, I4, I12).
-   *   Ce token n'est pas déclaré sur la classe abstraite — chaque Feature concrète
-   *   le déclare dans son fichier `.feature.ts` (I73, I74).
-   *
-   * • `listens` / `queries` — invariants de classe, identiques pour toute instance
-   *   (I22 : une seule par namespace). Lus par `Application.start()` AVANT
-   *   instanciation pour valider les dépendances croisées et câbler les
-   *   listeners/repliers au bootstrap.
-   *
-   * **Limitation TypeScript** — `abstract static` n'existe pas.
-   * La présence de ces propriétés ne peut pas être imposée compile-time aux
-   * sous-classes. Filets de sécurité : `TFeatureClass` (type constructeur),
-   * validation runtime dans `Application.start()`, tests de type (`tests/types/`).
+   * Les tokens retournés sont lus par `Application.start()` en Phase 0c,
+   * APRÈS instanciation pure (ctor inerte — I94) et AVANT tout side-effect
+   * Radio/Entity, pour valider les dépendances croisées (I70 amendé).
    */
-  static readonly listens: readonly TChannelToken<
-    TChannelDefinition,
-    string
-  >[] = [];
+  abstract get listens(): readonly TChannelToken<TChannelDefinition, string>[];
 
   /**
-   * Tokens des Channels externes interrogés par cette Feature (C5 — I17, ADR-0040 — supporte I79).
+   * Tokens des Channels externes interrogés par cette Feature (C5 — I17,
+   * ADR-0040, amendé ADR-0046 — I93).
    *
-   * **Pourquoi `static` :** identique à `listens` — invariant de classe lu
-   * avant instanciation pour validation des dépendances croisées.
-   *
-   * **Limitation TypeScript** — `abstract static` n'existe pas.
-   * Voir commentaire de `listens` ci-dessus.
+   * Déclaration **instance** (`abstract get`) depuis ADR-0046 — voir `listens`.
    */
-  static readonly queries: readonly TChannelToken<
-    TChannelDefinition,
-    string
-  >[] = [];
+  abstract get queries(): readonly TChannelToken<TChannelDefinition, string>[];
 
   readonly #namespace: TSelfNS;
   #entity!: TEntity;
@@ -243,6 +244,7 @@ export abstract class Feature<
     this.#registerCommandHandlers();
     this.#registerRequestRepliers();
     this.#registerEventListeners();
+    this.#registerEntityHandlers();
 
     // Lifecycle
     this.onInit();
@@ -339,16 +341,16 @@ export abstract class Feature<
 
   /**
    * Découvre les méthodes `on{Channel}{EventName}Event` et les enregistre
-   * comme listeners sur les Channels déclarés via `static listens` (C3, I2,
-   * I48, ADR-0040).
+   * comme listeners sur les Channels déclarés via `get listens()` (C3, I2,
+   * I48, ADR-0040, amendé ADR-0046 — I93).
    *
-   * Convention : `onCartItemAddedEvent` avec `static listens = [CartFeature.channel]`
+   * Convention : `onCartItemAddedEvent` avec `get listens() { return [CartFeature.channel]; }`
    * → écoute "itemAdded" sur le Channel "cart"
    *
    * Le pattern est : on + ChannelName(PascalCase) + EventName(PascalCase) + Event
    */
   #registerEventListeners(): void {
-    const listenTokens = (this.constructor as typeof Feature).listens;
+    const listenTokens = this.listens;
     if (listenTokens.length === 0) return;
 
     const proto = Object.getPrototypeOf(this);
@@ -376,6 +378,92 @@ export abstract class Feature<
             );
           });
         }
+      }
+    }
+  }
+
+  /**
+   * Découvre les méthodes `on{Key}EntityUpdated` et s'abonne une fois à
+   * `entity.onAnyEntityUpdated()` pour les dispatcher (I96, ADR-0028 strate 1a).
+   *
+   * Convention : `onItemsEntityUpdated` avec une clé `items` sur le state
+   * de l'Entity → appelé à chaque mutation qui change `items`.
+   * `onAnyEntityUpdated` (catch-all) est câblé sans vérification de clé.
+   *
+   * Filet runtime : une méthode `on<Key>EntityUpdated` dont `<Key>` ne
+   * correspond à aucune clé du state de l'Entity → erreur bootstrap.
+   */
+  #registerEntityHandlers(): void {
+    const proto = Object.getPrototypeOf(this);
+    const methods = Object.getOwnPropertyNames(proto) as string[];
+    const stateKeys = new Set(Object.keys(this.#entity.state as object));
+
+    for (const method of methods) {
+      const match = method.match(/^on([A-Z][a-zA-Z]*)EntityUpdated$/);
+      if (!match || match[1] === "Any") continue;
+
+      const key = match[1][0].toLowerCase() + match[1].slice(1);
+      hardInvariant(
+        stateKeys.has(key),
+        `Feature "${this.#namespace}" declares entity handler "${method}" for unknown key "${key}"`,
+        "I96",
+        this.#namespace
+      );
+    }
+
+    this.#entity.onAnyEntityUpdated((event: TEntityEvent) => {
+      this.#dispatchEntityEvent(event);
+    });
+  }
+
+  /**
+   * Route un `TEntityEvent` vers les handlers per-key (ordre alphabétique
+   * des `changedKeys`) puis le catch-all, s'ils existent. Chaque appel est
+   * isolé : un throw devient une `BroadcastError` loggée, la notification
+   * continue (ADR-0002, I96).
+   */
+  #dispatchEntityEvent(event: TEntityEvent): void {
+    const self = this as unknown as Record<
+      string,
+      (...args: unknown[]) => void
+    >;
+
+    for (const key of [...event.changedKeys].sort()) {
+      const handlerName = `on${key[0].toUpperCase()}${key.slice(1)}EntityUpdated`;
+      if (typeof self[handlerName] !== "function") continue;
+
+      const keyPatches = event.patches.filter(
+        (p) => String(p.path[0]) === key
+      );
+      const prev = (event.previousState as Record<string, unknown>)[key];
+      const next = (event.nextState as Record<string, unknown>)[key];
+
+      try {
+        self[handlerName](prev, next, keyPatches);
+      } catch (error) {
+        console.error(
+          new BroadcastError(
+            `Entity handler "${handlerName}" threw for intent "${event.intent}"`,
+            "ADR-0002",
+            this.#namespace
+          ),
+          error
+        );
+      }
+    }
+
+    if (typeof self["onAnyEntityUpdated"] === "function") {
+      try {
+        self["onAnyEntityUpdated"](event);
+      } catch (error) {
+        console.error(
+          new BroadcastError(
+            `Entity handler "onAnyEntityUpdated" threw for intent "${event.intent}"`,
+            "ADR-0002",
+            this.#namespace
+          ),
+          error
+        );
       }
     }
   }

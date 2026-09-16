@@ -4,17 +4,20 @@
  * Invariants prouvés :
  *   I6   — Seule une Feature peut modifier son Entity
  *   I46  — TStructure contraint à TJsonSerializable
- *   I51  — Notification catch-all onAnyEntityUpdated (strate 0 = catch-all uniquement)
+ *   I51  — Notification catch-all onAnyEntityUpdated
  *   I52  — Entity peut exposer des méthodes query (lecture seule, pures)
  *
- * Sémantiques runtime ADR-0001 (strate 0) :
- *   - mutate(intent, recipe) via Immer produce (pas produceWithPatches)
- *   - changedKeys dérivées par comparaison shallow avant/après
- *   - Détection no-op : si state inchangé → aucune notification
+ * Sémantiques runtime ADR-0001 :
+ *   - mutate(intent, recipe) via Immer produceWithPatches (I97)
+ *   - changedKeys dérivées des patches (1er segment de path)
+ *   - Détection no-op : aucun patch produit → aucune notification
  *   - initialState getter (D17)
  *   - onAnyEntityUpdated(event) avec intent, changedKeys
  *
- * NOTE : produceWithPatches, per-key handlers, ré-entrance FIFO = strate 1.
+ * NOTE : ce fichier couvre le socle catch-all hérité de la strate 0 — voir
+ * tests/unit/strate-1/entity.patches.test.ts (patches/inversePatches,
+ * MutationError) et tests/unit/strate-1/entity.reentrance.test.ts (I98)
+ * pour la couverture strate 1a complète.
  */
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";

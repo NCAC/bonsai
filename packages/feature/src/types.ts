@@ -101,13 +101,43 @@ export type ValidatedManifest<M> = {
  * } satisfies StrictManifest<AppManifest>;
  * ```
  */
+
+/**
+ * Contrainte compile-time d'une classe Feature enregistrable dans un manifest.
+ *
+ * Exige (ADR-0046 — M3, I95 reformulé) :
+ *   - Un constructeur `(namespace: TNS) => Feature<…, TDef, TNS>` — force
+ *     `TSelfNS === TNS` (I72).
+ *   - Un membre statique `channel: TChannelToken<TDef, TNS>` — présence ET
+ *     alignement `channel.namespace === TNS` au compile-time (I73/I74/I22).
+ *
+ * **La couverture des handlers n'est PAS imposée ici** (ADR-0046 §Décision) :
+ * un manifest type-only à valeurs `unknown` (ADR-0039) ne permet pas d'extraire
+ * `TDef` par clé, donc aucune inférence de handlers n'est possible au point
+ * manifest. La couverture est garantie par I92 (`implements TFeatureCallbacks`
+ * sur chaque classe — symétrie View/ADR-0042) + filet runtime auto-discovery.
+ *
+ * @example
+ * ```ts
+ * // ✅ CartFeature satisfait TStrictFeatureClass<"cart">
+ * // ❌ Classe sans static channel → erreur compile
+ * // ❌ channel.namespace ≠ "cart" → erreur compile
+ * ```
+ */
+export type TStrictFeatureClass<
+  TNS extends string,
+  TDef extends TChannelDefinition = TChannelDefinition
+> = (new (
+  namespace: TNS
+) => Feature<Entity<TJsonSerializable>, TDef, TNS>) & {
+  readonly channel: TChannelToken<TDef, TNS>;
+};
+
 export type StrictManifest<M> = {
   [K in keyof M & string]: K extends CamelCaseNamespace<K>
     ? K extends ReservedNamespace
       ? never
-      : new (
-          namespace: K
-        ) => Feature<Entity<TJsonSerializable>, TChannelDefinition, K>
+      : TStrictFeatureClass<K, TChannelDefinition>
     : never;
 };
 
@@ -372,6 +402,93 @@ export type TChannelCallbacks<F extends TFeatureContract> = UnionToIntersection<
     };
   }[keyof F & string]
 >;
+
+// ─── Feature callbacks (ADR-0046 — M2 — symétrie I88 portée à Feature) ──────
+
+/**
+ * Handlers command REQUIS pour une Feature concrète.
+ *
+ * Convention D48 command : `on{Cmd}Command` (suffixe `Command`).
+ * Pour chaque commande `K ∈ keyof TDef["commands"]`, impose la méthode
+ * `onKCommand(payload: TDef["commands"][K]): void`.
+ *
+ * @example
+ *   TCommandCallbacks<{ commands: { addItem: { productId: string } }; ... }>
+ *   → { onAddItemCommand(payload: { productId: string }): void }
+ */
+export type TCommandCallbacks<TDef extends TChannelDefinition> = {
+  [K in keyof TDef["commands"] & string as `on${Capitalize<K>}Command`]: (
+    payload: TDef["commands"][K]
+  ) => void;
+};
+
+/**
+ * Handlers request REQUIS pour une Feature concrète.
+ *
+ * Convention D48 request : `on{Req}Request` (suffixe `Request`).
+ * Pour chaque request `K ∈ keyof TDef["requests"]`, impose la méthode
+ * `onKRequest(params: TDef["requests"][K]["params"]): TDef["requests"][K]["result"]`.
+ */
+export type TRequestCallbacks<TDef extends TChannelDefinition> = {
+  [K in keyof TDef["requests"] & string as `on${Capitalize<K>}Request`]: (
+    params: TDef["requests"][K]["params"]
+  ) => TDef["requests"][K]["result"];
+};
+
+/**
+ * Handlers listen REQUIS pour chaque token `TListens[number]`.
+ *
+ * Convention D48 channel : `on{NS}{EventName}Event` — le préfixe namespace
+ * différencie les events de Channels distincts (anti-collision).
+ *
+ * **`UnionToIntersection` OBLIGATOIRE** (cf. POC QA-0046 §9.5 + Annexe §2 ADR-0046).
+ * Sans wrapper : la distributivité du conditionnel produit une union d'objets
+ * `{ …cart } | { …wishlist }` que TS refuse comme cible `implements` (TS2422).
+ * `UnionToIntersection` fusionne les objets en intersection, rendant le type
+ * utilisable comme target `implements`.
+ */
+export type TListenCallbacks<
+  TListens extends readonly TChannelToken<TChannelDefinition, string>[]
+> = UnionToIntersection<
+  TListens[number] extends infer Tok
+    ? Tok extends TChannelToken<infer DEF, infer NS>
+      ? {
+          [E in keyof DEF["events"] &
+            string as `on${Capitalize<NS & string>}${Capitalize<E>}Event`]: (
+            payload: DEF["events"][E]
+          ) => void;
+        }
+      : never
+    : never
+>;
+
+/**
+ * Type d'enforcement compile-time des handlers d'une Feature concrète.
+ *
+ * Symétrie Contract/Callbacks (ADR-0046 — M2, I88 élargi, I92) :
+ * `implements TFeatureCallbacks<TDef, TListens>` impose au compilateur
+ * la présence et la signature exacte de TOUS les handlers dérivés :
+ *   - `onXxxCommand`        pour chaque `K ∈ keyof TDef["commands"]`
+ *   - `onXxxRequest`        pour chaque `K ∈ keyof TDef["requests"]`
+ *   - `on{NS}{Evt}Event`    pour chaque `(token, event) ∈ TListens`
+ *
+ * Handler oublié → TS2515 ; signature fautive → TS2416.
+ *
+ * @example
+ * ```ts
+ * class CartFeature
+ *   extends Feature<CartEntity, TCartChannelDef, "cart">
+ *   implements TFeatureCallbacks<TCartChannelDef, typeof cartListens>
+ * { … }
+ * ```
+ */
+export type TFeatureCallbacks<
+  TDef extends TChannelDefinition,
+  TListens extends readonly TChannelToken<TChannelDefinition, string>[] =
+    readonly []
+> = TCommandCallbacks<TDef> &
+  TRequestCallbacks<TDef> &
+  TListenCallbacks<TListens>;
 
 // ─── Filet runtime ──────────────────────────────────────────────────────────
 

@@ -19,7 +19,7 @@
 
 import { describe, it } from "@jest/globals";
 import { Entity } from "@bonsai/entity";
-import { type TChannelDefinition } from "@bonsai/event";
+import { type TChannelDefinition, type TChannelToken } from "@bonsai/event";
 import {
   Feature,
   type StrictManifest,
@@ -37,17 +37,36 @@ class NoopEntity extends Entity<TNoopState> {
   }
 }
 
+// Ces fixtures ne prouvent que les invariants namespace d'ADR-0039 — `TChannelDef`
+// reste générique. `static channel` est désormais requis au compile-time par
+// `StrictManifest` (ADR-0046 — M3 dégradé, I95) ; `listens`/`queries` sont des
+// getters instance (M1 — I93). Couverture des handlers : hors scope de ce test
+// (cf. feature-callbacks.types.test.ts pour I92).
 class CartFeature extends Feature<NoopEntity, TChannelDefinition, "cart"> {
-  static readonly listens = [] as const;
-  static readonly queries = [] as const;
+  static readonly channel: TChannelToken<TChannelDefinition, "cart"> = {
+    namespace: "cart"
+  };
+  get listens() {
+    return [] as const;
+  }
+  get queries() {
+    return [] as const;
+  }
   protected get Entity() {
     return NoopEntity;
   }
 }
 
 class UserFeature extends Feature<NoopEntity, TChannelDefinition, "user"> {
-  static readonly listens = [] as const;
-  static readonly queries = [] as const;
+  static readonly channel: TChannelToken<TChannelDefinition, "user"> = {
+    namespace: "user"
+  };
+  get listens() {
+    return [] as const;
+  }
+  get queries() {
+    return [] as const;
+  }
   protected get Entity() {
     return NoopEntity;
   }
@@ -123,6 +142,34 @@ describe("ADR-0039 — Compile-time type enforcement", () => {
       // → violation I72, refusée par satisfies
       // @ts-expect-error
       user: CartFeature
+    } satisfies StrictManifest<AppManifest>;
+    void _features;
+  });
+
+  it("StrictManifest<M> — Feature sans `static channel` → erreur (I95, M3 ADR-0046)", () => {
+    type AppManifest = {
+      cart: unknown;
+    };
+    class NoChannelFeature extends Feature<
+      NoopEntity,
+      TChannelDefinition,
+      "cart"
+    > {
+      get listens() {
+        return [] as const;
+      }
+      get queries() {
+        return [] as const;
+      }
+      protected get Entity() {
+        return NoopEntity;
+      }
+    }
+    const _features = {
+      // Pas de `static channel` → ne satisfait pas TStrictFeatureClass<"cart">.
+      // C'est le filet compile-time M3 (avant : runtime #validateManifest I73).
+      // @ts-expect-error
+      cart: NoChannelFeature
     } satisfies StrictManifest<AppManifest>;
     void _features;
   });

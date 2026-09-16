@@ -3,14 +3,14 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "main": "./src/bonsai-composer.ts",
+  "types": "./src/bonsai-composer.ts",
   "exports": {
     ".": {
       "types": "./src/bonsai-composer.ts",
       "default": "./src/bonsai-composer.ts"
     }
   },
-  "main": "src/bonsai-composer.ts",
-  "types": "src/bonsai-composer.ts",
   "src": "./src/bonsai-composer.ts",
   "dependencies": {
     "@bonsai/view": "workspace:^"

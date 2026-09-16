@@ -40,6 +40,7 @@
   "dependencies": {
     "@bonsai/core": "workspace:^",
     "@bonsai/entity": "workspace:^",
+    "@bonsai/error": "workspace:^",
     "@bonsai/event": "workspace:^",
     "@bonsai/feature": "workspace:^",
     "@bonsai/immer": "workspace:^",

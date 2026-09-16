@@ -7,8 +7,14 @@
     "name": "NCAC",
     "email": "dev.ncac@gmail.com"
   },
-  "main": "./dist/immer.js",
+  "main": "./src/immer.ts",
   "types": "./src/immer.ts",
+  "exports": {
+    ".": {
+      "types": "./src/immer.ts",
+      "default": "./src/immer.ts"
+    }
+  },
   "src": "./src/immer.ts",
   "namespace": "Immer",
   "bonsaiUpstream": "immer",

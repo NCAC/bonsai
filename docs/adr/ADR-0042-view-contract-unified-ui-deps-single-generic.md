@@ -1,14 +1,14 @@
 # ADR-0042 : Pattern modulaire de contrat consommateur — `TFeatureContract` Feature-groupé + `TUIContract` + `TUIElements`
 
-| Champ                  | Valeur |
-| ---------------------- | ------ |
-| **Statut**             | 🔵 Tested |
-| **Date**               | 2026-05-06 |
-| **Décideurs**          | @ncac |
-| **RFC liées**          | [view.md](../rfc/4-couche-concrete/view.md), [invariants.md](../rfc/reference/invariants.md), [glossaire.md](../rfc/reference/glossaire.md) |
-| **ADR liées**          | [ADR-0041](ADR-0041-consumer-pattern-feature-as-public-unit.md) (supersédée pour les types `TConsumerDeps` / `TConsumerContract` / `TListenCallbacks`), [ADR-0040](ADR-0040-typescript-first-api-channel-definition-typed.md), [ADR-0039](ADR-0039-namespace-authority-and-uniqueness.md), [ADR-0029](ADR-0029-v1-scope-freeze.md) |
-| **Décisions amendées** | ADR-0041 — `TConsumerDeps` (lane-groupé) → `TFeatureContract` (Feature-groupé) ; `TConsumerContract<TDeps>` fusionné dans `TFeatureContract` ; `TListenCallbacks` remplacé par `TViewCallbacks` (qui couvre channel + DOM). ADR-0029 — entrée « View basic » strate 1 enrichie ; pattern modulaire `TXxxContract` ajouté en fondation strate 1+. |
-| **Invariants impactés** | I81, I82, I83 (reformulés) — I84, I85, I86, I87 (nouveaux) |
+| Champ                   | Valeur                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Statut**              | 🔵 Tested                                                                                                                                                                                                                                                                                                                                        |
+| **Date**                | 2026-05-06                                                                                                                                                                                                                                                                                                                                       |
+| **Décideurs**           | @ncac                                                                                                                                                                                                                                                                                                                                            |
+| **RFC liées**           | [view.md](../rfc/4-couche-concrete/view.md), [invariants.md](../rfc/reference/invariants.md), [glossaire.md](../rfc/reference/glossaire.md)                                                                                                                                                                                                      |
+| **ADR liées**           | [ADR-0041](ADR-0041-consumer-pattern-feature-as-public-unit.md) (supersédée pour les types `TConsumerDeps` / `TConsumerContract` / `TListenCallbacks`), [ADR-0040](ADR-0040-typescript-first-api-channel-definition-typed.md), [ADR-0039](ADR-0039-namespace-authority-and-uniqueness.md), [ADR-0029](ADR-0029-v1-scope-freeze.md)               |
+| **Décisions amendées**  | ADR-0041 — `TConsumerDeps` (lane-groupé) → `TFeatureContract` (Feature-groupé) ; `TConsumerContract<TDeps>` fusionné dans `TFeatureContract` ; `TListenCallbacks` remplacé par `TViewCallbacks` (qui couvre channel + DOM). ADR-0029 — entrée « View basic » strate 1 enrichie ; pattern modulaire `TXxxContract` ajouté en fondation strate 1+. |
+| **Invariants impactés** | I81, I82, I83 (reformulés) — I84, I85, I86, I87 (nouveaux)                                                                                                                                                                                                                                                                                       |
 
 ---
 
@@ -20,7 +20,7 @@ ADR-0041 a établi le pattern consommateur unifié pour la couche channels (`TCo
 
 ```ts
 type TMyViewDeps = {
-  listens:  [typeof CartFeature, typeof UserFeature];
+  listens: [typeof CartFeature, typeof UserFeature];
   triggers: [typeof CartFeature];
   requests: [typeof UserFeature];
 };
@@ -31,8 +31,8 @@ type TMyViewDeps = {
 ### Surface 2 — `getUI()` non typé au sous-type HTMLElement
 
 ```ts
-getUI("addBtn")  // → TProjectionNode (HTMLElement générique)
-getUI("total")   // → TProjectionNode (même type — HTMLSpanElement perdu)
+getUI("addBtn"); // → TProjectionNode (HTMLElement générique)
+getUI("total"); // → TProjectionNode (même type — HTMLSpanElement perdu)
 ```
 
 Toute opération nécessitant le sous-type (`HTMLInputElement.value`) exige un cast manuel — perte de la garantie « le type EST le contrat ».
@@ -58,22 +58,22 @@ L'ajout de l'enforcement DOM augmenterait à 3 génériques + 2 clauses `impleme
 
 ## Contraintes
 
-| #  | Contrainte | Source |
-|----|-----------|--------|
-| C1 | Le pattern doit être **modulaire** : chaque sous-contrat (Feature, UI events, UI selectors) est un module réutilisable | Q4 — chaque composant compose ses propres modules |
-| C2 | **Un seul générique** sur `View<>` — pas de `View<TDeps, TContract, TUIMap>` | Q1 — DX de première classe |
-| C3 | **Une seule clause `implements`** — `TViewCallbacks<TContract>` couvre channel + DOM | Q1 |
-| C4 | Toute interaction DOM déclarée (`events: ['click']`) DOIT avoir son handler implémenté | Q1 — la déclaration est l'engagement |
-| C5 | `events` est **obligatoire** dans une entrée UI — pas de champ optionnel | Q1 + ADR-0042 v1 |
-| C6 | `getUI(key)` retourne un `TProjectionNode<TEl>` typé au sous-type HTMLElement déclaré | « Le type EST le contrat » |
-| C7 | Les **sélecteurs CSS** ne sont **pas** dans le contrat type-level — ils vivent dans `get uiElements()` overridable par le Composer | view.md §4.2 (D34, D35) |
-| C8 | Les events DOM (`["click"]`) **sont** dans le contrat — nécessaires pour TViewCallbacks et `addEventListener` | C4 → enforcement compile-time |
-| C9 | Pour les channels, on raisonne **par Feature** (Feature-groupé), pas par lane | Q2 — `proposition.md` §B |
-| C10 | La clé d'objet d'une entrée Feature DOIT correspondre au namespace de la Feature — incohérence → erreur compile | Q4 (« absolument ») |
-| C11 | Les types `TConsumerDeps`, `TConsumerContract`, `TListenCallbacks` (ADR-0041) sont **supprimés** — pas de période de dépréciation | Q5 |
-| C12 | L'API runtime conserve les clés **flat-préfixées** : `this.trigger("cart:addItem", payload)` | I80, ADR-0040 — Channel privé, accès via clé namespacée |
-| C13 | Convention D48 channel : `on{NS}{EventName}Event` (suffixe `Event` conservé pour anti-collision avec les handlers DOM) | Q1 |
-| C14 | Convention D48 UI : `on{UIKey}{DomEvent}` (sans suffixe) | Existant |
+| #   | Contrainte                                                                                                                                                                                                             | Source                                                                |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| C1  | Le pattern doit être **modulaire** : chaque sous-contrat (Feature, UI events, UI selectors) est un module réutilisable                                                                                                 | Q4 — chaque composant compose ses propres modules                     |
+| C2  | **Un seul générique** sur `View<>` — pas de `View<TDeps, TContract, TUIMap>`                                                                                                                                           | Q1 — DX de première classe                                            |
+| C3  | **Une seule clause `implements`** — `TViewCallbacks<TContract>` couvre channel + DOM                                                                                                                                   | Q1                                                                    |
+| C4  | Toute interaction DOM déclarée (`events: ['click']`) DOIT avoir son handler implémenté                                                                                                                                 | Q1 — la déclaration est l'engagement                                  |
+| C5  | `events` est **obligatoire** dans une entrée UI — pas de champ optionnel                                                                                                                                               | Q1 + ADR-0042 v1                                                      |
+| C6  | `getUI(key)` retourne un `TProjectionNode<TEl>` typé au sous-type HTMLElement déclaré                                                                                                                                  | « Le type EST le contrat »                                            |
+| C7  | Les **sélecteurs CSS** ne sont **pas** dans le contrat type-level — ils vivent dans `get uiElements()` overridable par le Composer                                                                                     | view.md §4.2 (D34, D35)                                               |
+| C8  | Les events DOM (`["click"]`) **sont** dans le contrat — nécessaires pour TViewCallbacks et `addEventListener`                                                                                                          | C4 → enforcement compile-time                                         |
+| C9  | Pour les channels, on raisonne **par Feature** (Feature-groupé), pas par lane                                                                                                                                          | Q2 — `proposition.md` §B                                              |
+| C10 | La clé d'objet d'une entrée Feature DOIT correspondre au namespace de la Feature — incohérence → erreur compile                                                                                                        | Q4 (« absolument »)                                                   |
+| C11 | Les types `TConsumerDeps`, `TConsumerContract`, `TListenCallbacks` (ADR-0041) sont **supprimés** — pas de période de dépréciation                                                                                      | Q5                                                                    |
+| C12 | L'API runtime conserve les clés **flat-préfixées** : `this.trigger("cart:addItem", payload)`                                                                                                                           | I80, ADR-0040 — Channel privé, accès via clé namespacée               |
+| C13 | Convention D48 channel : `on{NS}{EventName}Event` (suffixe `Event` conservé pour anti-collision avec les handlers DOM)                                                                                                 | Q1                                                                    |
+| C14 | Convention D48 UI : `on{UIKey}{DomEvent}` (sans suffixe)                                                                                                                                                               | Existant                                                              |
 | C15 | **Symétrie Contract/Callbacks** : pour tout `T{Component}Contract`, un `T{Component}Callbacks` correspondant impose au compile-time les handlers `on*` dérivés du contrat. Un contrat sans son Callbacks est interdit. | Discussion architecturale — « on respecte toujours un contrat signé » |
 
 ---
@@ -112,6 +112,7 @@ class MyView
 ```
 
 **Problèmes :**
+
 - Viole C1, C2, C3, C9.
 - `TMyUIMap` (type pur) et `uiElements` (valeur) décrivent les mêmes clés sous deux formes — risque de désynchronisation.
 - Sélecteurs CSS dans le contrat type-level → viole C7 (overridability D34).
@@ -123,19 +124,19 @@ class MyView
 
 **Principe** — trois modules contractuels indépendants, composés par chaque composant selon ses capacités :
 
-| Module | Rôle | Composants concernés |
-|--------|------|----------------------|
+| Module             | Rôle                                                                             | Composants concernés     |
+| ------------------ | -------------------------------------------------------------------------------- | ------------------------ |
 | `TFeatureContract` | Interactions channel par Feature (listens / triggers / requests Feature-groupés) | View, Behavior, Composer |
-| `TUIContract` | Nœuds DOM avec type HTML + events DOM (sans sélecteurs) | View, Behavior |
-| `TUIElements<TUI>` | Map nom → sélecteur CSS (overridable D34) | View, Behavior |
+| `TUIContract`      | Nœuds DOM avec type HTML + events DOM (sans sélecteurs)                          | View, Behavior           |
+| `TUIElements<TUI>` | Map nom → sélecteur CSS (overridable D34)                                        | View, Behavior           |
 
 Chaque composant **compose son propre `TXxxContract`** :
 
 ```ts
-type TViewContract<F, U>     = { features: F; ui: U }   // F + U
-type TBehaviorContract<F, U> = { features: F; ui: U }   // F + U + spécificités strate 2
-type TComposerContract<F>    = { features: F }          // F seul (I35 : pas d'UI)
-type TFoundationContract     = {}                        // strate 0 — vide
+type TViewContract<F, U> = { features: F; ui: U }; // F + U
+type TBehaviorContract<F, U> = { features: F; ui: U }; // F + U + spécificités strate 2
+type TComposerContract<F> = { features: F }; // F seul (I35 : pas d'UI)
+type TFoundationContract = {}; // strate 0 — vide
 ```
 
 Le développeur déclare **trois valeurs** dans le header (chacune validée par `satisfies`), un alias type composé, puis attache **un seul générique** à la classe.
@@ -146,17 +147,17 @@ Le développeur déclare **trois valeurs** dans le header (chacune validée par 
 // Header — valeur Feature-groupée, type inféré par typeof
 const cartViewFeatures = {
   cart: {
-    feature:  CartFeature,                              // runtime ref — extrait channel/events/...
-    listens:  ["itemAdded", "itemRemoved"] as const,    // sans préfixe — la clé EST le namespace
-    triggers: ["addItem"]                  as const,
-    requests: []                           as const,
+    feature: CartFeature, // runtime ref — extrait channel/events/...
+    listens: ["itemAdded", "itemRemoved"] as const, // sans préfixe — la clé EST le namespace
+    triggers: ["addItem"] as const,
+    requests: [] as const
   },
   user: {
-    feature:  UserFeature,
-    listens:  ["profileUpdated"]           as const,
-    triggers: []                           as const,
-    requests: ["getProfile"]               as const,
-  },
+    feature: UserFeature,
+    listens: ["profileUpdated"] as const,
+    triggers: [] as const,
+    requests: ["getProfile"] as const
+  }
 } satisfies TFeatureContract;
 //          ↑ "invalidEvent" sur cart.listens → ❌ erreur compile
 //          ↑ cart: { feature: UserFeature } → ❌ erreur compile (clé !== namespace)
@@ -166,13 +167,14 @@ const cartViewFeatures = {
 
 ```ts
 const cartViewUiEvents = {
-  total:    ui<HTMLSpanElement>()([]),                    // C5 : non-interactif explicite
-  addBtn:   ui<HTMLButtonElement>()(["click"]),           // C4 : onAddBtnClick requis
-  qtyInput: ui<HTMLInputElement>()(["input", "change"]),  // C4 : 2 handlers requis
+  total: ui<HTMLSpanElement>()([]), // C5 : non-interactif explicite
+  addBtn: ui<HTMLButtonElement>()(["click"]), // C4 : onAddBtnClick requis
+  qtyInput: ui<HTMLInputElement>()(["input", "change"]) // C4 : 2 handlers requis
 } satisfies TUIContract;
 ```
 
 `ui<TEl>(events)` est le helper qui encode :
+
 - `TEl` (phantom `_el?`) — compile-time uniquement, pour le typage de `getUI(k).element() → TEl`
 - `events` (runtime + compile-time) — pour `addEventListener` D48 et la dérivation des handlers requis
 
@@ -182,9 +184,9 @@ Aucun sélecteur — il vit dans le getter séparé (C7).
 
 ```ts
 const cartViewUiElements = {
-  total:    ".cart-total",
-  addBtn:   "#add-btn",
-  qtyInput: ".qty-input",
+  total: ".cart-total",
+  addBtn: "#add-btn",
+  qtyInput: ".qty-input"
 } satisfies TUIElements<typeof cartViewUiEvents>;
 //          ↑ contraint les clés à matcher cartViewUiEvents — pas d'orphelin possible
 ```
@@ -229,18 +231,18 @@ class CartView
 
 ## Analyse comparative
 
-| Critère | A — 3 génériques, 2 implements, lane-groupé | B — Modulaire, 1 générique, 1 implements, Feature-groupé |
-|---------|-------------|-------------|
-| Nombre de génériques sur `View<>` | ❌ 3 | ✅ 1 |
-| Nombre de clauses `implements` | ❌ 2 | ✅ 1 |
-| Co-localisation Feature ↔ events | ❌ Mélangé par lane | ✅ Groupé par Feature |
-| Préfixe namespace dans déclarations | ❌ Répété (`"cart:itemAdded"` ×N) | ✅ Éliminé (la clé EST le namespace) |
-| Sélecteurs CSS overridables (D34) | ❌ Dans le contrat type-level | ✅ Dans `get uiElements()` séparé |
-| Handlers DOM enforcement compile-time | ⭐ Via `TUICallbacks<TUIMap>` | ✅ Via `TViewCallbacks<TVC>` unifié |
-| `getUI(key)` retourne sous-type typé | ✅ Via `TUIMap[key]['el']` | ✅ Via `ui[key]` phantom |
-| Réutilisabilité pour Composer/Behavior | ❌ `TViewContract` non décomposable | ✅ `TFeatureContract` + `TUIContract` réutilisables |
-| Strict clé/namespace `cart: { feature: UserFeature }` | ❌ N/A (pas de mapping) | ✅ Erreur compile |
-| Alignement avec C1–C14 | ❌ Viole C1, C2, C3, C7, C9 | ✅ Toutes |
+| Critère                                               | A — 3 génériques, 2 implements, lane-groupé | B — Modulaire, 1 générique, 1 implements, Feature-groupé |
+| ----------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------- |
+| Nombre de génériques sur `View<>`                     | ❌ 3                                        | ✅ 1                                                     |
+| Nombre de clauses `implements`                        | ❌ 2                                        | ✅ 1                                                     |
+| Co-localisation Feature ↔ events                      | ❌ Mélangé par lane                         | ✅ Groupé par Feature                                    |
+| Préfixe namespace dans déclarations                   | ❌ Répété (`"cart:itemAdded"` ×N)           | ✅ Éliminé (la clé EST le namespace)                     |
+| Sélecteurs CSS overridables (D34)                     | ❌ Dans le contrat type-level               | ✅ Dans `get uiElements()` séparé                        |
+| Handlers DOM enforcement compile-time                 | ⭐ Via `TUICallbacks<TUIMap>`               | ✅ Via `TViewCallbacks<TVC>` unifié                      |
+| `getUI(key)` retourne sous-type typé                  | ✅ Via `TUIMap[key]['el']`                  | ✅ Via `ui[key]` phantom                                 |
+| Réutilisabilité pour Composer/Behavior                | ❌ `TViewContract` non décomposable         | ✅ `TFeatureContract` + `TUIContract` réutilisables      |
+| Strict clé/namespace `cart: { feature: UserFeature }` | ❌ N/A (pas de mapping)                     | ✅ Erreur compile                                        |
+| Alignement avec C1–C14                                | ❌ Viole C1, C2, C3, C7, C9                 | ✅ Toutes                                                |
 
 ---
 
@@ -268,12 +270,12 @@ Le développeur pense « qu'est-ce que ma View consomme de CartFeature ? », pas
 
 Un contrat sans son contrat d'implémentation est une déclaration sans engagement. Pour chaque `T{Component}Contract` (ce que le composant déclare), il existe un `T{Component}Callbacks` (ce que le composant doit implémenter) :
 
-| Contract (déclaration) | Callbacks (implémentation forcée) |
-|------------------------|-----------------------------------|
-| `TViewContract<F, U>` | `TViewCallbacks<TVC> = TChannelCallbacks<F> & TUICallbacks<U>` |
+| Contract (déclaration)         | Callbacks (implémentation forcée)                                        |
+| ------------------------------ | ------------------------------------------------------------------------ |
+| `TViewContract<F, U>`          | `TViewCallbacks<TVC> = TChannelCallbacks<F> & TUICallbacks<U>`           |
 | `TBehaviorContract<F, U, ...>` | `TBehaviorCallbacks<TBC> = TChannelCallbacks<F> & TUICallbacks<U> & ...` |
-| `TComposerContract<F>` | `TComposerCallbacks<TCC> = TChannelCallbacks<F>` |
-| `TFoundationContract` | `TFoundationCallbacks<TFC>` (vide en strate 0, peuplé en strate 1+) |
+| `TComposerContract<F>`         | `TComposerCallbacks<TCC> = TChannelCallbacks<F>`                         |
+| `TFoundationContract`          | `TFoundationCallbacks<TFC>` (vide en strate 0, peuplé en strate 1+)      |
 
 La règle s'écrit : **on respecte toujours un contrat signé**. Le développeur écrit deux choses dans la déclaration de classe — `extends X<TXxxContract>` et `implements TXxxCallbacks<TXxxContract>` — et le compilateur fait le reste.
 
@@ -406,7 +408,7 @@ export type TUIEntry<
   TEvts extends readonly string[] = readonly string[]
 > = {
   readonly events: TEvts;
-  readonly _el?:   TEl;
+  readonly _el?: TEl;
 };
 
 /**
@@ -423,8 +425,11 @@ export type TUIEntry<
  *   dans la première application, puis `TEvts` dans la seconde —
  *   l'inférence littérale est préservée. Voir aussi ADR-0044/0045.
  */
-export function ui<TEl extends HTMLElement = HTMLElement>():
-  <const TEvts extends readonly string[]>(events: TEvts) => TUIEntry<TEl, TEvts>;
+export function ui<TEl extends HTMLElement = HTMLElement>(): <
+  const TEvts extends readonly string[]
+>(
+  events: TEvts
+) => TUIEntry<TEl, TEvts>;
 
 // ─── TUIContract + TUIElements ───────────────────────────────────────────────
 
@@ -456,8 +461,9 @@ export type TProjectionNode<TEl extends HTMLElement = HTMLElement> = {
 
 // ─── UI handlers (D48 UI) ────────────────────────────────────────────────────
 
-export type TDOMEventFor<S extends string> =
-  S extends keyof HTMLElementEventMap ? HTMLElementEventMap[S] : Event;
+export type TDOMEventFor<S extends string> = S extends keyof HTMLElementEventMap
+  ? HTMLElementEventMap[S]
+  : Event;
 
 /**
  * Handlers DOM REQUIS pour une entrée UI : un par event déclaré (C14).
@@ -465,13 +471,18 @@ export type TDOMEventFor<S extends string> =
  */
 export type TUIEntryHandlers<TKey extends string, TEntry extends TUIEntry> =
   TEntry extends TUIEntry<any, infer TEvts>
-    ? { [E in TEvts[number] as `on${Capitalize<TKey>}${Capitalize<E & string>}`]:
-          (e: TDOMEventFor<E & string>) => void }
+    ? {
+        [E in TEvts[number] as `on${Capitalize<TKey>}${Capitalize<E & string>}`]: (
+          e: TDOMEventFor<E & string>
+        ) => void;
+      }
     : never;
 
-export type TUICallbacks<U extends TUIContract> = UnionToIntersection<{
-  [K in keyof U]: TUIEntryHandlers<K & string, U[K]>
-}[keyof U]>;
+export type TUICallbacks<U extends TUIContract> = UnionToIntersection<
+  {
+    [K in keyof U]: TUIEntryHandlers<K & string, U[K]>;
+  }[keyof U]
+>;
 ```
 
 ### Composition View (dans `@bonsai/view`)
@@ -485,10 +496,10 @@ export type TUICallbacks<U extends TUIContract> = UnionToIntersection<{
  */
 export type TViewContract<
   F extends TFeatureContract = TFeatureContract,
-  U extends TUIContract     = TUIContract
+  U extends TUIContract = TUIContract
 > = {
   readonly features: F;
-  readonly ui:       U;
+  readonly ui: U;
 };
 
 // ─── TViewCallbacks ──────────────────────────────────────────────────────────
@@ -500,9 +511,10 @@ export type TViewContract<
  * Symétrie Contract/Callbacks : pour tout `T{Component}Contract`, il existe
  * `T{Component}Callbacks` qui impose les handlers correspondants.
  */
-export type TViewCallbacks<TVC extends TViewContract> =
-  & TChannelCallbacks<TVC["features"]>
-  & TUICallbacks<TVC["ui"]>;
+export type TViewCallbacks<TVC extends TViewContract> = TChannelCallbacks<
+  TVC["features"]
+> &
+  TUICallbacks<TVC["ui"]>;
 ```
 
 ### Symétrie pour les autres composants (réservation des noms)
@@ -521,15 +533,14 @@ export type TComposerCallbacks<TCC extends TComposerContract> =
 // ── Behavior (strate 2) ─────────────────────────────────────────────────────
 export type TBehaviorContract<
   F extends TFeatureContract = TFeatureContract,
-  U extends TUIContract     = TUIContract
+  U extends TUIContract = TUIContract
   // + extensions strate 2 (templating, lifecycle, ...)
 > = {
   readonly features: F;
-  readonly ui:       U;
+  readonly ui: U;
 };
 export type TBehaviorCallbacks<TBC extends TBehaviorContract> =
-  & TChannelCallbacks<TBC["features"]>
-  & TUICallbacks<TBC["ui"]>;
+  TChannelCallbacks<TBC["features"]> & TUICallbacks<TBC["ui"]>;
 
 // ── Foundation (strate 0 → strate 1+) ───────────────────────────────────────
 export type TFoundationContract = {};
@@ -694,49 +705,49 @@ class CartView ... { /* sans onAddBtnClick */ }  // ❌ TViewCallbacks impose on
 
 ### Nouveaux invariants
 
-| Réf  | Contenu |
-| ---- | ------- |
-| I84  | Tout élément UI déclaré dans `contract.ui` avec `events: [E, ...]` non-vide DOIT avoir ses handlers DOM implémentés via `implements TViewCallbacks<TVC>`. `events: []` déclare explicitement un élément non-interactif — aucun handler requis. |
-| I85  | `ui<TEl>()(events)` (forme curryfiée) est l'unique helper pour déclarer une entrée UI. L'écriture directe `{ events: [...] }` est admise mais perd le phantom `TEl` — `getUI()` retourne `TProjectionNode<HTMLElement>` au lieu du sous-type. Préférer `ui<HTMLElement>()(...)` pour l'exhaustivité. La forme curryfiée est requise par une limitation TypeScript : un `const TEvts` perd l'inférence littérale si un autre paramètre de type est explicite avec un défaut. |
-| I86  | `TUIEntry["events"]` est TOUJOURS présent et TOUJOURS un tableau (possiblement vide). L'absence du champ est une erreur compile (pas d'optionnel). |
-| I87  | Dans `TFeatureContract`, la clé d'objet (`cart`, `user`) DOIT correspondre au `namespace` de la Feature référencée par `feature`. Incohérence (`cart: { feature: UserFeature, ... }`) → erreur compile via `TFeatureRefForNS<NS>`. |
-| I88  | **Symétrie Contract/Callbacks** : pour tout type `T{Component}Contract` exposé par un package Bonsai, le même package DOIT exposer un type `T{Component}Callbacks<TC>` qui dérive les handlers `on*` requis. Un composant concret écrit toujours la paire `extends X<TXxxContract>` + `implements TXxxCallbacks<TXxxContract>`. Un contrat sans Callbacks (déclaration sans engagement) est interdit. |
+| Réf | Contenu                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| I84 | Tout élément UI déclaré dans `contract.ui` avec `events: [E, ...]` non-vide DOIT avoir ses handlers DOM implémentés via `implements TViewCallbacks<TVC>`. `events: []` déclare explicitement un élément non-interactif — aucun handler requis.                                                                                                                                                                                                                              |
+| I85 | `ui<TEl>()(events)` (forme curryfiée) est l'unique helper pour déclarer une entrée UI. L'écriture directe `{ events: [...] }` est admise mais perd le phantom `TEl` — `getUI()` retourne `TProjectionNode<HTMLElement>` au lieu du sous-type. Préférer `ui<HTMLElement>()(...)` pour l'exhaustivité. La forme curryfiée est requise par une limitation TypeScript : un `const TEvts` perd l'inférence littérale si un autre paramètre de type est explicite avec un défaut. |
+| I86 | `TUIEntry["events"]` est TOUJOURS présent et TOUJOURS un tableau (possiblement vide). L'absence du champ est une erreur compile (pas d'optionnel).                                                                                                                                                                                                                                                                                                                          |
+| I87 | Dans `TFeatureContract`, la clé d'objet (`cart`, `user`) DOIT correspondre au `namespace` de la Feature référencée par `feature`. Incohérence (`cart: { feature: UserFeature, ... }`) → erreur compile via `TFeatureRefForNS<NS>`.                                                                                                                                                                                                                                          |
+| I88 | **Symétrie Contract/Callbacks** : pour tout type `T{Component}Contract` exposé par un package Bonsai, le même package DOIT exposer un type `T{Component}Callbacks<TC>` qui dérive les handlers `on*` requis. Un composant concret écrit toujours la paire `extends X<TXxxContract>` + `implements TXxxCallbacks<TXxxContract>`. Un contrat sans Callbacks (déclaration sans engagement) est interdit.                                                                       |
 
 ### Invariants reformulés
 
-| Réf  | Formulation précédente (ADR-0041) | Formulation renforcée (ADR-0042) |
-| ---- | --------------------------------- | -------------------------------- |
-| I81  | `get contract()` source de vérité runtime — `listens`, `triggers`, `requests`, `uiElements` | `get features() / get uiEvents() / get uiElements()` sont les sources de vérité runtime. `features` (channel) et `uiEvents` (UI structurel) sont structurels et non-overridables ; `uiElements` (sélecteurs) est overridable par Composer (D34). |
-| I82  | `implements TListenCallbacks<TDeps, TContract>` impose les handlers channel | `implements TViewCallbacks<TVC>` impose les handlers channel **et** les handlers DOM déclarés dans `contract.ui`. Symétrie totale : la déclaration EST l'engagement. |
-| I83  | Pattern 4 étapes : `type TMyDeps` → `const myContract` → `type TMyContract` → `class extends View<TDeps, TContract> implements TListenCallbacks` | Pattern modulaire : (1) `const features satisfies TFeatureContract` (2) `const uiEvents satisfies TUIContract` (3) `const uiElements satisfies TUIElements<typeof uiEvents>` (4) `type TVC = TViewContract<typeof features, typeof uiEvents>` (5) `class extends View<TVC> implements TViewCallbacks<TVC>`. Chaque composant compose son propre `TXxxContract` à partir des modules. |
+| Réf | Formulation précédente (ADR-0041)                                                                                                                | Formulation renforcée (ADR-0042)                                                                                                                                                                                                                                                                                                                                                     |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| I81 | `get contract()` source de vérité runtime — `listens`, `triggers`, `requests`, `uiElements`                                                      | `get features() / get uiEvents() / get uiElements()` sont les sources de vérité runtime. `features` (channel) et `uiEvents` (UI structurel) sont structurels et non-overridables ; `uiElements` (sélecteurs) est overridable par Composer (D34).                                                                                                                                     |
+| I82 | `implements TListenCallbacks<TDeps, TContract>` impose les handlers channel                                                                      | `implements TViewCallbacks<TVC>` impose les handlers channel **et** les handlers DOM déclarés dans `contract.ui`. Symétrie totale : la déclaration EST l'engagement.                                                                                                                                                                                                                 |
+| I83 | Pattern 4 étapes : `type TMyDeps` → `const myContract` → `type TMyContract` → `class extends View<TDeps, TContract> implements TListenCallbacks` | Pattern modulaire : (1) `const features satisfies TFeatureContract` (2) `const uiEvents satisfies TUIContract` (3) `const uiElements satisfies TUIElements<typeof uiEvents>` (4) `type TVC = TViewContract<typeof features, typeof uiEvents>` (5) `class extends View<TVC> implements TViewCallbacks<TVC>`. Chaque composant compose son propre `TXxxContract` à partir des modules. |
 
 ### Amendement ADR-0029 — Strate 1
 
 L'entrée « View basic » de la strate 1 devient :
 
-| Composant | ADR source | Description |
-|-----------|-----------|-------------|
+| Composant      | ADR source   | Description                                                                                                                                                                                                                                                                                |
+| -------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | View modulaire | **ADR-0042** | `TViewContract<F, U>` composé de `TFeatureContract` (Feature-groupé) + `TUIContract` (UI events typés) + `TUIElements` (sélecteurs overridables). `getUI(k).element() → TEl` typé. Handlers channel + DOM enforcement compile-time via `TViewCallbacks<TVC>`. Un générique, un implements. |
 
 Note : Behavior (strate 2) et Composer (strate 1+) réutiliseront `TFeatureContract` (et `TUIContract` pour Behavior) — pas de réécriture nécessaire au moment de leur implémentation, seulement composition.
 
 ### Impact sur le code existant
 
-| Fichier | Changement requis |
-|---------|------------------|
-| `packages/feature/src/types.ts` | **Suppression nette** : `TConsumerDeps`, `TConsumerContract`, `TNSEventKeys`, `TNSCommandKeys`, `TNSRequestKeys`, `TEventPayload`, `TCommandPayload`, `TRequestParams`, `TRequestResult`, `THandlerName`, `TListenCallbacks`. **Ajout** : `TFeatureContract`, `TFeatureRefForNS`, `TFlatListens`, `TFlatTriggers`, `TFlatRequests`, `TEventPayloadFor`, `TCommandPayloadFor`, `TRequestParamsFor`, `TRequestResultFor`, `TChannelHandlerName`, `TChannelCallbacks`. |
-| `packages/view/src/bonsai-view.ts` | Réécrire `View<TVC>` (un seul générique) ; `TViewContract<F, U>` composé ; `TViewCallbacks<TVC>` ; `TUIEntry`, `ui()`, `TUIContract`, `TUIElements`, `TProjectionNode<TEl>`, `TUICallbacks`, `ExtractEl`. Trois getters abstraits : `features`, `uiEvents`, `uiElements`. D48 lit `uiEvents[k].events` pour `addEventListener`. Subscriptions channel construites depuis `features[NS].listens` × `features[NS].feature.channel`. |
-| `packages/view/src/bonsai-view.ts` | `TViewClass = abstract new () => View<any>` (un seul `any`). |
-| `tests/fixtures/cart-feature.fixture.ts` | Migrer vers `const cartViewFeatures satisfies TFeatureContract` + `cartViewUiEvents` + `cartViewUiElements` ; classe `extends View<TCartViewContract> implements TViewCallbacks<TCartViewContract>`. |
-| `tests/unit/strate-0/view.basic.test.ts` | Idem — `TestView` et vues locales. |
-| `tests/unit/strate-0/foundation.basic.test.ts` | Idem. |
-| `tests/unit/strate-0/composer.basic.test.ts` | Idem. |
-| `tests/types/strate-0/view-contract.types.test.ts` | Adapter aux nouveaux types ; ajouter `@ts-expect-error` sur (a) handler manquant avec `events` non-vide, (b) clé Feature ≠ namespace, (c) trigger d'un nom déclaré uniquement en listens. |
-| `docs/rfc/4-couche-concrete/view.md` | Réécrire §4.2 (UIElements et UIEvents) — pattern modulaire ; nouveaux types ; `get uiEvents()` séparé de `get uiElements()`. |
-| `docs/rfc/3-couche-abstraite/feature.md` | Mise à jour des exemples consommateur — `TFeatureContract` au lieu de `TConsumerDeps`/`TConsumerContract`. |
-| `docs/rfc/reference/invariants.md` | I81–I83 reformulés ; I84–I87 ajoutés. |
-| `docs/rfc/reference/glossaire.md` | Ajouter : « Module contractuel », « Feature-groupé », « `TFeatureContract` », « `TUIContract` », « `TUIElements` », « `TViewCallbacks` ». Retirer : « `TConsumerDeps` », « `TConsumerContract` », « `TListenCallbacks` ». |
-| `docs/guides/FRAMEWORK-STYLE-GUIDE.md` | §1 « Types d'abord » illustré avec le pattern header/getters/classe. Pattern modulaire `TXxxContract` documenté comme convention transversale. |
+| Fichier                                            | Changement requis                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/feature/src/types.ts`                    | **Suppression nette** : `TConsumerDeps`, `TConsumerContract`, `TNSEventKeys`, `TNSCommandKeys`, `TNSRequestKeys`, `TEventPayload`, `TCommandPayload`, `TRequestParams`, `TRequestResult`, `THandlerName`, `TListenCallbacks`. **Ajout** : `TFeatureContract`, `TFeatureRefForNS`, `TFlatListens`, `TFlatTriggers`, `TFlatRequests`, `TEventPayloadFor`, `TCommandPayloadFor`, `TRequestParamsFor`, `TRequestResultFor`, `TChannelHandlerName`, `TChannelCallbacks`. |
+| `packages/view/src/bonsai-view.ts`                 | Réécrire `View<TVC>` (un seul générique) ; `TViewContract<F, U>` composé ; `TViewCallbacks<TVC>` ; `TUIEntry`, `ui()`, `TUIContract`, `TUIElements`, `TProjectionNode<TEl>`, `TUICallbacks`, `ExtractEl`. Trois getters abstraits : `features`, `uiEvents`, `uiElements`. D48 lit `uiEvents[k].events` pour `addEventListener`. Subscriptions channel construites depuis `features[NS].listens` × `features[NS].feature.channel`.                                   |
+| `packages/view/src/bonsai-view.ts`                 | `TViewClass = abstract new () => View<any>` (un seul `any`).                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `tests/fixtures/cart-feature.fixture.ts`           | Migrer vers `const cartViewFeatures satisfies TFeatureContract` + `cartViewUiEvents` + `cartViewUiElements` ; classe `extends View<TCartViewContract> implements TViewCallbacks<TCartViewContract>`.                                                                                                                                                                                                                                                                |
+| `tests/unit/strate-0/view.basic.test.ts`           | Idem — `TestView` et vues locales.                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `tests/unit/strate-0/foundation.basic.test.ts`     | Idem.                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `tests/unit/strate-0/composer.basic.test.ts`       | Idem.                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `tests/types/strate-0/view-contract.types.test.ts` | Adapter aux nouveaux types ; ajouter `@ts-expect-error` sur (a) handler manquant avec `events` non-vide, (b) clé Feature ≠ namespace, (c) trigger d'un nom déclaré uniquement en listens.                                                                                                                                                                                                                                                                           |
+| `docs/rfc/4-couche-concrete/view.md`               | Réécrire §4.2 (UIElements et UIEvents) — pattern modulaire ; nouveaux types ; `get uiEvents()` séparé de `get uiElements()`.                                                                                                                                                                                                                                                                                                                                        |
+| `docs/rfc/3-couche-abstraite/feature.md`           | Mise à jour des exemples consommateur — `TFeatureContract` au lieu de `TConsumerDeps`/`TConsumerContract`.                                                                                                                                                                                                                                                                                                                                                          |
+| `docs/rfc/reference/invariants.md`                 | I81–I83 reformulés ; I84–I87 ajoutés.                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `docs/rfc/reference/glossaire.md`                  | Ajouter : « Module contractuel », « Feature-groupé », « `TFeatureContract` », « `TUIContract` », « `TUIElements` », « `TViewCallbacks` ». Retirer : « `TConsumerDeps` », « `TConsumerContract` », « `TListenCallbacks` ».                                                                                                                                                                                                                                           |
+| `docs/guides/FRAMEWORK-STYLE-GUIDE.md`             | §1 « Types d'abord » illustré avec le pattern header/getters/classe. Pattern modulaire `TXxxContract` documenté comme convention transversale.                                                                                                                                                                                                                                                                                                                      |
 
 ---
 
@@ -766,9 +777,10 @@ Note : Behavior (strate 2) et Composer (strate 1+) réutiliseront `TFeatureContr
 
 ## Historique
 
-| Date       | Changement |
-|------------|-----------|
-| 2026-05-04 | v1 — `TViewContract` unifié (deps + listens + triggers + requests + ui), `ui<TEl>(selector, events)` avec sélecteur dans le contrat (Proposed) |
+| Date       | Changement                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-04 | v1 — `TViewContract` unifié (deps + listens + triggers + requests + ui), `ui<TEl>(selector, events)` avec sélecteur dans le contrat (Proposed)                                                                                                                                                                                                                                                                                    |
 | 2026-05-06 | v2 — Réécriture complète. Pattern modulaire (`TFeatureContract` Feature-groupé + `TUIContract` + `TUIElements`). Sélecteurs sortis du contrat (D34). `ui<TEl>(events)` sans sélecteur. Trois getters séparés (`features`, `uiEvents`, `uiElements`). Suffixe `Event` conservé sur D48 channel. Validation stricte clé/namespace. Suppression nette des types ADR-0041 (`TConsumerDeps`, `TConsumerContract`, `TListenCallbacks`). |
-| 2026-05-07 | 🟢 **Accepted** — code mergé sur `develop` (PR #15 et #16) |
-| 2026-05-13 | 🔵 **Tested** — invariants ADR-0042 désormais tous cités dans la suite strate 0 : I81 / I82 (`view.basic.test.ts`), I83 (`view.basic.test.ts` + `cart-round-trip.test.ts`), I84 / I87 / I88 (`view.basic.test.ts` + `view-contract.types.test.ts`), I85 / I86 (`view-contract.types.test.ts` + `cart-round-trip.test.ts`). Critère C-Inv d'ADR-0043 satisfait. |
+| 2026-05-07 | 🟢 **Accepted** — code mergé sur `develop` (PR #15 et #16)                                                                                                                                                                                                                                                                                                                                                                        |
+| 2026-05-13 | 🔵 **Tested** — invariants ADR-0042 désormais tous cités dans la suite strate 0 : I81 / I82 (`view.basic.test.ts`), I83 (`view.basic.test.ts` + `cart-round-trip.test.ts`), I84 / I87 / I88 (`view.basic.test.ts` + `view-contract.types.test.ts`), I85 / I86 (`view-contract.types.test.ts` + `cart-round-trip.test.ts`). Critère C-Inv d'ADR-0043 satisfait.                                                                    |
+| 2026-05-19 | **Amendé par [ADR-0046](ADR-0046-feature-contract-refonte.md)** — I88 élargi : la symétrie Contract/Callbacks vaut désormais pour View **et** Feature. `TFeatureCallbacks<TDef, TListens>` est le pendant Feature de `TViewCallbacks<TVC>`. Un contrat Feature sans son Callbacks est interdit dans les deux couches.                                                                                                             |

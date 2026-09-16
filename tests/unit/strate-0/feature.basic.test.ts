@@ -32,9 +32,18 @@
  */
 
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
-import { Feature, isCamelCaseNamespace, isReservedNamespace } from "@bonsai/feature";
+import {
+  Feature,
+  isCamelCaseNamespace,
+  isReservedNamespace,
+  type TFeatureCallbacks
+} from "@bonsai/feature";
 import { Entity, type TJsonSerializable } from "@bonsai/entity";
-import { Radio, type TChannelDefinition, type TChannelToken } from "@bonsai/event";
+import {
+  Radio,
+  type TChannelDefinition,
+  type TChannelToken
+} from "@bonsai/event";
 
 // ─── Fixtures ──────────────────────────────────────────────────────────────
 
@@ -73,15 +82,54 @@ class PricingEntity extends Entity<TPricingState> {
 }
 
 // Token pour l'accès typé au Channel externe "pricing" (ADR-0040 — I79)
-const PRICING_TOKEN: TChannelToken<TChannelDefinition, "pricing"> = { namespace: "pricing" };
 
-// ─── Features concrètes (fixtures) ────────────────────────────────────────
+type TCartChannelDef = {
+  commands: { addItem: { productId: string; qty: number; price: number } };
+  events: {
+    itemAdded: { item: { productId: string; qty: number; price: number } };
+  };
+  requests: { getTotal: { params: null; result: number } };
+};
 
-class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart"> {
+type TPricingChannelDef = {
+  commands: Record<never, never>;
+  events: Record<never, never>;
+  requests: {
+    getItemPrice: { params: { productId: string }; result: number | null };
+  };
+};
+
+type TCartListenerChannelDef = {
+  commands: Record<never, never>;
+  events: Record<never, never>;
+  requests: Record<never, never>;
+};
+
+const PRICING_TOKEN: TChannelToken<TPricingChannelDef, "pricing"> = {
+  namespace: "pricing"
+};
+
+const cartListens = [] as const;
+const cartListenerListens = [{ namespace: "cart" }] as [
+  TChannelToken<TCartChannelDef, "cart">
+];
+
+// ─── Features concrètes (fixtures) ────────────────────────────────────────────
+
+class CartFeature
+  extends Feature<CartEntity, TCartChannelDef, "cart">
+  implements TFeatureCallbacks<TCartChannelDef, typeof cartListens>
+{
   // I73 — token propre exposé pour les consommateurs typés (View, Feature externe)
-  static readonly channel: TChannelToken<TChannelDefinition, "cart"> = { namespace: "cart" };
-  static readonly listens = [] as const;
-  static readonly queries = [PRICING_TOKEN] as const;
+  static readonly channel: TChannelToken<TCartChannelDef, "cart"> = {
+    namespace: "cart"
+  };
+  get listens() {
+    return cartListens;
+  }
+  get queries() {
+    return [PRICING_TOKEN] as const;
+  }
 
   /** Liaison Feature → Entity concrète (D17 amendé par ADR-0037) */
   protected get Entity() {
@@ -98,8 +146,8 @@ class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart"> {
     this.emit("itemAdded", { item: payload });
   }
 
-  // C4 — Reply on own channel — plus aucun cast grâce à ADR-0037
-  onGetTotalRequest(): number {
+  // C4 — Reply on own channel
+  onGetTotalRequest(_params: null): number {
     return this.entity.query.getTotal();
   }
 
@@ -116,11 +164,20 @@ class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart"> {
   }
 }
 
-class PricingFeature extends Feature<PricingEntity, TChannelDefinition, "pricing"> {
+class PricingFeature
+  extends Feature<PricingEntity, TPricingChannelDef, "pricing">
+  implements TFeatureCallbacks<TPricingChannelDef>
+{
   // I73 — token propre exposé pour les consommateurs typés
-  static readonly channel: TChannelToken<TChannelDefinition, "pricing"> = { namespace: "pricing" };
-  static readonly listens = [] as const;
-  static readonly queries = [] as const;
+  static readonly channel: TChannelToken<TPricingChannelDef, "pricing"> = {
+    namespace: "pricing"
+  };
+  get listens() {
+    return [] as const;
+  }
+  get queries() {
+    return [] as const;
+  }
 
   protected get Entity() {
     return PricingEntity;
@@ -143,12 +200,25 @@ class CartListenerEntity extends Entity<TCartListenerState> {
 /**
  * Feature qui écoute les events d'un Channel externe (C3 — listen)
  */
-class CartListenerFeature extends Feature<CartListenerEntity, TChannelDefinition, "cartListener"> {
+class CartListenerFeature
+  extends Feature<CartListenerEntity, TCartListenerChannelDef, "cartListener">
+  implements
+    TFeatureCallbacks<TCartListenerChannelDef, typeof cartListenerListens>
+{
   // I73 — token propre exposé même pour une Feature purement listener
-  static readonly channel: TChannelToken<TChannelDefinition, "cartListener"> = { namespace: "cartListener" };
-  // I79 — listens utilise le token typé de la Feature externe (CartFeature.channel)
-  static readonly listens = [CartFeature.channel] as const;
-  static readonly queries = [] as const;
+  static readonly channel: TChannelToken<
+    TCartListenerChannelDef,
+    "cartListener"
+  > = {
+    namespace: "cartListener"
+  };
+  // I79 amendé (ADR-0046 — I93) — abstract get instance au lieu de static readonly
+  get listens() {
+    return cartListenerListens;
+  }
+  get queries() {
+    return [] as const;
+  }
 
   protected get Entity() {
     return CartListenerEntity;
@@ -349,11 +419,20 @@ describe("Feature core — Strate 0", () => {
     it("Method named exactly 'on{Channel}Event' (empty eventPascal) is silently skipped", () => {
       // "onCartEvent" = prefix "onCart" + "" + suffix "Event" → eventPascal.length === 0
       // The handler must be skipped without throwing (L272)
-      class ObserverFeature extends Feature<CartEntity, TChannelDefinition, "observer"> {
+      class ObserverFeature extends Feature<
+        CartEntity,
+        TChannelDefinition,
+        "observer"
+      > {
         // I73 — token propre exposé
-        static readonly channel: TChannelToken<TChannelDefinition, "observer"> = { namespace: "observer" };
-        static readonly listens = [CartFeature.channel] as const;
-        static readonly queries = [] as const;
+        static readonly channel: TChannelToken<TChannelDefinition, "observer"> =
+          { namespace: "observer" };
+        get listens() {
+          return [CartFeature.channel] as const;
+        }
+        get queries() {
+          return [] as const;
+        }
         protected get Entity() {
           return CartEntity;
         }

@@ -1,9 +1,10 @@
 /**
  * @bonsai/feature - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-05-13T20:26:15.733Z
+ * Date: 2026-09-16T10:43:17.257Z
  */
 import { Radio } from '@bonsai/event';
+import { hardInvariant, BroadcastError } from '@bonsai/error';
 
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -165,12 +166,21 @@ function assertValidNamespace(ns) {
  *         typés par `TDef` — clé = `keyof TDef[lane]`, jamais `string` libre
  *         (ADR-0040)
  *   I79 — `Feature.request()` accepte uniquement un `TChannelToken` typé ;
- *         `static readonly listens`/`channels` portent ces tokens pour
- *         déclaration au bootstrap (ADR-0040)
+ *         `abstract get listens()`/`abstract get queries()` portent ces tokens
+ *         comme déclarations instance (ADR-0040, amendé ADR-0046 — I93)
+ *   I93 — `listens` et `queries` sont des `abstract get` instance sur Feature
+ *         (ADR-0046 — TS2515 si absent sur une classe concrète)
+ *   I94 — Le constructeur de Feature est inerte : assertValidNamespace + #namespace
+ *         uniquement. Aucun side-effect Radio/Entity.
+ *   I96 — Handlers Entity `on<Key>EntityUpdated`/`onAnyEntityUpdated` auto-
+ *         découverts sur la Feature (même mécanisme que I48), dispatchés par
+ *         ordre alphabétique des `changedKeys` puis catch-all. Clé inconnue
+ *         → erreur bootstrap. Handler qui throw → isolé (BroadcastError,
+ *         ADR-0002), notification suivante non interrompue (ADR-0028 strate 1a)
  *
  * @packageDocumentation
  */
-var _Feature_instances, _Feature_namespace, _Feature_entity, _Feature_channel, _Feature_bootstrapped, _Feature_registerCommandHandlers, _Feature_registerRequestRepliers, _Feature_registerEventListeners;
+var _Feature_instances, _Feature_namespace, _Feature_entity, _Feature_channel, _Feature_bootstrapped, _Feature_registerCommandHandlers, _Feature_registerRequestRepliers, _Feature_registerEventListeners, _Feature_registerEntityHandlers, _Feature_dispatchEntityEvent;
 // ─── Feature abstract class ──────────────────────────────────────────────────
 /**
  * Feature — unité métier paramétrée par sa classe Entity, son contrat Channel
@@ -245,6 +255,7 @@ class Feature {
         __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerCommandHandlers).call(this);
         __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerRequestRepliers).call(this);
         __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerEventListeners).call(this);
+        __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerEntityHandlers).call(this);
         // Lifecycle
         this.onInit();
     }
@@ -299,7 +310,7 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
         }
     }
 }, _Feature_registerEventListeners = function _Feature_registerEventListeners() {
-    const listenTokens = this.constructor.listens;
+    const listenTokens = this.listens;
     if (listenTokens.length === 0)
         return;
     const proto = Object.getPrototypeOf(this);
@@ -323,40 +334,44 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
             }
         }
     }
+}, _Feature_registerEntityHandlers = function _Feature_registerEntityHandlers() {
+    const proto = Object.getPrototypeOf(this);
+    const methods = Object.getOwnPropertyNames(proto);
+    const stateKeys = new Set(Object.keys(__classPrivateFieldGet(this, _Feature_entity, "f").state));
+    for (const method of methods) {
+        const match = method.match(/^on([A-Z][a-zA-Z]*)EntityUpdated$/);
+        if (!match || match[1] === "Any")
+            continue;
+        const key = match[1][0].toLowerCase() + match[1].slice(1);
+        hardInvariant(stateKeys.has(key), `Feature "${__classPrivateFieldGet(this, _Feature_namespace, "f")}" declares entity handler "${method}" for unknown key "${key}"`, "I96", __classPrivateFieldGet(this, _Feature_namespace, "f"));
+    }
+    __classPrivateFieldGet(this, _Feature_entity, "f").onAnyEntityUpdated((event) => {
+        __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_dispatchEntityEvent).call(this, event);
+    });
+}, _Feature_dispatchEntityEvent = function _Feature_dispatchEntityEvent(event) {
+    const self = this;
+    for (const key of [...event.changedKeys].sort()) {
+        const handlerName = `on${key[0].toUpperCase()}${key.slice(1)}EntityUpdated`;
+        if (typeof self[handlerName] !== "function")
+            continue;
+        const keyPatches = event.patches.filter((p) => String(p.path[0]) === key);
+        const prev = event.previousState[key];
+        const next = event.nextState[key];
+        try {
+            self[handlerName](prev, next, keyPatches);
+        }
+        catch (error) {
+            console.error(new BroadcastError(`Entity handler "${handlerName}" threw for intent "${event.intent}"`, "ADR-0002", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
+        }
+    }
+    if (typeof self["onAnyEntityUpdated"] === "function") {
+        try {
+            self["onAnyEntityUpdated"](event);
+        }
+        catch (error) {
+            console.error(new BroadcastError(`Entity handler "onAnyEntityUpdated" threw for intent "${event.intent}"`, "ADR-0002", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
+        }
+    }
 };
-/**
- * Tokens des Channels externes écoutés par cette Feature (C3 — I2, ADR-0040).
- *
- * **Pourquoi `static` — deux raisons distinctes selon la propriété :**
- *
- * • `channel` (token propre, ADR-0040 — I73) — porteur de TYPE consommé sans
- *   instance. Une View ou Feature externe importe la classe uniquement pour
- *   son token (`CartFeature.channel`) afin de typer ses appels `trigger()` ou
- *   `request()`. Un token d'instance obligerait les consommateurs à tenir une
- *   référence à la Feature, violant la topologie du flux (I1, I4, I12).
- *   Ce token n'est pas déclaré sur la classe abstraite — chaque Feature concrète
- *   le déclare dans son fichier `.feature.ts` (I73, I74).
- *
- * • `listens` / `queries` — invariants de classe, identiques pour toute instance
- *   (I22 : une seule par namespace). Lus par `Application.start()` AVANT
- *   instanciation pour valider les dépendances croisées et câbler les
- *   listeners/repliers au bootstrap.
- *
- * **Limitation TypeScript** — `abstract static` n'existe pas.
- * La présence de ces propriétés ne peut pas être imposée compile-time aux
- * sous-classes. Filets de sécurité : `TFeatureClass` (type constructeur),
- * validation runtime dans `Application.start()`, tests de type (`tests/types/`).
- */
-Feature.listens = [];
-/**
- * Tokens des Channels externes interrogés par cette Feature (C5 — I17, ADR-0040 — supporte I79).
- *
- * **Pourquoi `static` :** identique à `listens` — invariant de classe lu
- * avant instanciation pour validation des dépendances croisées.
- *
- * **Limitation TypeScript** — `abstract static` n'existe pas.
- * Voir commentaire de `listens` ci-dessus.
- */
-Feature.queries = [];
 
 export { BonsaiNamespaceError, Feature, RESERVED_NAMESPACES, assertValidNamespace, isCamelCaseNamespace, isReservedNamespace };

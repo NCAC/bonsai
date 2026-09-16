@@ -8,8 +8,14 @@
     "name": "NCAC",
     "email": "dev.ncac@gmail.com"
   },
-  "main": "./dist/bonsai-event.js",
+  "main": "./src/bonsai-event.ts",
   "types": "./src/bonsai-event.ts",
+  "exports": {
+    ".": {
+      "types": "./src/bonsai-event.ts",
+      "default": "./src/bonsai-event.ts"
+    }
+  },
   "src": "./src/bonsai-event.ts",
   "dependencies": {
     "@bonsai/types": "workspace:^",

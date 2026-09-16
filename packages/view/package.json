@@ -5,6 +5,12 @@
   "type": "module",
   "main": "./src/bonsai-view.ts",
   "types": "./src/bonsai-view.ts",
+  "exports": {
+    ".": {
+      "types": "./src/bonsai-view.ts",
+      "default": "./src/bonsai-view.ts"
+    }
+  },
   "src": "./src/bonsai-view.ts",
   "dependencies": {
     "@bonsai/event": "workspace:^"

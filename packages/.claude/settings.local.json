@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//bonsai/**)",
+      "Bash(pnpm tsc:check)",
+      "Bash(pnpm test:unit)",
+      "Bash(pnpm test:e2e)",
+      "Bash(pnpm test *)",
+      "Bash(grep -nE '\\\\$[0-9]' /bonsai/core/dist/bonsai.d.ts)",
+      "Bash(grep -oE '[A-Za-z_][A-Za-z0-9_]*\\\\$[0-9]+' /bonsai/core/dist/bonsai.d.ts)",
+      "Bash(grep -nE '\\(View|Composer|Foundation|TProjectionNode|TUIContract|TUIElements|TUIEntry|TViewContract|TViewClass|TFeatureContract|TFeatureRef|TFeatureRefForNS|TComposerOptions|TResolveResult|TFlatRequests|TFlatTriggers|TCommandPayloadFor|TRequestParamsFor|TRequestResultFor|ExtractEl\\)\\(\\\\$[0-9]+\\)?\\\\s*[<\\({=]' /bonsai/core/dist/bonsai.d.ts)",
+      "Bash(pnpm run *)",
+      "Bash(npx jest *)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

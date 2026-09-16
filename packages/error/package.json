@@ -8,8 +8,14 @@
     "name": "NCAC",
     "email": "dev.ncac@gmail.com"
   },
-  "main": "./dist/bonsai-error.js",
+  "main": "./src/bonsai-error.ts",
   "types": "./src/bonsai-error.ts",
+  "exports": {
+    ".": {
+      "types": "./src/bonsai-error.ts",
+      "default": "./src/bonsai-error.ts"
+    }
+  },
   "src": "./src/bonsai-error.ts",
   "dependencies": {
     "@bonsai/types": "workspace:^"

@@ -1,7 +1,7 @@
 /**
  * @bonsai/error - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-05-07T09:44:37.575Z
+ * Date: 2026-09-14T16:47:57.355Z
  */
 /**
  * BonsaiError — Classe de base pour toutes les erreurs structurées du framework.
@@ -32,6 +32,16 @@ class MutationError extends BonsaiError {
     constructor() {
         super(...arguments);
         this.name = "MutationError";
+    }
+}
+/**
+ * `mutate()` appelé pendant un cycle de notification alors que la profondeur
+ * de ré-entrance dépasse `maxEntityNotificationDepth` (ADR-0028 strate 1a).
+ */
+class EntityReentrancyError extends BonsaiError {
+    constructor() {
+        super(...arguments);
+        this.name = "EntityReentrancyError";
     }
 }
 // ═══════════════════════════════════════════════════════════════
@@ -199,4 +209,4 @@ function warning(condition, message) {
     }
 }
 
-export { BehaviorError, BonsaiError, BroadcastError, CommandError, DuplicateHandlerError, ListenerError, MutationError, NoHandlerError, RenderError, RequestError, hardInvariant, invariant, warning };
+export { BehaviorError, BonsaiError, BroadcastError, CommandError, DuplicateHandlerError, EntityReentrancyError, ListenerError, MutationError, NoHandlerError, RenderError, RequestError, hardInvariant, invariant, warning };

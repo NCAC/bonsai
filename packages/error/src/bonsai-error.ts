@@ -13,6 +13,7 @@ export {
   BonsaiError,
   // Entity Layer
   MutationError,
+  EntityReentrancyError,
   // Feature Layer
   CommandError,
   RequestError,
