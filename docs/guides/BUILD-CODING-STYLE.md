@@ -139,8 +139,8 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 
 ### Structure des répertoires
 
-- `/core` - Framework principal
-- `/packages` - Modules indépendants
+- `/core` - Méta-package barrel `@bonsai/core` (ré-exporte tout, ADR-0031) — pas le framework lui-même
+- `/packages` - Modules indépendants, un package par composant (implémentation réelle)
 - `/lib` - Outils de build et utilitaires
 - `/tools` - Scripts et outils de développement
 - `/docs` - Documentation technique
@@ -166,7 +166,7 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 
 ## Formatage
 
-- Utiliser Prettier pour le formatage automatique
+- Prettier est utilisé programmatiquement pour le code généré (ex: `tools/pug-to-ts-template`, `gulp-prettier` dans les scripts de build) — ⏳ pas de configuration `.prettierrc` versionnée ni de vérification en pre-commit pour le code écrit à la main
 - Indentation de 2 espaces
 - Longueur de ligne maximale de 80 caractères
 - Utiliser des points-virgules (`;`) à la fin des instructions
@@ -217,7 +217,7 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 ## Tests
 
 - Écrire des tests unitaires pour toutes les fonctionnalités principales
-- Utiliser **Vitest** comme framework de test (voir [TESTING.md](TESTING.md) et [ADR-0006](../adr/ADR-0006-testing-strategy.md))
+- ⏳ **Cible, non livré** : `lib/` n'a aujourd'hui aucun fichier de test et aucune dépendance Vitest n'est installée — **Vitest** est le runner visé pour `lib/`, distinct de Jest utilisé par le framework applicatif (`tests/`, voir [TESTING.md](TESTING.md)). Ne pas confondre les deux périmètres — [ADR-0006](../adr/ADR-0006-testing-strategy.md) documente le choix de Jest pour le framework, pas la stratégie de test de `lib/`
 - Suivre la convention de nommage: `[nom-du-fichier].test.ts`
 - Organiser les tests en blocs `describe` et `it`
 - Tester les cas nominaux et les cas d'erreur
