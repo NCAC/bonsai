@@ -34,7 +34,7 @@
 
 | Type | Definition | Source |
 |------|------------|--------|
-| `TEntityEvent` | Notification de mutation de state emise par le framework apres chaque appel a `mutate()`. Contient `intent`, `payload`, `patches`, `inversePatches`, `timestamp`, `changedKeys` — tous `readonly`. Consomme par le handler catch-all `onAnyEntityUpdated` | [entity.md](../3-couche-abstraite/entity.md) |
+| `TEntityEvent` | Retourné par `mutate()` après une mutation non no-op (`null` sinon). Contient `intent`, `payload?`, `metas?`, `changedKeys`, `patches`, `inversePatches`, `previousState`, `nextState`, `timestamp` — tous `readonly`. Consommé par le handler catch-all `onAnyEntityUpdated` | [entity.md](../3-couche-abstraite/entity.md) |
 | `ExtractEntityKeyHandlerName<TKey>` | Template literal type : `"items"` -> `"onItemsEntityUpdated"`. Genere les noms de handlers Entity per-key | [conventions-typage.md](../6-transversal/conventions-typage.md) |
 | `TEntityKeyHandlers<TStructure>` | Mapped type **optionnel** : pour chaque cle K de TStructure, genere `on<K>EntityUpdated(prev, next, patches)`. Utilisable via `implements Partial<TEntityKeyHandlers<TStructure>>` | [conventions-typage.md](../6-transversal/conventions-typage.md) |
 
