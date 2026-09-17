@@ -31,8 +31,26 @@
 > | Auto-discovery handlers Channel                                    | Strate 1     | §3                      |
 > | Retour `TResolveResult[]` (N-instances hétérogènes, ADR-0020 §6.3) | Strate 2     | §3.2                    |
 > | Champ `options` dans `TResolveResult` (D34 merge)                  | Strate 2     | §1.1, §4.1 (étapes 3-4) |
+> | Composers enfants, `get templates()`, `view.onDetach()`, désinscription Channel/DOM au détachement, cascade de destruction par scan de projection | Strate 1/2 | §4.1 (étapes 5-12), §4.2, §5 |
+> | Machine à états `idle/resolving/active(Views)/detaching/[destroyed]` | Strate 1 | §6 |
 >
 > **Strate 0 — périmètre effectif** : `Composer` non-générique, `resolve(event: unknown \| null) → TResolveResult \| null`, slot DOM immutable (ADR-0026), création D30, diff §3.1 des 5 transitions Same/New/null. Pas de `params()`, pas de `listen`, pas de `request()`, pas de retour tableau.
+>
+> **Séquence réellement livrée (attach/detach)** — ⚠️ diverge de §4.1/§4.2 ci-dessous
+> sur deux points précis, décrits ici sans ambiguïté :
+> `Composer.attach(parentElement)` résout `parentElement.querySelector(rootElement)` ;
+> si absent, **crée** l'élément (D30) et l'ajoute — jamais d'erreur. Puis appelle
+> `#performResolve(null)` qui instancie la View via `view.mount(result.rootElement)` —
+> **`View.mount()` résout son propre `rootElement` par un `document.querySelector()`
+> GLOBAL, indépendant du slot du Composer** (pas « dans le slot » comme l'écrit §4.1
+> étape 4a — la View peut se monter n'importe où dans le document). Au détachement,
+> `#detachCurrent()` se contente de mettre `#currentView`/`#currentResult` à `null` —
+> **aucune désinscription de Channel ni de listener DOM n'est effectuée** ; c'est un
+> choix documenté et assumé pour la strate 0 (ADR-0025 : « le Composer n'a pas de
+> subscription propre à libérer, il n'a ni state ni cleanup à faire »), pas un
+> oubli — mais cela signifie concrètement que les listeners de la View détachée
+> restent actifs tant que l'objet `View` n'est pas garbage-collecté. `onDetach()`
+> et la désinscription systématique sont des cibles strate 1/2 (cf. tableau ci-dessus).
 >
 > Voir aussi : [ADR-0028](../../adr/ADR-0028-implementation-phasing-strategy.md) — phasage kernel-first en 3 strates.
 >
@@ -399,6 +417,11 @@ resolve() retourne R' (nouveau)           Etat precedent R (ancien)
 ---
 
 ## 4. Cycle de vie et attachement
+
+> ⏳ **§4, §5, §6 décrivent le contrat cible** (options merge D34, uiElements/templates,
+> Composers enfants, `onDetach()`, désinscription Channel/DOM, cascade de destruction,
+> machine à états) — cf. le tableau de périmètre en tête de document pour la séquence
+> réellement livrée en strate 0.
 
 ### 4.1 Sequence d'attachement (normative)
 

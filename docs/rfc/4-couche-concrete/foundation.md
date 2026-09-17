@@ -217,8 +217,10 @@ dans **l'ordre d'insertion des cles** (garanti par ECMAScript 2015+ §9.1.12).
 > C'est un choix pragmatique -- les selecteurs CSS ne sont pas types par TypeScript.
 > Le type concret est `Readonly<Record<string, typeof Composer>>`. L'unicite des cles
 > est garantie compile-time (TS1117 sur object literal). La validation de resolution DOM
-> est **runtime** (au bootstrap, le framework verifie que chaque selecteur resout un
-> unique element dans `<body>` ; sinon, throw).
+> est **runtime** — mais pas par une vérification dédiée : `Composer.attach()` ne
+> lève **jamais** d'erreur si le sélecteur ne résout à aucun élément de `<body>` ;
+> il **crée** l'élément manquant et l'ajoute au DOM (D30, même mécanisme que pour
+> le `rootElement` d'une View — voir §3 note ci-dessous et [composer.md](composer.md)).
 
 ```typescript
 /** Type des composers racines de Foundation -- cles = selecteurs CSS (ADR-0038) */
@@ -232,8 +234,12 @@ Foundation(<body>)
   +-- '#footer-slot'  -> FooterComposer   -> FooterView (#footer-view)
 ```
 
-> Si un selecteur ne correspond a aucun element dans `<body>`, le framework
-> jette une erreur au bootstrap (mode strict) ou un warning (mode debug).
+> ⚠️ **Contredit la note ci-dessus dans les versions antérieures de ce document** —
+> corrigé : si un sélecteur ne correspond à aucun élément dans `<body>`, le
+> framework **ne jette pas d'erreur** et ne produit pas de warning ; il **crée**
+> l'élément (D30, `Composer#createElementFromSelector`) et l'insère dans `<body>`.
+> Il n'existe aucune distinction « mode strict » / « mode debug » livrée pour ce
+> mécanisme.
 
 ---
 
@@ -323,27 +329,36 @@ class BadFoundation extends Foundation {
 
 ## 4. Relation avec Application
 
+> ⚠️ **Diagramme cible ci-dessous, non conforme à l'ordre réellement livré**
+> (`packages/foundation/src/bonsai-foundation.ts` `attach()`) — corrections :
+> `foundation.onAttach()` est appelé **après** la résolution de tous les
+> Composers racines, pas avant ; il n'y a pas de « câblage Channels »
+> Foundation/Composer en strate 0 (cible strate 1, cf. bandeau de périmètre) ;
+> chaque Composer est instancié via `new ComposerClass({ rootElement: selecteur })`
+> (le sélecteur string, pas un élément déjà résolu) puis `instance.attach(body)`
+> résout ou crée le slot lui-même ; il n'existe pas de `framework.attachView(...)` —
+> c'est `Composer#attachNew()` (privé) qui appelle `view.mount(result.rootElement)`,
+> `mount()` résolvant lui-même le sélecteur via `document.querySelector()` **global**
+> (pas scopé au slot du Composer).
+
 ```
 Application (bootstrap)
   |
-  +-- 1-5. Couche abstraite (Features, Channels, Entities, Router)
+  +-- Phases 0a-4 (cf. application.md) : manifest, Features, Channels, Entities
   |
-  +-- 6. Creation Foundation
+  +-- Phase 4 : Creation Foundation
        |  body = document.body
        |  html = document.documentElement
-       |  Cablage Channels Foundation
-       |  Resolution composers racines
-       |  foundation.onAttach()
+       |  Pour chaque cle de get composers() (ordre d'insertion) :
+       |    composer = new ComposerClass({ rootElement: selecteur })
+       |    composer.attach(body)
+       |      +-- Resout ou cree le slot (D30) dans body
+       |      +-- resolve(null) -> ViewClass (ou null) -- bootstrap initial
+       |      +-- Si ViewClass -> view.mount(result.rootElement)
+       |           (resolution GLOBALE document.querySelector, pas scopee au slot)
+       |  foundation.onAttach()   <- apres tous les Composers racines
        |
-       +-- 7. Pour chaque Composer racine :
-            |  slotEl = body.querySelector(selecteur)
-            |  composer = new ComposerClass(slotEl)
-            |  Cablage Channels Composer
-            |  composer.resolve() -> ViewClass (ou null)
-            |  Si ViewClass -> framework.attachView(ViewClass, slotEl)
-            |     +-- Resolution recursive des Composers de la View
-            |
-       +-- 8. Application dormante
+       +-- Application dormante (I23)
 ```
 
 ---
