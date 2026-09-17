@@ -109,7 +109,7 @@ rfc/
 
 | Document | Description | Statut |
 |----------|-------------|--------|
-| [Invariants](reference/invariants.md) | Règles non négociables (I1–I58) | 🟢 Stable |
+| [Invariants](reference/invariants.md) | Règles non négociables (I1–I98, I59–I62 réservés) | 🟢 Stable |
 | [Décisions historiques](reference/decisions.md) | Journal chronologique (D1–D48) | 🟢 Stable |
 | [Anti-patterns](reference/anti-patterns.md) | Patterns explicitement interdits | 🟢 Stable |
 | [Glossaire](reference/glossaire.md) | Terminologie officielle | 🟢 Stable |
@@ -170,7 +170,7 @@ En cas de divergence entre documents, le **document source de vérité** prévau
 |-------|---------------------|------------|-------------------|--------|
 | Principes, flux, frontières | [Philosophie](1-philosophie.md) + [Architecture](2-architecture/README.md) | — | — | ✅ Complet |
 | Composants (10) | [Couche abstraite](3-couche-abstraite/README.md) + [Couche concrète](4-couche-concrete/README.md) | — | — | ✅ Complet |
-| Invariants (I1–I58) | [Invariants](reference/invariants.md) | — | — | ✅ Complet |
+| Invariants (I1–I98, I59–I62 réservés) | [Invariants](reference/invariants.md) | — | — | ✅ Complet |
 | Vocabulaire officiel | [Glossaire](reference/glossaire.md) | — | — | ✅ Complet |
 | Métadonnées causales (metas) | [Metas](2-architecture/metas.md) | [ADR-0005](../adr/ADR-0005-meta-lifecycle.md) 🟢 / [ADR-0016](../adr/ADR-0016-metas-handler-signature.md) 🟢 | ✅ 80% | ULID, `usr-`/`sys-`, `origin.kind` absorbés. |
 | Bootstrap & lifecycle | [Lifecycle](2-architecture/lifecycle.md) | [ADR-0010](../adr/ADR-0010-bootstrap-order.md) 🟢 | ✅ 80% | `PhaseKey`, `TAppContext`, 6 phases, shutdown inverse absorbés |
@@ -226,22 +226,29 @@ En cas de divergence entre documents, le **document source de vérité** prévau
 
 ## Index thématique des invariants
 
-Les invariants I1–I45, I57 et I58 sont définis dans [Invariants architecturaux](reference/invariants.md).
+Les invariants I1–I45 et I57–I98 sont définis dans [Invariants architecturaux](reference/invariants.md)
+(**I59–I62 réservés** par [ADR-0018](../adr/ADR-0018-foundation-contract.md), 🟠 Suspended — trou attendu, pas une anomalie).
 Les invariants I46–I56 sont définis dans [Conventions de typage](6-transversal/conventions-typage.md) (invariants spécifiques aux contrats TypeScript).
 
-> **Total : 58 invariants** (I1–I58) répartis entre les invariants architecturaux (I1–I45, I57, I58)
-> et les invariants de contrats TypeScript (I46–I56).
+> **Total : 94 invariants définis** (I1–I98, 4 numéros réservés I59–I62) répartis entre les
+> invariants architecturaux historiques (I1–I45, I57, I58), les invariants de contrats
+> TypeScript (I46–I56) et les invariants ajoutés par les ADR-0038 → ADR-0046
+> (I63–I98 — bootstrap, manifest applicatif, pattern modulaire consommateur, Entity strate 1a).
+> *(recompté par le script [annexe A.4](../AUDIT-DOCS-2026-09-16.md#a4--numérotation-des-invariants-et-décisions) de l'audit doc)*
 
 | Thème | Invariants |
 |-------|------------|
-| **Communication / Channels** | I1, I2, I3, I4, I7, I8, I9, I10, I11, I12, I14, I15, I16 |
-| **State / Encapsulation** | I5, I6, I17, I22, I29, I30, I42, I57 |
-| **View / DOM** | I13, I18, I19, I31, I32, I34, I36, I38, I39, I40, I41 |
+| **Communication / Channels** | I1, I2, I3, I4, I7, I8, I9, I10, I11, I12, I14, I15, I16, I65, I70, I73, I76 |
+| **State / Encapsulation** | I5, I6, I17, I22, I29, I30, I42, I57, I63, I64, I80 |
+| **View / DOM** | I13, I18, I19, I31, I32, I34, I36, I38, I39, I40, I41, I77, I78, I82, I91 |
 | **Behavior** | I43, I44, I45 |
-| **Foundation** | I20, I33, I38 |
+| **Foundation** | I20, I33, I38, I67 |
 | **Composer** | I20, I35, I36, I37, I38, I40, I58 |
-| **Lifecycle** | I19, I20, I23, I24 |
-| **Nommage / Namespace** | I21, I25, I26, I27, I28, I57 |
+| **Lifecycle** | I19, I20, I23, I24, I66 |
+| **Nommage / Namespace** | I21, I25, I26, I27, I28, I57, I71 |
+| **Manifest applicatif & Bootstrap Feature (ADR-0039/0046)** | I68, I69, I72, I74, I75, I79, I92, I93, I94, I95, I96 |
+| **Pattern modulaire consommateur (ADR-0042)** | I81, I83, I84, I85, I86, I87, I88, I89, I90 |
+| **Entity — mutation avancée (ADR-0028 strate 1a)** | I97, I98 |
 | **Contrats TypeScript** | I46, I47, I48, I49, I50, I51, I52, I53, I54, I55, I56 |
 
 ---

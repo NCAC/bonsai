@@ -25,19 +25,26 @@ docs/
 
 Les RFCs définissent l'architecture et les contrats techniques. C'est la **source de vérité**.
 
-| RFC      | Sujet                                                    | Statut    |
-| -------- | -------------------------------------------------------- | --------- |
-| RFC-0001 | Architecture fondamentale (composants, invariants, flux) | 🟢 Stable |
-| RFC-0002 | API, contrats TypeScript (Channel, Feature, Entity)      | 🟢 Stable |
-| RFC-0003 | Rendu avancé (PDR, templates, ProjectionList)            | 🟢 Stable |
-| RFC-0004 | DevTools et observabilité (Event Ledger, hooks, perf)    | � Draft   |
+> **Nomenclature** : les identifiants `RFC-0001`–`RFC-0004` ci-dessous sont
+> l'ancienne numérotation (encore utilisée dans les renvois `RFC-000X §Y` des
+> ADR et RFC). Le corpus vit désormais dans une **arborescence par chapitres**
+> — les liens pointent directement sur les fichiers actuels. Table de
+> correspondance complète : [rfc/README.md §Correspondance](rfc/README.md#correspondance-avec-les-anciens-noms-de-fichiers).
+
+| RFC      | Sujet                                                    | Chapitres actuels | Statut    |
+| -------- | -------------------------------------------------------- | ------------------ | --------- |
+| RFC-0001 | Architecture fondamentale (composants, invariants, flux) | [1. Philosophie](rfc/1-philosophie.md) · [2. Architecture](rfc/2-architecture/README.md) · [3. Couche abstraite](rfc/3-couche-abstraite/README.md) · [4. Couche concrète](rfc/4-couche-concrete/README.md) · [Invariants](rfc/reference/invariants.md) · [Décisions](rfc/reference/decisions.md) · [Glossaire](rfc/reference/glossaire.md) | 🟢 Stable |
+| RFC-0002 | API, contrats TypeScript (Channel, Feature, Entity)      | [6. Transversal — Conventions de typage](rfc/6-transversal/conventions-typage.md) · [Index des types](rfc/reference/types-index.md) | 🟢 Stable |
+| RFC-0003 | Rendu avancé (PDR, templates, ProjectionList)            | [5. Rendu avancé](rfc/5-rendu.md) | 🟢 Stable |
+| RFC-0004 | DevTools et observabilité (Event Ledger, hooks, perf)    | [DevTools](rfc/devtools.md) | 🟡 Draft   |
 
 ### [ADRs — Décisions](adr/README.md)
 
 Les ADRs documentent les choix architecturaux non triviaux : contexte, options évaluées, décision finale.
 
-- **36 ADRs** (ADR-0001 à ADR-0036)
-- **29 Accepted**, 3 Superseded, 1 Proposed, 2 Suspended, 1 Proposed
+- **47 ADRs** (ADR-0001 à ADR-0047)
+- **22 Accepted**, 17 Tested, 3 Superseded, 3 Proposed, 2 Suspended
+- *(recalculé par le script [annexe A.2](AUDIT-DOCS-2026-09-16.md#a2--statuts-adr-pour-recalculer-les-compteurs) — à revérifier périodiquement plutôt qu'à la main)*
 - [Voir l'index complet →](adr/README.md)
 
 ### [Guides — Conventions](guides/)
@@ -79,7 +86,7 @@ mais ne sont plus des documents de référence actifs.
 | Je veux…                             | Je lis…                                                                            |
 | ------------------------------------ | ---------------------------------------------------------------------------------- |
 | Comprendre l'architecture Bonsai     | [Philosophie](rfc/1-philosophie.md) + [Architecture](rfc/2-architecture/README.md) |
-| Connaître les règles non-négociables | [Invariants I1–I58](rfc/reference/invariants.md)                                   |
+| Connaître les règles non-négociables | [Invariants I1–I98](rfc/reference/invariants.md)                                   |
 | Savoir pourquoi tel choix a été fait | [ADRs](adr/README.md)                                                              |
 | Écrire du code framework (build)     | [BUILD-CODING-STYLE](guides/BUILD-CODING-STYLE.md)                                 |
 | Écrire du code applicatif Bonsai     | [FRAMEWORK-STYLE-GUIDE](guides/FRAMEWORK-STYLE-GUIDE.md)                           |

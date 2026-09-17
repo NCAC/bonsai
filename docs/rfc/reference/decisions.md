@@ -8,7 +8,16 @@
 
 > ### 📌 Processus de numérotation
 >
-> **Décisions** : numérotation séquentielle stricte. Le prochain numéro disponible est **D49**.
+> **Décisions** : numérotation séquentielle stricte. Le prochain numéro disponible est **D49**
+> (réservé par [ADR-0018](../../adr/ADR-0018-foundation-contract.md), 🟠 Suspended — non
+> consommé tant que cet ADR n'est pas accepté).
+>
+> **Le journal D est clos depuis D48** (2026-03-26). Toute décision architecturale
+> depuis (ADR-0024 → ADR-0047 au 2026-09-16) est documentée comme **ADR** à part
+> entière (contexte, options, décision, conséquences — cf. [docs/adr/README.md](../../adr/README.md)),
+> pas comme entrée `D49+` dans ce journal. Le format ADR est plus complet pour
+> des décisions dont la portée a grandi ; le format D court reste un artefact
+> historique de la phase initiale du projet (D1–D48, mars 2026).
 
 ---
 
