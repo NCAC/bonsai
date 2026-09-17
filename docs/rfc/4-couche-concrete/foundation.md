@@ -64,6 +64,14 @@ La Foundation est le point d'ancrage **unique** de l'application dans le documen
 Elle cible `<body>` et couvre le trou de couverture DOM laisse par les Views
 (dont le rootElement est forcement un enfant de `<body>`, jamais `<body>` lui-meme).
 
+> ⚠️ **`TChannelDefinition[]` incohérent avec ADR-0040** : comme pour
+> `TComposerParams` ([composer.md §1.1](composer.md)), `namespace` ne vit pas
+> sur `TChannelDefinition` — un tuple de dépendances déclarées devrait être
+> `readonly TChannelToken<TDef, string>[]`. Par ailleurs `onAttach()` est
+> livré **public** (pas `protected`), et `attach()`/`get composerInstances()`
+> (surface framework réelle, publique) ne sont pas documentés dans ce bloc
+> cible.
+
 ```typescript
 /**
  * TFoundationParams -- contrainte de validation (ADR-0024 value-first).
@@ -178,29 +186,39 @@ class AppFoundation extends Foundation<TAppFoundationCapabilities> {
   }
 
   onThemeThemeChangedEvent(payload: { theme: "light" | "dark" }): void {
-    // N1 : alteration d'attributs sur <html> -- autorise
+    // N1 : alteration d'attributs sur <html> -- autorise. Un seul attribut
+    // data-* porte l'etat (pas de classe CSS pour un etat dynamique,
+    // cf. convention data-* du framework) -- pas de classList.toggle("dark", ...).
     this.html.setAttribute("data-theme", payload.theme);
-    this.html.classList.toggle("dark", payload.theme === "dark");
   }
 
   onViewportResizedEvent(payload: { width: number }): void {
-    // N1 : classes CSS sur <body> -- autorise
-    this.body.classList.toggle("is-mobile", payload.width < 768);
-    this.body.classList.toggle(
-      "is-tablet",
-      payload.width >= 768 && payload.width < 1024
-    );
+    // N1 : etat dynamique via data-* sur <body> -- pas de classe CSS
+    // ("is-mobile"/"is-tablet" seraient des classes d'etat, interdites).
+    const breakpoint =
+      payload.width < 768 ? "mobile" : payload.width < 1024 ? "tablet" : "desktop";
+    this.body.setAttribute("data-breakpoint", breakpoint);
   }
 
-  protected onAttach(): void {
-    // Ecoute DOM globale -- autorise
-    window.addEventListener("resize", this.handleResize);
-    document.addEventListener("visibilitychange", this.handleVisibility);
+  // Les handlers d'ecoute DOM globale sont des methodes liees a l'instance
+  // (arrow function ou #field) pour etre reference-egales entre add/remove.
+  #handleResize = (): void => {
+    /* ... */
+  };
+  #handleVisibility = (): void => {
+    /* ... */
+  };
+
+  onAttach(): void {
+    // Ecoute DOM globale -- autorise. Public (pas protected) : signature
+    // reelle de Foundation.onAttach() (packages/foundation/src/bonsai-foundation.ts).
+    window.addEventListener("resize", this.#handleResize);
+    document.addEventListener("visibilitychange", this.#handleVisibility);
   }
 
-  protected onDetach(): void {
-    window.removeEventListener("resize", this.handleResize);
-    document.removeEventListener("visibilitychange", this.handleVisibility);
+  onDetach(): void {
+    window.removeEventListener("resize", this.#handleResize);
+    document.removeEventListener("visibilitychange", this.#handleVisibility);
   }
 }
 ```
@@ -248,6 +266,17 @@ Foundation(<body>)
 Quand l'application a besoin de composition dynamique macro (ex: changement de page,
 swap de layout selon le role utilisateur), Foundation **n'evolue pas**. On utilise
 le pattern de delegation :
+
+> ⚠️ **Hors du périmètre couvert par le bandeau de tête (limité à §1-2)** :
+> l'exemple ci-dessous utilise aussi des formes pré-ADR-0024/0040/0042 non
+> livrées — `Foundation<TCapabilities>`/`Composer<TCapabilities>` génériques
+> avec `get params()`, `View<THomePageCapabilities>` à générique unique
+> (au lieu de `View<TViewContract>` + `implements TViewCallbacks`), et
+> `this.request<TCurrentRoute>(Router.channel, "currentRoute")` (signature
+> `request()` réelle : `request(token, name, params)`, sans generic de
+> retour explicite — le retour est inféré du token). Illustre le **principe**
+> de délégation (Foundation stable, dynamisme local à une View), pas une
+> API à copier telle quelle.
 
 ```typescript
 // -- Foundation reste minimale et stable -----------------------------------
@@ -303,7 +332,7 @@ class HomePageView extends View<THomePageCapabilities> {
 
 - Foundation reste **lisible en un coup d'oeil** comme un layout statique (I67)
 - Le **dynamisme est local** a la View concernee, encapsule dans un sous-arbre DOM
-- La **destruction en cascade** d'une View dynamique nettoie ses Composers/Views enfants (composer.md \u00a75)
+- La **destruction en cascade** d'une View dynamique nettoie ses Composers/Views enfants (composer.md §5)
 - Foundation ne re-render **jamais** -- pas de risque d'invalider l'ancrage des composants persistants
 
 **Anti-pattern** -- Foundation conditionnelle :

@@ -34,7 +34,7 @@
 > | Composers enfants, `get templates()`, `view.onDetach()`, désinscription Channel/DOM au détachement, cascade de destruction par scan de projection | Strate 1/2 | §4.1 (étapes 5-12), §4.2, §5 |
 > | Machine à états `idle/resolving/active(Views)/detaching/[destroyed]` | Strate 1 | §6 |
 >
-> **Strate 0 — périmètre effectif** : `Composer` non-générique, `resolve(event: unknown \| null) → TResolveResult \| null`, slot DOM immutable (ADR-0026), création D30, diff §3.1 des 5 transitions Same/New/null. Pas de `params()`, pas de `listen`, pas de `request()`, pas de retour tableau.
+> **Strate 0 — périmètre effectif** : `Composer` non-générique, `resolve(event: unknown \| null) → TResolveResult \| null`, slot DOM immutable (ADR-0026), création D30, diff §3.1 des 5 transitions Same/New/null. Pas de `params()`, pas de `listen`, pas de `request()`, pas de retour tableau. Surface publique réelle non documentée dans le §1.1 (qui décrit la cible, générique) : `constructor(options: TComposerOptions)`, `get rootElement(): string`, `get slot(): HTMLElement | null`, `get currentView(): View | null`, `attach(parentElement: HTMLElement): void` (résout/crée le slot puis fait le premier `resolve(null)`), `abstract resolve(event: unknown | null): TResolveResult | null` — tous **publics**, pas `protected`.
 >
 > **Séquence réellement livrée (attach/detach)** — ⚠️ diverge de §4.1/§4.2 ci-dessous
 > sur deux points précis, décrits ici sans ambiguïté :
@@ -92,6 +92,17 @@ Il n'a **aucune ecriture DOM** -- lecture du scope autorisee (I35 nuance).
 Son unique point d'entree est `resolve(event)` (ADR-0025, ADR-0027).
 
 ### 1.1 Types
+
+> ⚠️ **Cible antérieure à ADR-0040/ADR-0042, non mise à jour** : les types
+> ci-dessous utilisent `TChannelDefinition["namespace"]` — mais `namespace`
+> ne vit **pas** sur `TChannelDefinition` depuis ADR-0040, il vit sur
+> `TChannelToken<TDef, NS>` (paramètre de type `NS`, cf.
+> [communication.md §5](../2-architecture/communication.md)). De même,
+> `TComposerParams.listen`/`request: readonly TChannelDefinition[]` devrait
+> être un tuple de `TChannelToken<…>[]`, et `View.params.options` n'existe
+> plus (`View` n'a pas de `params`, ADR-0042). Ce bloc décrit une proposition
+> antérieure à ces deux ADR, jamais réharmonisée — à retravailler avant
+> toute implémentation strate 1, pas à prendre comme référence figée.
 
 ```typescript
 /**
@@ -191,7 +202,11 @@ type TComposerOptions = {
 abstract class Composer<
   TCapabilities extends TComposerCapabilities<TComposerParams>
 > {
-  /** Reference au scope DOM -- fourni par le framework, jamais mute par le Composer */
+  /**
+   * Reference au scope DOM -- fourni par le framework, jamais mute par le Composer.
+   * ⚠️ Cible incohérente avec le livré : `Composer.slot` (strate 0) est un
+   * **getter public** (`get slot(): HTMLElement | null`), pas `protected readonly`.
+   */
   protected readonly slot: HTMLElement;
 
   /** Le manifeste -- contrat declaratif du Composer concret (ADR-0024) */
@@ -213,7 +228,11 @@ abstract class Composer<
     event: TComposerEvent<TCapabilities["listen"]> | null
   ): TResolveResult | TResolveResult[] | null;
 
-  /** La View actuellement montee (null si vide) -- pour resolve() classique (0/1) */
+  /**
+   * La View actuellement montee (null si vide) -- pour resolve() classique (0/1).
+   * ⚠️ Idem `slot` : livré aujourd'hui comme `get currentView(): View | null`
+   * **public**, pas `protected readonly`.
+   */
   protected readonly currentView: View<any> | null;
 
   /**
@@ -390,7 +409,8 @@ Le framework l'appelle avec l'Event declencheur en argument :
 
 | `resolve()` retourne | View montee         | Action framework                         |
 | -------------------- | ------------------- | ---------------------------------------- |
-| `SameView`           | `SameView` instance | **No-op**                                |
+| `SameView`, meme `rootElement` | `SameView` instance | **No-op** (instance conservee, aucun remount) |
+| `SameView`, `rootElement` **different** | `SameView` instance | **Detach** -> **Attach** (traite comme un changement de View, pas comme un no-op) |
 | `NewView`            | `OldView` instance  | **Detach** OldView -> **Attach** NewView |
 | `NewView`            | null                | **Attach** NewView                       |
 | null                 | `OldView` instance  | **Detach** OldView                       |
@@ -511,6 +531,13 @@ View parente : projection (PDR)
 ---
 
 ## 6. Cycle de vie -- machine a etats
+
+> ⚠️ **Cible strate 1, non livree** : `Composer` a reellement un champ prive
+> `#state: "idle" | "active"` — deux etats, pas cinq. Pas de `resolving`
+> (le calcul de `resolve()` est synchrone, sans etat intermediaire observable),
+> pas de `detaching` (le detachement est synchrone dans `#detachCurrent()`),
+> pas de `destroyed` (aucune notion de destruction n'est livree). `#state`
+> passe a `"active"` dans `#attachNew()` et a `"idle"` dans `#detachCurrent()`.
 
 ```
 idle -> resolving -> active(Views) -> detaching -> idle
