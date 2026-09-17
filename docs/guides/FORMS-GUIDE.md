@@ -50,7 +50,7 @@
 2. [Pattern A — Formulaire simple (localState)](#2-pattern-a--formulaire-simple-localstate)
 3. [Pattern B — Formulaire réutilisable (FormBehavior)](#3-pattern-b--formulaire-réutilisable-formbehavior)
 4. [Pattern C — Wizard multi-step (Entity + localState)](#4-pattern-c--wizard-multi-step-entity--localstate)
-5. [Pattern D — Validation asynchrone (Request Channel)](#5-pattern-d--validation-asynchrone-request-channel)
+5. [Pattern D — Validation différée (Request Channel)](#5-pattern-d--validation-différée-request-channel)
 6. [Anti-patterns](#6-anti-patterns)
 7. [Checklist formulaire](#7-checklist-formulaire)
 
@@ -693,13 +693,19 @@ class ShippingStepView
 
 ---
 
-## 5. Pattern D — Validation asynchrone (Request Channel)
+## 5. Pattern D — Validation différée (Request Channel)
 
-> **Quand** : vérifier l'unicité d'un username, valider un code postal via API, etc.
+> **Quand** : vérifier l'unicité d'un username contre l'état d'une Entity, valider un code postal contre une liste connue, etc.
+>
+> ⚠ **`this.request()` est synchrone** (ADR-0023, I29) — il retourne
+> `T | null`, jamais une `Promise`. Il ne fait donc **pas** d'appel réseau ;
+> il interroge une Feature déjà chargée en mémoire (state Entity, table de
+> référence). Pour une vérification qui appelle réellement une API externe,
+> le round-trip async doit être géré par la Feature elle-même (hors Request
+> Channel) — non couvert par ce guide.
 
-Combinable avec n'importe quel pattern (A, B ou C). La validation asynchrone
-utilise `this.request()` avec la **clé flat namespacée** (`"ns:req"`, I80) pour
-interroger la Feature.
+Combinable avec n'importe quel pattern (A, B ou C). Seul le **debounce** est
+asynchrone ; l'appel `this.request()` qu'il déclenche est synchrone.
 
 ```typescript
 // Dans la View (ou le Behavior)
@@ -712,7 +718,7 @@ onUsernameInputInput(e: Event): void {
     draft.errors.username = value.length < 3 ? 'Min. 3 caractères' : null;
   });
 
-  // Debounce 300ms avant d'appeler la Feature
+  // Debounce 300ms — seul ce délai est asynchrone, pas l'appel this.request()
   if (this.usernameCheckTimer) clearTimeout(this.usernameCheckTimer);
   if (value.length >= 3) {
     this.usernameCheckTimer = setTimeout(() => {
@@ -721,15 +727,12 @@ onUsernameInputInput(e: Event): void {
   }
 }
 
-private async checkUsernameAvailability(username: string): Promise<void> {
-  this.updateLocal(draft => { draft.usernameChecking = true; });
-
-  // ✅ Request Channel — clé flat "ns:req", async, typée, avec metas
-  const isAvailable = await this.request('registration:isUsernameAvailable', { username });
+private checkUsernameAvailability(username: string): void {
+  // ✅ Request Channel — clé flat "ns:req" (I80), synchrone (ADR-0023, I29)
+  const isAvailable = this.request('registration:isUsernameAvailable', { username });
 
   this.updateLocal(draft => {
-    draft.usernameChecking = false;
-    if (!isAvailable && draft.values.username === username) {
+    if (isAvailable === false && draft.values.username === username) {
       draft.errors.username = 'Ce nom est déjà pris';
     }
   });
@@ -739,9 +742,9 @@ private async checkUsernameAvailability(username: string): Promise<void> {
 ### Points clés
 
 - **Debounce côté View** — la Feature ne reçoit pas une requête par frappe
-- **`this.request("ns:req", params)`** retourne une `Promise<T>` — typé depuis `TFlatRequests<F>` (le contrat `features`)
-- **Guard `draft.values.username === username`** — évite d'écraser si l'utilisateur a continué à taper
-- Le **spinner** est piloté par un N1 callback sur `usernameChecking`
+- **`this.request("ns:req", params)`** retourne `T | null` **synchrone** — typé depuis `TFlatRequests<F>` (le contrat `features`), jamais une `Promise` (ADR-0023, I29)
+- **Guard `draft.values.username === username`** — évite d'écraser si l'utilisateur a continué à taper pendant le debounce
+- Pas de spinner « en attente réseau » possible ici — la latence perçue est uniquement celle du debounce, pas d'une requête HTTP
 
 ---
 
