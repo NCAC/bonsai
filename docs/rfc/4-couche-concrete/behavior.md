@@ -14,7 +14,10 @@
 | **Statut** | RFC anticipée — Strate 2 (ADR-0028). Pattern modulaire ADR-0042 applicable (cf. encadré ci-dessous). |
 | **ADRs liées** | **ADR-0042 (pattern modulaire — applicable à Behavior par I83)**, ADR-0007 (contrat Behavior), ADR-0009 (formulaires), ADR-0013 (code reuse), ADR-0015 (localState), ADR-0040 (Channel générique) |
 
-> Q7 résolu (D36) : le contrat Behavior est **stabilisé**.
+> Q7 résolu (D36) : le **principe** du contrat Behavior (plugin UI aveugle,
+> localState, handlers auto-dérivés) est stabilisé — sa **syntaxe concrète**
+> ne l'est pas : elle suit désormais le pattern modulaire ADR-0042 (cf.
+> encadré ci-dessous), non encore implémenté (Strate 2).
 
 > **⚠ Mise à jour ADR-0042 (2026-05-06)** — Behavior n'est pas encore implémentée
 > (livraison prévue Strate 2). Les exemples ci-dessous qui utilisent encore

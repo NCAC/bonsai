@@ -83,7 +83,7 @@ rfc/
 | [Foundation](4-couche-concrete/foundation.md) | Singleton, écoute DOM globale, Composers racines, altération N1 | 🟢 Stable |
 | [Composer](4-couche-concrete/composer.md) | Décideur de composition, resolve(), scope DOM fixe | 🟢 Stable |
 | [View](4-couche-concrete/view.md) | Projection DOM Réactive, UIMap typée, délégation d'événements, localState | 🟢 Stable |
-| [Behavior](4-couche-concrete/behavior.md) | Plugin UI réutilisable, handlers auto-dérivés, localState | 🟢 Stable |
+| [Behavior](4-couche-concrete/behavior.md) | Plugin UI réutilisable, handlers auto-dérivés, localState | 🟡 Anticipé — Strate 2 |
 
 ### Chapitre 5 — Rendu avancé
 
