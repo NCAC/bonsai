@@ -469,7 +469,7 @@ Compile : `npx tsc --noEmit --strict --target es2022 --module esnext --moduleRes
 
 ## Références
 
-- [RFC-0001 — Architecture fondamentale](../rfc/RFC-0001-architecture-fondamentale.md)
+- [RFC-0001 — Architecture fondamentale](../rfc/1-philosophie.md)
 - [feature.md — Contrat Feature](../rfc/3-couche-abstraite/feature.md)
 - [view.md — Contrat View (ADR-0042)](../rfc/4-couche-concrete/view.md)
 - [invariants.md — Liste canonique](../rfc/reference/invariants.md)

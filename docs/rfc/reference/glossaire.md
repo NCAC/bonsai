@@ -305,5 +305,5 @@ Product/
 - [RFC-0001 Architecture Fondamentale](../1-philosophie.md) — Document maître
 - [RFC-0001 Composants](../2-architecture/README.md) — Détail des 10 composants
 - [RFC-0001 Invariants et Décisions](../reference/invariants.md) — Règles et historique
-- [Framework Style Guide](../guides/FRAMEWORK-STYLE-GUIDE.md) — Conventions d'usage du framework applicatif
+- [Framework Style Guide](../../guides/FRAMEWORK-STYLE-GUIDE.md) — Conventions d'usage du framework applicatif
 - [RFC-0002 API et Contrats de Typage](../6-transversal/conventions-typage.md) — Contrats TypeScript, glossaire des types §19

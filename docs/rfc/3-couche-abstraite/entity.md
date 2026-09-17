@@ -13,7 +13,7 @@
 | **Couche**     | Abstraite (persistante)                                                                                                                                                |
 | **Statut**     | 🟢 Stable                                                                                                                                                              |
 | **Mis à jour** | 2026-04-01                                                                                                                                                             |
-| **ADRs liées** | [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md), [ADR-0005](../adr/ADR-0005-meta-lifecycle.md), [ADR-0014](../adr/ADR-0014-ssr-hydration-strategy.md) |
+| **ADRs liées** | [ADR-0001](../../adr/ADR-0001-entity-diff-notification-strategy.md), [ADR-0005](../../adr/ADR-0005-meta-lifecycle.md), [ADR-0014](../../adr/ADR-0014-ssr-hydration-strategy.md) |
 
 > ### Statut normatif
 >
@@ -340,7 +340,7 @@ class CartFeature extends Feature<CartEntity, Cart.Channel> {
 > **Décision ADR-0001** : l'Entity expose une **méthode unique `mutate()`**
 > qui utilise le pattern Immer pour les mutations et capture l'intention métier.
 > Le premier argument est le **discriminant** (intent), suivi d'un objet params optionnel.
-> Voir [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md) pour le détail des alternatives évaluées.
+> Voir [ADR-0001](../../adr/ADR-0001-entity-diff-notification-strategy.md) pour le détail des alternatives évaluées.
 
 ### Signature
 
@@ -554,7 +554,7 @@ this.entity.mutate("counter:increment", (draft) => {
 
 #### ❌ Muter les données pour filtrer/trier
 
-Voir [ADR-0008 Anti-patterns](../adr/ADR-0008-collection-patterns.md#anti-patterns).
+Voir [ADR-0008 Anti-patterns](../../adr/ADR-0008-collection-patterns.md#anti-patterns).
 
 ```typescript
 // ❌ MAUVAIS — mute les items pour trier → ~300 patches !
@@ -1144,8 +1144,8 @@ abstract class Entity<TStructure extends TJsonSerializable> {
 > ne font pas partie du contrat v1. Les niveaux 0 et 1 (mutations trackées,
 > eventLog accessible) sont inclus en v1 comme base extensible.
 >
-> Voir [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md) et
-> [ADR-0011](../adr/ADR-0011-event-sourcing-support.md) pour les décisions sous-jacentes.
+> Voir [ADR-0001](../../adr/ADR-0001-entity-diff-notification-strategy.md) et
+> [ADR-0011](../../adr/ADR-0011-event-sourcing-support.md) pour les décisions sous-jacentes.
 
 L'architecture de mutation permet une évolution progressive vers Event Sourcing :
 

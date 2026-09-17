@@ -128,7 +128,7 @@ Nous choisissons **Option X** parce que :
 
 ## Références
 
-- [RFC-XXXX](../rfc/RFC-XXXX.md)
+- `RFC-XXXX` — remplacer par le fichier de chapitre concerné (ex. `../rfc/3-couche-abstraite/feature.md`), pas par un chemin `RFC-XXXX.md` littéral
 - [Documentation externe pertinente](https://...)
 - [ADR similaire dans autre projet](https://...)
 

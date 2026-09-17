@@ -374,7 +374,7 @@ import "./application.bootstrap.test";
 - [ADR-0030 — Tests comme preuve d'architecture](ADR-0030-testing-as-architecture-proof.md)
 - [ADR-0033 — Workflow Git & versioning](ADR-0033-git-workflow-versioning-strategy.md)
 - [ADR-0006 — Testing strategy](ADR-0006-testing-strategy.md)
-- [CONTRIBUTING.md](/CONTRIBUTING.md)
+- [CONTRIBUTING.md](../../CONTRIBUTING.md)
 
 ---
 

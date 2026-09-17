@@ -208,8 +208,8 @@ En cas de divergence entre documents, le **document source de vérité** prévau
 | Formulaires | [Formulaires](6-transversal/formulaires.md) + [Guide](../guides/FORMS-GUIDE.md) | [ADR-0009](../adr/ADR-0009-forms-pattern.md) 🟢 | ✅ 100% | Patterns absorbés + guide dédié |
 | Event Sourcing | *Aucune RFC* | [ADR-0011](../adr/ADR-0011-event-sourcing-support.md) 🟠 | — | Post-v1 (🟠 Suspended) |
 | Réutilisation code View | [Décisions D38](reference/decisions.md) | [ADR-0013](../adr/ADR-0013-view-code-reuse.md) ⚪ | — | ⚪ Superseded (→ D38) |
-| Distribution ESM | [Distribution](2-architecture/distribution.md) | [ADR-0019](../adr/ADR-0019-esm-modulaire.md) 🟢 | 🟡 50% | BonsaiRegistry, chargement dynamique absorbés |
-| Extension Points | [Architecture](2-architecture/README.md) | [ADR-0021](../adr/ADR-0021-extension-points.md) 🟡 | 🔴 0% | Proposed — en attente d'acceptation |
+| Distribution ESM | [Distribution](2-architecture/distribution.md) | [ADR-0019](../adr/ADR-0019-mode-esm-modulaire.md) 🟢 | 🟡 50% | BonsaiRegistry, chargement dynamique absorbés |
+| Extension Points | [Architecture](2-architecture/README.md) | [ADR-0021](../adr/ADR-0021-composition-monde-ouvert-plateforme.md) 🟡 | 🔴 0% | Proposed — en attente d'acceptation |
 | Build artifacts & versioning | *Aucune RFC* | [ADR-0035](../adr/ADR-0035-build-artifacts-versioning-strategy.md) 🟢 | 🔴 0% | Tout versionné, rebuild systématique, `main` fait foi |
 | Internationalisation docs | *Aucune RFC* | [ADR-0036](../adr/ADR-0036-documentation-internationalization-strategy.md) 🟢 | 🔴 0% | FR source, EN dérivée (`-EN.md`), traduction incrémentale |
 

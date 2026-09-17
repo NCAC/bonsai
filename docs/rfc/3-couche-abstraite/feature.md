@@ -949,7 +949,7 @@ Un Command handler peut échouer pour deux raisons distinctes :
 | Situation                | Comportement attendu                                                                                                                                                               | Exemple                                                                    |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | **Refus métier**         | Le handler n'exécute pas la mutation et n'émet pas d'Event. Il peut émettre un Event d'erreur métier dédié.                                                                        | `cart:addItem` avec `qty <= 0` — ne pas muter, émettre `cart:itemRejected` |
-| **Exception inattendue** | Capturée par le framework, logguée avec contexte causal complet. L'exception ne propage pas aux autres composants. Voir [ADR-0002](../adr/ADR-0002-error-propagation-strategy.md). | Erreur réseau dans un handler d'IO Feature                                 |
+| **Exception inattendue** | Capturée par le framework, logguée avec contexte causal complet. L'exception ne propage pas aux autres composants. Voir [ADR-0002](../../adr/ADR-0002-error-propagation-strategy.md). | Erreur réseau dans un handler d'IO Feature                                 |
 
 > **Convention de refus métier** : ne pas lever d'exception pour un refus métier prévisible.
 > Préférer un Event dédié (`xxx:rejected`, `xxx:failed`) avec le motif dans le payload.
@@ -1023,7 +1023,7 @@ onSetStatusCommand({ status }: { status: string }, metas: TMessageMetas): void {
 
 ### 7.3 Granularité des Features — lignes directrices
 
-> La section suivante est **informative** — voir [Framework Style Guide](../guides/FRAMEWORK-STYLE-GUIDE.md)
+> La section suivante est **informative** — voir [Framework Style Guide](../../guides/FRAMEWORK-STYLE-GUIDE.md)
 > pour les conventions détaillées.
 
 | Indicateur                  | Seuil d'alerte                  | Action recommandée                                  |
@@ -1038,7 +1038,7 @@ onSetStatusCommand({ status }: { status: string }, metas: TMessageMetas): void {
 
 ### 7.4 Modèle d'erreurs — hiérarchie `BonsaiError`
 
-> **Absorbé depuis** : [ADR-0002](../adr/ADR-0002-error-propagation-strategy.md) (Accepted).
+> **Absorbé depuis** : [ADR-0002](../../adr/ADR-0002-error-propagation-strategy.md) (Accepted).
 > Cette section fait désormais foi pour la taxonomie, la hiérarchie TypeScript et la matrice de comportement.
 
 #### Taxonomie des erreurs Bonsai
@@ -1089,7 +1089,7 @@ abstract class BonsaiError extends Error {
 }
 ```
 
-> Chaque sous-classe ajoute des champs contextuels typés (voir [ADR-0002 §Hiérarchie TypeScript](../adr/ADR-0002-error-propagation-strategy.md) pour les signatures complètes des 9 classes).
+> Chaque sous-classe ajoute des champs contextuels typés (voir [ADR-0002 §Hiérarchie TypeScript](../../adr/ADR-0002-error-propagation-strategy.md) pour les signatures complètes des 9 classes).
 
 #### Matrice de comportement
 
@@ -1147,5 +1147,5 @@ class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
 
 > Les erreurs ne sont **pas** un domaine métier. Elles ne sont **pas** modélisées
 > comme Feature + Entity + Channel. L'ErrorReporter est une **infrastructure framework
-> transversale** (comme Radio). Voir [ADR-0002 §ErrorReporter](../adr/ADR-0002-error-propagation-strategy.md)
+> transversale** (comme Radio). Voir [ADR-0002 §ErrorReporter](../../adr/ADR-0002-error-propagation-strategy.md)
 > et [RFC-0004 §5](../devtools.md) pour les hooks DevTools (`onError`, `getErrors`).
