@@ -54,6 +54,7 @@ Les ADRs documentent les choix architecturaux non triviaux : contexte, options �
 | [BUILD-CODING-STYLE.md](guides/BUILD-CODING-STYLE.md)       | `lib/`, `tools/` | Conventions pour la pipeline de build (TypeScript, imports, nommage, singleton)  |
 | [FRAMEWORK-STYLE-GUIDE.md](guides/FRAMEWORK-STYLE-GUIDE.md) | Code applicatif  | Conventions du framework (DOM, HTML, CSS, API TypeScript, patterns)              |
 | [FORMS-GUIDE.md](guides/FORMS-GUIDE.md)                     | Formulaires      | 4 patterns de formulaires (localState, FormBehavior, Entity, Hybride) — ADR-0009 |
+| [NAMESPACE-MENTAL-MODEL.md](guides/NAMESPACE-MENTAL-MODEL.md) | Namespaces Feature | Les quatre lieux où vit le namespace d'une Feature — ADR-0039, ADR-0040, ADR-0046 |
 | [TESTING.md](guides/TESTING.md)                             | Tests            | Stratégie de test (unit, intégration, e2e) — ADR-0006                            |
 
 ---
