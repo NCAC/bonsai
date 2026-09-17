@@ -24,7 +24,7 @@
 | `TJsonSerializable` | Contrainte de type : valeurs serialisables en JSON (D10) | ✅ | [entity.md](../3-couche-abstraite/entity.md) |
 | `TEntityStructure` | Type decrivant la structure de donnees d'une Entity — alias formel de `TStructure`, contraint a `TJsonSerializable` (D10) | ⏳ alias non exporté — `TStructure` est un paramètre de type, pas un alias public | [entity.md](../3-couche-abstraite/entity.md) |
 | `TChannelDefinition` | Type tri-lane : Commands, Events, Requests d'un Channel | ✅ | [communication.md](../2-architecture/communication.md) |
-| `TMessageMetas` | Type des metadonnees causales attachees a chaque message (ADR-0005, ADR-0016). Handlers les recoivent en parametre `(payload, metas)` | ⏳ cible strate 1b — n'existe pas dans le code livré | [metas.md](../2-architecture/metas.md) |
+| `TMessageMetas` | Type des metadonnees causales attachees a chaque message (ADR-0005, ADR-0016). Handlers les reçoivent en parametre `(payload, metas)` | ⏳ cible strate 1b — n'existe pas dans le code livré | [metas.md](../2-architecture/metas.md) |
 | `TApplicationConfig` | Configuration globale de l'application | ⏳ cible — point d'injection non tranché (cf. R11, application.md §4) | [application.md](../3-couche-abstraite/application.md) |
 | `TMutationParams` | Paramètres de `mutate()` : `{ payload?: unknown; metas?: Record<string, unknown> }` — absent de cet index jusqu'à cette correction | ✅ livré (strate 1a) | [entity.md](../3-couche-abstraite/entity.md) |
 | `RESERVED_NAMESPACES` | Constante `["local", "router"] as const` — absente de cet index jusqu'à cette correction | ✅ livré | [reference/invariants.md](invariants.md) |
@@ -34,8 +34,8 @@
 | Type | Definition | État | Source |
 |------|------------|------|--------|
 | `PhaseKey` | Identifiant de phase bootstrap : `'config' \| 'channels' \| 'entities' \| 'features' \| 'views' \| 'start'`. 6 phases sequentielles (ADR-0010) | 🗑️ supersédé — la séquence réelle est 0a/0b/0c/1/3/4 (ADR-0046), pas ces 6 clés | [application.md](../3-couche-abstraite/application.md) |
-| `TAppContext` | Contexte applicatif construit progressivement durant le bootstrap : `{ config, radio, channels, entities, features, views }`. Disponible en totalite apres la phase `'start'` (ADR-0010) | 🗑️ supersédé — non exporté, ne correspond à aucune structure réelle | [application.md](../3-couche-abstraite/application.md) |
-| `BootstrapError` | Erreur de bootstrap localisee par phase : `{ phase: PhaseKey; cause: Error }`. Thrown par `start()` si une phase echoue (ADR-0010) | 🗑️ supersédé — n'existe pas ; les erreurs de bootstrap réelles sont `BonsaiNamespaceError`, `DuplicateHandlerError` | [application.md](../3-couche-abstraite/application.md) |
+| `TAppContext` | Contexte applicatif construit progressivement durant le bootstrap : `{ config, radio, channels, entities, features, views }`. Disponible en totalite après la phase `'start'` (ADR-0010) | 🗑️ supersédé — non exporté, ne correspond à aucune structure réelle | [application.md](../3-couche-abstraite/application.md) |
+| `BootstrapError` | Erreur de bootstrap localisée par phase : `{ phase: PhaseKey; cause: Error }`. Thrown par `start()` si une phase echoue (ADR-0010) | 🗑️ supersédé — n'existe pas ; les erreurs de bootstrap réelles sont `BonsaiNamespaceError`, `DuplicateHandlerError` | [application.md](../3-couche-abstraite/application.md) |
 | `TBootstrapOptions` | Options optionnelles de `start()` : `{ serverState?: Record<string, TJsonSerializable> }`. Si `serverState` fourni, le framework pre-peuple les Entities silencieusement en phase 3 (ADR-0014 H5) | ⏳ cible — `start()` livré n'accepte aucune option | [application.md](../3-couche-abstraite/application.md) |
 | Phase 0a / 0b / 0c | Sous-phases de la séquence **strate 0 réellement implémentée** (ADR-0046), distinctes du `PhaseKey` cible ci-dessus : 0a = validation format namespace + `channel` (I70/I71/I73) ; 0b = instanciation pure de chaque Feature (`new FeatureClass(ns)`, ctor inerte I94) ; 0c = lecture `instance.listens`/`instance.queries` + validation croisée (I70 amendé). Précèdent la création des Channels | ✅ livré | [application.md](../3-couche-abstraite/application.md) |
 | `TApplicationOptions` | Options du constructeur `Application` : `{ foundation, features }` — absent de cet index jusqu'à cette correction | ✅ livré | [application.md](../3-couche-abstraite/application.md) |
@@ -45,8 +45,8 @@
 | Type | Definition | État | Source |
 |------|------------|------|--------|
 | `TEntityEvent` | Retourné par `mutate()` après une mutation non no-op (`null` sinon). Contient `intent`, `payload?`, `metas?`, `changedKeys`, `patches`, `inversePatches`, `previousState`, `nextState`, `timestamp` — tous `readonly`. Consommé par le handler catch-all `onAnyEntityUpdated` | ✅ | [entity.md](../3-couche-abstraite/entity.md) |
-| `ExtractEntityKeyHandlerName<TKey>` | Template literal type : `"items"` -> `"onItemsEntityUpdated"`. Genere les noms de handlers Entity per-key | 🗑️ supersédé — non exporté ; le mécanisme livré (I96) est runtime, pas un template literal type public | [conventions-typage.md](../6-transversal/conventions-typage.md) |
-| `TEntityKeyHandlers<TStructure>` | Mapped type **optionnel** : pour chaque cle K de TStructure, genere `on<K>EntityUpdated(prev, next, patches)`. Utilisable via `implements Partial<TEntityKeyHandlers<TStructure>>` | 🗑️ supersédé — non exporté (cf. I53/I96, `reference/invariants.md`) | [conventions-typage.md](../6-transversal/conventions-typage.md) |
+| `ExtractEntityKeyHandlerName<TKey>` | Template literal type : `"items"` -> `"onItemsEntityUpdated"`. Génère les noms de handlers Entity per-key | 🗑️ supersédé — non exporté ; le mécanisme livré (I96) est runtime, pas un template literal type public | [conventions-typage.md](../6-transversal/conventions-typage.md) |
+| `TEntityKeyHandlers<TStructure>` | Mapped type **optionnel** : pour chaque clé K de TStructure, génère `on<K>EntityUpdated(prev, next, patches)`. Utilisable via `implements Partial<TEntityKeyHandlers<TStructure>>` | 🗑️ supersédé — non exporté (cf. I53/I96, `reference/invariants.md`) | [conventions-typage.md](../6-transversal/conventions-typage.md) |
 
 ## Types Channel et handlers
 
@@ -56,7 +56,7 @@
 | `ExtractCrossChannelHandlerName<TNs, TEvt>` | Template literal type pour Events cross-Channel : `"inventory"` + `"stockUpdated"` -> `"onInventoryStockUpdatedEvent"` | 🗑️ supersédé — non exporté ; inline dans `TListenCallbacks`/`TChannelCallbacks` | [conventions-typage.md](../6-transversal/conventions-typage.md) |
 | `TRequiredCommandHandlers<TChannel>` | Mapped type : signatures handler obligatoires depuis les Commands du Channel | 🗑️ supersédé par `TCommandCallbacks<TDef>` | [conventions-typage.md](../6-transversal/conventions-typage.md) |
 | `TRequiredRequestHandlers<TChannel>` | Mapped type : signatures handler obligatoires depuis les Requests du Channel | 🗑️ supersédé par `TRequestCallbacks<TDef>` | [conventions-typage.md](../6-transversal/conventions-typage.md) |
-| `TEventHandlers<TChannels>` | Mapped type **optionnel** (`Partial<>`) : pour chaque Channel declare en `listen` et chaque Event, genere `on<Namespace><EventName>Event(payload, metas)`. Opere sur un tuple de Channels via `UnionToIntersection`. Metas explicites (ADR-0016). Pas de prefixe `Required` car les event handlers sont optionnels | 🗑️ supersédé par `TListenCallbacks<TListens>` — désormais **tous requis**, pas optionnels (I92) | [conventions-typage.md](../6-transversal/conventions-typage.md) |
+| `TEventHandlers<TChannels>` | Mapped type **optionnel** (`Partial<>`) : pour chaque Channel déclaré en `listen` et chaque Event, génère `on<Namespace><EventName>Event(payload, metas)`. Opere sur un tuple de Channels via `UnionToIntersection`. Metas explicites (ADR-0016). Pas de préfixe `Required` car les event handlers sont optionnels | 🗑️ supersédé par `TListenCallbacks<TListens>` — désormais **tous requis**, pas optionnels (I92) | [conventions-typage.md](../6-transversal/conventions-typage.md) |
 | `CommandPayload<TChannel, TName>` | Extrait le type de payload d'un Command | 🗑️ supersédé — voir `TCommandPayloadFor<F, K>` pour l'équivalent côté consommateur externe | [conventions-typage.md](../6-transversal/conventions-typage.md) |
 | `RequestResult<TChannel, TName>` | Extrait le type de resultat d'un Request (via `infer`) | 🗑️ supersédé — voir `TRequestResultFor<F, K>` | [conventions-typage.md](../6-transversal/conventions-typage.md) |
 | ~~`declareChannel<T>(ns)`~~ | **Historique (D14, supersédé par ADR-0040)** — utilitaire qui créait un token léger `{ namespace }` typé comme `T`, utilisé avec le pattern `export namespace Cart {…}`. Remplacé par `static readonly channel: TChannelToken<TDef, NS>` directement porté par la classe Feature | 🗑️ | [feature.md](../3-couche-abstraite/feature.md) |
@@ -110,11 +110,11 @@
 |------|------------|------|--------|
 | `TProjectionRead` | Type de lecture seule sur un @ui DOM : `value()`, `checked()`, `getAttr()`, `getText()`, `hasClass()`. Retourne par `getUI(key)` pour les @ui couverts par un template (N2/N3, D32) | ⏳ cible strate 1c — n'existe pas ; `getUI()` retourne toujours `TProjectionNode` | [view.md](../4-couche-concrete/view.md) |
 | `TProjectionNode<TEl>` | Type de lecture + mutation N1 sur un @ui DOM. Primitives livrées : `text(value: string)`, `attr(name, value: string)`, `toggleClass()`, `visible(show: boolean)`, `style()`, `element(): TEl` — **toutes retournent `void`** (pas de chaînage `this`), aucune n'accepte `null`. N'expose pas de `.node` (I39) | ✅ livré, mais **n'étend pas** `TProjectionRead` (n'existe pas) et n'est pas chaînable (contrairement à des versions antérieures de cet index) | [view.md](../4-couche-concrete/view.md) |
-| `TProjectionList` | Gestionnaire de reconciliation par cle pour listes dynamiques. Algorithme O(n) : `reconcile({ items, key, create, update, remove })`. Utilise en interne par les templates N2 (Mode C, D19) | ⏳ cible strate 1c | [5-rendu.md](../5-rendu.md) |
+| `TProjectionList` | Gestionnaire de reconciliation par clé pour listes dynamiques. Algorithme O(n) : `reconcile({ items, key, create, update, remove })`. Utilise en interne par les templates N2 (Mode C, D19) | ⏳ cible strate 1c | [5-rendu.md](../5-rendu.md) |
 | `TViewTemplateBinding<TData>` | Contrat d'une entree de `get templates()` : `{ template: TProjectionTemplate<any, TData>; select?: (data) => TData \| undefined }`. `select` active l'auto-reactivite | ⏳ cible strate 1c | [view.md](../4-couche-concrete/view.md) |
 | `TViewTemplates<TUI>` | Union des trois modes de rendu : `null` (Mode A), `{ root: TViewTemplateBinding }` (Mode B), `{ [K in keyof TUI]?: TViewTemplateBinding }` (Mode C). Modes mutuellement exclusifs (D19) | ⏳ cible strate 1c | [view.md](../4-couche-concrete/view.md) |
-| `TProjectionTemplate` | Type d'un template compile — objet `{ setup, project, create }` genere par le compilateur PugJS -> PDR | ⏳ cible strate 1c — seul un prototype existe (`tools/pug-to-ts-template`) | [5-rendu.md](../5-rendu.md) |
-| `TViewNodes<TUI>` | Objet peuple automatiquement par le framework dans `onAttach()`. Chaque cle correspond a une cle de `get templates()` | ⏳ cible strate 1c | [view.md](../4-couche-concrete/view.md) |
+| `TProjectionTemplate` | Type d'un template compile — objet `{ setup, project, create }` généré par le compilateur PugJS -> PDR | ⏳ cible strate 1c — seul un prototype existe (`tools/pug-to-ts-template`) | [5-rendu.md](../5-rendu.md) |
+| `TViewNodes<TUI>` | Objet peuple automatiquement par le framework dans `onAttach()`. Chaque clé correspond a une clé de `get templates()` | ⏳ cible strate 1c | [view.md](../4-couche-concrete/view.md) |
 
 ## Types Behavior (ADR-0042 — pattern modulaire)
 
@@ -142,16 +142,16 @@
 | Type | Definition | État | Source |
 |------|------------|------|--------|
 | `TLocalUpdate<T>` | Payload des callbacks N1 localState : `{ actual: T; previous: T }`. Signature objet nomme (ADR-0015) | ⏳ cible strate 2a | [view.md](../4-couche-concrete/view.md) |
-| `TLocalKeyHandlerName<TKey>` | Template literal type : `'isOpen'` -> `'onLocalIsOpenUpdated'`. Genere les noms de callbacks N1 localState per-key (ADR-0015) | ⏳ cible strate 2a | [view.md](../4-couche-concrete/view.md) |
-| `TLocalKeyHandlers<TLocal>` | Mapped type **optionnel** : pour chaque cle K du localState, genere `onLocal${Capitalize<K>}Updated(update: TLocalUpdate<TLocal[K]>)`. Auto-decouvert par le framework (D12, ADR-0015) | ⏳ cible strate 2a | [view.md](../4-couche-concrete/view.md) |
+| `TLocalKeyHandlerName<TKey>` | Template literal type : `'isOpen'` -> `'onLocalIsOpenUpdated'`. Génère les noms de callbacks N1 localState per-key (ADR-0015) | ⏳ cible strate 2a | [view.md](../4-couche-concrete/view.md) |
+| `TLocalKeyHandlers<TLocal>` | Mapped type **optionnel** : pour chaque clé K du localState, génère `onLocal${Capitalize<K>}Updated(update: TLocalUpdate<TLocal[K]>)`. Auto-découvert par le framework (D12, ADR-0015) | ⏳ cible strate 2a | [view.md](../4-couche-concrete/view.md) |
 
 ## Types handlers Entity
 
 | Type | Definition | État | Source |
 |------|------------|------|--------|
-| `on<Key>EntityUpdated` | Handler Entity per-key optionnel sur Feature — appele quand la propriete `<Key>` de TStructure change. Recoit `(prev: T, next: T, patches: Patch[])`. Inspire de Marionette `change:key` | ✅ livré (I96) | [entity.md](../3-couche-abstraite/entity.md) |
-| `onAnyEntityUpdated` | Handler Entity catch-all optionnel sur Feature — appele pour tout changement de state. Recoit `TEntityEvent`. Inspire de Marionette `change` | ✅ livré (I96) | [entity.md](../3-couche-abstraite/entity.md) |
-| `populateFromServer(state)` | Methode **interne framework** sur Entity. Pre-peuple silencieusement le state (aucun Event, aucune notification). Appele en phase 3 si `serverState` fourni (ADR-0014 H5) | ⏳ cible — n'existe pas sur `Entity` (`packages/entity/src/bonsai-entity.ts`) | [entity.md](../3-couche-abstraite/entity.md) |
+| `on<Key>EntityUpdated` | Handler Entity per-key optionnel sur Feature — appele quand la propriété `<Key>` de TStructure change. Reçoit `(prev: T, next: T, patches: Patch[])`. Inspire de Marionette `change:key` | ✅ livré (I96) | [entity.md](../3-couche-abstraite/entity.md) |
+| `onAnyEntityUpdated` | Handler Entity catch-all optionnel sur Feature — appele pour tout changement de state. Reçoit `TEntityEvent`. Inspire de Marionette `change` | ✅ livré (I96) | [entity.md](../3-couche-abstraite/entity.md) |
+| `populateFromServer(state)` | Méthode **interne framework** sur Entity. Pre-peuple silencieusement le state (aucun Event, aucune notification). Appele en phase 3 si `serverState` fourni (ADR-0014 H5) | ⏳ cible — n'existe pas sur `Entity` (`packages/entity/src/bonsai-entity.ts`) | [entity.md](../3-couche-abstraite/entity.md) |
 
 ## Types framework non couverts ci-dessus (ajoutés audit doc 2026-09-17)
 

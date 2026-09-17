@@ -1,4 +1,4 @@
-# Tracabilite et metadonnees causales
+# Traçabilité et metadonnees causales
 
 > **Metas, ULID, correlationId, propagation explicite, garde-fous anti-boucle**
 
@@ -24,7 +24,7 @@
 
 ## 1. Structure des metas
 
-Chaque message (Command, Event **et** Request) porte des **metadonnees causales completes** (I7) :
+Chaque message (Command, Event **et** Request) porte des **metadonnees causales complètes** (I7) :
 
 ```typescript
 type TMessageMetas = {
@@ -62,11 +62,11 @@ type TMessageMetas = {
 
 ---
 
-## 2. Generation des IDs — ULID
+## 2. Génération des IDs — ULID
 
-Tous les identifiants (`messageId`, `correlationId` sans prefixe) sont des **ULID** (Universally Unique Lexicographically Sortable Identifier).
+Tous les identifiants (`messageId`, `correlationId` sans préfixe) sont des **ULID** (Universally Unique Lexicographically Sortable Identifier).
 
-| Propriete              | UUID v4 | Nanoid | **ULID** |
+| Propriété              | UUID v4 | Nanoid | **ULID** |
 | ---------------------- | ------- | ------ | -------- |
 | Triable temporellement | Non     | Non    | Oui      |
 | Unique garanti         | Oui     | Oui    | Oui      |
@@ -77,22 +77,22 @@ Tous les identifiants (`messageId`, `correlationId` sans prefixe) sont des **ULI
 
 ---
 
-## 3. Prefixes `correlationId` — `usr-` et `sys-`
+## 3. Préfixes `correlationId` — `usr-` et `sys-`
 
-| Prefixe | Initiateur                            | Exemple                          |
+| Préfixe | Initiateur                            | Exemple                          |
 | ------- | ------------------------------------- | -------------------------------- |
 | `usr-`  | UI (View, Behavior, Foundation)       | `usr-01ARZ3NDEKTSV4RRFFQ69G5FAV` |
-| `sys-`  | Systeme (timer, scheduled task, init) | `sys-01ARZ4ABCDEFGHIJKLMNOPQRS`  |
+| `sys-`  | Système (timer, scheduled task, init) | `sys-01ARZ4ABCDEFGHIJKLMNOPQRS`  |
 
-> **I8 amende** : le `correlationId` est cree par l'UI **ou** par le framework pour les actions systeme.
-> Le prefixe `usr-`/`sys-` permet de distinguer l'origine dans les DevTools.
+> **I8 amende** : le `correlationId` est créé par l'UI **ou** par le framework pour les actions système.
+> Le préfixe `usr-`/`sys-` permet de distinguer l'origine dans les DevTools.
 
-> Les Requests portent egalement des metas pour que la chaine causale
-> soit complete : un request declenche depuis un command handler fait
-> partie de la meme transaction (`correlationId`), et le `hop` doit
+> Les Requests portent également des metas pour que la chaine causale
+> soit complète : un request declenche depuis un command handler fait
+> partie de la même transaction (`correlationId`), et le `hop` doit
 > s'incrementer pour que l'anti-boucle (I9) puisse detecter les cycles.
 
-> **Regle d'or** : les metas decrivent la **causalite** du flux.
+> **Regle d'or** : les metas decrivent la **causalité** du flux.
 > Elles n'influencent **jamais** la logique metier — aucune Feature
 > ne doit prendre une decision basee sur `correlationId` ou `hop`.
 
@@ -104,7 +104,7 @@ Tous les identifiants (`messageId`, `correlationId` sans prefixe) sont des **ULI
 
 ### Signature des handlers : `(payload, metas)`
 
-Tous les handlers (Command, Event, Request) recoivent **toujours** deux parametres :
+Tous les handlers (Command, Event, Request) reçoivent **toujours** deux parametres :
 
 ```typescript
 // ⏳ Cible strate 1b — metas non livrées. Signature strate 0 réelle :
@@ -149,7 +149,7 @@ class CartFeature
 | Getter `this.currentMetas`              | Implicite, risque hors handler, problemes async |
 | Wrapper `withMetas(fn)`                 | Ajoute de la magie inutile                      |
 
-### Creation de nouvelle correlation (cas systeme)
+### Création de nouvelle correlation (cas système)
 
 ```typescript
 class SyncFeature extends Feature<SyncEntity, TSyncDef, "sync"> {
@@ -168,14 +168,14 @@ class SyncFeature extends Feature<SyncEntity, TSyncDef, "sync"> {
 
 ## 5. Cycle de vie des metas
 
-Les metas suivent un cycle de vie previsible qui assure la tracabilite complete :
+Les metas suivent un cycle de vie previsible qui assure la traçabilité complète :
 
 ### A la racine (UI trigger)
 
 | Champ           | Valeur                                  |
 | --------------- | --------------------------------------- |
 | `messageId`     | Nouvelle valeur unique                  |
-| `correlationId` | Nouvelle valeur unique (creee par l'UI) |
+| `correlationId` | Nouvelle valeur unique (créée par l'UI) |
 | `causationId`   | `null` (pas de message parent)          |
 | `hop`           | `0`                                     |
 
@@ -198,8 +198,8 @@ Les metas suivent un cycle de vie previsible qui assure la tracabilite complete 
 | `hop`           | `parent.hop + 1`                           |
 
 > Le `correlationId` relie toute la chaine : du `trigger()` initial de la View
-> jusqu'au dernier Event emis par la derniere Feature reactive.
-> C'est la cle de voute du debug et des DevTools (Event Ledger).
+> jusqu'au dernier Event emis par la dernière Feature reactive.
+> C'est la clé de voute du debug et des DevTools (Event Ledger).
 
 ---
 
@@ -210,25 +210,25 @@ Le framework implemente des garde-fous pour prevenir les boucles et garantir l'i
 | Garde-fou                 | Mecanisme                                                                             | Invariant |
 | ------------------------- | ------------------------------------------------------------------------------------- | --------- |
 | **Anti-boucle**           | Si `hop > MAX_HOPS` → le message est **rejete** avec une erreur explicite             | I9        |
-| **Correlation immuable**  | Le `correlationId` est verifie comme jamais modifie dans la chaine                    | I8        |
-| **Causalite obligatoire** | Tout message sauf le trigger initial **doit** avoir un `causationId` non-null         | I7        |
-| **Origine verifiee**      | Le `origin.kind` est assigne automatiquement par le framework, pas par le developpeur | I7        |
+| **Correlation immuable**  | Le `correlationId` est vérifié comme jamais modifié dans la chaine                    | I8        |
+| **Causalité obligatoire** | Tout message sauf le trigger initial **doit** avoir un `causationId` non-null         | I7        |
+| **Origine vérifiée**      | Le `origin.kind` est assigne automatiquement par le framework, pas par le developpeur | I7        |
 
 > **`MAX_HOPS`** serait configurable via `maxHops` dans `TApplicationConfig` —
 > mais **le point d'injection de cette configuration n'est pas tranché**
 > (trois formes hypothétiques coexistent dans la documentation, aucune
 > livrée — cf. [application.md §4](3-couche-abstraite/application.md) et
 > [communication.md §9.5](communication.md)).
-> Une valeur typique serait 10–20 — au-dela, il s'agirait tres probablement
+> Une valeur typique serait 10–20 — au-dela, il s'agirait très probablement
 > d'une boucle evenementielle non intentionnelle.
 
 ---
 
 ## 7. API d'implementation
 
-### 7.1 Creation au point d'entree
+### 7.1 Création au point d'entree
 
-Quand une View ou un Behavior appelle `trigger()`, le framework cree
+Quand une View ou un Behavior appelle `trigger()`, le framework crée
 automatiquement les metas initiales d'une nouvelle chaine causale :
 
 ```typescript
@@ -243,7 +243,7 @@ const metas: TMessageMetas = {
 };
 ```
 
-> **I54 (amende par ADR-0016)** : le framework **cree** les metas au point d'entree.
+> **I54 (amende par ADR-0016)** : le framework **crée** les metas au point d'entree.
 > Le developpeur ne forge JAMAIS de metas manuellement.
 > Le `trigger()` de la View prend une **clé namespacée** `"ns:cmd"` et le
 > payload (ADR-0042, I80 — pas de token Channel exposé côté consommateur) :
@@ -253,9 +253,9 @@ const metas: TMessageMetas = {
 > // Pas de parametre metas -- le framework les cree a la racine
 > ```
 
-### 7.2 Derivation des metas enfant
+### 7.2 Dérivation des metas enfant
 
-Le framework cree de nouvelles metas derivees a chaque propagation
+Le framework crée de nouvelles metas dérivées a chaque propagation
 (nouveau `messageId`, `causationId` chaine, `hop` incremente) :
 
 ```typescript
@@ -279,10 +279,10 @@ function deriveChildMetas(
 
 | #       | Invariant                                                                                                                                                                                                          | Principe                                           |
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
-| **I54** | Le framework **cree** les metas au point d'entree. Le developpeur les **recoit** en parametre `(payload, metas)` et les **propage** explicitement a `emit()`, `request()` et `mutate()`. (D43 amende par ADR-0016) | -> [metas SS4](#4-propagation-explicite-des-metas) |
-| **I7**  | Tout message porte des metadonnees causales completes                                                                                                                                                              | -> [metas SS1](#1-structure-des-metas)             |
-| **I8**  | Le `correlationId` est immuable dans une chaine                                                                                                                                                                    | -> [metas SS5](#5-cycle-de-vie-des-metas)          |
-| **I9**  | `hop > maxHops` -> message rejete                                                                                                                                                                                  | -> [metas SS6](#6-garde-fous-mecaniques)           |
+| **I54** | Le framework **crée** les metas au point d'entree. Le developpeur les **reçoit** en parametre `(payload, metas)` et les **propage** explicitement a `emit()`, `request()` et `mutate()`. (D43 amende par ADR-0016) | -> [metas §4](#4-propagation-explicite-des-metas) |
+| **I7**  | Tout message porte des metadonnees causales complètes                                                                                                                                                              | -> [metas §1](#1-structure-des-metas)             |
+| **I8**  | Le `correlationId` est immuable dans une chaine                                                                                                                                                                    | -> [metas §5](#5-cycle-de-vie-des-metas)          |
+| **I9**  | `hop > maxHops` -> message rejete                                                                                                                                                                                  | -> [metas §6](#6-garde-fous-mecaniques)           |
 
 ---
 

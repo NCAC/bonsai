@@ -249,37 +249,37 @@ type TAnyEventPayload = {
 
 ## 8. Radio -- infrastructure interne
 
-### 8.1 Resolution des declarations
+### 8.1 Résolution des déclarations
 
-Au bootstrap (`start()`), Radio execute la resolution.
-Les instances Channel existent deja -- creees lors de la **Phase 1 du bootstrap** à partir du manifest applicatif (ADR-0039 — D15).
+Au bootstrap (`start()`), Radio execute la résolution.
+Les instances Channel existent déjà -- créées lors de la **Phase 1 du bootstrap** à partir du manifest applicatif (ADR-0039 — D15).
 
 1. **Collecte** toutes les déclarations :
    - **Feature** : namespace fourni par le manifest applicatif (ADR-0039) ; les Channels externes écoutés/interrogés sont déclarés via `get listens()`/`get queries()` — `abstract get` **d'instance** retournant des `TChannelToken<TDef, NS>[]` (ADR-0046, I93) ; les handlers sont auto-découverts par convention `on{Name}Command/Request/Event` (I48)
    - **View / Behavior** : pattern modulaire ADR-0042 — `features: TFeatureContract` (Feature-groupé : `{ ns: { feature, listens, triggers, requests } }`) + `uiEvents: TUIContract` + `uiElements: TUIElements<typeof uiEvents>`
    - **Foundation** / **Composer** : `Readonly<Record<string, typeof Composer>>` pour `composers` (ADR-0038 — I67) ; déclarations channel via le pattern modulaire ADR-0042 quand applicable
 
-2. **Resout les tokens** : chaque `TChannelToken` référencé dans `listens`/
+2. **Résout les tokens** : chaque `TChannelToken` référencé dans `listens`/
    `queries` (Feature) ou `features[ns]` (View/Behavior) est associé à
    l'instance Channel correspondante dans Radio via `token.namespace`
 
-3. **Verifie la coherence** :
+3. **Vérifie la coherence** :
    - Chaque Channel reference correspond a un namespace enregistre
-   - Pas de Channel orphelin (declare mais pas enregistre)
+   - Pas de Channel orphelin (déclaré mais pas enregistré)
 
 4. **Cable les handlers** :
-   - Les methodes `onXxx{Command|Event|Request}` sont rattachees
+   - Les méthodes `onXxx{Command|Event|Request}` sont rattachees
      aux registres des instances Channel correspondantes
 
 ### 8.2 Cablage au bootstrap
 
 **Pour chaque Feature enregistree :**
 
-1. Recuperer l'instance Channel deja creee à la Phase 1 du bootstrap (D15, ADR-0039)
-2. Introspecter les methodes `onXXX`
+1. Récupérer l'instance Channel déjà créée à la Phase 1 du bootstrap (D15, ADR-0039)
+2. Introspecter les méthodes `onXXX`
 3. Pour chaque `onXxxCommand` -> enregistrer dans le registre `commandHandlers`
 4. Pour chaque `onXxxRequest` -> enregistrer dans le registre `requestRepliers`
-5. Pour chaque `onXxxEvent` -> identifier le Channel source (via le prefixe)
+5. Pour chaque `onXxxEvent` -> identifier le Channel source (via le préfixe)
    et enregistrer dans le registre `eventListeners` du Channel source
 
 **Pour chaque View et Behavior (au moment de l'instanciation, Phase 4 — Foundation/Composers/Views) :**
@@ -298,23 +298,23 @@ Les instances Channel existent deja -- creees lors de la **Phase 1 du bootstrap*
    strate 1 (cf. [composer.md](../4-couche-concrete/composer.md))
 2. Le framework **ne fait pas** d'introspection `onXXX` sur le Composer (ADR-0027) —
    `resolve(event)` est l'unique handler. Le framework appelle `resolve(event)`
-   avec l'Event declencheur quand un Event ecoute arrive
+   avec l'Event declencheur quand un Event écoute arrive
 3. ⏳ `protected request()` lié à des Channels déclarés est une cible strate 1
    (cf. bandeau de périmètre de [composer.md](../4-couche-concrete/composer.md)) —
    non livré en strate 0
 
 ### 8.3 Validation des invariants
 
-| Type | Invariants verifies | Mecanisme reel |
+| Type | Invariants vérifiés | Mecanisme reel |
 |------|--------------------|-----------| 
-| **Compile-time** | I4 (View n'a pas de methode `emit()`), I21 (namespace non camelCase/reserve -> `never` via `StrictManifest<M>`), D9/D10 (types) | TypeScript strict, absence structurelle de methode |
+| **Compile-time** | I4 (View n'a pas de méthode `emit()`), I21 (namespace non camelCase/reserve -> `never` via `StrictManifest<M>`), D9/D10 (types) | TypeScript strict, absence structurelle de méthode |
 | **Bootstrap** | I21 (namespace unique -> `BonsaiNamespaceError`), I10 (handler Command/Request duplique -> `DuplicateHandlerError`), I70 (reference `listens`/`queries` inconnue -> `BonsaiNamespaceError`, Phase 0c) | `Channel.handle()`/`reply()` (I10), `Application.start()` Phase 0c (I70), `assertValidNamespace()` (I21) |
-| **Runtime** | I1/I12 (`emit` cross-domain) : **absence structurelle** — `emit()` n'accepte que les cles du Channel propre, aucune verification a faire | Contrainte de type sur `emit<K extends keyof TChannelDef['events']>` — pas de garde runtime necessaire |
+| **Runtime** | I1/I12 (`emit` cross-domain) : **absence structurelle** — `emit()` n'accepte que les clés du Channel propre, aucune vérification a faire | Contrainte de type sur `emit<K extends keyof TChannelDef['events']>` — pas de garde runtime nécessaire |
 
 > ⏳ **I9** (`hop > maxHops`, anti-boucle causale) n'est pas implemente — aucune
 > notion de `hop` n'existe dans le code livre (cible strate 1b, cf. bandeau
 > de perimetre en tete de document). **I25** (Feature interdite de `trigger`)
-> n'a pas de garde dediee : `trigger()` n'existe simplement pas comme methode
+> n'a pas de garde dediee : `trigger()` n'existe simplement pas comme méthode
 > sur `Feature` (absence structurelle, comme I4 pour View/`emit`).
 
 ---

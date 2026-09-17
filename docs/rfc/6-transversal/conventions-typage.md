@@ -1,6 +1,6 @@
 # Conventions de typage
 
-> **Prefixes, contraintes, patterns TypeScript fondamentaux du framework Bonsai**
+> **Préfixes, contraintes, patterns TypeScript fondamentaux du framework Bonsai**
 
 [← Retour a l'index](../README.md)
 
@@ -23,11 +23,11 @@
    compile-time des handlers (mapped types, template literal types,
    `UnionToIntersection` — §5), avec la distinction entre le raisonnement
    historique (5.2, 5.3) et les types reellement exportes (5.2bis)
-5. **Repertorier** les invariants de contrats TypeScript specifiques a l'API
+5. **Repertorier** les invariants de contrats TypeScript spécifiques a l'API
    (I46–I56 — §6), complementaires aux invariants architecturaux d'ensemble
    ([reference/invariants.md](../reference/invariants.md))
 
-### Philosophie : Types d'abord, recompense ensuite
+### Philosophie : Types d'abord, récompense ensuite
 
 Bonsai epouse pleinement les capacites de TypeScript. Le workflow de
 developpement repose sur un investissement initial en typage qui se
@@ -72,29 +72,29 @@ rembourse integralement en DX — et ce pour **chaque composant** :
 
 ---
 
-## 2. Prefixes de types
+## 2. Préfixes de types
 
 > **Regle amendee (audit doc 2026-09-17, decision M7a)** : le critere n'est
 > **pas** « type structurel vs type calcule (mapped/conditional) » — le code
 > livre contredit cette distinction (`TCommandCallbacks`, `TListenCallbacks`,
 > `TChannelCallbacks`, `TFeatureCallbacks` sont tous des mapped/conditional
-> types et portent pourtant le prefixe `T`). Le vrai critere est la
+> types et portent pourtant le préfixe `T`). Le vrai critere est la
 > **surface developpeur** : un type que le developpeur ecrit explicitement
 > dans son code applicatif (signature de classe, `implements`, annotation)
-> porte `T`, meme si son implementation est un mapped/conditional type. Un
+> porte `T`, même si son implementation est un mapped/conditional type. Un
 > type qui n'est que de la plomberie type-level interne — jamais nomme
 > directement par le developpeur, seulement compose par d'autres types —
 > n'en porte pas.
 
-| Categorie                                                                         | Prefixe | Regle           | Exemples                                                             |
+| Categorie                                                                         | Préfixe | Regle           | Exemples                                                             |
 | --------------------------------------------------------------------------------- | ------- | --------------- | -------------------------------------------------------------------- |
 | **Types de la surface developpeur** — ecrits explicitement dans le code applicatif (signatures, `implements`, payloads, state), qu'ils soient structurels ou calcules (mapped/conditional) | `T`     | **DOIT**        | `TChannelDefinition`, `TEntityEvent`, `TFeatureCallbacks`, `TCommandCallbacks`, `TListenCallbacks`, `TViewCallbacks` |
 | **Types de plomberie type-level** — jamais ecrits directement par le developpeur, uniquement composes en interne par d'autres types exportes | —       | **NE DOIT PAS** | `StrictManifest`, `ValidatedManifest`, `CamelCase`, `CamelCaseNamespace`, `UnionToIntersection`, `HasNoDuplicates`, `ExtractEl` |
 | **Classes**                                                                       | —       | **NE DOIT PAS** | `Feature`, `Entity`, `Application`                                   |
 
-> **Justification** : le prefixe `T` signale au developpeur « ceci est un
+> **Justification** : le préfixe `T` signale au developpeur « ceci est un
 > contrat que vous manipulez directement ». Un type de plomberie interne n'a
-> pas besoin de ce signal : le developpeur ne l'ecrit jamais lui-meme, il en
+> pas besoin de ce signal : le developpeur ne l'ecrit jamais lui-même, il en
 > beneficie seulement a travers un type de surface qui le compose (ex.
 > `StrictManifest<M>` n'est jamais tape a la main dans une signature de
 > Feature — seul `satisfies StrictManifest<AppManifest>` l'invoque une fois,
@@ -110,7 +110,7 @@ rembourse integralement en DX — et ce pour **chaque composant** :
 
 Bonsai utilise systematiquement `type` au lieu de `interface` pour toutes
 les definitions de types. Raison : un `type` est **clos** — il ne peut pas
-etre etendu par declaration merging, ni reouvert accidentellement depuis
+être etendu par déclaration merging, ni reouvert accidentellement depuis
 un autre fichier. C'est un contrat grave dans le marbre.
 
 ```typescript
@@ -131,11 +131,11 @@ interface IMessageMetas {
 
 > **Regle** : `interface` n'est jamais utilise dans le code Bonsai — **y compris
 > pour le type-manifest applicatif** (`AppManifest`, ADR-0039). ADR-0039
-> (Accepted, non modifiable) utilise lui-meme `export type AppManifest = {
+> (Accepted, non modifiable) utilise lui-même `export type AppManifest = {
 > user: unknown; cart: unknown; }` — un `type`, jamais `interface`. Plusieurs
 > documents ulterieurs (I69 dans `reference/invariants.md`, `feature.md`,
 > `NAMESPACE-MENTAL-MODEL.md`) avaient derivé vers `interface AppManifest`,
-> ce qui contredisait a la fois cette regle et ADR-0039 lui-meme — corrige
+> ce qui contredisait a la fois cette regle et ADR-0039 lui-même — corrige
 > (audit doc 2026-09-17, decision M7b) : ces trois documents utilisent
 > desormais `type AppManifest`, conformement a l'ADR source.
 > Les seules exceptions sont les `implements` sur les classes,
@@ -146,21 +146,21 @@ interface IMessageMetas {
 ## 4. Contraintes globales
 
 - TypeScript **strict mode** obligatoire
-- Pas de `any` — `unknown` si necessaire
+- Pas de `any` — `unknown` si nécessaire
 - Generiques **contraints** (`extends`) plutot que libres
-- **Inference maximale** — le developpeur declare le minimum, le framework infere le reste
+- **Inference maximale** — le developpeur déclare le minimum, le framework infere le reste
 - Les types publics sont exportes, les types internes ne le sont pas
 
 ---
 
 ## 5. Patterns TypeScript fondamentaux
 
-Le systeme de types de Bonsai repose sur des patterns TypeScript avances
+Le système de types de Bonsai repose sur des patterns TypeScript avances
 utilises pour garantir la coherence a la compilation.
 
-### 5.1 Template literal types — extraction de noms de methodes
+### 5.1 Template literal types — extraction de noms de méthodes
 
-Conversion d'un nom de message en nom de methode handler :
+Conversion d'un nom de message en nom de méthode handler :
 
 ```typescript
 /**
@@ -196,7 +196,7 @@ type ExtractEntityKeyHandlerName<TKey extends string> =
   `on${Capitalize<TKey>}EntityUpdated`;
 ```
 
-### 5.2 Mapped types — contrainte des handlers depuis les declarations Channel
+### 5.2 Mapped types — contrainte des handlers depuis les déclarations Channel
 
 > ⚠️ **Contenu historique, supersédé par ADR-0046 (audit doc 2026-09-17)** —
 > `TRequiredCommandHandlers`, `TRequiredRequestHandlers` et `TEventHandlers`
@@ -273,10 +273,10 @@ type TEventHandlers<TChannels extends readonly TChannelDefinition[]> = Partial<
 >;
 ```
 
-> **Nommage** : `TEventHandlers` (sans prefixe `Required`) car les Event handlers
-> sont **optionnels** (`Partial<>`). On n'ecoute que ce qui interesse.
+> **Nommage** : `TEventHandlers` (sans préfixe `Required`) car les Event handlers
+> sont **optionnels** (`Partial<>`). On n'écoute que ce qui interesse.
 > Les types freres `TRequiredCommandHandlers` et `TRequiredRequestHandlers` conservent
-> le prefixe `Required` car **tous** les handlers y sont obligatoires.
+> le préfixe `Required` car **tous** les handlers y sont obligatoires.
 
 ```typescript
 /**
@@ -312,10 +312,10 @@ type TEntityKeyHandlers<TStructure extends TJsonSerializable> = Partial<{
 }>;
 ```
 
-> **Philosophie (historique)** : le developpeur declare le `TChannelDefinition`,
-> et le type system genere automatiquement les signatures handler
+> **Philosophie (historique)** : le developpeur déclare le `TChannelDefinition`,
+> et le type system génère automatiquement les signatures handler
 > attendues. `implements TRequiredCommandHandlers<TChannel>` suffit
-> pour que l'IDE propose l'autocompletion de toutes les methodes
+> pour que l'IDE propose l'autocompletion de toutes les méthodes
 > manquantes avec les bons types.
 
 ### 5.2bis Les types réellement livrés (`@bonsai/feature`, ADR-0046)

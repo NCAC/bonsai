@@ -1,6 +1,6 @@
 # Foundation -- Point d'ancrage unique sur body
 
-> **Singleton persistant, ecoute DOM globale, Composers racines, alteration N1 sur html/body**
+> **Singleton persistant, écoute DOM globale, Composers racines, alteration N1 sur html/body**
 
 [<- Retour couche concrete](README.md) | [<- Behavior](behavior.md) | [-> Composer](composer.md)
 
@@ -12,7 +12,7 @@
 | **Couche**     | Concrete (persistant -- exception)                                                                                                                 |
 | **Source**     | Historique : RFC-0002-api-contrats-typage §11, ADR-0018                                                                                            |
 | **Statut**     | Stable                                                                                                                                             |
-| **ADRs liees** | ADR-0010 (bootstrap order), ADR-0018 (Foundation contract), ADR-0028 (phasage strates), **ADR-0038 (Foundation.composers Record + I67 stabilite)** |
+| **ADRs liées** | ADR-0010 (bootstrap order), ADR-0018 (Foundation contract), ADR-0028 (phasage strates), **ADR-0038 (Foundation.composers Record + I67 stabilite)** |
 
 ---
 
@@ -62,7 +62,7 @@
 
 La Foundation est le point d'ancrage **unique** de l'application dans le document DOM.
 Elle cible `<body>` et couvre le trou de couverture DOM laisse par les Views
-(dont le rootElement est forcement un enfant de `<body>`, jamais `<body>` lui-meme).
+(dont le rootElement est forcement un enfant de `<body>`, jamais `<body>` lui-même).
 
 > ⚠️ **`TChannelDefinition[]` incohérent avec ADR-0040** : comme pour
 > `TComposerParams` ([composer.md §1.1](composer.md)), `namespace` ne vit pas
@@ -155,8 +155,8 @@ abstract class Foundation<
 La Foundation peut alterer `<html>` et `<body>` en **N1 uniquement** (D27) :
 
 > **Exception a I39** : la Foundation accede a `this.html` et `this.body` directement,
-> sans passer par `getUI(key)`. Ces proprietes sont fournies par le framework
-> (pas un acces DOM brut) et limitees aux alterations N1 (attributs, classes).
+> sans passer par `getUI(key)`. Ces propriétés sont fournies par le framework
+> (pas un accès DOM brut) et limitees aux alterations N1 (attributs, classes).
 > Cette exception est justifiee par D27 : la Foundation est le seul composant
 > qui couvre `<html>`/`<body>`, qui ne sont dans le scope d'aucune View (I33).
 
@@ -227,14 +227,14 @@ class AppFoundation extends Foundation<TAppFoundationCapabilities> {
 
 ## 3. Composers racines
 
-Les cles de `get composers()` dans Foundation sont des **selecteurs CSS dans `<body>`** (D29).
-Le framework resout chaque selecteur via `document.body.querySelector()` au bootstrap,
-dans **l'ordre d'insertion des cles** (garanti par ECMAScript 2015+ §9.1.12).
+Les clés de `get composers()` dans Foundation sont des **selecteurs CSS dans `<body>`** (D29).
+Le framework résout chaque selecteur via `document.body.querySelector()` au bootstrap,
+dans **l'ordre d'insertion des clés** (garanti par ECMAScript 2015+ §9.1.12).
 
-> **Note sur le typage (ADR-0038)** : les cles sont des strings CSS non verifies au compile-time.
+> **Note sur le typage (ADR-0038)** : les clés sont des strings CSS non vérifiées au compile-time.
 > C'est un choix pragmatique -- les selecteurs CSS ne sont pas types par TypeScript.
-> Le type concret est `Readonly<Record<string, typeof Composer>>`. L'unicite des cles
-> est garantie compile-time (TS1117 sur object literal). La validation de resolution DOM
+> Le type concret est `Readonly<Record<string, typeof Composer>>`. L'unicite des clés
+> est garantie compile-time (TS1117 sur object literal). La validation de résolution DOM
 > est **runtime** — mais pas par une vérification dédiée : `Composer.attach()` ne
 > lève **jamais** d'erreur si le sélecteur ne résout à aucun élément de `<body>` ;
 > il **crée** l'élément manquant et l'ajoute au DOM (D30, même mécanisme que pour
@@ -350,9 +350,9 @@ class BadFoundation extends Foundation {
 ```
 
 > **Pourquoi c'est interdit** : (1) viole I67 (stabilite), (2) `composers` est evalue
-> une seule fois au bootstrap -- le `if` n'aura jamais d'effet apres, (3) cree une
+> une seule fois au bootstrap -- le `if` n'aura jamais d'effet après, (3) crée une
 > fausse impression d'adaptabilite qui sera source de bugs. Si la decision depend
-> d'un etat applicatif, **deleguer** a une View qui peut, elle, re-render.
+> d'un état applicatif, **deleguer** a une View qui peut, elle, re-render.
 
 ---
 
@@ -394,5 +394,5 @@ Application (bootstrap)
 
 ## Lecture suivante
 
--> [composer.md](composer.md) -- le decideur de composition
+-> [composer.md](composer.md) -- le décideur de composition
 -> [2-architecture/lifecycle.md](../2-architecture/lifecycle.md) -- cycle de vie persistants vs volatils

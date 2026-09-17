@@ -451,20 +451,20 @@ type TViewCallbacks<TVC extends TViewContract> =
 >
 > **Motivations** :
 > - Le DOM preexiste dans 99% des cas (rendu serveur SSR, CMS, HTML statique)
-> - Les notifications per-key (D16) fournissent deja l'information "quoi a change"
+> - Les notifications per-key (D16) fournissent déjà l'information "quoi a change"
 > - Zero allocation, zero diff runtime -- O(delta) mutations directes
 > - Pas de double template (front + back)
-> - Coherent avec I30 (View = projection pure) et I42 (local state reactif alimente les memes selectors)
+> - Coherent avec I30 (View = projection pure) et I42 (local state reactif alimente les mêmes selectors)
 
 ### 4.1 Point d'ancrage DOM
 
 Le `rootElement` d'une View est fourni par le **Composer** via `TResolveResult.rootElement`
-(ADR-0026). La View elle-meme ne declare PAS son rootElement dans `params`.
+(ADR-0026). La View elle-même ne déclare PAS son rootElement dans `params`.
 
 > **Invariant I31 (reformule ADR-0026)** : le `rootElement` est un selecteur CSS `string`,
-> toujours fourni par le Composer via `TResolveResult`. Le framework le resout dans le slot :
-> - Si l'element existe → hydratation (SSR, H1)
-> - Si l'element n'existe pas → le framework parse le selecteur CSS et cree l'element (D30, ADR-0026 §3)
+> toujours fourni par le Composer via `TResolveResult`. Le framework le résout dans le slot :
+> - Si l'élément existe → hydratation (SSR, H1)
+> - Si l'élément n'existe pas → le framework parse le selecteur CSS et crée l'élément (D30, ADR-0026 §3)
 
 ### 4.2 UIElements et UIEvents (ADR-0042 — pattern modulaire)
 
@@ -569,9 +569,9 @@ Pour le pattern complet (5 étapes : `features` + `uiEvents` + `uiElements` + al
 
 ### 4.3 Délégation d'événements
 
-Le framework utilise la **delegation d'evenements** : un seul listener par type
-d'evenement est attache sur `this.el`. Quand un evenement DOM bulle, le framework
-teste `event.target.closest(selector)` contre chaque `@ui` declare.
+Le framework utilise la **delegation d'événements** : un seul listener par type
+d'événement est attache sur `this.el`. Quand un événement DOM bulle, le framework
+teste `event.target.closest(selector)` contre chaque `@ui` déclaré.
 
 ```
 UN seul listener "click" attache sur this.el
@@ -592,7 +592,7 @@ UN seul listener "click" attache sur this.el
 ```
 
 Avantages :
-- **Elements crees dynamiquement** (fragments, `reconcile`) : les nouveaux enfants sont couverts automatiquement sans rebind
+- **Éléments créés dynamiquement** (fragments, `reconcile`) : les nouveaux enfants sont couverts automatiquement sans rebind
 - **Performance** : 3 listeners (click, input, submit) au lieu de N x 3
 - **Cleanup** : 3 `removeEventListener` dans `onDetach()` au lieu de N x 3
 
@@ -609,11 +609,11 @@ Avantages :
 > (bascule `display: none`), `style(property, value)`, `element(): TEl`.
 
 La View accede aux noeuds DOM **exclusivement** via `getUI(key)`, jamais via
-`querySelector`, `getElementById` ou tout autre acces DOM brut (I39).
+`querySelector`, `getElementById` ou tout autre accès DOM brut (I39).
 
-> **Scope DOM (I40)** : le framework resout chaque `uiElement` dans le scope
-> du `rootElement`, en **excluant les sous-arbres des slots** declares dans
-> `get composers()`. Si un selecteur resout vers un element a l'interieur
+> **Scope DOM (I40)** : le framework résout chaque `uiElement` dans le scope
+> du `rootElement`, en **excluant les sous-arbres des slots** déclarés dans
+> `get composers()`. Si un selecteur résout vers un élément a l'interieur
 > d'un slot, c'est une erreur au bootstrap.
 
 ```typescript
@@ -640,7 +640,7 @@ abstract class View<TVC extends TViewContract = TViewContract> {
 }
 ```
 
-**TProjectionRead** -- acces en lecture seule (disponible pour tous les @ui) :
+**TProjectionRead** -- accès en lecture seule (disponible pour tous les @ui) :
 
 ```typescript
 type TProjectionRead = {
@@ -718,7 +718,7 @@ onSubmitClick(): void {
 
 ### 4.5 get templates() — Trois modes de rendu
 
-La View declare ses templates de projection via `get templates()`.
+La View déclare ses templates de projection via `get templates()`.
 Trois modes **mutuellement exclusifs** :
 
 ```typescript
@@ -751,10 +751,10 @@ type TViewTemplates<TUI extends TUIContract = TUIContract> =
   | { [K in keyof TUI & string]?: TViewTemplateBinding }; // Mode C
 ```
 
-> **Regle normative** : des qu'une zone est declaree dans `get templates()`,
+> **Regle normative** : des qu'une zone est déclarée dans `get templates()`,
 > le rendu de cette zone est delegue au framework via `template.project()`.
 > Un handler View ne doit pas appeler `template.project()` manuellement pour
-> cette meme zone (coherence avec RFC-0003 SS2.2).
+> cette même zone (coherence avec RFC-0003 §2.2).
 
 ### 4.6 TProjectionTemplate
 
@@ -823,10 +823,10 @@ function attachView(view: View, rootElement: string): void {
 ### 4.7 Templates partiels Mode C — Syntaxe PugJS `@ui.xxx`
 
 En Mode C, le developpeur ecrit un ou plusieurs **fragments PugJS** qui ciblent
-chacun un `@ui` specifique. Le reste du DOM serveur est intouche.
+chacun un `@ui` spécifique. Le reste du DOM serveur est intouche.
 
 La syntaxe `@ui.xxx` dans le `.pug` indique au compilateur :
-*"tu possedes le contenu interieur de cet element, pas la View entiere"*.
+*"tu possedes le contenu interieur de cet élément, pas la View entière"*.
 
 ```pug
 _data
@@ -849,8 +849,8 @@ _data
     span.badge-dot
 ```
 
-Le compilateur genere un fichier `.template.ts` contenant un `TProjectionTemplate`
-par `@ui` declare, avec l'analyse de dependance sur `data.*` :
+Le compilateur génère un fichier `.template.ts` contenant un `TProjectionTemplate`
+par `@ui` déclaré, avec l'analyse de dependance sur `data.*` :
 - Noeuds **statiques** -> ignores (existent dans le DOM serveur)
 - Noeuds **dynamiques** -> inclus dans `setup()` + `project()`
 - Noeuds **conditionnels** (`if/else`) -> gestion de bascule de branche
@@ -1017,7 +1017,7 @@ class AccountView
 +------------------ RUNTIME ----------------------+
 |                                                  |
 |  Event recu via Channel (listen) :               |
-|  1. Framework evalue les selectors (SS9.4.5)      |
+|  1. Framework evalue les selectors (§9.4.5)      |
 |  2. Mode A : getUI('key').text(...)  (N1)        |
 |     Mode B : binding.template.project(...) (auto)  |
 |     Mode C : binding.template.project(...) (auto)  |
@@ -1054,9 +1054,9 @@ pas des Events Channel. Ils sont declenches par la Foundation ou les Composers.
 
 | Hook | Quand | Usage typique |
 |------|-------|---------------|
-| `onAttach()` | Apres insertion dans le DOM | Resolution `rootElement` -> `el`, `setup()`, branchement `uiEvents` |
+| `onAttach()` | Après insertion dans le DOM | Résolution `rootElement` -> `el`, `setup()`, branchement `uiEvents` |
 | `onDetach()` | Avant retrait du DOM | Cleanup event listeners DOM, liberation `nodes` |
-| `onRender()` | Apres chaque projection | Post-processing DOM (focus, scroll, animations) |
+| `onRender()` | Après chaque projection | Post-processing DOM (focus, scroll, animations) |
 
 ```typescript
 abstract class View<TVC extends TViewContract = TViewContract> {
@@ -1071,7 +1071,7 @@ abstract class View<TVC extends TViewContract = TViewContract> {
 }
 ```
 
-> **RFC-0001 D4, I19** : la View ne decide ni de sa creation,
+> **RFC-0001 D4, I19** : la View ne décide ni de sa création,
 > ni de sa destruction. Ces hooks sont des **notifications passives**,
 > pas des decisions.
 
@@ -1081,18 +1081,18 @@ abstract class View<TVC extends TViewContract = TViewContract> {
 created -> wired -> attached -> detached -> [destroyed]
 ```
 
-| Etat | Entree (declencheur) | Sorties possibles | Hooks disponibles |
+| État | Entree (declencheur) | Sorties possibles | Hooks disponibles |
 |------|----------------------|-------------------|-------------------|
 | `created` | Instanciation par le Composer | -> `wired` | `constructor` |
 | `wired` | Cablage Channels (bootstrap) | -> `attached` | -- |
-| `attached` | `el` resolu, DOM pret | -> `detached` | `onAttach()` |
+| `attached` | `el` résolu, DOM pret | -> `detached` | `onAttach()` |
 | `detached` | Slot disparu, remplacement ou shutdown | -> `destroyed` | `onDetach()` |
 | `destroyed` | Nettoyage complet (subscriptions, references DOM) | -- (terminal) | -- |
 
 > **Invariants de transition** :
-> - `onAttach()` n'est appele qu'en etat `wired` -- `el` DOIT exister dans le DOM (I31)
+> - `onAttach()` n'est appele qu'en état `wired` -- `el` DOIT exister dans le DOM (I31)
 > - `onDetach()` est appele avant toute destruction -- pas de destruction sans detach
-> - Un etat `detached` peut repasser a `attached` si le Composer monte a nouveau la meme instance (cas rare)
+> - Un état `detached` peut repasser a `attached` si le Composer monte a nouveau la même instance (cas rare)
 > - `localState` (I42) est initialise au premier `attached`, nettoye au `detached`
 > - Les subscriptions Channel sont attachees au `wired`, nettoyees au `detached`
 
@@ -1101,9 +1101,9 @@ created -> wired -> attached -> detached -> [destroyed]
 ## 6. Déclaration des Composers
 
 > **ADR-0020 (Accepted)** : la semantique de `get composers()` est etendue
-> au N-instances. Si un selecteur `uiElements` matche N elements DOM,
-> et que la cle est dans `get composers()`, le framework instancie **N Composers**
-> -- un par element matche. Chaque instance recoit son element DOM comme scope.
+> au N-instances. Si un selecteur `uiElements` matche N éléments DOM,
+> et que la clé est dans `get composers()`, le framework instancie **N Composers**
+> -- un par élément matche. Chaque instance reçoit son élément DOM comme scope.
 
 La View déclare des **slots de composition** via `get composers()`. Pattern modulaire ADR-0042 :
 
@@ -1228,7 +1228,7 @@ class NodeEditFormView
 ## 7. API localState
 
 > **ADR-0015 (Accepted)** -- Le localState est une "Entity sans Channel" :
-> Immer produit un etat immutable, et deux mecanismes complementaires
+> Immer produit un état immutable, et deux mecanismes complementaires
 > assurent la reactivite (dual N1/N2-N3).
 >
 > **🔧 Design revu (audit doc 2026-09-17, décision M8)** : la version
@@ -1268,8 +1268,8 @@ Q2. Ce state doit-il survivre a la destruction de la View ?
                 validationErrors d'un formulaire.
 ```
 
-> **Critere de migration** (I42) : si un localState doit etre observe par un autre
-> composant, il **DOIT** etre migre vers Feature + Entity. Le localState est
+> **Critere de migration** (I42) : si un localState doit être observe par un autre
+> composant, il **DOIT** être migre vers Feature + Entity. Le localState est
 > strictement intra-View (ou intra-Behavior, D37).
 
 ### 7.1 Types localState
@@ -1361,11 +1361,11 @@ abstract class View<TVC extends TViewContract = TViewContract> {
 
 | Niveau | Mecanisme | Quand utiliser | Declenchement |
 |--------|-----------|----------------|---------------|
-| **N1** | Callbacks `onLocal{Key}Updated(update: TLocalUpdate<T>)` | Mutation DOM directe (attributs, classes, texte) | **Synchrone** -- appele immediatement apres `updateLocal()` |
-| **N2/N3** | Selector `select: (data) => data.local?.xxx` dans `get templates()` | Re-projection automatique via pipeline PDR | **Microtask** -- planifie apres les callbacks N1 |
+| **N1** | Callbacks `onLocal{Key}Updated(update: TLocalUpdate<T>)` | Mutation DOM directe (attributs, classes, texte) | **Synchrone** -- appele immédiatement après `updateLocal()` |
+| **N2/N3** | Selector `select: (data) => data.local?.xxx` dans `get templates()` | Re-projection automatique via pipeline PDR | **Microtask** -- planifie après les callbacks N1 |
 
-Les deux mecanismes **ne s'excluent pas**. Un meme `updateLocal()` peut declencher
-un callback N1 **et** une re-projection N2/N3 si les cles concernent des zones differentes.
+Les deux mecanismes **ne s'excluent pas**. Un même `updateLocal()` peut declencher
+un callback N1 **et** une re-projection N2/N3 si les clés concernent des zones differentes.
 
 > **Namespace `local` reserve** (I57) : le data key `local` dans `NamespacedData` est
 > reserve par le framework. Aucun Channel ne peut utiliser le namespace `local`.
@@ -1402,9 +1402,9 @@ updateLocal(recipe)
 
 ### 7.6 Observabilité (DevTools)
 
-Le localState **N'EST PAS** dans `app.snapshot()` (etat volatile, RFC-0004).
+Le localState **N'EST PAS** dans `app.snapshot()` (état volatile, RFC-0004).
 En mode `debug: true`, les mutations localState sont logguees dans la console
-avec le nom de la View et les cles modifiees.
+avec le nom de la View et les clés modifiees.
 
 ### 7.7 Exemple complet
 
@@ -1507,12 +1507,12 @@ class WizardView
 }
 ```
 
-> Le Behavior utilise le meme mecanisme (`get localState()` + `updateLocal()`)
-> avec les memes 5 contraintes (D37, I42). Voir [behavior.md §2.5](behavior.md#25-localstate-d37-adr-0015).
+> Le Behavior utilise le même mecanisme (`get localState()` + `updateLocal()`)
+> avec les mêmes 5 contraintes (D37, I42). Voir [behavior.md §2.5](behavior.md#25-localstate-d37-adr-0015).
 
 ---
 
 ## Lecture suivante
 
 -> [behavior.md](behavior.md) -- plugins UI reutilisables
--> [5-rendu.md](../5-rendu.md) -- PDR complete, templates PugJS, ProjectionList
+-> [5-rendu.md](../5-rendu.md) -- PDR complète, templates PugJS, ProjectionList

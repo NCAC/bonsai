@@ -1,4 +1,4 @@
-# Composer -- Decideur de composition
+# Composer -- Décideur de composition
 
 > **resolve(event) determine quelle(s) View(s) instancier, 0/N Views heterogenes, scope DOM fixe**
 
@@ -12,7 +12,7 @@
 | **Couche**     | Concrete (ephemere)                                                                                                                                                                                                                 |
 | **Source**     | Historique : RFC-0002-api-contrats-typage §12                                                                                                                                                                                       |
 | **Statut**     | Stable                                                                                                                                                                                                                              |
-| **ADRs liees** | ADR-0020 (N-instances, scope immutable), ADR-0024 (pattern manifeste value-first), ADR-0025 (pas de hooks lifecycle), ADR-0026 (rootElement string-only CSS), ADR-0027 (resolve(event) argument unique), ADR-0028 (phasage strates) |
+| **ADRs liées** | ADR-0020 (N-instances, scope immutable), ADR-0024 (pattern manifeste value-first), ADR-0025 (pas de hooks lifecycle), ADR-0026 (rootElement string-only CSS), ADR-0027 (resolve(event) argument unique), ADR-0028 (phasage strates) |
 
 ---
 
@@ -74,19 +74,19 @@
 
 1. [Classe abstraite Composer](#1-classe-abstraite-composer)
 2. [Exemples de Composers](#2-exemples-de-composers)
-3. [Methode resolve()](#3-methode-resolve)
+3. [Méthode resolve()](#3-methode-resolve)
 4. [Cycle de vie et attachement](#4-cycle-de-vie-et-attachement)
 5. [Cascade de destruction](#5-cascade-de-destruction)
-6. [Cycle de vie -- machine a etats](#6-cycle-de-vie----machine-a-etats)
+6. [Cycle de vie -- machine a états](#6-cycle-de-vie----machine-a-etats)
 
 ---
 
 ## 1. Classe abstraite Composer
 
-Le Composer est un **decideur de composition pur** : il est attache a un scope DOM,
-il decide quelle(s) View(s) instancier, et il gere le lifecycle de **0/N Views
+Le Composer est un **décideur de composition pur** : il est attache a un scope DOM,
+il décide quelle(s) View(s) instancier, et il gère le lifecycle de **0/N Views
 heterogenes** dans son scope fixe (ADR-0020, I37 revise).
-Il n'a **aucune ecriture DOM** -- lecture du scope autorisee (I35 nuance).
+Il n'a **aucune écriture DOM** -- lecture du scope autorisée (I35 nuance).
 
 **Le Composer n'a ni hooks lifecycle, ni handlers d'Events, ni state local.**
 Son unique point d'entree est `resolve(event)` (ADR-0025, ADR-0027).
@@ -144,7 +144,7 @@ type TComposerCapabilities<TParams extends TComposerParams> = {
 };
 
 /**
- * TResolveResult -- retour de resolve() (ADR-0020 SS6.2, ADR-0026).
+ * TResolveResult -- retour de resolve() (ADR-0020 §6.2, ADR-0026).
  *
  * rootElement est TOUJOURS un string — selecteur CSS (ADR-0026).
  * Si l'element n'existe pas dans le slot, le framework parse le selecteur
@@ -219,7 +219,7 @@ abstract class Composer<
    *   Le type est une union discriminee derivee du tuple `listen` du manifeste.
    *   Narrowing dans un switch sur event.discriminant.
    *
-   * Retourne (ADR-0020 SS6.3) :
+   * Retourne (ADR-0020 §6.3) :
    * - TResolveResult     -> Composer classique (1 View)
    * - TResolveResult[]   -> Composer dynamique (N Views heterogenes)
    * - null               -> le framework detache les Views courantes (scope vide)
@@ -246,12 +246,12 @@ abstract class Composer<
 }
 ```
 
-> **D21** : le Composer decide, la View parente ne compose jamais.
-> **D23, I35 (nuance ADR-0020)** : aucune ecriture DOM. Lecture du scope autorisee.
+> **D21** : le Composer décide, la View parente ne compose jamais.
+> **D23, I35 (nuance ADR-0020)** : aucune écriture DOM. Lecture du scope autorisée.
 > **I37 (revise ADR-0020)** : 0/N Views heterogenes dans un scope fixe via `resolve()` etendu.
 > **ADR-0025** : pas de `onMount()`/`onUnmount()`. Le Composer n'a aucun hook lifecycle.
 > **ADR-0026** : `rootElement` est toujours un `string`, jamais un `Element`.
-> **ADR-0027** : `resolve(event)` est l'unique methode abstraite. Pas de `onXxxEvent()`, pas de state local.
+> **ADR-0027** : `resolve(event)` est l'unique méthode abstraite. Pas de `onXxxEvent()`, pas de state local.
 
 ---
 
@@ -376,40 +376,40 @@ class MainContentComposer extends Composer<TMainComposerCapabilities> {
 ```
 
 > **Pattern `request()` dans `resolve()`** — le Composer peut interroger n'importe quel
-> Channel declare dans `request` pour obtenir l'etat courant du Feature.
+> Channel déclaré dans `request` pour obtenir l'état courant du Feature.
 > C'est le pattern recommande pour les decisions multi-dimensionnelles (ADR-0027 §4.3).
 > L'argument `event` indique **quel Channel a change**, mais le Composer
-> peut toujours requeter l'etat complet via `request()`.
+> peut toujours requeter l'état complet via `request()`.
 
-> **Pas de `onXxxEvent` handlers** (ADR-0027) — le Composer n'a pas de methodes
-> `onRouterRouteChangedEvent()` ni `onAuthStateChangedEvent()`. L'Event est recu
+> **Pas de `onXxxEvent` handlers** (ADR-0027) — le Composer n'a pas de méthodes
+> `onRouterRouteChangedEvent()` ni `onAuthStateChangedEvent()`. L'Event est reçu
 > en argument de `resolve()`. Pas de stockage intermediaire, pas de pseudo-state.
 
 ---
 
-## 3. Methode resolve()
+## 3. Méthode resolve()
 
-`resolve(event)` est l'unique methode abstraite du Composer (ADR-0027).
+`resolve(event)` est l'unique méthode abstraite du Composer (ADR-0027).
 Le framework l'appelle avec l'Event declencheur en argument :
 
 | Quand                     | Argument `event`                                                                                                            |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Premier montage**       | `null` — le scope existe pour la premiere fois (bootstrap ou apparition dynamique)                                          |
-| **Apres un Event**        | `TComposerEvent` — l'Event ecoute (listen) qui a declenche le recalcul. Discriminant, namespace, eventName et payload types |
+| **Premier montage**       | `null` — le scope existe pour la première fois (bootstrap ou apparition dynamique)                                          |
+| **Après un Event**        | `TComposerEvent` — l'Event écoute (listen) qui a declenche le recalcul. Discriminant, namespace, eventName et payload types |
 | **Reapparition du scope** | `null` — le scope avait disparu puis reapparait (ex: projection de la View parente)                                         |
 
 > **ADR-0027** : l'Event est passe **en argument**, pas via un handler `onXxxEvent()`.
 > Le Composer n'a pas de state local ou le stocker — il recalcule sa decision a chaque appel.
 > Si le Composer a besoin d'information au-dela de l'Event courant, il utilise `request()`.
 
-> **ADR-0020 SS6.3** : `resolve()` retourne `TResolveResult | TResolveResult[] | null`.
+> **ADR-0020 §6.3** : `resolve()` retourne `TResolveResult | TResolveResult[] | null`.
 > Le framework traite les deux formes uniformement via un algorithme de diff.
 
 ### 3.1 Diff pour le retour simple (`TResolveResult | null`)
 
 | `resolve()` retourne | View montee         | Action framework                         |
 | -------------------- | ------------------- | ---------------------------------------- |
-| `SameView`, meme `rootElement` | `SameView` instance | **No-op** (instance conservee, aucun remount) |
+| `SameView`, même `rootElement` | `SameView` instance | **No-op** (instance conservee, aucun remount) |
 | `SameView`, `rootElement` **different** | `SameView` instance | **Detach** -> **Attach** (traite comme un changement de View, pas comme un no-op) |
 | `NewView`            | `OldView` instance  | **Detach** OldView -> **Attach** NewView |
 | `NewView`            | null                | **Attach** NewView                       |
@@ -466,7 +466,7 @@ resolve() retourne R' (nouveau)           Etat precedent R (ancien)
 7. Framework resout get templates() -> peuple nodes
 8. Framework resout get composers() -> instancie les Composers enfants
    8a. Pour chaque cle dans composers : querySelectorAll(uiElements[cle])
-   8b. N elements matches -> N instances de Composer (ADR-0020 SS6.1)
+   8b. N elements matches -> N instances de Composer (ADR-0020 §6.1)
 9. Framework branche uiEvents par delegation (meme exclusion de scope)
 10. Framework cable les handlers Channel de la View
 11. view.onAttach()
@@ -490,7 +490,7 @@ resolve() retourne R' (nouveau)           Etat precedent R (ancien)
 
 > **ADR-0025** : pas de `composer.onUnmount()` dans la sequence de detachement.
 > Le Composer n'a aucun cleanup a effectuer — il n'a ni state, ni subscriptions propres.
-> Le framework gere la desinscription des Events `listen` en interne.
+> Le framework gère la desinscription des Events `listen` en interne.
 
 ---
 
@@ -523,18 +523,18 @@ View parente : projection (PDR)
 > interne, pas un hook developpeur.
 
 > **Detection sans MutationObserver** : le framework instrumente `project()` et
-> `reconcile()` pour savoir quels noeuds DOM ont ete affectes. Apres chaque
-> projection, il verifie si les slots declares dans `get composers()` de la View
+> `reconcile()` pour savoir quels noeuds DOM ont ete affectes. Après chaque
+> projection, il vérifie si les slots déclarés dans `get composers()` de la View
 > sont toujours presents dans le DOM. C'est la **projection** qui est la source
-> de verite, pas le DOM lui-meme.
+> de verite, pas le DOM lui-même.
 
 ---
 
-## 6. Cycle de vie -- machine a etats
+## 6. Cycle de vie -- machine a états
 
 > ⚠️ **Cible strate 1, non livree** : `Composer` a reellement un champ prive
-> `#state: "idle" | "active"` — deux etats, pas cinq. Pas de `resolving`
-> (le calcul de `resolve()` est synchrone, sans etat intermediaire observable),
+> `#state: "idle" | "active"` — deux états, pas cinq. Pas de `resolving`
+> (le calcul de `resolve()` est synchrone, sans état intermediaire observable),
 > pas de `detaching` (le detachement est synchrone dans `#detachCurrent()`),
 > pas de `destroyed` (aucune notion de destruction n'est livree). `#state`
 > passe a `"active"` dans `#attachNew()` et a `"idle"` dans `#detachCurrent()`.
@@ -546,7 +546,7 @@ idle -> resolving -> active(Views) -> detaching -> idle
                                    | [destroyed] (si View parente detruite)
 ```
 
-| Etat            | Description                                                  | Transitions                                                                       |
+| État            | Description                                                  | Transitions                                                                       |
 | --------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------- |
 | `idle`          | Scope present, aucune View montee                            | -> `resolving` si condition remplie                                               |
 | `resolving`     | `resolve()` appele, Views determinees                        | -> `active(Views)` si resultat non-null, -> `idle` si null                        |
@@ -558,9 +558,9 @@ idle -> resolving -> active(Views) -> detaching -> idle
 >
 > - Un Composer en `active(Views)` recalcule l'ensemble via `resolve(event)` ; le framework diff et applique les changements (attach/detach) -- pas de montage imperatif individuel (I37, ADR-0020)
 > - La transition `active -> detaching` declenche la cascade de destruction (§5)
-> - Un Composer `destroyed` n'est jamais reutilise -- la View parente est elle-meme detruite
+> - Un Composer `destroyed` n'est jamais reutilise -- la View parente est elle-même detruite
 > - Le scope DOM d'un Composer est immutable -- assigne une fois, jamais migre (I58, ADR-0020)
-> - **Aucun hook lifecycle** sur les transitions (ADR-0025) -- le framework gere les subscriptions en interne
+> - **Aucun hook lifecycle** sur les transitions (ADR-0025) -- le framework gère les subscriptions en interne
 
 ---
 
