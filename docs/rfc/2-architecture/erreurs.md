@@ -9,7 +9,7 @@
 > **Contrat complet** (hierarchie `BonsaiError`, matrice de comportement, recovery hooks)
 > → voir la Feature ([feature.md](../3-couche-abstraite/feature.md)).
 > **Modes de validation** (`invariant()`, `warning()`, `__DEV__`)
-> → voir les conventions transversales ([conventions-typage.md](../6-transversal/conventions-typage.md)).
+> → voir [validation.md](../6-transversal/validation.md).
 > **Decisions sources** : [ADR-0002](../../adr/ADR-0002-error-propagation-strategy.md), [ADR-0004](../../adr/ADR-0004-validation-modes.md).
 
 ---
@@ -32,10 +32,10 @@ Bonsai distingue quatre categories d'erreurs selon leur origine et leur moment d
 
 | Categorie | Detection | Responsable | Exemples |
 |-----------|-----------|-------------|---------|
-| **Erreur de contrat** | Compile-time | TypeScript | Command sans handler (`implements` echoue), payload mal type, `emit` sur Channel inconnu |
-| **Erreur de cablage** | Bootstrap (`app.start()`) | Framework | Namespace duplique, `onXXX` sans message declare, collision de cles UIMap |
-| **Violation d'invariant** | Bootstrap ou runtime | Framework | `hop > maxHops` (I9), mutation inter-Feature (I6), double handler Command (I10) |
-| **Erreur applicative** | Runtime | Feature / developpeur | Exception dans `onXxxCommand`, timeout de `request()`, `reply()` manquant |
+| **Erreur de contrat** | Compile-time | TypeScript | Command sans handler (`implements TFeatureCallbacks` echoue avec TS2515), payload mal type, `emit` sur une cle absente de `TChannel['events']` |
+| **Erreur de cablage** | Bootstrap (`app.start()`) | Framework | Namespace duplique (TS1117, compile-time), reference `listens`/`queries` a un namespace inconnu (`BonsaiNamespaceError`, Phase 0c) |
+| **Violation d'invariant** | Bootstrap ou runtime | Framework | Double handler Command/Request (I10, `DuplicateHandlerError`), namespace invalide (I21, `BonsaiNamespaceError`) ; `hop > maxHops` (I9) est ⏳ cible strate 1b, non livre |
+| **Erreur applicative** | Runtime | Feature / developpeur | Exception dans `onXxxCommand` (⚠️ propage aujourd'hui a l'appelant, l'isolation est cible strate 1b — cf. Principe 3), `reply()` manquant (`request()` retourne `null`, pas de timeout — `request()` est synchrone, ADR-0023) |
 
 ---
 
@@ -44,7 +44,8 @@ Bonsai distingue quatre categories d'erreurs selon leur origine et leur moment d
 ### Principe 1 — Priorite au compile-time
 
 Toute violation detectable sans execution DOIT etre une erreur TypeScript.
-Le framework fournit des types utilitaires (`TRequiredCommandHandlers`, `TRequiredRequestHandlers`)
+Le framework fournit des types utilitaires (`TCommandCallbacks`, `TRequestCallbacks`,
+`TListenCallbacks`, composes en `TFeatureCallbacks` — ADR-0046, `packages/feature/src/types.ts`)
 qui garantissent mecaniquement la presence des handlers obligatoires avant la premiere execution.
 
 ### Principe 2 — Bootstrap fatal pour les violations structurelles
@@ -53,24 +54,39 @@ Les violations d'invariant detectees au bootstrap (I21, I22, I33, I43...) sont *
 elles bloquent le demarrage avec un message structure incluant le nom de l'invariant viole.
 Un bootstrap reussi garantit la coherence initiale du systeme — pas de demi-demarrage.
 
-### Principe 3 — Isolation des erreurs applicatives
+### Principe 3 — Isolation des erreurs applicatives ⏳ partiellement cible
 
-Une exception dans un handler (`onXxxCommand`, `onXxxEvent`) ne propage pas
-aux autres listeners ni a l'emetteur. L'erreur est capturee, logguee avec son
-contexte causal complet (correlationId, causationId, hop), et le systeme continue.
-Le detail de la strategie d'isolation est dans [ADR-0002](../../adr/ADR-0002-error-propagation-strategy.md).
+Ce principe est **livre pour les listeners Event et les handlers Entity**,
+**pas encore pour les Command handlers** :
+- `onXxxEvent` (Channel.listen) : une exception est capturee, une
+  `ListenerError` est logguee, les autres listeners continuent — **livre**.
+- `on<Key>EntityUpdated`/`onAnyEntityUpdated` : une exception est capturee,
+  une `BroadcastError` est logguee, la notification continue (I96) — **livre**.
+- `onXxxCommand` : une exception **n'est pas capturee** — elle propage a
+  travers `Channel.trigger()` jusqu'a l'appelant (typiquement une View).
+  `CommandError` est definie (`@bonsai/error`) mais **jamais levee**.
+  L'isolation des Command handlers est **cible strate 1b**, cf. le bandeau
+  de perimetre en tete de document et
+  [feature.md §8.7.2](../3-couche-abstraite/feature.md).
 
-### Principe 4 — Request timeout → `null`, sans exception
+Le detail de la strategie cible est dans [ADR-0002](../../adr/ADR-0002-error-propagation-strategy.md).
 
-Un `request()` sans `reply()` dans le delai configure retourne `null` (I55, D44).
-Le consommateur ne recoit jamais d'exception non controlee pour un timeout.
-Le detail (timeout configurable, comportement debug/prod) est dans [ADR-0003](../../adr/ADR-0003-channel-runtime-semantics.md).
+### Principe 4 — Request sans replier → `null`, sans exception
 
-### Principe 5 — Anti-boucle causale → rejet explicite
+Un `request()` sans `reply()` enregistre retourne `null` — **livre**, mais
+sans notion de delai/timeout : `request()` est **synchrone** (ADR-0023, I29),
+le replier lit l'etat de son Entity deja en memoire, aucune notion de
+"delai configure" n'a de sens. Si le replier leve une exception, `null` est
+egalement retourne, avec un `console.error` (pas de `RequestError` levee).
+Le detail est dans [ADR-0003](../../adr/ADR-0003-channel-runtime-semantics.md)
+et [ADR-0023](../../adr/ADR-0023-request-reply-sync-vs-async.md).
 
-Un message dont `hop > maxHops` est rejete avec une erreur structuree incluant
-l'integralite de la chaine causale (tous les messageIds, correlation, hop count).
-Ce message d'erreur DOIT etre lisible par un humain et pointer vers I9.
+### Principe 5 — Anti-boucle causale → rejet explicite ⏳ cible strate 1b, non livre
+
+Un message dont `hop > maxHops` serait rejete avec une erreur structuree
+incluant l'integralite de la chaine causale (tous les messageIds, correlation,
+hop count). **Aucune notion de `hop` n'existe dans le code livre** — ce
+principe decrit le contrat cible d'I9, pas un comportement actuel.
 
 ---
 
