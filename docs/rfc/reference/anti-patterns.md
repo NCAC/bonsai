@@ -140,7 +140,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 - Crée des comportements imprévisibles
 - Casse le principe de découplage
 
-**Viole** : Principe de traçabilité §10
+**Viole** : principe de traçabilité des metas (cf. [metas.md](../2-architecture/metas.md) — ⏳ cible strate 1b, non livré)
 
 **Détection** : `[Code review]` — les handlers reçoivent `(payload, metas)` explicitement (ADR-0016), mais les metas servent **exclusivement** à la traçabilité et à la propagation causale. Tout branchement conditionnel (`if (metas.origin...)`, `switch(metas.correlationId)`) dans la logique métier est un signal d'alarme.
 
@@ -162,24 +162,24 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 **Détection** : `[Compile]` — `Radio` n'est pas exporté par `@bonsai/core`, seule surface applicative : `import { Radio } from "@bonsai/core"` produit `TS2305` (« Module '"@bonsai/core"' has no exported member 'Radio' »). `@bonsai/event` l'exporte pour l'usage inter-packages du framework ; l'importer depuis du code applicatif viole la convention d'import (cf. [distribution.md §4](../2-architecture/distribution.md#4-topologie-des-packages-adr-0031)) — `[Code review]`. Preuve : `tests/types/strate-0/encapsulation.types.test.ts`.
 
-**Alternative** : Déclarer `listen`/`trigger`/`request` dans la définition du composant.
+**Alternative** : Déclarer les Channels externes dans `get listens()`/`get queries()` (Feature, ADR-0046) ou dans `get features()` (View/Behavior, ADR-0042) — pas de `listen`/`trigger`/`request` au niveau racine (pattern pré-ADR-0042, supersédé).
 
 ---
 
 ### ❌ Undeclared Channel Usage
 
-**Description** : Utiliser un Channel dans le corps d'un composant sans l'avoir déclaré dans sa définition (listen, trigger, request).
+**Description** : Utiliser un Channel dans le corps d'un composant sans l'avoir déclaré dans sa définition (`get listens()`/`get queries()` pour une Feature, `get features()` pour une View/Behavior).
 
 **Pourquoi c'est dangereux** :
 - Dépendance invisible → couplage implicite
 - Le composant semble autonome mais ne l'est pas
 - Impossible à détecter sans exécuter le code
 
-**Viole** : I14, I16
+**Viole** : I14, I16, I70
 
-**Détection** : `[Compile + Bootstrap]` — compile : le type system vérifie que les méthodes `onXXX` correspondent aux Channels déclarés. Bootstrap : `[Bonsai] Undeclared channel usage detected in '{ComponentName}' for namespace '{ns}'`.
+**Détection** : `[Compile + Bootstrap]` — compile : `Feature.request()`/`View.trigger()`/`View.request()` n'acceptent qu'un token ou une clé référencée par le contrat déclaré (I77, I79) ; une référence à un Channel non déclaré ne compile pas. Bootstrap (Phase 0c) : si `listens`/`queries` référence un namespace absent du manifest, `Application.start()` lève une `BonsaiNamespaceError` — message réel (`packages/application/src/bonsai-application.ts`) : `Feature "{ownNs}" declares unknown channel "{ref}". Known namespaces: {...}` — pas le message générique montré dans les versions antérieures de cette entrée.
 
-**Alternative** : Toujours déclarer le Channel dans la définition.
+**Alternative** : Toujours déclarer le Channel dans `get listens()`/`get queries()`/`get features()`.
 
 ---
 
@@ -201,13 +201,21 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 > **⚠️ Critère de migration** : si un localState doit être observé par un autre composant (autre View, Behavior, Feature), il **DOIT** être migré vers Feature + Entity. Le localState est strictement intra-View.
 
-**Détection** : `[Compile + Bootstrap]` — `localState` via API framework uniquement (I42). Propriétés `this.xxx` ad hoc : compile en mode strict = error sur propriété non déclarée. Bootstrap mode strict : `[Bonsai] Undeclared mutable property '{name}' detected in View '{ViewName}' — use localState API`.
+**Détection** : ⏳ **Cible, non livré** — `localState` lui-même est une cible strate 2a (cf. [view.md §7](../4-couche-concrete/view.md)), donc aucun garde-fou compile-time ou bootstrap contre les propriétés `this.xxx` ad hoc n'existe aujourd'hui. `[Code review]` reste le seul mécanisme réel en attendant.
 
 ---
 
 ### ❌ Excessive View Inheritance
 
 **Description** : Créer des sous-classes de View pour des variations mineures (layout, config) au lieu d'utiliser les mécanismes prévus : View + options (D34) pour la réutilisation d'un même composant, Behavior (D36) pour l'ajout de capacités orthogonales.
+
+> ⚠️ **D34 (View + options) n'a plus de support livré ni de remplaçant documenté** —
+> `TResolveResult.options` a disparu avec ADR-0042 (`TResolveResult` livré est
+> `{ view, rootElement }` uniquement). L'algorithme de décision ci-dessous cite
+> toujours « Q1 : View + options » comme option légitime alors qu'aucun
+> mécanisme ne permet aujourd'hui de personnaliser une View par des options
+> injectées par le Composer — ne pas présumer que ce chemin est utilisable
+> avant qu'un ADR ne redéfinisse sa forme (cf. R08/R19, composer.md).
 
 **Pourquoi c'est dangereux** :
 - Prolifération de classes pour des différences cosmétiques
@@ -237,22 +245,22 @@ et **détection** (compile-time, bootstrap ou runtime).
 - Transforme la Request Lane en canal de side-effects déguisé
 - Rend les selectors et templates dépendants de `await` inutiles
 
-**Viole** : D9 (révisé par ADR-0023), I55
+**Viole** : D9 (révisé par ADR-0023), I29, I64
 
-**Détection** : `[Compile]` — `reply()` est typé avec un retour `T | null` (synchrone). Un handler qui retourne `Promise<T>` produit une erreur TypeScript : `Type 'Promise<T>' is not assignable to type 'T | null'`.
+**Détection** : `[Compile]` **partiel**, pas absolu — ne pas sur-vendre (I64 est explicite : « le type system ne peut pas l'interdire mécaniquement en v1 »). Ce qui **est** attrapé : marquer le handler `async` change son type de retour en `Promise<T>`, ce qui viole la signature exigée par `implements TFeatureCallbacks<TDef, TListens>` (`(params) => T`, ADR-0046) → `TS2416`. Ce qui **n'est pas** attrapé : un handler non-`async` qui déclenche un `fetch()` fire-and-forget sans l'attendre, ou toute I/O dont le résultat n'est pas le retour de la fonction — la signature reste valide, rien ne compile en erreur. D'où le recours à `[Code review]` + lint pour la classe complète de l'anti-pattern.
 
 **Alternative** : Pré-charger la donnée via un handler Command (async, fire-and-forget) ou un listener Event, stocker dans l'Entity, puis le replier lit l'état synchrone.
 
 ```typescript
-// ❌ Anti-pattern : fetch dans le replier
-onTotalRequest(payload: void, metas: TMetas): Promise<number> {
+// ❌ Anti-pattern : fetch dans le replier — attrapé par TS2416 (async → Promise<T>)
+async onTotalRequest(params: void): Promise<number> {
   const response = await fetch('/api/cart/total');
-  return response.json(); // ⚠️ async dans un replier !
+  return response.json();
 }
 
-// ✅ Pattern correct : donnée déjà dans l'Entity
-onTotalRequest(payload: void, metas: TMetas): number | null {
-  return this.entity.state.total; // lecture synchrone
+// ✅ Pattern correct : donnée déjà dans l'Entity — strate 0, sans metas
+onTotalRequest(params: void): number | null {
+  return this.entity.query.getTotal(); // lecture synchrone
 }
 ```
 
@@ -279,7 +287,7 @@ onTotalRequest(payload: void, metas: TMetas): number | null {
 
 ```typescript
 // ❌ Anti-pattern : fetch dans une View
-class ServiceListView extends View {
+class ServiceListView extends View<TServiceListViewContract> {
   async onRefreshButtonClick(event: MouseEvent): Promise<void> {
     const response = await fetch('/api/services'); // ⚠️ async dans une View !
     const services = await response.json();
@@ -287,10 +295,12 @@ class ServiceListView extends View {
   }
 }
 
-// ✅ Pattern correct : délégation via trigger
-class ServiceListView extends View {
-  onRefreshButtonClick(event: MouseEvent, metas: TMetas): void {
-    this.trigger('services:refresh', undefined, { metas });
+// ✅ Pattern correct : délégation via trigger — clé namespacée flat (I80),
+// signature réelle sans metas (la View ne manipule jamais de metas, I54 ;
+// { metas } en option serait de toute façon une cible strate 1b non livrée)
+class ServiceListView extends View<TServiceListViewContract> {
+  onRefreshButtonClick(event: MouseEvent): void {
+    this.trigger('services:refresh', undefined);
     // fire-and-forget — la View sera notifiée via l'Event services:listLoaded
   }
 }
