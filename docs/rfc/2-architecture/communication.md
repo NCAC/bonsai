@@ -344,14 +344,25 @@ Le framework nettoie automatiquement toutes les subscriptions Channel :
 > Aucun composant n'a besoin de gérer manuellement ses subscriptions.
 > Pas de `unsubscribe()` exposé — le framework garantit l'absence de memory leaks.
 
-### 9.5 Configuration runtime Channel
+### 9.5 Configuration runtime Channel ⏳ cible, point d'injection non tranché
+
+> 🧭 **`createApplication(...)` n'existe pas** — ni dans le code livré
+> (`new Application({ foundation, features })`, sans fonction factory), ni
+> dans aucune autre section de la documentation qui ferait autorité. C'est un
+> troisième point d'entrée hypothétique, en plus de `new Application({
+> enableDevTools, debug })` ([devtools.md §3.1](../devtools.md#31-configuration))
+> et de `TApplicationConfig` sans point d'injection défini
+> ([application.md §4](../3-couche-abstraite/application.md#4-configuration-globale)).
+> Aucun des trois n'est tranché — ne pas en présumer un normatif. L'exemple
+> ci-dessous illustre uniquement la **forme des options de configuration
+> envisagées** pour le Channel, pas leur point d'entrée réel.
 
 ```typescript
-const app = createApplication({
-  channels: {
-    noHandler: 'mode-dependent' // 'throw' | 'warn' | 'silent' | 'mode-dependent'
-  }
-});
+// ⏳ Forme des options envisagées — le point d'entrée (constructeur ?
+// argument de start() ? champ du manifest ?) n'est pas décidé.
+const channelConfig = {
+  noHandler: 'mode-dependent' // 'throw' | 'warn' | 'silent' | 'mode-dependent'
+};
 ```
 
 | Config | Défaut | Override |

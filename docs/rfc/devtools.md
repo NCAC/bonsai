@@ -86,7 +86,7 @@ Sans DevTools, les problèmes suivants deviennent très difficiles à diagnostiq
 | **Inspection des Entities** | État courant de chaque Entity (via `toJSON()`), `changedKeys` de la dernière mutation |
 | **Event Ledger** | Log en temps réel de tous les messages (Commands, Events, Requests) avec leurs metas causales |
 | **Graphe causal simple** | Reconstruction d'une chaîne causale depuis un `correlationId` — messages dans l'ordre, hop par hop |
-| **Snapshot / restore** | Export de l'état complet de toutes les Entities (`app.snapshot()`), restauration (`app.restore(snapshot)`) |
+| **Snapshot / restore** | Export de l'état complet de toutes les Entities, restauration — 🧭 **deux noms coexistent sans arbitrage** : `app.snapshot()`/`app.restore(snapshot)` (cette ligne, et [view.md §7.6](4-couche-concrete/view.md)) vs `app.devTools.getSnapshot()`/`restoreSnapshot()` (§6 ci-dessous) — non tranché, ne pas présumer lequel sera retenu |
 | **Mode debug** | `Object.freeze` sur les Entities hors mutations (détection des mutations sauvages), logs verbose |
 
 ### ⏳ Extensions post-v1
@@ -128,6 +128,13 @@ const app = new Application({
 });
 ```
 
+> 🧭 **Point d'entrée non tranché** : cet exemple omet `foundation`/`features`
+> pour rester concis, mais le code livré n'accepte que `new Application({
+> foundation, features })` — aucun champ de configuration. Ne pas présumer
+> que ces clés seraient mélangées aux clés du manifest sur le même objet ;
+> c'est une hypothèse parmi d'autres, non tranchée — voir
+> [application.md §4](3-couche-abstraite/application.md).
+>
 > **Règle** : `enableDevTools: true` sans `debug: true` est valide — le DevTools panel
 > peut fonctionner sans les logs verbose. `debug: true` implique `enableDevTools: true`
 > (le debug mode a besoin de l'instrumentation pour les logs structurés).

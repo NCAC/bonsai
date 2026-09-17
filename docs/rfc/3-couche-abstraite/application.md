@@ -301,7 +301,19 @@ Execute le shutdown en **ordre inverse** des phases de bootstrap (ADR-0010) :
 
 ---
 
-## 4. Configuration globale
+## 4. Configuration globale ⏳ cible, point d'injection non tranché
+
+> 🧭 **Trois points d'entrée hypothétiques coexistent dans la documentation
+> pour `TApplicationConfig`, sans qu'aucun ne soit tranché** :
+> - un champ `config` sur les options du constructeur, sibling de `foundation`/`features`
+> - les clés de configuration directement mélangées aux clés du manifest sur le
+>   constructeur, comme le montre [devtools.md §3.1](../devtools.md#31-configuration)
+>   (`new Application({ enableDevTools, debug })`, sans `foundation`/`features` visibles)
+> - un argument dédié à `start()`
+>
+> Le code livré n'accepte que `new Application({ foundation, features })` —
+> aucune des trois formes de configuration n'existe. Ne pas présumer laquelle
+> sera retenue avant qu'un ADR ne tranche.
 
 ```typescript
 type TApplicationConfig = {
