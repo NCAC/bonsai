@@ -616,7 +616,7 @@ de plus que `this` polymorphique, Bonsai utilise un seul generic
 - [Couche abstraite — Feature](../rfc/3-couche-abstraite/feature.md)
 - [Conventions de typage](../rfc/6-transversal/conventions-typage.md)
 - [Philosophie](../rfc/1-philosophie.md)
-- marionext-legacy : [Page.view.ts](../../marionext-legacy/tests/marionext-view/src/Page/Page.view.ts) — prototype exploratoire du pattern CRTP + Params consolidé
+- marionext-legacy : `tests/marionext-view/src/Page/Page.view.ts` — prototype exploratoire du pattern CRTP + Params consolidé (dépôt séparé, hors `bonsai/` — pas de lien)
 
 ---
 

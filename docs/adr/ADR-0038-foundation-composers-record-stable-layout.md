@@ -411,7 +411,7 @@ Les contrats `Foundation.composers` et `View.composers` **diffèrent par nature*
 ### Sur les tests
 
 - [foundation.basic.test.ts](../../tests/unit/strate-0/foundation.basic.test.ts) — migration `Entry[]` → `Record` dans les fixtures (3 occurrences).
-- [application.bootstrap.test.ts](../../tests/unit/strate-0/application.bootstrap.test.ts) — idem (3 occurrences).
+- [application.basic.test.ts](../../tests/unit/strate-0/application.basic.test.ts) — idem (3 occurrences).
 - **Aucun test à supprimer**, aucun comportement observable changé.
 
 ### Sur les utilisateurs futurs
@@ -425,7 +425,7 @@ Les contrats `Foundation.composers` et `View.composers` **diffèrent par nature*
 ## Actions de suivi
 
 - [ ] Migrer [bonsai-foundation.ts](../../packages/foundation/src/bonsai-foundation.ts) : signature `composers`, suppression `TFoundationComposerEntry`, itération `Object.entries`.
-- [ ] Migrer [foundation.basic.test.ts](../../tests/unit/strate-0/foundation.basic.test.ts) et [application.bootstrap.test.ts](../../tests/unit/strate-0/application.bootstrap.test.ts).
+- [ ] Migrer [foundation.basic.test.ts](../../tests/unit/strate-0/foundation.basic.test.ts) et [application.basic.test.ts](../../tests/unit/strate-0/application.basic.test.ts).
 - [ ] Ajouter I67 dans [invariants.md](../rfc/reference/invariants.md) (tableau principal + tableau « niveaux d'enforcement »).
 - [ ] Ajouter encadré « Stabilité de Foundation » et section « Pattern délégation » dans [foundation.md](../rfc/4-couche-concrete/foundation.md).
 - [ ] Mettre à jour [docs/adr/README.md](README.md) (entrée ADR-0038, ordre, statut).

@@ -45,7 +45,7 @@ class CartFeature extends Feature<Cart.State, Cart.Channel> {
 
 1. **Cast obligatoire vers la classe Entity concrète** dès qu'on accède à `query`,
    à des méthodes spécifiques de l'Entity, ou à toute API au-delà du `state` brut.
-   Les tests strate-0 actuels ([feature.core.test.ts](../../tests/unit/strate-0/feature.core.test.ts#L92)) en font la démonstration : trois `as CartEntity` / `as PricingEntity` pour un fixture minimal.
+   Les tests strate-0 actuels (`feature.core.test.ts` (historique, migré depuis vers `feature.basic.test.ts`)) en font la démonstration : trois `as CartEntity` / `as PricingEntity` pour un fixture minimal.
 
 2. **Duplication conceptuelle** : `Cart.State` est déjà accessible via `CartEntity`
    (l'Entity est paramétrée par sa structure). Le déclarer une seconde fois
@@ -59,7 +59,7 @@ class CartFeature extends Feature<Cart.State, Cart.Channel> {
 
 ### Élément déclencheur
 
-Lors de l'écriture des tests strate-0 ([feature.core.test.ts](../../tests/unit/strate-0/feature.core.test.ts)), la répétition mécanique du cast `(this.entity as CartEntity).query.*` a fait apparaître que l'information manquante (le **type concret** de l'Entity) est connue **statiquement** par le développeur — il l'écrit déjà dans `protected get Entity() { return CartEntity; }`. Le type system devrait pouvoir l'inférer.
+Lors de l'écriture des tests strate-0 (`feature.core.test.ts` (historique, migré depuis vers `feature.basic.test.ts`)), la répétition mécanique du cast `(this.entity as CartEntity).query.*` a fait apparaître que l'information manquante (le **type concret** de l'Entity) est connue **statiquement** par le développeur — il l'écrit déjà dans `protected get Entity() { return CartEntity; }`. Le type system devrait pouvoir l'inférer.
 
 ---
 
@@ -257,7 +257,7 @@ Inacceptable architecturalement : l'Entity ne connaît pas le Channel (I5/I6, D1
 ### Négatives (acceptées)
 
 - ⚠️ **Migration documentaire** : ~6 fichiers RFC à mettre à jour (feature.md, entity.md, application.md, conventions-typage.md, et les exemples downstream). Acceptable car opération mécanique.
-- ⚠️ **Migration tests strate-0** : [feature.core.test.ts](../../tests/unit/strate-0/feature.core.test.ts) déjà en divergence avec la RFC (utilise `createEntity()` au lieu de `get Entity`) — la migration est l'occasion d'aligner ces tests sur le contrat normatif.
+- ⚠️ **Migration tests strate-0** : `feature.core.test.ts` (à l'époque en divergence avec la RFC — utilisait `createEntity()` au lieu de `get Entity`) — la migration était l'occasion d'aligner ces tests sur le contrat normatif. **Fait** : le fichier a depuis été renommé `feature.basic.test.ts` et utilise `get Entity()`.
 - ⚠️ **Léger glissement de vocabulaire** : `TStructure` disparaît du générique de Feature (il reste `TEntityClass`). L'invariant de jsonifiabilité est porté transitivement par `Entity<TJsonSerializable>` dans la contrainte. Documentation à clarifier.
 
 ### Risques identifiés
@@ -336,7 +336,7 @@ class CartFeature
 - [ ] Mettre à jour [application.md](../rfc/3-couche-abstraite/application.md) si des exemples Feature y figurent.
 - [ ] Amender [decisions.md](../rfc/reference/decisions.md) : ajouter une note sous D17 indiquant l'amendement par ADR-0037 (signature retour du getter `Entity`).
 - [ ] Mettre à jour [invariants.md](../rfc/reference/invariants.md) sur I22 : ajouter mention « encodé au type-level depuis ADR-0037 ».
-- [ ] Migrer [feature.core.test.ts](../../tests/unit/strate-0/feature.core.test.ts) : remplacer `createEntity()` par `get Entity()`, supprimer les casts, passer la classe Entity en générique.
+- [x] Migrer `feature.core.test.ts` : remplacer `createEntity()` par `get Entity()`, supprimer les casts, passer la classe Entity en générique. **Fait** — fichier renommé `feature.basic.test.ts`.
 - [ ] Aligner l'implémentation `@bonsai/feature` (`packages/feature/src/`) sur la signature révisée.
 - [ ] Exporter `TEntityState<E>` depuis `@bonsai/entity`.
 
@@ -348,7 +348,7 @@ class CartFeature
 - [entity.md §1 Type TEntityStructure](../rfc/3-couche-abstraite/entity.md#L48)
 - [decisions.md D17 — getter Entity abstrait](../rfc/reference/decisions.md)
 - [invariants.md I22 — 1:1:1 namespace ↔ Feature ↔ Entity](../rfc/reference/invariants.md)
-- [feature.core.test.ts — élément déclencheur](../../tests/unit/strate-0/feature.core.test.ts)
+- `feature.core.test.ts` — élément déclencheur (renommé depuis en [feature.basic.test.ts](../../tests/unit/strate-0/feature.basic.test.ts))
 
 ---
 
