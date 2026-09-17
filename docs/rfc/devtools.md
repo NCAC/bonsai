@@ -8,7 +8,7 @@
 |-------------------|---------------------------------------------|
 | **RFC**           | 0004                                        |
 | **Composant**     | DevTools — infrastructure d'observabilité   |
-| **Statut**        | 🟢 Stable                                   |
+| **Statut**        | 🟡 Draft — aligné sur `rfc/README.md`/`docs/README.md` (rien n'est livré, cf. bandeau de périmètre ci-dessous) |
 | **Créé le**       | 2026-03-23                                  |
 | **Mis à jour**    | 2026-03-26                                  |
 | **ADRs liées**    | [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md), [ADR-0002](../adr/ADR-0002-error-propagation-strategy.md), [ADR-0004](../adr/ADR-0004-validation-modes.md), [ADR-0011](../adr/ADR-0011-event-sourcing-support.md), [ADR-0015](../adr/ADR-0015-local-state-mechanism.md) |
@@ -82,7 +82,7 @@ Sans DevTools, les problèmes suivants deviennent très difficiles à diagnostiq
 |---------------|-------------|
 | **Activation conditionnelle** | `enableDevTools: true` dans `TApplicationConfig` — zéro coût en production si désactivé |
 | **Inspection des Channels** | Liste des Channels enregistrés, handlers câblés, listeners actifs |
-| **Inspection et collecte des erreurs** | Ring buffer, hooks `onError()` / `getErrors()` / `getErrorsByCode()`, liaison avec ADR-0002 ErrorReporter |
+| **Inspection et collecte des erreurs** | Ring buffer, hooks `onError()` / `getErrors()` / `getErrorsByInvariantId()`, liaison avec ADR-0002 ErrorReporter |
 | **Inspection des Entities** | État courant de chaque Entity (via `toJSON()`), `changedKeys` de la dernière mutation |
 | **Event Ledger** | Log en temps réel de tous les messages (Commands, Events, Requests) avec leurs metas causales |
 | **Graphe causal simple** | Reconstruction d'une chaîne causale depuis un `correlationId` — messages dans l'ordre, hop par hop |
@@ -175,8 +175,12 @@ type TBonsaiDevTools = {
   /** Retourne les erreurs stockées dans le ring buffer */
   getErrors(): readonly TErrorLogEntry[];
 
-  /** Retourne les erreurs filtrées par code d'erreur (ex: 'RENDER_FAILED') */
-  getErrorsByCode(code: string): readonly TErrorLogEntry[];
+  /**
+   * Retourne les erreurs filtrées par `invariantId` (ex: 'I96', 'ADR-0002') —
+   * `BonsaiError` n'a pas de champ `code` distinct, `invariantId` en tient lieu
+   * (`packages/error/src/bonsai-error.class.ts`).
+   */
+  getErrorsByInvariantId(invariantId: string): readonly TErrorLogEntry[];
 
   /** Vide le ring buffer des erreurs */
   clearErrors(): void;
@@ -332,7 +336,7 @@ const app = new Application({
 // ── Observer les erreurs en temps réel ──
 const unsubscribe = app.devTools!.onError(entry => {
   console.warn(
-    `[${entry.error.code}]`,
+    `[${entry.error.invariantId}]`,
     entry.error.message,
     entry.namespace ? `in ${entry.namespace}` : '',
     entry.correlationId ? `corr=${entry.correlationId.slice(0, 8)}` : ''
@@ -341,12 +345,12 @@ const unsubscribe = app.devTools!.onError(entry => {
 
 // ── Consulter les erreurs stockées ──
 const allErrors = app.devTools!.getErrors();
-const renderErrors = app.devTools!.getErrorsByCode('RENDER_FAILED');
+const renderErrors = app.devTools!.getErrorsByInvariantId('ADR-0002'); // RenderError, cf. feature.md §8.7.4
 
 // ── Dans les tests ──
 app.devTools!.clearErrors();
 await triggerCommand('cart:addItem', { productId: 'invalid' });
-expect(app.devTools!.getErrorsByCode('MUTATION_FAILED')).toHaveLength(1);
+expect(app.devTools!.getErrorsByInvariantId('ADR-0002')).toHaveLength(1); // MutationError (packages/entity/src/bonsai-entity.ts)
 ```
 
 ### 5.5 Erreurs applicatives vs erreurs d'infrastructure
