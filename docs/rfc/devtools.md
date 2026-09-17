@@ -21,6 +21,18 @@
 
 ---
 
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible** des DevTools. **Aucun élément n'est encore implémenté** :
+>
+> | Élément | Strate cible | Sections concernées |
+> | ------- | ------------ | ------------------- |
+> | `app.devTools` (`TBonsaiDevTools`), hooks, Event Ledger, snapshot/restore | Strate 2c | §3 à §8 |
+> | Configuration `enableDevTools`/`debug` | Strate 2c (point d'entrée de configuration non tranché) | §3.1, §9 |
+> | Time-travel, UI DevTools, profiling | Post-v1 | §10 |
+>
+> Les DevTools dépendent des metas (strate 1b), de l'Entity complète (strate 1) et de l'`ErrorReporter` (strate 1).
+
 ## 📋 Table des matières
 
 1. [Motivation et position architecturale](#1-motivation-et-position-architecturale)

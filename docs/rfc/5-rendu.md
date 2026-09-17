@@ -35,6 +35,19 @@
 
 ---
 
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible** du rendu. **Aucun mécanisme de ce document n'est encore implémenté**, hormis les primitives N1 de `getUI()` décrites dans [view.md](4-couche-concrete/view.md) :
+>
+> | Élément | Strate cible | Sections concernées |
+> | ------- | ------------ | ------------------- |
+> | Compilateur Pug → PDR (`setup`/`project`/`create`), `ProjectionList`, réconciliation keyed | Strate 1c | §4, §5, §6, §8 |
+> | Templates réactifs, selectors, abonnement `any`, Render Contract | Strate 1c | §2, §7, §7bis |
+> | Hydratation SSR (H1–H5) | Strate 2c | §7bis.3 |
+> | Animations de liste (D39), listes virtualisées (D40, ADR-0012) | Non planifié par ADR-0028 | §11 |
+>
+> Seul un prototype de compilation existe (`tools/pug-to-ts-template`). Le modèle d'abonnement des Views décrit ici (D42/D46 : `any` + state complet) diffère de la surface livrée par ADR-0042 (handlers `on{NS}{Event}Event` sur les Events granulaires) : l'articulation des deux reste **à trancher** avant la strate 1c.
+
 ## 1. Résumé exécutif
 
 Cette RFC définit le **compilateur Pug → PDR** et les mécanismes de rendu avancés :

@@ -31,6 +31,19 @@
 
 ---
 
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible** d'Entity. Les éléments suivants ne sont **pas encore implémentés** :
+>
+> | Élément | Strate cible | Sections concernées |
+> | ------- | ------------ | ------------------- |
+> | `toJSON()`, `fromJSON()`, `eventLog` | Strate 1 (hors 1a) | §1, §7, §8 |
+> | Schéma de validation `TEntitySchema` (Valibot, ADR-0022) | Strate 1 | — |
+> | `populateFromServer()` (SSR, ADR-0014 H5) | Strate 2c | §1, §7 |
+> | `undo()`, `_history`, Event Sourcing niveaux 2–3 | Post-v1 | §4 (implémentation interne), §8 |
+>
+> **Périmètre effectif livré (strate 0 + strate 1a)** : classe abstraite `Entity<TStructure>` dont la sous-classe implémente `protected defineInitialState()` ; getters publics `state` et `initialState` ; `mutate(intent, recipe)` et `mutate(intent, { payload?, metas? }, recipe)` via `Immer.produceWithPatches` ; `changedKeys` dérivées des patches ; `TEntityEvent` avec `patches`, `inversePatches`, `previousState`, `nextState`, `timestamp` ; mutation sans effet → aucune notification et `mutate()` retourne **`null`** ; recipe qui lève → `MutationError`, state intact (I97) ; ré-entrance mise en file FIFO (retour `null`), bornée par `maxEntityNotificationDepth` (défaut 3) → `EntityReentrancyError` (I98) ; abonnement catch-all `onAnyEntityUpdated(listener)`, dispatch per-key assuré par la Feature (I96).
+
 ## 📋 Table des matières
 
 1. [Type `TEntityStructure` et classe abstraite Entity](#1-type-tentitystructure-et-classe-abstraite-entity)

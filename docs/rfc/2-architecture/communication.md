@@ -6,6 +6,22 @@
 
 ---
 
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible** de la communication. État du code livré (strate 0 + strate 1a) — les éléments suivants ne sont **pas encore implémentés** :
+>
+> | Élément | Strate cible | Sections concernées |
+> | ------- | ------------ | ------------------- |
+> | Métadonnées causales (`correlationId`, `causationId`, `hop`) et anti-boucle I9 | Strate 1b | §8.3, §9.3 |
+> | Comportement `noHandler` selon le mode (dev/prod), `warn` sur `request()` sans replier | Strate 1b | §9.1, §9.5 |
+> | Isolation des exceptions levées par un handler Command (ADR-0002) | Strate 1b | §9.1, §9.3 |
+> | Consommation de l'événement `any` par les Views (re-projection) | Strate 1c | §7 |
+> | Nettoyage automatique des subscriptions (`onDetach()` View, `stop()` Application) | Strate 1c–1d / 1 | §9.4 |
+> | Capacités Channel de Composer et Foundation | Strate 1d / 1 | §8.2 |
+> | Configuration runtime du Channel (point d'entrée de configuration non tranché) | Strate 1 | §9.5 |
+>
+> **Périmètre effectif livré** : `Channel<TDef>` tri-lane typé (ADR-0040, I76) créé en Phase 1 du bootstrap ; `trigger()` sans handler lève **toujours** `NoHandlerError` (quel que soit le mode) et une exception levée dans un handler Command **se propage** à l'appelant ; `emit()` sans listener est silencieux et déclenche automatiquement `any` (payload `{ event, changes }` où `changes` est le **payload de l'Event émis**) ; les erreurs de listeners Event sont isolées (`ListenerError` loguée) ; `request()` est synchrone et retourne `null` sans log si aucun replier n'existe, `null` avec `console.error` si le replier lève ; câblage des handlers Feature en Phase 3 (I48) et des handlers View au `mount()` (ADR-0042). `Radio` et `Channel` sont actuellement **exportés** par `@bonsai/event` et ré-exportés par `@bonsai/core`.
+
 ## 1. Primitives de communication
 
 ### Format des messages (D5)

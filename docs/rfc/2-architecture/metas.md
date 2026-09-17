@@ -9,6 +9,19 @@
 > **ADR-0005 (Accepted)** : toutes les decisions ci-dessous sont normatives.
 > **ADR-0016 (Accepted)** : signature des handlers `(payload, metas)`.
 
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible** des metas. **Aucun élément n'est encore implémenté** :
+>
+> | Élément | Strate cible | Sections concernées |
+> | ------- | ------------ | ------------------- |
+> | Type `TMessageMetas`, génération ULID, préfixes `usr-`/`sys-` | Strate 1b | §1, §2, §3 |
+> | Handlers `(payload, metas)` et propagation explicite à `emit()`/`request()` | Strate 1b | §4 |
+> | Création au point d'entrée, dérivation des metas enfant | Strate 1b | §5, §7 |
+> | Garde-fous (anti-boucle `hop > maxHops`, corrélation immuable) | Strate 1b | §6 |
+>
+> **Périmètre effectif livré** : aucun type `TMessageMetas` n'est exporté ; les handlers `on*Command`/`on*Event`/`on*Request` reçoivent **uniquement** le payload ; `emit()`, `request()` et `View.trigger()` n'acceptent pas de metas. Seul `Entity.mutate(intent, { payload?, metas? }, recipe)` (strate 1a) accepte un champ `metas?: Record<string, unknown>`, recopié tel quel dans le `TEntityEvent`.
+
 ## 1. Structure des metas
 
 Chaque message (Command, Event **et** Request) porte des **metadonnees causales completes** (I7) :

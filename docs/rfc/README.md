@@ -122,14 +122,20 @@ rfc/
 | Icône | Statut | Description |
 |-------|--------|-------------|
 | 🟢 | **Stable** | Spécification stabilisée — contrat figé, prêt à implémenter. Amendements mineurs possibles via ADR |
-| 🔵 | **Proven** | Spécification stabilisée **ET** couverte par des tests d'architecture (ADR-0030). Le code implémente le contrat et les tests le prouvent |
 | 🟡 | **Draft** | Rédaction/révision active |
 | ⚪ | **Brouillon** | Exploration, non normatif |
 
-> **Clarification (amendement 2026-04-17)** : 🟢 Stable signifie que la **spécification** est figée,
-> pas que le code est implémenté. Un document passe de 🟢 Stable à 🔵 Proven lorsque
-> les tests de la strate correspondante (ADR-0030, ADR-0034) couvrent les invariants qu'il définit.
-> Avant ce passage, le document fait foi pour le contrat mais n'est pas encore vérifié par le code.
+> **Statut ≠ état d'implémentation (2026-09-17)** : 🟢 Stable signifie que la **spécification**
+> est figée, pas que le code est livré. L'état d'implémentation est porté par deux mécanismes
+> distincts, alignés sur le phasage d'[ADR-0028](../adr/ADR-0028-implementation-phasing-strategy.md) :
+>
+> - un encadré **« ⏳ Périmètre d'implémentation (ADR-0028) »** en tête de chaque document décrivant
+>   des éléments non livrés (tableau élément → strate cible, puis périmètre effectif livré) ;
+> - la colonne **« État »** de la [matrice de vérification des invariants](reference/invariants.md#matrice-de-vérification-des-invariants)
+>   (✅ livré / ⚠️ partiel / ⏳ strate N / 📐 convention).
+>
+> Le statut 🔵 Proven (amendement 2026-04-17) est retiré : il n'a jamais été attribué, et un document
+> mêle presque toujours des sections livrées et des sections cibles.
 
 ---
 

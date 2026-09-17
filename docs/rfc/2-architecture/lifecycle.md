@@ -6,6 +6,20 @@
 
 ---
 
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible** du cycle de vie. Les éléments suivants ne sont **pas encore implémentés** :
+>
+> | Élément | Strate cible | Sections concernées |
+> | ------- | ------------ | ------------------- |
+> | `Application.stop()`, shutdown ordonné, `Feature.onDestroy()` | Strate 1 | §3 (Shutdown) |
+> | Bootstrap asynchrone (`onInit()` retournant une `Promise` attendue) | Strate 1 | §3 |
+> | `View.onDetach()` et nettoyage déterministe (désabonnements Channel et DOM) | Strate 1c | §2, §4 |
+> | Cascade de destruction Composer → View → Composer enfant | Strate 1d | §2 |
+> | Hooks Behavior | Strate 2b | §4 |
+>
+> **Périmètre effectif livré** : `Feature.onInit()` **synchrone** appelé en Phase 3 ; `View.onAttach()` appelé à la fin de `mount()` ; `Foundation.onAttach()` appelé après l'attachement des Composers racines (`onDetach()` déclaré mais jamais invoqué). Quand un Composer détache une View, il **libère seulement sa référence** : les listeners Channel et DOM de la View ne sont pas retirés.
+
 ## 1. Deux catégories de composants
 
 ### Composants persistants (couche abstraite)

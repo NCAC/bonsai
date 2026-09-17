@@ -25,6 +25,20 @@
 
 ---
 
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible** de Feature. Les éléments suivants ne sont **pas encore implémentés** :
+>
+> | Élément | Strate cible | Sections concernées |
+> | ------- | ------------ | ------------------- |
+> | Paramètre `metas` des handlers et option `{ metas }` de `emit()`/`request()` | Strate 1b | §4, §5, §8 |
+> | Isolation des exceptions de handlers Command (`CommandError`) | Strate 1b | §8 |
+> | `onDestroy()`, états `destroying`/`destroyed`, `onInit()` asynchrone attendu | Strate 1 | §7, §8 |
+> | Hook `onError()` et `ErrorReporter` | Strate 1 | §8 (modèle d'erreurs) |
+> | Filet runtime I92 (handler de listen manquant détecté au bootstrap) | Non tranché | §3bis |
+>
+> **Périmètre effectif livré (strate 0 + ADR-0046)** : `Feature<TEntity, TChannelDef, TSelfNS>` ; `static readonly channel` ; `abstract get listens()`/`get queries()` ; `implements TFeatureCallbacks` (compile-time) ; constructeur inerte (I94) ; `bootstrap()` (Channel, Entity, auto-découverte des handlers Command/Request/Event/Entity sur le **prototype direct** de la classe, puis `onInit()`) ; `emit(eventName, payload)` et `request(token, name, params)` **sans metas** ; getters publics `namespace` et `entity` ; `onInit()` synchrone. Un handler de listen absent est ignoré silencieusement.
+
 ## 📋 Table des matières
 
 1. [Classe abstraite Feature](#1-classe-abstraite-feature)

@@ -16,6 +16,22 @@
 
 ---
 
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible** de View. Seuls les §1–3 (pattern modulaire ADR-0042) correspondent au code livré. Les éléments suivants ne sont **pas encore implémentés** :
+>
+> | Élément | Strate cible | Sections concernées |
+> | ------- | ------------ | ------------------- |
+> | Templates N2/N3 (`get templates()`, Modes A/B/C), `TProjectionRead`, cache de `getUI()` | Strate 1c | §4.4–4.8 |
+> | Délégation d'événements sur `this.el` | Strate 1c | §4.3 |
+> | `onDetach()`, `onRender()`, nettoyage des listeners | Strate 1c | §5 |
+> | Création du `rootElement` absent et résolution dans le slot du Composer | Strate 1d | §4.1, §4.8 |
+> | `get composers()`, N-instances, exclusion des slots du scope (I40) | Strate 1d | §4.2, §6 |
+> | Surcharge de `uiElements` par le Composer (D34) | Strate 2 | §1, §4.2 |
+> | `localState` (`get localState()`, `updateLocal()`, `this.local`, callbacks N1) | Strate 2a | §7 |
+>
+> **Périmètre effectif livré (strate 0 + ADR-0042/0044/0045)** : `View<TVC>` à un seul générique ; getters abstraits `features`, `uiEvents`, `uiElements` lus une fois au `mount()` ; `mount(rootSelector)` résout le `rootElement` via `document.querySelector` (global, sans création) et refuse `document.body` (I34) ; `getUI(key)` public retourne un `TProjectionNode<TEl>` (`text`, `attr`, `toggleClass`, `visible` via `style.display`, `style`, `element()`), sans cache ; `trigger()`/`request()` protégés par clé namespacée ; handlers DOM câblés par `addEventListener` direct sur le **premier** élément correspondant et handlers Channel câblés au `mount()`, avec filets runtime I82/I84 ; hook `onAttach()`.
+
 ## Table des matières
 
 1. [Classe abstraite View](#1-classe-abstraite-view)

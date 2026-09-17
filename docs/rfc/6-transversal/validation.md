@@ -6,6 +6,19 @@
 
 ---
 
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible** de la validation. Les éléments suivants ne sont **pas encore implémentés** :
+>
+> | Élément | Strate cible | Sections concernées |
+> | ------- | ------------ | ------------------- |
+> | Garde-fou anti-boucle (`hop > maxHops`) | Strate 1b | §2.1, §3.6 |
+> | Validation modale des Entities via `TEntitySchema` (Valibot, ADR-0022) | Strate 1 | — |
+> | `warning()` sur handlers orphelins et messages sans handler | Non planifié par ADR-0028 | §2.3, §3.6 |
+> | Test de taille de bundle confirmant l'élimination des assertions | Non planifié par ADR-0028 | §3.7 |
+>
+> **Périmètre effectif livré** : garanties compile-time du pattern modulaire et du contrat Feature (ADR-0040 → ADR-0046), prouvées par `tests/types/` ; au bootstrap, `BonsaiNamespaceError` (Phases 0a et 0c), sentinel du constructeur inerte (I94), filets I82/I84 au `mount()` et `hardInvariant()` pour I96 ; helpers `invariant()`, `hardInvariant()` et `warning()` exportés par `@bonsai/error` avec la signature `(condition, message, invariantId, component?)` — `__DEV__` vaut `true` s'il n'est pas défini par le bundler.
+
 ## 1. Validation statique (compile-time)
 
 ### 1.1 Typage des declarations Channel

@@ -14,6 +14,18 @@
 
 ---
 
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible** des erreurs. Les éléments suivants ne sont **pas encore implémentés** :
+>
+> | Élément | Strate cible | Sections concernées |
+> | ------- | ------------ | ------------------- |
+> | Isolation et journalisation contextuelle des exceptions de handlers Command (contexte causal) | Strate 1b | §2 (Principe 3), §3 |
+> | Rejet anti-boucle `hop > maxHops` | Strate 1b | §2 (Principe 5) |
+> | `ErrorReporter` transversal | Strate 1 | §3 |
+>
+> **Périmètre effectif livré** : hiérarchie `BonsaiError` (`@bonsai/error`) avec `invariantId`, `component` et `suggestion` ; `MutationError` et `EntityReentrancyError` (strate 1a) ; isolation des handlers Entity (`BroadcastError` loguée, I96) et des listeners Event (`ListenerError` loguée) ; `NoHandlerError` et `DuplicateHandlerError` levées par le Channel ; `BonsaiNamespaceError` au bootstrap. `CommandError`, `RequestError`, `RenderError` et `BehaviorError` sont définies mais **jamais levées**.
+
 ## 1. Categories d'erreurs
 
 Bonsai distingue quatre categories d'erreurs selon leur origine et leur moment de detection :
