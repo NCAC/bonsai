@@ -31,8 +31,12 @@ Le Router est une Feature **instanciée par le framework**, pas par le développ
 Il encapsule l'accès exclusif à l'History API du navigateur.
 
 ```typescript
+// TRouterDef est le SEUL nom utilisé dans ce document — cf. §4 pour le
+// contenu complet (commands/events/requests). Pas de champ `namespace` sur
+// ce type : le namespace vit sur le token (ADR-0040), jamais sur la
+// définition du Channel elle-même.
 type TRouterDef = TChannelDefinition & {
-  // ... commands/events/requests de navigation, cf. §2
+  // ... commands/events/requests de navigation, cf. §4
 };
 
 class RouterFeature extends Feature<RouteEntity, TRouterDef, "router"> {
@@ -44,9 +48,18 @@ class RouterFeature extends Feature<RouteEntity, TRouterDef, "router"> {
 | Aspect | Détail |
 |--------|--------|
 | **Instanciation** | Par Application au bootstrap — pas par `register()` |
-| **Namespace** | `router` — réservé, collision = erreur (I28) |
+| **Namespace** | `router` — réservé (`RESERVED_NAMESPACES`, I71) |
 | **History API** | Accès exclusif — aucun autre composant ne touche `window.history` |
 | **Entity** | `RouteEntity` — contient l'URL courante, les params, la query |
+
+> 🧭 **Question ouverte, non résolue par ce document** : `router` étant
+> réservé, `StrictManifest<M>` résout toute clé `router` du value-manifest en
+> `never` (I71) — un développeur ne peut donc **pas** écrire `router:
+> RouterFeature` dans son manifest applicatif comme pour une Feature
+> ordinaire. Le mécanisme par lequel `Application` instancie et enregistre
+> `RouterFeature` (probablement une injection hors manifest, similaire à
+> `Foundation`) reste à spécifier au moment de l'implémentation — ne pas
+> présumer qu'il réutilise le chemin `satisfies StrictManifest<AppManifest>`.
 
 ---
 
@@ -95,17 +108,22 @@ type TRouteState = TJsonSerializable & {
   hash: string;
 };
 
-class RouteEntity extends Entity<TRouteState> {}
+class RouteEntity extends Entity<TRouteState> {
+  // Entity est abstraite — defineInitialState() est obligatoire (D17).
+  protected defineInitialState(): TRouteState {
+    return { path: "/", params: {}, query: {}, hash: "" };
+  }
+}
 ```
 
 ---
 
-## 4. Messages standards — TRouterChannel
+## 4. Messages standards — TRouterDef
 
 ```typescript
-type TRouterChannel = TChannelDefinition & {
-  readonly namespace: 'router';
-
+// Même type que celui esquissé en §1 — défini en entier ici (co-localisation D13).
+// Pas de champ `namespace` (ADR-0040) : il vit sur TChannelToken<TRouterDef, "router">.
+type TRouterDef = TChannelDefinition & {
   readonly commands: {
     navigate: { path: string; params?: Record<string, string> };
     back: void;
@@ -130,10 +148,10 @@ type TRouterChannel = TChannelDefinition & {
 1. View → trigger(router:navigate, { path: '/products/42' })
 2. RouterFeature ← handle(router:navigate)
 3. RouterFeature → window.history.pushState(...)
-4. RouterFeature → entity.mutate({ path: '/products/42', params: { id: '42' } })
-5. RouterFeature → emit(router:routeChanged, { path, params, query, hash })
-6. ProductFeature ← listen(router:routeChanged) → fetch('/api/products/42') → entity.mutate()
-7. ProductFeature → emit(product:loaded, {...})
+4. RouterFeature → entity.mutate("router:navigate", draft => { draft.path = '/products/42'; draft.params = { id: '42' }; })
+5. RouterFeature → emit(routeChanged, { path, params, query, hash })
+6. ProductFeature ← listen(router:routeChanged) → fetch('/api/products/42') → entity.mutate("product:load", draft => { ... })
+7. ProductFeature → emit(loaded, {...})
 8. ProductView ← listen(product:loaded) → re-projection
 ```
 
