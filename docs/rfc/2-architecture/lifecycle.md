@@ -33,9 +33,14 @@
 | **Application** | Application entière (singleton) | Jamais | N/A |
 | **Router** | Application entière (singleton) | Jamais | N/A |
 
-> **D4 — Cycle de vie passif** : les composants persistants n'ont pas
-> de lifecycle "actif" (pas de `onInit`/`onDestroy` appelés dynamiquement).
-> Ils sont créés au bootstrap et vivent jusqu'à la fermeture.
+> **D4 — Cycle de vie passif** : les composants persistants ne sont **ni
+> montés ni démontés à répétition** comme les composants volatils — pas de
+> cycle attach/detach déclenché par la navigation. `Feature.onInit()` **est**
+> appelé, mais une seule fois, à la fin de `bootstrap()` (Phase 3, I56) — ce
+> n'est pas « aucun hook », c'est un hook **appelé exactement une fois dans
+> la vie de l'application**, jamais en réponse à un événement runtime.
+> `onDestroy()` n'existe pas dans le code livré (cible strate 1, cf. bandeau
+> de périmètre en tête de document).
 
 ### Composants volatils (couche concrète)
 
@@ -97,12 +102,13 @@ d'`Application`, et instanciées/câblées par `start()` :
 | Étape (résumé) | Garantie |
 |-------|----------|
 | Validation + instanciation des Features (manifest, ctor inerte — I94) | La couche abstraite est **complètement câblée** avant toute instanciation concrète |
-| `onInit()` de chaque Feature | Séquentiel — un `onInit()` async fait attendre le bootstrap avant la Feature suivante |
+| `onInit()` de chaque Feature | Séquentiel, dans l'ordre du manifest — **synchrone** : `onInit(): void` ne retourne rien à attendre, `bootstrap()` n'attend aucune `Promise` (un `onInit()` async serait ignoré, pas attendu — cible non tranchée pour un futur support async) |
 | Foundation → Composers → Views | Les Views sont créées **après** que toutes les Entities ont leur état initial |
 
 > **Invariant de séquence** : aucune View ne peut envoyer de `trigger()` avant
-> que toutes les Features soient en état `active`. Le bootstrap le garantit
-> par construction.
+> que le `bootstrap()` de sa Feature cible ait câblé ses handlers. Le bootstrap
+> le garantit par construction — `Feature` ne porte pas d'état `active` nommé
+> (pas de machine à états, cf. [feature.md §8.7.1](../3-couche-abstraite/feature.md)) : seul un booléen interne `#bootstrapped` existe.
 
 ### Shutdown
 
@@ -120,17 +126,17 @@ Phase 3  cleanup()       Radio vide les registres, déréférence les Channels
 
 ### View
 
-| Hook | Quand | Usage typique |
-|------|-------|---------------|
-| `onAttach()` | View montée dans le DOM, Channels câblés | Setup initial, première projection |
-| `onDetach()` | View retirée du DOM | Nettoyage automatique par le framework |
+| Hook | Quand | Usage typique | État |
+|------|-------|---------------|------|
+| `onAttach()` | View montée dans le DOM, Channels câblés | Setup initial, première projection | ✅ livré |
+| `onDetach()` | View retirée du DOM | Nettoyage automatique par le framework | ⏳ **n'existe pas** sur `View` (ni déclaré ni invoqué) — un Composer qui détache une View ne fait que libérer sa référence (cf. bandeau de périmètre) |
 
 ### Behavior
 
-| Hook | Quand | Usage typique |
-|------|-------|---------------|
-| `onAttach()` | Behavior attaché à sa View hôte | Initialisation du comportement |
-| `onDetach()` | View hôte détruite | Nettoyage automatique |
+| Hook | Quand | Usage typique | État |
+|------|-------|---------------|------|
+| `onAttach()` | Behavior attaché à sa View hôte | Initialisation du comportement | ⏳ package `@bonsai/behavior` non livré (cible strate 2) |
+| `onDetach()` | View hôte détruite | Nettoyage automatique | ⏳ idem |
 
 ### Composer
 
