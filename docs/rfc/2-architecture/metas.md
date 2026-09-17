@@ -107,27 +107,36 @@ Tous les identifiants (`messageId`, `correlationId` sans prefixe) sont des **ULI
 Tous les handlers (Command, Event, Request) recoivent **toujours** deux parametres :
 
 ```typescript
-class CartFeature extends Feature<CartEntity, Cart.Channel> {
-  // Command handler — recoit payload + metas
+// ⏳ Cible strate 1b — metas non livrées. Signature strate 0 réelle :
+// onAddItemCommand(payload) (1 paramètre), emit(name, payload) (2 arguments,
+// clé nue sur le Channel propre — pas "cart:itemAdded"), request(token, name,
+// params) (token typé, synchrone, pas de string libre ni de metas).
+class CartFeature
+  extends Feature<CartEntity, TCartDef, "cart">
+  implements TFeatureCallbacks<TCartDef, typeof cartListens>
+{
+  // Command handler — recevrait payload + metas (cible)
   onAddItemCommand(payload: AddItemPayload, metas: TMessageMetas) {
     // metas disponible directement en parametre
     this.entity.mutate("cart:addItem", { payload, metas }, (draft) => {
       draft.items.push(payload.item);
     });
 
-    // Propagation explicite aux emissions
-    this.emit("cart:itemAdded", { item: payload.item }, { metas });
+    // Propagation explicite aux emissions — clé nue sur le Channel propre (I1, I12)
+    this.emit("itemAdded", { item: payload.item }, { metas });
   }
 
-  // Async — le closure capture metas naturellement
-  async onCheckoutCommand(payload: CheckoutPayload, metas: TMessageMetas) {
-    const price = await this.request(
-      "pricing:calculate",
+  // request() est SYNCHRONE (ADR-0023, I29) — pas d'async/await, même cible.
+  // Le token remplace la string libre "pricing:calculate" (ADR-0040).
+  onCheckoutCommand(payload: CheckoutPayload, metas: TMessageMetas) {
+    const price = this.request(
+      PricingFeature.channel,
+      "calculate",
       { items: payload.items },
       { metas }
     );
     // metas toujours disponible grace au closure
-    this.emit("cart:checkedOut", { total: price }, { metas });
+    this.emit("checkedOut", { total: price }, { metas });
   }
 }
 ```
@@ -143,11 +152,13 @@ class CartFeature extends Feature<CartEntity, Cart.Channel> {
 ### Creation de nouvelle correlation (cas systeme)
 
 ```typescript
-class SyncFeature extends Feature<SyncEntity, Sync.Channel> {
+class SyncFeature extends Feature<SyncEntity, TSyncDef, "sync"> {
+  // Hook illustratif — pas une convention onXxxCommand/Event/Request réelle ;
+  // représente un timer interne déclenchant une émission côté framework.
   onTimerTick() {
     // Pas de metas en entree (event systeme)
     // Le framework cree une nouvelle correlation sys-
-    this.emit("sync:started", {});
+    this.emit("started", {});
     // → correlationId = 'sys-01ARZ3...'
   }
 }
@@ -203,8 +214,12 @@ Le framework implemente des garde-fous pour prevenir les boucles et garantir l'i
 | **Causalite obligatoire** | Tout message sauf le trigger initial **doit** avoir un `causationId` non-null         | I7        |
 | **Origine verifiee**      | Le `origin.kind` est assigne automatiquement par le framework, pas par le developpeur | I7        |
 
-> **`MAX_HOPS`** est configurable dans Application (`maxHops`).
-> Une valeur typique est 10–20 — au-dela, il s'agit tres probablement
+> **`MAX_HOPS`** serait configurable via `maxHops` dans `TApplicationConfig` —
+> mais **le point d'injection de cette configuration n'est pas tranché**
+> (trois formes hypothétiques coexistent dans la documentation, aucune
+> livrée — cf. [application.md §4](3-couche-abstraite/application.md) et
+> [communication.md §9.5](communication.md)).
+> Une valeur typique serait 10–20 — au-dela, il s'agirait tres probablement
 > d'une boucle evenementielle non intentionnelle.
 
 ---
@@ -230,10 +245,11 @@ const metas: TMessageMetas = {
 
 > **I54 (amende par ADR-0016)** : le framework **cree** les metas au point d'entree.
 > Le developpeur ne forge JAMAIS de metas manuellement.
-> Le `trigger()` de la View ne prend que le nom du Command et le payload :
+> Le `trigger()` de la View prend une **clé namespacée** `"ns:cmd"` et le
+> payload (ADR-0042, I80 — pas de token Channel exposé côté consommateur) :
 >
 > ```typescript
-> this.trigger(channel, commandName, payload);
+> this.trigger("cart:addItem", payload);
 > // Pas de parametre metas -- le framework les cree a la racine
 > ```
 
