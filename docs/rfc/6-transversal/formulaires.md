@@ -35,12 +35,12 @@ View (saisie) → trigger(Command) → Feature → entity.mutate() → Event →
 
 **Quand l'utiliser** : formulaires complexes multi-étapes, formulaires dont l'état doit être partagé entre composants ou persisté.
 
-### Pattern B — Formulaire piloté par localState (recommandé)
+### Pattern B — Formulaire piloté par localState (cas simple le plus fréquent — cf. note sur la recommandation ADR-0009 en fin de document)
 
 L'état pré-soumission vit dans le `localState` de la View (I42, D33). La soumission déclenche une Command.
 
 ```
-View (saisie) → localState.mutate() → re-projection locale
+View (saisie) → updateLocal() → re-projection locale
 View (submit) → trigger(Command) → Feature → entity.mutate()
 ```
 
@@ -100,8 +100,19 @@ Q1 : Le state du formulaire doit-il être partagé entre composants ?
       → Non :
         Q3 : Les données soumises alimentent-elles un domain partagé ?
           → Oui : Pattern D (Hybride)
-          → Non : Pattern B (localState) ✅ défaut recommandé
+          → Non : Pattern B (localState) — cas simple, le plus fréquent
 ```
+
+> **Recommandation ADR-0009 : Option D**, pas B. L'arbre ci-dessus décide *quel
+> mécanisme* utiliser cas par cas, mais la décision de l'ADR est que
+> l'**approche globale recommandée est le Pattern D** : une combinaison
+> contextuelle où le Pattern B gère les formulaires simples, le Pattern C les
+> formulaires réutilisables, et l'Entity + localState par étape les wizards —
+> **le Pattern A pur est explicitement rejeté** (traite `touched`/`errors`
+> comme du domain state, viole l'esprit de I30). Pattern B seul (sans jamais
+> passer par C ou l'Entity) reste un choix légitime pour une application qui
+> n'a que des formulaires simples, mais ce n'est pas ce que « recommandé »
+> désigne dans l'ADR.
 
 ---
 

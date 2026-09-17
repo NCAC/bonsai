@@ -1,14 +1,26 @@
 # Guide Pratique — Formulaires dans Bonsai
 
 > **Comment gérer la saisie, la validation et la soumission de formulaires
-> dans l'architecture Bonsai : 4 patterns, 1 arbre de décision.**
+> dans l'architecture Bonsai : 3 patterns + 1 complément combinable, 1 arbre de décision.**
 
 [← Retour aux guides](../README.md)
 
-> **⚠ État du guide (2026-09-17, audit doc) — correction d'une affirmation fausse (régression T6)** —
-> L'affirmation précédente (« les Patterns A, C et D compilent contre l'API livrée
-> en strate 1a ») était **fausse** et a été retirée : **aucun exemple de ce guide
-> ne compile contre le code livré aujourd'hui**, patterns A/B/C/D confondus.
+> **🔤 Lettrage réaligné sur [ADR-0009](../adr/ADR-0009-forms-pattern.md) (audit doc 2026-09-17, décision M5)** —
+> Ce guide documente les **scénarios pratiques** de l'Option D (recommandée)
+> d'ADR-0009 — chaque scénario porte la lettre de l'**option ADR-0009** dont il
+> découle : **Pattern B** = Option B (localState) appliquée au cas simple,
+> **Pattern C** = Option C (FormBehavior), **Pattern D** = le cas « Entity +
+> localState par étape » du détail de l'Option D. Il n'y a pas de section
+> « Pattern A » ici : l'Option A (formulaire piloté entièrement par Entity) est
+> **rejetée** par ADR-0009 (voir §Rejet des autres options de l'ADR) — ce guide
+> ne documente donc que des usages pratiques recommandés. La **validation
+> différée** (§5) n'est **pas** une option d'ADR-0009 (c'est S2, une capacité
+> transverse combinable avec B, C ou D) — elle reste volontairement sans lettre.
+>
+> **⚠ État du guide — correction d'une affirmation fausse (régression T6 de l'audit du 16/09)** —
+> L'affirmation précédente (« les patterns compilent contre l'API livrée en
+> strate 1a ») était **fausse** et a été retirée : **aucun exemple de ce guide
+> ne compile contre le code livré aujourd'hui**, patterns B/C/D confondus.
 >
 > Ce qui est réellement livré (strate 0/1a) et que les exemples utilisent
 > correctement : le pattern modulaire Feature/Channel/View (ADR-0039 manifest
@@ -19,10 +31,10 @@
 > Ce qui **n'existe pas** dans `packages/` et empêche toute compilation :
 > - `localState`, `updateLocal()`, `this.local`, `TLocalUpdate` (ADR-0015) —
 >   **aucune trace dans `packages/view/src`** ; cible strate 2. Tous les
->   Patterns A–D en dépendent pour l'état de saisie transitoire.
+>   patterns B–D en dépendent pour l'état de saisie transitoire.
 > - `View<TVC, TLocal>` à deux génériques — `View` n'a qu'un seul générique
 >   en strate 0/1a (`View<TVC>`, ADR-0042).
-> - `Behavior` — le package `@bonsai/behavior` n'existe pas du tout (Pattern B
+> - `Behavior` — le package `@bonsai/behavior` n'existe pas du tout (Pattern C
 >   entier, cible strate 2 ; voir [behavior.md](../rfc/4-couche-concrete/behavior.md)).
 > - `metas` en second paramètre des handlers Command/Event/Request, `{ metas }`
 >   en option d'`emit()`/`mutate()` — cible strate 1b, non câblé dans
@@ -46,12 +58,12 @@
 
 ## TL;DR
 
-| Situation                                      | Pattern                             | Où vit l'état de saisie                  |
+| Situation                                      | Pattern (ADR-0009)                  | Où vit l'état de saisie                  |
 | ---------------------------------------------- | ------------------------------------ | ----------------------------------------- |
-| Formulaire simple (contact, login, newsletter) | **localState dans la View**         | View (`updateLocal`)                     |
-| Formulaire réutilisable (adresse sur 3 pages)  | **FormBehavior**                    | Behavior (`updateLocal`)                 |
-| Wizard multi-step (checkout)                   | **Entity + localState par étape**   | View (saisie) + Entity (étapes validées) |
-| Validation différée (unicité, référence connue) | **localState + debounce + Request** | View (debounce) + Feature (état en mémoire, synchrone) |
+| Formulaire simple (contact, login, newsletter) | **B** — localState dans la View     | View (`updateLocal`)                     |
+| Formulaire réutilisable (adresse sur 3 pages)  | **C** — FormBehavior                | Behavior (`updateLocal`)                 |
+| Wizard multi-step (checkout)                   | **D** — Entity + localState par étape | View (saisie) + Entity (étapes validées) |
+| Validation différée (unicité, référence connue) | *(complément, S2)* localState + debounce + Request | View (debounce) + Feature (état en mémoire, synchrone) |
 
 > **Règle fondamentale** : l'état de saisie (valeurs, touched, errors, isSubmitting) est
 > de l'**état de présentation transitoire** (I30, I42). Seule la **soumission finale**
@@ -62,10 +74,10 @@
 ## Table des matières
 
 1. [Arbre de décision](#1-arbre-de-décision)
-2. [Pattern A — Formulaire simple (localState)](#2-pattern-a--formulaire-simple-localstate)
-3. [Pattern B — Formulaire réutilisable (FormBehavior)](#3-pattern-b--formulaire-réutilisable-formbehavior)
-4. [Pattern C — Wizard multi-step (Entity + localState)](#4-pattern-c--wizard-multi-step-entity--localstate)
-5. [Pattern D — Validation différée (Request Channel)](#5-pattern-d--validation-différée-request-channel)
+2. [Pattern B — Formulaire simple (localState)](#2-pattern-b--formulaire-simple-localstate)
+3. [Pattern C — Formulaire réutilisable (FormBehavior)](#3-pattern-c--formulaire-réutilisable-formbehavior)
+4. [Pattern D — Wizard multi-step (Entity + localState)](#4-pattern-d--wizard-multi-step-entity--localstate)
+5. [Validation différée — complément combinable (Request Channel)](#5-validation-différée--complément-combinable-request-channel)
 6. [Anti-patterns](#6-anti-patterns)
 7. [Checklist formulaire](#7-checklist-formulaire)
 
@@ -75,20 +87,20 @@
 
 ```
 Le formulaire est-il réutilisé sur plusieurs pages ?
-├── OUI → Pattern B (FormBehavior)
+├── OUI → Pattern C (FormBehavior)
 └── NON
     └── L'état de saisie a-t-il une valeur métier persistante ?
-        ├── OUI → Pattern C (Entity + localState par étape)
+        ├── OUI → Pattern D (Entity + localState par étape)
         │         Exemples : wizard checkout, éditeur de document
         └── NON
             └── Y a-t-il de la validation asynchrone (unicité, API) ?
-                ├── OUI → Pattern A + Request Channel (§5)
-                └── NON → Pattern A (localState simple)
+                ├── OUI → Pattern B + Request Channel (§5)
+                └── NON → Pattern B (localState simple)
 ```
 
 ---
 
-## 2. Pattern A — Formulaire simple (localState)
+## 2. Pattern B — Formulaire simple (localState)
 
 > **Quand** : formulaire de contact, login, newsletter, feedback — affiché une seule fois, pas de réutilisation.
 
@@ -277,7 +289,7 @@ class NewsletterView
 
 ---
 
-## 3. Pattern B — Formulaire réutilisable (FormBehavior)
+## 3. Pattern C — Formulaire réutilisable (FormBehavior)
 
 > **Quand** : le même formulaire (adresse, identité, paiement) apparaît sur plusieurs pages.
 >
@@ -554,7 +566,7 @@ class ContactPageView
 
 ---
 
-## 4. Pattern C — Wizard multi-step (Entity + localState)
+## 4. Pattern D — Wizard multi-step (Entity + localState)
 
 > **Quand** : checkout, inscription multi-step, assistant de configuration — les étapes validées ont une valeur métier.
 
@@ -669,7 +681,7 @@ class ShippingStepView
     };
   }
 
-  // ... D48 handlers (onAddressFieldInput, ...), N1 callbacks (identiques au Pattern A) ...
+  // ... D48 handlers (onAddressFieldInput, ...), N1 callbacks (identiques au Pattern B) ...
   onAddressFieldInput(e: Event): void {
     const value = (e.currentTarget as HTMLInputElement).value;
     this.updateLocal((draft) => { draft.values.address = value; });
@@ -713,7 +725,7 @@ class ShippingStepView
 
 ---
 
-## 5. Pattern D — Validation différée (Request Channel)
+## 5. Validation différée — complément combinable (Request Channel)
 
 > **Quand** : vérifier l'unicité d'un username contre l'état d'une Entity, valider un code postal contre une liste connue, etc.
 >
@@ -724,7 +736,7 @@ class ShippingStepView
 > le round-trip async doit être géré par la Feature elle-même (hors Request
 > Channel) — non couvert par ce guide.
 
-Combinable avec n'importe quel pattern (A, B ou C). Seul le **debounce** est
+Combinable avec n'importe quel pattern (B, C ou D). Seul le **debounce** est
 asynchrone ; l'appel `this.request()` qu'il déclenche est synchrone.
 
 > 🧭 **Tension non tranchée** : ce `setTimeout` dans la View est un mécanisme
