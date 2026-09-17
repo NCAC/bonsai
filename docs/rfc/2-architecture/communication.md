@@ -74,7 +74,17 @@ Radio résout ces déclarations en interne.
 
 ### View / Behavior
 
-| Action                | Channels déclarés en `trigger` | Channels déclarés en `listen` | Channels déclarés en `request` |
+> **Forme livrée (ADR-0042)** : pas de `trigger`/`listen`/`request` au niveau
+> racine — les déclarations sont groupées **par Feature** dans `get features()`,
+> typé `TFeatureContract` : `{ [ns]: { feature, listens, triggers, requests } }`.
+> Chaque entrée `listens`/`triggers`/`requests` est un tableau de clés
+> (`"itemAdded"`, `"addItem"`, `"getTotal"`) portant sur le Channel de la
+> Feature `ns` référencée. La table ci-dessous garde l'intitulé générique
+> « Channels déclarés en… » par lisibilité, mais la déclaration réelle passe
+> toujours par `features[ns].{listens,triggers,requests}`, jamais par une
+> clé racine.
+
+| Action                | Channels déclarés en `features[ns].triggers` | Channels déclarés en `features[ns].listens` | Channels déclarés en `features[ns].requests` |
 |-----------------------|--------------------------------|-------------------------------|--------------------------------|
 | **Trigger** (Command) | ✅ Si déclaré                   | ❌                             | ❌                              |
 | **Listen** (Event)    | ❌                              | ✅ Si déclaré                  | ❌                              |
@@ -82,7 +92,7 @@ Radio résout ces déclarations en interne.
 | **Emit** (Event)      | ❌ **Interdit — réservé aux Features (D7)** | ❌               | ❌                              |
 
 > Les Views/Behaviors n'ont pas de Channel propre. Toute interaction
-> nécessite une déclaration explicite.
+> nécessite une déclaration explicite dans `get features()`.
 > Les Views/Behaviors ne peuvent **jamais** utiliser `emit()` —
 > seule la Feature propriétaire du Channel peut émettre des Events (D7).
 
@@ -167,7 +177,7 @@ Un Channel est un **contrat de communication typé** qui définit trois lanes :
 
 Un Channel **n'est pas une classe à instancier**. C'est un contrat déclaré via `TChannelDefinition` dans la Feature. Le framework (via Radio) câble automatiquement les lanes.
 
-> **Pour la pratique** (comment déclarer un `TChannelDefinition`, types `TCommandMap`, `TEventMap`, `TRequestMap`) → voir [feature.md](../3-couche-abstraite/feature.md) (capacité C2).
+> **Pour la pratique** (comment déclarer un `TChannelDefinition` — un seul type avec trois champs `commands`/`events`/`requests`, pas trois types séparés) → voir [feature.md §2](../3-couche-abstraite/feature.md#2-déclaration-channel--pratique-d13-adr-0040).
 
 ---
 
@@ -193,7 +203,7 @@ Chaque Feature déclare un **namespace unique** (I21), `camelCase` plat, qui ser
 
 | Règle | Invariant |
 |-------|-----------|
-| Unicité stricte | I21, I24 — collision = erreur bootstrap |
+| Unicité stricte | I21, I24 — collision de clés = erreur **compile-time** (TS1117, clé d'objet dupliquée dans le manifest, ADR-0039) ; un cast `as any`/manifest construit dynamiquement reste un filet runtime |
 | Relation 1:1:1 | I22 — un namespace = une Feature = une Entity |
 | Réservés | `router` (I28), `local` (I57) |
 | Format | `camelCase` plat — lettres uniquement (`a`–`z`, `A`–`Z`) : pas de `.`, `/`, `-`, `_`, ni de chiffre |
@@ -245,13 +255,13 @@ Au bootstrap (`start()`), Radio execute la resolution.
 Les instances Channel existent deja -- creees lors de la **Phase 1 du bootstrap** à partir du manifest applicatif (ADR-0039 — D15).
 
 1. **Collecte** toutes les déclarations :
-   - **Feature** : namespace fourni par le manifest applicatif (ADR-0039) ; les channels externes écoutés sont déclarés via `static channels: readonly string[]` (ADR-0040 — `Channel<TDef>` typé) ; les handlers sont auto-découverts par convention `on{Name}Command/Request/Event` (I48)
+   - **Feature** : namespace fourni par le manifest applicatif (ADR-0039) ; les Channels externes écoutés/interrogés sont déclarés via `get listens()`/`get queries()` — `abstract get` **d'instance** retournant des `TChannelToken<TDef, NS>[]` (ADR-0046, I93) ; les handlers sont auto-découverts par convention `on{Name}Command/Request/Event` (I48)
    - **View / Behavior** : pattern modulaire ADR-0042 — `features: TFeatureContract` (Feature-groupé : `{ ns: { feature, listens, triggers, requests } }`) + `uiEvents: TUIContract` + `uiElements: TUIElements<typeof uiEvents>`
    - **Foundation** / **Composer** : `Readonly<Record<string, typeof Composer>>` pour `composers` (ADR-0038 — I67) ; déclarations channel via le pattern modulaire ADR-0042 quand applicable
 
-2. **Resout les tokens** : chaque `Namespace.channel` reference en
-   `listen`/`trigger`/`request` est associe a l'instance Channel
-   correspondante dans Radio (via le namespace string)
+2. **Resout les tokens** : chaque `TChannelToken` référencé dans `listens`/
+   `queries` (Feature) ou `features[ns]` (View/Behavior) est associé à
+   l'instance Channel correspondante dans Radio via `token.namespace`
 
 3. **Verifie la coherence** :
    - Chaque Channel reference correspond a un namespace enregistre
@@ -272,29 +282,40 @@ Les instances Channel existent deja -- creees lors de la **Phase 1 du bootstrap*
 5. Pour chaque `onXxxEvent` -> identifier le Channel source (via le prefixe)
    et enregistrer dans le registre `eventListeners` du Channel source
 
-**Pour chaque View et Behavior (au moment de l'instanciation, etape 6+) :**
+**Pour chaque View et Behavior (au moment de l'instanciation, Phase 4 — Foundation/Composers/Views) :**
 
-1. Resoudre les tokens declares en `params.trigger`, `params.listen`, `params.request`
-   vers les instances Channel correspondantes
-2. Cabler les handlers `onXXX` dans les registres
-3. Fournir les methodes `trigger()` et `request()` liees aux Channels declares
+1. Lire `get features()` (Feature-groupé, `TFeatureContract` — ADR-0042) une seule fois au `mount()`
+   et résoudre chaque `features[ns].feature.channel` vers l'instance Channel correspondante
+2. Cabler les handlers `on{NS}{Event}Event` déclarés dans `features[ns].listens` (D48 channel)
+   et les handlers DOM `on{UiKey}{DomEvent}` déclarés dans `uiEvents` (D48 UI) dans les registres
+3. Fournir les méthodes `trigger()` et `request()`, résolues par clé namespacée `"ns:nom"` (pas de token exposé, I80)
 
 **Pour chaque Composer (au moment de l'instanciation) :**
 
-1. Resoudre les tokens declares en `params.listen`, `params.request`
-   vers les instances Channel correspondantes
+1. En strate 0, le Composer n'a pas de déclaration `listen`/`request` propre —
+   seul `resolve(event)` est câblé (cf. étape 2 ci-dessous) ; le pattern
+   modulaire `TComposerContract`/`TComposerCallbacks` (ADR-0042) reste cible
+   strate 1 (cf. [composer.md](../4-couche-concrete/composer.md))
 2. Le framework **ne fait pas** d'introspection `onXXX` sur le Composer (ADR-0027) —
    `resolve(event)` est l'unique handler. Le framework appelle `resolve(event)`
    avec l'Event declencheur quand un Event ecoute arrive
-3. Fournir la methode `request()` liee aux Channels declares
+3. ⏳ `protected request()` lié à des Channels déclarés est une cible strate 1
+   (cf. bandeau de périmètre de [composer.md](../4-couche-concrete/composer.md)) —
+   non livré en strate 0
 
 ### 8.3 Validation des invariants
 
-| Type | Invariants verifies | Mecanisme |
+| Type | Invariants verifies | Mecanisme reel |
 |------|--------------------|-----------| 
-| **Compile-time** | I4 (View ne peut pas `emit`), I14/I16 (Channel non declare), D9/D10 (types) | TypeScript strict |
-| **Bootstrap** | I21 (namespace unique), I10 (un seul handler par Command), I15 (Radio non expose) | `hardInvariant()` |
-| **Runtime** | I9 (`hop > maxHops`), I1/I12 (`emit` cross-domain), I25 (Feature interdit `trigger`) | `invariant()` / `hardInvariant()` |
+| **Compile-time** | I4 (View n'a pas de methode `emit()`), I21 (namespace non camelCase/reserve -> `never` via `StrictManifest<M>`), D9/D10 (types) | TypeScript strict, absence structurelle de methode |
+| **Bootstrap** | I21 (namespace unique -> `BonsaiNamespaceError`), I10 (handler Command/Request duplique -> `DuplicateHandlerError`), I70 (reference `listens`/`queries` inconnue -> `BonsaiNamespaceError`, Phase 0c) | `Channel.handle()`/`reply()` (I10), `Application.start()` Phase 0c (I70), `assertValidNamespace()` (I21) |
+| **Runtime** | I1/I12 (`emit` cross-domain) : **absence structurelle** — `emit()` n'accepte que les cles du Channel propre, aucune verification a faire | Contrainte de type sur `emit<K extends keyof TChannelDef['events']>` — pas de garde runtime necessaire |
+
+> ⏳ **I9** (`hop > maxHops`, anti-boucle causale) n'est pas implemente — aucune
+> notion de `hop` n'existe dans le code livre (cible strate 1b, cf. bandeau
+> de perimetre en tete de document). **I25** (Feature interdite de `trigger`)
+> n'a pas de garde dediee : `trigger()` n'existe simplement pas comme methode
+> sur `Feature` (absence structurelle, comme I4 pour View/`emit`).
 
 ---
 
@@ -397,10 +418,16 @@ L'instance runtime `Channel<TDef>` (ADR-0040 — typé) est un objet **interne a
                                                 ↓
                                                 Channel<TCartDef>
                                                 │  commandHandlers : Map<string, Handler>
-                                                │  eventListeners  : Map<string, Set<Listener>>
+                                                │  eventSubjects   : Map<string, RXJS.Subject>
                                                 │  requestRepliers : Map<string, Replier>
                                                 └─ instance interne, jamais exposée (I80)
 ```
+
+> Simplifié à dessein : le registre des Events repose réellement sur un
+> `RXJS.Subject` par nom d'Event (`packages/event/src/channel.class.ts`), pas
+> sur un `Set` de callbacks — chaque `listen()` s'abonne au Subject et
+> conserve sa `Subscription` pour permettre `unlisten()`. Détail
+> d'implémentation interne, jamais manipulé par le développeur.
 
 | Étape | Déclencheur | Action |
 |-------|-------------|--------|
