@@ -1,7 +1,7 @@
 [![🇬🇧 English documentation](https://img.shields.io/badge/docs-english-blue)](./README-EN.md)
 [![Strate 0](https://img.shields.io/badge/strate%200-livr%C3%A9e-success)](https://github.com/NCAC/bonsai/releases/tag/v0.1.0-strate-0)
-[![Tests](https://img.shields.io/badge/tests-175%20passed-brightgreen)]()
-[![Coverage](https://img.shields.io/badge/coverage-91%25-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-262%20passed-brightgreen)]()
+[![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)]()
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-blue)]()
 
 # Framework Bonsai
@@ -143,7 +143,7 @@ bonsai/
 │   ├── error/         # invariants, erreurs préfixées Bonsai
 │   └── immer/  rxjs/  valibot/  types/   # wrappers libs tierces
 ├── tests/
-│   ├── unit/strate-0/    # 161 tests, un dossier par composant
+│   ├── unit/strate-0/    # 206 tests (strate 0), un dossier par composant
 │   ├── integration/      # scénarios cross-package
 │   └── e2e/              # 🚪 strate gates (un par strate)
 ├── lib/build/         # pipeline de build interne (Rollup + emit .d.ts)

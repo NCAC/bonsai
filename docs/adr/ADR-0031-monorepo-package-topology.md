@@ -414,6 +414,8 @@ Nous choisissons **Option D — Un package par composant** parce que :
 
 6. **La topologie est indépendante du mode de distribution.** Le mode IIFE (bundler → un fichier unique) et le mode ESM (N fichiers `*.esm.js` → `<script type="module">`) consomment les **mêmes imports source**. La différence est un paramètre de build pipeline, pas de structure packages. L'Option D ne favorise ni ne défavorise aucun des deux modes — et c'est une qualité : la topologie source ne doit pas être couplée à la stratégie de distribution.
 
+> **Note (audit 2026-09-16)** : la structure ci-dessus est le **contrat cible complet**. Conformément au Contexte (§ci-dessus — 6 composants pour strate 0) et au phasage kernel-first ([ADR-0028](ADR-0028-implementation-phasing-strategy.md)), `packages/behavior/` n'existe pas encore (Strate 2). `radio` n'a jamais été un package séparé — il vit dans `@bonsai/event` (Radio singleton). `router` n'apparaît pas dans la structure Option D ci-dessus ; son emplacement package n'a pas encore été tranché (Router lui-même est Strate 2+, cf. [router.md](../rfc/3-couche-abstraite/router.md)). Absence cohérente avec le phasage, pas un écart à corriger.
+
 ### Rejet des autres options
 
 **Rejet de l'Option A (Flat)** : aucune structure interne, aucune frontière. Quand `core/src/` contient 8+ classes, rien n'empêche un développeur du framework d'importer Entity depuis View.class.ts par erreur. L'architecture repose sur la discipline, pas sur le compilateur.
