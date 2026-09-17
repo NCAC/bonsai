@@ -39,9 +39,9 @@ référencée dans toute la documentation.
 
 | Terme               | Définition |
 |----------------------|------------|
-| **Application**      | Instance persistante légère. Point d'entrée et de sortie du framework. Construite via `new Application({ foundation, features })` où `features` est le **manifest applicatif typé** (ADR-0039 — clé = namespace). Orchestre le bootstrap en 4 phases (Channels → Entities implicites → Features+`bootstrap()`/`onInit` → Foundation.attach) et le shutdown (Strate 2). Dormante au runtime — aucun rôle actif (D6). Aucun `register()` runtime (ADR-0039). |
+| **Application**      | Instance persistante légère. Point d'entrée et de sortie du framework. Construite via `new Application({ foundation, features })` où `features` est le **manifest applicatif typé** (ADR-0039 — clé = namespace). Orchestre le bootstrap réel en six étapes réordonnées, pas 4 phases séquentielles classiques (ADR-0046) : Phase 0a (validation format) → 0b (instanciation pure des Features, ctor inerte I94) → 0c (validation croisée `listens`/`queries`, I70) → 1 (création des Channels) → 3 (`Feature#bootstrap()` — Entity + handlers + `onInit()`, pas de Phase 2 distincte) → 4 (Foundation → Composers → Views). Shutdown : cible strate 1, non livré. Dormante au runtime — aucun rôle actif (D6). Aucun `register()` runtime (ADR-0039). |
 | **Behavior**         | Plugin UI réutilisable et **aveugle** (D36), attaché à une View. Enrichit le comportement visuel (interactions DOM, animations) via ses propres clés ui, ses propres handlers UI auto-dérivés depuis son contrat UI (`TUIContract`, D48 amendé [ADR-0042](../../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md)), ses propres Channels et ses propres templates Mode C (îlots). Aucun **domain state** (I30). localState de présentation autorisé sous 5 contraintes (I42, D37). N'a aucun accès à sa View hôte — pas de `this.view` (I44). Alt. N1+N2 sur ses propres clés ui uniquement (I45). Pas de slots, pas de Composers. Ne peut jamais utiliser `emit()` (D7). Cycle de vie lié à sa View. |
-| **BonsaiRegistry**   | Singleton du runtime Bonsai, exporté par `bonsai.esm.js`. Point de collecte des modules ESM : chaque module appelle `registerFeature()` / `registerView()` etc. au top-level, puis l'Application appelle `collect()` pour obtenir un snapshot immuable. Le registry est verrouillé après `collect()`. Existe uniquement en Mode ESM Modulaire (ADR-0019). Nature : composant runtime, comme Radio. |
+| **BonsaiRegistry**   | ⏳ **Cible, non livré** — `packages/application/src/bonsai-application.ts` affirme explicitement l'inverse dans son propre commentaire de tête : « Pas de `BonsaiRegistry` ESM ». Concept envisagé : singleton de collecte des modules ESM (chaque module appellerait `registerFeature()`/`registerView()` au top-level, puis l'Application appellerait `collect()`), verrouillé après `collect()`, réservé au Mode ESM Modulaire (ADR-0019) — mais aucune trace dans le code livré aujourd'hui. |
 | **Channel**          | Contrat de communication typé d'une Feature. Définit trois voies (tri-lane) : commands (1:1), events (1:N), requests (1:1 **synchrone**, D9 révisé par [ADR-0023](../../adr/ADR-0023-request-reply-sync-vs-async.md)). Identifié par le namespace de sa Feature propriétaire. |
 | **Channel Declaration** | Déclaration statique dans la définition d'un composant des Channels avec lesquels il interagit. Constitue le contrat de dépendances de communication du composant (D1). |
 | **Chorégraphie**     | Modèle d'architecture où chaque composant réagit de manière autonome aux événements, sans orchestrateur central. Le comportement global émerge de la composition des réactions individuelles (D2). |
@@ -183,7 +183,15 @@ Questions architecturales. Chaque question est soit résolue (✅), soit en atte
 >   trackedElement: '[data-tracking-type]',
 > } satisfies TUIElements<typeof trackingUiEvents>;
 >
-> class TrackingBehavior extends Behavior<typeof trackingFeatures, typeof trackingUiEvents> {
+> // Un seul générique — TBehaviorContract compose features+ui (+ local en
+> // cible strate 2a, cf. behavior.md et la décision M8 appliquée à View),
+> // pas deux génériques positionnels sur Behavior<> lui-même.
+> type TTrackingBehaviorContract = TBehaviorContract<
+>   typeof trackingFeatures,
+>   typeof trackingUiEvents
+> >;
+>
+> class TrackingBehavior extends Behavior<TTrackingBehaviorContract> {
 >   get features()   { return trackingFeatures;   }
 >   get uiEvents()   { return trackingUiEvents;   }
 >   get uiElements() { return trackingUiElements; }
@@ -260,7 +268,7 @@ Questions architecturales. Chaque question est soit résolue (✅), soit en atte
 
 - Format : **`camelCase` plat** — pas de hiérarchie, pas de `/` ni `.`
 - Réservés : `'local'` (I71), `'router'` (I28) — interdits par `StrictManifest<M>` (compile-time)
-- Déclaration : **portée par le manifest applicatif typé** (clé d'objet — I68). Aucun `static namespace` sur la classe Feature. Le namespace est passé au constructeur `(namespace) => Feature<...>` lors de la Phase 3 du bootstrap
+- Déclaration : **portée par le manifest applicatif typé** (clé d'objet — I68). Aucun `static namespace` sur la classe Feature. Le namespace est passé au constructeur `(namespace) => Feature<...>` lors de la Phase 0b du bootstrap (instanciation pure, ctor inerte — I94)
 - Conformité : `TSelfNS` du paramètre générique de la classe Feature **doit** correspondre à la clé du manifest (I72) — vérifié compile-time par `StrictManifest<AppManifest>`
 - Unicité : garantie par la nature `Record` du manifest (I22) — collision impossible compile-time
 - Rôle triple : identité du Channel (`Radio.channel(namespace)`), clé du store logique d'Entity, préfixe des messages (`namespace:messageName`)
@@ -279,13 +287,13 @@ Questions architecturales. Chaque question est soit résolue (✅), soit en atte
 - Un **dossier par domaine/fonctionnalité**, nommé en `PascalCase`
 - Les fichiers suivent le pattern `kebab-case.type.ext`
 - Le suffixe de type (`.feature`, `.view`, `.entity`, `.behavior`) est **obligatoire**
-- Le Channel et le State sont **co-localisés** dans le fichier `.feature.ts` (D13/D14) — il n'y a **pas** de fichier `.channel.ts` séparé
+- Le Channel et le State sont **co-localisés** dans le fichier `.feature.ts` (D13 — le pattern D14 de wrapper `namespace Cart { … }` est supersédé par ADR-0040) — il n'y a **pas** de fichier `.channel.ts` séparé
 
 Exemple d'une Feature `Product` :
 
 ```
 Product/
-  product.feature.ts       # Feature + Channel (TChannelDefinition) + State (co-localisés, D13/D14)
+  product.feature.ts       # Feature + Channel (TChannelDefinition) + State (co-localisés, D13)
   product.entity.ts        # Entity (structure de données)
   product.view.ts          # View (rendu UI)
   product.composer.ts      # Composer(s) optionnel(s)
@@ -308,4 +316,5 @@ Product/
 - [RFC-0001 Composants](../2-architecture/README.md) — Détail des 10 composants
 - [RFC-0001 Invariants et Décisions](../reference/invariants.md) — Règles et historique
 - [Framework Style Guide](../../guides/FRAMEWORK-STYLE-GUIDE.md) — Conventions d'usage du framework applicatif
-- [RFC-0002 API et Contrats de Typage](../6-transversal/conventions-typage.md) — Contrats TypeScript, glossaire des types §19
+- [Conventions de typage](../6-transversal/conventions-typage.md) — Contrats TypeScript
+- [Glossaire des types exportés](types-index.md) — index des types publics
