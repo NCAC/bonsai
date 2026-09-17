@@ -80,8 +80,15 @@ export * from "@bonsai/valibot";
 // Les types (Draft, Patch, etc.) sont encapsulés dans le namespace `Immer`.
 export * from "@bonsai/immer";
 
-// @bonsai/event — Channel, Radio, EventTrigger
-export * from "@bonsai/event";
+// @bonsai/event — types de contrat uniquement. `Radio` et `Channel` restent
+// internes au framework (I15, I80) : exportés par `@bonsai/event` pour l'usage
+// inter-packages, jamais ré-exportés dans la surface applicative.
+export type {
+  TChannelDefinition,
+  TChannelToken,
+  TTokenDef,
+  TAnyEventPayload
+} from "@bonsai/event";
 
 // @bonsai/feature — Feature base class, BonsaiNamespaceError, TFeatureContract, etc.
 export * from "@bonsai/feature";

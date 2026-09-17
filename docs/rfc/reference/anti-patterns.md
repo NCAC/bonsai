@@ -110,7 +110,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 **Viole** : I5, I6
 
-**Détection** : `[Compile]` — `entity` est une propriété `protected` de la Feature et n'est pas accessible depuis l'extérieur. Les types `View`, `Behavior`, `Composer` n'ont pas de propriété `entity`.
+**Détection** : `[Compile]` — `entity` est un getter `protected` de la Feature : tout accès externe produit `TS2445` (« Property 'entity' is protected and only accessible within class 'Feature' and its subclasses »). Les types `View`, `Behavior`, `Composer` n'ont pas de propriété `entity`. Preuve : `tests/types/strate-0/encapsulation.types.test.ts`.
 
 **Alternative** : La Feature expose le state via `reply` (C4), les consommateurs utilisent `request` (C5).
 
@@ -160,7 +160,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 **Viole** : I14, I15, I16
 
-**Détection** : `[Compile]` — `Radio` n'est pas exporté du package framework. `Radio.channel('name')` produit : `Cannot find name 'Radio'`.
+**Détection** : `[Compile]` — `Radio` n'est pas exporté par `@bonsai/core`, seule surface applicative : `import { Radio } from "@bonsai/core"` produit `TS2305` (« Module '"@bonsai/core"' has no exported member 'Radio' »). `@bonsai/event` l'exporte pour l'usage inter-packages du framework ; l'importer depuis du code applicatif viole la convention d'import (cf. [distribution.md §4](../2-architecture/distribution.md#4-topologie-des-packages-adr-0031)) — `[Code review]`. Preuve : `tests/types/strate-0/encapsulation.types.test.ts`.
 
 **Alternative** : Déclarer `listen`/`trigger`/`request` dans la définition du composant.
 

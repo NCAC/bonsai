@@ -675,8 +675,10 @@ type TProjectionNode = TProjectionRead & {
 > la mutation passe exclusivement par `template.project()`. Sinon, `getUI(key)` retourne `TProjectionNode`.
 > Ceci est garanti par le type system (surcharges de `getUI()`).
 >
-> **Consequence** : `TProjectionNode` n'expose **pas** `.node` (acces brut au
-> HTMLElement). Aucune fuite DOM, I39 garanti par construction.
+> **Conséquence** : `TProjectionNode` n'expose pas de `.node` mutable. Sa méthode
+> `element(): TEl` retourne l'élément natif typé (ADR-0042) pour les API DOM non
+> couvertes par les primitives N1 (focus, sélection, mesures…) : usage d'exception,
+> à justifier, qui ne doit pas contourner N1 ni les templates (I39, I41).
 
 Usage en Mode A (pas de template -- mutations N1 uniquement) :
 

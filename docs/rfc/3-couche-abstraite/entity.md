@@ -151,11 +151,13 @@ abstract class Entity<TStructure extends TJsonSerializable> {
   /**
    * Le state courant — seule source de vérité.
    *
-   * Protégé : accessible uniquement par l'Entity elle-même
-   * et ses sous-classes. Jamais exposé directement à l'extérieur.
+   * Getter public en **lecture seule** : la Feature propriétaire le lit
+   * directement (`this.entity.state`). Toute écriture passe exclusivement
+   * par `mutate()` (ADR-0001, I6). L'Entity elle-même n'est accessible
+   * qu'à sa Feature (`Feature.entity` est `protected` — I5).
    * Typé par TStructure et contraint à TJsonSerializable (D10).
    */
-  protected state: TStructure;
+  get state(): TStructure;
 
   /**
    * État initial — getter abstrait obligatoire (D17).
@@ -270,23 +272,23 @@ type TJsonSerializable =
 
 ## 3. Stockage de l'état
 
-L'Entity stocke son état dans une propriété unique `protected state: TStructure`.
+L'Entity expose son état via un getter unique `state` en **lecture seule** ; seul `mutate()` le modifie.
 
 ### Principes de stockage
 
 | Aspect                       | Règle                                                                                                                      |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | **Source unique**            | `this.state` est la seule source de vérité du state de la Feature                                                          |
-| **Protégé**                  | `protected` — accessible par l'Entity et ses sous-classes, jamais de l'extérieur                                           |
+| **Lecture seule**            | Getter public `state` — lisible par la Feature propriétaire ; l'Entity elle-même n'est accessible qu'à sa Feature (I5)       |
 | **Initialisé**               | Via `abstract get initialState()` (D17) — assigné dans le constructeur de la base class. Pas de state `undefined` possible |
 | **Jsonifiable**              | Toujours un plain object conforme à `TJsonSerializable` (D10)                                                              |
-| **Immutable de l'extérieur** | Seules les méthodes de mutation de l'Entity peuvent modifier `this.state`                                                  |
+| **Écriture contrôlée**       | Seul `mutate()` produit un nouveau state (Immer) — aucune affectation directe                                              |
 
 ### Accès au state depuis la Feature
 
 La Feature interagit avec son Entity de deux manières :
 
-- **Lecture** : via les **méthodes query** de l'Entity (jamais d'accès direct à `this.entity.state`)
+- **Lecture** : via `this.entity.state`, ou via des méthodes de l'Entity quand la lecture encapsule une logique de données (calcul, filtrage — §5)
 - **Écriture** : via **`this.entity.mutate()`** exclusivement (ADR-0001)
 
 ```typescript
@@ -313,19 +315,18 @@ class CartFeature extends Feature<CartEntity, Cart.Channel> {
   }
 }
 
-// ❌ Anti-pattern — accès direct au state
+// ❌ Anti-pattern — écriture directe dans le state
 class CartFeature extends Feature<CartEntity, Cart.Channel> {
-  onItemsRequest(): CartItem[] | null {
-    return this.entity.state.items; // NON — state protégé
+  onClearCommand(): void {
+    this.entity.state.items.length = 0; // NON — contourne mutate() : pas de patches, pas de notification
   }
 }
 ```
 
-> **Règle** : la Feature passe toujours par les méthodes de l'Entity.
-> Les méthodes **query** (lecture) encapsulent la logique de données.
-> Les **mutations** passent exclusivement par `mutate()` (ADR-0001).
-> L'Entity encapsule les détails de stockage et peut évoluer
-> (indexation, cache interne, dérivations) sans impacter la Feature.
+> **Règle** : la **lecture** du state est libre pour la Feature propriétaire
+> (`this.entity.state`) ; dès qu'une lecture porte une logique de données
+> (calcul, tri, agrégation), elle est encapsulée dans une méthode de l'Entity (§5).
+> Les **écritures** passent exclusivement par `mutate()` (ADR-0001).
 
 <!--
   Implémentation interne (framework) :

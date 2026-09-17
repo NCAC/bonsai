@@ -44,6 +44,7 @@ import {
   type TChannelDefinition,
   type TChannelToken
 } from "@bonsai/event";
+import { entityOf } from "../../helpers/entity-of";
 
 // ─── Fixtures ──────────────────────────────────────────────────────────────
 
@@ -261,7 +262,7 @@ describe("Feature core — Strate 0", () => {
     it("Feature has exactly one Entity with initial state", () => {
       const feature = new CartFeature("cart");
       feature.bootstrap();
-      expect(feature.entity.state).toEqual({ items: [], total: 0 });
+      expect(entityOf(feature).state).toEqual({ items: [], total: 0 });
     });
   });
 
@@ -275,8 +276,8 @@ describe("Feature core — Strate 0", () => {
       const channel = Radio.me().channel("cart");
       channel.trigger("addItem", { productId: "p1", qty: 1, price: 10 });
 
-      expect(feature.entity.state.items).toHaveLength(1);
-      expect(feature.entity.state.total).toBe(10);
+      expect(entityOf(feature).state.items).toHaveLength(1);
+      expect(entityOf(feature).state.total).toBe(10);
     });
 
     it("Command handler mutates Entity correctly", () => {
@@ -286,12 +287,12 @@ describe("Feature core — Strate 0", () => {
       const channel = Radio.me().channel("cart");
       channel.trigger("addItem", { productId: "abc", qty: 2, price: 5 });
 
-      expect(feature.entity.state.items[0]).toEqual({
+      expect(entityOf(feature).state.items[0]).toEqual({
         productId: "abc",
         qty: 2,
         price: 5
       });
-      expect(feature.entity.state.total).toBe(10);
+      expect(entityOf(feature).state.total).toBe(10);
     });
   });
 
@@ -329,7 +330,7 @@ describe("Feature core — Strate 0", () => {
       const channel = Radio.me().channel("cart");
       channel.trigger("addItem", { productId: "p1", qty: 1, price: 10 });
 
-      expect(listenerFeature.entity.state.lastEvent).toBe("itemAdded");
+      expect(entityOf(listenerFeature).state.lastEvent).toBe("itemAdded");
     });
   });
 
@@ -387,11 +388,11 @@ describe("Feature core — Strate 0", () => {
       // Covers the `if (this.#bootstrapped) return` early-exit branch (L153)
       const feature = new CartFeature("cart");
       feature.bootstrap();
-      const entityAfterFirst = feature.entity;
+      const entityAfterFirst = entityOf(feature);
 
       // Second call must not throw and must not re-instantiate the Entity
       expect(() => feature.bootstrap()).not.toThrow();
-      expect(feature.entity).toBe(entityAfterFirst);
+      expect(entityOf(feature)).toBe(entityAfterFirst);
     });
   });
 

@@ -216,10 +216,11 @@ export abstract class Feature<
   }
 
   /**
-   * Accès à l'Entity (I5 — propriétaire exclusif).
+   * Accès à l'Entity (I5, I6 — propriétaire exclusif).
+   * `protected` : seules la Feature et ses sous-classes y accèdent.
    * Typée par la classe concrète (TEntity) grâce à ADR-0037.
    */
-  get entity(): TEntity {
+  protected get entity(): TEntity {
     return this.#entity;
   }
 

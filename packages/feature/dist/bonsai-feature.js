@@ -1,7 +1,7 @@
 /**
  * @bonsai/feature - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-09-16T10:43:17.257Z
+ * Date: 2026-09-17T12:09:12.811Z
  */
 import { Radio } from '@bonsai/event';
 import { hardInvariant, BroadcastError } from '@bonsai/error';
@@ -232,7 +232,8 @@ class Feature {
         return __classPrivateFieldGet(this, _Feature_namespace, "f");
     }
     /**
-     * Accès à l'Entity (I5 — propriétaire exclusif).
+     * Accès à l'Entity (I5, I6 — propriétaire exclusif).
+     * `protected` : seules la Feature et ses sous-classes y accèdent.
      * Typée par la classe concrète (TEntity) grâce à ADR-0037.
      */
     get entity() {

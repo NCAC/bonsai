@@ -24696,105 +24696,6 @@ type TAnyEventPayload = {
     readonly event: string;
     readonly changes: Record<string, unknown>;
 };
-declare class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
-    #private;
-    readonly name: string;
-    constructor(name: string);
-    /**
-     * Enregistre le handler unique pour un Command (I10 — un seul handler).
-     * @throws DuplicateHandlerError si un handler est déjà enregistré.
-     */
-    handle<K extends keyof TDef["commands"] & string>(commandName: K, handler: (payload: TDef["commands"][K]) => void): void;
-    /**
-     * Émet un Command vers son handler unique.
-     * @throws NoHandlerError si aucun handler n'est enregistré.
-     */
-    trigger<K extends keyof TDef["commands"] & string>(commandName: K, payload: TDef["commands"][K]): void;
-    /**
-     * Enregistre un listener pour un Event (I11 — N listeners autorisés).
-     */
-    listen<K extends keyof TDef["events"] & string>(eventName: K, listener: (payload: TDef["events"][K]) => void): void;
-    /**
-     * Supprime un listener spécifique pour un Event.
-     */
-    unlisten<K extends keyof TDef["events"] & string>(eventName: K, listener: (payload: TDef["events"][K]) => void): void;
-    /**
-     * Émet un Event vers tous les listeners (1:N).
-     * Silencieux si aucun listener. Émet `any` automatiquement après.
-     */
-    emit<K extends keyof TDef["events"] & string>(eventName: K, payload: TDef["events"][K]): void;
-    /**
-     * Enregistre un listener pour l'événement technique `any`.
-     */
-    listenAny(listener: (payload: TAnyEventPayload) => void): void;
-    /**
-     * Supprime un listener `any`.
-     */
-    unlistenAny(listener: (payload: TAnyEventPayload) => void): void;
-    /**
-     * Enregistre le replier unique pour un type de Request.
-     * @throws DuplicateHandlerError si un replier est déjà enregistré.
-     */
-    reply<K extends keyof TDef["requests"] & string>(requestName: K, replier: (params: TDef["requests"][K]["params"]) => TDef["requests"][K]["result"]): void;
-    /**
-     * Supprime un replier.
-     */
-    unreply<K extends keyof TDef["requests"] & string>(requestName: K): void;
-    /**
-     * Effectue une Request synchrone. Retourne `TDef['requests'][K]['result'] | null`.
-     * - Pas de replier → null (ADR-0023, D44)
-     * - Replier qui throw → null, erreur loguée (I55)
-     */
-    request<K extends keyof TDef["requests"] & string>(requestName: K, params: TDef["requests"][K]["params"]): TDef["requests"][K]["result"] | null;
-    /**
-     * Supprime tous les handlers, listeners et repliers.
-     * Complète les Subjects RxJS.
-     */
-    clear(): void;
-}
-
-/**
- * Radio — Singleton registre des Channels.
- *
- * Radio est le point central de câblage des communications Bonsai.
- * Il gère les instances Channel par namespace (get-or-create).
- *
- * I15 — Radio n'est jamais exposé au développeur d'application.
- *
- * @see RFC 2-architecture/communication.md §8
- */
-
-declare class Radio {
-    #private;
-    /** Constructeur privé — force le pattern singleton via `me()`. */
-    private constructor();
-    /** Retourne l'instance unique du Radio. */
-    static me(): Radio;
-    /**
-     * Obtient ou crée un Channel par namespace (API interne).
-     * Retourne `Channel<TChannelDefinition>` — toutes lanes `Record<string, unknown>`.
-     * Pour un accès typé depuis l'extérieur, utiliser `channelFor(token)`.
-     */
-    channel(name: string): Channel;
-    /**
-     * Obtient ou crée un Channel typé via son token (ADR-0040, I77, I79).
-     *
-     * Le cast `as Channel<TDef>` est sûr par I22 : un namespace ne peut être
-     * associé qu'à une seule Feature et donc à un seul `TDef`.
-     */
-    channelFor<TDef extends TChannelDefinition, TNS extends string>(token: TChannelToken<TDef, TNS>): Channel<TDef>;
-    /** Vérifie si un Channel existe pour ce namespace. */
-    hasChannel(name: string): boolean;
-    /** Liste tous les namespaces enregistrés. */
-    getChannelNames(): string[];
-    /**
-     * Supprime un Channel. Appelle `clear()` sur le Channel avant suppression.
-     * @returns `true` si le Channel existait, `false` sinon
-     */
-    removeChannel(name: string): boolean;
-    /** Reset complet — détruit le singleton. Usage : tests uniquement. */
-    static reset(): void;
-}
 
 /**
  * @bonsai/entity — Entity base class
@@ -25384,10 +25285,11 @@ declare abstract class Feature<TEntity extends Entity<TJsonSerializable> = Entit
      */
     get namespace(): TSelfNS;
     /**
-     * Accès à l'Entity (I5 — propriétaire exclusif).
+     * Accès à l'Entity (I5, I6 — propriétaire exclusif).
+     * `protected` : seules la Feature et ses sous-classes y accèdent.
      * Typée par la classe concrète (TEntity) grâce à ADR-0037.
      */
-    get entity(): TEntity;
+    protected get entity(): TEntity;
     /**
      * Bootstrap : crée l'Entity, enregistre les handlers sur le Channel,
      * et appelle onInit(). Appelé par Application ou manuellement en test.
@@ -26018,5 +25920,5 @@ declare class Application<M extends TFeaturesManifest = TFeaturesManifest> {
     get started(): boolean;
 }
 
-export { Application, BonsaiNamespaceError, Channel, Composer, Feature, Foundation, Immer, RESERVED_NAMESPACES, RXJS, Radio, Valibot, View, assertValidNamespace, isCamelCaseNamespace, isReservedNamespace, ui };
+export { Application, BonsaiNamespaceError, Composer, Feature, Foundation, Immer, RESERVED_NAMESPACES, RXJS, Valibot, View, assertValidNamespace, isCamelCaseNamespace, isReservedNamespace, ui };
 export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, CamelCaseNamespace, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, ReservedNamespace, StrictArrayOfKeys, StrictArrayOfValues, StrictManifest, StringDigit, StringHash, TAllLetters, TAnyEventPayload, TApplicationOptions, TBonsaiNamespaceErrorCode, TChannelCallbacks, TChannelDefinition, TChannelHandlerName, TChannelToken, TClass, TCommandCallbacks, TCommandPayloadFor, TComposerOptions, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntries, TEventPayloadFor, TEventsFor, TExcludeKeys, TExcludeValues, TFalsy, TFeatureCallbacks, TFeatureClass, TFeatureContract, TFeatureRef, TFeatureRefForNS, TFeaturesManifest, TFlatListens, TFlatRequests, TFlatTriggers, TFunctionPropertyNames, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonValue, TListenCallbacks, TLookup, TLowerLetter, TMapEntry, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TParameters, TPrimitive, TProjectionNode, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TRequestCallbacks, TRequestParamsFor, TRequestResultFor, TResolveResult, TSetEntry, TStrictFeatureClass, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewClass, TViewContract, TuplifyUnion, UnionToIntersection, ValidatedManifest, ValuesType, Whitespace };

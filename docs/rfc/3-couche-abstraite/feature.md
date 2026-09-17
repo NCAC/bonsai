@@ -37,7 +37,7 @@
 > | Hook `onError()` et `ErrorReporter` | Strate 1 | §8 (modèle d'erreurs) |
 > | Filet runtime I92 (handler de listen manquant détecté au bootstrap) | Non tranché | §3bis |
 >
-> **Périmètre effectif livré (strate 0 + ADR-0046)** : `Feature<TEntity, TChannelDef, TSelfNS>` ; `static readonly channel` ; `abstract get listens()`/`get queries()` ; `implements TFeatureCallbacks` (compile-time) ; constructeur inerte (I94) ; `bootstrap()` (Channel, Entity, auto-découverte des handlers Command/Request/Event/Entity sur le **prototype direct** de la classe, puis `onInit()`) ; `emit(eventName, payload)` et `request(token, name, params)` **sans metas** ; getters publics `namespace` et `entity` ; `onInit()` synchrone. Un handler de listen absent est ignoré silencieusement.
+> **Périmètre effectif livré (strate 0 + ADR-0046)** : `Feature<TEntity, TChannelDef, TSelfNS>` ; `static readonly channel` ; `abstract get listens()`/`get queries()` ; `implements TFeatureCallbacks` (compile-time) ; constructeur inerte (I94) ; `bootstrap()` (Channel, Entity, auto-découverte des handlers Command/Request/Event/Entity sur le **prototype direct** de la classe, puis `onInit()`) ; `emit(eventName, payload)` et `request(token, name, params)` **sans metas** ; getter public `namespace`, getter `protected` `entity` (I5, I6) ; `onInit()` synchrone. Un handler de listen absent est ignoré silencieusement.
 
 ## 📋 Table des matières
 
@@ -111,10 +111,10 @@ abstract class Feature<
 
   /**
    * L'Entity de cette Feature — typée par la classe concrète (I22, ADR-0037).
-   * Assignation différée à `bootstrap()` (Phase 3, `!` = definite assignment) —
-   * jamais dans le constructeur (I94).
+   * `protected` : inaccessible hors de la Feature et de ses sous-classes (I5, I6).
+   * Instanciée par `bootstrap()` (Phase 3) — jamais dans le constructeur (I94).
    */
-  protected readonly entity!: TEntityClass;
+  protected get entity(): TEntityClass;
 
   /**
    * Constructeur — **inerte** (I94, [ADR-0046](../../adr/ADR-0046-feature-contract-refonte.md)).
@@ -184,7 +184,7 @@ Un Channel a **trois facettes** distinctes :
 | -------------------------------- | --------------------------------------------------- | ------------------------------------------- |
 | `TChannelDefinition` (type)      | Contrat tri-lane (commands / events / requests)     | Public — co-localisé dans `*.feature.ts` (I74) |
 | `TChannelToken<TDef, NS>` (type) | Pont typé classe Feature ↔ contrat (ADR-0040, I73)  | Public — exposé via `static readonly channel` |
-| `Channel<TDef>` (classe runtime) | Registres de handlers, dispatch                     | Interne framework — jamais exposé (D15, I80) |
+| `Channel<TDef>` (classe runtime) | Registres de handlers, dispatch                     | Interne framework — non exporté par `@bonsai/core` (D15, I80) |
 
 Le développeur applicatif manipule **uniquement** le type `TChannelDefinition` et le token statique. L'instance runtime `Channel<TDef>` est un détail d'implémentation, créé au bootstrap par `Application` depuis le manifest (ADR-0039).
 
@@ -847,8 +847,8 @@ abstract class Feature<
    */
   protected abstract get Entity(): new () => TEntity;
 
-  /** Accès direct à l'Entity — Feature est le seul propriétaire (I6, I22). */
-  get entity(): TEntity { /* ... */ }
+  /** Accès direct à l'Entity — Feature est le seul propriétaire (I5, I6, I22). */
+  protected get entity(): TEntity { /* ... */ }
 
   /**
    * Constructeur (cf. §1) — reçoit le namespace injecté par Application
@@ -898,7 +898,7 @@ abstract class Feature<
   TSelfNS extends string = string
 > {
   protected abstract get Entity(): new () => TEntity;
-  get entity(): TEntity { /* ... */ }
+  protected get entity(): TEntity { /* ... */ }
 
   constructor(namespace: TSelfNS) { /* ... cf. §1 ... */ }
 

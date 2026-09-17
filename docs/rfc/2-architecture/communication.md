@@ -20,7 +20,7 @@
 > | Capacités Channel de Composer et Foundation | Strate 1d / 1 | §8.2 |
 > | Configuration runtime du Channel (point d'entrée de configuration non tranché) | Strate 1 | §9.5 |
 >
-> **Périmètre effectif livré** : `Channel<TDef>` tri-lane typé (ADR-0040, I76) créé en Phase 1 du bootstrap ; `trigger()` sans handler lève **toujours** `NoHandlerError` (quel que soit le mode) et une exception levée dans un handler Command **se propage** à l'appelant ; `emit()` sans listener est silencieux et déclenche automatiquement `any` (payload `{ event, changes }` où `changes` est le **payload de l'Event émis**) ; les erreurs de listeners Event sont isolées (`ListenerError` loguée) ; `request()` est synchrone et retourne `null` sans log si aucun replier n'existe, `null` avec `console.error` si le replier lève ; câblage des handlers Feature en Phase 3 (I48) et des handlers View au `mount()` (ADR-0042). `Radio` et `Channel` sont actuellement **exportés** par `@bonsai/event` et ré-exportés par `@bonsai/core`.
+> **Périmètre effectif livré** : `Channel<TDef>` tri-lane typé (ADR-0040, I76) créé en Phase 1 du bootstrap ; `trigger()` sans handler lève **toujours** `NoHandlerError` (quel que soit le mode) et une exception levée dans un handler Command **se propage** à l'appelant ; `emit()` sans listener est silencieux et déclenche automatiquement `any` (payload `{ event, changes }` où `changes` est le **payload de l'Event émis**) ; les erreurs de listeners Event sont isolées (`ListenerError` loguée) ; `request()` est synchrone et retourne `null` sans log si aucun replier n'existe, `null` avec `console.error` si le replier lève ; câblage des handlers Feature en Phase 3 (I48) et des handlers View au `mount()` (ADR-0042). `Radio` et `Channel` sont exportés par `@bonsai/event` (usage inter-packages) mais **pas** par `@bonsai/core`, seule surface applicative (I15, I80).
 
 ## 1. Primitives de communication
 
@@ -180,7 +180,7 @@ Radio est le **singleton interne** qui câble les Channels. Il n'est **jamais ex
 | Aspect | Détail |
 |--------|--------|
 | **Rôle** | Résoudre les déclarations statiques des composants en connexions runtime |
-| **Visibilité** | Interne au framework — `Radio` n'est pas exporté |
+| **Visibilité** | Interne au framework — `Radio` n'est pas exporté par `@bonsai/core` (exporté par `@bonsai/event` pour l'usage inter-packages uniquement) |
 | **Invariant** | I15 — aucun composant n'y accède directement |
 | **Anti-pattern** | `Radio.channel('name')` → interdit, voir [anti-patterns](../reference/anti-patterns.md) |
 
@@ -365,7 +365,7 @@ L'instance runtime `Channel<TDef>` (ADR-0040 — typé) est un objet **interne a
 |---------|--------|------------|
 | `TChannelDefinition` (type) | Contrat de communication tri-lane | Public — exporté |
 | `TChannelToken<TDef, NS>` (token) | Discriminant `{ namespace: NS }` typé | Public — exposé via `Feature.channel` (ADR-0040) |
-| `Channel<TDef>` (classe runtime) | Registres de handlers, dispatch typé | Interne framework — jamais exposé (I80) |
+| `Channel<TDef>` (classe runtime) | Registres de handlers, dispatch typé | Interne framework — non exporté par `@bonsai/core` (I80) |
 
 ```
   Développeur                                   Framework

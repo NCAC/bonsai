@@ -14946,7 +14946,8 @@ class Feature {
         return __classPrivateFieldGet(this, _Feature_namespace, "f");
     }
     /**
-     * Accès à l'Entity (I5 — propriétaire exclusif).
+     * Accès à l'Entity (I5, I6 — propriétaire exclusif).
+     * `protected` : seules la Feature et ses sous-classes y accèdent.
      * Typée par la classe concrète (TEntity) grâce à ADR-0037.
      */
     get entity() {
@@ -15823,4 +15824,4 @@ _Application_manifest = new WeakMap(), _Application_started = new WeakMap(), _Ap
     }
 };
 
-export { Application, BonsaiNamespaceError, Channel, Composer, Feature, Foundation, immer$1 as Immer, RESERVED_NAMESPACES, index$1 as RXJS, Radio, index as Valibot, View, assertValidNamespace, isCamelCaseNamespace, isReservedNamespace, ui };
+export { Application, BonsaiNamespaceError, Composer, Feature, Foundation, immer$1 as Immer, RESERVED_NAMESPACES, index$1 as RXJS, index as Valibot, View, assertValidNamespace, isCamelCaseNamespace, isReservedNamespace, ui };
