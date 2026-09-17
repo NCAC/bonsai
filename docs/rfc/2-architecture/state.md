@@ -26,11 +26,11 @@ L'Entity est le **seul conteneur de state** dans Bonsai. Chaque Feature possède
 
 | Composant | Lit le state ? | Modifie le state ? | Accès Entity ? |
 |-----------|---------------|-------------------|---------------|
-| **Feature** | ✅ Via `this.entity.get()` | ✅ Via `this.entity.mutate()` | ✅ Directement — propriétaire |
+| **Feature** | ✅ Via `this.entity.state` | ✅ Via `this.entity.mutate()` | ✅ Directement — propriétaire |
 | **View** | ✅ Indirectement via Request | ❌ Jamais | ❌ Aucun accès |
 | **Behavior** | ✅ Indirectement via Request | ❌ Jamais | ❌ Aucun accès |
-| **Composer** | ❌ | ❌ | ❌ |
-| **Foundation** | ❌ | ❌ | ❌ |
+| **Composer** | ❌ aujourd'hui — ⏳ `protected request()` cible strate 1, cf. [composer.md](../4-couche-concrete/composer.md) | ❌ | ❌ |
+| **Foundation** | ❌ aujourd'hui — ⏳ idem, cf. [foundation.md](../4-couche-concrete/foundation.md) | ❌ | ❌ |
 
 > **Mécanisme d'accès indirect** :
 > la View qui a besoin d'une donnée utilise `request(namespace:nomQuery)`.
@@ -42,14 +42,17 @@ L'Entity est le **seul conteneur de state** dans Bonsai. Chaque Feature possède
 
 ## 3. Store logique distribué
 
-Bonsai n'a **pas de store global** (D8). Le state de l'application est la **somme logique** de toutes les Entities :
+Bonsai n'a **pas de store global** (conséquence directe de I21/I22 — un
+namespace = une Feature = une Entity, jamais de conteneur d'état partagé
+entre Features). Le state de l'application est la **somme logique** de
+toutes les Entities :
 
 ```
 Application State = ∑(Feature.Entity)
 
 cart.entity      →  { items: [...], couponCode: null }
 user.entity      →  { name: "Alice", preferences: {...} }
-inventory.entity →  { stock: Map<string, number> }
+inventory.entity →  { products: [{ id: "p1", stock: 4 }, ...] }   // pas de Map (D10, §1)
 ```
 
 ### Relation 1:1:1
