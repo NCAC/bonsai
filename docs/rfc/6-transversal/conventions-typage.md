@@ -8,13 +8,24 @@
 
 ## 1. Objectifs
 
-1. **Definir** la signature TypeScript complete de chaque composant
-2. **Formaliser** le mecanisme de decouverte automatique des handlers (`onXXX`)
-3. **Specifier** le cycle de vie des composants (hooks internes)
-4. **Etablir** les contrats de typage des Channels (tri-lane, generiques)
-5. **Decrire** le protocole framework interne (Radio, cablage, validation)
-6. **Documenter** les patterns TypeScript avances pour la validation compile-time
-7. **Definir** le type `TMessageMetas` et sa propagation explicite (ADR-0005, ADR-0016)
+> Objectifs realignes sur le contenu reel de ce document (audit doc
+> 2026-09-17) — le cycle de vie des composants, le protocole Radio et
+> `TMessageMetas` sont traites ailleurs (respectivement
+> [feature.md §7](../3-couche-abstraite/feature.md#7-cycle-de-vie),
+> [communication.md §8](../2-architecture/communication.md), et
+> [metas.md](../2-architecture/metas.md), ce dernier documentant une cible
+> strate 1 non livree) — ce document ne les redefinit pas.
+
+1. **Definir** la convention de prefixage des types (`T`, quand l'utiliser — §2)
+2. **Trancher** `type` vs `interface` dans le code Bonsai (§3)
+3. **Enoncer** les contraintes globales de typage (inference, exports — §4)
+4. **Documenter** les patterns TypeScript avances utilises pour la validation
+   compile-time des handlers (mapped types, template literal types,
+   `UnionToIntersection` — §5), avec la distinction entre le raisonnement
+   historique (5.2, 5.3) et les types reellement exportes (5.2bis)
+5. **Repertorier** les invariants de contrats TypeScript specifiques a l'API
+   (I46–I56 — §6), complementaires aux invariants architecturaux d'ensemble
+   ([reference/invariants.md](../reference/invariants.md))
 
 ### Philosophie : Types d'abord, recompense ensuite
 
@@ -63,17 +74,35 @@ rembourse integralement en DX — et ce pour **chaque composant** :
 
 ## 2. Prefixes de types
 
+> **Regle amendee (audit doc 2026-09-17, decision M7a)** : le critere n'est
+> **pas** « type structurel vs type calcule (mapped/conditional) » — le code
+> livre contredit cette distinction (`TCommandCallbacks`, `TListenCallbacks`,
+> `TChannelCallbacks`, `TFeatureCallbacks` sont tous des mapped/conditional
+> types et portent pourtant le prefixe `T`). Le vrai critere est la
+> **surface developpeur** : un type que le developpeur ecrit explicitement
+> dans son code applicatif (signature de classe, `implements`, annotation)
+> porte `T`, meme si son implementation est un mapped/conditional type. Un
+> type qui n'est que de la plomberie type-level interne — jamais nomme
+> directement par le developpeur, seulement compose par d'autres types —
+> n'en porte pas.
+
 | Categorie                                                                         | Prefixe | Regle           | Exemples                                                             |
 | --------------------------------------------------------------------------------- | ------- | --------------- | -------------------------------------------------------------------- |
-| **Types structurels** — formes de donnees (state, config, payload, definition)    | `T`     | **DOIT**        | `TChannelDefinition`, `TMessageMetas`, `TRouteState`, `TEntityEvent` |
-| **Types contractuels** — utilises en `implements`, API surface                    | `T`     | **DOIT**        | `TRequiredCommandHandlers`, `TEntityKeyHandlers`, `TProjectionNode`  |
-| **Types utilitaires** — calcul type-level (mapped, conditional, template literal) | —       | **NE DOIT PAS** | `ExtractHandlerName`, `UnionToIntersection`, `CommandPayload`        |
-| **Types namespace-scoped** — qualifies par le namespace                           | —       | **NE DOIT PAS** | `Cart.Channel`, `Cart.State`, `Inventory.Channel`                    |
+| **Types de la surface developpeur** — ecrits explicitement dans le code applicatif (signatures, `implements`, payloads, state), qu'ils soient structurels ou calcules (mapped/conditional) | `T`     | **DOIT**        | `TChannelDefinition`, `TEntityEvent`, `TFeatureCallbacks`, `TCommandCallbacks`, `TListenCallbacks`, `TViewCallbacks` |
+| **Types de plomberie type-level** — jamais ecrits directement par le developpeur, uniquement composes en interne par d'autres types exportes | —       | **NE DOIT PAS** | `StrictManifest`, `ValidatedManifest`, `CamelCase`, `CamelCaseNamespace`, `UnionToIntersection`, `HasNoDuplicates`, `ExtractEl` |
 | **Classes**                                                                       | —       | **NE DOIT PAS** | `Feature`, `Entity`, `Application`                                   |
 
-> **Justification** : le prefixe `T` distingue les types des classes dans les signatures.
-> Les types utilitaires s'alignent sur les conventions TypeScript natives (`Partial`, `Record`,
-> `Extract`) et les types namespace-scoped sont deja qualifies par leur namespace.
+> **Justification** : le prefixe `T` signale au developpeur « ceci est un
+> contrat que vous manipulez directement ». Un type de plomberie interne n'a
+> pas besoin de ce signal : le developpeur ne l'ecrit jamais lui-meme, il en
+> beneficie seulement a travers un type de surface qui le compose (ex.
+> `StrictManifest<M>` n'est jamais tape a la main dans une signature de
+> Feature — seul `satisfies StrictManifest<AppManifest>` l'invoque une fois,
+> au point du manifest).
+>
+> Il n'existe plus de categorie « types namespace-scoped » (`Cart.Channel`,
+> `Cart.State`) — le pattern D14 (wrapper `namespace Cart { … }`) est
+> supersede par ADR-0040 (voir I73, I74).
 
 ---
 
@@ -100,7 +129,15 @@ interface IMessageMetas {
 // interface IMessageMetas { extraField: string; }  <-- extension silencieuse
 ```
 
-> **Regle** : `interface` n'est jamais utilise dans le code Bonsai.
+> **Regle** : `interface` n'est jamais utilise dans le code Bonsai — **y compris
+> pour le type-manifest applicatif** (`AppManifest`, ADR-0039). ADR-0039
+> (Accepted, non modifiable) utilise lui-meme `export type AppManifest = {
+> user: unknown; cart: unknown; }` — un `type`, jamais `interface`. Plusieurs
+> documents ulterieurs (I69 dans `reference/invariants.md`, `feature.md`,
+> `NAMESPACE-MENTAL-MODEL.md`) avaient derivé vers `interface AppManifest`,
+> ce qui contredisait a la fois cette regle et ADR-0039 lui-meme — corrige
+> (audit doc 2026-09-17, decision M7b) : ces trois documents utilisent
+> desormais `type AppManifest`, conformement a l'ADR source.
 > Les seules exceptions sont les `implements` sur les classes,
 > qui utilisent des `type` (TypeScript le permet nativement).
 
@@ -160,6 +197,15 @@ type ExtractEntityKeyHandlerName<TKey extends string> =
 ```
 
 ### 5.2 Mapped types — contrainte des handlers depuis les declarations Channel
+
+> ⚠️ **Contenu historique, supersédé par ADR-0046 (audit doc 2026-09-17)** —
+> `TRequiredCommandHandlers`, `TRequiredRequestHandlers` et `TEventHandlers`
+> ci-dessous ne sont **pas exportés par le code** : ils datent d'avant
+> ADR-0040/ADR-0042/ADR-0046 (paramètre `metas` sur les handlers, `static
+> readonly listen`/`params.listen` sur les Features/Views, `TChannels[I]["namespace"]`
+> qui n'existe pas sur `TChannelDefinition`). Conservés ici uniquement pour
+> l'historique du raisonnement type-level (mapped types + template literal
+> types). **Les vrais types livrés sont documentés juste après**, en 5.2bis.
 
 ```typescript
 /**
@@ -266,13 +312,89 @@ type TEntityKeyHandlers<TStructure extends TJsonSerializable> = Partial<{
 }>;
 ```
 
-> **Philosophie** : le developpeur declare le `TChannelDefinition`,
+> **Philosophie (historique)** : le developpeur declare le `TChannelDefinition`,
 > et le type system genere automatiquement les signatures handler
 > attendues. `implements TRequiredCommandHandlers<TChannel>` suffit
 > pour que l'IDE propose l'autocompletion de toutes les methodes
 > manquantes avec les bons types.
 
+### 5.2bis Les types réellement livrés (`@bonsai/feature`, ADR-0046)
+
+Le raisonnement de 5.2 (mapped types générant les signatures de handlers
+requises) est le bon — seule la forme a changé. Voici les types **exportés
+et testés** (`packages/feature/src/types.ts`) :
+
+```typescript
+// Handlers Command REQUIS — un par clé de TDef["commands"], sans metas (strate 0)
+type TCommandCallbacks<TDef extends TChannelDefinition> = {
+  [K in keyof TDef["commands"] & string as `on${Capitalize<K>}Command`]: (
+    payload: TDef["commands"][K]
+  ) => void;
+};
+
+// Handlers Request REQUIS — un par clé de TDef["requests"]
+type TRequestCallbacks<TDef extends TChannelDefinition> = {
+  [K in keyof TDef["requests"] & string as `on${Capitalize<K>}Request`]: (
+    params: TDef["requests"][K]["params"]
+  ) => TDef["requests"][K]["result"];
+};
+
+// Handlers Event cross-Channel REQUIS — un par (token, event) de `listens`.
+// UnionToIntersection est OBLIGATOIRE (sans lui, TS produit une union que
+// `implements` refuse — TS2422). Contrairement à l'historique 5.2, ces
+// handlers sont désormais TOUS requis (pas de Partial<>) : `listens` ne
+// déclare que les Channels réellement écoutés, donc chaque event qu'ils
+// exposent doit avoir un handler.
+type TListenCallbacks<
+  TListens extends readonly TChannelToken<TChannelDefinition, string>[]
+> = UnionToIntersection<
+  TListens[number] extends infer Tok
+    ? Tok extends TChannelToken<infer DEF, infer NS>
+      ? {
+          [E in keyof DEF["events"] &
+            string as `on${Capitalize<NS & string>}${Capitalize<E>}Event`]: (
+            payload: DEF["events"][E]
+          ) => void;
+        }
+      : never
+    : never
+>;
+
+// Le contrat complet d'une Feature concrète (ADR-0046, I92) :
+type TFeatureCallbacks<
+  TDef extends TChannelDefinition,
+  TListens extends readonly TChannelToken<TChannelDefinition, string>[] = readonly []
+> = TCommandCallbacks<TDef> & TRequestCallbacks<TDef> & TListenCallbacks<TListens>;
+```
+
+> **Différences avec 5.2** : pas de paramètre `metas` (strate 0, cible strate
+> 1b) ; `TListenCallbacks` dérive du tuple `TListens` (les tokens retournés
+> par `get listens()`, ADR-0046 — I93), pas d'un `static readonly listen`/
+> `params.listen` qui n'existent plus ; pas de type `TEventHandlers` séparé
+> avec `Partial<>` — la distinction « tous requis » vs « optionnels » a
+> disparu car `listens` ne liste que ce qui est effectivement écouté. Voir
+> [feature.md §3bis](../3-couche-abstraite/feature.md#3bis-tfeaturecallbacks-et-tstrictfeatureclass-adr-0046)
+> pour l'exemple complet et [reference/invariants.md I92](../reference/invariants.md)
+> pour la portée exacte de la garantie (compile-time uniquement).
+>
+> Côté View, le type frère est `TChannelCallbacks<F extends TFeatureContract>`
+> (même fichier) — dérive les handlers `on{NS}{Event}Event` requis depuis
+> `features[ns].listens`, en s'appuyant sur `TEventPayloadFor<F, K>` pour
+> typer chaque payload.
+
 ### 5.3 Infer et conditional types — extraction des types de payload
+
+> ⚠️ **`CommandPayload`/`RequestResult` ci-dessous ne sont pas exportés** —
+> contenu historique. Ils extrayaient trivialement `TChannel["commands"][TName]`
+> directement depuis le `TChannelDefinition` d'une Feature — un besoin que
+> `TCommandCallbacks`/`TRequestCallbacks` (5.2bis) couvrent déjà en inline.
+> Le besoin réel qui subsiste côté **consommateur externe** (une View lisant
+> `TFeatureContract`, avec une clé namespacée `"ns:nom"`) est couvert par
+> `TCommandPayloadFor<F, K>` / `TRequestParamsFor<F, K>` / `TRequestResultFor<F, K>`
+> / `TEventPayloadFor<F, K>` (`packages/feature/src/types.ts`) — une famille de
+> 4 extracteurs, pas 2, car le problème qu'ils résolvent (extraire depuis un
+> contrat multi-Feature namespacé) est différent de l'extraction directe
+> depuis un seul `TChannelDefinition` montrée ci-dessous.
 
 ```typescript
 /**

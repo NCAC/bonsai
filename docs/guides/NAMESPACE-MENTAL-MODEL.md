@@ -37,15 +37,15 @@ références croisées `listens`/`queries`, Phase 0c du bootstrap).
 
 **Où** : `app/manifest.ts` (un seul fichier par application, zéro classe importée)
 
-**Quoi** : une interface TypeScript qui **énumère tous les namespaces** de l'application.
+**Quoi** : un type TypeScript qui **énumère tous les namespaces** de l'application — `type`, pas `interface` (conventions-typage.md §3 : ADR-0039 lui-même utilise `type AppManifest`, pas d'exception pour le manifest).
 
 ```typescript
 // app/manifest.ts
-export interface AppManifest {
+export type AppManifest = {
   user: unknown;
   cart: unknown;
   inventory: unknown;
-}
+};
 export type AppNamespace = keyof AppManifest;
 ```
 
@@ -246,10 +246,10 @@ deux doivent rester synchronisés — c'est exactement ce que vérifie
 │  1. TYPE-MANIFEST                                           │
 │     app/manifest.ts                                         │
 │                                                             │
-│     interface AppManifest {                                 │
+│     type AppManifest = {                                    │
 │       user: unknown;        ← les noms officiels            │
 │       cart: unknown;                                        │
-│     }                                                       │
+│     };                                                       │
 └─────────────────────────────────────────────────────────────┘
                           ▲
                           │ satisfies StrictManifest<AppManifest>

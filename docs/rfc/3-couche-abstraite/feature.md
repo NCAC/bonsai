@@ -354,17 +354,19 @@ L'enregistrement de la Feature se fait via un **manifest applicatif** typé
 (I69, pattern A bis — type-manifest séparé du value-manifest) :
 
 ```typescript
-// app/manifest.ts — TYPE-MANIFEST (interface explicite, zéro classe importée)
+// app/manifest.ts — TYPE-MANIFEST (`type` explicite — pas `interface`,
+// conventions-typage.md §3 : ADR-0039 lui-même utilise `type AppManifest`,
+// zéro classe importée)
 // `StrictManifest<M>` et `AppNamespace`/`ExternalOf` ne sont PAS redéfinis ici :
 // ils viennent de `@bonsai/feature` (packages/feature/src/types.ts), la seule
 // source de vérité — une redéfinition locale perdrait les vérifications
 // camelCase (I21) et namespace réservé (I57, I71) portées par `StrictManifest<M>`
 // réel (`K extends CamelCaseNamespace<K> ? K extends ReservedNamespace ? never
 // : TStrictFeatureClass<K, TDef> : never`).
-export interface AppManifest {
+export type AppManifest = {
   user: unknown;
   cart: unknown;
-}
+};
 export type AppNamespace = keyof AppManifest;
 export type ExternalOf<TSelfNS extends AppNamespace> = Exclude<
   AppNamespace,
