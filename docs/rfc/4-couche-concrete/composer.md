@@ -35,6 +35,20 @@
 > **Strate 0 — périmètre effectif** : `Composer` non-générique, `resolve(event: unknown \| null) → TResolveResult \| null`, slot DOM immutable (ADR-0026), création D30, diff §3.1 des 5 transitions Same/New/null. Pas de `params()`, pas de `listen`, pas de `request()`, pas de retour tableau.
 >
 > Voir aussi : [ADR-0028](../../adr/ADR-0028-implementation-phasing-strategy.md) — phasage kernel-first en 3 strates.
+>
+> **⚠ `get params()` / `TComposerParams` (ADR-0024) est une forme cible
+> intermédiaire, supersédée par le pattern modulaire ADR-0042 avant même
+> sa livraison strate 1** — [I83](../reference/invariants.md) est explicite :
+> « Composer compose seulement `TFeatureContract` (I35 — pas d'UI) ».
+> ADR-0042 spécifie déjà `TComposerContract<F> = { features: F }` et
+> `TComposerCallbacks<TCC>` (non livrés — Composer reste en périmètre
+> strate 0/1 minimal, cf. tableau ci-dessus). Le pattern à adopter au moment
+> de l'implémentation strate 1 est donc `const features satisfies
+> TFeatureContract` + `class extends Composer<TComposerContract<typeof
+> features>>`, **pas** `TComposerParams`/`get params()`. Les exemples des §1–4
+> ci-dessous, écrits avant cette clarification, restent en forme ADR-0024 et
+> seront réécrits à l'implémentation strate 1 (cf. [ADR-0042 §Actions de
+> suivi](../../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md)).
 
 ---
 

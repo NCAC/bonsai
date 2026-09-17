@@ -31,8 +31,13 @@ Le Router est une Feature **instanciée par le framework**, pas par le développ
 Il encapsule l'accès exclusif à l'History API du navigateur.
 
 ```typescript
-class RouterFeature extends Feature<TRouteState, TRouterChannel> {
-  static readonly namespace = 'router';  // réservé (I28)
+type TRouterDef = TChannelDefinition & {
+  // ... commands/events/requests de navigation, cf. §2
+};
+
+class RouterFeature extends Feature<RouteEntity, TRouterDef, "router"> {
+  // Namespace "router" réservé (I28) — porté par le token typé (ADR-0040), pas par `static namespace` (I68)
+  static readonly channel: TChannelToken<TRouterDef, "router"> = { namespace: "router" };
 }
 ```
 

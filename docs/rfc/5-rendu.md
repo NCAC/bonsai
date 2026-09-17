@@ -24,6 +24,15 @@
 > collection patterns (§6.4–6.8). Les décisions D39–D48 y documentées font foi.
 > Ce document dépend de [RFC-0002](6-transversal/conventions-typage.md) pour les contrats View, Channel et Entity.
 
+> **⚠ Surface View pré-ADR-0042** — Plusieurs exemples de ce document déclarent
+> encore `get params() { return cartViewParams; }` (forme unique ADR-0024,
+> antérieure à [ADR-0042](../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md)).
+> Ils illustrent le mécanisme de rendu (PDR, templates, `ProjectionList`) —
+> pas le contrat consommateur — et doivent être lus avec le `get params()`
+> mentalement remplacé par les trois getters `features`/`uiEvents`/`uiElements`
+> (`TFeatureContract`/`TUIContract`/`TUIElements`). Pattern courant complet :
+> [view.md §2.2](4-couche-concrete/view.md#22-exemple-complet--cartview).
+
 ---
 
 ## 1. Résumé exécutif

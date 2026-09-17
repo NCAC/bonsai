@@ -32,6 +32,19 @@
 > **Strate 0 — périmètre effectif** : `Foundation` non-générique, abstract `get composers(): Readonly<Record<string, typeof Composer>>` (ADR-0038), `attach()` orchestre la résolution + instanciation des Composers racines, garantie I33 (singleton), I34 (rootElement enfant de `<body>`), I67 (stabilité structurelle).
 >
 > Voir aussi : [ADR-0028](../../adr/ADR-0028-implementation-phasing-strategy.md), [ADR-0038](../../adr/ADR-0038-foundation-composers-record-stable-layout.md).
+>
+> **⚠ `get params()` / forme `TComposerParams`-like (ADR-0024) est une forme
+> cible intermédiaire, supersédée par le pattern modulaire ADR-0042** —
+> [I83](../reference/invariants.md) : « Foundation strate 0 = vide ». ADR-0042
+> déclare déjà `TFoundationContract = {}` (vide en strate 0) et
+> `TFoundationCallbacks<TFC>`, mais **reporte explicitement la forme peuplée
+> de strate 1+** (`listen`/`trigger`/`request`) à une décision ultérieure —
+> non tranchée, ne pas présumer qu'elle réutilisera `TFeatureContract` tel
+> quel. Ce qui est acquis : ce **ne sera pas** `TComposerParams`/`get
+> params()` (ADR-0024). Les exemples des §1–2 ci-dessous, écrits avant cette
+> clarification, restent en forme ADR-0024 et seront réécrits à
+> l'implémentation strate 1 (cf. [ADR-0042 §Actions de
+> suivi](../../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md)).
 
 ---
 
