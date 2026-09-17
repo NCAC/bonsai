@@ -10,7 +10,7 @@
 | **Ne couvre pas** | La pipeline de build (voir [BUILD-CODING-STYLE](BUILD-CODING-STYLE.md)) |
 | **Statut**        | 🟢 Active — exemples antérieurs à ADR-0039/0040/0042 marqués comme historiques (cf. encadré ci-dessous) |
 | **Créé le**       | 2026-03-17                                        |
-| **Mis à jour**    | 2026-09-16 (audit doc)                            |
+| **Mis à jour**    | 2026-09-17 (audit doc)                            |
 | **Dépend de**     | RFC-0001, RFC-0002, ADR-0001, ADR-0005, **ADR-0039**, **ADR-0040**, **ADR-0042** |
 
 > **⚠ État du guide (2026-09-16, audit doc)** — Plusieurs exemples utilisent
@@ -203,34 +203,43 @@ this.entity.mutate("cart:clear", draft => {
 // ══════════════════════════════════════════════════════════════
 
 // emit() — émet un Event sur le Channel propre de la Feature
-// Signature : emit(eventName, payload, { metas })
-this.emit('itemAdded', { productId: payload.productId, qty: payload.qty }, { metas });
+// Signature LIVRÉE (strate 0) : emit(eventName, payload) — SANS metas.
+// { metas } en 3e argument est une cible strate 1b (ADR-0028), pas livrée.
+this.emit('itemAdded', { productId: payload.productId, qty: payload.qty });
 
 // request() — interroge un Channel externe déclaré via `get queries()` (ADR-0046, I93)
 // Signature SYNCHRONE (ADR-0023, I29) : request(token, requestName, params) → T | null
 // Pas de `metas` (strate 0 — ADR-0040 §615, reporté à un ADR dédié en strate 1), pas d'await.
-const price = this.request(Pricing.channel, 'getPrice', { productId });
+// Convention nominale pour requestName (pas getNoun) — cf. §3.1.
+const total = this.request(Pricing.channel, 'total', { productId });
 
 // ══════════════════════════════════════════════════════════════
 // View / Behavior — trigger() sortant
-// Les metas sont créées automatiquement (corrélation racine, ADR-0016, I54)
+// Les metas seraient créées automatiquement (corrélation racine, ADR-0016,
+// I54) — cible strate 1b, non livrée (pas de metas du tout aujourd'hui).
 // ══════════════════════════════════════════════════════════════
 
-// trigger() — envoie un Command via cle namespacee (ADR-0041)
-// Signature : trigger("ns:cmd", payload) — cle validee compile-time
-// La cle doit etre dans contract.triggers ; payload infere depuis TDeps.
+// trigger() — envoie un Command via clé namespacée flat (ADR-0042, I80)
+// Signature : trigger("ns:cmd", payload) — clé validée compile-time contre
+// TFlatTriggers<F> dérivé de get features() (pas de "contract.triggers"/"TDeps",
+// terminologie supersédée par ADR-0042).
 this.trigger("cart:addItem", { productId, qty });
 
 // ══════════════════════════════════════════════════════════════
-// Handlers — reçoivent (payload, metas) — ADR-0016
+// Handlers — strate 0 : (payload) uniquement, SANS metas (cible strate 1b)
 // ══════════════════════════════════════════════════════════════
 
-onAddItemCommand(payload: AddItemPayload, metas: TMessageMetas) {
-  // payload et metas explicites — Feature uniquement
+onAddItemCommand(payload: AddItemPayload) {
+  // Handler Command sur le Channel propre (C2)
 }
 
-onItemAddedEvent(payload: ItemAddedPayload, metas: TMessageMetas) {
-  // payload et metas explicites — Feature (listen) ou View (listen)
+// Listener cross-Channel : on{NS}{Event}Event — le préfixe NS distingue la
+// Feature source (ex. on{Cart}{ItemAdded}Event si on écoute "cart"). Un
+// simple onItemAddedEvent (sans préfixe NS) suppose une écoute sur son
+// propre Channel, ce qu'aucune Feature ne fait jamais (une Feature ne
+// s'écoute pas elle-même — cf. get listens()).
+onCartItemAddedEvent(payload: ItemAddedPayload) {
+  // Feature (listen) ou View (listen, ADR-0042 features[ns].listens)
 }
 ```
 
@@ -240,25 +249,23 @@ onItemAddedEvent(payload: ItemAddedPayload, metas: TMessageMetas) {
 > Pas de `this.currentMetas`, pas de `withMetas()`, pas de contexte implicite.
 
 ```typescript
-// ✅ BON : metas explicites, propagées à chaque capacité qui les supporte
-onAddItemCommand(payload: AddItemPayload, metas: TMessageMetas) {
-  // Le handler reçoit metas en paramètre (ADR-0016)
-
+// ✅ BON : signature strate 0 réelle — sans metas (cible strate 1b, cf. §2.2)
+onAddItemCommand(payload: AddItemPayload) {
   // Propager aux mutations — intent "namespace:verbNoun" (ADR-0001)
-  this.entity.mutate("cart:addItem", { payload, metas }, draft => {
+  this.entity.mutate("cart:addItem", { payload }, draft => {
     draft.items.push(payload.item);
   });
 
-  // request() est SYNCHRONE (ADR-0023, I29) et ne prend pas encore de
-  // `metas` (strate 0 — ADR-0040 §615, reporté à un ADR dédié en strate 1) :
-  // pas d'await, pas de { metas } en 4e argument.
-  const price = this.request(Pricing.channel, 'getPrice', { id: payload.id });
+  // request() est SYNCHRONE (ADR-0023, I29) et ne prend pas de `metas`
+  // (strate 0 — ADR-0040 §615, reporté à un ADR dédié en strate 1) :
+  // pas d'await, pas de 4e argument. Convention nominale (pas getNoun).
+  const total = this.request(Pricing.channel, 'total', { id: payload.id });
 
-  // Propager aux émissions — clé nue (keyof TChannel['events']) + payload + { metas }
-  this.emit('itemAdded', { item: payload.item, price }, { metas });
+  // Propager aux émissions — clé nue (keyof TChannel['events']) + payload
+  this.emit('itemAdded', { item: payload.item, total });
 }
 
-// ❌ MAUVAIS : getter implicite
+// ❌ MAUVAIS : getter implicite (reste vrai le jour où les metas seront livrées)
 onAddItemCommand(payload: AddItemPayload) {
   const metas = this.currentMetas; // NON — magie
 }
@@ -299,15 +306,20 @@ function createFeature(namespace, entity, channels, handlers) { }
 > **inférés** dans les implémentations internes.
 
 ```typescript
-// ✅ BON : types explicites dans l'API publique
-type TEntityEvent = {
-  intent: string;
-  payload?: unknown;
-  metas?: TMessageMetas;
-  patches: Patch[];
-  inversePatches: Patch[];
-  timestamp: number;
-  changedKeys: string[];
+// ✅ BON : types explicites dans l'API publique — forme réelle et complète
+// (packages/entity/src/bonsai-entity.ts) ; `metas` est déjà accepté par
+// mutate() (strate 1a) mais typé Record<string, unknown>, pas encore
+// TMessageMetas (cible strate 1b, ce type n'est pas encore exporté).
+type TEntityEvent<TStructure = unknown> = {
+  readonly intent: string;
+  readonly payload?: unknown;
+  readonly metas?: Record<string, unknown>;
+  readonly changedKeys: string[];
+  readonly patches: Patch[];
+  readonly inversePatches: Patch[];
+  readonly previousState: TStructure;
+  readonly nextState: TStructure;
+  readonly timestamp: number;
 }
 
 // ✅ BON : inférence dans l'implémentation
@@ -330,8 +342,10 @@ const changedKeys = [...new Set(patches.map(p => String(p.path[0])))];
 **Prérequis** : `"target": "ES2022"` minimum dans `tsconfig.base.json`.
 
 ```typescript
-// ✅ BON : hard private ES natif
-export class CartFeature extends Feature<TCartState> {
+// ✅ BON : hard private ES natif — Feature<TEntityClass, TChannelDef, TSelfNS>
+// (3 génériques, ADR-0037/ADR-0040 — pas Feature<TCartState>, un seul
+// générique appartient au pattern pré-ADR-0037, supersédé)
+export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
   #lastComputedTotal = 0;
 
   #computeTotal(): number {
@@ -345,7 +359,7 @@ export class CartFeature extends Feature<TCartState> {
 }
 
 // ❌ MAUVAIS : private TypeScript (contournable, faux sentiment de sécurité)
-export class CartFeature extends Feature<TCartState> {
+export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
   private _lastComputedTotal = 0;       // (instance as any)._lastComputedTotal → pas d'erreur
   private _computeTotal(): number { }   // (instance as any)._computeTotal() → pas d'erreur
 }
@@ -372,7 +386,7 @@ export class CartFeature extends Feature<TCartState> {
 | **Intent mutation** | `namespace:verbNoun` | `"cart:addItem"`, `"user:updateProfile"` | String libre dans `entity.mutate()` |
 | **Command name** (clé Channel) | `verbNoun` | `'addItem'`, `'submit'` | `keyof TChannel['commands']` |
 | **Event name** (clé Channel) | `nounVerbed` | `'itemAdded'`, `'submitted'` | `keyof TChannel['events']` |
-| **Request name** (clé Channel) | `getNoun` | `'getPrice'`, `'getProfile'` | `keyof TChannel['requests']` |
+| **Request name** (clé Channel) | nominal, pas `getNoun` | `'total'`, `'profile'` | `keyof TChannel['requests']` |
 
 > **Attention** : les intents de mutation sont des strings libres `namespace:verbNoun`
 > (utilisés dans `entity.mutate()` pour la traçabilité). Les noms de Commands/Events/Requests
@@ -384,10 +398,8 @@ export class CartFeature extends Feature<TCartState> {
 | Élément | Convention | Exemples |
 |---------|------------|----------|
 | **Classe** | PascalCase | `CartFeature`, `ProductView` |
-| **Type structurel** (données, state, config, payload) | PascalCase, préfixe `T` | `TEntityStructure`, `TChannelDefinition`, `TMessageMetas` |
-| **Type contractuel** (utilisé en `implements`, API surface) | PascalCase, préfixe `T` | `TRequiredCommandHandlers`, `TProjectionNode` |
-| **Type utilitaire** (mapped, conditional, template literal) | PascalCase, **sans** préfixe | `ExtractHandlerName`, `UnionToIntersection` |
-| **Type namespace-scoped** | Qualifié par namespace, **sans** préfixe | `Cart.Channel`, `Cart.State` |
+| **Type de la surface développeur** (écrit explicitement dans le code applicatif — structurel ou mapped/conditional : `implements TFeatureCallbacks<…>`, `TChannelDefinition`, payloads) | PascalCase, préfixe `T` | `TEntityStructure`, `TChannelDefinition`, `TFeatureCallbacks`, `TCommandCallbacks` |
+| **Type de plomberie interne** (jamais écrit directement par le développeur, uniquement composé par d'autres types exportés) | PascalCase, **sans** préfixe | `StrictManifest`, `CamelCase`, `UnionToIntersection`, `HasNoDuplicates` |
 | **Interface** (si utilisée exceptionnellement) | PascalCase, préfixe `I` | `IProject`, `IConfig` |
 | **Méthode** | camelCase | `mutate()`, `emit()`, `onAddItem()` |
 | **Handler** | `on` + EventName en PascalCase | `onAddItemCommand`, `onItemAddedEvent` |
@@ -400,8 +412,8 @@ export class CartFeature extends Feature<TCartState> {
 |------|------------|----------|
 | **Feature** | `namespace.feature.ts` | `cart.feature.ts` |
 | **Entity** | `namespace.entity.ts` | `cart.entity.ts` |
-| **View** | `ComponentName.view.ts` | `CartView.view.ts` |
-| **Behavior** | `BehaviorName.behavior.ts` | `Tooltip.behavior.ts` |
+| **View** | `namespace.view.ts` (aligné sur `namespace.feature.ts`/`namespace.entity.ts` du même domaine — décision M9, audit doc 2026-09-17) | `cart.view.ts` |
+| **Behavior** | `namespace.behavior.ts` | `cart.behavior.ts` |
 | **Tests** | `*.test.ts` | `cart.feature.test.ts` |
 
 > **Note** : il n'y a **pas** de fichier `.channel.ts` séparé.
@@ -452,12 +464,13 @@ src/
 ```
 
 ```typescript
-// Imports par alias de domaine (recommandé)
-import { Cart } from '@cart/cart.feature';
-import { Product } from '@product/product.feature';
+// Imports par alias de domaine (recommandé) — classes nommées, pas de
+// wrapper `namespace Cart { … }` (D14 supersédé par ADR-0040)
+import { CartFeature } from '@cart/cart.feature';
+import { ProductFeature } from '@product/product.feature';
 
 // Ou imports relatifs entre domaines
-import { Cart } from '../Cart/cart.feature';
+import { CartFeature } from '../Cart/cart.feature';
 ```
 
 #### ❌ Organisation par type de composant (anti-pattern)
@@ -523,8 +536,8 @@ cart.init();                    // ❌ Logique exécutée à l'import
 | Déclaration TypeScript | `{nom}.d.ts` | `cart.feature.d.ts` |
 | Source map JS | `{nom}.esm.js.map` | `cart.feature.esm.js.map` |
 | Runtime Bonsai ESM | `bonsai.esm.js` | — |
-| Runtime Bonsai IIFE | `bonsai.iife.js` | — |
-| Bundle IIFE applicatif | `{app}.bundle.iife.js` | `app.bundle.iife.js` |
+| ⏳ Runtime Bonsai IIFE (cible, non produit — `lib/build/building/builder.class.ts` ne génère que `format: "es"`) | `bonsai.iife.js` | — |
+| ⏳ Bundle IIFE applicatif (cible, non produit) | `{app}.bundle.iife.js` | `app.bundle.iife.js` |
 
 > **Règle** : distribuer un `*.esm.js` sans son `*.d.ts` est **interdit**
 > (ADR-0019 C7 — le type EST la documentation).
@@ -566,10 +579,19 @@ get uiElements() {
 
 **Règles** :
 - Une classe CSS **NE DOIT PAS** représenter un état (`is-open`, `is-active`).
-  Les états dynamiques sont portés par des `data-*` (§1.4).
+  Les états dynamiques sont portés par des `data-*` (§4.4).
 - Une classe CSS **NE DOIT PAS** être modifiée par le JavaScript applicatif
   (la Foundation peut altérer les classes de `<html>`/`<body>` en N1, mais c'est
   une exception contrôlée par le framework).
+  > 🧭 **Tension non tranchée** : `TProjectionNode.toggleClass(className, force)`
+  > est pourtant une primitive **livrée** (`packages/view/src/bonsai-view.ts`),
+  > utilisée dans les exemples de [view.md](../rfc/4-couche-concrete/view.md),
+  > [foundation.md](../rfc/4-couche-concrete/foundation.md) et
+  > [FORMS-GUIDE.md](FORMS-GUIDE.md) pour piloter des états (`is-invalid`,
+  > `has-items`...). Soit `toggleClass()` doit être encadrée (réservée aux
+  > rôles sémantiques statiques, jamais aux états — auquel cas ces exemples
+  > sont fautifs), soit cette règle doit admettre une exception explicite —
+  > non tranché, ne pas présumer laquelle des deux avant décision.
 
 ### 4.3 Identifiants (`id`) — ciblage JavaScript pur
 
@@ -645,7 +667,19 @@ JS d'une View spécifique*.
 ```
 
 ```typescript
-get rootElement() { return '#header-view'; }
+// Le sélecteur est fourni par le Composer via resolve(), PAS déclaré par
+// la View elle-même (I31, ADR-0026) :
+class HeaderComposer extends Composer {
+  resolve(_event: unknown | null) {
+    return { view: HeaderView, rootElement: '#header-view' };
+  }
+}
+
+// View.rootElement est un getter en LECTURE SEULE, peuplé par mount() —
+// jamais surchargé par le développeur applicatif.
+class HeaderView extends View<THeaderViewContract> {
+  // this.rootElement === '#header-view' après mount("#header-view")
+}
 ```
 
 **Convention** : `#kebab-case-view` — le suffixe `-view` marque l'intention.
@@ -848,11 +882,16 @@ class NodeEditFormView
 
 #### Pourquoi ce n'est pas de la composition cachée
 
-| Élément | Visible | Vérifié |
+> ⏳ **`View.composers` (enfants, N-instances) est entièrement cible strate 1d,
+> non livré** — `packages/view/src/bonsai-view.ts` n'a pas cette propriété.
+> Rien n'est aujourd'hui "vérifié compile-time" pour ce mécanisme puisqu'il
+> n'existe pas ; le tableau ci-dessous décrit une garantie visée, pas un fait.
+
+| Élément | Visible | Vérifié (cible) |
 |---------|---------|--------|
-| Types de slots | `TUIContract` | compile-time — TypeScript |
+| Types de slots | `TUIContract` | compile-time — TypeScript (livré pour `uiEvents`, cible pour la composition enfant) |
 | Sélecteurs CSS | `uiElements` | bootstrap — erreur si sélecteur invalide |
-| Composer par type | `get composers()` | compile-time — clé doit exister dans `keyof TVC["ui"]` |
+| Composer par type | `get composers()` | ⏳ cible : compile-time — clé devrait exister dans `keyof TVC["ui"]` |
 
 La View sait **quels types** elle accepte (statique), pas **combien** d'instances
 (déterminé par le DOM au runtime). C'est la séparation correcte des responsabilités.
