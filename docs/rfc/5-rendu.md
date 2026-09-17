@@ -73,7 +73,7 @@ Le développeur choisit le niveau d'abstraction approprié à son cas d'usage :
 | **N2 — Mutation par zones** | Liste de produits, formulaire dynamique, onglets | Template sur clés `@ui` spécifiques | ✅ Oui — sur zones ciblées |
 | **N3 — Mutation complète** | Page entière change, dashboard reconfigurable | Template sur `root` | ✅ Oui — toute la View |
 
-**Principe** : on ne sur-ingénierie pas. Un carrousel n'a pas besoin d'un template, un `.setAttribute("data-active", false)` suffit.
+**Principe** : on ne sur-ingénierie pas. Un carrousel n'a pas besoin d'un template, un `getUI("slide").attr("data-active", "false")` suffit (I39 — jamais de `setAttribute` brut, toujours via `getUI()`).
 
 ### 2.2 Template = Délégation totale du rendu
 
@@ -1113,19 +1113,34 @@ ul.Cart-items
 
 ### 7.4 Types TypeScript
 
+> ⚠️ **Nom réel et faisabilité structurelle** : le type livré s'appelle
+> `TAnyEventPayload` (`packages/event/src/channel.class.ts`), pas
+> `TChannelAnyPayload` — et son champ `changes` est le **payload de l'Event
+> granulaire tel quel**, pas des « clés changées » (cf.
+> [communication.md §7](../2-architecture/communication.md), corrigé). Par
+> ailleurs, `Channel<TDef>` (`packages/event/src/channel.class.ts`) n'a ni
+> `.namespace` (le champ s'appelle `.name`) ni `.state` — **le Channel ne
+> connaît pas l'Entity** (I5, I80). `NamespacedData` telle qu'esquissée
+> ci-dessous n'est donc pas seulement non livrée : sa lecture `C['state']`
+> est **structurellement impossible** avec l'encapsulation actuelle sans
+> changer où vit la référence au state (cf. la tension D42/D46 documentée
+> dans [decisions.md](reference/decisions.md) et le bandeau en tête de ce
+> document).
+
 ```typescript
-// Payload de l'événement 'any' (interne framework — pas exposé au développeur)
-type TChannelAnyPayload = {
+// Payload de l'événement 'any' — nom réel TAnyEventPayload, cf. note ci-dessus
+type TAnyEventPayload = {
   event: string;                  // Nom de l'Event granulaire
-  changes: TJsonSerializable;     // Clés changées (pour optimisation interne)
+  changes: Record<string, unknown>; // Payload de l'Event tel quel (PAS les clés changées)
 }
 
 // Données reçues par le selector (après namespace par le framework)
-// D46 (FULL-STATE-SELECTOR) : le state est COMPLET, pas juste les changes.
-// Le framework passe une référence live vers le state frozen de l'Entity.
+// D46 (FULL-STATE-SELECTOR) : le state serait COMPLET, pas juste les changes.
+// ⏳ Suppose une référence live vers le state frozen de l'Entity — mécanisme
+// non spécifié (cf. note ci-dessus : Channel n'a pas accès à l'Entity).
 // Inclut le namespace réservé 'local' pour le localState (I57, ADR-0015)
 type NamespacedData<TChannels extends Channel[], TLocal = never> = 
-  & { [C in TChannels[number] as C['namespace']]?: C['state'] }
+  & { [C in TChannels[number] as C['name']]?: unknown /* état de l'Entity — voie d'accès non spécifiée */ }
   & ([TLocal] extends [never] ? {} : { local?: Partial<TLocal> });
 
 // Note : le namespace 'local' est réservé par le framework (I57).
@@ -1152,7 +1167,7 @@ type TViewTemplateBinding<TData = unknown> = {
   select?: (data: NamespacedData<any, any>) => TData | undefined;
 }
 
-type TViewTemplates<TUI extends TUIMap<any>> =
+type TViewTemplates<TUI extends TUIContract> =
   | null
   | { root: TViewTemplateBinding }
   | { [K in keyof TUI & string]?: TViewTemplateBinding };
@@ -1296,12 +1311,12 @@ T1 ─── Bootstrap (setup) ────────────────�
        Résultat : Map<key, { el, nodes }> — zéro création DOM
 
 T2 ─── Premier any ──────────────────────────────────────────────────────
-       Feature.onAttach() → request / Entity peuplée → emit('any')
+       Feature.onInit() → request / Entity peuplée → emit('any')
        Selector → données identiques au DOM → shallowEqual → SKIP (H4)
        ✅ Zéro mutation DOM après bootstrap
 
 T3 ─── Interaction utilisateur (ex: tri) ────────────────────────────────
-       View.trigger(command) → Feature.mutate(critères) → emit('any')
+       View.trigger(command) → Feature → entity.mutate(critères) → emit('any')
        Selector → deriveVisibleProducts(fullState) → liste réordonnée
        shallowEqual → différent → project()
        ProjectionList.reconcile(items) → déplacements + guards
@@ -1334,6 +1349,13 @@ function attachView(view: View): void {
     }
   }
   
+  // ⚠️ Pseudocode illustratif, noms non alignés sur l'API réelle : la View
+  // n'a pas de propriété `listen` (le contrat réel est `get features()`,
+  // ADR-0042) ; `Channel` n'a pas de méthode `.on()` (l'API réelle est
+  // `listenAny(listener)`) ni de champ `.namespace` (`.name`) ; `channel.entity`
+  // n'existe pas — le Channel ne connaît pas l'Entity (I5, I80), cf. la note
+  // de §7.4 sur la faisabilité structurelle de cette lecture.
+
   // UN SEUL abonnement par Channel — événement 'any'
   for (const channel of view.listen) {
     channel.on('any', ({ event, changes }) => {
