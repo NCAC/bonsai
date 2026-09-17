@@ -1,29 +1,29 @@
-[![🇫🇷 Documentation en français](https://img.shields.io/badge/docs-français-blue)](./README.fr.md)
-[![Strate 0](https://img.shields.io/badge/strate%200-delivered-success)](https://github.com/NCAC/bonsai/releases/tag/v0.1.0-strate-0)
+[![🇬🇧 English documentation](https://img.shields.io/badge/docs-english-blue)](./README-EN.md)
+[![Strate 0](https://img.shields.io/badge/strate%200-livr%C3%A9e-success)](https://github.com/NCAC/bonsai/releases/tag/v0.1.0-strate-0)
 [![Tests](https://img.shields.io/badge/tests-175%20passed-brightgreen)]()
 [![Coverage](https://img.shields.io/badge/coverage-91%25-brightgreen)]()
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-blue)]()
 
-# Bonsai Framework
+# Framework Bonsai
 
-> ⚠️ **Work in Progress** — strate 0 delivered (April 2026). Public API is stable for the core components; strates 1+ will add Behavior, forms, routing and SSR.
+> ⚠️ **Work in Progress** — strate 0 livrée (avril 2026). L'API publique est stable pour les composants core ; les strates 1+ ajouteront Behavior, formulaires, routing et SSR.
 
-Modern TypeScript framework for opinionated frontend applications — event-driven architecture, strict unidirectional data flow, compile-time safety, and a documented "type-as-contract" philosophy.
+Framework TypeScript moderne pour applications frontend opinionées — architecture événementielle, flux de données strictement unidirectionnel, sécurité au compile-time, et une philosophie « le type EST le contrat ».
 
 ---
 
-## Why Bonsai
+## Pourquoi Bonsai
 
-Most frontend frameworks let you _structure_ an app. Bonsai **forces** you to structure it correctly — the type system itself rejects architectures that violate the unidirectional flow.
+La plupart des frameworks frontend te _laissent_ structurer une app. Bonsai te **force** à la structurer correctement — le type system rejette de lui-même les architectures qui violent le flux unidirectionnel.
 
-- **One direction, no exceptions**: `View → Command → Feature → Event → View`. Views never `emit`. Features never touch the DOM. The compiler enforces it.
-- **State is encapsulated**: each Feature owns exactly one Entity. Mutation goes through a single `mutate(intent, recipe)` method (Immer under the hood). No setters, no reactive proxies leaking out.
-- **DX-first TypeScript**: handlers are auto-discovered by name (`onAddItemCommand`, `onCartItemAddedEvent`). No registration boilerplate, no decorators, full IntelliSense.
-- **Surgical DOM**: views are rendered via Pug templates (server-side / build-time) and updated through N1 projections (`getUI("itemCount").text("3")`) — no virtual DOM, no diffing.
+- **Une seule direction, sans exception** : `View → Command → Feature → Event → View`. Les Views n'ont jamais `emit`. Les Features ne touchent jamais le DOM. Le compilateur l'impose.
+- **State encapsulé** : chaque Feature possède exactement une Entity. La mutation passe par une unique méthode `mutate(intent, recipe)` (Immer en interne). Pas de setters, pas de proxies réactifs qui fuient.
+- **TypeScript DX-first** : les handlers sont auto-découverts par leur nom (`onAddItemCommand`, `onCartItemAddedEvent`). Pas de boilerplate d'enregistrement, pas de décorateurs, IntelliSense complète.
+- **DOM chirurgical** : les vues sont rendues via templates Pug (côté serveur / build-time) et mises à jour par projections N1 (`getUI("itemCount").text("3")`) — pas de virtual DOM, pas de diffing.
 
-## Status — Strate 0 ✅
+## Statut — Strate 0 ✅
 
-| Component                       | Status                  | Coverage |
+| Composant                       | Statut                  | Coverage |
 | ------------------------------- | ----------------------- | -------- |
 | `@bonsai/entity`                | 🟢 Stable               | 100 %    |
 | `@bonsai/feature`               | 🟢 Stable               | 96 %     |
@@ -34,13 +34,13 @@ Most frontend frameworks let you _structure_ an app. Bonsai **forces** you to st
 | `@bonsai/event` (Channel/Radio) | 🟢 Stable               | 90 %     |
 | `@bonsai/behavior`              | 🟡 Stub (strate 1)      | —        |
 
-**E2E gate** is green: a full cart round-trip (click → trigger → handle → mutate → emit → DOM) traverses the six components without a single mock. See [`tests/e2e/strate-0.cart-round-trip.test.ts`](tests/e2e/strate-0.cart-round-trip.test.ts).
+**Gate E2E** vert : un cart round-trip complet (click → trigger → handle → mutate → emit → DOM) traverse les six composants sans aucun mock. Voir [`tests/e2e/strate-0.cart-round-trip.test.ts`](tests/e2e/strate-0.cart-round-trip.test.ts).
 
-## Quick taste
+## Aperçu rapide
 
 ```ts
-// Feature — owns state, handles commands, emits events.
-// Namespace comes from the typed application manifest (ADR-0039) — no `static namespace`.
+// Feature — possède le state, gère les commands, émet des events.
+// Le namespace vient du manifest applicatif typé (ADR-0039) — plus de `static namespace`.
 class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
   static readonly channel: TChannelToken<TCartDef, "cart"> = { namespace: "cart" };
   protected get Entity() { return CartEntity; }
@@ -54,7 +54,7 @@ class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
   }
 }
 
-// View — modular contract (ADR-0042): features + uiEvents + uiElements.
+// View — contrat modulaire (ADR-0042) : features + uiEvents + uiElements.
 const cartViewFeatures = {
   cart: { feature: CartFeature, listens: ["itemAdded"] as const,
           triggers: ["addItem"] as const, requests: [] as const },
@@ -80,25 +80,25 @@ class CartView
   get uiEvents()   { return cartViewUiEvents;   }
   get uiElements() { return cartViewUiElements; }
 
-  // Required by `events: ["click"]` on addButton (compile-time enforced — I88).
+  // Imposé par `events: ["click"]` sur addButton (vérifié compile-time — I88).
   onAddButtonClick(): void {
     this.trigger("cart:addItem", { productId: "p1", qty: 1, price: 9.99 });
   }
 
-  // Required by cart.listens: ["itemAdded"] (compile-time enforced — I82).
+  // Imposé par cart.listens: ["itemAdded"] (vérifié compile-time — I82).
   onCartItemAddedEvent(_payload: { item: TCartItem }): void {
     this.getUI("itemCount").text(String(this.#count++));
   }
 }
 
-// Bootstrap — typed application manifest (ADR-0039).
+// Bootstrap — manifest applicatif typé (ADR-0039).
 new Application({
   foundation: AppFoundation,
   features:   { cart: CartFeature } satisfies StrictManifest<{ cart: unknown }>,
 }).start();
 ```
 
-## Architecture in 30 seconds
+## Architecture en 30 secondes
 
 ```
                 ┌─────────────────────────────────────┐
@@ -107,8 +107,8 @@ new Application({
                         │                       │
                         ▼                       ▼
                 ┌──────────────┐        ┌──────────────┐
-                │  Foundation  │        │   Features   │  ← own State (Entity)
-                │  (composers) │        │              │     Channels (handlers)
+                │  Foundation  │        │   Features   │  ← possèdent le State (Entity)
+                │  (composers) │        │              │     les Channels (handlers)
                 └──────────────┘        └──────────────┘
                         │                       ▲
                         ▼                       │  Events
@@ -120,79 +120,79 @@ new Application({
                         ▼                       │
                 ┌──────────────┐        ┌──────────────┐
                 │     View     │ ─────▶ │   Channel    │  ← Radio singleton
-                │  (DOM N1)    │        │ (tri-lane)   │     dispatches
+                │  (DOM N1)    │        │ (tri-lane)   │     dispatche
                 └──────────────┘        └──────────────┘
 ```
 
-- **Foundation** owns the page layout (`<body>` + composer slots).
-- **Composer** decides which **View** mounts at runtime (with a diff on re-resolve).
-- **View** observes the DOM, triggers **Commands**, listens to **Events**.
-- **Channel** routes Commands / Events / Requests; **Radio** owns one Channel per Feature namespace.
-- **Feature** is the only entity that **emits Events** and **owns mutable state** (its Entity).
+- **Foundation** possède le layout de la page (`<body>` + slots de composers).
+- **Composer** décide quelle **View** monter au runtime (avec diff au re-resolve).
+- **View** observe le DOM, déclenche des **Commands**, écoute des **Events**.
+- **Channel** route Commands / Events / Requests ; **Radio** possède un Channel par namespace de Feature.
+- **Feature** est la seule entité qui **émet des Events** et **possède du state mutable** (son Entity).
 
-→ Full architecture: [docs/rfc/RFC-0001-architecture-fondamentale.md](docs/rfc/RFC-0001-architecture-fondamentale.md)
+→ Architecture complète : [docs/rfc/1-philosophie.md](docs/rfc/1-philosophie.md)
 
-## Repo layout
+## Structure du dépôt
 
 ```
 bonsai/
-├── core/              # @bonsai/core meta-package (re-exports)
-├── packages/          # 8 framework packages (one per component)
+├── core/              # méta-package @bonsai/core (re-exports)
+├── packages/          # 8 packages framework (un par composant)
 │   ├── entity/        application/  composer/  feature/
 │   ├── foundation/    view/         event/     behavior/ (stub)
-│   ├── error/         # invariants, Bonsai-prefixed errors
-│   └── immer/  rxjs/  valibot/  types/   # third-party wrappers
+│   ├── error/         # invariants, erreurs préfixées Bonsai
+│   └── immer/  rxjs/  valibot/  types/   # wrappers libs tierces
 ├── tests/
-│   ├── unit/strate-0/    # 161 tests, one folder per component
-│   ├── integration/      # cross-package scenarios
-│   └── e2e/              # 🚪 strate gates (one per strate)
-├── lib/build/         # internal build pipeline (Rollup + .d.ts emit)
+│   ├── unit/strate-0/    # 161 tests, un dossier par composant
+│   ├── integration/      # scénarios cross-package
+│   └── e2e/              # 🚪 strate gates (un par strate)
+├── lib/build/         # pipeline de build interne (Rollup + emit .d.ts)
 ├── tools/             # build-bonsai-package, pug-to-ts-template
 └── docs/
-    ├── rfc/           # 4 RFCs — source of truth (French)
-    └── adr/           # 38 ADRs — architectural decisions (French)
+    ├── rfc/           # 4 RFC — source de vérité
+    └── adr/           # 38 ADR — décisions architecturales
 ```
 
-## Develop
+## Développement
 
-### Prerequisites
+### Prérequis
 
 - **Node.js** 23+
 - **pnpm** 10+
 
-### Common commands
+### Commandes courantes
 
 ```bash
-pnpm install                          # install workspace
-pnpm tsc:check                        # type-check only (no emit)
-pnpm test                             # full test suite
-pnpm test:strate-0:regression         # strate 0 regression suite
-pnpm jest tests/unit/strate-0         # all strate 0 unit tests
-pnpm jest tests/e2e --no-coverage     # E2E gate
-pnpm test:coverage                    # coverage with HTML report
-pnpm run build                        # build all packages (watch mode)
-pnpm run build:no-watch               # one-shot build
+pnpm install                          # installe le workspace
+pnpm tsc:check                        # type-check uniquement (no emit)
+pnpm test                             # suite de tests complète
+pnpm test:strate-0:regression         # suite de régression strate 0
+pnpm jest tests/unit/strate-0         # tous les tests unit strate 0
+pnpm jest tests/e2e --no-coverage     # gate E2E
+pnpm test:coverage                    # coverage avec rapport HTML
+pnpm run build                        # build tous les packages (watch)
+pnpm run build:no-watch               # build one-shot
 ```
 
 ### Quality gates
 
-- **TypeScript strict**: `strict: true`, `noImplicitAny`, `strictNullChecks`, `noUncheckedIndexedAccess`.
-- **Coverage thresholds** locked in `jest.config.ts` — any regression below the strate 0 baseline fails CI.
-- **Husky pre-commit / pre-push**: ADR-0034 continuous verification.
+- **TypeScript strict** : `strict: true`, `noImplicitAny`, `strictNullChecks`, `noUncheckedIndexedAccess`.
+- **Seuils de coverage** verrouillés dans `jest.config.ts` — toute régression sous la baseline strate 0 fait échouer la CI.
+- **Husky pre-commit / pre-push** : ADR-0034 continuous verification.
 
 ## Documentation
 
-Architectural documentation (RFCs, ADRs) is written in **French** — the design language of the project (see [ADR-0036](docs/adr/ADR-0036-documentation-internationalization-strategy.md)). English translations are planned for stable documents.
+La documentation architecturale (RFC, ADR) est rédigée en **français** — la langue de conception du projet (cf. [ADR-0036](docs/adr/ADR-0036-documentation-internationalization-strategy.md)). Des traductions anglaises sont prévues pour les documents stables.
 
 |             |                                                                                       |
 | ----------- | ------------------------------------------------------------------------------------- |
-| 📐 **RFCs** | [Source of truth](docs/rfc/README.md) — architecture, contracts, invariants            |
-| 📋 **ADRs** | [38 decisions](docs/adr/README.md) — every architectural trade-off                     |
-| 📖 **Guides** | [Coding conventions](docs/guides/) — TypeScript style, framework style               |
-| 🚪 **Strates** | [ADR-0028](docs/adr/ADR-0028-strate-roadmap.md) — delivery roadmap & gates          |
-| 🛠️ **Build** | [lib/BUILD-EN.md](lib/BUILD-EN.md), [lib/DEVELOPER-GUIDE-EN.md](lib/DEVELOPER-GUIDE-EN.md) |
-| 🇫🇷          | [French version](README.fr.md)                                                         |
+| 📐 **RFC**  | [Source de vérité](docs/rfc/README.md) — architecture, contrats, invariants            |
+| 📋 **ADR**  | [38 décisions](docs/adr/README.md) — chaque arbitrage architectural                    |
+| 📖 **Guides** | [Conventions de code](docs/guides/) — style TypeScript, style framework             |
+| 🚪 **Strates** | [ADR-0028](docs/adr/ADR-0028-implementation-phasing-strategy.md) — roadmap de livraison & gates      |
+| 🛠️ **Build** | [lib/BUILD.md](lib/BUILD.md), [lib/DEVELOPER-GUIDE.md](lib/DEVELOPER-GUIDE.md)        |
+| 🇬🇧          | [English version](README-EN.md) — non maintenue en priorité tant que le projet n'est pas exposé publiquement |
 
-## License
+## Licence
 
 MIT © NCAC
