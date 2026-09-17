@@ -27,6 +27,7 @@
 6. [Tests d'intégration (multi-Features)](#6-tests-dintégration-multi-features)
 7. [Contract Testing (optionnel)](#7-contract-testing-optionnel)
 8. [Conventions et bonnes pratiques](#8-conventions-et-bonnes-pratiques)
+9. [Traçabilité C-Sem — ADR Tested sans invariants](#9-traçabilité-c-sem--adr-tested-sans-invariants)
 
 ---
 
@@ -368,6 +369,31 @@ tests/
 | ❌ Mocker Radio directement | Dépendance sur l'implémentation interne | Utiliser `MockChannel` |
 | ❌ Tests de View sans DOM | Les Views sont intrinsèquement liées au DOM | Utiliser `createTestView()` avec jsdom |
 | ❌ Tests d'intégration pour la logique métier | Trop lents, trop fragiles | Tests unitaires Feature + tests d'intégration pour la chorégraphie |
+
+---
+
+## 9. Traçabilité C-Sem — ADR Tested sans invariants
+
+> **ADR-0043** admet une voie **C-Sem** : un ADR peut être promu `🔵 Tested`
+> sans ligne « Invariants impactés » quand sa décision est de nature
+> sémantique (comportement d'exécution) plutôt que structurelle (pas
+> d'invariant `I<n>` numéroté à citer dans les tests). C'est le cas pour
+> ADR-0001, ADR-0003, ADR-0010, ADR-0023 et ADR-0024. Cette table trace
+> explicitement quels fichiers de test couvrent leur sémantique, en
+> l'absence du garde-fou automatique (script annexe A.3 de l'audit doc)
+> qui ne peut vérifier que les invariants numérotés.
+
+| ADR | Décision testée | Fichier(s) de test |
+|-----|------------------|---------------------|
+| [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md) | `mutate()` unique via Immer, détection no-op, notification diff | `tests/unit/strate-0/entity.basic.test.ts` (`describe("mutate() — Immer produce")`, `describe("No-op detection")`) |
+| [ADR-0003](../adr/ADR-0003-channel-runtime-semantics.md) | Tri-lane Channel (commands/events/requests), garde-fous d'enregistrement | `tests/unit/strate-0/channel.basic.test.ts` |
+| [ADR-0010](../adr/ADR-0010-bootstrap-order.md) | Ordre de bootstrap et dépendances entre phases | `tests/unit/strate-0/application.basic.test.ts` (`describe("start() — 4-phase bootstrap")`, `describe("Bootstrap guards [I33, I56, ADR-0010]")`) |
+| [ADR-0023](../adr/ADR-0023-request-reply-sync-vs-async.md) | `request()`/`reply()` **synchrones** — pas de `Promise`, `null` si pas de replier ou si le replier throw | `tests/unit/strate-0/channel.basic.test.ts` (`describe("Lane 3 — Requests (request → reply) [I29, I55]")`) |
+| [ADR-0024](../adr/ADR-0024-component-capabilities-manifest-pattern.md) | Pattern manifeste value-first (`as const satisfies` + `abstract get`), lu une seule fois au mount | `tests/unit/strate-0/view.basic.test.ts` (`describe("View — strate-0 core (ADR-0024 value-first + ADR-0042 modulaire)")`, `describe("ADR-0024 — manifeste modulaire lu une seule fois au mount")`, `describe("ADR-0024 — contextual contract read from root element dataset")`) |
+
+> À maintenir manuellement — contrairement à l'annexe A.3 (invariants numérotés),
+> rien ne vérifie automatiquement que ces citations restent à jour si les
+> fichiers de test sont renommés ou réorganisés.
 
 ---
 
