@@ -288,4 +288,4 @@ function deriveChildMetas(
 
 ## Lecture suivante
 
--> [Erreurs](erreurs.md) -- categories d'erreurs, propagation, diagnostics
+-> [Distribution](distribution.md) -- modes de distribution ESM/IIFE, BonsaiRegistry (cible)

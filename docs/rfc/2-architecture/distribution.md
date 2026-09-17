@@ -200,4 +200,4 @@ ré-exporte tous les composants. Il ne contient aucun code propre.
 
 ## Lecture suivante
 
-→ [Metas et tracabilite](metas.md) — metadonnees causales, ULID, propagation
+→ [Erreurs](erreurs.md) — categories d'erreurs, propagation, diagnostics

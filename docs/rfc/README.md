@@ -70,7 +70,7 @@ rfc/
 | Document | Description | Statut |
 |----------|-------------|--------|
 | [Vue d'ensemble](3-couche-abstraite/README.md) | Application, Feature, Entity, Router — ce qui vit toute la session | 🟢 Stable |
-| [Application](3-couche-abstraite/application.md) | Orchestrateur bootstrap/shutdown, configuration, BonsaiRegistry | 🟢 Stable |
+| [Application](3-couche-abstraite/application.md) | Orchestrateur bootstrap/shutdown, manifest applicatif typé | 🟢 Stable |
 | [Feature](3-couche-abstraite/feature.md) | Unité métier, 5 capacités, handlers auto-découverts, Channel | 🟢 Stable |
 | [Entity](3-couche-abstraite/entity.md) | Structure de données, mutations Immer, query, notifications | 🟢 Stable |
 | [Router](3-couche-abstraite/router.md) | Spécialisation Feature pour la navigation, namespace réservé | 🟢 Stable |
@@ -82,7 +82,7 @@ rfc/
 | [Vue d'ensemble](4-couche-concrete/README.md) | Foundation, Composer, View, Behavior — ce qui touche le DOM | 🟢 Stable |
 | [Foundation](4-couche-concrete/foundation.md) | Singleton, écoute DOM globale, Composers racines, altération N1 | 🟢 Stable |
 | [Composer](4-couche-concrete/composer.md) | Décideur de composition, resolve(), scope DOM fixe | 🟢 Stable |
-| [View](4-couche-concrete/view.md) | Projection DOM Réactive, UIMap typée, délégation d'événements, localState | 🟢 Stable |
+| [View](4-couche-concrete/view.md) | Projection DOM Réactive (N1 livré), contrat modulaire `TUIContract` typé, localState (cible) | 🟢 Stable |
 | [Behavior](4-couche-concrete/behavior.md) | Plugin UI réutilisable, handlers auto-dérivés, localState | 🟡 Anticipé — Strate 2 |
 
 ### Chapitre 5 — Rendu avancé
@@ -144,11 +144,13 @@ rfc/
 **Ordre de lecture recommandé** :
 
 1. **[Philosophie](1-philosophie.md)** — Pourquoi Bonsai existe, principes fondateurs
-2. **[Architecture](2-architecture/README.md)** — Vue d'ensemble → [Communication](2-architecture/communication.md) → [State](2-architecture/state.md) → [Lifecycle](2-architecture/lifecycle.md)
-3. **[Couche abstraite](3-couche-abstraite/README.md)** — [Feature](3-couche-abstraite/feature.md) → [Entity](3-couche-abstraite/entity.md) → [Application](3-couche-abstraite/application.md)
+2. **[Architecture](2-architecture/README.md)** — Vue d'ensemble → [Communication](2-architecture/communication.md) → [State](2-architecture/state.md) → [Lifecycle](2-architecture/lifecycle.md) → [Metas](2-architecture/metas.md) → [Erreurs](2-architecture/erreurs.md) → [Distribution](2-architecture/distribution.md)
+3. **[Couche abstraite](3-couche-abstraite/README.md)** — [Feature](3-couche-abstraite/feature.md) → [Entity](3-couche-abstraite/entity.md) → [Application](3-couche-abstraite/application.md) → [Router](3-couche-abstraite/router.md)
 4. **[Couche concrète](4-couche-concrete/README.md)** — [Foundation](4-couche-concrete/foundation.md) → [Composer](4-couche-concrete/composer.md) → [View](4-couche-concrete/view.md) → [Behavior](4-couche-concrete/behavior.md)
 5. **[Rendu avancé](5-rendu.md)** — PDR et templates Pug
-6. **[Référence](reference/invariants.md)** — Invariants, décisions, anti-patterns
+6. **[Transversal](6-transversal/)** — [Conventions de typage](6-transversal/conventions-typage.md) → [Formulaires](6-transversal/formulaires.md) → [Validation](6-transversal/validation.md)
+7. **[DevTools](devtools.md)** — Instrumentation et observabilité (Draft)
+8. **[Référence](reference/invariants.md)** — Invariants, décisions, anti-patterns, glossaire
 
 **Relation RFC ↔ ADR** : Les RFCs décrivent *quoi* construire. Quand un point nécessite un choix non trivial entre plusieurs options, on crée un [ADR](../adr/README.md) qui documente *pourquoi* ce choix.
 
@@ -178,21 +180,23 @@ En cas de divergence entre documents, le **document source de vérité** prévau
 | Composants (10) | [Couche abstraite](3-couche-abstraite/README.md) + [Couche concrète](4-couche-concrete/README.md) | — | — | ✅ Complet |
 | Invariants (I1–I98, I59–I62 réservés) | [Invariants](reference/invariants.md) | — | — | ✅ Complet |
 | Vocabulaire officiel | [Glossaire](reference/glossaire.md) | — | — | ✅ Complet |
-| Métadonnées causales (metas) | [Metas](2-architecture/metas.md) | [ADR-0005](../adr/ADR-0005-meta-lifecycle.md) 🟢 / [ADR-0016](../adr/ADR-0016-metas-handler-signature.md) 🟢 | ✅ 80% | ULID, `usr-`/`sys-`, `origin.kind` absorbés. |
-| Bootstrap & lifecycle | [Lifecycle](2-architecture/lifecycle.md) | [ADR-0010](../adr/ADR-0010-bootstrap-order.md) 🟢 | ✅ 80% | `PhaseKey`, `TAppContext`, 6 phases, shutdown inverse absorbés |
+| Métadonnées causales (metas) | [Metas](2-architecture/metas.md) | [ADR-0005](../adr/ADR-0005-meta-lifecycle.md) 🟢 / [ADR-0016](../adr/ADR-0016-metas-handler-signature.md) 🟢 | 🔴 0% | ⏳ Cible strate 1b, non livré (aucun `TMessageMetas`, aucun metas dans le code) — le pourcentage précédent (80%) présumait une absorption qui n'a pas de contrepartie livrée |
+| Bootstrap & lifecycle | [Lifecycle](2-architecture/lifecycle.md) | [ADR-0010](../adr/ADR-0010-bootstrap-order.md) 🔵 | 🟡 50% | La séquence **livrée** est 0a/0b/0c/1/3/4 (ADR-0046), pas les 6 phases `PhaseKey`/`TAppContext` d'ADR-0010 (cf. types-index.md, marqué supersédé) ; shutdown inverse reste cible strate 1 |
 
 ### API, contrats et typage
 
 | Sujet | RFC source de vérité | ADR active | Statut absorption | Action |
 |-------|---------------------|------------|-------------------|--------|
 | Conventions de typage | [Conventions de typage](6-transversal/conventions-typage.md) | — | — | ✅ Complet |
-| Contrat Feature | [Feature](3-couche-abstraite/feature.md) | — | — | ✅ Complet |
-| Contrat Entity | [Entity](3-couche-abstraite/entity.md) | [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md) 🟢 | ✅ 80% | ✅ Quasi-complet (`mutate()` absorbé) |
+| Contrat Feature | [Feature](3-couche-abstraite/feature.md) | [ADR-0037](../adr/ADR-0037-feature-generic-entity-class.md) 🔵 / [ADR-0040](../adr/ADR-0040-typescript-first-api-channel-definition-typed.md) 🔵 / [ADR-0046](../adr/ADR-0046-feature-contract-refonte.md) 🔵 | ✅ Complet | `TFeatureCallbacks`/`TStrictFeatureClass` (I92, I95) absorbés |
+| Manifest applicatif (namespaces) | [Feature §3](3-couche-abstraite/feature.md) | [ADR-0039](../adr/ADR-0039-namespace-authority-and-uniqueness.md) 🔵 | ✅ Complet | `StrictManifest<M>`, réservés (`local`/`router`), camelCase absorbés |
+| Pattern modulaire consommateur (View) | [View](4-couche-concrete/view.md) | [ADR-0042](../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md) 🔵 | ✅ Complet (§1–3) | `TViewContract`, `TViewCallbacks`, un seul générique — absorbés |
+| Contrat Entity | [Entity](3-couche-abstraite/entity.md) | [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md) 🔵 | ✅ 80% | ✅ Quasi-complet (`mutate()` absorbé) |
 | Schema Entity (validation domaine) | [Entity](3-couche-abstraite/entity.md) | [ADR-0022](../adr/ADR-0022-entity-schema-validation.md) 🟢 | 🔴 0% | **Nouveau** — `abstract get schema()`, Valibot imposé |
-| Contrat Channel | [Communication](2-architecture/communication.md) | [ADR-0003](../adr/ADR-0003-channel-runtime-semantics.md) 🟢 | 🟡 70% | Absorber config runtime, `ListenerPriority`, `AbortController` |
-| Sémantique request/reply | [Communication](2-architecture/communication.md) | [ADR-0023](../adr/ADR-0023-request-reply-sync-vs-async.md) 🟢 | 🔴 0% | **Nouveau** — `reply()` sync strict, D9/D44 révisés |
-| Validation & assertions | [Validation](6-transversal/validation.md) | [ADR-0004](../adr/ADR-0004-validation-modes.md) 🟢 | 🔴 10% | Absorber `invariant()`, `__DEV__`, tree-shaking |
-| Propagation d'erreurs | [Erreurs](2-architecture/erreurs.md) | [ADR-0002](../adr/ADR-0002-error-propagation-strategy.md) 🟢 | 🟡 50% | Absorber `BonsaiError`, matrice, `ErrorReporter` |
+| Contrat Channel | [Communication](2-architecture/communication.md) | [ADR-0003](../adr/ADR-0003-channel-runtime-semantics.md) 🔵 | 🟡 70% | Absorber config runtime, `ListenerPriority`, `AbortController` |
+| Sémantique request/reply | [Communication](2-architecture/communication.md) | [ADR-0023](../adr/ADR-0023-request-reply-sync-vs-async.md) 🔵 | ✅ 90% | `reply()` sync strict, D9/D44 révisés absorbés (§9.2) — le 0% précédent était périmé |
+| Validation & assertions | [Validation](6-transversal/validation.md) | [ADR-0004](../adr/ADR-0004-validation-modes.md) 🟢 | 🟡 60% | `invariant()`/`hardInvariant()`/`warning()` et `__DEV__` absorbés avec signatures réelles (§3) ; reste : tree-shaking non vérifié par un test de taille de bundle |
+| Propagation d'erreurs | [Erreurs](2-architecture/erreurs.md) | [ADR-0002](../adr/ADR-0002-error-propagation-strategy.md) 🟢 | 🟡 40% | `BonsaiError` et la matrice de comportement réelle absorbées (feature.md §8.7.4) ; isolation des Command handlers et `ErrorReporter` restent cible strate 1b |
 
 ### Rendu et UI
 
@@ -214,7 +218,7 @@ En cas de divergence entre documents, le **document source de vérité** prévau
 | Formulaires | [Formulaires](6-transversal/formulaires.md) + [Guide](../guides/FORMS-GUIDE.md) | [ADR-0009](../adr/ADR-0009-forms-pattern.md) 🟢 | ✅ 100% | Patterns absorbés + guide dédié |
 | Event Sourcing | *Aucune RFC* | [ADR-0011](../adr/ADR-0011-event-sourcing-support.md) 🟠 | — | Post-v1 (🟠 Suspended) |
 | Réutilisation code View | [Décisions D38](reference/decisions.md) | [ADR-0013](../adr/ADR-0013-view-code-reuse.md) ⚪ | — | ⚪ Superseded (→ D38) |
-| Distribution ESM | [Distribution](2-architecture/distribution.md) | [ADR-0019](../adr/ADR-0019-mode-esm-modulaire.md) 🟢 | 🟡 50% | BonsaiRegistry, chargement dynamique absorbés |
+| Distribution ESM | [Distribution](2-architecture/distribution.md) | [ADR-0019](../adr/ADR-0019-mode-esm-modulaire.md) 🔵 | 🔴 0% | ⏳ `BonsaiRegistry` n'existe pas (le code affirme explicitement le contraire — cf. glossaire.md, types-index.md) ; le format IIFE n'est pas produit par le builder (seul `format: "es"`) |
 | Extension Points | [Architecture](2-architecture/README.md) | [ADR-0021](../adr/ADR-0021-composition-monde-ouvert-plateforme.md) 🟡 | 🔴 0% | Proposed — en attente d'acceptation |
 | Build artifacts & versioning | *Aucune RFC* | [ADR-0035](../adr/ADR-0035-build-artifacts-versioning-strategy.md) 🟢 | 🔴 0% | Tout versionné, rebuild systématique, `main` fait foi |
 | Internationalisation docs | *Aucune RFC* | [ADR-0036](../adr/ADR-0036-documentation-internationalization-strategy.md) 🟢 | 🔴 0% | FR source, EN dérivée (`-EN.md`), traduction incrémentale |
@@ -226,7 +230,6 @@ En cas de divergence entre documents, le **document source de vérité** prévau
 | ✅ | Absorption complète — la RFC fait foi |
 | 🟡 | Absorption partielle — l'ADR reste co-normative |
 | 🔴 | Non absorbé — l'ADR est seule source de vérité |
-| ⬜ | Pas encore absorbé (ADR en attente ou récent) |
 
 ---
 
