@@ -59,7 +59,7 @@
 La Feature est paramétrée par sa structure Entity et sa définition Channel.
 
 Le framework **infère et vérifie** les méthodes `onXXX` à la compilation
-via les mapped types définis dans [RFC-0002 §5.2 Mapped types](../6-transversal/conventions-typage.md#52-mapped-types--contrainte-des-handlers-depuis-les-declarations-channel).
+via les mapped types définis dans [conventions-typage.md §5.2bis](../6-transversal/conventions-typage.md#52bis-les-types-réellement-livrés-bonsaifeature-adr-0046) (le §5.2 qui précède est historique, supersédé par ADR-0046).
 
 ```typescript
 /**
