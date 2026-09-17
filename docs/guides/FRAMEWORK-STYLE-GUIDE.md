@@ -10,19 +10,21 @@
 | **Ne couvre pas** | La pipeline de build (voir [BUILD-CODING-STYLE](BUILD-CODING-STYLE.md)) |
 | **Statut**        | 🟢 Active — exemples antérieurs à ADR-0039/0040/0042 marqués comme historiques (cf. encadré ci-dessous) |
 | **Créé le**       | 2026-03-17                                        |
-| **Mis à jour**    | 2026-05-07                                        |
+| **Mis à jour**    | 2026-09-16 (audit doc)                            |
 | **Dépend de**     | RFC-0001, RFC-0002, ADR-0001, ADR-0005, **ADR-0039**, **ADR-0040**, **ADR-0042** |
 
-> **⚠ État du guide (2026-05-07)** — Plusieurs exemples utilisent encore
-> `this.request(Pricing.channel, ...)` (forme `Channel<TDef>` non-typée
-> historique), `TUIMap` (pré-ADR-0042) et `BonsaiRegistry.registerFeature(...)`
-> (Mode ESM Modulaire — Strate 2). Les patterns courants à utiliser :
+> **⚠ État du guide (2026-09-16, audit doc)** — Plusieurs exemples utilisent
+> encore `TUIMap` (pré-ADR-0042) et `BonsaiRegistry.registerFeature(...)`
+> (Mode ESM Modulaire — Strate 2), marqués historiques. Les patterns courants
+> à utiliser :
 >
->   - **Feature** : `class extends Feature<E, TDef, "ns">` avec `static readonly channel: TChannelToken<TDef, "ns">` (ADR-0040). Plus de `static namespace` (I68 / ADR-0039).
+>   - **Feature** : `class extends Feature<E, TDef, "ns">` avec `static readonly channel: TChannelToken<TDef, "ns">` (ADR-0040), `get listens()`/`get queries()` d'instance pour les Channels externes (ADR-0046, I93). Plus de `static namespace` (I68 / ADR-0039) ni `static readonly listens/queries`.
 >   - **Manifest applicatif** : `new Application({ foundation, features }).start()` où `features satisfies StrictManifest<AppManifest>`.
 >   - **View** : `extends View<TViewContract<F, U>>` + `implements TViewCallbacks<TVC>` (ADR-0042 — I88). Trois getters : `features` / `uiEvents` / `uiElements`. Plus de `params` / `TUIMap` / `TViewParams` / `TViewCapabilities`.
 >   - **Helper UI** : `ui<TEl>()(events)` curryfié (I85).
->   - **trigger / request** : `this.trigger("ns:cmd", payload)` / `this.request("ns:req", params)` (méthodes `protected`) — plus de `Channel.channel` token explicite côté View.
+>   - **`this.request()` côté Feature** : `this.request(OtherFeature.channel, 'reqName', params)` — **token typé explicite** (ADR-0040), inchangé — asymétrie volontaire avec View (cf. [feature.md §4 C5](../rfc/3-couche-abstraite/feature.md#c5--request--interroger-une-feature-externe)).
+>   - **`this.request()` côté View/Behavior** : `this.request("ns:req", params)` — **clé flat namespacée**, jamais de token explicite (ADR-0042, I80).
+>   - **Les deux formes de `request()` sont synchrones** — `T | null`, jamais une `Promise`, jamais d'`await` (ADR-0023, I29).
 
 > ### Périmètre
 > Ce guide s'applique au **code applicatif** écrit avec le framework Bonsai :
@@ -204,9 +206,10 @@ this.entity.mutate("cart:clear", draft => {
 // Signature : emit(eventName, payload, { metas })
 this.emit('itemAdded', { productId: payload.productId, qty: payload.qty }, { metas });
 
-// request() — interroge un Channel externe déclaré en `static readonly request`
-// Signature : request(channel, requestName, params, { metas })
-const price = await this.request(Pricing.channel, 'getPrice', { productId }, { metas });
+// request() — interroge un Channel externe déclaré via `get queries()` (ADR-0046, I93)
+// Signature SYNCHRONE (ADR-0023, I29) : request(token, requestName, params) → T | null
+// Pas de `metas` (strate 0 — ADR-0040 §615, reporté à un ADR dédié en strate 1), pas d'await.
+const price = this.request(Pricing.channel, 'getPrice', { productId });
 
 // ══════════════════════════════════════════════════════════════
 // View / Behavior — trigger() sortant
@@ -237,30 +240,32 @@ onItemAddedEvent(payload: ItemAddedPayload, metas: TMessageMetas) {
 > Pas de `this.currentMetas`, pas de `withMetas()`, pas de contexte implicite.
 
 ```typescript
-// ✅ BON : metas explicites, closure les capture
-async onAddItemCommand(payload: AddItemPayload, metas: TMessageMetas) {
+// ✅ BON : metas explicites, propagées à chaque capacité qui les supporte
+onAddItemCommand(payload: AddItemPayload, metas: TMessageMetas) {
   // Le handler reçoit metas en paramètre (ADR-0016)
-  
-  // Propager aux mutations — intent = string libre namespace:verbNoun
+
+  // Propager aux mutations — intent "namespace:verbNoun" (ADR-0001)
   this.entity.mutate("cart:addItem", { payload, metas }, draft => {
     draft.items.push(payload.item);
   });
-  
-  // Propager aux requests — channel token + clé nue + params + { metas }
-  const price = await this.request(Pricing.channel, 'getPrice', { id: payload.id }, { metas });
-  
+
+  // request() est SYNCHRONE (ADR-0023, I29) et ne prend pas encore de
+  // `metas` (strate 0 — ADR-0040 §615, reporté à un ADR dédié en strate 1) :
+  // pas d'await, pas de { metas } en 4e argument.
+  const price = this.request(Pricing.channel, 'getPrice', { id: payload.id });
+
   // Propager aux émissions — clé nue (keyof TChannel['events']) + payload + { metas }
   this.emit('itemAdded', { item: payload.item, price }, { metas });
 }
 
 // ❌ MAUVAIS : getter implicite
-async onAddItemCommand(payload: AddItemPayload) {
-  const metas = this.currentMetas; // NON — magie, problèmes async
+onAddItemCommand(payload: AddItemPayload) {
+  const metas = this.currentMetas; // NON — magie
 }
 
 // ❌ MAUVAIS : wrapper magique
-async onAddItemCommand(payload: AddItemPayload) {
-  await this.withMetas(async () => {
+onAddItemCommand(payload: AddItemPayload) {
+  this.withMetas(() => {
     // NON — magie, complexité inutile
   });
 }
