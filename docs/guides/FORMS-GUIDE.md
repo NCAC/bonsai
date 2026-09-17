@@ -5,19 +5,34 @@
 
 [← Retour aux guides](../README.md)
 
-> **⚠ État du guide (2026-09-16, audit doc)** — Les Patterns A, C et D
-> (localState de View, Entity + wizard, validation asynchrone) sont réécrits
-> selon le **pattern modulaire courant** (ADR-0039 manifest applicatif,
-> ADR-0040 `static readonly channel`, ADR-0042 `TFeatureContract`/`TUIContract`/
-> `TUIElements`, ADR-0046 `implements TFeatureCallbacks`) — ils compilent
-> contre l'API livrée en strate 1a.
+> **⚠ État du guide (2026-09-17, audit doc) — correction d'une affirmation fausse (régression T6)** —
+> L'affirmation précédente (« les Patterns A, C et D compilent contre l'API livrée
+> en strate 1a ») était **fausse** et a été retirée : **aucun exemple de ce guide
+> ne compile contre le code livré aujourd'hui**, patterns A/B/C/D confondus.
 >
-> Le **Pattern B (FormBehavior)** reste partiellement anticipé : `Behavior`
-> n'est pas encore implémentée en `packages/` (livraison prévue Strate 2,
-> ADR-0028). Le code montré suit le pattern modulaire cible documenté dans
-> [behavior.md §4.3](../rfc/4-couche-concrete/behavior.md#43-contactformbehavior----formulaire-reutilisable-adr-0009)
-> (identique à View par I83), mais **n'a pas encore de classe `Behavior`
-> réelle à étendre** — à revalider à la livraison de la Strate 2.
+> Ce qui est réellement livré (strate 0/1a) et que les exemples utilisent
+> correctement : le pattern modulaire Feature/Channel/View (ADR-0039 manifest
+> applicatif, ADR-0040 `static readonly channel`, ADR-0042
+> `TFeatureContract`/`TUIContract`/`TUIElements`, ADR-0046 `implements
+> TFeatureCallbacks`/`TViewCallbacks`).
+>
+> Ce qui **n'existe pas** dans `packages/` et empêche toute compilation :
+> - `localState`, `updateLocal()`, `this.local`, `TLocalUpdate` (ADR-0015) —
+>   **aucune trace dans `packages/view/src`** ; cible strate 2. Tous les
+>   Patterns A–D en dépendent pour l'état de saisie transitoire.
+> - `View<TVC, TLocal>` à deux génériques — `View` n'a qu'un seul générique
+>   en strate 0/1a (`View<TVC>`, ADR-0042).
+> - `Behavior` — le package `@bonsai/behavior` n'existe pas du tout (Pattern B
+>   entier, cible strate 2 ; voir [behavior.md](../rfc/4-couche-concrete/behavior.md)).
+> - `metas` en second paramètre des handlers Command/Event/Request, `{ metas }`
+>   en option d'`emit()`/`mutate()` — cible strate 1b, non câblé dans
+>   `packages/feature/src/bonsai-feature.ts`. Avec `implements
+>   TFeatureCallbacks<…>`, un handler à 2 paramètres **ne compile pas** (TS2416).
+>
+> Les exemples ci-dessous ont été corrigés pour retirer `metas` (alignés sur
+> la signature strate 0 réelle) mais **restent illustratifs de la cible**
+> pour tout ce qui touche `localState`/`Behavior` — à ne pas copier tel quel
+> dans du code applicatif avant leur livraison.
 
 ---
 
@@ -36,7 +51,7 @@
 | Formulaire simple (contact, login, newsletter) | **localState dans la View**         | View (`updateLocal`)                     |
 | Formulaire réutilisable (adresse sur 3 pages)  | **FormBehavior**                    | Behavior (`updateLocal`)                 |
 | Wizard multi-step (checkout)                   | **Entity + localState par étape**   | View (saisie) + Entity (étapes validées) |
-| Recherche / filtres live                       | **localState + debounce + Command** | View (debounce) + Feature (requête)      |
+| Validation différée (unicité, référence connue) | **localState + debounce + Request** | View (debounce) + Feature (état en mémoire, synchrone) |
 
 > **Règle fondamentale** : l'état de saisie (valeurs, touched, errors, isSubmitting) est
 > de l'**état de présentation transitoire** (I30, I42). Seule la **soumission finale**
@@ -82,7 +97,7 @@ Le formulaire est-il réutilisé sur plusieurs pages ?
 Le Channel est **minimal** : seule la soumission est un Command. Aucun message pour la saisie en cours.
 
 ```typescript
-import { Feature, type TFeatureCallbacks, type TMessageMetas } from "@bonsai/feature";
+import { Feature, type TFeatureCallbacks } from "@bonsai/feature";
 import { type TChannelToken } from "@bonsai/event";
 import { Entity } from "@bonsai/entity";
 
@@ -126,14 +141,14 @@ class NewsletterFeature
 
   protected get Entity() { return NewsletterEntity; }
 
-  onSubscribeCommand(payload: { email: string }, metas: TMessageMetas): void {
-    this.entity.mutate("newsletter:subscribe", { payload, metas }, (draft) => {
+  onSubscribeCommand(payload: { email: string }): void {
+    this.entity.mutate("newsletter:subscribe", { payload }, (draft) => {
       draft.subscribers.push({
         email: payload.email,
         subscribedAt: Date.now()
       });
     });
-    this.emit("subscribed", { email: payload.email }, { metas });
+    this.emit("subscribed", { email: payload.email });
   }
 }
 ```
@@ -230,6 +245,9 @@ class NewsletterView
 
   // ── N1 callbacks — feedback synchrone ─────────────────────────────────
 
+  // 🧭 toggleClass("is-invalid", …) : classe CSS pilotée par état dynamique —
+  // en tension avec la convention data-* pour les états (CLAUDE.md, décision
+  // non tranchée sur le statut de la primitive toggleClass, cf. audit R24).
   onLocalErrorUpdated(update: TLocalUpdate<string | null>): void {
     this.getUI("errorMsg").text(update.actual ?? "");
     this.getUI("emailInput").toggleClass("is-invalid", update.actual !== null);
@@ -272,7 +290,9 @@ class NewsletterView
 
 ### Étape 1 — Créer le Behavior
 
-Le Behavior encapsule le module `uiEvents` du formulaire, le localState, la validation et les N1 callbacks. Il ne trigger jamais de Channel lui-même (I44) — il délègue via callback.
+Le Behavior encapsule le module `uiEvents` du formulaire, le localState, la validation et les N1 callbacks. Ce guide délègue la soumission via callback à la View hôte plutôt que de `trigger()` directement depuis le Behavior.
+
+> 🧭 **Citation d'invariant incorrecte, tension non tranchée** : I44 ([invariants.md](../rfc/reference/invariants.md)) interdit au Behavior l'accès à sa View hôte (`this.view`) — il n'interdit **pas** de `trigger()`, et précise explicitement que le Behavior « interagit avec le reste de l'application via **ses propres Channels** ». Rien n'empêche donc architecturalement un `ContactFormBehavior` de déclarer son propre `TFeatureContract` et de `trigger()` directement. Le choix de la délégation par callback ci-dessous est une préférence de ce guide, pas une contrainte imposée par I44 — à trancher (garder la délégation, ou documenter le `trigger()` direct comme alternative valide) avant de considérer ce pattern comme normatif.
 
 ```typescript
 import {
@@ -335,19 +355,19 @@ class ContactFormBehavior
   extends Behavior<TContactFormBehaviorContract, TFormLocal<TContactFields>>
   implements TBehaviorCallbacks<TContactFormBehaviorContract>
 {
-  private readonly validators: Record<
+  readonly #validators: Record<
     keyof TContactFields,
     (v: string) => string | null
   >;
-  private readonly onValidSubmit: (values: TContactFields) => void;
+  readonly #onValidSubmit: (values: TContactFields) => void;
 
   constructor(config: {
     validators: Record<keyof TContactFields, (v: string) => string | null>;
     onValidSubmit: (values: TContactFields) => void;
   }) {
     super();
-    this.validators = config.validators;
-    this.onValidSubmit = config.onValidSubmit;
+    this.#validators = config.validators;
+    this.#onValidSubmit = config.onValidSubmit;
   }
 
   get features()   { return contactFormBehaviorFeatures;   }
@@ -369,7 +389,7 @@ class ContactFormBehavior
     const value = (e.currentTarget as HTMLInputElement).value;
     this.updateLocal((draft) => {
       draft.values.name = value;
-      draft.errors.name = this.validators.name(value);
+      draft.errors.name = this.#validators.name(value);
     });
   }
 
@@ -383,7 +403,7 @@ class ContactFormBehavior
     const value = (e.currentTarget as HTMLInputElement).value;
     this.updateLocal((draft) => {
       draft.values.email = value;
-      draft.errors.email = this.validators.email(value);
+      draft.errors.email = this.#validators.email(value);
     });
   }
 
@@ -397,7 +417,7 @@ class ContactFormBehavior
     const value = (e.currentTarget as HTMLTextAreaElement).value;
     this.updateLocal((draft) => {
       draft.values.message = value;
-      draft.errors.message = this.validators.message(value);
+      draft.errors.message = this.#validators.message(value);
     });
   }
 
@@ -410,9 +430,9 @@ class ContactFormBehavior
   onSubmitBtnClick(): void {
     const values = this.local.values;
     const errors = {
-      name: this.validators.name(values.name),
-      email: this.validators.email(values.email),
-      message: this.validators.message(values.message)
+      name: this.#validators.name(values.name),
+      email: this.#validators.email(values.email),
+      message: this.#validators.message(values.message)
     };
     const hasErrors = Object.values(errors).some((e) => e !== null);
 
@@ -425,7 +445,7 @@ class ContactFormBehavior
       this.updateLocal((draft) => {
         draft.isSubmitting = true;
       });
-      this.onValidSubmit({ ...values });
+      this.#onValidSubmit({ ...values });
     }
   }
 
@@ -528,7 +548,7 @@ class ContactPageView
 
 ### Points clés
 
-- Le **Behavior ne trigger jamais de Channel** (I44) — il délègue via callback
+- Ce guide fait déléguer la soumission par callback à la View hôte (🧭 préférence, pas une contrainte I44 — voir la note plus haut)
 - Les **clés `uiElements` du Behavior** (`nameField`, `emailField`, etc.) ne doivent pas collisionner avec celles de la View hôte (I43)
 - Le même `ContactFormBehavior` peut être branché sur `ContactPageView`, `SupportPageView`, `FeedbackModalView` avec des validators différents
 
@@ -707,9 +727,18 @@ class ShippingStepView
 Combinable avec n'importe quel pattern (A, B ou C). Seul le **debounce** est
 asynchrone ; l'appel `this.request()` qu'il déclenche est synchrone.
 
+> 🧭 **Tension non tranchée** : ce `setTimeout` dans la View est un mécanisme
+> asynchrone en couche concrète, ce que l'anti-pattern « Async in Concrete
+> Layer » ([anti-patterns.md](../rfc/reference/anti-patterns.md)) interdit
+> explicitement en citant `setTimeout` comme exemple. Aucun ADR ne tranche si
+> le debounce d'input est une exception légitime à cette règle (il ne produit
+> aucun effet de bord métier, contrairement à un `setTimeout` qui déclencherait
+> une mutation) ou s'il doit être déplacé ailleurs (Feature ? un utilitaire
+> dédié ?). Ne pas présumer que le code ci-dessous est validé architecturalement.
+
 ```typescript
 // Dans la View (ou le Behavior)
-private usernameCheckTimer: ReturnType<typeof setTimeout> | null = null;
+#usernameCheckTimer: ReturnType<typeof setTimeout> | null = null;
 
 onUsernameInputInput(e: Event): void {
   const value = (e.currentTarget as HTMLInputElement).value;
@@ -719,15 +748,15 @@ onUsernameInputInput(e: Event): void {
   });
 
   // Debounce 300ms — seul ce délai est asynchrone, pas l'appel this.request()
-  if (this.usernameCheckTimer) clearTimeout(this.usernameCheckTimer);
+  if (this.#usernameCheckTimer) clearTimeout(this.#usernameCheckTimer);
   if (value.length >= 3) {
-    this.usernameCheckTimer = setTimeout(() => {
-      this.checkUsernameAvailability(value);
+    this.#usernameCheckTimer = setTimeout(() => {
+      this.#checkUsernameAvailability(value);
     }, 300);
   }
 }
 
-private checkUsernameAvailability(username: string): void {
+#checkUsernameAvailability(username: string): void {
   // ✅ Request Channel — clé flat "ns:req" nominale (I80, convention communication.md), synchrone (ADR-0023, I29)
   const isAvailable = this.request('registration:usernameAvailable', { username });
 
@@ -752,13 +781,13 @@ private checkUsernameAvailability(username: string): void {
 
 | ❌ Interdit                                          | ✅ Correct                                                                | Raison             |
 | ---------------------------------------------------- | -------------------------------------------------------------------------- | ------------------- |
-| `this.entity.state.values[field] = value`            | `this.entity.mutate('ns:update', { payload, metas }, draft => { ... })`  | ADR-0001           |
+| `this.entity.state.values[field] = value`            | `this.entity.mutate('ns:update', { payload }, draft => { ... })`  | ADR-0001           |
 | `get uiEvents() { return { 'input @ui.x': 'onX' } }` | Module `uiEvents: TUIContract` + auto-discovery `on{Key}{Event}` (I48/I88) | ADR-0042           |
 | `this.trigger('ns:cmd', payload)` sans `features` déclarant `ns` | `this.trigger("ns:cmd", payload)` avec `ns` référencé dans `get features()` | I87, I80           |
 | `this.getUI('btn').prop('disabled', true)`           | `this.getUI('btn').attr('disabled', 'true')`                              | I41                |
 | `document.querySelector('.x')`                       | `this.getUI('x')`                                                         | I39                |
-| `onSubmitCommand(payload) { }`                       | `onSubmitCommand(payload: void, metas: TMessageMetas): void { }`          | ADR-0016           |
-| État `touched`/`errors` dans l'Entity                | `localState` dans la View/Behavior                                        | I30, I42, ADR-0009 |
+| `onSubmitCommand(payload, metas) { }` (2 paramètres) | `onSubmitCommand(payload: void): void { }` — strate 0, sans metas (cible strate 1b) | ADR-0028           |
+| État `touched`/`errors` dans l'Entity                | `localState` dans la View/Behavior — ⏳ non livré (cf. bandeau en tête)   | I30, I42, ADR-0009 |
 | `static readonly namespace = …`                      | `static readonly channel: TChannelToken<TDef, NS>` (ADR-0040)             | I68                |
 
 ---
@@ -768,13 +797,13 @@ private checkUsernameAvailability(username: string): void {
 Avant de merger un formulaire dans Bonsai, vérifier :
 
 - [ ] **Pattern choisi** selon l'arbre de décision (§1)
-- [ ] **`uiEvents` complet** — tous les inputs, boutons, zones d'erreur déclarés via `ui<TEl>()(events)`, avec `uiElements` en 1:1 (T3, T4)
+- [ ] **`uiEvents` complet** — tous les inputs, boutons, zones d'erreur déclarés via `ui<TEl>()(events)`, avec `uiElements` en 1:1
 - [ ] **`implements TFeatureCallbacks<…>` / `TViewCallbacks<…>` / `TBehaviorCallbacks<…>`** — pas de handler manquant (erreur compile, pas runtime)
-- [ ] **localState typé** — `TJsonSerializable`, `get localState()` retourne l'état initial
-- [ ] **N1 callbacks** — `onLocal{Key}Updated` pour le feedback synchrone (erreurs, disabled, texte)
+- [ ] **localState typé** — ⏳ non livré aujourd'hui (cf. bandeau en tête) ; cible : `TJsonSerializable`, `get localState()` retourne l'état initial
+- [ ] **N1 callbacks** — `onLocal{Key}Updated` pour le feedback synchrone (erreurs, disabled, texte) — ⏳ dépend de `localState`, non livré
 - [ ] **Soumission via `trigger("ns:cmd", payload)`** — clé flat namespacée (I80), jamais de token Channel exposé
-- [ ] **Feature handler avec metas** — `(payload, metas: TMessageMetas)`
-- [ ] **Entity mutation via `mutate("ns:intent", { payload, metas }, recipe)`** — Immer draft, intent nommé
+- [ ] **Feature handler sans metas** — `(payload)` uniquement en strate 0 (`metas` est cible strate 1b)
+- [ ] **Entity mutation via `mutate("ns:intent", { payload }, recipe)`** — Immer draft, intent nommé
 - [ ] **Pas de `.prop()`** — utiliser `.attr()`, `.text()`, `.toggleClass()`, `.visible()`
 - [ ] **Pas de `querySelector` brut** — tout via `getUI(key)`
 - [ ] **Validation async debounced** si nécessaire (§5)
