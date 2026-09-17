@@ -1,7 +1,7 @@
 /**
  * @bonsai/feature - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-09-17T12:09:12.811Z
+ * Date: 2026-09-17T12:16:49.406Z
  */
 import { Radio } from '@bonsai/event';
 import { hardInvariant, BroadcastError } from '@bonsai/error';
@@ -82,11 +82,13 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 /**
  * Namespaces réservés par le framework — interdits à toute Feature applicative.
  *
- * Constante framework non configurable. Toute extension future
- * (`router`, `extensions`, …) se fera par modification de cette constante,
- * propagée par le typage dérivé.
+ *   - `local`  : clé du localState dans les données namespacées (I57, ADR-0015)
+ *   - `router` : Feature framework de navigation, instanciée par Application (I28, D8)
+ *
+ * Constante framework non configurable. Toute extension future se fera par
+ * modification de cette constante, propagée par le typage dérivé (I71).
  */
-const RESERVED_NAMESPACES = ["local"];
+const RESERVED_NAMESPACES = ["local", "router"];
 /**
  * Erreur typée pour toute violation détectée au runtime.
  *

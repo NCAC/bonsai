@@ -220,7 +220,9 @@ Questions architecturales. Chaque question est soit résolue (✅), soit en atte
 
 ### [Q9] ~~Application Channel lifecycle~~ → ✅ Résolu (D6, RFC-0002 §8)
 
-> **Décision** : namespace `app` **réservé** (comme `router`), Channel **non créé**.
+> **Décision (amendée 2026-09-17 — M2)** : `app` n'est **pas** un namespace
+> réservé (`RESERVED_NAMESPACES = ["local", "router"]`, I71) — seul le
+> **Channel lifecycle `app:*` n'est pas créé**, faute de cas d'usage (YAGNI).
 > L'ordre de bootstrap rend les Events lifecycle structurellement inutiles :
 >
 > ```

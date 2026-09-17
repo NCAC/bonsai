@@ -409,6 +409,7 @@ describe("Feature core — Strate 0", () => {
 
     it("isReservedNamespace returns true for reserved namespaces", () => {
       expect(isReservedNamespace("local")).toBe(true);
+      expect(isReservedNamespace("router")).toBe(true);
     });
 
     it("isReservedNamespace returns false for non-reserved namespaces", () => {

@@ -10,7 +10,7 @@
  *
  * Couvre les invariants ADR-0039 :
  *   I21 — Format camelCase compile-time
- *   I57 / I71 — Mots réservés (`local`)
+ *   I28 / I57 / I71 — Mots réservés (`local`, `router`)
  *   I68 — Pas de static namespace
  *   I72 — `TSelfNS` ↔ clé du manifest
  *
@@ -112,10 +112,15 @@ describe("ADR-0039 — Compile-time type enforcement", () => {
     void _t5;
   });
 
-  it("RESERVED_NAMESPACES contient 'local' (I57, I71)", () => {
+  it("RESERVED_NAMESPACES contient 'local' et 'router' (I28, I57, I71)", () => {
     type Reserved = ReservedNamespace;
     const _local: Reserved = "local";
+    const _router: Reserved = "router";
+    // @ts-expect-error — "cart" n'est pas réservé
+    const _cart: Reserved = "cart";
     void _local;
+    void _router;
+    void _cart;
     void RESERVED_NAMESPACES;
   });
 
@@ -195,6 +200,18 @@ describe("ADR-0039 — Compile-time type enforcement", () => {
       // "local" est réservé → la valeur attendue est `never`
       // @ts-expect-error
       local: CartFeature
+    } satisfies StrictManifest<AppManifest>;
+    void _features;
+  });
+
+  it("StrictManifest<M> — clé `router` réservée → never (I28, I71)", () => {
+    type AppManifest = {
+      router: unknown;
+    };
+    const _features = {
+      // "router" est réservé au Router framework → la valeur attendue est `never`
+      // @ts-expect-error
+      router: CartFeature
     } satisfies StrictManifest<AppManifest>;
     void _features;
   });

@@ -241,7 +241,7 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
   // ── Filet runtime du manifest (ADR-0039 — I70/I71) ─────────────────────
 
   describe("Manifest validation runtime [ADR-0039 — I70, I71]", () => {
-    it("I71 — namespace 'local' is reserved → BonsaiNamespaceError(NAMESPACE_RESERVED)", () => {
+    it.each(["local", "router"])("I71 — namespace '%s' is reserved → BonsaiNamespaceError(NAMESPACE_RESERVED)", (reserved) => {
       class BadFeature extends StubFeature<string> {
         get listens() {
           return [] as const;
@@ -255,7 +255,7 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
         foundation: EmptyFoundation as unknown as typeof Foundation,
         // Cast volontaire : simule un manifest construit sans le filet
         // compile-time `StrictManifest<M>` (cast `as any`, code JS, dynamique).
-        features: { local: BadFeature } as unknown as {
+        features: { [reserved]: BadFeature } as unknown as {
           cart: typeof CartFeature;
         }
       });

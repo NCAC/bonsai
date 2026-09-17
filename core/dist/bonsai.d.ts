@@ -24851,11 +24851,13 @@ declare abstract class Entity<TStructure extends TJsonSerializable> {
 /**
  * Namespaces réservés par le framework — interdits à toute Feature applicative.
  *
- * Constante framework non configurable. Toute extension future
- * (`router`, `extensions`, …) se fera par modification de cette constante,
- * propagée par le typage dérivé.
+ *   - `local`  : clé du localState dans les données namespacées (I57, ADR-0015)
+ *   - `router` : Feature framework de navigation, instanciée par Application (I28, D8)
+ *
+ * Constante framework non configurable. Toute extension future se fera par
+ * modification de cette constante, propagée par le typage dérivé (I71).
  */
-declare const RESERVED_NAMESPACES: readonly ["local"];
+declare const RESERVED_NAMESPACES: readonly ["local", "router"];
 /** Union des namespaces réservés (dérivée de la constante). */
 type ReservedNamespace = (typeof RESERVED_NAMESPACES)[number];
 /**

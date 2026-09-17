@@ -14796,11 +14796,13 @@ _Radio_constructing = { value: false };
 /**
  * Namespaces réservés par le framework — interdits à toute Feature applicative.
  *
- * Constante framework non configurable. Toute extension future
- * (`router`, `extensions`, …) se fera par modification de cette constante,
- * propagée par le typage dérivé.
+ *   - `local`  : clé du localState dans les données namespacées (I57, ADR-0015)
+ *   - `router` : Feature framework de navigation, instanciée par Application (I28, D8)
+ *
+ * Constante framework non configurable. Toute extension future se fera par
+ * modification de cette constante, propagée par le typage dérivé (I71).
  */
-const RESERVED_NAMESPACES = ["local"];
+const RESERVED_NAMESPACES = ["local", "router"];
 /**
  * Erreur typée pour toute violation détectée au runtime.
  *

@@ -196,7 +196,7 @@ Chaque Feature déclare un **namespace unique** (I21), `camelCase` plat, qui ser
 | Unicité stricte | I21, I24 — collision = erreur bootstrap |
 | Relation 1:1:1 | I22 — un namespace = une Feature = une Entity |
 | Réservés | `router` (I28), `local` (I57) |
-| Format | `camelCase` plat — pas de `.`, `/`, `-` |
+| Format | `camelCase` plat — lettres uniquement (`a`–`z`, `A`–`Z`) : pas de `.`, `/`, `-`, `_`, ni de chiffre |
 
 ---
 

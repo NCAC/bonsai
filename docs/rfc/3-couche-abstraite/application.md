@@ -327,10 +327,13 @@ type TApplicationConfig = {
 
 ---
 
-## 5. Namespace `app` reserve
+## 5. Namespace `app` — pas de Channel lifecycle
 
-> **Q9** : le namespace `app` est **reserve** (comme `router`),
-> mais le Channel n'est pas cree tant qu'aucun cas d'usage concret ne le justifie.
+> **Q9 (amendé 2026-09-17 — M2)** : `app` n'est **pas** un namespace réservé
+> (`RESERVED_NAMESPACES = ["local", "router"]`, I71). Une Feature applicative
+> peut légitimement s'appeler `app`. Ce qui reste vrai : aucun Channel
+> lifecycle `app:*` n'est créé par le framework, faute de cas d'usage — YAGNI,
+> pas réservation.
 >
 > L'ordre de bootstrap rend les Events lifecycle
 > (`app:started`, `feature:ready`) structurellement inutiles :
