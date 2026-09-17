@@ -26,30 +26,31 @@
 Le systeme de types garantit que les declarations
 Channel sont coherentes avec l'usage.
 
-**Exemple** — si `CartView` declare `trigger: [Cart.channel]` :
+**Exemple** — si `CartView` declare `cart` dans `get features()` (ADR-0042,
+`TFeatureContract`), avec `triggers: ["addItem"]` :
 
 ```typescript
-// ✅ Type — Cart.channel est declare en trigger
-this.trigger('cart', 'addItem', payload);
+// ✅ Type — "cart:addItem" ∈ TFlatTriggers<F> (I77)
+this.trigger('cart:addItem', payload);
 
-// ❌ Erreur TS — Command inconnu
-this.trigger('cart', 'unknownCommand', payload);
+// ❌ Erreur TS — Command inconnu (typo)
+this.trigger('cart:adddItem', payload);
 
-// ❌ Erreur TS — Channel non declare en trigger
-this.trigger('inventory', 'reserve', payload);
+// ❌ Erreur TS — namespace non declare dans get features()
+this.trigger('inventory:reserve', payload);
 
-// ❌ Erreur TS — View ne peut pas emit (I4)
-this.emit('cart', 'itemAdded', payload);
+// ❌ Erreur TS — View n'a pas de methode emit() (I4)
+this.emit('itemAdded', payload);
 ```
 
 ### 1.2 Erreurs de compilation attendues
 
 | # | Erreur TypeScript | Invariant | Cause |
 |---|---|---|---|
-| 1 | `Property 'emit' does not exist on type 'View'` | I4, D7 | View ne peut pas emit |
-| 2 | `Argument of type 'unknownCommand' is not assignable to parameter of type keyof Cart.Channel['commands']` | I16 | Command inexistant |
-| 3 | `Type 'typeof Inventory.channel' is not assignable to type 'CartView['trigger'][number]'` | I14 | Channel non declare en trigger |
-| 4 | `Type '{ items: Map<string, Item> }' does not satisfy the constraint 'JsonSerializable'` | D10 | Entity non jsonifiable |
+| 1 | `Property 'emit' does not exist on type 'View'` | I4 | View n'a pas de methode `emit()` |
+| 2 | `Argument of type '"cart:adddItem"' is not assignable to parameter of type 'TFlatTriggers<…>'` | I77 | Command inexistant ou typo dans la cle namespacee |
+| 3 | `Argument of type '"inventory:reserve"' is not assignable to parameter of type 'TFlatTriggers<…>'` | I14, I77 | Namespace non declare dans `get features()` |
+| 4 | `Type '{ items: Map<string, Item> }' does not satisfy the constraint 'TJsonSerializable'` | D10 | Entity non jsonifiable |
 
 ### 1.3 Patterns TypeScript avances
 
@@ -57,20 +58,20 @@ Inventaire des patterns TypeScript utilises par le systeme de types Bonsai.
 
 | Pattern TypeScript | Usage dans Bonsai | Benefice DX |
 |----|----|----|
-| **Template literal types** | `ExtractHandlerName` : `"addItem"` -> `"onAddItemCommand"` | Autocompletion des noms de methodes handler |
-| **Mapped types** | `TRequiredCommandHandlers<TChannel>` : genere les signatures handler obligatoires avec `(payload, metas: TMessageMetas)` (ADR-0016) | `implements` -> l'IDE liste les methodes manquantes |
-| **Conditional types + infer** | `RequestResult<TChannel, TName>` : extrait le type de retour d'un Request | Typage automatique des retours `T \| null` synchrone (D9 révisé, ADR-0023) |
-| **Literal string types** | `namespace: 'cart'` (pas `string`) — discriminant pour les Channels | Erreur compile-time si namespace inconnu |
+| **Template literal types** | `` `on${Capitalize<K>}Command` `` (dans `TCommandCallbacks<TDef>`) : `"addItem"` -> `"onAddItemCommand"` | Autocompletion des noms de methodes handler |
+| **Mapped types** | `TCommandCallbacks<TDef>`/`TRequestCallbacks<TDef>` : genere les signatures handler obligatoires, sans metas en strate 0 (ADR-0046) | `implements TFeatureCallbacks<…>` -> l'IDE liste les methodes manquantes (TS2515 si absentes) |
+| **Conditional types + infer** | `TRequestResultFor<F, K>` : extrait le type de retour d'un Request depuis un `TFeatureContract` | Typage automatique des retours `T \| null` synchrone (D9 révisé, ADR-0023) |
+| **Literal string types** | `namespace: 'cart'` — parametre `NS` de `TChannelToken<TDef, NS>` | Erreur compile-time si namespace inconnu |
 | **Constrained generics** | `TStructure extends TJsonSerializable` — contraint a la compilation | Impossible de creer une Entity non-serialisable |
-| **Mapped types (Entity)** | `TEntityKeyHandlers<TStructure>` : genere les signatures `on<Key>EntityUpdated` pour chaque cle de TStructure | Autocompletion des noms de handlers Entity, verification des cles |
-| **`satisfies`** | Verification des declarations statiques `listen`, `trigger`, `request` | Erreur si un Channel non declare est utilise |
-| **Branded types** | Namespace comme type nominal (garantit l'unicite au type-level) | Deux Features avec le meme string namespace -> erreur |
+| **`satisfies`** | `satisfies StrictManifest<AppManifest>` (manifest applicatif, ADR-0039) et `satisfies TFeatureContract`/`TUIContract` (View, ADR-0042) | Erreur si un namespace ou un Channel non declare est utilise |
+| **`UnionToIntersection`** | Fusionne les handlers de plusieurs tokens `listens` en un seul type `implements`-able (`TListenCallbacks`, ADR-0046) | Necessaire — sans lui, TS produit une union que `implements` refuse (TS2422) |
 
 **Patterns NON retenus** :
 
 - **F-bounded polymorphism recursif** (`Class<Child extends Class<Child, ...>>`) — pas necessaire dans Bonsai car les Features ne s'heritent pas.
-- **Cast runtime des Channels** (`Radio.channel('cart') as Channel<...>`) — remplace par des types statiques (`TChannelDefinition`). Le Channel Bonsai est un contrat de type, pas un objet caste.
+- **Cast runtime des Channels exposé au développeur** (`Radio.channel('cart') as Channel<...>`) — c'est exactement ce que fait le code **interne** du framework (`Feature.request()`, `packages/feature/src/bonsai-feature.ts` — cast documenté par I75), mais ce cast n'est **jamais** exposé a la surface developpeur : celle-ci ne manipule que des types statiques (`TChannelDefinition`, `TChannelToken`).
 - **Decorateurs (stage 3)** (`@Handle('addItem')`) — rejete (D12) au profit de la convention `onXXX` auto-decouverte.
+- **Branded types pour l'unicite du namespace** — non retenu : l'unicite est garantie par `TS1117` (cle d'objet dupliquee dans le manifest litteral), pas par un type nominal brande sur le namespace lui-meme.
 
 ---
 
@@ -81,13 +82,13 @@ Inventaire des patterns TypeScript utilises par le systeme de types Bonsai.
 Le framework fournit des garde-fous runtime pour les cas
 que le type system ne peut pas attraper :
 
-| Garde-fou | Condition | Action |
+| Garde-fou | Condition | Action reelle |
 |-----------|-----------|--------|
-| Anti-boucle | `hop > maxHops` | Rejet + erreur explicite |
-| Handler manquant | Command sans handler | Erreur au dispatch |
-| Replier manquant | Request sans replier | Erreur au dispatch |
-| Double handler | Deux handlers pour le meme Command | Erreur bootstrap |
-| Mutation externe | Tentative de modifier une Entity hors Feature | Erreur (via Proxy/Object.freeze en mode debug) |
+| Anti-boucle | `hop > maxHops` | ⏳ Cible strate 1b — aucune notion de `hop` n'existe dans le code livre |
+| Handler manquant | Command sans handler | `NoHandlerError` levee par `Channel.trigger()` — **livre** |
+| Replier manquant | Request sans replier | `Channel.request()` retourne `null`, **sans erreur** (D44, ADR-0023) — **livre** |
+| Double handler | Deux handlers/repliers pour le meme Command/Request | `DuplicateHandlerError` levee par `Channel.handle()`/`reply()` (I10) — **livre** |
+| Mutation externe | Tentative de modifier une Entity hors Feature | ⏳ Aucun garde-fou runtime — `Feature.entity` est `protected` (I5, I6), donc **impossible a compiler** depuis l'exterieur ; aucun Proxy/`Object.freeze` n'existe pour intercepter un contournement (`as any`) |
 
 ### 2.2 Messages d'erreur et diagnostics
 
@@ -96,13 +97,21 @@ Les messages d'erreur doivent etre :
 - **Contextuels** (quel composant, quel Channel, quel message)
 - **Actionnables** (« did you forget to add X.channel to listen? »)
 
-**Exemples** :
+**Exemple reel, livre** (`NoHandlerError`, `packages/event/src/channel.class.ts`) —
+`inventory:reserve` declare dans `get features()` mais sans Command
+`reserve` cote `InventoryFeature` :
 
 ```
-[Bonsai] CartView tried to trigger 'inventory:reserve' but
- Inventory.channel is not declared in CartView.trigger.
- Add Inventory.channel to CartView.trigger to fix this.
+[I10] cart — No handler for command "inventory:reserve"
+  → Register a handler with channel.handle("reserve", handler)
 ```
+
+> Le cas « `inventory:reserve` non declare du tout dans `get features()` »
+> (l'exemple historique de cette section) n'atteint **jamais** le runtime —
+> il est rejete au compile-time par I77 (cf. §1.2, erreur n°3).
+
+**Exemple cible, non livre** (⏳ strate 1b — aucune notion de `hop` n'existe
+aujourd'hui) :
 
 ```
 [Bonsai] Causal loop detected: hop 11 exceeds maxHops 10.
@@ -116,19 +125,27 @@ Les messages d'erreur doivent etre :
 
 > **Principe** : maximum de validations au compile-time, le runtime ne verifie que ce que TypeScript ne peut pas attraper.
 
-| Categorie | Quand | Exemples | Action en cas de violation |
+| Categorie | Quand | Exemples reels | Action en cas de violation |
 |-----------|-------|----------|---------------------------|
-| **Compile-time** | `tsc` | Types Channel, declarations `listen`/`trigger`/`request`, payload types | Erreur de compilation |
-| **Bootstrap** | Au demarrage, une seule fois | Unicite namespace, handlers declares, repliers obligatoires | `invariant()` fatal |
-| **Runtime dev** | Chaque appel (dev uniquement) | Hop limit, payload valid, Entity freeze | `invariant()` -> supprime en prod |
-| **Runtime warning** | Chaque appel (dev uniquement) | Performance hints, handlers sans message, metas manquantes | `warning()` -> supprime en prod |
+| **Compile-time** | `tsc` | Types Channel, `get features()`/`get listens()`, payload types, handlers requis (I92) | Erreur de compilation |
+| **Bootstrap** | Au demarrage, une seule fois | Unicite namespace (TS1117, compile-time), handler/replier duplique (I10, `DuplicateHandlerError`), reference `listens`/`queries` inconnue (I70, `BonsaiNamespaceError`, Phase 0c) | `hardInvariant()` ou erreur dediee (`DuplicateHandlerError`, `BonsaiNamespaceError`) |
+| **Runtime** | Chaque appel | `NoHandlerError` (Command sans handler), `Channel.request()` retourne `null` sans handler | Erreur levee (Command) ou `null` silencieux (Request) — pas de distinction dev/prod |
+| **⏳ Cible, non livre** | — | Hop limit (I9), `Entity` freeze anti-mutation, `warning()` sur handlers orphelins ou metas manquantes | Aucun de ces garde-fous n'est implemente aujourd'hui |
 
 ---
 
-## 3. Assertions conditionnelles — API `@bonsai/invariant`
+## 3. Assertions conditionnelles — API `@bonsai/error`
 
 > **ADR-0004 (Accepted)** : assertions conditionnelles inspirees de React/Vue.
 > Le code de validation disparait en production via dead code elimination.
+>
+> ⚠️ Le package reel est **`@bonsai/error`** (`packages/error/src/invariant.ts`)
+> — il n'existe pas de package `@bonsai/invariant` separe. Les signatures
+> reelles different de celles montrees historiquement dans cette section :
+> `(condition, message, invariantId?, component?)`, pas
+> `(condition, message, ...args)` avec des placeholders `%s` — aucun
+> formatage par placeholder n'est implemente, le message est passe tel quel.
+> Voir les signatures corrigees ci-dessous.
 
 ### 3.1 Constante globale `__DEV__`
 
@@ -147,40 +164,47 @@ define: {
 // -> dead code elimination -> supprime
 ```
 
-### 3.2 `invariant()` — assertion fatale (dev uniquement)
+> **Filet reel** (`packages/error/src/invariant.ts`) : si `__DEV__` n'est pas
+> defini par le bundler (`typeof __DEV__ === "undefined"`), `isDev()` retourne
+> `true` par defaut — choix deliberement conservateur : mieux vaut montrer
+> une erreur qu'un etat incoherent silencieux. Ce comportement n'etait pas
+> documente ici jusqu'a cette correction.
+
+### 3.2 `invariant()` — assertion fatale, strippable en production
 
 ```typescript
+// Signature reelle — packages/error/src/invariant.ts
 /**
- * Assertion fatale conditionnelle.
- * - En dev (__DEV__ === true) : throw InvariantError si condition fausse.
- * - En prod (__DEV__ === false) : elimine par le bundler (zero overhead).
- *
- * @param condition - Condition a verifier
- * @param message - Message d'erreur avec placeholders %s
- * @param args - Valeurs de remplacement pour les placeholders
+ * Assertion runtime — throw BonsaiError si la condition est fausse.
+ * Strippable en production (elimine quand __DEV__ === false).
  */
 function invariant(
-  condition: boolean,
+  condition: unknown,
   message: string,
-  ...args: unknown[]
+  invariantId: string = "",
+  component: string = ""
 ): asserts condition {
-  if (__DEV__ && !condition) {
-    throw new InvariantError(format(message, ...args));
+  if (isDev()) {
+    if (!condition) {
+      throw new BonsaiError(message, invariantId, component);
+    }
   }
 }
 ```
 
-### 3.3 `warning()` — avertissement non-fatal (dev uniquement)
+### 3.3 `warning()` — avertissement non-fatal, ne throw jamais
 
 ```typescript
+// Signature reelle — packages/error/src/invariant.ts
 /**
- * Avertissement conditionnel.
- * - En dev : console.warn si condition fausse.
- * - En prod : elimine par le bundler.
+ * Log conditionnel en developpement — ne throw jamais.
+ * Strippe en production.
  */
-function warning(condition: boolean, message: string, ...args: unknown[]): void {
-  if (__DEV__ && !condition) {
-    console.warn(`[Bonsai] ${format(message, ...args)}`);
+function warning(condition: unknown, message: string): void {
+  if (isDev()) {
+    if (!condition) {
+      console.warn(`[Bonsai] ${message}`);
+    }
   }
 }
 ```
@@ -188,59 +212,73 @@ function warning(condition: boolean, message: string, ...args: unknown[]): void 
 ### 3.4 `hardInvariant()` — assertion fatale permanente (rare)
 
 ```typescript
+// Signature reelle — packages/error/src/invariant.ts
 /**
- * Assertion fatale permanente, active meme en production.
- * Reservee aux cas critiques ou un etat corrompu pourrait causer
- * des dommages irreversibles (donnees utilisateur, securite).
- *
- * Usage : bootstrap checks, configuration critique.
+ * Assertion NON-strippable — reste en production.
+ * Reservee aux erreurs structurelles fatales detectees au bootstrap
+ * (namespace duplique I21, handler Command duplique I10, etc.).
  */
 function hardInvariant(
-  condition: boolean,
+  condition: unknown,
   message: string,
-  ...args: unknown[]
+  invariantId: string = "",
+  component: string = ""
 ): asserts condition {
   if (!condition) {
-    throw new InvariantError(format(message, ...args));
+    throw new BonsaiError(message, invariantId, component);
   }
 }
 ```
+
+> Aucune des trois fonctions n'accepte de placeholders `%s`/`...args` — le
+> `message` est passe tel quel a `BonsaiError`, qui le formate avec
+> `invariantId`/`component`/`suggestion` (voir
+> [feature.md §8.7.4](../3-couche-abstraite/feature.md) pour la classe
+> `BonsaiError` complete).
 
 ### 3.5 Messages d'erreur riches
 
 Les messages d'invariant doivent etre **explicites**, **contextuels** et **actionnables** :
 
 ```typescript
-// ❌ MAUVAIS — Message vague
-invariant(false, 'Invalid emit');
-
-// ✅ BON — Contexte + invariant violé + suggestion
-invariant(
-  this.ownsChannel(channelName),
-  'Feature "%s" cannot emit on channel "%s". ' +
-  'Features can only emit on their own channel (I1). ' +
-  'Did you mean to use listen() instead?',
-  this.namespace,
-  channelName
+// Exemple reel, livre — Feature#registerEntityHandlers (I96),
+// packages/feature/src/bonsai-feature.ts
+hardInvariant(
+  stateKeys.has(key),
+  `Feature "${this.#namespace}" declares entity handler "${method}" for unknown key "${key}"`,
+  "I96",
+  this.#namespace
 );
 ```
 
+> Un cas comme « une Feature emet sur le Channel d'une autre » (I1, I12)
+> n'a **pas besoin** d'un `invariant()` runtime : `emit()` n'accepte que les
+> cles de `TChannelDef['events']` propre a la Feature — la violation est
+> **structurellement impossible** a exprimer, donc rejetee au compile-time,
+> pas interceptee au runtime.
+>
 > **Convention** : chaque message d'invariant cite l'invariant violé (I1, I7, I21, etc.)
 > pour que le developpeur puisse trouver la documentation.
 
 ### 3.6 Mode debug vs production
 
-| Verification | Debug (`__DEV__`) | Production | Mecanisme |
-|---|---|---|---|
-| Validation declarations bootstrap | Oui | Oui | `hardInvariant()` |
-| Anti-boucle (hop) | Oui | Oui | `hardInvariant()` |
-| Unicite namespace | Oui | Oui | `hardInvariant()` |
-| onXXX sans message | Warning | Silencieux | `warning()` |
-| Message sans handler | Warning | Silencieux | `warning()` |
-| Metas logging | Verbose | Off | `if (__DEV__)` |
-| Entity freeze (anti-mutation) | Object.freeze | Off (perf) | `if (__DEV__)` |
-| Messages d'erreur detailles | Oui | Reduits | `invariant()` |
-| Payload serializable check | Warning | Off | `warning()` |
+> ⚠️ **La plupart des lignes ci-dessous decrivent un contrat cible, non livre**
+> (aucune notion de `hop`, aucun `Object.freeze` anti-mutation, aucun
+> `warning()` sur les handlers orphelins n'existe dans le code). Ce qui est
+> **reellement** livre : `invariant()`/`hardInvariant()` different uniquement
+> par le strippage en production (`isDev()` conditionne `invariant()`,
+> jamais `hardInvariant()`) — il n'y a pas de troisieme etat "warning en dev,
+> silencieux en prod" pour les handlers manquants aujourd'hui.
+
+| Verification | Debug (`__DEV__`) | Production | Mecanisme | État |
+|---|---|---|---|---|
+| Duplicate handler/replier (I10) | Oui | Oui | `DuplicateHandlerError` (toujours leve, pas de strippage) | ✅ livré |
+| Reference `listens`/`queries` inconnue (I70) | Oui | Oui | `BonsaiNamespaceError` (Phase 0c, toujours leve) | ✅ livré |
+| Anti-boucle (hop) | — | — | — | ⏳ cible strate 1b |
+| onXXX sans message declare | — | — | — | ⏳ non planifie |
+| Entity freeze anti-mutation | — | — | — | ⏳ non planifie |
+| Metas logging (verbose) | — | — | — | ⏳ cible strate 1b (depend des metas) |
+| Payload serializable check | — | — | — | ⏳ non planifie |
 
 ### 3.7 Tree-shaking — garantie zero-overhead en production
 
@@ -255,7 +293,10 @@ Le pattern `if (__DEV__)` est le standard de l'industrie (React, Vue, Angular) p
 | **esbuild** | `--define:__DEV__=false` |
 | **webpack** | `DefinePlugin: { __DEV__: false }` |
 
-**Validation** : le build doit etre verifie par un test de taille du bundle confirmant que les assertions `invariant()` et `warning()` sont eliminees.
+**Validation** : ⏳ un test de taille du bundle confirmant l'elimination des
+assertions serait souhaitable, mais n'est **pas planifie** par ADR-0028 (cf.
+bandeau de perimetre en tete de document) — aucun tel test n'existe
+aujourd'hui.
 
 ---
 
