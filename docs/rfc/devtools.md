@@ -532,12 +532,12 @@ const report = app.devTools!.stopProfiling();
 
 ## Références croisées
 
-| Section RFC-0002 | Concept | Lien DevTools |
+| Section | Concept | Lien DevTools |
 |-------------------|---------|---------------|
-| [RFC-0002 §7.3 `enableDevTools`](6-transversal/conventions-typage.md) | Flag dans `TApplicationConfig` | Active/désactive les hooks |
+| [application.md §4 `enableDevTools`](3-couche-abstraite/application.md#4-configuration-globale--cible-point-dinjection-non-tranché) | Flag dans `TApplicationConfig` | Active/désactive les hooks |
 | [Metas — traçabilité causale](2-architecture/metas.md) | `correlationId`, `causationId`, `hop` | Graphe causal, Event Ledger |
 | [§1 Motivation et position architecturale](#1-motivation-et-position-architecturale) | Principes d'observabilité | Motivation des DevTools |
-| [RFC-0002-entity §4](3-couche-abstraite/entity.md#4-api-de-mutation--mutateintent-params-recipe) | `TEntityEvent` avec `patches` | Inspection mutations |
+| [entity.md §4](3-couche-abstraite/entity.md#4-api-de-mutation--mutateintent-params-recipe) | `TEntityEvent` avec `patches` | Inspection mutations |
 | [RFC-0002-entity §7](3-couche-abstraite/entity.md#7-sérialisation-et-snapshot) | `toJSON()` / `fromJSON()` | Snapshot, restore |
 | [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md) | `inversePatches` Immer | Time-travel (post-v1) |
 | [ADR-0002](../adr/ADR-0002-error-propagation-strategy.md) | Taxonomie erreurs, ErrorReporter | §5 Inspection erreurs, ring buffer, hooks |

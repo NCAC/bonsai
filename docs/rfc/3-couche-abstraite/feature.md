@@ -620,7 +620,7 @@ protected request<
 
 > **Phasage strate 0 → strate 1 sur les metas** (ADR-0028 §148, ADR-0040 §615) : en strate 0 actuelle, les handlers Command/Event/Request reçoivent uniquement le payload (1 paramètre). Le second paramètre `metas: TMessageMetas` (`correlationId`, `causationId`, `hop`, `origin`, `timestamp` — cf. [glossaire](../reference/glossaire.md)) sera ajouté en strate 1 via un ADR dédié amendant ADR-0040. Les exemples ci-dessous montrent la signature **strate 0 actuelle**.
 
-> Pour les Entity handlers, voir [RFC-0002-entity §6 Notifications](../3-couche-abstraite/entity.md#6-notifications-entity--feature).
+> Pour les Entity handlers, voir [entity.md §6 Notifications](../3-couche-abstraite/entity.md#6-notifications-entity--feature).
 
 ### Exemples
 
@@ -930,15 +930,15 @@ abstract class Feature<
 ```
 
 > Ces hooks ne passent pas par les Channels — ce sont des appels directs
-> du framework. Voir RFC-0001 §7.2 note et Q9 analyse.
+> du framework (voir l'analyse ci-dessous, héritée de l'ex-RFC-0001).
 
 <!--
   Pourquoi pas des Events Channel ?
 
-  RFC-0001 Q9 a démontré que les Events lifecycle sont structurellement
-  inutiles : au moment où `onInit` est appelé (bootstrap Phase 3), aucune
-  View n'existe encore pour écouter. Et quand les Views existent
-  (Phase 4), les Features sont déjà initialisées.
+  L'analyse historique (ex-RFC-0001) a démontré que les Events lifecycle sont
+  structurellement inutiles : au moment où `onInit` est appelé (bootstrap
+  Phase 3), aucune View n'existe encore pour écouter. Et quand les Views
+  existent (Phase 4), les Features sont déjà initialisées.
 
   Ordre d'appel : onInit() est appelé pour chaque Feature dans l'ordre du
   manifest, de façon strictement synchrone (pas d'attente inter-Feature —
@@ -949,7 +949,7 @@ abstract class Feature<
 
 ## 8. Sémantiques lifecycle et échecs
 
-### 7.1 Machine à états de la Feature 🧭 cible — non livrée
+### 8.1 Machine à états de la Feature 🧭 cible — non livrée
 
 > **Écart avec le code** : `Feature` ne porte aucune machine à états. Le seul
 > indicateur interne est un booléen privé `#bootstrapped` (`bootstrap()` est
@@ -974,9 +974,9 @@ registered → wired → initialized → active → destroying → [destroyed]
 > **Garantie de séquence effectivement livrée** : une Feature ne peut pas recevoir de
 > Command avant que son propre `bootstrap()` ait câblé ses handlers. Le bootstrap de
 > `Application` instancie et câble intégralement la couche abstraite (Phases 0b/0c/1/3)
-> avant de créer la Foundation et les Views (Phase 4, RFC-0001 §5.1).
+> avant de créer la Foundation et les Views (Phase 4, cf. [lifecycle.md](../2-architecture/lifecycle.md)).
 
-### 7.2 Gestion des erreurs dans les handlers
+### 8.2 Gestion des erreurs dans les handlers
 
 #### Erreurs dans `onXxxCommand`
 
@@ -1059,7 +1059,7 @@ onSetStatusCommand({ status }: { status: string }): void {
 }
 ```
 
-### 7.3 Granularité des Features — lignes directrices
+### 8.3 Granularité des Features — lignes directrices
 
 > La section suivante est **informative** — voir [Framework Style Guide](../../guides/FRAMEWORK-STYLE-GUIDE.md)
 > pour les conventions détaillées.
@@ -1074,7 +1074,7 @@ onSetStatusCommand({ status }: { status: string }): void {
 > **Anti-pattern God Feature** — voir [Anti-patterns](../reference/anti-patterns.md#-god-feature).
 > Une Feature bien calibrée répond à une seule question : "de quoi suis-je responsable ?"
 
-### 7.4 Modèle d'erreurs — hiérarchie `BonsaiError`
+### 8.4 Modèle d'erreurs — hiérarchie `BonsaiError`
 
 > **Absorbé depuis** : [ADR-0002](../../adr/ADR-0002-error-propagation-strategy.md) (Accepted).
 > La taxonomie et la hiérarchie TypeScript ci-dessous sont **livrées** (`@bonsai/error`,
@@ -1096,7 +1096,7 @@ onSetStatusCommand({ status }: { status: string }): void {
 │                                                                 │
 │  FEATURE LAYER (Logic)                                         │
 │  ├── CommandError      : onXxxCommand() throw — définie, JAMAIS │
-│  │                       levée par le code livré (cf. §7.2)     │
+│  │                       levée par le code livré (cf. §8.2)     │
 │  ├── RequestError      : onXxxRequest() throw/reject — définie, │
 │  │                       JAMAIS levée (Channel.request() capture│
 │  │                       et journalise via console.error)       │
@@ -1154,7 +1154,7 @@ export class BonsaiError extends Error {
 | ------------------ | -------------------------- | ----------- | ----------- | ------------------ |
 | **MutationError**  | ✅ Oui (`Entity#runCycle`)  | ❌ Rollback (Immer n'a jamais appliqué le recipe qui a throw) | Non — throw | Propage à l'appelant de `mutate()` (la Feature) |
 | **EntityReentrancyError** | ✅ Oui (`Entity`, profondeur de ré-entrance, I98) | — | Non — throw | Propage à l'appelant de `mutate()` |
-| **CommandError**   | ❌ Jamais              | —           | —           | Exception non capturée : propage jusqu'à l'appelant de `trigger()` (§7.2) |
+| **CommandError**   | ❌ Jamais              | —           | —           | Exception non capturée : propage jusqu'à l'appelant de `trigger()` (§8.2) |
 | **RequestError**   | ❌ Jamais              | —           | —           | `Channel.request()` capture le throw, journalise via `console.error`, retourne `null` |
 | **BroadcastError** | ✅ Oui (`#dispatchEntityEvent`, I96) | ✅ Conservé (mutation déjà appliquée) | ✅ Oui — notification suivante non interrompue | `console.error` |
 | **ListenerError**  | ✅ Oui (`Channel.listen`)   | —           | ✅ Oui — autres listeners non affectés | `console.error` |
@@ -1179,7 +1179,7 @@ onAddItemCommand(payload: { productId: string; qty: number }): void {
     // → Immer rollback automatique → MutationError levée par Entity#runCycle
     //   → State INTACT → propage jusqu'ici (non catchée par le Command
     //     handler dans cet exemple) → propage à son tour à l'appelant de
-    //     trigger() (§7.2, cible strate 1b pour l'isolation)
+    //     trigger() (§8.2, cible strate 1b pour l'isolation)
   });
 }
 

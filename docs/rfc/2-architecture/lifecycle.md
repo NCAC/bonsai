@@ -108,7 +108,7 @@ d'`Application`, et instanciées/câblées par `start()` :
 > **Invariant de séquence** : aucune View ne peut envoyer de `trigger()` avant
 > que le `bootstrap()` de sa Feature cible ait câblé ses handlers. Le bootstrap
 > le garantit par construction — `Feature` ne porte pas d'état `active` nommé
-> (pas de machine à états, cf. [feature.md §8.7.1](../3-couche-abstraite/feature.md)) : seul un booléen interne `#bootstrapped` existe.
+> (pas de machine à états, cf. [feature.md §8.1](../3-couche-abstraite/feature.md#81-machine-à-états-de-la-feature--cible--non-livrée)) : seul un booléen interne `#bootstrapped` existe.
 
 ### Shutdown
 

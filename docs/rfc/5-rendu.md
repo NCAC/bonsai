@@ -14,7 +14,7 @@
 | **Statut**        | 🟢 Stable                                   |
 | **Date**          | 2026-03-18                                  |
 | **Auteur**        | @architecte                                 |
-| **Prérequis**     | [RFC-0001](1-philosophie.md), [RFC-0002 §9.4](6-transversal/conventions-typage.md) |
+| **Prérequis**     | [1-philosophie.md](1-philosophie.md), [view.md §4](4-couche-concrete/view.md#4-contrat-de-rendu-pdr) |
 | **Absorbe**       | [ADR-0008](../adr/ADR-0008-collection-patterns.md) (⚪ Superseded → §6.4–6.8) |
 | **Héritage**      | Inspiré d'un compilateur Pug → VDOM protétypé en amont (VDOM → PDR) |
 
@@ -22,7 +22,7 @@
 > Ce document est **stable et normatif** pour les mécanismes de rendu PDR,
 > les templates Pug, l'API `ProjectionList`, le Render Contract (§7bis), et les
 > collection patterns (§6.4–6.8). Les décisions D39–D48 y documentées font foi.
-> Ce document dépend de [RFC-0002](6-transversal/conventions-typage.md) pour les contrats View, Channel et Entity.
+> Ce document dépend de [view.md](4-couche-concrete/view.md), [communication.md](2-architecture/communication.md) et [entity.md](3-couche-abstraite/entity.md) pour les contrats View, Channel et Entity.
 
 > **⚠ Surface View pré-ADR-0042** — Plusieurs exemples de ce document déclarent
 > encore `get params() { return cartViewParams; }` (forme unique ADR-0024,
@@ -167,16 +167,16 @@ class CartView extends View<TCartViewCapabilities> {
 
 ## 3. Contexte et motivation
 
-### 3.1 Ce qui est défini (RFC-0002 §9.4)
+### 3.1 Ce qui est défini ([view.md §4](4-couche-concrete/view.md#4-contrat-de-rendu-pdr))
 
-RFC-0002 a établi les fondations de la **Projection DOM Réactive (PDR)** :
+[view.md §4](4-couche-concrete/view.md#4-contrat-de-rendu-pdr) a établi les fondations de la **Projection DOM Réactive (PDR)** :
 
-| Concept | Statut | RFC-0002 |
+| Concept | Statut | Source |
 |---------|--------|----------|
-| Stratégie PDR (D19) | ✅ Défini | §9.4 |
-| `getUI()` → `TProjectionNode` | ✅ Défini | §9.4.4 |
-| `TProjectionTemplate` type | ✅ Défini | §9.4.5 |
-| 3 modes de rendu (A, B, C) | ✅ Défini | §9.4.5 |
+| Stratégie PDR (D19) | ✅ Défini | view.md §4 |
+| `getUI()` → `TProjectionNode` | ✅ Défini | view.md §4 |
+| `TProjectionTemplate` type | ✅ Défini | view.md §4 |
+| 3 modes de rendu (A, B, C) | ✅ Défini | view.md §4 |
 
 ### 3.2 Ce qui manque
 
@@ -1756,7 +1756,7 @@ each category in categories
 
 ## 12. Références
 
-- [RFC-0002 §9.4 — PDR](6-transversal/conventions-typage.md) — Contrat de base
+- [view.md §4 — PDR](4-couche-concrete/view.md#4-contrat-de-rendu-pdr) — Contrat de base
 - [pugx](../pugx/) — Projet séparé d'extension de Pug avec typage (hors scope)
 - [React Reconciliation](https://reactjs.org/docs/reconciliation.html)
 - [Vue v-for with key](https://vuejs.org/guide/essentials/list.html#maintaining-state-with-key)

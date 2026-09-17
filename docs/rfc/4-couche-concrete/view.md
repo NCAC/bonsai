@@ -739,7 +739,7 @@ Trois modes **mutuellement exclusifs** :
 type TViewTemplateBinding<TData = unknown> = {
   template: TProjectionTemplate<any, TData>;
   /**
-   * Selector optionnel : active l'auto-réactivité (RFC-0003 §2.3/§7.2).
+   * Selector optionnel : active l'auto-réactivité (5-rendu.md §2.3/§7.2).
    * Si absent, le template est statique (projection initiale seulement).
    */
   select?: (data: Record<string, any>) => TData | undefined;
@@ -754,7 +754,7 @@ type TViewTemplates<TUI extends TUIContract = TUIContract> =
 > **Regle normative** : des qu'une zone est déclarée dans `get templates()`,
 > le rendu de cette zone est delegue au framework via `template.project()`.
 > Un handler View ne doit pas appeler `template.project()` manuellement pour
-> cette même zone (coherence avec RFC-0003 §2.2).
+> cette même zone (coherence avec 5-rendu.md §2.2).
 
 ### 4.6 TProjectionTemplate
 

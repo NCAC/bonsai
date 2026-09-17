@@ -233,7 +233,7 @@ abstract class Entity<TStructure extends TJsonSerializable> {
    * @internal — framework only, jamais appelé par le développeur
    *
    * @see ADR-0014 H5 (serverState est le SEUL mécanisme d'état sérialisé)
-   * @see RFC-0002 §7.1 TBootstrapOptions
+   * @see application.md §1 (TBootstrapOptions)
    */
   populateFromServer(state: TStructure): void;
 }
@@ -1069,7 +1069,7 @@ Au bootstrap, le framework :
 <!--
   Implémentation interne des notifications :
 
-  Le framework utilise rxjs en interne (voir RFC-0002-channel §5 note rxjs) :
+  Le framework utilise rxjs en interne (voir communication.md, note rxjs) :
   - Un Subject par Entity pour les notifications de changement
   - Le framework wrap les méthodes de mutation de l'Entity
     (via Proxy sur this.state ou wrapping explicite au bootstrap)
@@ -1145,7 +1145,7 @@ abstract class Entity<TStructure extends TJsonSerializable> {
    *
    * @param state — le state sérialisé côté serveur
    * @internal — framework only
-   * @see ADR-0014 H5, RFC-0002 §7.1 TBootstrapOptions
+   * @see ADR-0014 H5, application.md §1 (TBootstrapOptions)
    */
   populateFromServer(state: TStructure): void;
 

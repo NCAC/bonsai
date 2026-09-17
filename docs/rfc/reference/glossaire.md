@@ -90,7 +90,7 @@ référencée dans toute la documentation.
 | **Request (C5)**     | Capacité d'une Feature (ou View/Behavior) à lire le state d'une autre Feature via son Channel. Retourne `T \| null` **synchrone** (D9 révisé par [ADR-0023](../../adr/ADR-0023-request-reply-sync-vs-async.md)). Lecture seule, pas de mutation. Interrogatif : "dis-moi la valeur maintenant". `null` si le replier throw ou si le Channel n'est pas enregistré (D44 révisé). Nécessite une déclaration `request` (D1, D3). |
 | **Router**           | Composant framework spécialisé pour la navigation. Internement une spécialisation de Feature (modèle C1–C5) avec accès exclusif à l'History API du navigateur (BrowserHistory). Namespace réservé `router`. Entity = état de la route courante. Instancié par Application au bootstrap (D8). |
 | **Store logique distribué** | Concept : la composition de toutes les Entities, chacune identifiée par le namespace de sa Feature propriétaire, forme logiquement le store global. Pas d'objet centralisé (pas de Redux), mais adressable via `request()`. |
-| **TBootstrapOptions** | Options passées à `Application.start(options?)`. Inclut `serverState?: Record<string, TJsonSerializable>` pour le pré-peuplement SSR (ADR-0014 H5), `devTools?: boolean` (RFC-0004). Défini dans RFC-0002 §7.1. |
+| **TBootstrapOptions** | Options passées à `Application.start(options?)`. Inclut `serverState?: Record<string, TJsonSerializable>` pour le pré-peuplement SSR (ADR-0014 H5), `devTools?: boolean` (RFC-0004). Défini dans [application.md §1](../3-couche-abstraite/application.md#1-types-de-bootstrap-adr-0010). |
 | **TEntitySchema<T>** | Type générique représentant le **schéma Valibot** d'une Entity. Chaque Entity concrète définit `abstract get schema(): TEntitySchema<TStructure>` pour la validation modale (ADR-0022). Validation au `mutate()` en dev (`__DEV__`), silencieuse en prod, stricte dans les formulaires (`FormBehavior`). |
 | **Tri-lane**         | Architecture du Channel en trois voies : command lane (1:1), event lane (1:N), request lane (1:1 synchrone, D9 révisé par ADR-0023). |
 | **updateLocal()**    | Méthode de mutation du **localState** d'une View ou Behavior (ADR-0015). Signature : `updateLocal(recipe: (draft: Draft<TLocal>) => void)`. Déclenche les callbacks granulaires `onLocal${Key}Updated` (N1) et le pipeline selector/template (N2/N3). Le localState n'est jamais broadcastable et meurt au `onDetach()` (I42). |
@@ -218,7 +218,7 @@ Questions architecturales. Chaque question est soit résolue (✅), soit en atte
 > - ✅ **Générique** : branchable sur n'importe quelle View
 > - ✅ Channels déclarés indépendamment de la View hôte
 >
-> Voir [RFC-0002 §10.4](../6-transversal/conventions-typage.md) pour d'autres exemples (IScrollBehavior, déclaration dans la View hôte).
+> Voir [behavior.md](../4-couche-concrete/behavior.md) pour d'autres exemples (IScrollBehavior, déclaration dans la View hôte).
 
 ### [Q8] ~~Périmètre du composant Application~~ → ✅ Résolu (D6)
 
@@ -226,7 +226,7 @@ Questions architecturales. Chaque question est soit résolue (✅), soit en atte
 > Active au **bootstrap** et au **shutdown**. **Dormante au runtime**.
 > Modèle inspiré de Vue.js/Ember.js.
 
-### [Q9] ~~Application Channel lifecycle~~ → ✅ Résolu (D6, RFC-0002 §8)
+### [Q9] ~~Application Channel lifecycle~~ → ✅ Résolu (D6, [application.md §5](../3-couche-abstraite/application.md#5-namespace-app--pas-de-channel-lifecycle))
 
 > **Décision (amendée 2026-09-17 — M2)** : `app` n'est **pas** un namespace
 > réservé (`RESERVED_NAMESPACES = ["local", "router"]`, I71) — seul le

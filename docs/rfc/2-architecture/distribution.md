@@ -94,7 +94,7 @@ app.start();
 ### BonsaiRegistry — API
 
 <!-- Le contrat TypeScript complet (signatures, generics, invariants) sera
-     injecte lors de la Phase 4 depuis RFC-0002-api §7.4 -->
+     injecte lors de la Phase 4 depuis conventions-typage.md -->
 
 Le `BonsaiRegistry` est un **singleton** exporte par le runtime ESM. Il offre :
 
