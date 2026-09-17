@@ -28,6 +28,7 @@
 | `TAppContext` | Contexte applicatif construit progressivement durant le bootstrap : `{ config, radio, channels, entities, features, views }`. Disponible en totalite apres la phase `'start'` (ADR-0010) | [application.md](../3-couche-abstraite/application.md) |
 | `BootstrapError` | Erreur de bootstrap localisee par phase : `{ phase: PhaseKey; cause: Error }`. Thrown par `start()` si une phase echoue (ADR-0010) | [application.md](../3-couche-abstraite/application.md) |
 | `TBootstrapOptions` | Options optionnelles de `start()` : `{ serverState?: Record<string, TJsonSerializable> }`. Si `serverState` fourni, le framework pre-peuple les Entities silencieusement en phase 3 (ADR-0014 H5) | [application.md](../3-couche-abstraite/application.md) |
+| Phase 0a / 0b / 0c | Sous-phases de la séquence **strate 0 réellement implémentée** (ADR-0046), distinctes du `PhaseKey` cible ci-dessus : 0a = validation format namespace + `channel` (I70/I71/I73) ; 0b = instanciation pure de chaque Feature (`new FeatureClass(ns)`, ctor inerte I94) ; 0c = lecture `instance.listens`/`instance.queries` + validation croisée (I70 amendé). Précèdent la création des Channels | [application.md](../3-couche-abstraite/application.md) |
 
 ## Types Entity
 
@@ -48,9 +49,11 @@
 | `TEventHandlers<TChannels>` | Mapped type **optionnel** (`Partial<>`) : pour chaque Channel declare en `listen` et chaque Event, genere `on<Namespace><EventName>Event(payload, metas)`. Opere sur un tuple de Channels via `UnionToIntersection`. Metas explicites (ADR-0016). Pas de prefixe `Required` car les event handlers sont optionnels | [conventions-typage.md](../6-transversal/conventions-typage.md) |
 | `CommandPayload<TChannel, TName>` | Extrait le type de payload d'un Command | [conventions-typage.md](../6-transversal/conventions-typage.md) |
 | `RequestResult<TChannel, TName>` | Extrait le type de resultat d'un Request (via `infer`) | [conventions-typage.md](../6-transversal/conventions-typage.md) |
-| `declareChannel<T>(ns)` | Utilitaire framework : cree un token leger (`{ namespace }`) type comme `T` | [feature.md](../3-couche-abstraite/feature.md) |
+| ~~`declareChannel<T>(ns)`~~ | **Historique (D14, supersédé par ADR-0040)** — utilitaire qui créait un token léger `{ namespace }` typé comme `T`, utilisé avec le pattern `export namespace Cart {…}`. Remplacé par `static readonly channel: TChannelToken<TDef, NS>` directement porté par la classe Feature | [feature.md](../3-couche-abstraite/feature.md) |
 | `Channel<TDef>` | Classe runtime **interne** au framework (ADR-0040 — typée par `TChannelDefinition`) — registres de handlers, dispatch, garde-fous. Créée à la **Phase 1 du bootstrap** depuis le manifest applicatif (ADR-0039 — D15), jamais exposée (I80) | [communication.md](../2-architecture/communication.md) |
 | `TChannelToken<TDef, NS>` | Token discriminant `{ namespace: NS }` typé par `TDef`. Exposé par `Feature.channel` static (ADR-0040). C'est l'unique pont entre la classe Feature et son contrat de communication | [feature.md](../3-couche-abstraite/feature.md), [communication.md](../2-architecture/communication.md) |
+| `TFeatureCallbacks<TDef, TListens>` | Clause `implements` unique d'une Feature (ADR-0046, I92) : `TCommandCallbacks<TDef> & TRequestCallbacks<TDef> & TListenCallbacks<TListens>`. Handler manquant → `TS2515` ; signature fautive → `TS2416` | [feature.md](../3-couche-abstraite/feature.md) |
+| `TStrictFeatureClass<NS, TDef>` | Contrainte compile-time appliquée par `StrictManifest<M>` à chaque entrée du manifest (ADR-0046, I95) : constructeur `(namespace: NS) => Feature<…, TDef, NS>` + `static channel: TChannelToken<TDef, NS>` aligné (`channel.namespace === NS`) | [feature.md](../3-couche-abstraite/feature.md) |
 
 ## Types View et UI (ADR-0042 — pattern modulaire)
 
@@ -78,6 +81,7 @@
 | `TUIElements<TUI>` | Mapped type sur `TUI` : table sélecteurs CSS clé → string. Toute clé orpheline ou manquante → erreur compile (D34) | [view.md](../4-couche-concrete/view.md) |
 | `ExtractEl<TEntry>` | Extrait `TEl` d'une `TUIEntry` via le phantom — utilisé par `getUI(key)` pour préserver le sous-type DOM | [view.md](../4-couche-concrete/view.md) |
 | `TDOMEventFor<S>` | Mappe un nom d'event DOM (`"click"`) vers son type natif (`MouseEvent`) via `HTMLElementEventMap` | [view.md](../4-couche-concrete/view.md) |
+| `TEventsFor<TEl>` | Mapping sémantique sous-type `HTMLElement` → events DOM autorisés (ADR-0044/0045) — plus strict que `lib.dom.d.ts` pour les éléments connus, sous-type de `keyof HTMLElementEventMap` (I89). Contraint `events` dans `ui<TEl>()(events)` | [view.md](../4-couche-concrete/view.md) |
 | `TUIEntryHandlers<TKey, TEntry>` / `TUICallbacks<U>` | Génèrent les signatures `on{Key}{Event}` requises par `implements` à partir de `TUIContract`. Symétrie Contract/Callbacks (I88, D48 UI) | [view.md](../4-couche-concrete/view.md) |
 
 ### Composition View
