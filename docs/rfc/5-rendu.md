@@ -147,9 +147,9 @@ class CartView extends View<TCartViewCapabilities> {
 }
 ```
 
-**Fonctionnement** :
-1. Le Channel émet `any` automatiquement après chaque Event granulaire
-2. Le payload contient uniquement les **clés changées**
+**Fonctionnement** (cible strate 1c — ⚠️ voir §7.1 pour la définition de `changes` qui prévaut, en tension avec celle utilisée ici) :
+1. Le Channel émet `any` automatiquement après chaque Event granulaire — **livré**
+2. Le payload transmis à `select()` contiendrait le **state complet du Channel**, pas seulement les clés changées (D46 — cf. §7.1 ; le libellé « clés changées » ci-dessus est imprécis, corrigé en §7.1)
 3. Le framework **namespace** le payload par le Channel source
 4. Le selector filtre les données pertinentes (ex: `data.cart?.items`)
 5. Si les données ont changé (shallow equal), le template est re-projeté
@@ -995,6 +995,8 @@ onCellClick(event: Event): void {
 
 ## 7. Intégration avec la View
 
+> ⚠️ **D42/D46 sont en tension avec ADR-0042 — non tranché** (cf. [decisions.md](reference/decisions.md)). Le contrat **livré** pour la couche View (ADR-0028 strate 0/1a) est celui d'[ADR-0042](../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md) : des handlers **granulaires** `on{NS}{Event}Event` par Event déclaré dans `features[ns].listens` — l'exact opposé de l'abonnement unique `any` + selector décrit ci-dessous. Aucune View ne s'abonne à `any` aujourd'hui. Ce §7 documente une proposition **cible strate 1c** dont l'articulation avec ADR-0042 reste à trancher par un ADR dédié.
+
 > **Décision D42 (VIEW-SUBSCRIPTION)** : Les Views s'abonnent aux Channels via l'événement `any`
 > (auto-émis par le Channel après chaque Event). Les Events granulaires sont destinés
 > à la communication inter-Feature. Les selectors des templates filtrent les clés
@@ -1181,20 +1183,20 @@ type TViewTemplates<TUI extends TUIMap<any>> =
 
 | Audience | Écoute | Payload | Cas d'usage |
 |----------|--------|---------|-------------|
-| **Features** | Events granulaires (`item-added`) | Payload métier | Réactions inter-Feature |
+| **Features** | Events granulaires (`itemAdded`) | Payload métier | Réactions inter-Feature |
 | **Views** | Event `any` (auto-émis) | `{ changes }` namespacé | Réactivité UI |
 
 ```
-Feature.emit('item-added', payload)
+Feature.emit('itemAdded', payload)
         │
         ▼
     Channel
-        ├─► emit('item-added', payload)      → Autres Features
+        ├─► emit('itemAdded', payload)       → Autres Features
         │
         └─► emit('any', { event, changes })  → Views (selector filtre)
 ```
 
-> **Avantage clé** : Si la Feature ajoute un nouvel Event (`item-quantity-changed`),
+> **Avantage clé** : Si la Feature ajoute un nouvel Event (`itemQuantityChanged`),
 > la View **fonctionne toujours** sans modification — le selector filtre sur les clés,
 > pas sur les noms d'Events.
 

@@ -206,29 +206,34 @@ Chaque Feature déclare un **namespace unique** (I21), `camelCase` plat, qui ser
 > Il constitue le pont officiel entre l'event lane (communication métier inter-Feature)
 > et la Projection DOM Réactive (réactivité UI).
 
-Après **chaque** Event granulaire émis sur l'event lane, le Channel émet automatiquement un événement technique **`any`**.
+Après **chaque** Event granulaire émis sur l'event lane, le Channel émet automatiquement un événement technique **`any`**. **Cette émission est livrée** (`Channel.emit()`, `packages/event/src/channel.class.ts`) ; sa **consommation côté View** décrite plus bas (selectors, state complet par référence) ne l'est pas — voir l'encadré ⚠️ en fin de section.
 
 | Aspect | Description |
 |--------|-------------|
-| **Déclenchement** | Automatique, après chaque `emit()` d'un Event granulaire |
-| **Payload** | `{ event: string, changes: Record<string, unknown> }` — nom de l'Event source + clés du state modifiées |
-| **Audience** | Les **Views** et **Behaviors** s'y abonnent pour la réactivité UI (PDR) |
+| **Déclenchement** | Automatique, après chaque `emit()` d'un Event granulaire — livré |
+| **Payload** | `{ event: string, changes: Record<string, unknown> }` — nom de l'Event source + **`changes` est le payload de l'Event émis tel quel** (pas les clés du state modifiées, pas le state complet) — livré |
+| **Audience cible** | Les **Views** et **Behaviors** s'y abonneraient pour la réactivité UI (PDR) — ⏳ aucune View ne s'abonne à `any` aujourd'hui (ADR-0042 : handlers granulaires `on{NS}{Event}Event`) |
 | **Non destiné à** | La communication inter-Feature — les Features écoutent les Events granulaires |
-| **Filtrage** | Les selectors des templates filtrent les clés de changement — seuls les templates dont les clés `select()` matchent les `changes` sont ré-évalués |
+| **Filtrage** | ⏳ Cible strate 1c, non livré : les selectors de templates filtreraient les clés de changement pour ne ré-évaluer que les templates concernés |
 | **Émission** | Uniquement par le framework — jamais par le développeur |
 
 ```typescript
+// Signature réelle — packages/event/src/channel.class.ts
 type TAnyEventPayload = {
   /** Nom de l'Event granulaire qui a déclenché `any` */
   readonly event: string;
-  /** Clés du state modifiées par la mutation Entity sous-jacente */
+  /**
+   * Le payload de l'Event granulaire émis, tel quel (objet vide si le
+   * payload n'est pas un objet). PAS les clés changées de l'Entity, PAS le
+   * state complet du Channel — ces deux lectures alternatives, décrites par
+   * `5-rendu.md` §2.3 et §7.1 (D42/D46), sont des propositions **cible**
+   * strate 1c, non livrées et non alignées entre elles (cf. encadré ci-dessous).
+   */
   readonly changes: Record<string, unknown>;
 };
 ```
 
-> **Relation `any` ↔ mutations Entity** : les `changes` transmis dans `any` correspondent
-> aux `changedKeys` produits par `entity.mutate()`.
-> Le framework assure la cohérence mutation → Event granulaire → `any` — le développeur ne gère pas cette liaison.
+> ⚠️ **`any` ↔ mutations Entity — pas de lien direct livré** : le Channel ne connaît pas l'Entity (I5, I80) et ne calcule aucun `changedKeys`. `any.changes` est simplement le payload que la Feature a passé à `emit()` — qui *peut* contenir des données dérivées de `changedKeys` si la Feature les y met explicitement, mais rien ne l'impose. Le modèle « state complet par référence live » de [5-rendu.md §7](5-rendu.md#7-intégration-avec-la-view) (D42/D46) décrit une consommation **cible strate 1c en tension non tranchée** avec les handlers granulaires livrés par ADR-0042 — voir le bandeau de périmètre en tête de [5-rendu.md](5-rendu.md).
 
 ---
 
