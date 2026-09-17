@@ -117,7 +117,9 @@ export type ValidatedManifest<M> = {
  * un manifest type-only à valeurs `unknown` (ADR-0039) ne permet pas d'extraire
  * `TDef` par clé, donc aucune inférence de handlers n'est possible au point
  * manifest. La couverture est garantie par I92 (`implements TFeatureCallbacks`
- * sur chaque classe — symétrie View/ADR-0042) + filet runtime auto-discovery.
+ * sur chaque classe — symétrie View/ADR-0042), strictement au compile-time :
+ * il n'existe pas de filet runtime symétrique côté Feature (contrairement à
+ * View/I82) — voir feature.md §3bis.
  *
  * @example
  * ```ts

@@ -11,7 +11,7 @@
 | **Composant**  | Feature                 |
 | **Couche**     | Abstraite (persistante) |
 | **Statut**     | 🟢 Stable               |
-| **Mis à jour** | 2026-09-16              |
+| **Mis à jour** | 2026-09-17              |
 
 > ### Statut normatif
 >
@@ -35,9 +35,10 @@
 > | Isolation des exceptions de handlers Command (`CommandError`) | Strate 1b | §8 |
 > | `onDestroy()`, états `destroying`/`destroyed`, `onInit()` asynchrone attendu | Strate 1 | §7, §8 |
 > | Hook `onError()` et `ErrorReporter` | Strate 1 | §8 (modèle d'erreurs) |
-> | Filet runtime I92 (handler de listen manquant détecté au bootstrap) | Non tranché | §3bis |
 >
-> **Périmètre effectif livré (strate 0 + ADR-0046)** : `Feature<TEntity, TChannelDef, TSelfNS>` ; `static readonly channel` ; `abstract get listens()`/`get queries()` ; `implements TFeatureCallbacks` (compile-time) ; constructeur inerte (I94) ; `bootstrap()` (Channel, Entity, auto-découverte des handlers Command/Request/Event/Entity sur le **prototype direct** de la classe, puis `onInit()`) ; `emit(eventName, payload)` et `request(token, name, params)` **sans metas** ; getter public `namespace`, getter `protected` `entity` (I5, I6) ; `onInit()` synchrone. Un handler de listen absent est ignoré silencieusement.
+> **Périmètre effectif livré (strate 0 + ADR-0046)** : `Feature<TEntity, TChannelDef, TSelfNS>` ; `static readonly channel` ; `abstract get listens()`/`get queries()` ; `implements TFeatureCallbacks` (compile-time) ; constructeur inerte (I94) ; `bootstrap()` (Channel, Entity, auto-découverte des handlers Command/Request/Event/Entity sur le **prototype direct** de la classe, puis `onInit()`) ; `emit(eventName, payload)` et `request(token, name, params)` **sans metas** ; getter public `namespace`, getter `protected` `entity` (I5, I6) ; `onInit()` synchrone, public, sans support async.
+>
+> **I92 — portée exacte** : la couverture des handlers de listen est garantie **uniquement au compile-time** (`implements TFeatureCallbacks`, TS2515/TS2416). Il n'existe **pas** de filet runtime symétrique à celui de View (I82) et il n'est **pas prévu d'en construire un** : `get listens()` ne porte que des tokens de Channel (pas les noms d'événements attendus), donc l'auto-discovery runtime (`#registerEventListeners`, I48) n'a aucune liste indépendante à laquelle comparer les méthodes présentes — elle peut enregistrer un handler mal nommé qui ne matche rien, jamais détecter une omission. Un contournement du typage (`as any`, JS pur) omettant un handler passe donc inaperçu au runtime. Voir §3bis.
 
 ## 📋 Table des matières
 
@@ -135,9 +136,12 @@ abstract class Feature<
     this.#namespace = namespace;
   }
 
-  /** Cycle de vie */
-  protected onInit(): void | Promise<void>;
-  protected onDestroy(): void | Promise<void>;
+  /**
+   * Cycle de vie — cf. §7. Seul `onInit()` est livré : public, synchrone,
+   * sans support async (`onDestroy()` est une cible strate 1, cf. bandeau
+   * de périmètre en tête de document).
+   */
+  onInit(): void;
 }
 ```
 
@@ -159,9 +163,12 @@ abstract class Feature<
 > TFeatureCallbacks<TDef, TListens>` impose au compilateur la présence et la
 > signature exactes de `on{Cmd}Command`, `on{Req}Request` et
 > `on{NS}{Event}Event` pour chaque message déclaré. Handler manquant → TS2515 ;
-> signature fautive → TS2416. Le bootstrap conserve un filet runtime
-> (auto-discovery, I48) pour les cas de contournement (`as any`, JS pur).
-> Voir §3bis pour le détail de `TFeatureCallbacks`.
+> signature fautive → TS2416. Cette garantie est **strictement compile-time** :
+> l'auto-discovery runtime (I48) enregistre les handlers présents mais n'a
+> aucune liste indépendante des noms attendus pour détecter une omission —
+> contrairement à View, dont `features[ns].listens: string[]` explicite permet
+> cette vérification (I82). Voir §3bis pour le détail de `TFeatureCallbacks`
+> et la portée exacte de cette garantie (I92).
 >
 > Résultat : `Feature<TEntity, TChannelDef, TSelfNS>` — trois génériques
 > (Entity, Channel, namespace), zéro récursion. Pour les cas où un retour
@@ -260,8 +267,9 @@ export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
     this.emit("itemAdded", { productId: payload.productId, qty: payload.qty });
   }
 
-  // C4 — Reply auto-découvert.
-  onGetItemCountRequest(_params: void): number {
+  // C4 — Reply auto-découvert. Requête "itemCount" → handler onItemCountRequest
+  // (convention nominale D12 : la clé de TDef['requests'] porte déjà le nom complet).
+  onItemCountRequest(_params: void): number {
     return this.entity.state.items.length;
   }
 }
@@ -347,6 +355,12 @@ L'enregistrement de la Feature se fait via un **manifest applicatif** typé
 
 ```typescript
 // app/manifest.ts — TYPE-MANIFEST (interface explicite, zéro classe importée)
+// `StrictManifest<M>` et `AppNamespace`/`ExternalOf` ne sont PAS redéfinis ici :
+// ils viennent de `@bonsai/feature` (packages/feature/src/types.ts), la seule
+// source de vérité — une redéfinition locale perdrait les vérifications
+// camelCase (I21) et namespace réservé (I57, I71) portées par `StrictManifest<M>`
+// réel (`K extends CamelCaseNamespace<K> ? K extends ReservedNamespace ? never
+// : TStrictFeatureClass<K, TDef> : never`).
 export interface AppManifest {
   user: unknown;
   cart: unknown;
@@ -356,14 +370,12 @@ export type ExternalOf<TSelfNS extends AppNamespace> = Exclude<
   AppNamespace,
   TSelfNS
 >;
-export type StrictManifest<M> = {
-  [K in keyof M & string]: new (namespace: K) => Feature<any, any, K>;
-};
 ```
 
 ```typescript
 // app/main.ts — VALUE-MANIFEST (satisfies vérifie la cohérence)
-import type { AppManifest, StrictManifest } from "@app/manifest.js";
+import type { AppManifest } from "@app/manifest.js";
+import type { StrictManifest } from "@bonsai/feature";
 import { UserFeature } from "@user/user.feature.js";
 import { CartFeature } from "@cart/cart.feature.js";
 
@@ -383,9 +395,9 @@ app.start();
 > **`Application.register()` est supprimée** (I69, D-η ADR-0039). L'enregistrement
 > se fait exclusivement via le manifest passé au constructeur d'Application.
 
-> **Note ADR-0024, amendée par [ADR-0046](../../adr/ADR-0046-feature-contract-refonte.md)** : `listens`/`queries` sont désormais lus depuis l'**instance** (`abstract get`), pas depuis la classe. `Application.start()` les lit en **Phase 0c**, après l'instanciation pure de la Feature (ctor inerte, I94) et avant tout side-effect Radio, pour valider les références croisées (I70 amendé). Ce pattern rejoint enfin le value-first ADR-0024 déjà appliqué à la couche concrète (View, Composer, Behavior, Foundation via `get features()` / `get uiEvents()` / `get uiElements()`, ADR-0042) — `listens`/`queries` ne sont plus l'exception lue depuis la classe.
+> **Note ADR-0024, amendée par [ADR-0046](../../adr/ADR-0046-feature-contract-refonte.md)** : `listens`/`queries` sont désormais lus depuis l'**instance** (`abstract get`), pas depuis la classe. `Application.start()` les lit en **Phase 0c**, après l'instanciation pure de la Feature (ctor inerte, I94) et avant tout side-effect Radio, pour valider les références croisées (I70 amendé). Ce pattern rejoint enfin le value-first ADR-0024, déjà appliqué côté **View** (`get features()`/`get uiEvents()`/`get uiElements()`, ADR-0042) — `listens`/`queries` ne sont plus l'exception lue depuis la classe côté Feature. Composer et Foundation n'exposent pas (encore) ces getters value-first ; Behavior n'existe pas encore comme package livré — cible strate 2.
 
-> **DX — symétrie compile-time avec View, résolue par ADR-0046** : comme View avec `implements TViewCallbacks<TVC>` (ADR-0042), Feature dispose désormais de `implements TFeatureCallbacks<TDef, TListens>` (I88 élargi, I92) — handlers `on{Cmd}Command` / `on{Req}Request` / `on{NS}{Event}Event` vérifiés **compile-time** (TS2515 si absent, TS2416 si signature fautive). Le bootstrap conserve l'auto-discovery (I48) comme filet runtime pour les contournements (`as any`, JS pur). Voir §3bis.
+> **DX — symétrie compile-time avec View, résolue par ADR-0046** : comme View avec `implements TViewCallbacks<TVC>` (ADR-0042), Feature dispose désormais de `implements TFeatureCallbacks<TDef, TListens>` (I88 élargi, I92) — handlers `on{Cmd}Command` / `on{Req}Request` / `on{NS}{Event}Event` vérifiés **compile-time** (TS2515 si absent, TS2416 si signature fautive). Cette garantie ne va pas jusqu'au runtime : l'auto-discovery (I48) enregistre les handlers présents mais ne détecte pas une omission (cf. §3bis, I92). Voir §3bis.
 
 <!--
   Le Channel propre est toujours implicite pour emit (C1),
@@ -528,13 +540,14 @@ disponibles via `this` dans le contexte d'une Feature :
  *
  * - eventName : doit correspondre à une clé de TChannel['events']
  * - payload : typé depuis TChannel['events'][eventName]
- * - options.metas : metas reçues par le handler, propagées explicitement (ADR-0005, ADR-0016, I54)
  * - Cardinalité : 1:N (broadcast vers tous les listeners)
+ *
+ * Strate 0 : signature sans metas. La strate 1b ajoutera un 3ᵉ paramètre
+ * `options: { metas: TMessageMetas }` (cf. bandeau de périmètre en tête de document).
  */
 protected emit<K extends keyof TChannel['events'] & string>(
   eventName: K,
-  payload: TChannel['events'][K],
-  options: { metas: TMessageMetas }
+  payload: TChannel['events'][K]
 ): void;
 ```
 
@@ -555,7 +568,7 @@ Pas de méthode `reply()` explicite — les Requests entrantes sont routées ver
 
 ### C5 — `request()` : interroger une Feature externe
 
-Signature actuelle (cf. `packages/feature/src/bonsai-feature.ts:260-269`) :
+Signature actuelle (cf. `packages/feature/src/bonsai-feature.ts:270-280`) :
 
 ```typescript
 /**
@@ -666,9 +679,9 @@ class CartFeature
 
   // ── C4 reply : Requests entrantes sur son propre Channel ──
 
-  /** Répond au Request cart:items — délègue à l'Entity */
-  onItemsRequest(_params: void): CartItem[] | null {
-    return this.entity.query.getItems();
+  /** Répond au Request cart:itemCount — délègue à l'Entity */
+  onItemCountRequest(_params: void): number | null {
+    return this.entity.query.getItemCount();
   }
 
   /** Répond au Request cart:total — délègue à l'Entity */
@@ -794,8 +807,8 @@ class CartFeature
 // ✓ Depuis ADR-0046 (I92) — handler manquant détecté COMPILE-TIME :
 //   Si on oublie onClearCommand alors que TCartDef.commands.clear existe,
 //   `implements TFeatureCallbacks<TCartDef, …>` lève TS2515 immédiatement —
-//   plus besoin d'atteindre le bootstrap pour le découvrir (l'auto-discovery
-//   I48 reste un filet runtime pour les contournements `as any`/JS pur).
+//   cette garantie reste strictement compile-time (l'auto-discovery I48 ne
+//   détecte pas une omission au runtime, cf. §3bis, I92).
 // ────────────────────────────────────────────────────────────
 ```
 
@@ -886,10 +899,10 @@ abstract class Feature<
 Les hooks de cycle de vie sont des **méthodes framework internes** (L1),
 pas des Events sur un Channel. Le framework les appelle directement.
 
-| Hook          | Quand                                           | Usage typique                                 |
-| ------------- | ----------------------------------------------- | --------------------------------------------- |
-| `onInit()`    | Après instanciation, après câblage des Channels | Chargement initial de données, setup          |
-| `onDestroy()` | Avant destruction au shutdown                   | Cleanup, sauvegarde, libération de ressources |
+| Hook          | Quand                                           | Usage typique                                 | État |
+| ------------- | ------------------------------------------------ | --------------------------------------------- | ---- |
+| `onInit()`    | Fin de `bootstrap()` (Phase 3), après câblage des handlers | Chargement initial de données, setup | ✅ livré — public, synchrone, sans support async |
+| `onDestroy()` | Avant destruction au shutdown                   | Cleanup, sauvegarde, libération de ressources | ⏳ cible strate 1 — n'existe pas |
 
 ```typescript
 abstract class Feature<
@@ -902,11 +915,15 @@ abstract class Feature<
 
   constructor(namespace: TSelfNS) { /* ... cf. §1 ... */ }
 
-  /** Appelé par le framework après instanciation et câblage (bootstrap étape 5). */
-  protected onInit(): void | Promise<void> {}
+  /**
+   * Appelé par `bootstrap()` (Phase 3), après l'auto-découverte des handlers
+   * Command/Request/Event/Entity. Public, synchrone — aucun support async :
+   * si `onInit()` fait un travail asynchrone, `bootstrap()` ne l'attend pas.
+   */
+  onInit(): void {}
 
-  /** Appelé par le framework au shutdown avant destruction. */
-  protected onDestroy(): void | Promise<void> {}
+  // onDestroy() n'existe pas — cible strate 1 (cf. bandeau de périmètre en
+  // tête de document). Aucun hook de shutdown n'est appelé aujourd'hui.
 }
 ```
 
@@ -917,25 +934,27 @@ abstract class Feature<
   Pourquoi pas des Events Channel ?
 
   RFC-0001 Q9 a démontré que les Events lifecycle sont structurellement
-  inutiles : au moment où `onInit` est appelé (bootstrap étape 5),
-  aucune View n'existe encore pour écouter. Et quand les Views existent
-  (étape 6+), les Features sont déjà initialisées.
+  inutiles : au moment où `onInit` est appelé (bootstrap Phase 3), aucune
+  View n'existe encore pour écouter. Et quand les Views existent
+  (Phase 4), les Features sont déjà initialisées.
 
-  Les hooks sont synchrones ou async (Promise<void>) pour permettre
-  un chargement initial de données (fetch, localStorage, etc.).
-
-  Ordre d'appel :
-  - onInit() : appelé pour chaque Feature dans l'ordre d'enregistrement
-  - Si un onInit() retourne une Promise, le bootstrap attend sa résolution
-    avant de passer à la Feature suivante (→ séquentiel, D18)
-  - onDestroy() : appelé dans l'ordre inverse d'enregistrement
+  Ordre d'appel : onInit() est appelé pour chaque Feature dans l'ordre du
+  manifest, de façon strictement synchrone (pas d'attente inter-Feature —
+  contrairement à ce qu'impliquerait un onInit() async, non livré).
 -->
 
 ---
 
 ## 8. Sémantiques lifecycle et échecs
 
-### 7.1 Machine à états de la Feature
+### 7.1 Machine à états de la Feature 🧭 cible — non livrée
+
+> **Écart avec le code** : `Feature` ne porte aucune machine à états. Le seul
+> indicateur interne est un booléen privé `#bootstrapped` (`bootstrap()` est
+> idempotent : un second appel est un no-op). `Application.register()` et
+> `Application.stop()` n'existent pas (I69, D-η ADR-0039 — l'enregistrement se
+> fait exclusivement via le manifest, cf. §3). Le tableau ci-dessous décrit le
+> modèle **cible** évoqué par RFC-0001, pas un contrat livré.
 
 ```
 registered → wired → initialized → active → destroying → [destroyed]
@@ -943,16 +962,17 @@ registered → wired → initialized → active → destroying → [destroyed]
 
 | État          | Entrée (déclencheur)                               | Sorties possibles         | Notes                                                            |
 | ------------- | -------------------------------------------------- | ------------------------- | ---------------------------------------------------------------- |
-| `registered`  | `app.register(FeatureClass)`                       | → `wired` (bootstrap)     | Validation namespace (I21)                                       |
-| `wired`       | Câblage Radio — Channels résolus, handlers indexés | → `initialized`           | Erreur si handler manquant ou duplicate                          |
-| `initialized` | `onInit()` terminé                                 | → `active`                | `onInit()` async attendu (D18)                                   |
+| `registered`  | Entrée dans le manifest applicatif                 | → `wired` (bootstrap)     | Validation namespace (I21)                                       |
+| `wired`       | Câblage Radio — Channels résolus, handlers indexés | → `initialized`           | Erreur si handler dupliqué (I10) ; handler manquant non détecté au runtime (I92, §3bis) |
+| `initialized` | `onInit()` terminé                                 | → `active`                | `onInit()` synchrone — pas d'attente possible (§7)               |
 | `active`      | Bootstrap complet                                  | → `destroying` (shutdown) | Phase nominale — traite Commands, émet Events, répond à Requests |
-| `destroying`  | `app.stop()`                                       | → `destroyed`             | `onDestroy()` appelé. Ordre : inverse de registration            |
-| `destroyed`   | Nettoyage complet                                  | — (terminal)              | Entity déréférencée, subscriptions supprimées                    |
+| `destroying`  | ⏳ non livré (`onDestroy()` inexistant)            | → `destroyed`             | ⏳ cible strate 1                                                 |
+| `destroyed`   | ⏳ non livré                                        | — (terminal)              | ⏳ cible strate 1                                                 |
 
-> **Garantie de séquence** : une Feature ne peut pas recevoir de Command avant d'être
-> en état `active`. Le bootstrap garantit que la couche abstraite est intégralement
-> initialisée avant que la couche concrète (Views) ne soit créée (RFC-0001 §5.1).
+> **Garantie de séquence effectivement livrée** : une Feature ne peut pas recevoir de
+> Command avant que son propre `bootstrap()` ait câblé ses handlers. Le bootstrap de
+> `Application` instancie et câble intégralement la couche abstraite (Phases 0b/0c/1/3)
+> avant de créer la Foundation et les Views (Phase 4, RFC-0001 §5.1).
 
 ### 7.2 Gestion des erreurs dans les handlers
 
@@ -960,39 +980,41 @@ registered → wired → initialized → active → destroying → [destroyed]
 
 Un Command handler peut échouer pour deux raisons distinctes :
 
-| Situation                | Comportement attendu                                                                                                                                                               | Exemple                                                                    |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Situation                | Comportement **livré**                                                                                                                                                | Exemple                                                                    |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | **Refus métier**         | Le handler n'exécute pas la mutation et n'émet pas d'Event. Il peut émettre un Event d'erreur métier dédié.                                                                        | `cart:addItem` avec `qty <= 0` — ne pas muter, émettre `cart:itemRejected` |
-| **Exception inattendue** | Capturée par le framework, logguée avec contexte causal complet. L'exception ne propage pas aux autres composants. Voir [ADR-0002](../../adr/ADR-0002-error-propagation-strategy.md). | Erreur réseau dans un handler d'IO Feature                                 |
+| **Exception inattendue** | **Non capturée** : `Channel.trigger()` invoque le handler sans `try/catch` (`packages/event/src/channel.class.ts`) — l'exception **se propage** jusqu'à l'appelant de `trigger()` (typiquement une View). `CommandError` est définie dans `@bonsai/error` mais n'est **jamais levée** par le code livré. L'isolation décrite par [ADR-0002](../../adr/ADR-0002-error-propagation-strategy.md) est une **cible strate 1b** (cf. bandeau de périmètre). | Erreur réseau dans un handler d'IO Feature                                 |
 
 > **Convention de refus métier** : ne pas lever d'exception pour un refus métier prévisible.
 > Préférer un Event dédié (`xxx:rejected`, `xxx:failed`) avec le motif dans le payload.
-> Les exceptions sont pour les cas vraiment inattendus (erreurs de programmation, pannes).
+> Les exceptions sont pour les cas vraiment inattendus (erreurs de programmation, pannes) —
+> mais tant que l'isolation n'est pas livrée, une exception inattendue casse l'appelant.
 
 ```typescript
-// ✅ Refus métier via Event dédié
-onAddItemCommand(payload: { productId: string; qty: number }, metas: TMessageMetas): void {
+// ✅ Refus métier via Event dédié — strate 0 : signature sans metas (cf. bandeau de périmètre)
+onAddItemCommand(payload: { productId: string; qty: number }): void {
   if (payload.qty <= 0) {
-    this.emit('itemRejected', { productId: payload.productId, reason: 'invalid-qty' }, { metas });
+    this.emit('itemRejected', { productId: payload.productId, reason: 'invalid-qty' });
     return; // pas de mutation, pas d'exception
   }
-  this.entity.mutate('cart:addItem', { payload, metas }, draft => {
+  this.entity.mutate('cart:addItem', { payload }, draft => {
     draft.items.push({ productId: payload.productId, qty: payload.qty });
   });
-  this.emit('itemAdded', payload, { metas });
+  this.emit('itemAdded', payload);
 }
 ```
 
 #### Erreurs dans `onXxxRequest`
 
 Un request handler retourne `T | null` synchrone (D9 révisé par ADR-0023). Si le handler throw,
-le framework capture l'erreur et retourne `null` au consommateur (D44 révisé, I55).
+`Channel.request()` capture l'erreur (`console.error`, sans lever de `RequestError`), et retourne
+`null` au consommateur (D44 révisé, I55) — ce comportement **est** livré.
 
 ```typescript
-// ✅ Gestion explicite dans le handler
-onTotalRequest(params: void, metas: TMessageMetas): number | null {
+// ✅ Gestion explicite dans le handler — strate 0 : signature sans metas
+onTotalRequest(params: void): number | null {
   try {
-    return this.entity.getTotal();
+    return this.entity.query.getTotal();
   } catch {
     return 0; // valeur de repli — l'erreur ne doit pas atteindre l'appelant
   }
@@ -1015,9 +1037,9 @@ onTotalRequest(params: void, metas: TMessageMetas): number | null {
 | **Non-idempotent involontaire** | Duplication d'état par inattention | ❌ Anti-pattern (ex: push sans check d'existance) |
 
 ```typescript
-// ✅ Non-idempotent contrôlé — addItem ajoute, c'est attendu
-onAddItemCommand({ productId, qty }: AddItemPayload, metas: TMessageMetas): void {
-  this.entity.mutate('cart:addItem', { payload: { productId, qty }, metas }, draft => {
+// ✅ Non-idempotent contrôlé — addItem ajoute, c'est attendu (strate 0 : sans metas)
+onAddItemCommand({ productId, qty }: AddItemPayload): void {
+  this.entity.mutate('cart:addItem', { payload: { productId, qty } }, draft => {
     const existing = draft.items.find(i => i.productId === productId);
     if (existing) {
       existing.qty += qty; // cumul explicite
@@ -1028,8 +1050,8 @@ onAddItemCommand({ productId, qty }: AddItemPayload, metas: TMessageMetas): void
 }
 
 // ✅ Idempotent strict — setStatus écrase, pas de duplication
-onSetStatusCommand({ status }: { status: string }, metas: TMessageMetas): void {
-  this.entity.mutate('user:setStatus', { payload: { status }, metas }, draft => {
+onSetStatusCommand({ status }: { status: string }): void {
+  this.entity.mutate('user:setStatus', { payload: { status } }, draft => {
     draft.status = status; // idempotent : même résultat si appelé N fois
   });
 }
@@ -1053,113 +1075,148 @@ onSetStatusCommand({ status }: { status: string }, metas: TMessageMetas): void {
 ### 7.4 Modèle d'erreurs — hiérarchie `BonsaiError`
 
 > **Absorbé depuis** : [ADR-0002](../../adr/ADR-0002-error-propagation-strategy.md) (Accepted).
-> Cette section fait désormais foi pour la taxonomie, la hiérarchie TypeScript et la matrice de comportement.
+> La taxonomie et la hiérarchie TypeScript ci-dessous sont **livrées** (`@bonsai/error`,
+> `packages/error/src/bonsai-error.class.ts`) : les 10 classes existent et sont exportées.
+> En revanche, seule une partie est **effectivement levée** par le code — voir la matrice
+> de comportement, qui distingue les deux.
 
-#### Taxonomie des erreurs Bonsai
+#### Taxonomie des erreurs Bonsai (10 classes, livrées)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        ERREURS BONSAI                           │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ENTITY LAYER (State)                                          │
-│  └── MutationError     : recipe throw → Immer rollback          │
+│  ENTITY LAYER (State) — LEVÉES (packages/entity)                │
+│  ├── MutationError        : recipe throw → Immer rollback       │
+│  └── EntityReentrancyError : mutate() en ré-entrance excessive  │
+│                              (ADR-0028 strate 1a, I98)           │
 │                                                                 │
 │  FEATURE LAYER (Logic)                                         │
-│  ├── CommandError      : onXxxCommand() throw                   │
-│  ├── RequestError      : onXxxRequest() throw/reject            │
-│  └── BroadcastError    : onXxxEntityUpdated() throw             │
+│  ├── CommandError      : onXxxCommand() throw — définie, JAMAIS │
+│  │                       levée par le code livré (cf. §7.2)     │
+│  ├── RequestError      : onXxxRequest() throw/reject — définie, │
+│  │                       JAMAIS levée (Channel.request() capture│
+│  │                       et journalise via console.error)       │
+│  └── BroadcastError    : onXxxEntityUpdated() throw — LEVÉE     │
+│                          (#dispatchEntityEvent, I96)             │
 │                                                                 │
 │  CHANNEL LAYER (Communication)                                 │
-│  ├── ListenerError     : Event listener throw                   │
-│  ├── TimeoutError      : Request sans réponse                   │
-│  └── NoHandlerError    : Command/Request sans handler           │
+│  ├── ListenerError        : Event listener throw — LEVÉE        │
+│  ├── NoHandlerError       : trigger() sans handle() — LEVÉE     │
+│  └── DuplicateHandlerError : handle()/reply() en double — LEVÉE │
+│                              (I10)                               │
 │                                                                 │
 │  VIEW LAYER (UI)                                               │
-│  ├── RenderError       : Projection/template throw              │
-│  └── BehaviorError     : Behavior throw                         │
+│  ├── RenderError       : Projection/template throw — définie,  │
+│  │                       pas de mécanisme de capture livré      │
+│  └── BehaviorError     : Behavior throw — définie ; le package  │
+│                          Behavior n'existe pas encore           │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+> Pas de `TimeoutError` : `request()` est synchrone (ADR-0023), aucune notion
+> de délai n'existe.
+
 #### Classe de base `BonsaiError`
 
 ```typescript
-/**
- * Base class pour toutes les erreurs Bonsai.
- * Porte le contexte causal (metas) et le code d'erreur structuré.
- */
-abstract class BonsaiError extends Error {
-  abstract readonly code: string;
+// packages/error/src/bonsai-error.class.ts (signature réelle)
+export class BonsaiError extends Error {
+  override readonly name: string = "BonsaiError";
 
   constructor(
     message: string,
-    public readonly metas: TMessageMetas | null,
-    public readonly cause?: Error
+    readonly invariantId: string,
+    readonly component: string = "",
+    readonly suggestion: string = ""
   ) {
-    super(message);
-    this.name = this.constructor.name;
+    super(
+      `[${invariantId}]${component ? ` ${component}` : ""} — ${message}${suggestion ? `\n  → ${suggestion}` : ""}`
+    );
   }
 }
 ```
 
-> Chaque sous-classe ajoute des champs contextuels typés (voir [ADR-0002 §Hiérarchie TypeScript](../../adr/ADR-0002-error-propagation-strategy.md) pour les signatures complètes des 9 classes).
+> `BonsaiError` est **concrète** (pas `abstract`), sans champ `code` ni `cause` :
+> le contexte causal est porté par `invariantId` (identifiant d'invariant ou d'ADR,
+> ex. `"I10"`) et `component` (namespace concerné), pas par des `metas`. Chaque
+> sous-classe ne fait qu'hériter — aucune n'ajoute de champ contextuel additionnel
+> dans le code livré (contrairement à ce qu'impliquerait une hiérarchie à 9 classes
+> avec champs typés par classe — la hiérarchie livrée compte 10 classes plates).
 
 #### Matrice de comportement
 
-| Erreur             | State       | Historique    | Continue ?  | Mode dev | Mode prod |
-| ------------------ | ----------- | ------------- | ----------- | -------- | --------- |
-| **MutationError**  | ❌ Rollback | ❌ Non ajouté | Non         | throw    | throw     |
-| **CommandError**   | ❌ Pas muté | —             | Non         | throw    | throw     |
-| **RequestError**   | —           | —             | Non         | reject   | reject    |
-| **BroadcastError** | ✅ Conservé | ✅ Conservé   | ✅ Oui      | throw    | log       |
-| **ListenerError**  | —           | —             | ✅ Oui      | throw    | log       |
-| **TimeoutError**   | —           | —             | Non         | reject   | reject    |
-| **NoHandlerError** | —           | —             | —           | throw    | warn      |
-| **RenderError**    | —           | —             | ✅ Boundary | throw    | boundary  |
-| **BehaviorError**  | —           | —             | ✅ Oui      | throw    | log       |
+| Erreur             | Levée par le code livré ? | State       | Continue ?  | Comportement réel |
+| ------------------ | -------------------------- | ----------- | ----------- | ------------------ |
+| **MutationError**  | ✅ Oui (`Entity#runCycle`)  | ❌ Rollback (Immer n'a jamais appliqué le recipe qui a throw) | Non — throw | Propage à l'appelant de `mutate()` (la Feature) |
+| **EntityReentrancyError** | ✅ Oui (`Entity`, profondeur de ré-entrance, I98) | — | Non — throw | Propage à l'appelant de `mutate()` |
+| **CommandError**   | ❌ Jamais              | —           | —           | Exception non capturée : propage jusqu'à l'appelant de `trigger()` (§7.2) |
+| **RequestError**   | ❌ Jamais              | —           | —           | `Channel.request()` capture le throw, journalise via `console.error`, retourne `null` |
+| **BroadcastError** | ✅ Oui (`#dispatchEntityEvent`, I96) | ✅ Conservé (mutation déjà appliquée) | ✅ Oui — notification suivante non interrompue | `console.error` |
+| **ListenerError**  | ✅ Oui (`Channel.listen`)   | —           | ✅ Oui — autres listeners non affectés | `console.error` |
+| **NoHandlerError** | ✅ Oui (`Channel.trigger`)  | —           | Non — throw  | Propage à l'appelant |
+| **DuplicateHandlerError** | ✅ Oui (`Channel.handle`/`reply`, I10) | — | Non — throw au bootstrap | Propage |
+| **RenderError**    | ⏳ Pas de mécanisme de capture livré | — | — | — |
+| **BehaviorError**  | ⏳ Package Behavior non livré | — | — | — |
+
+> Les modes « dev »/« prod » différenciés (`throw` en dev, `log`/`warn` en prod)
+> décrits par ADR-0002 ne sont **pas** livrés : le comportement ci-dessus est
+> unique, indépendant de `__DEV__`.
 
 #### Principe clé : séparation Mutation vs Broadcast
 
-```typescript
-// MUTATION : erreur dans recipe → state intact
-this.entity.mutate("cart:addItem", { payload }, draft => {
-  throw new Error("Validation failed");
-  // → Immer rollback automatique → MutationError remontée → State INTACT
-});
+Ce principe **est** livré :
 
-// BROADCAST : erreur dans handler → state CONSERVÉ
+```typescript
+// MUTATION : erreur dans recipe → state intact — comportement livré
+onAddItemCommand(payload: { productId: string; qty: number }): void {
+  this.entity.mutate("cart:addItem", { payload }, draft => {
+    throw new Error("Validation failed");
+    // → Immer rollback automatique → MutationError levée par Entity#runCycle
+    //   → State INTACT → propage jusqu'ici (non catchée par le Command
+    //     handler dans cet exemple) → propage à son tour à l'appelant de
+    //     trigger() (§7.2, cible strate 1b pour l'isolation)
+  });
+}
+
+// BROADCAST : erreur dans handler Entity → state CONSERVÉ — comportement livré (I96)
 onItemsEntityUpdated(prev, next, patches) {
-  this.emit('cart:updated', { items: next });
+  this.emit('itemsUpdated', { items: next });
   throw new Error("Analytics failed");
   // → State DÉJÀ MODIFIÉ (mutation réussie)
-  // → BroadcastError loggée → Autres handlers quand même appelés
+  // → BroadcastError loguée via console.error (#dispatchEntityEvent)
+  // → Les autres handlers per-key et le catch-all sont quand même appelés
 }
 ```
 
-#### Recovery Hook — `onError()`
+#### Recovery Hook — `onError()` ⏳ cible strate 1, non livré
 
-Chaque Feature (et View) peut surcharger `onError()` pour un comportement custom :
+> `onError()` n'existe pas sur `Feature`. Aucun mécanisme de recovery
+> configurable par sous-classe n'est livré aujourd'hui — les erreurs listées
+> dans la matrice ci-dessus soit propagent, soit sont journalisées via
+> `console.error` sans point d'extension. L'API suivante est une **proposition
+> non implémentée**, à ne pas utiliser dans le code applicatif actuel :
+>
+> ```typescript
+> // ⏳ Cible — n'existe pas dans le code livré
+> class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
+>   protected onError(error: BonsaiError): void {
+>     if (error instanceof MutationError) {
+>       this.emit("itemRejected", { reason: "mutation-failed" });
+>       return;
+>     }
+>     super.onError(error); // Comportement par défaut — hypothétique
+>   }
+> }
+> ```
 
-```typescript
-class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
-  protected onError(error: BonsaiError): void {
-    if (error instanceof RequestError && error.request === "pricing:getPrice") {
-      this.useCachedPrice(); // Retry avec cache
-      return;
-    }
-    if (error instanceof MutationError) {
-      this.emit("cart:error", { message: "Action failed, please retry" });
-      return;
-    }
-    super.onError(error); // Comportement par défaut
-  }
-}
-```
+#### ErrorReporter — infrastructure transversale ⏳ cible strate 1, non livré
 
-#### ErrorReporter — infrastructure transversale
-
-> Les erreurs ne sont **pas** un domaine métier. Elles ne sont **pas** modélisées
-> comme Feature + Entity + Channel. L'ErrorReporter est une **infrastructure framework
-> transversale** (comme Radio). Voir [ADR-0002 §ErrorReporter](../../adr/ADR-0002-error-propagation-strategy.md)
-> et [RFC-0004 §5](../devtools.md) pour les hooks DevTools (`onError`, `getErrors`).
+> Aucun `ErrorReporter` n'existe dans le code livré — les erreurs sont soit
+> propagées à l'appelant, soit journalisées directement via `console.error`
+> aux points de capture listés dans la matrice ci-dessus (pas de registre
+> centralisé, pas de hook DevTools `onError`/`getErrors`). Voir
+> [ADR-0002 §ErrorReporter](../../adr/ADR-0002-error-propagation-strategy.md)
+> pour le contrat cible.
