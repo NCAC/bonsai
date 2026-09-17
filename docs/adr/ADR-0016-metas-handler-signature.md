@@ -397,8 +397,8 @@ mutate(intent: string, recipe: (draft: Draft<T>) => void): TEntityEvent;
 ## Références
 
 - [ADR-0005 — Meta Lifecycle](ADR-0005-meta-lifecycle.md) — Décision source (Accepted)
-- [RFC-0001 §10 — Traçabilité](../rfc/1-philosophie.md#10-traçabilité-et-métadonnées-causales)
-- [RFC-0002 §13 — Système de metas](../rfc/6-transversal/conventions-typage.md#13-système-de-metas) — Position D43 (révoquée)
+- [RFC-0001 §10 — Traçabilité](../rfc/2-architecture/metas.md)
+- [RFC-0002 §13 — Système de metas](../rfc/2-architecture/metas.md) — Position D43 (révoquée)
 - [FRAMEWORK-STYLE-GUIDE §2.3](../guides/FRAMEWORK-STYLE-GUIDE.md) — Pattern explicite (déjà aligné)
 - [Rapport d'audit 2026-03-25](../ERRATA-2026-03-23.md) — Identification de la contradiction B1
 

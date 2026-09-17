@@ -8,7 +8,7 @@
 | **Date** | 2026-03-27 |
 | **Mis à jour** | 2026-04-01 |
 | **Décideurs** | @ncac |
-| **RFC liée** | [RFC-0001-composants](../rfc/2-architecture/README.md), [RFC-0002 §7](../rfc/6-transversal/conventions-typage.md#7-application) |
+| **RFC liée** | [RFC-0001-composants](../rfc/2-architecture/README.md), [RFC-0002 §7](../rfc/3-couche-abstraite/application.md) |
 | **Invariants impactés** | I21, I23, I24, I33, I35, I37 |
 | **Décisions impactées** | D1, D6, D15, D21, D22 |
 | **Dépendances** | ADR-0010 (bootstrap order), ADR-0018 (Foundation contract), ADR-0019 (Mode ESM — mécanisme BonsaiRegistry), ADR-0020 (N-instances Composer) |
@@ -910,7 +910,7 @@ Tous les invariants actuels (I1–I45, I57) restent **intacts**. La Phase 1 n'aj
 
 | Fichier | Impact |
 |---------|--------|
-| [RFC-0002 §7](../rfc/6-transversal/conventions-typage.md#7-application) | Ajout de `use(plugin)` dans l'API Application |
+| [RFC-0002 §7](../rfc/3-couche-abstraite/application.md) | Ajout de `use(plugin)` dans l'API Application |
 | [RFC-0001-glossaire](../rfc/reference/glossaire.md) | Ajout définition « Plugin package », « Namespace scopé » |
 | [RFC-0001-invariants-decisions](../rfc/reference/invariants.md) | Note sur I21 : les namespaces scopés (dot-notation) sont autorisés |
 

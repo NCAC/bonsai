@@ -7,7 +7,7 @@
 | **Statut** | 🔵 Tested |
 | **Date** | 2026-04-01 |
 | **Décideurs** | @ncac |
-| **RFC liée** | [RFC-0001-architecture-fondamentale](../rfc/1-philosophie.md), [RFC-0002 §7 Application](../rfc/6-transversal/conventions-typage.md#7-application) |
+| **RFC liée** | [RFC-0001-architecture-fondamentale](../rfc/1-philosophie.md), [RFC-0002 §7 Application](../rfc/3-couche-abstraite/application.md) |
 | **Invariants impactés** | I21, I24, D6, D9, D15 |
 | **ADRs liées** | ADR-0010 (bootstrap order), ADR-0018 (Foundation contract), ADR-0020 (N-instances Composer), ADR-0021 (monde ouvert / plateforme) |
 
@@ -612,7 +612,7 @@ bonsai build --check
 
 | Fichier | Impact |
 |---------|--------|
-| [RFC-0002 §7 Application](../rfc/6-transversal/conventions-typage.md#7-application) | Ajout de l'API `BonsaiRegistry` (register*, collect) |
+| [RFC-0002 §7 Application](../rfc/3-couche-abstraite/application.md) | Ajout de l'API `BonsaiRegistry` (register*, collect) |
 | [RFC-0001-glossaire](../rfc/reference/glossaire.md) | Ajout définitions : « Mode ESM Modulaire », « BonsaiRegistry », « Module ESM Bonsai », « artefact `.d.ts` » |
 | [ADR-0010](ADR-0010-bootstrap-order.md) | Note de compatibilité : pré-étape ESM (collect) avant phase 1 |
 | [FRAMEWORK-STYLE-GUIDE](../guides/FRAMEWORK-STYLE-GUIDE.md) | Convention de déclaration des modules ESM + convention nommage artefacts |

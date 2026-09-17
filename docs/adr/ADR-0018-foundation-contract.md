@@ -5,7 +5,7 @@
 | **Statut** | 🟠 Suspended — contrat minimal spécifié dans RFC-0001-composants §9, invariants I59–I62 en attente d'implémentation |
 | **Date** | 2026-03-27 |
 | **Décideurs** | @ncac |
-| **RFC liée** | [RFC-0002 §11](../rfc/6-transversal/conventions-typage.md#11-foundation), [RFC-0001-composants §9](../rfc/2-architecture/README.md#9-foundation) |
+| **RFC liée** | [RFC-0002 §11](../rfc/4-couche-concrete/foundation.md), [RFC-0001-composants §9](../rfc/4-couche-concrete/foundation.md) |
 | **Invariants impactés** | I33, I34, I38, I39 |
 | **Décisions impactées** | D20, D27, D29 |
 
@@ -725,8 +725,8 @@ class AppFoundation extends Foundation {
 
 | Fichier | Impact |
 |---------|--------|
-| [RFC-0002 §11](../rfc/6-transversal/conventions-typage.md#11-foundation) | Réécriture majeure — ajout TFoundationUIMap, readServerData, getMedia, setTitle, getMeta |
-| [RFC-0001-composants §9](../rfc/2-architecture/README.md#9-foundation) | Ajout classification « concret persistant », lifecycle asymétrique (`onAttach` → `onShutdown`), suppression `onDetach` |
+| [RFC-0002 §11](../rfc/4-couche-concrete/foundation.md) | Réécriture majeure — ajout TFoundationUIMap, readServerData, getMedia, setTitle, getMeta |
+| [RFC-0001-composants §9](../rfc/4-couche-concrete/foundation.md) | Ajout classification « concret persistant », lifecycle asymétrique (`onAttach` → `onShutdown`), suppression `onDetach` |
 | [RFC-0001-invariants-decisions](../rfc/reference/invariants.md) | Ajout I59, I60, I61, I62, D49, D50, D51, D52 ; amendement D20 |
 | [RFC-0001-glossaire](../rfc/reference/glossaire.md) | Mise à jour définition Foundation |
 | [RFC-0001-architecture](../rfc/1-philosophie.md) | Diagramme couches : ajout « pont concret-persistant » |

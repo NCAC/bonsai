@@ -512,8 +512,8 @@ const report = app.devTools!.stopProfiling();
 | Section RFC-0002 | Concept | Lien DevTools |
 |-------------------|---------|---------------|
 | [RFC-0002 §7.3 `enableDevTools`](6-transversal/conventions-typage.md) | Flag dans `TApplicationConfig` | Active/désactive les hooks |
-| [RFC-0001 §10 Metas](1-philosophie.md#10-traçabilité-et-métadonnées-causales) | `correlationId`, `causationId`, `hop` | Graphe causal, Event Ledger |
-| [RFC-0001 §11.3 Diagnostics](1-philosophie.md#113-principe-de-diagnostics) | Principes d'observabilité | Motivation des DevTools |
+| [Metas — traçabilité causale](2-architecture/metas.md) | `correlationId`, `causationId`, `hop` | Graphe causal, Event Ledger |
+| [§1 Motivation et position architecturale](#1-motivation-et-position-architecturale) | Principes d'observabilité | Motivation des DevTools |
 | [RFC-0002-entity §4](3-couche-abstraite/entity.md#4-api-de-mutation--mutateintent-params-recipe) | `TEntityEvent` avec `patches` | Inspection mutations |
 | [RFC-0002-entity §7](3-couche-abstraite/entity.md#7-sérialisation-et-snapshot) | `toJSON()` / `fromJSON()` | Snapshot, restore |
 | [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md) | `inversePatches` Immer | Time-travel (post-v1) |

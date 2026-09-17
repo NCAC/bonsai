@@ -28,7 +28,7 @@
 ## 📋 Table des matières
 
 1. [Classe abstraite Feature](#1-classe-abstraite-feature)
-2. [Déclaration Channel — pratique (D13, D14)](#2-déclaration-channel--pratique-d13-d14)
+2. [Déclaration Channel — pratique (D13, ADR-0040)](#2-déclaration-channel--pratique-d13-adr-0040)
 3. [Déclaration du contrat — `channel` statique, `listens`/`queries` d'instance](#3-déclaration-du-contrat--channel-statique-listensqueries-dinstance)
    - 3bis. [`TFeatureCallbacks` et `TStrictFeatureClass` (ADR-0046)](#3bis-tfeaturecallbacks-et-tstrictfeatureclass-adr-0046)
 4. [Les 5 capacités — signatures](#4-les-5-capacités--signatures)
@@ -44,7 +44,7 @@
 La Feature est paramétrée par sa structure Entity et sa définition Channel.
 
 Le framework **infère et vérifie** les méthodes `onXXX` à la compilation
-via les mapped types définis dans [RFC-0002 §3 Conventions de typage](../6-transversal/conventions-typage.md#3-conventions-de-typage).
+via les mapped types définis dans [RFC-0002 §5.2 Mapped types](../6-transversal/conventions-typage.md#52-mapped-types--contrainte-des-handlers-depuis-les-declarations-channel).
 
 ```typescript
 /**
@@ -1033,7 +1033,7 @@ onSetStatusCommand({ status }: { status: string }, metas: TMessageMetas): void {
 | Handler > 30 lignes         | Logique mal placée              | Extraire dans des méthodes privées ou dans l'Entity |
 | Entity avec > 15 propriétés | State trop large                | Découper en deux Features avec Entities séparées    |
 
-> **Anti-pattern God Feature** — voir [RFC-0001-invariants-decisions §2](../reference/invariants.md#-god-feature).
+> **Anti-pattern God Feature** — voir [Anti-patterns](../reference/anti-patterns.md#-god-feature).
 > Une Feature bien calibrée répond à une seule question : "de quoi suis-je responsable ?"
 
 ### 7.4 Modèle d'erreurs — hiérarchie `BonsaiError`

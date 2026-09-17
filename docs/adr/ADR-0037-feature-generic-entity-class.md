@@ -14,7 +14,7 @@
 
 ## Contexte
 
-Le contrat actuel de [Feature](../rfc/3-couche-abstraite/feature.md#L62) déclare :
+Le contrat actuel de [Feature](../rfc/3-couche-abstraite/feature.md#1-classe-abstraite-feature) déclare :
 
 ```typescript
 abstract class Feature<
@@ -344,8 +344,8 @@ class CartFeature
 
 ## Références
 
-- [feature.md §1 Classe abstraite](../rfc/3-couche-abstraite/feature.md#L40)
-- [entity.md §1 Type TEntityStructure](../rfc/3-couche-abstraite/entity.md#L48)
+- [feature.md §1 Classe abstraite](../rfc/3-couche-abstraite/feature.md#1-classe-abstraite-feature)
+- [entity.md §1 Type TEntityStructure](../rfc/3-couche-abstraite/entity.md#1-type-tentitystructure-et-classe-abstraite-entity)
 - [decisions.md D17 — getter Entity abstrait](../rfc/reference/decisions.md)
 - [invariants.md I22 — 1:1:1 namespace ↔ Feature ↔ Entity](../rfc/reference/invariants.md)
 - `feature.core.test.ts` — élément déclencheur (renommé depuis en [feature.basic.test.ts](../../tests/unit/strate-0/feature.basic.test.ts))

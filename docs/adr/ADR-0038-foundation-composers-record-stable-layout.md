@@ -50,8 +50,8 @@ L'audit Composer/Foundation pré-strate-0 a mis en évidence une **divergence de
 
 | Source                                                                                                        | Type de `composers`                                                   |
 | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| [foundation.md §1](../rfc/4-couche-concrete/foundation.md#L86-L94) (RFC)                                      | `Record<string, typeof Composer>`                                     |
-| [foundation.md §3](../rfc/4-couche-concrete/foundation.md#L168) (RFC)                                         | `type TFoundationComposers = Record<string, typeof Composer>`         |
+| [foundation.md §1](../rfc/4-couche-concrete/foundation.md#1-classe-foundation) (RFC)                                      | `Record<string, typeof Composer>`                                     |
+| [foundation.md §3](../rfc/4-couche-concrete/foundation.md#3-composers-racines) (RFC)                                         | `type TFoundationComposers = Record<string, typeof Composer>`         |
 | [bonsai-foundation.ts](../../packages/foundation/src/bonsai-foundation.ts) (package strate 0, avant ADR-0038) | `readonly TFoundationComposerEntry[]` (`{ composer, rootElement }[]`) |
 
 Le package avait été écrit avec une intention **prudente** (préserver l'ordre formellement, anticiper d'éventuels cas N-instances). Cette prudence s'est révélée **mal fondée** au regard du rôle réel de Foundation, ce que cet ADR formalise.
@@ -65,7 +65,7 @@ Le package avait été écrit avec une intention **prudente** (préserver l'ordr
 - Ancré sur `<body>` (I33)
 - Le couvreur du **trou de couverture DOM** que les Views ne peuvent pas adresser (`<body>` lui-même n'est jamais le `rootElement` d'une View — I34)
 - **Persistant** au sens fort : créé au bootstrap, vit jusqu'au shutdown applicatif
-- **Sans PDR, sans projection, sans templates, sans rendu** ([foundation.md §1](../rfc/4-couche-concrete/foundation.md#L72))
+- **Sans PDR, sans projection, sans templates, sans rendu** ([foundation.md §1](../rfc/4-couche-concrete/foundation.md#1-classe-foundation))
 
 Foundation est essentiellement un **layout statique** : `#header`, `#main`, `#footer`, éventuellement `#aside` ou `#dialog-root`. Sa structure DOM ne change pas en cours de vie applicative — elle est fixée par la décomposition macro de l'UI.
 
@@ -129,7 +129,7 @@ class AppFoundation extends Foundation {
 | + DX déclarative la plus naturelle pour un layout (3-5 entrées)                                                                     | - Ordre garanti uniquement par convention ECMAScript (pas par le système de types TS)   |
 | + Unicité de sélecteur garantie au compile-time (TS1117 sur duplicata)                                                              | - Pas d'API pour itérer dans un ordre custom (mais n'est pas un besoin pour Foundation) |
 | + Lecture immédiate : `clé = sélecteur, valeur = Composer`                                                                          |                                                                                         |
-| + Conforme à la RFC actuelle ([foundation.md §1, §3](../rfc/4-couche-concrete/foundation.md#L86)) — pas de migration RFC nécessaire |                                                                                         |
+| + Conforme à la RFC actuelle ([foundation.md §1, §3](../rfc/4-couche-concrete/foundation.md)) — pas de migration RFC nécessaire |                                                                                         |
 | + Formalise la **stabilité** de Foundation au niveau du contrat de typage                                                           |                                                                                         |
 | + Décourage structurellement les usages dynamiques (un Record statique se relit comme tel)                                          |                                                                                         |
 
@@ -224,7 +224,7 @@ class AppFoundation extends Foundation {
 
 ### Justifications
 
-1. **Conforme à la RFC normative actuelle** ([foundation.md §1, §3](../rfc/4-couche-concrete/foundation.md#L86-L168)) — aucune migration RFC, le contrat documenté depuis l'origine est maintenu.
+1. **Conforme à la RFC normative actuelle** ([foundation.md §1, §3](../rfc/4-couche-concrete/foundation.md)) — aucune migration RFC, le contrat documenté depuis l'origine est maintenu.
 
 2. **Renforce le principe directeur de Foundation** (formalisé en §6.2 et inscrit comme nouvel **invariant I67**) :
 
@@ -278,7 +278,7 @@ class AppFoundation extends Foundation {
 abstract get composers(): Readonly<Record<string, typeof Composer>>;
 ```
 
-**Sémantique d'instanciation** (réf. [foundation.md §3](../rfc/4-couche-concrete/foundation.md#L143)) :
+**Sémantique d'instanciation** (réf. [foundation.md §3](../rfc/4-couche-concrete/foundation.md#3-composers-racines)) :
 
 ```
 Pour chaque [selector, ComposerClass] dans Object.entries(this.composers) :

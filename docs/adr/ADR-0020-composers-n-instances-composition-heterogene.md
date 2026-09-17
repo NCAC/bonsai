@@ -7,7 +7,7 @@
 | **Statut** | 🔵 Tested |
 | **Date** | 2026-04-01 |
 | **Décideurs** | @ncac |
-| **RFC liée** | [RFC-0002 §9 Composer](../rfc/6-transversal/conventions-typage.md#9-composer), [RFC-0001-composants](../rfc/2-architecture/README.md) |
+| **RFC liée** | [RFC-0002 §9 Composer](../rfc/4-couche-concrete/composer.md), [RFC-0001-composants](../rfc/2-architecture/README.md) |
 | **Invariants impactés** | I35 (nuancé), I37 (révisé), I40 (renforcé), D21, D24 |
 | **ADRs liées** | ADR-0001 (entity mutation), ADR-0010 (bootstrap order), ADR-0019 (Mode ESM), ADR-0021 (monde ouvert) |
 | **Supersède** | I37 partiel (0/1 View → 0/N Views dans scope fixe) |
