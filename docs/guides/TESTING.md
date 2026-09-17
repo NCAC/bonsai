@@ -112,7 +112,7 @@ describe('CartEntity', () => {
       initialState: { items: [] },
     });
 
-    feature.entity.mutate('cart:addItem', { id: '1', name: 'Product' }, (draft) => {
+    feature.entity.mutate('cart:addItem', { payload: { id: '1', name: 'Product' } }, (draft) => {
       draft.items.push({ id: '1', name: 'Product', price: 0 });
     });
 
@@ -156,11 +156,11 @@ describe('CartFeature', () => {
 
   it('should request price from pricing channel', async () => {
     const { feature, channels } = createTestFeature(CartFeature);
-    channels.pricing.mockReply('pricing:getPrice', 99);
+    channels.pricing.mockReply('pricing:price', 99);
 
     await feature.handle('cart:addItem', { productId: '1' });
 
-    expect(channels.pricing.requested('pricing:getPrice')).toHaveBeenCalled();
+    expect(channels.pricing.requested('pricing:price')).toHaveBeenCalled();
     expect(feature.state.items[0].price).toBe(99);
   });
 
@@ -314,7 +314,7 @@ describe('CartFeature contracts', () => {
       }
     },
     requests: {
-      'cart:getTotal': {
+      'cart:total': {
         precondition: (feature) => {
           feature.entity.mutate('test:setup', undefined, draft => {
             draft.items.push({ price: 10 });

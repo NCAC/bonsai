@@ -728,8 +728,8 @@ onUsernameInputInput(e: Event): void {
 }
 
 private checkUsernameAvailability(username: string): void {
-  // ✅ Request Channel — clé flat "ns:req" (I80), synchrone (ADR-0023, I29)
-  const isAvailable = this.request('registration:isUsernameAvailable', { username });
+  // ✅ Request Channel — clé flat "ns:req" nominale (I80, convention communication.md), synchrone (ADR-0023, I29)
+  const isAvailable = this.request('registration:usernameAvailable', { username });
 
   this.updateLocal(draft => {
     if (isAvailable === false && draft.values.username === username) {

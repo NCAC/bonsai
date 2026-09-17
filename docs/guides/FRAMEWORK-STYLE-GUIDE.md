@@ -338,7 +338,7 @@ export class CartFeature extends Feature<TCartState> {
     return this.entity.state.items.reduce((sum, i) => sum + i.price * i.qty, 0);
   }
 
-  onGetTotalRequest(): number {
+  onTotalRequest(): number {
     this.#lastComputedTotal = this.#computeTotal();
     return this.#lastComputedTotal;
   }

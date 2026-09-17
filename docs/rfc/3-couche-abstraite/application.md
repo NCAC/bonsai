@@ -232,21 +232,21 @@ new Application({ foundation: AppFoundation, features }).start();
 ### `start(options?)`
 
 Execute les 6 phases du bootstrap sequentiellement (ADR-0010).
-Si une phase echoue, le bootstrap s'arrete immediatement avec un `BootstrapError`.
+Si une phase échoue, le bootstrap s'arrête immédiatement avec un `BootstrapError`.
 
-| Phase | `PhaseKey`   | Etapes internes                                                                                                                                                                                                                                                                     |
+| Phase | `PhaseKey`   | Étapes internes                                                                                                                                                                                                                                                                     |
 | ----- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1     | `'config'`   | Validation runtime du manifest (filet ADR-0039 — `StrictManifest<M>` aurait dû l'attraper compile-time). Chargement de la configuration.                                                                                                                                          |
-| 2     | `'channels'` | Resolution des declarations (`listen`, `request`) — verifie que les Channels references existent dans Radio. Cablage Radio (introspection `onXXX`, peuplement des registres).                                                                                                       |
-| 3     | `'entities'` | Instanciation des Entities via D17. Instanciation Router. **Si `options.serverState` est fourni** (ADR-0014 H5), le framework itere sur chaque entree et pre-peuple l'Entity correspondante via `entity.populateFromServer(state)` — silencieusement, sans notifications ni Events. |
-| 4     | `'features'` | Couche abstraite active — `onInit()` de chaque Feature. Les Entities sont deja peuplees (soit via `serverState`, soit avec `initialState`).                                                                                                                                         |
-| 5     | `'views'`    | Creation Foundation (couche concrete commence). Pour chaque View : detection du mode SSR vs SPA **par noeud** (ADR-0014 H1). `setup()` hydrate le DOM existant (H2), `create()` genere le DOM en SPA (D30). Resolution recursive des Composers et Views.                            |
-| 6     | `'start'`    | Application dormante — evenement start (optionnel, voir Q9).                                                                                                                                                                                                                        |
+| 2     | `'channels'` | Résolution des déclarations (`listen`, `request`) — vérifie que les Channels référencés existent dans Radio. Câblage Radio (introspection `onXXX`, peuplement des registres).                                                                                                       |
+| 3     | `'entities'` | Instanciation des Entities via D17. Instanciation Router. **Si `options.serverState` est fourni** (ADR-0014 H5), le framework itère sur chaque entrée et pré-peuple l'Entity correspondante via `entity.populateFromServer(state)` — silencieusement, sans notifications ni Events. |
+| 4     | `'features'` | Couche abstraite active — `onInit()` de chaque Feature. Les Entities sont déjà peuplées (soit via `serverState`, soit avec `initialState`).                                                                                                                                         |
+| 5     | `'views'`    | Création Foundation (couche concrète commence). Pour chaque View : détection du mode SSR vs SPA **par nœud** (ADR-0014 H1). `setup()` hydrate le DOM existant (H2), `create()` génère le DOM en SPA (D30). Résolution récursive des Composers et Views.                            |
+| 6     | `'start'`    | Application dormante — événement start (optionnel, voir Q9).                                                                                                                                                                                                                        |
 
 > **⚠️ Écart non résolu avec la séquence strate 0 (ADR-0046)** — question ouverte, à trancher lors de la formalisation du bootstrap async (strate 1) :
 > le tableau ci-dessus place l'instanciation des Entities dans `'entities'` (phase 3) et l'activation des Features dans `'features'` (phase 4) — après Channels (phase 2). La séquence **strate 0 réellement implémentée** (§2, encadré §Périmètre) instancie les Features **avant** les Channels (Phase 0b), précisément pour que le sentinel I94 (« ctor inerte ») puisse observer qu'aucun Channel n'a été créé/supprimé pendant le `new`. Ce réordonnancement n'a pas d'équivalent explicite dans `'config'`/`'channels'` ci-dessus : soit `'config'` doit être scindée (0a validation / 0b instanciation / 0c validation croisée) lors du passage à l'async strate 1, soit le sentinel I94 doit être repensé pour le contrat cible. Non tranché — ne pas présumer de la décision ici.
 
-### Diagramme de dependances entre phases
+### Diagramme de dépendances entre phases
 
 ```
     Config

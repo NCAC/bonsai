@@ -216,46 +216,46 @@ abstract class Behavior<
 
 ## 3. Cycle de vie
 
-Le cycle de vie du Behavior est **lie a celui de sa View hote** :
+Le cycle de vie du Behavior est **lié à celui de sa View hôte** :
 
 | Hook | Quand |
 |------|-------|
-| `onAttach()` | Quand la View hote est attachee au DOM |
-| `onDetach()` | Quand la View hote est detachee du DOM |
+| `onAttach()` | Quand la View hôte est attachée au DOM |
+| `onDetach()` | Quand la View hôte est détachée du DOM |
 
-Le Behavior est instancie avec la View et detruit avec elle.
-Il ne survit jamais a sa View hote.
+Le Behavior est instancié avec la View et détruit avec elle.
+Il ne survit jamais à sa View hôte.
 Ces hooks sont des appels directs du framework (L2), pas des Events Channel.
 
 Au `onAttach()`, le framework :
-1. Resout les selecteurs `params.uiElements` du Behavior dans le scope du `rootElement` de la View hote
-2. Verifie la non-collision des cles ui avec la View (I43)
-3. Branche les uiEvents via la delegation d'evenements
-4. Initialise le localState si declare
+1. Résout les sélecteurs `params.uiElements` du Behavior dans le scope du `rootElement` de la View hôte
+2. Vérifie la non-collision des clés ui avec la View (I43)
+3. Branche les uiEvents via la délégation d'événements
+4. Initialise le localState si déclaré
 
 Au `onDetach()`, le framework :
-1. Detruit le localState
-2. Debranche les uiEvents
+1. Détruit le localState
+2. Débranche les uiEvents
 3. Nettoie les projections templates
 
-### 3.1 Machine a etats
+### 3.1 Machine à états
 
 ```
 attached -> detached -> [destroyed]
 ```
 
-| Etat | Entree (declencheur) | Sorties possibles | Hooks disponibles |
+| État | Entrée (déclencheur) | Sorties possibles | Hooks disponibles |
 |------|----------------------|-------------------|-------------------|
-| `attached` | Attache a la View hote apres son `onAttach()` | -> `detached` | `onAttach()` |
-| `detached` | Detache quand la View hote recoit `onDetach()` | -> `destroyed` | `onDetach()` |
+| `attached` | Attaché à la View hôte après son `onAttach()` | -> `detached` | `onAttach()` |
+| `detached` | Détaché quand la View hôte reçoit `onDetach()` | -> `destroyed` | `onDetach()` |
 | `destroyed` | Nettoyage complet | -- (terminal) | -- |
 
 > **Invariants de transition** :
-> - Le Behavior est toujours detache **avant** la View hote
-> - `localState` (I42, D37) est nettoye au `detached`
-> - Aucun Behavior ne peut exister sans View hote
+> - Le Behavior est toujours détaché **avant** la View hôte
+> - `localState` (I42, D37) est nettoyé au `detached`
+> - Aucun Behavior ne peut exister sans View hôte
 
-### 3.2 Algorithme de decision (D38) -- Behavior vs View vs Heritage
+### 3.2 Algorithme de décision (D38) -- Behavior vs View vs Héritage
 
 Quand utiliser un Behavior vs une View+options vs l'heritage :
 

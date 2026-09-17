@@ -17,7 +17,7 @@
 >
 > Ce document fait foi pour le **contrat Feature** : classe abstraite, 5 capacités, handlers `onXXX`, cycle de vie.
 > Il fait également foi pour la **pratique de déclaration Channel** : `TChannelDefinition`, `TChannelToken`, `static readonly channel` (ADR-0040), co-localisation (D13, I74).
-> Les mutations Entity utilisent `mutate(intent, recipe)` (strate 0) — la signature `(intent, params?, recipe)` avec metas est cible strate 1 ([ADR-0001](../../adr/ADR-0001-entity-diff-notification-strategy.md), ADR-0028 §148).
+> Les mutations Entity utilisent `mutate(intent, recipe)` **ou** `mutate(intent, { payload?, metas? }, recipe)` — les deux overloads sont **livrés** (strate 1a, `packages/entity/src/bonsai-entity.ts`), pas une cible future ([ADR-0001](../../adr/ADR-0001-entity-diff-notification-strategy.md)). Ce qui reste **cible strate 1** : la propagation de `metas: TMessageMetas` dans la signature des handlers `onXXXCommand`/`onXXXEvent`/`onXXXRequest` (§4, §5) — non encore câblée dans `packages/feature/src/bonsai-feature.ts`.
 > L'identité de la Feature (namespace) est portée par le **manifest applicatif** (I68–I72) conformément à [ADR-0039](../../adr/ADR-0039-namespace-authority-and-uniqueness.md) — la classe Feature ne déclare **plus** de `static readonly namespace`.
 > Le **pattern historique D14** (`export namespace Cart {…}` + `declareChannel`) est **supersédé** par ADR-0040 (token statique direct sur la classe).
 > **Le contrat des handlers** — `listens`/`queries` en `abstract get` d'instance, `implements TFeatureCallbacks<TDef, TListens>`, `TStrictFeatureClass` — a été **refondu par [ADR-0046](../../adr/ADR-0046-feature-contract-refonte.md)** (I92–I95, amende I70/I79/I88) ; ce document reflète l'état post-ADR-0046. Voir §3 et §3bis.
@@ -210,8 +210,8 @@ type TCartDef = {
     itemRemoved: { productId: string };
   };
   readonly requests: {
-    getItemCount: { params: void; result: number };
-    getTotal:     { params: void; result: number };
+    itemCount: { params: void; result: number };
+    total:     { params: void; result: number };
   };
 };
 
@@ -456,7 +456,7 @@ import { Entity } from "@bonsai/entity";
 type TCartDef = {
   readonly commands: { addItem: { productId: string; qty: number } };
   readonly events: { itemAdded: { productId: string; qty: number } };
-  readonly requests: { getTotal: { params: null; result: number } };
+  readonly requests: { total: { params: null; result: number } };
 };
 
 class CartEntity extends Entity<{ items: unknown[]; total: number }> {
@@ -487,7 +487,7 @@ class CartFeature
   }
 
   // Requis par TRequestCallbacks<TCartDef> — omis → TS2515.
-  onGetTotalRequest(_params: null): number {
+  onTotalRequest(_params: null): number {
     return this.entity.state.total;
   }
 }

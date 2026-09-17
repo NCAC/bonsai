@@ -196,7 +196,7 @@ const cartViewFeatures = {
     feature:  CartFeature,
     listens:  ["itemAdded"]  as const,
     triggers: ["addItem"]    as const,
-    requests: ["getTotal"]   as const,
+    requests: ["total"]      as const,
   },
 } satisfies TFeatureContract;
 
@@ -1333,11 +1333,11 @@ updateLocal(recipe)
 
 | Phase | Comportement |
 |-------|-------------|
-| `created` | localState non initialise |
-| `wired` | localState non initialise |
-| `attached` | `get localState()` est appele -> etat initial frozen stocke. `this.local` est accessible. |
-| `detached` | localState nettoye (reference supprimee). `this.local` n'est plus accessible. |
-| `destroyed` | GC libere la memoire |
+| `created` | localState non initialisé |
+| `wired` | localState non initialisé |
+| `attached` | `get localState()` est appelé -> état initial frozen stocké. `this.local` est accessible. |
+| `detached` | localState nettoyé (référence supprimée). `this.local` n'est plus accessible. |
+| `destroyed` | GC libère la mémoire |
 
 ### 7.6 Observabilité (DevTools)
 
