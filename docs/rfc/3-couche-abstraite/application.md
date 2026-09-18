@@ -12,32 +12,32 @@
 
 ---
 
-> ### ⏳ Périmètre d'implémentation (ADR-0028)
+> ## ⏳ Périmètre d'implémentation (ADR-0028)
 >
 > Ce document décrit le **contrat cible complet** d'Application (6 phases, async,
 > SSR, BonsaiRegistry, BootstrapError typée). Conformément au phasage kernel-first,
 > certaines capacités sont **différées** :
 >
-> | Élément                                                              | Strate cible | Sections concernées |
-> | -------------------------------------------------------------------- | ------------ | ------------------- |
-> | Bootstrap async (`start(): Promise<void>`) + `BootstrapError` typée  | Strate 1     | §1, §2              |
+> | Élément                                                                                                                         | Strate cible | Sections concernées |
+> | ------------------------------------------------------------------------------------------------------------------------------- | ------------ | ------------------- |
+> | Bootstrap async (`start(): Promise<void>`) + `BootstrapError` typée                                                             | Strate 1     | §1, §2              |
 > | Phases `'config'` et `'start'` du contrat cible (6 phases ADR-0010, vs la séquence 0a/0b/0c/1/3/4 de strate 0 — cf. encadré §3) | Strate 1     | §1, §3              |
-> | `TBootstrapOptions.serverState` (SSR hydratation, ADR-0014)          | Strate 1     | §1                  |
-> | `TApplicationConfig` complet (`mode`, `debug`, providers, registry…) | Strate 1     | §1                  |
-> | `BonsaiRegistry` ESM modulaire (ADR-0019)                            | Strate 2     | §3                  |
-> | `Application.stop()` / shutdown ordonnée                             | Strate 2     | —                   |
-> | DevTools hooks                                                       | Strate 2     | —                   |
+> | `TBootstrapOptions.serverState` (SSR hydratation, ADR-0014)                                                                     | Strate 1     | §1                  |
+> | `TApplicationConfig` complet (`mode`, `debug`, providers, registry…)                                                            | Strate 1     | §1                  |
+> | `BonsaiRegistry` ESM modulaire (ADR-0019)                                                                                       | Strate 2     | §3                  |
+> | `Application.stop()` / shutdown ordonnée                                                                                        | Strate 2     | —                   |
+> | DevTools hooks                                                                                                                  | Strate 2     | —                   |
 >
 > **Strate 0 — périmètre effectif (post-[ADR-0046](../../adr/ADR-0046-feature-contract-refonte.md))** : `Application` est instanciée via `new Application({ foundation, features })`. Le **manifest applicatif typé** (`features`) est l'autorité unique des namespaces (I68–I72) — vérifié compile-time par `StrictManifest<M>` (camelCase plat, non-réservé, `TSelfNS` aligné sur la clé). Aucun `static namespace` sur les classes Feature (I68). `start(): void` synchrone en **six étapes réordonnées** (ADR-0046, pas « 4 phases ») :
 >
-> | Étape | Contenu | Invariants |
-> | ----- | ------- | ---------- |
-> | **0a** | Validation format namespace + `channel` (filet `#validateManifest`) | I70, I71, I73 |
-> | **0b** | Instanciation pure de chaque Feature (`new FeatureClass(ns)`) — sentinel : aucun Channel créé/supprimé dans Radio pendant le `new` | I94 |
-> | **0c** | Lecture `instance.listens`/`instance.queries` — validation des références croisées, AVANT tout side-effect Radio | I70 (amendé), I93 |
-> | **1** | Channels — `Radio.channel(namespace)` pour chaque entrée du manifest | — |
-> | **3** | Features — `instance.bootstrap()` (câble les handlers, instancie l'Entity, appelle `onInit()`) | I56, I48 |
-> | **4** | Foundation — `new FoundationClass()` puis `attach()` (Composers → Views) | I33 |
+> | Étape  | Contenu                                                                                                                            | Invariants        |
+> | ------ | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+> | **0a** | Validation format namespace + `channel` (filet `#validateManifest`)                                                                | I70, I71, I73     |
+> | **0b** | Instanciation pure de chaque Feature (`new FeatureClass(ns)`) — sentinel : aucun Channel créé/supprimé dans Radio pendant le `new` | I94               |
+> | **0c** | Lecture `instance.listens`/`instance.queries` — validation des références croisées, AVANT tout side-effect Radio                   | I70 (amendé), I93 |
+> | **1**  | Channels — `Radio.channel(namespace)` pour chaque entrée du manifest                                                               | —                 |
+> | **3**  | Features — `instance.bootstrap()` (câble les handlers, instancie l'Entity, appelle `onInit()`)                                     | I56, I48          |
+> | **4**  | Foundation — `new FoundationClass()` puis `attach()` (Composers → Views)                                                           | I33               |
 >
 > Il n'y a pas d'étape « Phase 2 » distincte : l'Entity est instanciée à l'intérieur de `Feature#bootstrap()` (étape 3), pas par `Application` elle-même — la numérotation saute volontairement de 1 à 3 pour rester alignée sur le code source (`packages/application/src/bonsai-application.ts`). Foundation **obligatoire** au start (I33). `app.started` exposé en lecture. Aucun runtime API (I23).
 >
@@ -236,11 +236,11 @@ Si une phase échoue, le bootstrap s'arrête immédiatement avec un `BootstrapEr
 
 | Phase | `PhaseKey`   | Étapes internes                                                                                                                                                                                                                                                                     |
 | ----- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | `'config'`   | Validation runtime du manifest (filet ADR-0039 — `StrictManifest<M>` aurait dû l'attraper compile-time). Chargement de la configuration.                                                                                                                                          |
+| 1     | `'config'`   | Validation runtime du manifest (filet ADR-0039 — `StrictManifest<M>` aurait dû l'attraper compile-time). Chargement de la configuration.                                                                                                                                            |
 | 2     | `'channels'` | Résolution des déclarations (`listen`, `request`) — vérifie que les Channels référencés existent dans Radio. Câblage Radio (introspection `onXXX`, peuplement des registres).                                                                                                       |
 | 3     | `'entities'` | Instanciation des Entities via D17. Instanciation Router. **Si `options.serverState` est fourni** (ADR-0014 H5), le framework itère sur chaque entrée et pré-peuple l'Entity correspondante via `entity.populateFromServer(state)` — silencieusement, sans notifications ni Events. |
 | 4     | `'features'` | Couche abstraite active — `onInit()` de chaque Feature. Les Entities sont déjà peuplées (soit via `serverState`, soit avec `initialState`).                                                                                                                                         |
-| 5     | `'views'`    | Création Foundation (couche concrète commence). Pour chaque View : détection du mode SSR vs SPA **par nœud** (ADR-0014 H1). `setup()` hydrate le DOM existant (H2), `create()` génère le DOM en SPA (D30). Résolution récursive des Composers et Views.                            |
+| 5     | `'views'`    | Création Foundation (couche concrète commence). Pour chaque View : détection du mode SSR vs SPA **par nœud** (ADR-0014 H1). `setup()` hydrate le DOM existant (H2), `create()` génère le DOM en SPA (D30). Résolution récursive des Composers et Views.                             |
 | 6     | `'start'`    | Application dormante — événement start (optionnel, voir Q9).                                                                                                                                                                                                                        |
 
 > **⚠️ Écart non résolu avec la séquence strate 0 (ADR-0046)** — question ouverte, à trancher lors de la formalisation du bootstrap async (strate 1) :
@@ -249,38 +249,38 @@ Si une phase échoue, le bootstrap s'arrête immédiatement avec un `BootstrapEr
 ### Diagramme de dépendances entre phases
 
 ```
-    Config
-      |
-      v
-    Radio ----------------------------------------+
-      |                                           |
-      v                                           |
-  +---------+    +---------+    +---------+       |
-  |Channel A|    |Channel B|    |Channel C|       |
-  +----+----+    +----+----+    +----+----+       |
-       |              |              |             |
-       v              v              v             |
-  +---------+    +---------+    +---------+       |
-  |Entity A |    |Entity B |    |Entity C |       |
-  +----+----+    +----+----+    +----+----+       |
-       |              |              |             |
-       +--------------+--------------+             |
-                      |                            |
-                      v                            |
-                +----------+                       |
-                | Features | (accedent N channels/entities)
-                +----+-----+                       |
-                     |                             |
-                     v                             |
-                +----------+                       |
-                |  Views   | (dans le DOM)         |
-                +----+-----+                       |
-                     |                             |
-       +-------------+-------------+               |
-       v             v             v               |
-  +---------+  +----------+  +----------+          |
-  |Behaviors|  | Composers|  |Projections|         |
-  +---------+  +----------+  +----------+          |
+  Config
+    |
+    v
+  Radio ----------------------------------------+
+    |                                           |
+    v                                           |
++---------+    +---------+    +---------+       |
+|Channel A|    |Channel B|    |Channel C|       |
++----+----+    +----+----+    +----+----+       |
+     |              |              |             |
+     v              v              v             |
++---------+    +---------+    +---------+       |
+|Entity A |    |Entity B |    |Entity C |       |
++----+----+    +----+----+    +----+----+       |
+     |              |              |             |
+     +--------------+--------------+             |
+                    |                            |
+                    v                            |
+              +----------+                       |
+              | Features | (accedent N channels/entities)
+              +----+-----+                       |
+                   |                             |
+                   v                             |
+              +----------+                       |
+              |  Views   | (dans le DOM)         |
+              +----+-----+                       |
+                   |                             |
+     +-------------+-------------+               |
+     v             v             v               |
++---------+  +----------+  +----------+          |
+|Behaviors|  | Composers|  |Projections|         |
++---------+  +----------+  +----------+          |
 ```
 
 > **Invariant de phase** : chaque phase ne demarre qu'une fois la phase precedente
@@ -305,6 +305,7 @@ Execute le shutdown en **ordre inverse** des phases de bootstrap (ADR-0010) :
 
 > 🧭 **Trois points d'entrée hypothétiques coexistent dans la documentation
 > pour `TApplicationConfig`, sans qu'aucun ne soit tranché** :
+>
 > - un champ `config` sur les options du constructeur, sibling de `foundation`/`features`
 > - les clés de configuration directement mélangées aux clés du manifest sur le
 >   constructeur, comme le montre [devtools.md §3.1](../devtools.md#31-configuration)

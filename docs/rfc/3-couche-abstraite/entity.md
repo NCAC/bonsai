@@ -6,13 +6,13 @@
 
 ---
 
-| Champ          | Valeur                                                                                                                                                                 |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Chapitre**   | 3 — Couche abstraite                                                                                                                                                   |
-| **Composant**  | Entity                                                                                                                                                                 |
-| **Couche**     | Abstraite (persistante)                                                                                                                                                |
-| **Statut**     | 🟢 Stable                                                                                                                                                              |
-| **Mis à jour** | 2026-09-17                                                                                                                                                             |
+| Champ | Valeur |
+| --- | --- |
+| **Chapitre** | 3 — Couche abstraite |
+| **Composant** | Entity |
+| **Couche** | Abstraite (persistante) |
+| **Statut** | 🟢 Stable |
+| **Mis à jour** | 2026-09-17 |
 | **ADRs liées** | [ADR-0001](../../adr/ADR-0001-entity-diff-notification-strategy.md), [ADR-0005](../../adr/ADR-0005-meta-lifecycle.md), [ADR-0014](../../adr/ADR-0014-ssr-hydration-strategy.md), [ADR-0028](../../adr/ADR-0028-implementation-phasing-strategy.md) (strate 1a — I96–I98) |
 
 > ### Statut normatif
@@ -24,8 +24,9 @@
 > pour ce qui reste cible.
 >
 > **Périmètre par version** :
+>
 > | Périmètre | Statut |
-> |-----------|--------|
+> | --- | --- |
 > | §1–6 : TEntityStructure, `mutate()`, query, notifications | ✅ **Contrat v1** |
 > | §7 : Sérialisation (`toJSON`, `fromJSON`) | ✅ **Contrat v1** |
 > | §7 : `eventLog` (historique des mutations) | 🔵 **Extension optionnelle v1** — présent mais non requis |
@@ -39,7 +40,7 @@
 > Ce document décrit le **contrat cible** d'Entity. Les éléments suivants ne sont **pas encore implémentés** :
 >
 > | Élément | Strate cible | Sections concernées |
-> | ------- | ------------ | ------------------- |
+> | --- | --- | --- |
 > | `toJSON()`, `fromJSON()`, `eventLog` | Strate 1 (hors 1a) | §1, §7, §8 |
 > | Schéma de validation `TEntitySchema` (Valibot, ADR-0022) | Strate 1 | — |
 > | `populateFromServer()` (SSR, ADR-0014 H5) | Strate 2c | §1, §7 |
@@ -286,13 +287,13 @@ L'Entity expose son état via un getter unique `state` en **lecture seule** ; se
 
 ### Principes de stockage
 
-| Aspect                       | Règle                                                                                                                      |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Source unique**            | `this.state` est la seule source de vérité du state de la Feature                                                          |
-| **Lecture seule**            | Getter public `state` — lisible par la Feature propriétaire ; l'Entity elle-même n'est accessible qu'à sa Feature (I5)       |
-| **Initialisé**               | Via `protected abstract defineInitialState()` (D17) — assigné dans le constructeur de la base class. Pas de state `undefined` possible |
-| **Jsonifiable**              | Toujours un plain object conforme à `TJsonSerializable` (D10)                                                              |
-| **Écriture contrôlée**       | Seul `mutate()` produit un nouveau state (Immer) — aucune affectation directe                                              |
+| Aspect                 | Règle                                                                                                                                  |
+| --- | ------ |
+| **Source unique**      | `this.state` est la seule source de vérité du state de la Feature                                                                      |
+| **Lecture seule**      | Getter public `state` — lisible par la Feature propriétaire ; l'Entity elle-même n'est accessible qu'à sa Feature (I5)                 |
+| **Initialisé**         | Via `protected abstract defineInitialState()` (D17) — assigné dans le constructeur de la base class. Pas de state `undefined` possible |
+| **Jsonifiable**        | Toujours un plain object conforme à `TJsonSerializable` (D10)                                                                          |
+| **Écriture contrôlée** | Seul `mutate()` produit un nouveau state (Immer) — aucune affectation directe                                                          |
 
 ### Accès au state depuis la Feature
 
@@ -469,13 +470,13 @@ class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
 
 ### Pourquoi Immer ?
 
-| Critère                  | Sans Immer                               | Avec Immer                        |
-| ------------------------ | ---------------------------------------- | --------------------------------- |
-| **Mutations profondes**  | Spread hell `{ ...state, items: [...] }` | `draft.items.push(item)`          |
-| **Patches automatiques** | Implémentation manuelle complexe         | Natif                             |
-| **Structural sharing**   | Manuel et error-prone                    | Automatique                       |
-| **Undo/redo**            | Snapshots complets (mémoire)             | inversePatches (compact)          |
-| **Maturité**             | —                                        | 5+ ans, 25k+ stars, Redux Toolkit |
+| Critère | Sans Immer | Avec Immer |
+| --- | --- | --- |
+| **Mutations profondes** | Spread hell `{ ...state, items: [...] }` | `draft.items.push(item)` |
+| **Patches automatiques** | Implémentation manuelle complexe | Natif |
+| **Structural sharing** | Manuel et error-prone | Automatique |
+| **Undo/redo** | Snapshots complets (mémoire) | inversePatches (compact) |
+| **Maturité** | — | 5+ ans, 25k+ stars, Redux Toolkit |
 
 > **Coût accepté** : Immer ajoute ~12KB gzip. La valeur (patches, undo, ergonomie)
 > justifie ce coût. Voir ADR-0001 §Pourquoi Immer.
@@ -596,12 +597,12 @@ this.entity.mutate("products:setSortCriteria", (draft) => {
 
 Si la `recipe` passée à `mutate()` ne modifie pas le draft (Immer détecte zéro patch) :
 
-| Aspect                      | Comportement                                                                                                                                                  |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **State**                   | Inchangé                                                                                                                                                      |
-| **Notifications**           | **Non émises** — aucun handler per-key ni `onAnyEntityUpdated` n'est appelé                                                                                   |
-| **Valeur retournée**        | `mutate()` retourne **`null`** — pas de `TEntityEvent` (I97)                                                                                                  |
-| **Events Channel**          | Dépend entièrement du code du command handler — si `this.emit()` est appelé explicitement après `mutate()`, l'Event est émis même si la mutation est un no-op |
+| Aspect | Comportement |
+| --- | --- |
+| **State** | Inchangé |
+| **Notifications** | **Non émises** — aucun handler per-key ni `onAnyEntityUpdated` n'est appelé |
+| **Valeur retournée** | `mutate()` retourne **`null`** — pas de `TEntityEvent` (I97) |
+| **Events Channel** | Dépend entièrement du code du command handler — si `this.emit()` est appelé explicitement après `mutate()`, l'Event est émis même si la mutation est un no-op |
 
 > **Conséquence architecturale** : un command handler qui émet systématiquement un Event
 > sans vérifier le résultat de la mutation peut émettre un Event pour une opération
@@ -732,7 +733,7 @@ en `T | null` synchrone pour les requests — D9 révisé par ADR-0023).
   Distinction mutation vs query — conventions de nommage :
 
   | Catégorie | Convention | Retour | Side-effect |
-  |-----------|-----------|--------|-------------|
+  |---|---|---|---|
   | Mutation  | verbe d'action : add, remove, update, set, clear, mark... | void | Oui (modifie state) |
   | Query     | get, find, has, is, count, compute... | T (jsonifiable) | Non (lecture seule) |
 
@@ -758,10 +759,10 @@ propriétaire doit en être informée. Ce mécanisme est un
 Le framework fournit **deux granularités** de notification, toutes deux
 optionnelles et auto-découvertes par la convention `onXXX` :
 
-| Type          | Pattern                | Paramètres                           | Quand déclenché                                 |
-| ------------- | ---------------------- | ------------------------------------ | ----------------------------------------------- |
-| **Per-key**   | `on<Key>EntityUpdated` | `prev: T, next: T, patches: Patch[]` | Quand la propriété `key` de `TStructure` change |
-| **Catch-all** | `onAnyEntityUpdated`   | `event: TEntityEvent`                | Quand n'importe quelle propriété change         |
+| Type | Pattern | Paramètres | Quand déclenché |
+| --- | --- | --- | --- |
+| **Per-key** | `on<Key>EntityUpdated` | `prev: T, next: T, patches: Patch[]` | Quand la propriété `key` de `TStructure` change |
+| **Catch-all** | `onAnyEntityUpdated` | `event: TEntityEvent` | Quand n'importe quelle propriété change |
 
 > **Pourquoi `any` plutôt que `all`** : `onAllEntityUpdated` est ambigu —
 > on pourrait lire « quand TOUTES les clés changent simultanément ».
@@ -832,24 +833,24 @@ type TEntityKeyHandlers<TStructure extends TJsonSerializable> = Partial<{
 
 ### Flux de notification
 
-```
-  Feature                              Entity
-  ───────                              ──────
-  this.entity.mutate(                  │
-    "cart:addItem",                    │
-    { payload: {...} },                │
-    draft => {                         │
-    draft.items.push(item);            │
-    draft.total += item.qty;           │
-  });                                  │
-                                       ├─ 1. produceWithPatches() — Immer
-                                       │     → génère patches + inversePatches
-                                       ├─ 2. changedKeys = ['items', 'total']
-                                       ├─ 3. crée TEntityEvent
-                                       └─ 4. notifications :
-  ← onItemsEntityUpdated(prev, next, patches)   a) per-key 'items'
-  ← onTotalEntityUpdated(prev, next, patches)   b) per-key 'total'
-  ← onAnyEntityUpdated(event)                   c) catch-all
+```text
+Feature                              Entity
+───────                              ──────
+this.entity.mutate(                  │
+  "cart:addItem",                    │
+  { payload: {...} },                │
+  draft => {                         │
+  draft.items.push(item);            │
+  draft.total += item.qty;           │
+});                                  │
+                                     ├─ 1. produceWithPatches() — Immer
+                                     │     → génère patches + inversePatches
+                                     ├─ 2. changedKeys = ['items', 'total']
+                                     ├─ 3. crée TEntityEvent
+                                     └─ 4. notifications :
+← onItemsEntityUpdated(prev, next, patches)   a) per-key 'items'
+← onTotalEntityUpdated(prev, next, patches)   b) per-key 'total'
+← onAnyEntityUpdated(event)                   c) catch-all
 ```
 
 > **Ordre de notification** : per-key d'abord (ordre alphabétique de `changedKeys`),
@@ -869,13 +870,13 @@ Un compteur de **profondeur de cycle** protège contre les boucles :
 si la profondeur dépasse un seuil configurable (`maxEntityNotificationDepth`,
 défaut : 3), le framework rejette la mutation avec une erreur explicite.
 
-```
-  Cycle 1 : mutate("cart:addItem", ...) → Immer → onItemsEntityUpdated()
-                                                     └─ this.entity.mutate("cart:recalculate", ...)  ← MIS EN FILE
-            onAnyEntityUpdated()
-  Cycle 2 : mutate("cart:recalculate", ...) → Immer → onTotalEntityUpdated()
-            onAnyEntityUpdated()
-  (fin — pas de nouvelle mutation en file)
+```text
+Cycle 1 : mutate("cart:addItem", ...) → Immer → onItemsEntityUpdated()
+                                                   └─ this.entity.mutate("cart:recalculate", ...)  ← MIS EN FILE
+          onAnyEntityUpdated()
+Cycle 2 : mutate("cart:recalculate", ...) → Immer → onTotalEntityUpdated()
+          onAnyEntityUpdated()
+(fin — pas de nouvelle mutation en file)
 ```
 
 > **Règle** : les mutations en file sont appliquées dans l'ordre
@@ -1032,11 +1033,11 @@ class InventoryFeature extends Feature<InventoryEntity, TInventoryDef, "inventor
 
 ### Relation avec les command handlers — quand utiliser quoi ?
 
-| Approche                         | Quand l'utiliser                               | Avantage               | Exemple                                                                               |
-| -------------------------------- | ---------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------- |
-| **Emit dans le command handler** | Relation 1:1 entre un command et un event      | Explicite, linéaire    | `onAddItemCommand(payload, metas) { ... this.emit('itemAdded', payload, { metas }) }` |
-| **Entity per-key handler**       | Plusieurs commands modifient la même propriété | Centralise la réaction | `onProductsEntityUpdated() { ... }`                                                   |
-| **Entity catch-all**             | Réaction transversale (logging, persistance)   | Un seul point          | `onAnyEntityUpdated() { ... }`                                                        |
+| Approche | Quand l'utiliser | Avantage | Exemple |
+| --- | --- | --- | ---- |
+| **Emit dans le command handler** | Relation 1:1 entre un command et un event | Explicite, linéaire | `onAddItemCommand(payload, metas) { ... this.emit('itemAdded', payload, { metas }) }` |
+| **Entity per-key handler** | Plusieurs commands modifient la même propriété | Centralise la réaction | `onProductsEntityUpdated() { ... }` |
+| **Entity catch-all** | Réaction transversale (logging, persistance) | Un seul point | `onAnyEntityUpdated() { ... }` |
 
 > Les trois approches sont **compatibles** et peuvent coexister dans la même Feature.
 > L'emit dans le command handler s'exécute **avant** les entity handlers
@@ -1048,14 +1049,14 @@ class InventoryFeature extends Feature<InventoryEntity, TInventoryDef, "inventor
 Les entity handlers suivent exactement le même mécanisme d'auto-découverte
 que les Channel handlers (D12) :
 
-```
-  Suffixe                  Mécanisme          Source de vérité
-  ─────────────────────    ─────────────────   ─────────────────────────
-  onXxxCommand             Channel handler     TChannel['commands']
-  onXxxEvent               Channel handler     listen[].TChannel['events']
-  onXxxRequest             Channel handler     TChannel['requests']
-  on<Key>EntityUpdated     Entity handler      keyof TStructure
-  onAnyEntityUpdated       Entity handler      (catch-all, pas de source)
+```text
+Suffixe                  Mécanisme          Source de vérité
+─────────────────────    ─────────────────   ─────────────────────────
+onXxxCommand             Channel handler     TChannel['commands']
+onXxxEvent               Channel handler     listen[].TChannel['events']
+onXxxRequest             Channel handler     TChannel['requests']
+on<Key>EntityUpdated     Entity handler      keyof TStructure
+onAnyEntityUpdated       Entity handler      (catch-all, pas de source)
 ```
 
 Au bootstrap, le framework :
@@ -1183,12 +1184,12 @@ L'architecture de mutation permet une évolution progressive vers Event Sourcing
 
 ### Niveaux de support
 
-| Niveau | Nom         | Description                              | Bonsai v1    |
-| ------ | ----------- | ---------------------------------------- | ------------ |
-| **0**  | Base        | Mutations trackées mais pas persistées   | ✅ Inclus    |
-| **1**  | EventLog    | Events accessibles via `entity.eventLog` | ✅ Inclus    |
-| **2**  | Replay      | Undo/redo via `inversePatches`           | ⏳ Extension |
-| **3**  | Persistence | Stockage et reconstruction depuis events | ⏳ Extension |
+| Niveau | Nom | Description | Bonsai v1 |
+| --- | --- | --- | --- |
+| **0** | Base | Mutations trackées mais pas persistées | ✅ Inclus |
+| **1** | EventLog | Events accessibles via `entity.eventLog` | ✅ Inclus |
+| **2** | Replay | Undo/redo via `inversePatches` | ⏳ Extension |
+| **3** | Persistence | Stockage et reconstruction depuis events | ⏳ Extension |
 
 ### Structure du TEntityEvent (Event Sourcing ready)
 

@@ -6,11 +6,9 @@ Etendre des Views avec des fonctionnalités réutilisables.
 
 ## Principes à définir
 
-Un Behavior peut être branché à *n'importe quelle View* donc elle ne devrait pas avoir de dépendances à une instance particulière de View ou à une dérivation particulière de la classe de base View. A son instanciation, Behavior n'a aucun accès à sa View hôte. En revanche, la View hôte a accès au constructeur de ses Behavior déclarées. C'est donc à View de prévenir les collision de ui
+Un Behavior peut être branché à _n'importe quelle View_ donc elle ne devrait pas avoir de dépendances à une instance particulière de View ou à une dérivation particulière de la classe de base View. A son instanciation, Behavior n'a aucun accès à sa View hôte. En revanche, la View hôte a accès au constructeur de ses Behavior déclarées. C'est donc à View de prévenir les collision de ui
 
 > Différence fondamentale entre View et Behavior : Behavior n'a aucune capacité de définir des slots et des Composers.
-
-
 
 ## Exemples
 
@@ -20,12 +18,7 @@ Un Behavior peut être branché à *n'importe quelle View* donc elle ne devrait 
 
 3. ???
 
-
-
-
 ---
-
-
 
 ## Questions en suspens
 
@@ -39,13 +32,11 @@ Un Behavior peut être branché à *n'importe quelle View* donc elle ne devrait 
 
 **Q-B5** : Behavior ne devrait pas accéder à this.view.el selon moi ; et même a-t-elle besoin (est-ce un bon design) qu'elle puisse accéder à des propriétés de sa View hôte ?
 
-**Q-B5** Elle peut avoir de l'altération **N1** et **N2** uniquement sur les `ui` qu'elle a déclaré 
-
+**Q-B5** Elle peut avoir de l'altération **N1** et **N2** uniquement sur les `ui` qu'elle a déclaré
 
 ## Autres points ouverts
 
 Oui, Behavior peut avoir son propre `localState`
-
 
 ---
 
@@ -80,14 +71,14 @@ Q4 : Est-ce que la fonctionnalité nécessite ses propres CHANNELS
 
 ### Critères résumés
 
-| Critère | View + options | Behavior | Héritage View |
-|---------|---------------|----------|---------------|
-| **Nature** | Composant à part entière, config différente | Capacité greffée, orthogonale | Spécialisation du composant |
-| **Relation à la View hôte** | C'est la View | Aveugle (n'importe quelle View) | Connaît le parent |
-| **Template** | Le même (params changent le contexte) | Mode C uniquement (îlots ui propres) | Peut remplacer le template |
-| **Channels** | Les mêmes | Indépendants | Hérités + extensions |
-| **Nombre de Views concernées** | 1 classe, N contextes | N classes différentes | 1 hiérarchie |
-| **Couplage** | Total (c'est la même View) | Zéro (aveugle) | Partiel (connaît le parent) |
+| Critère                        | View + options                              | Behavior                             | Héritage View               |
+| ------------------------------ | ------------------------------------------- | ------------------------------------ | --------------------------- |
+| **Nature**                     | Composant à part entière, config différente | Capacité greffée, orthogonale        | Spécialisation du composant |
+| **Relation à la View hôte**    | C'est la View                               | Aveugle (n'importe quelle View)      | Connaît le parent           |
+| **Template**                   | Le même (params changent le contexte)       | Mode C uniquement (îlots ui propres) | Peut remplacer le template  |
+| **Channels**                   | Les mêmes                                   | Indépendants                         | Hérités + extensions        |
+| **Nombre de Views concernées** | 1 classe, N contextes                       | N classes différentes                | 1 hiérarchie                |
+| **Couplage**                   | Total (c'est la même View)                  | Zéro (aveugle)                       | Partiel (connaît le parent) |
 
 ---
 
@@ -97,19 +88,19 @@ Cette réflexion a abouti aux décisions et invariants suivants, formalisés dan
 
 ### Décisions
 
-| ID | Titre | RFC |
-|----|-------|-----|
-| **D36** | Contrat Behavior — plugin UI réutilisable aveugle | [RFC-0001-invariants-decisions](rfc/RFC-0001-invariants-decisions.md), [RFC-0001-composants §8](rfc/RFC-0001-composants.md), [RFC-0002 §10](rfc/RFC-0002-api-contrats-typage.md) |
-| **D37** | Behavior localState — mêmes 5 contraintes I42 que la View | [RFC-0001-invariants-decisions](rfc/RFC-0001-invariants-decisions.md), [RFC-0002 §10.2](rfc/RFC-0002-api-contrats-typage.md) |
-| **D38** | Algorithme de décision View+options vs Behavior vs Héritage | [RFC-0001-invariants-decisions](rfc/RFC-0001-invariants-decisions.md), [RFC-0001-composants §8](rfc/RFC-0001-composants.md) |
+| ID      | Titre                                                       | RFC                                                                                                                                                                              |
+| ------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **D36** | Contrat Behavior — plugin UI réutilisable aveugle           | [RFC-0001-invariants-decisions](rfc/RFC-0001-invariants-decisions.md), [RFC-0001-composants §8](rfc/RFC-0001-composants.md), [RFC-0002 §10](rfc/RFC-0002-api-contrats-typage.md) |
+| **D37** | Behavior localState — mêmes 5 contraintes I42 que la View   | [RFC-0001-invariants-decisions](rfc/RFC-0001-invariants-decisions.md), [RFC-0002 §10.2](rfc/RFC-0002-api-contrats-typage.md)                                                     |
+| **D38** | Algorithme de décision View+options vs Behavior vs Héritage | [RFC-0001-invariants-decisions](rfc/RFC-0001-invariants-decisions.md), [RFC-0001-composants §8](rfc/RFC-0001-composants.md)                                                      |
 
 ### Invariants
 
-| ID | Titre | RFC |
-|----|-------|-----|
+| ID      | Titre                                                           | RFC                                                                                                                          |
+| ------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | **I43** | Clés TUIMap Behavior/View sans collision (vérifié au bootstrap) | [RFC-0001-invariants-decisions](rfc/RFC-0001-invariants-decisions.md), [RFC-0002 §10.2](rfc/RFC-0002-api-contrats-typage.md) |
-| **I44** | Behavior sans accès à sa View hôte (pas de `this.view`) | [RFC-0001-invariants-decisions](rfc/RFC-0001-invariants-decisions.md), [RFC-0002 §10.1](rfc/RFC-0002-api-contrats-typage.md) |
-| **I45** | Behavior : altération N1+N2 sur ses propres clés ui uniquement | [RFC-0001-invariants-decisions](rfc/RFC-0001-invariants-decisions.md), [RFC-0002 §10.2](rfc/RFC-0002-api-contrats-typage.md) |
+| **I44** | Behavior sans accès à sa View hôte (pas de `this.view`)         | [RFC-0001-invariants-decisions](rfc/RFC-0001-invariants-decisions.md), [RFC-0002 §10.1](rfc/RFC-0002-api-contrats-typage.md) |
+| **I45** | Behavior : altération N1+N2 sur ses propres clés ui uniquement  | [RFC-0001-invariants-decisions](rfc/RFC-0001-invariants-decisions.md), [RFC-0002 §10.2](rfc/RFC-0002-api-contrats-typage.md) |
 
 ### Autres mises à jour
 

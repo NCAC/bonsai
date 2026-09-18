@@ -1,7 +1,7 @@
 # ADR-0016 : Signature des handlers — metas explicites vs auto-injectées
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Date** | 2026-03-25 |
 | **Décideurs** | @ncac |
@@ -15,12 +15,12 @@
 
 ### Le problème
 
-Depuis l'errata du 2026-03-23 (ERR-009), une **contradiction frontale** traverse le corpus documentaire Bonsai sur la question : *comment les handlers accèdent-ils aux metas du message courant ?*
+Depuis l'errata du 2026-03-23 (ERR-009), une **contradiction frontale** traverse le corpus documentaire Bonsai sur la question : _comment les handlers accèdent-ils aux metas du message courant ?_
 
 Deux positions incompatibles coexistent dans des documents normatifs :
 
 | Source | Statut | Position | Signature handler |
-|--------|--------|----------|-------------------|
+| --- | --- | --- | --- |
 | **ADR-0005** (2026-03-18) | 🟢 Accepted | Metas reçues **explicitement** en paramètre ; getter `this.currentMetas` **nommément rejeté** (Options 3B, 3C) | `onXxxCommand(payload, metas)` |
 | **RFC-0001 §10.2** (2026-03-20) | 🟢 Stable | Aligné sur ADR-0005 : « tous les handlers reçoivent **toujours** deux paramètres » | `onXxxCommand(payload, metas)` |
 | **FRAMEWORK-STYLE-GUIDE §2.3** (2026-03-20) | 🟢 Active | « les metas sont toujours passées explicitement en paramètre. Pas de `this.currentMetas` » | `onXxxCommand(payload, metas)` |
@@ -30,7 +30,7 @@ Deux positions incompatibles coexistent dans des documents normatifs :
 
 ### La violation de gouvernance
 
-D43 contredit directement ADR-0005 (Accepted) **sans qu'un nouvel ADR ne soit créé pour la superseder**. C'est une violation du processus documentaire : *« un ADR Accepted ne se modifie plus — si la décision change, on crée un nouvel ADR qui SUPERSEDES »*.
+D43 contredit directement ADR-0005 (Accepted) **sans qu'un nouvel ADR ne soit créé pour la superseder**. C'est une violation du processus documentaire : _« un ADR Accepted ne se modifie plus — si la décision change, on crée un nouvel ADR qui SUPERSEDES »_.
 
 Cet ADR-0016 rétablit le processus : il examine formellement les deux positions, tranche, et documente les conséquences.
 
@@ -39,7 +39,7 @@ Cet ADR-0016 rétablit le processus : il examine formellement les deux positions
 La contradiction sur la signature des handlers a engendré des divergences secondaires :
 
 | Aspect | ADR-0005 / RFC-0001 | D43 / RFC-0002 |
-|--------|---------------------|----------------|
+| --- | --- | --- |
 | Nom du type | `TMessageMetas` | `TMeta` |
 | `origin.kind` | 5 valeurs (`view`, `feature`, `behavior`, `composer`, `foundation`) | 2 valeurs (`ui`, `feature`) |
 | `origin.namespace` | ✅ Présent | ❌ Absent |
@@ -98,7 +98,7 @@ class CartFeature extends Feature<Cart.State, Cart.Channel> {
 ```
 
 | Critère | Évaluation |
-|---------|------------|
+| --- | --- |
 | **DX / Ergonomie** | ⭐⭐⭐⭐⭐ Signature simple, moins de boilerplate |
 | **Explicite** | ⭐⭐ Magie — les metas sont invisibles dans la signature |
 | **Async safety** | ⭐⭐ Problème d'interleaving (voir analyse ci-dessous) |
@@ -142,6 +142,7 @@ class OrderFeature extends Feature<Order.State, Order.Channel> {
 ```
 
 **Scénario d'interleaving** :
+
 1. Handler A démarre → contexte = `usr-AAA`
 2. Handler A appelle `await this.request(...)` → suspendu
 3. Event `payment:refunded` arrive → Handler B démarre → contexte = `usr-BBB`
@@ -179,7 +180,7 @@ class CartFeature extends Feature<Cart.State, Cart.Channel> {
 ```
 
 | Critère | Évaluation |
-|---------|------------|
+| --- | --- |
 | **DX / Ergonomie** | ⭐⭐⭐ Un paramètre supplémentaire + propagation explicite |
 | **Explicite** | ⭐⭐⭐⭐⭐ Zéro magie — tout est visible dans la signature |
 | **Async safety** | ⭐⭐⭐⭐⭐ Prouvablement correct — le closure est immuable |
@@ -191,6 +192,7 @@ class CartFeature extends Feature<Cart.State, Cart.Channel> {
 #### Coût réel de la verbosité
 
 Le « surcoût » se résume à :
+
 - `metas: TMessageMetas` dans la signature du handler (+1 paramètre)
 - `{ metas }` dans chaque appel `emit()` et `request()`
 
@@ -209,7 +211,7 @@ La différence est **10 caractères** par appel. En échange : sécurité async 
 ## Analyse comparative
 
 | Critère | Poids | Option A (D43 — implicite) | Option B (ADR-0005 — explicite) |
-|---------|-------|---------------------------|--------------------------------|
+| --- | --- | --- | --- |
 | **Async safety** | Critique | ⭐⭐ Vulnérable à l'interleaving | ⭐⭐⭐⭐⭐ Prouvablement correct |
 | **Alignement principes Bonsai** | Élevé | ⭐⭐ Viole « Explicite > Implicite » | ⭐⭐⭐⭐⭐ Pleinement aligné |
 | **Type-safety** | Élevé | ⭐⭐⭐ Metas hors contrat | ⭐⭐⭐⭐⭐ Metas dans le contrat |
@@ -230,7 +232,7 @@ La différence est **10 caractères** par appel. En échange : sécurité async 
 ### Ce qui est confirmé (consensus des deux positions)
 
 | Principe | Source | Statut |
-|----------|--------|--------|
+| --- | --- | --- |
 | Le développeur ne forge **jamais** de metas manuellement | D43, ADR-0005 | ✅ Maintenu |
 | Le framework **crée** les metas au point d'entrée (`trigger`, `onInit`, timer) | D43, ADR-0005 | ✅ Maintenu |
 | Le `correlationId` est **préfixé** `usr-` (UI) ou `sys-` (système) | ADR-0005 | ✅ Maintenu |
@@ -241,7 +243,7 @@ La différence est **10 caractères** par appel. En échange : sécurité async 
 ### Ce qui est révoqué (D43)
 
 | Aspect de D43 | Statut | Remplacement |
-|---------------|--------|-------------|
+| --- | --- | --- |
 | Handlers reçoivent `(payload)` seul | ❌ **Révoqué** | Handlers reçoivent `(payload, metas)` |
 | « Contexte causal implicite framework-managed » | ❌ **Révoqué** | Propagation explicite via paramètre |
 | Getter `this.currentMeta` (debug/logging) | ❌ **Révoqué** | Metas disponibles en paramètre |
@@ -343,7 +345,7 @@ mutate(intent: string, recipe: (draft: Draft<T>) => void): TEntityEvent;
 ### Documents à mettre à jour
 
 | Document | Action |
-|----------|--------|
+| --- | --- |
 | **RFC-0002 §13** | Réécrire pour aligner sur ADR-0005 : handlers `(payload, metas)`, propagation explicite, supprimer le getter `this.currentMeta`, supprimer la mention « contexte causal implicite » |
 | **RFC-0002 §13.1** | Renommer `TMeta` → `TMessageMetas`, ajouter `origin.namespace`, élargir `origin.kind` à 5 valeurs |
 | **RFC-0002 §13.2/13.3** | Corriger `uuid()` → `ulid()`, ajouter les préfixes `usr-`/`sys-` |
@@ -358,7 +360,7 @@ mutate(intent: string, recipe: (draft: Draft<T>) => void): TEntityEvent;
 ### Invariants impactés
 
 | Invariant | Action |
-|-----------|--------|
+| --- | --- |
 | **I54** | Reformuler : « Le framework **crée** les metas au point d'entrée (trigger, timer, init). Le développeur les **reçoit** en paramètre `(payload, metas)` et les **propage** explicitement à `emit()`, `request()` et `mutate()`. Le développeur ne forge **jamais** de metas manuellement. » |
 | **I7** | Inchangé — tout message porte des metas complètes |
 | **I8** | Inchangé — `correlationId` jamais modifié |
@@ -407,6 +409,6 @@ mutate(intent: string, recipe: (draft: Draft<T>) => void): TEntityEvent;
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-03-25 | Création (Proposed) — Résolution de la contradiction B1 entre ADR-0005 et D43 |
 | 2026-03-25 | 🟢 **Accepted** — Option B retenue (metas explicites). Propagation des conséquences dans RFC-0002 |

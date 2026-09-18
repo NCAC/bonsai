@@ -2,6 +2,7 @@
 
 > **Ce guide a été scindé (2026-09-17, audit doc)** en deux parties nettement
 > séparées :
+>
 > - **§1–§8 remaniés : la pratique réellement livrée**, normative — Jest,
 >   `tests/unit/strate-N`, `tests/types`, la gate E2E, la traçabilité
 >   ADR/invariants. C'est ce qu'un contributeur doit suivre aujourd'hui.
@@ -15,13 +16,12 @@
 > (`createTestFeature`, `feature.handle()`, `entity.query(fn)`,
 > `MockChannel.mockReply(...).response`) qui ne correspondent à aucune API
 > livrée — corrigé ci-dessous.
-
 > **Absorbé depuis** : [ADR-0006](../adr/ADR-0006-testing-strategy.md) (Accepted).
 
 ---
 
 | Champ | Valeur |
-|-------|--------|
+| ----- | ------ |
 | **Statut** | 🟢 Normatif pour §1–§8 (pratique Jest livrée) ; §9 explicitement ⏳ cible |
 | **Mis à jour** | 2026-09-17 |
 | **ADR source** | [ADR-0006](../adr/ADR-0006-testing-strategy.md), [ADR-0030](../adr/ADR-0030-testing-as-architecture-proof.md) (tests = preuve d'invariant), [ADR-0043](../adr/ADR-0043-adr-tested-status-as-proof-gate.md) (statut `🔵 Tested`) |
@@ -49,14 +49,14 @@
 
 Chaque composant Bonsai est **testable en isolation** grâce à l'architecture déclarative :
 
-| Composant | Dépendances | Comment on le teste aujourd'hui |
-|-----------|-------------|-----------------------------------|
-| **Entity** | Aucune (Immer interne) | Instanciation directe (`new CartEntity()`), `mutate()`, `get query()` |
-| **Feature** | Entity, `Radio` (Channel) | `Radio.reset()` + `new FeatureClass(namespace)` + `.bootstrap()` ; assertions via `Radio.me().channel(ns)` |
-| **Channel** | `Radio` (interne) | `tests/unit/channel.class.test.ts`, `tests/unit/radio.singleton.test.ts` — rarement testé depuis le code applicatif |
-| **View** | DOM (jsdom), `Radio` | `@jest-environment jsdom` en tête de fichier, DOM construit via `document.body.innerHTML`, `view.mount(selector)` |
-| **Composer / Foundation** | DOM, Channels, Views | Même approche jsdom, `tests/unit/strate-0/composer.basic.test.ts` / `foundation.basic.test.ts` |
-| **Intégration multi-composants** | Tout | `tests/integration/`, gate E2E `tests/e2e/strate-0.cart-round-trip.test.ts` |
+| Composant                        | Dépendances               | Comment on le teste aujourd'hui                                                                                     |
+| -------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Entity**                       | Aucune (Immer interne)    | Instanciation directe (`new CartEntity()`), `mutate()`, `get query()`                                               |
+| **Feature**                      | Entity, `Radio` (Channel) | `Radio.reset()` + `new FeatureClass(namespace)` + `.bootstrap()` ; assertions via `Radio.me().channel(ns)`          |
+| **Channel**                      | `Radio` (interne)         | `tests/unit/channel.class.test.ts`, `tests/unit/radio.singleton.test.ts` — rarement testé depuis le code applicatif |
+| **View**                         | DOM (jsdom), `Radio`      | `@jest-environment jsdom` en tête de fichier, DOM construit via `document.body.innerHTML`, `view.mount(selector)`   |
+| **Composer / Foundation**        | DOM, Channels, Views      | Même approche jsdom, `tests/unit/strate-0/composer.basic.test.ts` / `foundation.basic.test.ts`                      |
+| **Intégration multi-composants** | Tout                      | `tests/integration/`, gate E2E `tests/e2e/strate-0.cart-round-trip.test.ts`                                         |
 
 ### Écosystème réel
 
@@ -69,7 +69,7 @@ Chaque composant Bonsai est **testable en isolation** grâce à l'architecture d
 
 ## 2. Organisation réelle des tests
 
-```
+```text
 tests/
 ├── unit/
 │   ├── strate-0/                    # un fichier par composant, socle strate 0
@@ -351,23 +351,23 @@ npx tsc --noEmit -p tsconfig.test.json
 
 ### Patterns à suivre
 
-| Pattern | Raison |
-|---------|--------|
-| ✅ Un `describe` par composant/invariant, citant l'invariant prouvé en commentaire d'en-tête | ADR-0030 — un test documente l'invariant qu'il prouve |
-| ✅ `Radio.reset()` dans `beforeEach` pour les tests Feature/View/Composer | Isole chaque test (Radio est un singleton) |
-| ✅ `entityOf(feature)` pour lire l'Entity depuis un test (jamais `feature.entity` — `protected`) | I5, I6 |
-| ✅ `@jest-environment jsdom` uniquement sur les fichiers qui en ont besoin | `testEnvironment: "node"` par défaut — coût jsdom évité ailleurs |
-| ✅ Fixtures partagées (`tests/fixtures/`) pour les mini-domaines réutilisés (Cart) | DRY, cohérence avec la gate E2E |
+| Pattern                                                                                          | Raison                                                           |
+| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| ✅ Un `describe` par composant/invariant, citant l'invariant prouvé en commentaire d'en-tête     | ADR-0030 — un test documente l'invariant qu'il prouve            |
+| ✅ `Radio.reset()` dans `beforeEach` pour les tests Feature/View/Composer                        | Isole chaque test (Radio est un singleton)                       |
+| ✅ `entityOf(feature)` pour lire l'Entity depuis un test (jamais `feature.entity` — `protected`) | I5, I6                                                           |
+| ✅ `@jest-environment jsdom` uniquement sur les fichiers qui en ont besoin                       | `testEnvironment: "node"` par défaut — coût jsdom évité ailleurs |
+| ✅ Fixtures partagées (`tests/fixtures/`) pour les mini-domaines réutilisés (Cart)               | DRY, cohérence avec la gate E2E                                  |
 
 ### Anti-patterns
 
-| Anti-pattern | Pourquoi | Alternative |
-|-------------|----------|-------------|
-| ❌ Croire que `pnpm test` type-check `tests/types/` | `ts-jest` tourne en `isolatedModules: true` — aucun type-check | `npx tsc --noEmit -p tsconfig.test.json` (§7) |
-| ❌ Mocker `Radio` avec un objet fait main | Radio est un singleton simple à réinitialiser | `Radio.reset()` + `Radio.me()` réels |
-| ❌ Accéder à `feature.entity` depuis un test | `protected` (I5, I6) — ne compile pas | `entityOf(feature)` (`tests/helpers/entity-of.ts`) |
-| ❌ Référencer `createTestFeature`/`createTestView`/`MockChannel`/`@bonsai/testing` | N'existe pas dans le code livré | Instanciation directe + `Radio.reset()` (§3–§5) |
-| ❌ Tests de View sans `@jest-environment jsdom` | `document` est `undefined` en environnement `node` | Ajouter le docblock en tête de fichier |
+| Anti-pattern                                                                       | Pourquoi                                                       | Alternative                                        |
+| ---------------------------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------- |
+| ❌ Croire que `pnpm test` type-check `tests/types/`                                | `ts-jest` tourne en `isolatedModules: true` — aucun type-check | `npx tsc --noEmit -p tsconfig.test.json` (§7)      |
+| ❌ Mocker `Radio` avec un objet fait main                                          | Radio est un singleton simple à réinitialiser                  | `Radio.reset()` + `Radio.me()` réels               |
+| ❌ Accéder à `feature.entity` depuis un test                                       | `protected` (I5, I6) — ne compile pas                          | `entityOf(feature)` (`tests/helpers/entity-of.ts`) |
+| ❌ Référencer `createTestFeature`/`createTestView`/`MockChannel`/`@bonsai/testing` | N'existe pas dans le code livré                                | Instanciation directe + `Radio.reset()` (§3–§5)    |
+| ❌ Tests de View sans `@jest-environment jsdom`                                    | `document` est `undefined` en environnement `node`             | Ajouter le docblock en tête de fichier             |
 
 ---
 
@@ -382,13 +382,13 @@ npx tsc --noEmit -p tsconfig.test.json
 > l'absence du garde-fou automatique (script annexe A.3 de l'audit doc)
 > qui ne peut vérifier que les invariants numérotés.
 
-| ADR | Décision testée | Fichier(s) de test |
-|-----|------------------|---------------------|
-| [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md) | `mutate()` unique via Immer, détection no-op, notification diff | `tests/unit/strate-0/entity.basic.test.ts` (`describe("mutate() — Immer produce")`, `describe("No-op detection")`) |
-| [ADR-0003](../adr/ADR-0003-channel-runtime-semantics.md) | Tri-lane Channel (commands/events/requests), garde-fous d'enregistrement | `tests/unit/strate-0/channel.basic.test.ts` |
-| [ADR-0010](../adr/ADR-0010-bootstrap-order.md) | Ordre de bootstrap et dépendances entre phases | `tests/unit/strate-0/application.basic.test.ts` (`describe("start() — 4-phase bootstrap")`, `describe("Bootstrap guards [I33, I56, ADR-0010]")`) |
-| [ADR-0023](../adr/ADR-0023-request-reply-sync-vs-async.md) | `request()`/`reply()` **synchrones** — pas de `Promise`, `null` si pas de replier ou si le replier throw | `tests/unit/strate-0/channel.basic.test.ts` (`describe("Lane 3 — Requests (request → reply) [I29, I55]")`) |
-| [ADR-0024](../adr/ADR-0024-component-capabilities-manifest-pattern.md) | Pattern manifeste value-first (`as const satisfies` + `abstract get`), lu une seule fois au mount | `tests/unit/strate-0/view.basic.test.ts` (`describe("View — strate-0 core (ADR-0024 value-first + ADR-0042 modulaire)")`, `describe("ADR-0024 — manifeste modulaire lu une seule fois au mount")`, `describe("ADR-0024 — contextual contract read from root element dataset")`) |
+| ADR                                                                    | Décision testée                                                                                          | Fichier(s) de test                                                                                                                                                                                                                                                              |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md)       | `mutate()` unique via Immer, détection no-op, notification diff                                          | `tests/unit/strate-0/entity.basic.test.ts` (`describe("mutate() — Immer produce")`, `describe("No-op detection")`)                                                                                                                                                              |
+| [ADR-0003](../adr/ADR-0003-channel-runtime-semantics.md)               | Tri-lane Channel (commands/events/requests), garde-fous d'enregistrement                                 | `tests/unit/strate-0/channel.basic.test.ts`                                                                                                                                                                                                                                     |
+| [ADR-0010](../adr/ADR-0010-bootstrap-order.md)                         | Ordre de bootstrap et dépendances entre phases                                                           | `tests/unit/strate-0/application.basic.test.ts` (`describe("start() — 4-phase bootstrap")`, `describe("Bootstrap guards [I33, I56, ADR-0010]")`)                                                                                                                                |
+| [ADR-0023](../adr/ADR-0023-request-reply-sync-vs-async.md)             | `request()`/`reply()` **synchrones** — pas de `Promise`, `null` si pas de replier ou si le replier throw | `tests/unit/strate-0/channel.basic.test.ts` (`describe("Lane 3 — Requests (request → reply) [I29, I55]")`)                                                                                                                                                                      |
+| [ADR-0024](../adr/ADR-0024-component-capabilities-manifest-pattern.md) | Pattern manifeste value-first (`as const satisfies` + `abstract get`), lu une seule fois au mount        | `tests/unit/strate-0/view.basic.test.ts` (`describe("View — strate-0 core (ADR-0024 value-first + ADR-0042 modulaire)")`, `describe("ADR-0024 — manifeste modulaire lu une seule fois au mount")`, `describe("ADR-0024 — contextual contract read from root element dataset")`) |
 
 > À maintenir manuellement — contrairement à l'annexe A.3 (invariants numérotés),
 > rien ne vérifie automatiquement que ces citations restent à jour si les

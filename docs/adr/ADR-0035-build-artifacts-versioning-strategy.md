@@ -1,11 +1,11 @@
 # ADR-0035 : Build Artifacts Versioning Strategy
 
-| Champ         | Valeur                                              |
-| ------------- | --------------------------------------------------- |
-| **Statut**    | 🟢 Accepted                                         |
-| **Date**      | 2026-04-17                                          |
-| **Décideurs** | @ncac                                               |
-| **RFC liée**  | ADR-0032 (DTS bundling), ADR-0034 (regression gate) |
+| Champ | Valeur |
+| --- | --- |
+| **Statut** | 🟢 Accepted |
+| **Date** | 2026-04-17 |
+| **Décideurs** | @ncac |
+| **RFC liée** | ADR-0032 (DTS bundling), ADR-0034 (regression gate) |
 
 ---
 
@@ -46,13 +46,13 @@ L'ajout de `@bonsai/immer` (Tier 3 opaque) a mis en évidence que l'ancien `core
 
 **Description** : Conserver `core/dist/bonsai.js` et `core/dist/bonsai.d.ts` dans le repo. Rebuilder et committer à chaque PR.
 
-| Avantages                                  | Inconvénients                                           |
-| ------------------------------------------ | ------------------------------------------------------- |
+| Avantages | Inconvénients |
+| --- | --- |
 | + Contrat visible directement dans le repo | - Diffs de 24K+ lignes sur chaque PR touchant les types |
-| + `git blame` sur le `.d.ts`               | - Merge conflicts constants sur fichiers générés        |
-| + Consommable sans build                   | - Risque de désynchronisation source ↔ artefact         |
-|                                            | - Bruit massif dans l'historique git                    |
-|                                            | - Double source de vérité                               |
+| + `git blame` sur le `.d.ts` | - Merge conflicts constants sur fichiers générés |
+| + Consommable sans build | - Risque de désynchronisation source ↔ artefact |
+| | - Bruit massif dans l'historique git |
+| | - Double source de vérité |
 
 ---
 
@@ -60,11 +60,11 @@ L'ajout de `@bonsai/immer` (Tier 3 opaque) a mis en évidence que l'ancien `core
 
 **Description** : Supprimer `core/dist/` du tracking git. Les artefacts ne sont jamais stockés — uniquement générés localement ou en CI pour validation.
 
-| Avantages                                | Inconvénients                               |
-| ---------------------------------------- | ------------------------------------------- |
-| + Repo propre, zéro fichier généré       | - Pas de visibilité du contrat dans le repo |
-| + Zéro conflit de merge                  | - Build obligatoire pour consommer          |
-| + Single source of truth = sources `.ts` | - Pas d'artefact distribuable               |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Repo propre, zéro fichier généré | - Pas de visibilité du contrat dans le repo |
+| + Zéro conflit de merge | - Build obligatoire pour consommer |
+| + Single source of truth = sources `.ts` | - Pas d'artefact distribuable |
 
 ---
 
@@ -72,14 +72,14 @@ L'ajout de `@bonsai/immer` (Tier 3 opaque) a mis en évidence que l'ancien `core
 
 **Description** : Les artefacts **ne sont pas versionnés** dans git au quotidien. La CI valide la pipeline de build à chaque PR (PoC VC1–VC8). Les artefacts sont buildés et attachés comme **release assets** GitHub uniquement lors d'un tag de release (`v0.x.y`).
 
-| Avantages                                                  | Inconvénients                                         |
-| ---------------------------------------------------------- | ----------------------------------------------------- |
-| + Repo propre au quotidien                                 | - Pas de `.d.ts` consultable directement dans le repo |
-| + CI garantit l'intégrité à chaque PR                      | - Workflow release à mettre en place                  |
-| + Single source of truth = sources `.ts`                   |                                                       |
-| + Artefacts distribués via GitHub Releases                 |                                                       |
-| + Le PoC `run-poc.ts` devient le test de pipeline officiel |                                                       |
-| + Zéro conflit de merge sur fichiers générés               |                                                       |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Repo propre au quotidien | - Pas de `.d.ts` consultable directement dans le repo |
+| + CI garantit l'intégrité à chaque PR | - Workflow release à mettre en place |
+| + Single source of truth = sources `.ts` | |
+| + Artefacts distribués via GitHub Releases | |
+| + Le PoC `run-poc.ts` devient le test de pipeline officiel | |
+| + Zéro conflit de merge sur fichiers générés | |
 
 ---
 
@@ -87,14 +87,14 @@ L'ajout de `@bonsai/immer` (Tier 3 opaque) a mis en évidence que l'ancien `core
 
 **Description** : Tous les artefacts (`core/dist/` + `packages/*/dist/`) sont versionnés dans git. Le rebuild est **obligatoire avant chaque merge**. La CI valide la cohérence (PoC VC1–VC8) et les tests d'intégration/e2e tournent contre les bundles réels. Seuls les artefacts de la branche `main` (tagués release) sont considérés comme consommables par d'autres équipes.
 
-| Avantages                                                | Inconvénients                                                                            |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| + Contrat visible directement dans le repo               | - Diffs volumineux sur les PR touchant les types (~24K lignes `.d.ts`)                   |
-| + Tests e2e/intégration sans faux positifs (bundle réel) | - Discipline de rebuild obligatoire (mitigé par CI)                                      |
-| + Traçabilité complète (`git blame` sur le `.d.ts`)      | - Conflits de merge possibles sur fichiers générés (mitigé par feature branches courtes) |
-| + Zéro erreur IDE — artefacts toujours à jour            |                                                                                          |
-| + Pas besoin de workflow release séparé                  |                                                                                          |
-| + Distribution immédiate via `git clone`                 |                                                                                          |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Contrat visible directement dans le repo | - Diffs volumineux sur les PR touchant les types (~24K lignes `.d.ts`) |
+| + Tests e2e/intégration sans faux positifs (bundle réel) | - Discipline de rebuild obligatoire (mitigé par CI) |
+| + Traçabilité complète (`git blame` sur le `.d.ts`) | - Conflits de merge possibles sur fichiers générés (mitigé par feature branches courtes) |
+| + Zéro erreur IDE — artefacts toujours à jour | |
+| + Pas besoin de workflow release séparé | |
+| + Distribution immédiate via `git clone` | |
 
 **Règle de branche** :
 
@@ -106,16 +106,16 @@ L'ajout de `@bonsai/immer` (Tier 3 opaque) a mis en évidence que l'ancien `core
 
 ## Analyse comparative
 
-| Critère                  | Option A (statu quo) | Option B (éphémère) | Option C (hybride) | Option D (tout + discipline) |
-| ------------------------ | -------------------- | ------------------- | ------------------ | ---------------------------- |
-| Propreté du repo         | ⭐                   | ⭐⭐⭐              | ⭐⭐⭐             | ⭐⭐                         |
-| Risque désynchronisation | ⭐                   | ⭐⭐⭐              | ⭐⭐⭐             | ⭐⭐⭐ (CI enforce)          |
-| Visibilité contrat       | ⭐⭐⭐               | ⭐                  | ⭐⭐               | ⭐⭐⭐                       |
-| Distribuabilité          | ⭐⭐                 | ⭐                  | ⭐⭐⭐             | ⭐⭐⭐                       |
-| Complexité CI            | ⭐⭐⭐               | ⭐⭐                | ⭐⭐               | ⭐⭐                         |
-| Conflits de merge        | ⭐                   | ⭐⭐⭐              | ⭐⭐⭐             | ⭐⭐ (feature branches)      |
-| DX quotidienne           | ⭐⭐                 | ⭐⭐⭐              | ⭐⭐⭐             | ⭐⭐⭐ (IDE toujours juste)  |
-| Tests e2e fiabilité      | ⭐⭐                 | ⭐⭐                | ⭐⭐               | ⭐⭐⭐ (bundle réel)         |
+| Critère | Option A (statu quo) | Option B (éphémère) | Option C (hybride) | Option D (tout + discipline) |
+| --- | --- | --- | --- | --- |
+| Propreté du repo | ⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
+| Risque désynchronisation | ⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ (CI enforce) |
+| Visibilité contrat | ⭐⭐⭐ | ⭐ | ⭐⭐ | ⭐⭐⭐ |
+| Distribuabilité | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
+| Complexité CI | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐ |
+| Conflits de merge | ⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ (feature branches) |
+| DX quotidienne | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ (IDE toujours juste) |
+| Tests e2e fiabilité | ⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐⭐ (bundle réel) |
 
 ---
 
@@ -211,22 +211,22 @@ build-validation:
 
 ### Règle de branche — consommabilité des artefacts
 
-| Branche                 | Artefacts                         | Consommable par d'autres équipes ?    |
-| ----------------------- | --------------------------------- | ------------------------------------- |
-| `main` (tagué `vX.Y.Z`) | Rebuildés, validés par CI, tagués | ✅ **Oui — seule source officielle**  |
-| `develop`               | Rebuildés, validés par CI         | ⚠️ Non garanti — use at your own risk |
-| `feature/*`             | Rebuildés avant merge             | ❌ Non — work in progress             |
+| Branche | Artefacts | Consommable par d'autres équipes ? |
+| --- | --- | --- |
+| `main` (tagué `vX.Y.Z`) | Rebuildés, validés par CI, tagués | ✅ **Oui — seule source officielle** |
+| `develop` | Rebuildés, validés par CI | ⚠️ Non garanti — use at your own risk |
+| `feature/*` | Rebuildés avant merge | ❌ Non — work in progress |
 
 ### Quels artefacts sont versionnés
 
-| Répertoire               | Contenu                          | Versionné ?                         |
-| ------------------------ | -------------------------------- | ----------------------------------- |
-| `core/dist/bonsai.d.ts`  | Méga-bundle DTS (contrat public) | ✅ Oui                              |
-| `core/dist/bonsai.js`    | Bundle JS du framework           | ✅ Oui (quand pipeline JS en place) |
-| `packages/rxjs/dist/`    | `rxjs.js` + `rxjs.d.ts`          | ✅ Oui                              |
-| `packages/immer/dist/`   | `immer.js` + `immer.d.ts`        | ✅ Oui (à builder)                  |
-| `packages/valibot/dist/` | `valibot.js` + `valibot.d.ts`    | ✅ Oui (à builder)                  |
-| `lib/build/__poc__/out/` | Sortie PoC temporaire            | ❌ Non — `.gitignore`               |
+| Répertoire | Contenu | Versionné ? |
+| --- | --- | --- |
+| `core/dist/bonsai.d.ts` | Méga-bundle DTS (contrat public) | ✅ Oui |
+| `core/dist/bonsai.js` | Bundle JS du framework | ✅ Oui (quand pipeline JS en place) |
+| `packages/rxjs/dist/` | `rxjs.js` + `rxjs.d.ts` | ✅ Oui |
+| `packages/immer/dist/` | `immer.js` + `immer.d.ts` | ✅ Oui (à builder) |
+| `packages/valibot/dist/` | `valibot.js` + `valibot.d.ts` | ✅ Oui (à builder) |
+| `lib/build/__poc__/out/` | Sortie PoC temporaire | ❌ Non — `.gitignore` |
 
 ---
 
@@ -253,7 +253,7 @@ build-validation:
 
 ## Historique
 
-| Date       | Changement                                                                                  |
-| ---------- | ------------------------------------------------------------------------------------------- |
-| 2026-04-17 | Création — Proposed (Option B éphémère)                                                     |
+| Date | Changement |
+| --- | --- |
+| 2026-04-17 | Création — Proposed (Option B éphémère) |
 | 2026-04-17 | Révisé — **Accepted (Option D)** : tout versionné + rebuild systématique + règle de branche |

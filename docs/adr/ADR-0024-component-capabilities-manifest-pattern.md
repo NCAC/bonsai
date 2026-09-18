@@ -1,7 +1,7 @@
 # ADR-0024 : Déclaration des capacités composants — Pattern Manifeste value-first (`as const satisfies` + `abstract get`)
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🔵 Tested |
 | **Date** | 2026-04-03 |
 | **Amendé le** | 2026-04-07 |
@@ -57,6 +57,7 @@ en production à cette échelle) a expérimenté un pattern de typage :
   retournant `as const` pour satisfaire le contrat typé
 
 Ce prototype a mis en évidence une DX en deux temps :
+
 1. **Formalisation** — le développeur écrit un type manifeste décrivant les capacités
 2. **Écriture guidée** — les getters sont autocomplétés et validés par l'IDE
 
@@ -106,11 +107,11 @@ class FooterComposer extends Composer {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --------------------------------------------------------------- | ------------------------------------------------------------------- |
 | + Introspection class-level (`MyComposer.listen` sans instance) | - **Aucun enforcement compile-time** (`abstract static` impossible) |
 | + Syntaxe familière | - **Héritage silencieux** → bug muet de câblage |
 | + Métadonnée sémantiquement class-level | - Incohérent avec le generic `TChannels` de View/Behavior |
-|  | - Le framework n'a pas besoin d'introspection pré-instance (C3) |
+| | - Le framework n'a pas besoin d'introspection pré-instance (C3) |
 
 ---
 
@@ -155,7 +156,7 @@ abstract class Composer {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + **Enforcement compile-time** (erreur si non implémenté) | - Perd l'introspection class-level (C3 : non requis) |
 | + **Interdit le setter** (`readonly` verrouille la mutation) | - Fields dispersés (6+ pour View) |
 | + `this['listen']` donne accès au type concret | - Pas de regroupement sémantique |
@@ -177,7 +178,7 @@ et résout la clé `ui` fantôme (qui n'avait pas de valeur runtime).
 #### Principe : deux niveaux de type, un seul objet
 
 | Type | Rôle | Contenu | Quand |
-|------|------|---------|-------|
+| --- | --- | --- | --- |
 | `TComposerParams` / `TViewParams<TUI, TOptions>` | **Contrainte de validation** — la forme que l'objet doit respecter | Clés larges (`readonly TChannelDefinition[]`) | `satisfies` sur le const |
 | `TComposerCapabilities<typeof p>` / `TViewCapabilities<TUI, typeof p>` | **Type dérivé complet** — fusionne les types narrow de la valeur et les types purement type-level (TUI) | Tuples étroits (`readonly [typeof Router.channel]`) | Generic de la classe |
 
@@ -304,6 +305,7 @@ this.getOptions();                   // → expose _options
 ```
 
 Ce mécanisme résout simultanément :
+
 - **Performance** — pas de réévaluation du getter, une seule lecture
 - **Prévention de `set()`** — même si un développeur ajoutait un setter
   sur `params`, cela ne muterait rien : les `_private` sont déjà remplis
@@ -415,7 +417,7 @@ class ProductView extends View<TProductViewCapabilities> {
 > comme `ui: TProductViewUI`. Il n'existe que dans le type dérivé, pas dans la valeur.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + **Enforcement compile-time** (`abstract get`) | - Deux types utilitaires (contrainte + dérivé) au lieu d'un |
 | + **ZÉRO double saisie** — valeur écrite une fois, type dérivé | - `as const satisfies` est un pattern TypeScript 4.9+ avancé |
 | + **Pas de clé `ui` fantôme** dans l'objet runtime | - Le `typeof` d'un const est moins lisible qu'un type déclaré |
@@ -432,7 +434,7 @@ class ProductView extends View<TProductViewCapabilities> {
 ## Analyse comparative
 
 | Critère | Option A (static) | Option B (abstract readonly) | Option C (value-first) |
-|---------|-------------------|------------------------------|------------------------|
+| --- | --- | --- | --- |
 | Enforcement compile-time | ❌ | ⭐⭐⭐ | ⭐⭐⭐ |
 | Protection contre l'héritage silencieux | ❌ | ⭐⭐⭐ | ⭐⭐⭐ |
 | DX autocomplete IDE | ⭐ | ⭐⭐ | ⭐⭐⭐ |
@@ -507,6 +509,7 @@ C'est un piège qui produit des bugs muets de câblage Channel.
 Non retenue malgré ses qualités. Option B est **correcte** sur l'enforcement
 (erreur compile-time si field manquant) et **supérieure** sur la prévention
 de `set()`. Mais elle souffre de :
+
 - **Dispersion** — 6 fields séparés pour la View, pas de vision consolidée
 - **Pas de manifeste** — le contrat n'est pas lisible en un coup d'œil
 - **Phantom type non résolu** — le generic `TChannels` reste déconnecté
@@ -623,7 +626,7 @@ de plus que `this` polymorphique, Bonsai utilise un seul generic
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-04-03 | Création (Proposed) — suite à l'audit des déclarations `static readonly` |
 | 2026-04-03 | V1 résolu (consommation unique) — marionext recadré comme prototype |
 | 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

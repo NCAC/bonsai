@@ -13,12 +13,12 @@
 >
 > Ce document décrit le **contrat cible** des metas. **Aucun élément n'est encore implémenté** :
 >
-> | Élément | Strate cible | Sections concernées |
-> | ------- | ------------ | ------------------- |
-> | Type `TMessageMetas`, génération ULID, préfixes `usr-`/`sys-` | Strate 1b | §1, §2, §3 |
-> | Handlers `(payload, metas)` et propagation explicite à `emit()`/`request()` | Strate 1b | §4 |
-> | Création au point d'entrée, dérivation des metas enfant | Strate 1b | §5, §7 |
-> | Garde-fous (anti-boucle `hop > maxHops`, corrélation immuable) | Strate 1b | §6 |
+> | Élément                                                                     | Strate cible | Sections concernées |
+> | --------------------------------------------------------------------------- | ------------ | ------------------- |
+> | Type `TMessageMetas`, génération ULID, préfixes `usr-`/`sys-`               | Strate 1b    | §1, §2, §3          |
+> | Handlers `(payload, metas)` et propagation explicite à `emit()`/`request()` | Strate 1b    | §4                  |
+> | Création au point d'entrée, dérivation des metas enfant                     | Strate 1b    | §5, §7              |
+> | Garde-fous (anti-boucle `hop > maxHops`, corrélation immuable)              | Strate 1b    | §6                  |
 >
 > **Périmètre effectif livré** : aucun type `TMessageMetas` n'est exporté ; les handlers `on*Command`/`on*Event`/`on*Request` reçoivent **uniquement** le payload ; `emit()`, `request()` et `View.trigger()` n'acceptent pas de metas. Seul `Entity.mutate(intent, { payload?, metas? }, recipe)` (strate 1a) accepte un champ `metas?: Record<string, unknown>`, recopié tel quel dans le `TEntityEvent`.
 
@@ -277,8 +277,8 @@ function deriveChildMetas(
 
 ### 7.3 Invariants API des metas
 
-| #       | Invariant                                                                                                                                                                                                          | Principe                                           |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| #       | Invariant                                                                                                                                                                                                          | Principe                                          |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
 | **I54** | Le framework **crée** les metas au point d'entree. Le developpeur les **reçoit** en parametre `(payload, metas)` et les **propage** explicitement a `emit()`, `request()` et `mutate()`. (D43 amende par ADR-0016) | -> [metas §4](#4-propagation-explicite-des-metas) |
 | **I7**  | Tout message porte des metadonnees causales complètes                                                                                                                                                              | -> [metas §1](#1-structure-des-metas)             |
 | **I8**  | Le `correlationId` est immuable dans une chaine                                                                                                                                                                    | -> [metas §5](#5-cycle-de-vie-des-metas)          |

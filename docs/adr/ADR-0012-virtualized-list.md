@@ -1,7 +1,7 @@
 # ADR-0012 : Virtualized Lists
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Date** | 2026-03-19 |
 | **Décideurs** | @ncac |
@@ -14,7 +14,7 @@
 Les listes avec un grand nombre d'items (1000+) posent des problèmes de performance :
 
 | Items | Nœuds DOM (~10/item) | Problèmes |
-|-------|----------------------|-----------|
+| --- | --- | --- |
 | 50 | 500 | ✅ Aucun |
 | 200 | 2 000 | ⚠️ Rendu initial lent |
 | 1 000 | 10 000 | ❌ Scroll saccadé, mémoire |
@@ -43,7 +43,7 @@ plus un buffer de quelques items au-dessus/en-dessous.
 ### Séparation des concerns
 
 | Classe | Responsabilité | Complexité |
-|--------|----------------|------------|
+| --- | --- | --- |
 | `ProjectionList` | Réconciliation keyed | Simple |
 | `VirtualizedList` | Réconciliation + viewport tracking + scroll handling | Complexe |
 
@@ -68,6 +68,7 @@ ul.Feed-posts(@ui="posts" @virtualized)
 ### Complexité de la virtualisation
 
 La virtualisation nécessite :
+
 - Calcul de la hauteur des items (fixe ou variable)
 - Gestion du scroll (throttling, direction)
 - Placeholder pour maintenir la hauteur totale
@@ -174,7 +175,7 @@ ul.Feed-posts(@ui="posts" @virtualized)
 ## Cas d'usage
 
 | Cas | API recommandée |
-|-----|-----------------|
+| --- | --- |
 | Panier (5-20 items) | `ProjectionList` |
 | Liste produits (50-200) | `ProjectionList` |
 | Sélecteur pays (~200) | `ProjectionList` |

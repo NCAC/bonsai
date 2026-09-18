@@ -1,7 +1,7 @@
 # ADR-0013 : View Code Reuse
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | ⚪ Superseded |
 | **Date** | 2026-03-18 |
 | **Mis à jour** | 2026-03-25 |
@@ -73,12 +73,14 @@ class UserCardView extends TooltipableView {
 ```
 
 **Avantages :**
+
 - ✅ Pattern familier (OOP classique)
 - ✅ Pas de nouveau concept à apprendre
 - ✅ Accès complet au contexte de la View (`this`, `ui`, etc.)
 - ✅ TypeScript vérifie tout à la compilation
 
 **Inconvénients :**
+
 - ❌ **Héritage simple** : impossible de combiner plusieurs comportements (`TooltipableView` + `DraggableView`)
 - ❌ Hiérarchie de classes fragile (diamond problem conceptuel)
 - ❌ Couplage fort entre comportement et View
@@ -111,6 +113,7 @@ class UserCardView extends View {
 ```
 
 **Avantages :**
+
 - ✅ **Composition libre** : plusieurs Behaviors sur une View
 - ✅ Réutilisable entre Views différentes
 - ✅ Séparation des préoccupations claire
@@ -118,6 +121,7 @@ class UserCardView extends View {
 - ✅ Pattern éprouvé (MarionetteJS, React hooks conceptuellement)
 
 **Inconvénients :**
+
 - ❌ Nouveau concept à documenter
 - ❌ Surcoût si peu de réutilisation
 - ❌ Interaction Behavior ↔ View à définir précisément
@@ -147,11 +151,13 @@ class UserCardView extends Tooltipable(DraggableMixin(View)) {
 ```
 
 **Avantages :**
+
 - ✅ Composition possible (chaîne de mixins)
 - ✅ Pattern TypeScript natif
 - ✅ Pas de runtime overhead
 
 **Inconvénients :**
+
 - ❌ Syntaxe complexe (`extends Mixin1(Mixin2(Base))`)
 - ❌ Types difficiles à inférer
 - ❌ Conflits de noms de méthodes
@@ -186,12 +192,14 @@ class UserCardView extends View {
 ```
 
 **Avantages :**
+
 - ✅ Maximum de flexibilité
 - ✅ Pas de nouveau concept
 - ✅ Facile à tester
 - ✅ Explicite (pas de magie)
 
 **Inconvénients :**
+
 - ❌ Boilerplate dans chaque View (cleanup manuel)
 - ❌ Pas d'intégration avec le lifecycle View
 - ❌ Risque d'oublier le cleanup
@@ -211,10 +219,12 @@ class UserCardView extends View {
 ```
 
 **Avantages :**
+
 - ✅ Syntaxe déclarative élégante
 - ✅ Composition via stacking
 
 **Inconvénients :**
+
 - ❌ Décorateurs TC39 encore en évolution (stage 3)
 - ❌ Différences legacy vs modern decorators
 - ❌ Magie implicite (difficile à débugger)
@@ -225,7 +235,7 @@ class UserCardView extends View {
 ## Critères de décision
 
 | Critère | Poids | A (Héritage) | B (Behavior) | C (Mixins) | D (Hooks) | E (Décorateurs) |
-|---------|-------|--------------|--------------|------------|-----------|-----------------|
+| --- | --- | --- | --- | --- | --- | --- |
 | Composition multiple | ⭐⭐⭐ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | Simplicité conceptuelle | ⭐⭐⭐ | ✅ | ⚠️ | ❌ | ✅ | ⚠️ |
 | Intégration lifecycle | ⭐⭐ | ✅ | ✅ | ✅ | ❌ | ✅ |
@@ -243,7 +253,7 @@ class UserCardView extends View {
 **Catégories identifiées :**
 
 | Type | Exemple | Besoin DOM | Besoin State |
-|------|---------|------------|--------------|
+| --- | --- | --- | --- |
 | Interaction UI | Tooltip, Dropdown | Oui (N1) | Non |
 | Manipulation DOM | Drag-and-drop | Oui (N1+N2) | Non |
 | Validation | Form validation | Oui (N1) | ⚠️ ? |
@@ -293,6 +303,7 @@ class ComplexFormView extends View {
 ### L'héritage MarionetteJS est-il pertinent ?
 
 MarionetteJS Behaviors ont été conçus dans un contexte :
+
 - Pas de TypeScript (typage faible)
 - Backbone.View avec conventions spécifiques
 - Avant les hooks React, composition patterns modernes
@@ -317,7 +328,7 @@ Une position radicale serait de **ne pas fournir** de mécanisme de réutilisati
 **Résumé des décisions :**
 
 | Option ADR-0013 | Verdict | Source |
-|---|---|---|
+| --- | --- | --- |
 | **A — Héritage** | ⚠️ Cas rare, découragé. Anti-pattern « Excessive View Inheritance » documenté. | D38 Q3 |
 | **B — Behavior** | ✅ **Adopté** comme composant framework first-class (1 des 10 composants). | D36, I43–I45, ADR-0007 Superseded |
 | **C — Mixins** | ❌ Rejeté implicitement. Incompatible avec le modèle « composant aveugle » (I44). | D36 |
@@ -325,6 +336,7 @@ Une position radicale serait de **ne pas fournir** de mécanisme de réutilisati
 | **E — Décorateurs** | ❌ Rejeté implicitement. Magie implicite contraire à « Explicite > Implicite ». | Philosophie Bonsai |
 
 **Algorithme de décision D38 :**
+
 - **Q0** : Sert de base de composition → **View**
 - **Q1** : Même View, contexte différent → **View + options** (D34)
 - **Q2** : Capacité orthogonale, applicable à des Views sans rapport → **Behavior** (D36)
@@ -338,5 +350,5 @@ Une position radicale serait de **ne pas fournir** de mécanisme de réutilisati
 - [ADR-0007 : Behavior Contract](ADR-0007-behavior-contract.md) — ⚪ Superseded par D36
 - [RFC-0001-invariants-decisions](../rfc/reference/invariants.md) — D34–D38, anti-pattern « Excessive View Inheritance »
 - [RFC-0001-composants §8](../rfc/2-architecture/README.md) — Contrat Behavior, algorithme D38
-- MarionetteJS Behaviors : https://marionettejs.com/docs/master/marionette.behavior.html
-- React Hooks (pattern conceptuel) : https://react.dev/reference/react
+- MarionetteJS Behaviors : <https://marionettejs.com/docs/master/marionette.behavior.html>
+- React Hooks (pattern conceptuel) : <https://react.dev/reference/react>

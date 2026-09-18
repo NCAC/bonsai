@@ -1,12 +1,12 @@
 # ADR-XXXX : [Titre de la décision]
 
-| Champ | Valeur |
-|-------|--------|
-| **Statut** | 🟡 Proposed / 🟢 Accepted / 🔵 Tested / 🟠 Suspended / ⚪ Superseded |
-| **Date** | YYYY-MM-DD |
-| **Décideurs** | @auteur |
-| **RFC liée** | RFC-XXXX |
-| **Invariants impactés** | I1, I2, ... *(supprimer la ligne si l'ADR n'a pas d'invariants — voir ADR-0043 pour la trichotomie de testabilité)* |
+| Champ                   | Valeur                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Statut**              | 🟡 Proposed / 🟢 Accepted / 🔵 Tested / 🟠 Suspended / ⚪ Superseded                                                |
+| **Date**                | YYYY-MM-DD                                                                                                          |
+| **Décideurs**           | @auteur                                                                                                             |
+| **RFC liée**            | RFC-XXXX                                                                                                            |
+| **Invariants impactés** | I1, I2, ... _(supprimer la ligne si l'ADR n'a pas d'invariants — voir ADR-0043 pour la trichotomie de testabilité)_ |
 
 ---
 
@@ -35,9 +35,9 @@
 **Description** : [Explication de l'approche]
 
 | Avantages | Inconvénients |
-|-----------|---------------|
-| + ... | - ... |
-| + ... | - ... |
+| --------- | ------------- |
+| + ...     | - ...         |
+| + ...     | - ...         |
 
 **Exemples / Code** :
 
@@ -52,9 +52,9 @@
 **Description** : [Explication de l'approche]
 
 | Avantages | Inconvénients |
-|-----------|---------------|
-| + ... | - ... |
-| + ... | - ... |
+| --------- | ------------- |
+| + ...     | - ...         |
+| + ...     | - ...         |
 
 **Exemples / Code** :
 
@@ -64,24 +64,24 @@
 
 ---
 
-### Option C — [Nom descriptif] *(optionnel)*
+### Option C — [Nom descriptif] _(optionnel)_
 
 **Description** : [Explication de l'approche]
 
 | Avantages | Inconvénients |
-|-----------|---------------|
-| + ... | - ... |
+| --------- | ------------- |
+| + ...     | - ...         |
 
 ---
 
 ## Analyse comparative
 
-| Critère | Option A | Option B | Option C |
-|---------|----------|----------|----------|
-| Performance | ⭐⭐⭐ | ⭐⭐ | ⭐ |
-| Complexité | ⭐ | ⭐⭐ | ⭐⭐⭐ |
-| DX | ⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
-| Maintenabilité | ⭐⭐⭐ | ⭐⭐ | ⭐ |
+| Critère        | Option A | Option B | Option C |
+| -------------- | -------- | -------- | -------- |
+| Performance    | ⭐⭐⭐   | ⭐⭐     | ⭐       |
+| Complexité     | ⭐       | ⭐⭐     | ⭐⭐⭐   |
+| DX             | ⭐⭐     | ⭐⭐⭐   | ⭐⭐     |
+| Maintenabilité | ⭐⭐⭐   | ⭐⭐     | ⭐       |
 
 ---
 
@@ -136,8 +136,8 @@ Nous choisissons **Option X** parce que :
 
 ## Historique
 
-| Date | Changement |
-|------|------------|
-| YYYY-MM-DD | Création (Proposed) |
-| YYYY-MM-DD | Accepted après review |
+| Date       | Changement                                                       |
+| ---------- | ---------------------------------------------------------------- |
+| YYYY-MM-DD | Création (Proposed)                                              |
+| YYYY-MM-DD | Accepted après review                                            |
 | YYYY-MM-DD | Tested — invariants prouvés par la suite de tests (cf. ADR-0043) |

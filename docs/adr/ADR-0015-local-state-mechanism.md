@@ -1,7 +1,7 @@
 # ADR-0015 : Mécanisme de localState pour View et Behavior
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Date** | 2026-03-25 |
 | **Décideurs** | @ncac |
@@ -34,7 +34,7 @@ Le corpus définit le **quoi** (I42) et le **pourquoi** (D33), mais pas le **com
 
 ### Arbre de décision (formalisé dans RFC-0001-composants §7)
 
-```
+```text
 Q1. Ce state pourrait-il intéresser un autre composant ?
     ├── OUI → domain state (Feature + Entity + Channel)
     └── NON → Q2
@@ -51,7 +51,7 @@ Le localState existe pour éviter la cérémonie disproportionnée (Feature + En
 ## Contraintes
 
 | # | Contrainte | Source |
-|---|-----------|--------|
+| --- | --- | --- |
 | C1 | Le localState DOIT respecter les 5 contraintes de I42 | I42 |
 | C2 | Le mécanisme DOIT déclencher la re-projection automatiquement (même pipeline que les Events `listen`) | I42.2 (réactif) |
 | C3 | Le mécanisme NE DOIT PAS créer de Channel, namespace, ou entry Radio | I42.4 (non-broadcastable) |
@@ -71,7 +71,7 @@ Le localState est une **micro-Entity interne** gérée par le framework. Même m
 **Mécanisme dual** aligné sur les niveaux d'altération DOM (RFC-0003 §2.1) :
 
 | Niveau | Mécanisme de réactivité | Détail |
-|--------|-------------------------|--------|
+| --- | --- | --- |
 | **N1** — Mutation d'attributs | Callbacks `onLocal{Key}Updated(update: TLocalUpdate<T>)` | La View réagit granulairment par clé, manipule le DOM directement |
 | **N2/N3** — Mutation par zones / complète | Selector `select: (data) => data.local?.xxx` dans `get templates()` | Le pipeline PDR existant gère la re-projection automatique |
 
@@ -294,7 +294,7 @@ class DragAndDropBehavior extends Behavior<
 #### Avantages
 
 | Critère | Évaluation |
-|---------|-----------|
+| --- | --- |
 | **Cohérence avec ADR-0001** | ⭐⭐⭐ — Même pattern Immer (`recipe`), familiarité immédiate |
 | **DX TypeScript** | ⭐⭐⭐ — `this.local.currentStep` typé, IntelliSense sur les clés, erreur compile si clé invalide |
 | **Réactivité** | ⭐⭐⭐ — Re-projection automatique via le même pipeline PDR que les Events |
@@ -306,7 +306,7 @@ class DragAndDropBehavior extends Behavior<
 #### Inconvénients
 
 | Inconvénient | Mitigation |
-|-------------|-----------|
+| --- | --- |
 | Immer en dépendance par View/Behavior | Immer est déjà une dépendance core (Entity) — pas de coût supplémentaire |
 | Pas de callbacks granulaires (`onLocalXxxUpdated`) | Voulu : la View re-projette tout, pas besoin de granularité par clé |
 | Pas de traçabilité causale | Voulu : le localState n'a pas de cause externe, c'est une décision interne de la View |
@@ -339,7 +339,7 @@ class WizardView extends View<Wizard.ChannelConfig, { currentStep: number }> {
 #### Avantages
 
 | Critère | Évaluation |
-|---------|-----------|
+| --- | --- |
 | **Granularité** | ⭐⭐⭐ — Réaction par clé, précis |
 | **Cohérence avec Entity** | ⭐⭐⭐ — Même pattern `onXxxUpdated` |
 | **Contrôle** | ⭐⭐⭐ — La View décide quoi re-projeter |
@@ -347,13 +347,13 @@ class WizardView extends View<Wizard.ChannelConfig, { currentStep: number }> {
 #### Inconvénients
 
 | Inconvénient | Pourquoi c'est problématique |
-|-------------|------|
+| --- | --- |
 | **Crée un mini-Feature dans la View** | Si le callback est le seul mécanisme : la View reçoit des notifications et décide quoi re-projeter → c'est de la logique de routing déguisée |
 | **Verbosité pour N2/N3** | Un callback qui ne fait que re-projeter un template = bruit. La re-projection automatique suffit. |
 | **Re-projection manuelle vs auto** | Si le callback doit appeler `projectTemplate()` manuellement, on perd la réactivité automatique (I42.2). Si c'est automatique, le callback ne sert à rien **pour N2/N3**. |
 | **DX** | Le développeur doit écrire `onLocalCurrentStepUpdated` pour chaque clé, même quand un template N2 suffirait |
 
-> **Note importante** : les callbacks `onLocal{Key}Updated` ne sont pas rejetés *en soi* —
+> **Note importante** : les callbacks `onLocal{Key}Updated` ne sont pas rejetés _en soi_ —
 > ils sont rejetés comme **mécanisme unique de réactivité**.
 > L'Option A retenue les **intègre** comme complément optionnel pour le cas N1
 > (mutation DOM directe sans template). Voir la section Décision.
@@ -377,14 +377,14 @@ class WizardView extends View<Wizard.ChannelConfig> {
 #### Avantages
 
 | Critère | Évaluation |
-|---------|-----------|
+| --- | --- |
 | **Cohérence avec Channels** | ⭐⭐ — Même mécanique que le domain state |
 | **Extensibilité** | ⭐⭐ — On pourrait rendre le Channel visible post-v1 |
 
 #### Inconvénients
 
 | Inconvénient | Pourquoi c'est éliminatoire |
-|-------------|------|
+| --- | --- |
 | **Viole I42.4** | Le localState ne doit PAS transiter par un Channel (non-broadcastable). Même scopé, c'est un Channel. |
 | **Viole I42.3** | Un Channel est observable par le framework (Radio, DevTools, logs). Le localState doit être encapsulé. |
 | **Sur-ingénierie** | Créer un Channel = créer un mini-domaine. Autant créer une Feature, ce qui annule l'intérêt du localState. |
@@ -395,7 +395,7 @@ class WizardView extends View<Wizard.ChannelConfig> {
 ## Analyse comparative
 
 | Critère | Option A (updateLocal + dual N1/N2-N3) | Option B (callbacks uniquement) | Option C (Channel local) |
-|---------|----------------------|---------------------|------------------------|
+| --- | --- | --- | --- |
 | Cohérence avec I42 | ⭐⭐⭐ | ⭐⭐ | ❌ (viole I42.3, I42.4) |
 | DX TypeScript | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ |
 | Simplicité | ⭐⭐⭐ | ⭐ | ⭐ |
@@ -415,7 +415,7 @@ class WizardView extends View<Wizard.ChannelConfig> {
 Le localState est une **Entity sans Channel** — Immer produit un nouvel état immutable, et deux mécanismes complémentaires assurent la réactivité :
 
 | Niveau | Mécanisme | Quand |
-|--------|-----------|-------|
+| --- | --- | --- |
 | **N1** | Callbacks optionnels `onLocal{Key}Updated(update: TLocalUpdate<T>)` | Mutation DOM directe (attributs, classes, texte) |
 | **N2/N3** | Selector `select: (data) => data.local?.xxx` dans `get templates()` | Re-projection automatique via pipeline PDR |
 
@@ -426,7 +426,7 @@ Les deux mécanismes ne s'excluent pas. Un même `updateLocal()` peut déclenche
 ### Justification du rejet des autres options
 
 | Option | Raison du rejet |
-|--------|-----------------|
+| --- | --- |
 | **B — Callbacks comme mécanisme UNIQUE** | En tant que mécanisme unique, les callbacks créent un mini-Feature dans la View — chaque clé nécessite un callback, même quand un template N2/N3 suffirait. La re-projection doit être automatique (I42.2), rendant les callbacks redondants **pour N2/N3**. En revanche, les callbacks sont **adoptés** dans l'Option A enrichie comme complément pour N1. |
 | **C — Channel local scopé** | Viole I42.3 (encapsulé) et I42.4 (non-broadcastable). Un Channel, même scopé, est observable et transite par Radio. C'est une Feature déguisée, ce qui annule l'intérêt du localState. |
 
@@ -437,7 +437,7 @@ Les deux mécanismes ne s'excluent pas. Un même `updateLocal()` peut déclenche
 ### API surface
 
 | Membre | Type | Accès | Description |
-|--------|------|-------|-------------|
+| --- | --- | --- | --- |
 | `get localState()` | `TLocal` | `protected` | Valeurs initiales. Appelé une fois au premier `attached`. |
 | `updateLocal(recipe)` | `(draft: Draft<TLocal>) => void` | `protected` | Mutation Immer. Déclenche callbacks N1 + re-projection N2/N3 si état changé. |
 | `get local` | `Readonly<TLocal>` | `protected` | Lecture de l'état courant (frozen). |
@@ -446,7 +446,7 @@ Les deux mécanismes ne s'excluent pas. Un même `updateLocal()` peut déclenche
 ### Sémantique de mutation
 
 | Aspect | Comportement |
-|--------|-------------|
+| --- | --- |
 | **No-op** | Si l'état n'a pas changé (patches vides), aucune re-projection n'est déclenchée. |
 | **Batch** | Un seul appel à `updateLocal()` = une seule re-projection, quelle que soit le nombre de clés modifiées. |
 | **Synchrone** | `updateLocal()` est synchrone. L'état est à jour immédiatement après l'appel. La re-projection est planifiée (microtask). |
@@ -457,7 +457,7 @@ Les deux mécanismes ne s'excluent pas. Un même `updateLocal()` peut déclenche
 ### Cycle de vie
 
 | Phase | Comportement |
-|-------|-------------|
+| --- | --- |
 | `created` | localState non initialisé |
 | `wired` | localState non initialisé |
 | `attached` | `get localState()` est appelé → état initial frozen stocké. `this.local` est accessible. |
@@ -472,7 +472,7 @@ Les deux mécanismes ne s'excluent pas. Un même `updateLocal()` peut déclenche
 
 La mutation du localState déclenche deux mécanismes complémentaires :
 
-```
+```text
 updateLocal(recipe)
   → Immer produce(oldState, recipe)
   → patches vides ?
@@ -563,7 +563,7 @@ div.wizard
 ### Accès dans les templates
 
 | Source de données | Préfixe dans le template | Provenance |
-|-------------------|--------------------------|------------|
+| --- | --- | --- |
 | Events `listen` (domain state) | `{namespace}.{key}` | Channel → `any` → selectors |
 | localState | `local.{key}` | `this.local` interne — namespace réservé (I57) |
 | Params (configuration) | `params.{key}` | `get params()` (D34) — immutable |
@@ -575,7 +575,7 @@ div.wizard
 ### Sur le framework
 
 | Impact | Description |
-|--------|-------------|
+| --- | --- |
 | **Entity** | Pas d'impact — le localState n'est PAS une Entity au sens du framework (pas de namespace, pas de Channel). |
 | **View / Behavior** | Nouveau generic `TLocal` optionnel. Nouvelles méthodes `updateLocal()` et `get local`. Callbacks optionnels `onLocal{Key}Updated(TLocalUpdate<T>)` auto-découverts. |
 | **PDR** | Le pipeline de projection doit accepter `local.*` comme source de données via `{ local: changedPartial }` dans `NamespacedData`. |
@@ -587,7 +587,7 @@ div.wizard
 ### Sur les documents
 
 | Document | Impact |
-|----------|--------|
+| --- | --- |
 | RFC-0001-composants §7, §8 | Arbre de décision Q1→Q2 ajouté (fait). Référence à cet ADR. |
 | RFC-0001-invariants-decisions | Ajouter **I57** (namespace `local` réservé). I42 reste inchangé. D33/D37 référencent cet ADR. |
 | RFC-0002-api-contrats-typage | Ajouter `updateLocal`, `get local`, `get localState`, `TLocalUpdate<T>`, `TLocalKeyHandlers<TLocal>` dans les types View et Behavior. |
@@ -597,7 +597,7 @@ div.wizard
 ### Sur les invariants
 
 | Invariant | Impact |
-|-----------|--------|
+| --- | --- |
 | I42 | **Confirmé** — le mécanisme implémente les 5 contraintes sans exception. |
 | I30 | **Confirmé** — le localState n'est pas un domain state. I30 continue de bannir le domain state de la View. |
 | I5 | **Confirmé** — le localState n'est pas une Entity, pas de violation. |
@@ -670,7 +670,7 @@ L'asymétrie avec la signature Entity est **documentée et justifiée** : pas de
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-03-25 | Création (Proposed) — 3 options documentées, Option A retenue |
 | 2026-03-25 | Enrichissement Option A — mécanisme dual N1 (callbacks `TLocalUpdate<T>`) / N2-N3 (selector `data.local`). Namespace `local` réservé (I57). Rejet de l'Option B affiné (rejeté comme mécanisme unique, adopté pour N1). Signature `TLocalUpdate<T>` avec `{ actual, previous }`. |
 | 2026-03-25 | **🟢 Accepted** — Décision validée. Option A enrichie (dual N1/N2-N3) avec `TLocalUpdate<T>`, callbacks per-key N1, selectors `data.local` N2/N3, I57 (namespace `local` réservé). |

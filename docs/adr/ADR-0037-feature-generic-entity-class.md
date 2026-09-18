@@ -1,14 +1,14 @@
 # ADR-0037 : Generic principal de Feature — classe Entity vs structure d'état
 
-| Champ                   | Valeur                                                                                                                                                                    |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Statut**              | 🔵 Tested                                                                                                                                                                |
-| **Date**                | 2026-04-21                                                                                                                                                                |
-| **Décideurs**           | @ncac                                                                                                                                                                     |
-| **RFC liée**            | [feature.md](../rfc/3-couche-abstraite/feature.md), [entity.md](../rfc/3-couche-abstraite/entity.md), [conventions-typage.md](../rfc/6-transversal/conventions-typage.md) |
-| **ADR liées**           | [ADR-0001](ADR-0001-entity-diff-notification-strategy.md) (mutate), [ADR-0024](ADR-0024-component-capabilities-manifest-pattern.md) (manifeste typé)                      |
-| **Décisions amendées**  | D17 (getter `Entity` abstrait — signature révisée)                                                                                                                        |
-| **Invariants impactés** | I22 (1:1:1) — désormais encodé au type-level                                                                                                                              |
+| Champ | Valeur |
+| ----- | ------ |
+| **Statut** | 🔵 Tested |
+| **Date** | 2026-04-21 |
+| **Décideurs** | @ncac |
+| **RFC liée** | [feature.md](../rfc/3-couche-abstraite/feature.md), [entity.md](../rfc/3-couche-abstraite/entity.md), [conventions-typage.md](../rfc/6-transversal/conventions-typage.md) |
+| **ADR liées** | [ADR-0001](ADR-0001-entity-diff-notification-strategy.md) (mutate), [ADR-0024](ADR-0024-component-capabilities-manifest-pattern.md) (manifeste typé) |
+| **Décisions amendées** | D17 (getter `Entity` abstrait — signature révisée) |
+| **Invariants impactés** | I22 (1:1:1) — désormais encodé au type-level |
 
 ---
 
@@ -354,7 +354,7 @@ class CartFeature
 
 ## Historique
 
-| Date       | Changement                                                                     |
+| Date | Changement |
 | ---------- | ------------------------------------------------------------------------------ | --- | ---------- | ------------------------------------------- |
-| 2026-04-21 | Création (Proposed) — déclenchée par les casts répétés dans les tests strate-0 |     | 2026-04-21 | Accepted après relecture — Option B retenue |
+| 2026-04-21 | Création (Proposed) — déclenchée par les casts répétés dans les tests strate-0 | | 2026-04-21 | Accepted après relecture — Option B retenue |
 | 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

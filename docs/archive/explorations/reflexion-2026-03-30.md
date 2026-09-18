@@ -6,6 +6,7 @@
 > limites dans le modèle de composition actuel.
 >
 > Deux axes émergent de cette session — liés mais distincts :
+>
 > 1. **Mode de distribution** : IIFE vs ESM modulaire → [Partie I](#partie-i--mode-esm-modulaire-et-mode-bundle-iife)
 > 2. **Composition dynamique hétérogène** : l'insuffisance du modèle Composer/Slot statique → [Document dédié](reflexion-composition-dynamique-heterogene.md)
 
@@ -22,6 +23,7 @@ Le cas des plugins « externes » (anciennement ADR-0019, [déclassée en réfle
 - Les Niveaux 3 (late registration) et 4 (micro-apps) restent hors périmètre pour l'instant
 
 > **Décision prise (2026-04-01)** : Le découpage s'est affiné en trilogie d'ADR :
+>
 > - **[ADR-0019](adr/ADR-0019-mode-esm-modulaire.md)** — Mode ESM Modulaire (BonsaiRegistry, bootstrap dynamique)
 > - **[ADR-0020](adr/ADR-0020-composers-n-instances-composition-heterogene.md)** — N-instances Composer & CDH périmètre réduit
 > - **[ADR-0021](adr/ADR-0021-composition-monde-ouvert-plateforme.md)** — Monde ouvert / plateforme (anciennement ADR-0019 Extension Points, renommé)
@@ -92,17 +94,17 @@ Chaque module est un fichier JS distinct, compilé depuis TypeScript sans bundle
 
 ## 3. Comparaison synthétique
 
-| Critère | Mode IIFE | Mode ESM Modulaire |
-|---------|-----------|-------------------|
-| Build | Bundler obligatoire | TS → JS direct |
-| Découverte des Features | Statique | Dynamique |
-| Extensibilité | Faible | Forte |
-| Chargement par périmètre | Impossible | Natif |
-| Cross‑module imports | ❌ | ✔ |
-| Lazy loading | Complexe | `import()` natif |
-| Granularité | Monolithique | Modulaire |
-| Adaptation multi‑modules | Mauvaise | Excellente |
-| Composition UI | Rigidité | Slots + injections dynamiques |
+| Critère                  | Mode IIFE           | Mode ESM Modulaire            |
+| ------------------------ | ------------------- | ----------------------------- |
+| Build                    | Bundler obligatoire | TS → JS direct                |
+| Découverte des Features  | Statique            | Dynamique                     |
+| Extensibilité            | Faible              | Forte                         |
+| Chargement par périmètre | Impossible          | Natif                         |
+| Cross‑module imports     | ❌                  | ✔                             |
+| Lazy loading             | Complexe            | `import()` natif              |
+| Granularité              | Monolithique        | Modulaire                     |
+| Adaptation multi‑modules | Mauvaise            | Excellente                    |
+| Composition UI           | Rigidité            | Slots + injections dynamiques |
 
 ---
 

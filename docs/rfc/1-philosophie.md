@@ -18,8 +18,8 @@ Avant toute implémentation, il est indispensable de poser formellement :
 - les **règles de communication** — qui parle à qui, par quel mécanisme ;
 - les **invariants non négociables** qui garantissent la cohérence du système.
 
-Ce document constitue le *quoi* architectural : il définit les pièces du puzzle
-et comment elles s'emboîtent, indépendamment du *comment* (API TypeScript,
+Ce document constitue le _quoi_ architectural : il définit les pièces du puzzle
+et comment elles s'emboîtent, indépendamment du _comment_ (API TypeScript,
 implémentation, typage) qui fait l'objet des documents composants.
 
 L'objectif est qu'un développeur puisse lire cette documentation et comprendre
@@ -69,8 +69,8 @@ pour garantir la cohérence et la lisibilité à l'échelle.
 
 Socle complet, pas une simple bibliothèque.
 Bonsai fournit l'architecture, les composants, les conventions
-et les garde-fous — le développeur construit *dans* le framework,
-pas *autour* d'une librairie.
+et les garde-fous — le développeur construit _dans_ le framework,
+pas _autour_ d'une librairie.
 
 ### 3.3 Flux unidirectionnel strict
 
@@ -124,6 +124,7 @@ le compilateur vérifie les invariants à la compilation.
 > détectable à la compilation ne doit jamais atteindre le runtime. Cette
 > contrainte permet de déplacer de nombreuses vérifications du runtime
 > vers le compile-time :
+>
 > - Handlers/repliers manquants → `TFeatureCallbacks` et `TStrictFeatureClass` ([feature.md §3bis](3-couche-abstraite/feature.md#3bis-tfeaturecallbacks-et-tstrictfeatureclass-adr-0046), ADR-0046, I92)
 > - Payloads incorrects → typage générique
 > - Channels non déclarés → manifest applicatif typé (ADR-0039) et `static readonly channel` sur la classe Feature (ADR-0040)
@@ -138,6 +139,7 @@ n'est permis au runtime. Les dépendances de communication sont visibles
 dans la signature du composant, pas cachées dans son implémentation.
 
 **Conséquences** :
+
 - Le graphe de communication est lisible dans le code sans l'exécuter
 - Les invariants sont vérifiables à la compilation (TypeScript)
 - Les tests ne montent que les Channels déclarés

@@ -18,11 +18,11 @@
 >
 > Ce document décrit le **contrat cible** des erreurs. Les éléments suivants ne sont **pas encore implémentés** :
 >
-> | Élément | Strate cible | Sections concernées |
-> | ------- | ------------ | ------------------- |
-> | Isolation et journalisation contextuelle des exceptions de handlers Command (contexte causal) | Strate 1b | §2 (Principe 3), §3 |
-> | Rejet anti-boucle `hop > maxHops` | Strate 1b | §2 (Principe 5) |
-> | `ErrorReporter` transversal | Strate 1 | §3 |
+> | Élément                                                                                       | Strate cible | Sections concernées |
+> | --------------------------------------------------------------------------------------------- | ------------ | ------------------- |
+> | Isolation et journalisation contextuelle des exceptions de handlers Command (contexte causal) | Strate 1b    | §2 (Principe 3), §3 |
+> | Rejet anti-boucle `hop > maxHops`                                                             | Strate 1b    | §2 (Principe 5)     |
+> | `ErrorReporter` transversal                                                                   | Strate 1     | §3                  |
 >
 > **Périmètre effectif livré** : hiérarchie `BonsaiError` (`@bonsai/error`) avec `invariantId`, `component` et `suggestion` ; `MutationError` et `EntityReentrancyError` (strate 1a) ; isolation des handlers Entity (`BroadcastError` loguée, I96) et des listeners Event (`ListenerError` loguée) ; `NoHandlerError` et `DuplicateHandlerError` levées par le Channel ; `BonsaiNamespaceError` au bootstrap. `CommandError`, `RequestError`, `RenderError` et `BehaviorError` sont définies mais **jamais levées**.
 
@@ -30,12 +30,12 @@
 
 Bonsai distingue quatre categories d'erreurs selon leur origine et leur moment de detection :
 
-| Categorie | Detection | Responsable | Exemples |
-|-----------|-----------|-------------|---------|
-| **Erreur de contrat** | Compile-time | TypeScript | Command sans handler (`implements TFeatureCallbacks` echoue avec TS2515), payload mal type, `emit` sur une clé absente de `TChannel['events']` |
-| **Erreur de cablage** | Bootstrap (`app.start()`) | Framework | Namespace duplique (TS1117, compile-time), reference `listens`/`queries` a un namespace inconnu (`BonsaiNamespaceError`, Phase 0c) |
-| **Violation d'invariant** | Bootstrap ou runtime | Framework | Double handler Command/Request (I10, `DuplicateHandlerError`), namespace invalide (I21, `BonsaiNamespaceError`) ; `hop > maxHops` (I9) est ⏳ cible strate 1b, non livre |
-| **Erreur applicative** | Runtime | Feature / developpeur | Exception dans `onXxxCommand` (⚠️ propage aujourd'hui a l'appelant, l'isolation est cible strate 1b — cf. Principe 3), `reply()` manquant (`request()` retourne `null`, pas de timeout — `request()` est synchrone, ADR-0023) |
+| Categorie                 | Detection                 | Responsable           | Exemples                                                                                                                                                                                                                     |
+| ------------------------- | ------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Erreur de contrat**     | Compile-time              | TypeScript            | Command sans handler (`implements TFeatureCallbacks` echoue avec TS2515), payload mal type, `emit` sur une clé absente de `TChannel['events']`                                                                               |
+| **Erreur de cablage**     | Bootstrap (`app.start()`) | Framework             | Namespace duplique (TS1117, compile-time), reference `listens`/`queries` a un namespace inconnu (`BonsaiNamespaceError`, Phase 0c)                                                                                           |
+| **Violation d'invariant** | Bootstrap ou runtime      | Framework             | Double handler Command/Request (I10, `DuplicateHandlerError`), namespace invalide (I21, `BonsaiNamespaceError`) ; `hop > maxHops` (I9) est ⏳ cible strate 1b, non livre                                                     |
+| **Erreur applicative**    | Runtime                   | Feature / developpeur | Exception dans `onXxxCommand` (⚠️ propage aujourd'hui a l'appelant, l'isolation est cible strate 1b — cf. Principe 3), `reply()` manquant (`request()` retourne `null`, pas de timeout — `request()` est synchrone, ADR-0023) |
 
 ---
 
@@ -58,6 +58,7 @@ Un bootstrap reussi garantit la coherence initiale du système — pas de demi-d
 
 Ce principe est **livre pour les listeners Event et les handlers Entity**,
 **pas encore pour les Command handlers** :
+
 - `onXxxEvent` (Channel.listen) : une exception est capturee, une
   `ListenerError` est logguee, les autres listeners continuent — **livre**.
 - `on<Key>EntityUpdated`/`onAnyEntityUpdated` : une exception est capturee,
@@ -97,6 +98,7 @@ principe decrit le contrat cible d'I9, pas un comportement actuel.
 > dans les messages d'erreur.**
 
 Chaque erreur emise par le framework DOIT fournir :
+
 - **Identifiant de l'invariant** ou de l'ADR viole (ex: `[I9]`, `[ADR-0002]`)
 - **Composant concerne** : namespace, nom de la classe, nom de la méthode
 - **Contexte causal** : correlationId, causationId, hop au moment de l'erreur (si applicable)
@@ -112,12 +114,12 @@ Chaque erreur emise par le framework DOIT fournir :
 
 > **Position explicite** : Bonsai **supporte partiellement** le SSR en v1.
 
-| Aspect | Position v1 |
-|--------|------------|
-| **Reutilisation du DOM existant (hydratation)** | Supporte — si le `rootElement` d'une View existe dans le DOM au moment de `onAttach()`, le framework le reutilise (D28, D30, I31). |
-| **Rendu serveur (génération HTML cote serveur)** | Hors scope v1 — le framework ne fournit pas de moteur de rendu Node.js en v1. |
-| **Reconciliation DOM modifie hors framework** | Non garanti — le DOM doit correspondre a ce que le framework attend (selectors `uiElements` resolvables). Tout ecart peut causer des erreurs bootstrap ou des incoherences de projection. |
-| **Streaming / progressive rendering** | Hors scope v1. |
+| Aspect                                           | Position v1                                                                                                                                                                               |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Reutilisation du DOM existant (hydratation)**  | Supporte — si le `rootElement` d'une View existe dans le DOM au moment de `onAttach()`, le framework le reutilise (D28, D30, I31).                                                        |
+| **Rendu serveur (génération HTML cote serveur)** | Hors scope v1 — le framework ne fournit pas de moteur de rendu Node.js en v1.                                                                                                             |
+| **Reconciliation DOM modifie hors framework**    | Non garanti — le DOM doit correspondre a ce que le framework attend (selectors `uiElements` resolvables). Tout ecart peut causer des erreurs bootstrap ou des incoherences de projection. |
+| **Streaming / progressive rendering**            | Hors scope v1.                                                                                                                                                                            |
 
 > La doctrine SSR complète et la strategie de reconciliation seront formalisees
 > dans le document [rendu avance](../5-rendu.md) une fois le compilateur PDR stabilise.

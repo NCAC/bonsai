@@ -29,6 +29,7 @@
 > TFeatureCallbacks`/`TViewCallbacks`).
 >
 > Ce qui **n'existe pas** dans `packages/` et empêche toute compilation :
+>
 > - `localState`, `updateLocal()`, `this.local`, `TLocalUpdate` (ADR-0015) —
 >   **aucune trace dans `packages/view/src`** ; cible strate 2. Tous les
 >   patterns B–D en dépendent pour l'état de saisie transitoire.
@@ -48,22 +49,22 @@
 
 ---
 
-| Champ          | Valeur                                                                                                                                                     |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **ADR source** | [ADR-0009 — Forms Pattern](../adr/ADR-0009-forms-pattern.md)                                                                                               |
+| Champ | Valeur |
+| ----- | ------- |
+| **ADR source** | [ADR-0009 — Forms Pattern](../adr/ADR-0009-forms-pattern.md) |
 | **Pré-requis** | [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md) (mutate), [ADR-0015](../adr/ADR-0015-local-state-mechanism.md) (localState), [behavior.md](../rfc/4-couche-concrete/behavior.md) (Behavior — statut anticipé Strate 2), [ADR-0016](../adr/ADR-0016-metas-handler-signature.md) (metas) |
-| **Créé le**    | 2026-04-01                                                                                                                                                 |
+| **Créé le** | 2026-04-01 |
 
 ---
 
 ## TL;DR
 
-| Situation                                      | Pattern (ADR-0009)                  | Où vit l'état de saisie                  |
-| ---------------------------------------------- | ------------------------------------ | ----------------------------------------- |
-| Formulaire simple (contact, login, newsletter) | **B** — localState dans la View     | View (`updateLocal`)                     |
-| Formulaire réutilisable (adresse sur 3 pages)  | **C** — FormBehavior                | Behavior (`updateLocal`)                 |
-| Wizard multi-step (checkout)                   | **D** — Entity + localState par étape | View (saisie) + Entity (étapes validées) |
-| Validation différée (unicité, référence connue) | *(complément, S2)* localState + debounce + Request | View (debounce) + Feature (état en mémoire, synchrone) |
+| Situation                                       | Pattern (ADR-0009)                                 | Où vit l'état de saisie                                |
+| ----------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------ |
+| Formulaire simple (contact, login, newsletter)  | **B** — localState dans la View                    | View (`updateLocal`)                                   |
+| Formulaire réutilisable (adresse sur 3 pages)   | **C** — FormBehavior                               | Behavior (`updateLocal`)                               |
+| Wizard multi-step (checkout)                    | **D** — Entity + localState par étape              | View (saisie) + Entity (étapes validées)               |
+| Validation différée (unicité, référence connue) | _(complément, S2)_ localState + debounce + Request | View (debounce) + Feature (état en mémoire, synchrone) |
 
 > **Règle fondamentale** : l'état de saisie (valeurs, touched, errors, isSubmitting) est
 > de l'**état de présentation transitoire** (I30, I42). Seule la **soumission finale**
@@ -85,7 +86,7 @@
 
 ## 1. Arbre de décision
 
-```
+```text
 Le formulaire est-il réutilisé sur plusieurs pages ?
 ├── OUI → Pattern C (FormBehavior)
 └── NON
@@ -791,16 +792,16 @@ onUsernameInputInput(e: Event): void {
 
 ## 6. Anti-patterns
 
-| ❌ Interdit                                          | ✅ Correct                                                                | Raison             |
-| ---------------------------------------------------- | -------------------------------------------------------------------------- | ------------------- |
-| `this.entity.state.values[field] = value`            | `this.entity.mutate('ns:update', { payload }, draft => { ... })`  | ADR-0001           |
-| `get uiEvents() { return { 'input @ui.x': 'onX' } }` | Module `uiEvents: TUIContract` + auto-discovery `on{Key}{Event}` (I48/I88) | ADR-0042           |
-| `this.trigger('ns:cmd', payload)` sans `features` déclarant `ns` | `this.trigger("ns:cmd", payload)` avec `ns` référencé dans `get features()` | I87, I80           |
-| `this.getUI('btn').prop('disabled', true)`           | `this.getUI('btn').attr('disabled', 'true')`                              | I41                |
-| `document.querySelector('.x')`                       | `this.getUI('x')`                                                         | I39                |
-| `onSubmitCommand(payload, metas) { }` (2 paramètres) | `onSubmitCommand(payload: void): void { }` — strate 0, sans metas (cible strate 1b) | ADR-0028           |
-| État `touched`/`errors` dans l'Entity                | `localState` dans la View/Behavior — ⏳ non livré (cf. bandeau en tête)   | I30, I42, ADR-0009 |
-| `static readonly namespace = …`                      | `static readonly channel: TChannelToken<TDef, NS>` (ADR-0040)             | I68                |
+| ❌ Interdit                                                      | ✅ Correct                                                                          | Raison             |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------ |
+| `this.entity.state.values[field] = value`                        | `this.entity.mutate('ns:update', { payload }, draft => { ... })`                    | ADR-0001           |
+| `get uiEvents() { return { 'input @ui.x': 'onX' } }`             | Module `uiEvents: TUIContract` + auto-discovery `on{Key}{Event}` (I48/I88)          | ADR-0042           |
+| `this.trigger('ns:cmd', payload)` sans `features` déclarant `ns` | `this.trigger("ns:cmd", payload)` avec `ns` référencé dans `get features()`         | I87, I80           |
+| `this.getUI('btn').prop('disabled', true)`                       | `this.getUI('btn').attr('disabled', 'true')`                                        | I41                |
+| `document.querySelector('.x')`                                   | `this.getUI('x')`                                                                   | I39                |
+| `onSubmitCommand(payload, metas) { }` (2 paramètres)             | `onSubmitCommand(payload: void): void { }` — strate 0, sans metas (cible strate 1b) | ADR-0028           |
+| État `touched`/`errors` dans l'Entity                            | `localState` dans la View/Behavior — ⏳ non livré (cf. bandeau en tête)             | I30, I42, ADR-0009 |
+| `static readonly namespace = …`                                  | `static readonly channel: TChannelToken<TDef, NS>` (ADR-0040)                       | I68                |
 
 ---
 

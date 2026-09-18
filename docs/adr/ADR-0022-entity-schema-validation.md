@@ -1,6 +1,7 @@
 # ADR-0022 : Entity Schema Validation Strategy
 
 > ### ⚠️ Mise à jour 2026-04-21
+>
 > Le wrapper `packages/zod/` **a été supprimé du repo**. Les sections de cet ADR
 > qui le mentionnent (legacy, rétrocompatibilité, exemples `import { z } from 'zod'`)
 > sont désormais **purement historiques** et conservées pour la traçabilité de la
@@ -8,13 +9,14 @@
 > Aucune compatibilité Zod n'est plus assurée.
 
 > ### TL;DR
+>
 > **Valibot imposé** comme unique bibliothèque de validation. Chaque Entity définit
 > `abstract get schema(): TEntitySchema<TStructure>`. Validation **modale** : silencieuse
 > en prod, `console.warn` en dev (`__DEV__`), stricte (throw) dans les formulaires
 > (`FormBehavior`). Nouvel invariant I63. Valibot < 1 KB noyau vs Zod ~13 KB full (v3).
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Date** | 2026-04-01 |
 | **Décideurs** | @ncac |
@@ -31,7 +33,7 @@
 Bonsai possède aujourd'hui **trois couches de validation** :
 
 | Couche | Mécanisme | Ce qui est validé | Ce qui échappe |
-|--------|-----------|-------------------|----------------|
+| --- | --- | --- | --- |
 | **Compile-time** | `TEntityStructure extends TJsonSerializable` | Structure (champs, types) | Valeurs (`""`, `-1`, string de 10 000 caractères) |
 | **Framework** | `invariant()` / `warning()` (ADR-0004) | Invariants architecturaux I1–I58 | Contraintes domaine (min/max, format, enum runtime) |
 | **UI** | localState dans View/Behavior (ADR-0009) | Saisie pré-soumission | Pas de garantie côté Entity — la View peut « oublier » |
@@ -72,7 +74,7 @@ Mais la même contrainte (`zip` = 5 chiffres) **devrait aussi** exister au nivea
 ### Ce qui manque concrètement
 
 | Besoin | Exemple | Couvert aujourd'hui ? |
-|--------|---------|-----------------------|
+| --- | --- | --- |
 | Contrainte de valeur | `qty >= 0`, `price > 0` | ❌ Non |
 | Contrainte de format | `email matches /^.+@.+\..+$/` | ❌ Non |
 | Contrainte d'enum runtime | `status ∈ ['draft', 'active', 'archived']` | ⚠️ Compile-time via literal union, pas runtime |
@@ -221,7 +223,7 @@ class ShippingStepView extends View<[Checkout.Channel], TShippingUI, TShippingOp
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | ✅ **Single Source of Truth** — `z.infer<typeof schema>` dérive le type | ❌ **Zod obligatoire** — couplage fort à une dépendance externe |
 | ✅ Validation systématique — aucun `mutate()` ne bypass le schéma | ❌ **Overhead runtime à chaque mutation** — même en production |
 | ✅ Messages d'erreur riches et structurés (ZodError) | ❌ **Breaking change** — toutes les Entities existantes doivent ajouter un schema |
@@ -360,7 +362,7 @@ abstract class Entity<TStructure extends TJsonSerializable> {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | ✅ **Aucune dépendance externe** — plain TypeScript | ❌ **Boilerplate** — chaque contrainte est un if/push manuellement |
 | ✅ **Optionnel** — les Entities simples n'ont rien à ajouter | ❌ **Pas de Single Source of Truth** — le type et validate() peuvent diverger |
 | ✅ **Flexible** — peut valider des contraintes inter-champs arbitraires | ❌ **Non-réutilisable** dans les formulaires (ADR-0009) — pas de schema partageable |
@@ -455,7 +457,7 @@ class CartEntity extends Entity<Cart.State> {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | ✅ **Explicite** — chaque validation est visible dans le code | ❌ **Aucune garantie** — facile d'oublier de valider |
 | ✅ **Flexible** — chaque handler choisit sa stratégie | ❌ **Dispersé** — la même contrainte dupliquée dans 3 handlers |
 | ✅ **Zero overhead framework** — pas de hook | ❌ **`fromJSON()` / `populateFromServer()` non protégés** — le trou reste béant |
@@ -470,7 +472,7 @@ class CartEntity extends Entity<Cart.State> {
 **Description** : chaque Entity **doit** implémenter le getter abstrait `get schema()` qui retourne soit un `TEntitySchema<TStructure>` (schema de validation domaine), soit `null` (opt-out conscient). Le framework exploite ce schema de façon **modale** :
 
 | Point de validation | Mode | Mécanisme |
-|---------------------|------|-----------|
+| --- | --- | --- |
 | `mutate()` | `__DEV__` uniquement | `invariant()` — éliminé en prod (ADR-0004) |
 | `fromJSON()` | **Toujours** | `hardInvariant()` — données externes non fiables |
 | `populateFromServer()` | **Toujours** | `hardInvariant()` — données serveur non fiables |
@@ -898,7 +900,7 @@ type TValidationError = {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | ✅ **Oubli impossible** — `abstract get schema()` force la déclaration au compile-time | ⚠️ **Friction `return null`** — les Entities triviales doivent écrire 3 lignes de plus |
 | ✅ **Découplé** — `TEntitySchema<T>` framework-owned, compatible Zod/Valibot/ArkType | ⚠️ **Overhead dev** — validation à chaque mutate() en développement |
 | ✅ **Modal** — `__DEV__` pour mutate(), toujours pour données externes | ⚠️ **Schema ≠ TJsonSerializable** — il faut s'assurer que les types restent dans le sous-ensemble JSON |
@@ -915,7 +917,7 @@ type TValidationError = {
 
 ### Option E — Valibot imposé + `TEntitySchema<T>` interne (recommandé)
 
-**Description** : l'Option E **reprend intégralement l'architecture de l'Option D** (`abstract get schema()`, `TEntitySchema<T>`, validation modale, `return null` pour opt-out) mais **impose Valibot** comme bibliothèque de validation officielle de Bonsai. L'interface `TEntitySchema<T>` est conservée comme contrat *interne* du framework (découplage implémentation), mais le code applicatif, la documentation, les exemples et les conventions utilisent exclusivement Valibot.
+**Description** : l'Option E **reprend intégralement l'architecture de l'Option D** (`abstract get schema()`, `TEntitySchema<T>`, validation modale, `return null` pour opt-out) mais **impose Valibot** comme bibliothèque de validation officielle de Bonsai. L'interface `TEntitySchema<T>` est conservée comme contrat _interne_ du framework (découplage implémentation), mais le code applicatif, la documentation, les exemples et les conventions utilisent exclusivement Valibot.
 
 > **L'Option E n'est pas une architecture différente de D** — c'est D + un choix opinionated sur la bibliothèque. Toute la mécanique framework (`abstract get schema()`, `validateState()`, validation modale, `EntityValidationError`) est identique.
 
@@ -924,7 +926,7 @@ type TValidationError = {
 Bonsai est un framework **opinionated**. Il impose Immer pour l'immutabilité, Pug pour les templates, Radio singleton pour l'event bus. Laisser le choix de la bibliothèque de validation crée un problème de **fragmentation** :
 
 | Aspect | Choix libre (D) | Valibot imposé (E) |
-|--------|-----------------|---------------------|
+| --- | --- | --- |
 | **Documentation** | « Choisissez votre bibliothèque » — impossible de montrer un seul idiome | Un seul idiome partout : RFC, guides, sandbox |
 | **DX onboarding** | Le nouveau dev doit découvrir quelle lib est utilisée dans le projet | « C'est Valibot » — un seul skill à apprendre |
 | **Réutilisation sous-schema (ADR-0009)** | `z.shape.field` ou `v.pick()` ou `Type.Pick()` ? | `v.pick(schema, ['field'])` — toujours |
@@ -935,7 +937,7 @@ Bonsai est un framework **opinionated**. Il impose Immer pour l'immutabilité, P
 #### Pourquoi Valibot plutôt que Zod
 
 | Critère | Zod | Valibot | Verdict |
-|---------|-----|---------|---------|
+| --- | --- | --- | --- |
 | **Bundle (min+gz)** | ~2 KB core (v4), ~13 KB full (v3) | < 700 B noyau — seuls les validateurs importés sont bundlés | 🏆 Valibot |
 | **Tree-shaking** | Bon (v4), chaque méthode exportée | **Excellent** — chaque validateur est une fonction indépendante | 🏆 Valibot |
 | **Performance runtime** | ⭐⭐⭐ | ⭐⭐⭐⭐ (plus rapide sur les objets complexes) | 🏆 Valibot |
@@ -1059,7 +1061,7 @@ entity.populateFromServer(apiResponse as Product.State);
 //   • price: prix ≥ 0
 ```
 
-> **Point clé** : `populateFromServer()` valide **toujours** (pas seulement en `__DEV__`). Les données venant d'une API tierce sont le cas d'usage *premier* de la validation. Valibot est excellent pour ce cas — `safeParse()` est rapide (~0.1ms pour un objet de 20 propriétés), structuré, et ne throw pas.
+> **Point clé** : `populateFromServer()` valide **toujours** (pas seulement en `__DEV__`). Les données venant d'une API tierce sont le cas d'usage _premier_ de la validation. Valibot est excellent pour ce cas — `safeParse()` est rapide (~0.1ms pour un objet de 20 propriétés), structuré, et ne throw pas.
 
 #### Réutilisation dans les formulaires — syntaxe Valibot
 
@@ -1180,7 +1182,7 @@ export * from 'valibot';
 > `packages/zod/` reste disponible pour la rétrocompatibilité avec du code legacy existant, mais n'est plus recommandé pour les nouvelles Entities.
 
 | Avantages (par rapport à D) | Inconvénients (par rapport à D) |
-|------------------------------|----------------------------------|
+| --- | --- |
 | ✅ **Opinionated** — un seul idiome dans tout l'écosystème Bonsai | ⚠️ **Moins de choix** — le développeur qui préfère Zod doit utiliser Valibot |
 | ✅ **Bundle optimal** — Valibot < 700 B noyau, tree-shaking radical | ⚠️ **Écosystème plus jeune** — moins d'intégrations tierces que Zod (mais croissance rapide) |
 | ✅ **Performance** — plus rapide que Zod sur les validations d'objets | |
@@ -1195,7 +1197,7 @@ export * from 'valibot';
 ## Analyse comparative
 
 | Critère | A — Zod obligatoire | B — validate() | C — Feature handler | D — Schema abstrait (lib-agnostic) | **E — Valibot imposé (recommandé)** |
-|---------|--------------------|--------------------------|--------------------|-------------------------------|--------------------------------------|
+| --- | --- | --- | --- | --- | --- |
 | **Performance prod** | ⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ (Valibot + modal) |
 | **Type-safety** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ (`InferOutput`) |
 | **DX** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ (un seul idiome) |
@@ -1371,7 +1373,7 @@ const schema = v.object({
 ### Impact sur le code
 
 | Élément | Impact |
-|---------|--------|
+| --- | --- |
 | **Entity (framework)** | Ajouter `abstract get schema(): TEntitySchema<TStructure> \| null`, implémenter `validateState()` privé, appeler dans `mutate()` (`__DEV__`), `fromJSON()` (toujours), `populateFromServer()` (toujours), et au bootstrap pour `initialState` |
 | **Entity (applicatif)** | Chaque Entity concrète **doit** implémenter `get schema()` — retourner un `TEntitySchema` ou `null` |
 | **TEntitySchema<T>** | Nouvelle interface framework (`packages/types/`) — contrat `safeParse()` interne |
@@ -1385,7 +1387,7 @@ const schema = v.object({
 ### Impact sur les RFC
 
 | Document | Impact |
-|----------|--------|
+| --- | --- |
 | **RFC-0002-entity §1** | Ajouter `abstract get schema(): TEntitySchema<TStructure> \| null` + mention Valibot comme bibliothèque officielle |
 | **RFC-0002-entity §2** | Ajouter `TEntitySchema<T>` interface + relation schema ↔ `TJsonSerializable` — interdire `v.transform()`, `v.optional()` avec default |
 | **RFC-0002-entity §4** | Ajouter la validation post-mutation `__DEV__` dans `mutate()` |
@@ -1396,7 +1398,7 @@ const schema = v.object({
 ### Impact sur les invariants
 
 | Invariant | Impact |
-|-----------|--------|
+| --- | --- |
 | **I46** (TStructure jsonifiable) | Respecté — Valibot `v.object()` produit des types JSON-compatibles |
 | **I6** (seule la Feature mute) | Respecté — le schema **valide** le résultat, il ne **mute** pas (`v.transform()` interdit) |
 | **ADR-0004** (validation modale) | Étendu — la validation domaine suit le même pattern `__DEV__` pour mutate() |
@@ -1405,7 +1407,7 @@ const schema = v.object({
 ### Risques identifiés
 
 | Risque | Mitigation |
-|--------|------------|
+| --- | --- |
 | 🔶 **Overhead validation en dev** — validation à chaque `mutate()` | Acceptable : Valibot `safeParse()` sur des objets JSON simples < 0.1ms. Impact nul en prod (éliminé par `__DEV__`). Plus rapide que Zod. |
 | 🔶 **Schema oublié sur Entity critique** | Impossible d'oublier au compile-time (`abstract`). Mais `return null` reste possible — recommandation forte dans le guide + lint rule possible (ESLint custom) pour Entity dont le state > N propriétés. |
 | 🔶 **Choix Valibot imposé** | Valibot est plus jeune que Zod (6K vs 42K ★) mais en croissance rapide, 100% test coverage, API stable. `TEntitySchema<T>` permet une migration future si nécessaire sans toucher au code framework. |
@@ -1415,7 +1417,7 @@ const schema = v.object({
 ### Actions
 
 | # | Action | Priorité |
-|---|--------|----------|
+| --- | --- | --- |
 | A1 | Amender RFC-0002-entity §1, §4, §7 avec `abstract get schema()`, `TEntitySchema<T>` et Valibot | P1 |
 | A2 | Ajouter §16.8 dans RFC-0002 API — validation domaine vs framework, `TEntitySchema<T>`, Valibot officiel | P1 |
 | A3 | Déclarer `TEntitySchema<T>` dans `packages/types/` | P1 |
@@ -1444,7 +1446,7 @@ const schema = v.object({
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-04-01 | Création (Proposed) — 4 options, recommandation Option D (schema optionnel + validation modale) |
 | 2026-04-01 | Révision Option D → D-révisée : `abstract get schema()` + `TEntitySchema<T>` framework-owned. Absorbe la force de A (oubli impossible) sans overhead prod. Découplage bibliothèque de validation. |
 | 2026-04-01 | Ajout Option E — Valibot imposé + `TEntitySchema<T>` interne. Analyse Zod vs Valibot : Valibot retenu pour bundle size, tree-shaking, performance, séparation validation/transformation. Décision déplacée de D vers E. |

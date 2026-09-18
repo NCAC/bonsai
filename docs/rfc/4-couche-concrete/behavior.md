@@ -7,10 +7,10 @@
 ---
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Composant** | Behavior |
 | **Couche** | Concrete (éphémère) |
-| **Source**    | Historique : RFC-0002-api-contrats-typage §10 |
+| **Source** | Historique : RFC-0002-api-contrats-typage §10 |
 | **Statut** | RFC anticipée — Strate 2 (ADR-0028). Pattern modulaire ADR-0042 applicable (cf. encadré ci-dessous). |
 | **ADRs liées** | **ADR-0042 (pattern modulaire — applicable à Behavior par I83)**, ADR-0007 (contrat Behavior), ADR-0009 (formulaires), ADR-0013 (code reuse), ADR-0015 (localState), ADR-0040 (Channel générique) |
 
@@ -26,10 +26,10 @@
 > pour l'implémentation Behavior est le **pattern modulaire ADR-0042**,
 > identique à celui de View (I83) :
 >
->   - Module 1 : `features: TFeatureContract` — Feature-groupé
->   - Module 2 : `uiEvents: TUIContract` — `ui<TEl>()(events)` typé
->   - Module 3 : `uiElements: TUIElements<typeof uiEvents>` — sélecteurs CSS
->   - Composition : `class XBehavior extends Behavior<TBehaviorContract<F, U>> implements TBehaviorCallbacks<TBC>`
+> - Module 1 : `features: TFeatureContract` — Feature-groupé
+> - Module 2 : `uiEvents: TUIContract` — `ui<TEl>()(events)` typé
+> - Module 3 : `uiElements: TUIElements<typeof uiEvents>` — sélecteurs CSS
+> - Composition : `class XBehavior extends Behavior<TBehaviorContract<F, U>> implements TBehaviorCallbacks<TBC>`
 >
 > Les sections suivantes seront **réécrites au démarrage de la Strate 2**, en
 > alignement strict sur l'API livrée. Cf. [view.md §1–3](view.md#1-classe-abstraite-view)
@@ -40,7 +40,7 @@
 ## Table des matieres
 
 1. [Classe abstraite Behavior](#1-classe-abstraite-behavior)
-2. [Déclarations et API](#2-declarations-et-api)
+2. [Déclarations et API](#2-déclarations-et-api)
 3. [Cycle de vie](#3-cycle-de-vie)
 4. [Exemples](#4-exemples)
 
@@ -206,7 +206,7 @@ abstract class Behavior<
 ### 2.6 Droits d'alteration DOM (I45)
 
 | Niveau | Autorise | Scope |
-|--------|----------|-------|
+| --- | --- | --- |
 | **N1** (attributs, classes, text) | Oui | Ses propres clés ui uniquement |
 | **N2** (insertion/suppression noeuds) | Oui | Ses propres clés ui uniquement (via templates Mode C) |
 | **N3** (remplacement complet rootElement) | Non | Interdit -- pas de rootElement |
@@ -219,7 +219,7 @@ abstract class Behavior<
 Le cycle de vie du Behavior est **lié à celui de sa View hôte** :
 
 | Hook | Quand |
-|------|-------|
+| --- | --- |
 | `onAttach()` | Quand la View hôte est attachée au DOM |
 | `onDetach()` | Quand la View hôte est détachée du DOM |
 
@@ -228,29 +228,32 @@ Il ne survit jamais à sa View hôte.
 Ces hooks sont des appels directs du framework (L2), pas des Events Channel.
 
 Au `onAttach()`, le framework :
+
 1. Résout les sélecteurs `params.uiElements` du Behavior dans le scope du `rootElement` de la View hôte
 2. Vérifie la non-collision des clés ui avec la View (I43)
 3. Branche les uiEvents via la délégation d'événements
 4. Initialise le localState si déclaré
 
 Au `onDetach()`, le framework :
+
 1. Détruit le localState
 2. Débranche les uiEvents
 3. Nettoie les projections templates
 
 ### 3.1 Machine à états
 
-```
+```text
 attached -> detached -> [destroyed]
 ```
 
 | État | Entrée (déclencheur) | Sorties possibles | Hooks disponibles |
-|------|----------------------|-------------------|-------------------|
+| --- | --- | --- | --- |
 | `attached` | Attaché à la View hôte après son `onAttach()` | -> `detached` | `onAttach()` |
 | `detached` | Détaché quand la View hôte reçoit `onDetach()` | -> `destroyed` | `onDetach()` |
 | `destroyed` | Nettoyage complet | -- (terminal) | -- |
 
 > **Invariants de transition** :
+>
 > - Le Behavior est toujours détaché **avant** la View hôte
 > - `localState` (I42, D37) est nettoyé au `detached`
 > - Aucun Behavior ne peut exister sans View hôte

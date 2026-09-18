@@ -13,7 +13,7 @@
 | **Statut**     | 🟢 Stable               |
 | **Mis à jour** | 2026-09-17              |
 
-> ### Statut normatif
+> ## Statut normatif
 >
 > Ce document fait foi pour le **contrat Feature** : classe abstraite, 5 capacités, handlers `onXXX`, cycle de vie.
 > Il fait également foi pour la **pratique de déclaration Channel** : `TChannelDefinition`, `TChannelToken`, `static readonly channel` (ADR-0040), co-localisation (D13, I74).
@@ -29,12 +29,12 @@
 >
 > Ce document décrit le **contrat cible** de Feature. Les éléments suivants ne sont **pas encore implémentés** :
 >
-> | Élément | Strate cible | Sections concernées |
-> | ------- | ------------ | ------------------- |
-> | Paramètre `metas` des handlers et option `{ metas }` de `emit()`/`request()` | Strate 1b | §4, §5, §8 |
-> | Isolation des exceptions de handlers Command (`CommandError`) | Strate 1b | §8 |
-> | `onDestroy()`, états `destroying`/`destroyed`, `onInit()` asynchrone attendu | Strate 1 | §7, §8 |
-> | Hook `onError()` et `ErrorReporter` | Strate 1 | §8 (modèle d'erreurs) |
+> | Élément                                                                      | Strate cible | Sections concernées   |
+> | ---------------------------------------------------------------------------- | ------------ | --------------------- |
+> | Paramètre `metas` des handlers et option `{ metas }` de `emit()`/`request()` | Strate 1b    | §4, §5, §8            |
+> | Isolation des exceptions de handlers Command (`CommandError`)                | Strate 1b    | §8                    |
+> | `onDestroy()`, états `destroying`/`destroyed`, `onInit()` asynchrone attendu | Strate 1     | §7, §8                |
+> | Hook `onError()` et `ErrorReporter`                                          | Strate 1     | §8 (modèle d'erreurs) |
 >
 > **Périmètre effectif livré (strate 0 + ADR-0046)** : `Feature<TEntity, TChannelDef, TSelfNS>` ; `static readonly channel` ; `abstract get listens()`/`get queries()` ; `implements TFeatureCallbacks` (compile-time) ; constructeur inerte (I94) ; `bootstrap()` (Channel, Entity, auto-découverte des handlers Command/Request/Event/Entity sur le **prototype direct** de la classe, puis `onInit()`) ; `emit(eventName, payload)` et `request(token, name, params)` **sans metas** ; getter public `namespace`, getter `protected` `entity` (I5, I6) ; `onInit()` synchrone, public, sans support async.
 >
@@ -187,11 +187,11 @@ abstract class Feature<
 
 Un Channel a **trois facettes** distinctes :
 
-| Facette                          | Nature                                              | Visibilité                                  |
-| -------------------------------- | --------------------------------------------------- | ------------------------------------------- |
-| `TChannelDefinition` (type)      | Contrat tri-lane (commands / events / requests)     | Public — co-localisé dans `*.feature.ts` (I74) |
-| `TChannelToken<TDef, NS>` (type) | Pont typé classe Feature ↔ contrat (ADR-0040, I73)  | Public — exposé via `static readonly channel` |
-| `Channel<TDef>` (classe runtime) | Registres de handlers, dispatch                     | Interne framework — non exporté par `@bonsai/core` (D15, I80) |
+| Facette                          | Nature                                             | Visibilité                                                    |
+| -------------------------------- | -------------------------------------------------- | ------------------------------------------------------------- |
+| `TChannelDefinition` (type)      | Contrat tri-lane (commands / events / requests)    | Public — co-localisé dans `*.feature.ts` (I74)                |
+| `TChannelToken<TDef, NS>` (type) | Pont typé classe Feature ↔ contrat (ADR-0040, I73) | Public — exposé via `static readonly channel`                 |
+| `Channel<TDef>` (classe runtime) | Registres de handlers, dispatch                    | Interne framework — non exporté par `@bonsai/core` (D15, I80) |
 
 Le développeur applicatif manipule **uniquement** le type `TChannelDefinition` et le token statique. L'instance runtime `Channel<TDef>` est un détail d'implémentation, créé au bootstrap par `Application` depuis le manifest (ADR-0039).
 
@@ -276,6 +276,7 @@ export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
 ```
 
 > **Pourquoi plus de `namespace Cart` ni de `declareChannel`** ? Le manifest applicatif (ADR-0039) est désormais l'autorité unique des namespaces. Il n'y a plus besoin de regrouper « types + valeurs » sous un nom commun :
+>
 > - Le **type Channel** (`TCartDef`) reste compile-time, importé directement.
 > - Le **token runtime** (`CartFeature.channel`) est porté par la classe elle-même (ADR-0040, I73).
 > - Le **namespace** (`"cart"`) vit comme `TSelfNS` paramétré sur la classe (I72) ET comme clé du manifest (I68).
@@ -292,7 +293,7 @@ export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
 | Import           | 2 imports             | 1 import          |
 | Risque de désync | Oui                   | Non               |
 
-```
+```text
 Cart/
   cart.feature.ts       ← Cart namespace + CartFeature class
   cart.entity.ts        ← CartEntity class
@@ -346,7 +347,7 @@ class CartFeature
 }
 ```
 
-> **`channel` reste `static` — `listens`/`queries` sont des `abstract get` d'instance** : cette asymétrie est volontaire. `channel` identifie la *classe* (consommé sans instance, ex. `CartFeature.channel` par une View — I73) ; `listens`/`queries` alimentent le contrat `TFeatureCallbacks` (I92), qui a besoin d'un type d'instance pour la clause `implements`. `static readonly channel` reste donc la seule déclaration sans garde-fou `abstract static` (limitation TypeScript — `abstract static` n'existe pas) : filets de sécurité pour `channel` uniquement — type `TStrictFeatureClass<NS>` (§3bis), validation runtime au bootstrap (Phase 0a), tests de type (`tests/types/`). `listens`/`queries`, eux, sont garantis par le compilateur : une sous-classe qui omet l'un des deux getters lève `TS2515` (« Non-abstract class does not implement inherited abstract member »).
+> **`channel` reste `static` — `listens`/`queries` sont des `abstract get` d'instance** : cette asymétrie est volontaire. `channel` identifie la _classe_ (consommé sans instance, ex. `CartFeature.channel` par une View — I73) ; `listens`/`queries` alimentent le contrat `TFeatureCallbacks` (I92), qui a besoin d'un type d'instance pour la clause `implements`. `static readonly channel` reste donc la seule déclaration sans garde-fou `abstract static` (limitation TypeScript — `abstract static` n'existe pas) : filets de sécurité pour `channel` uniquement — type `TStrictFeatureClass<NS>` (§3bis), validation runtime au bootstrap (Phase 0a), tests de type (`tests/types/`). `listens`/`queries`, eux, sont garantis par le compilateur : une sous-classe qui omet l'un des deux getters lève `TS2515` (« Non-abstract class does not implement inherited abstract member »).
 
 ### Manifest applicatif (ADR-0039)
 
@@ -396,9 +397,9 @@ app.start();
 
 > **`Application.register()` est supprimée** (I69, D-η ADR-0039). L'enregistrement
 > se fait exclusivement via le manifest passé au constructeur d'Application.
-
+>
 > **Note ADR-0024, amendée par [ADR-0046](../../adr/ADR-0046-feature-contract-refonte.md)** : `listens`/`queries` sont désormais lus depuis l'**instance** (`abstract get`), pas depuis la classe. `Application.start()` les lit en **Phase 0c**, après l'instanciation pure de la Feature (ctor inerte, I94) et avant tout side-effect Radio, pour valider les références croisées (I70 amendé). Ce pattern rejoint enfin le value-first ADR-0024, déjà appliqué côté **View** (`get features()`/`get uiEvents()`/`get uiElements()`, ADR-0042) — `listens`/`queries` ne sont plus l'exception lue depuis la classe côté Feature. Composer et Foundation n'exposent pas (encore) ces getters value-first ; Behavior n'existe pas encore comme package livré — cible strate 2.
-
+>
 > **DX — symétrie compile-time avec View, résolue par ADR-0046** : comme View avec `implements TViewCallbacks<TVC>` (ADR-0042), Feature dispose désormais de `implements TFeatureCallbacks<TDef, TListens>` (I88 élargi, I92) — handlers `on{Cmd}Command` / `on{Req}Request` / `on{NS}{Event}Event` vérifiés **compile-time** (TS2515 si absent, TS2416 si signature fautive). Cette garantie ne va pas jusqu'au runtime : l'auto-discovery (I48) enregistre les handlers présents mais ne détecte pas une omission (cf. §3bis, I92). Voir §3bis.
 
 <!--
@@ -427,11 +428,11 @@ app.start();
 `implements TFeatureCallbacks<TDef, TListens>` impose au compilateur la présence
 **et** la signature exacte de tous les handlers dérivés du contrat Channel :
 
-| Handlers dérivés     | Pour chaque…                          | Type intermédiaire         |
-| --------------------- | -------------------------------------- | --------------------------- |
-| `on{Cmd}Command`      | `K ∈ keyof TDef["commands"]`           | `TCommandCallbacks<TDef>`   |
-| `on{Req}Request`      | `K ∈ keyof TDef["requests"]`           | `TRequestCallbacks<TDef>`   |
-| `on{NS}{Evt}Event`    | `(token, event) ∈ TListens[number]`    | `TListenCallbacks<TListens>`|
+| Handlers dérivés   | Pour chaque…                        | Type intermédiaire           |
+| ------------------ | ----------------------------------- | ---------------------------- |
+| `on{Cmd}Command`   | `K ∈ keyof TDef["commands"]`        | `TCommandCallbacks<TDef>`    |
+| `on{Req}Request`   | `K ∈ keyof TDef["requests"]`        | `TRequestCallbacks<TDef>`    |
+| `on{NS}{Evt}Event` | `(token, event) ∈ TListens[number]` | `TListenCallbacks<TListens>` |
 
 ```typescript
 // packages/feature/src/types.ts (extrait, signatures réelles)
@@ -610,16 +611,16 @@ protected request<
 
 ### Convention de nommage
 
-| Type                       | Pattern                           | Paramètre                                    | Retour                            | Exemple                                                                      |
-| -------------------------- | --------------------------------- | -------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------------- |
-| **Command** (C2 handle)    | `on<MessageName>Command`          | `payload: T` (strate 0) — `payload: T, metas: TMessageMetas` (cible strate 1) | `void`                            | `onAddItemCommand(payload: AddItemPayload)`                                  |
-| **Event** (C3 listen)      | `on<ChannelName><EventName>Event` | `payload: T` (strate 0) — `payload: T, metas: TMessageMetas` (cible strate 1) | `void`                            | `onInventoryStockUpdatedEvent(payload: StockPayload)`                        |
-| **Request** (C4 reply)     | `on<RequestName>Request`          | `params: P` ou `void` (strate 0) — `+ metas: TMessageMetas` (cible strate 1)  | `T \| null` (D9 révisé, ADR-0023) | `onTotalRequest(params: void): number \| null`                               |
-| **Entity per-key** (D16)   | `on<Key>EntityUpdated`            | `prev: T, next: T, patches: Patch[]`         | `void`                            | `onItemsEntityUpdated(prev: CartItem[], next: CartItem[], patches: Patch[])` |
-| **Entity catch-all** (D16) | `onAnyEntityUpdated`              | `event: TEntityEvent`                        | `void`                            | `onAnyEntityUpdated(event: TEntityEvent)`                                    |
+| Type | Pattern | Paramètre | Retour | Exemple |
+| --- | --- | --- | --- | --- |
+| **Command** (C2 handle) | `on<MessageName>Command` | `payload: T` (strate 0) — `payload: T, metas: TMessageMetas` (cible strate 1) | `void` | `onAddItemCommand(payload: AddItemPayload)` |
+| **Event** (C3 listen) | `on<ChannelName><EventName>Event` | `payload: T` (strate 0) — `payload: T, metas: TMessageMetas` (cible strate 1) | `void` | `onInventoryStockUpdatedEvent(payload: StockPayload)` |
+| **Request** (C4 reply) | `on<RequestName>Request` | `params: P` ou `void` (strate 0) — `+ metas: TMessageMetas` (cible strate 1) | `T \| null` (D9 révisé, ADR-0023) | `onTotalRequest(params: void): number \| null` |
+| **Entity per-key** (D16) | `on<Key>EntityUpdated` | `prev: T, next: T, patches: Patch[]` | `void` | `onItemsEntityUpdated(prev: CartItem[], next: CartItem[], patches: Patch[])` |
+| **Entity catch-all** (D16) | `onAnyEntityUpdated` | `event: TEntityEvent` | `void` | `onAnyEntityUpdated(event: TEntityEvent)` |
 
 > **Phasage strate 0 → strate 1 sur les metas** (ADR-0028 §148, ADR-0040 §615) : en strate 0 actuelle, les handlers Command/Event/Request reçoivent uniquement le payload (1 paramètre). Le second paramètre `metas: TMessageMetas` (`correlationId`, `causationId`, `hop`, `origin`, `timestamp` — cf. [glossaire](../reference/glossaire.md)) sera ajouté en strate 1 via un ADR dédié amendant ADR-0040. Les exemples ci-dessous montrent la signature **strate 0 actuelle**.
-
+>
 > Pour les Entity handlers, voir [entity.md §6 Notifications](../3-couche-abstraite/entity.md#6-notifications-entity--feature).
 
 ### Exemples
@@ -901,10 +902,10 @@ abstract class Feature<
 Les hooks de cycle de vie sont des **méthodes framework internes** (L1),
 pas des Events sur un Channel. Le framework les appelle directement.
 
-| Hook          | Quand                                           | Usage typique                                 | État |
-| ------------- | ------------------------------------------------ | --------------------------------------------- | ---- |
-| `onInit()`    | Fin de `bootstrap()` (Phase 3), après câblage des handlers | Chargement initial de données, setup | ✅ livré — public, synchrone, sans support async |
-| `onDestroy()` | Avant destruction au shutdown                   | Cleanup, sauvegarde, libération de ressources | ⏳ cible strate 1 — n'existe pas |
+| Hook | Quand | Usage typique | État |
+| --- | --- | --- | --- |
+| `onInit()` | Fin de `bootstrap()` (Phase 3), après câblage des handlers | Chargement initial de données, setup | ✅ livré — public, synchrone, sans support async |
+| `onDestroy()` | Avant destruction au shutdown | Cleanup, sauvegarde, libération de ressources | ⏳ cible strate 1 — n'existe pas |
 
 ```typescript
 abstract class Feature<
@@ -958,18 +959,18 @@ abstract class Feature<
 > fait exclusivement via le manifest, cf. §3). Le tableau ci-dessous décrit le
 > modèle **cible** évoqué par RFC-0001, pas un contrat livré.
 
-```
+```text
 registered → wired → initialized → active → destroying → [destroyed]
 ```
 
-| État          | Entrée (déclencheur)                               | Sorties possibles         | Notes                                                            |
-| ------------- | -------------------------------------------------- | ------------------------- | ---------------------------------------------------------------- |
-| `registered`  | Entrée dans le manifest applicatif                 | → `wired` (bootstrap)     | Validation namespace (I21)                                       |
-| `wired`       | Câblage Radio — Channels résolus, handlers indexés | → `initialized`           | Erreur si handler dupliqué (I10) ; handler manquant non détecté au runtime (I92, §3bis) |
-| `initialized` | `onInit()` terminé                                 | → `active`                | `onInit()` synchrone — pas d'attente possible (§7)               |
-| `active`      | Bootstrap complet                                  | → `destroying` (shutdown) | Phase nominale — traite Commands, émet Events, répond à Requests |
-| `destroying`  | ⏳ non livré (`onDestroy()` inexistant)            | → `destroyed`             | ⏳ cible strate 1                                                 |
-| `destroyed`   | ⏳ non livré                                        | — (terminal)              | ⏳ cible strate 1                                                 |
+| État | Entrée (déclencheur) | Sorties possibles | Notes |
+| --- | --- | --- | --- |
+| `registered` | Entrée dans le manifest applicatif | → `wired` (bootstrap) | Validation namespace (I21) |
+| `wired` | Câblage Radio — Channels résolus, handlers indexés | → `initialized` | Erreur si handler dupliqué (I10) ; handler manquant non détecté au runtime (I92, §3bis) |
+| `initialized` | `onInit()` terminé | → `active` | `onInit()` synchrone — pas d'attente possible (§7) |
+| `active` | Bootstrap complet | → `destroying` (shutdown) | Phase nominale — traite Commands, émet Events, répond à Requests |
+| `destroying` | ⏳ non livré (`onDestroy()` inexistant) | → `destroyed` | ⏳ cible strate 1 |
+| `destroyed` | ⏳ non livré | — (terminal) | ⏳ cible strate 1 |
 
 > **Garantie de séquence effectivement livrée** : une Feature ne peut pas recevoir de
 > Command avant que son propre `bootstrap()` ait câblé ses handlers. Le bootstrap de
@@ -982,10 +983,10 @@ registered → wired → initialized → active → destroying → [destroyed]
 
 Un Command handler peut échouer pour deux raisons distinctes :
 
-| Situation                | Comportement **livré**                                                                                                                                                | Exemple                                                                    |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| **Refus métier**         | Le handler n'exécute pas la mutation et n'émet pas d'Event. Il peut émettre un Event d'erreur métier dédié.                                                                        | `cart:addItem` avec `qty <= 0` — ne pas muter, émettre `cart:itemRejected` |
-| **Exception inattendue** | **Non capturée** : `Channel.trigger()` invoque le handler sans `try/catch` (`packages/event/src/channel.class.ts`) — l'exception **se propage** jusqu'à l'appelant de `trigger()` (typiquement une View). `CommandError` est définie dans `@bonsai/error` mais n'est **jamais levée** par le code livré. L'isolation décrite par [ADR-0002](../../adr/ADR-0002-error-propagation-strategy.md) est une **cible strate 1b** (cf. bandeau de périmètre). | Erreur réseau dans un handler d'IO Feature                                 |
+| Situation | Comportement **livré** | Exemple |
+| --- | --- | --- |
+| **Refus métier** | Le handler n'exécute pas la mutation et n'émet pas d'Event. Il peut émettre un Event d'erreur métier dédié. | `cart:addItem` avec `qty <= 0` — ne pas muter, émettre `cart:itemRejected` |
+| **Exception inattendue** | **Non capturée** : `Channel.trigger()` invoque le handler sans `try/catch` (`packages/event/src/channel.class.ts`) — l'exception **se propage** jusqu'à l'appelant de `trigger()` (typiquement une View). `CommandError` est définie dans `@bonsai/error` mais n'est **jamais levée** par le code livré. L'isolation décrite par [ADR-0002](../../adr/ADR-0002-error-propagation-strategy.md) est une **cible strate 1b** (cf. bandeau de périmètre). | Erreur réseau dans un handler d'IO Feature |
 
 > **Convention de refus métier** : ne pas lever d'exception pour un refus métier prévisible.
 > Préférer un Event dédié (`xxx:rejected`, `xxx:failed`) avec le motif dans le payload.
@@ -1032,10 +1033,10 @@ onTotalRequest(params: void): number | null {
 > **Recommandation** : les Command handlers DEVRAIENT être idempotents quand le
 > domaine le permet — appliquer deux fois le même Command produit le même état final.
 
-| Niveau                          | Description                        | Recommandation                                    |
-| ------------------------------- | ---------------------------------- | ------------------------------------------------- |
-| **Idempotent strict**           | Deux exécutions = même state final | ✅ Préféré (ex: `setX`, `markAs`)                 |
-| **Non-idempotent contrôlé**     | Effet cumulatif explicite et voulu | ✅ Acceptable (ex: `addItem`, `increment`)        |
+| Niveau | Description | Recommandation |
+| --- | --- | --- |
+| **Idempotent strict** | Deux exécutions = même state final | ✅ Préféré (ex: `setX`, `markAs`) |
+| **Non-idempotent contrôlé** | Effet cumulatif explicite et voulu | ✅ Acceptable (ex: `addItem`, `increment`) |
 | **Non-idempotent involontaire** | Duplication d'état par inattention | ❌ Anti-pattern (ex: push sans check d'existance) |
 
 ```typescript
@@ -1064,12 +1065,12 @@ onSetStatusCommand({ status }: { status: string }): void {
 > La section suivante est **informative** — voir [Framework Style Guide](../../guides/FRAMEWORK-STYLE-GUIDE.md)
 > pour les conventions détaillées.
 
-| Indicateur                  | Seuil d'alerte                  | Action recommandée                                  |
-| --------------------------- | ------------------------------- | --------------------------------------------------- |
-| Nombre de Commands > 10     | God Feature potentielle         | Découper en Features par sous-domaine               |
-| Nombre de `listen` > 5      | Dépendances croisées excessives | Créer une Feature d'intégration dédiée              |
-| Handler > 30 lignes         | Logique mal placée              | Extraire dans des méthodes privées ou dans l'Entity |
-| Entity avec > 15 propriétés | State trop large                | Découper en deux Features avec Entities séparées    |
+| Indicateur | Seuil d'alerte | Action recommandée |
+| --- | --- | --- |
+| Nombre de Commands > 10 | God Feature potentielle | Découper en Features par sous-domaine |
+| Nombre de `listen` > 5 | Dépendances croisées excessives | Créer une Feature d'intégration dédiée |
+| Handler > 30 lignes | Logique mal placée | Extraire dans des méthodes privées ou dans l'Entity |
+| Entity avec > 15 propriétés | State trop large | Découper en deux Features avec Entities séparées |
 
 > **Anti-pattern God Feature** — voir [Anti-patterns](../reference/anti-patterns.md#-god-feature).
 > Une Feature bien calibrée répond à une seule question : "de quoi suis-je responsable ?"
@@ -1084,7 +1085,7 @@ onSetStatusCommand({ status }: { status: string }): void {
 
 #### Taxonomie des erreurs Bonsai (10 classes, livrées)
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                        ERREURS BONSAI                           │
 ├─────────────────────────────────────────────────────────────────┤
@@ -1150,18 +1151,18 @@ export class BonsaiError extends Error {
 
 #### Matrice de comportement
 
-| Erreur             | Levée par le code livré ? | State       | Continue ?  | Comportement réel |
-| ------------------ | -------------------------- | ----------- | ----------- | ------------------ |
-| **MutationError**  | ✅ Oui (`Entity#runCycle`)  | ❌ Rollback (Immer n'a jamais appliqué le recipe qui a throw) | Non — throw | Propage à l'appelant de `mutate()` (la Feature) |
+| Erreur | Levée par le code livré ? | State | Continue ? | Comportement réel |
+| --- | --- | --- | --- | --- |
+| **MutationError** | ✅ Oui (`Entity#runCycle`) | ❌ Rollback (Immer n'a jamais appliqué le recipe qui a throw) | Non — throw | Propage à l'appelant de `mutate()` (la Feature) |
 | **EntityReentrancyError** | ✅ Oui (`Entity`, profondeur de ré-entrance, I98) | — | Non — throw | Propage à l'appelant de `mutate()` |
-| **CommandError**   | ❌ Jamais              | —           | —           | Exception non capturée : propage jusqu'à l'appelant de `trigger()` (§8.2) |
-| **RequestError**   | ❌ Jamais              | —           | —           | `Channel.request()` capture le throw, journalise via `console.error`, retourne `null` |
+| **CommandError** | ❌ Jamais | — | — | Exception non capturée : propage jusqu'à l'appelant de `trigger()` (§8.2) |
+| **RequestError** | ❌ Jamais | — | — | `Channel.request()` capture le throw, journalise via `console.error`, retourne `null` |
 | **BroadcastError** | ✅ Oui (`#dispatchEntityEvent`, I96) | ✅ Conservé (mutation déjà appliquée) | ✅ Oui — notification suivante non interrompue | `console.error` |
-| **ListenerError**  | ✅ Oui (`Channel.listen`)   | —           | ✅ Oui — autres listeners non affectés | `console.error` |
-| **NoHandlerError** | ✅ Oui (`Channel.trigger`)  | —           | Non — throw  | Propage à l'appelant |
+| **ListenerError** | ✅ Oui (`Channel.listen`) | — | ✅ Oui — autres listeners non affectés | `console.error` |
+| **NoHandlerError** | ✅ Oui (`Channel.trigger`) | — | Non — throw | Propage à l'appelant |
 | **DuplicateHandlerError** | ✅ Oui (`Channel.handle`/`reply`, I10) | — | Non — throw au bootstrap | Propage |
-| **RenderError**    | ⏳ Pas de mécanisme de capture livré | — | — | — |
-| **BehaviorError**  | ⏳ Package Behavior non livré | — | — | — |
+| **RenderError** | ⏳ Pas de mécanisme de capture livré | — | — | — |
+| **BehaviorError** | ⏳ Package Behavior non livré | — | — | — |
 
 > Les modes « dev »/« prod » différenciés (`throw` en dev, `log`/`warn` en prod)
 > décrits par ADR-0002 ne sont **pas** livrés : le comportement ci-dessus est

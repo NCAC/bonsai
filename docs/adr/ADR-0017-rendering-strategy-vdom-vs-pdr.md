@@ -1,7 +1,7 @@
 # ADR-0017 : Stratégie de rendu — VDOM global vs PDR chirurgicale vs VDOM local par template
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🔵 Tested |
 | **Date** | 2026-03-26 |
 | **Décideurs** | @ncac |
@@ -31,7 +31,8 @@ Le scénario qui cristallise le doute :
 4. La liste doit se réordonner/filtrer **en place**, sans recharger la page
 
 **En VDOM**, le flux mental est clair :
-```
+
+```text
 DOM SSR → construire VDOM₀ (miroir du DOM actuel)
 Utilisateur change le tri → construire VDOM₁ (nouveau tri)
 diff(VDOM₀, VDOM₁) → patches → appliquer au DOM réel
@@ -53,7 +54,7 @@ Cette ADR tranche également deux questions liées :
 Les contraintes suivantes sont **non négociables** — elles découlent des invariants et décisions existants :
 
 | # | Contrainte | Source |
-|---|-----------|--------|
+| --- | --- | --- |
 | **C1** | Le DOM préexiste (SSR/CMS/statique) — hypothèse fondatrice | D19, I31 |
 | **C2** | Pas de VDOM, pas de diff d'arbre — le framework mute chirurgicalement le DOM existant | ADR-0014 C5, D19 |
 | **C3** | La View accède au DOM exclusivement via `getUI()` — pas de `querySelector` ad hoc | I39 |
@@ -74,19 +75,19 @@ Les contraintes suivantes sont **non négociables** — elles découlent des inv
 
 **Description** : Un arbre virtuel complet (VNode) est maintenu en mémoire pour chaque View. À chaque changement de données, un nouvel arbre virtuel est construit via le template, puis un algorithme de diff compare l'ancien et le nouveau VNode et produit des patches à appliquer au DOM réel.
 
-```
+```text
 ┌─────────────────── Cycle de rendu VDOM ───────────────────┐
-│                                                            │
-│  1. Données changent (Event / localState)                  │
-│  2. Template exécuté → VNode₁ (arbre virtuel complet)      │
+│                                                           │
+│  1. Données changent (Event / localState)                 │
+│  2. Template exécuté → VNode₁ (arbre virtuel complet)     │
 │  3. diff(VNode₀, VNode₁) → patches[]                      │
-│  4. patches.forEach(p => applyToDom(p))                    │
+│  4. patches.forEach(p => applyToDom(p))                   │
 │  5. VNode₀ = VNode₁ (pour le prochain cycle)              │
-│                                                            │
-│  Coût : O(taille du template) pour chaque Event,           │
-│         même si 1 seul nœud a changé                       │
-│                                                            │
-└────────────────────────────────────────────────────────────┘
+│                                                           │
+│  Coût : O(taille du template) pour chaque Event,          │
+│         même si 1 seul nœud a changé                      │
+│                                                           │
+└───────────────────────────────────────────────────────────┘
 ```
 
 **Hydratation SSR** : Au `onAttach()`, le template est exécuté une première fois pour construire VNode₀ qui **doit** correspondre exactement au DOM serveur. Si ce n'est pas le cas (mismatch), deux options : (a) ignorer et risquer des incohérences, (b) remplacer tout le sous-arbre.
@@ -123,7 +124,7 @@ class CartView extends View {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Modèle mental simple : « je déclare un arbre, le framework diff » | - Arbre complet en mémoire pour chaque View |
 | + Pas besoin de spécifier quoi patcher — le diff le découvre | - Diff O(n) à chaque mise à jour, même pour 1 nœud changé |
 | + Écosystème prouvé (React, Preact, Snabbdom, Inferno) | - Pression GC : arbres VNode éphémères à chaque cycle |
@@ -142,20 +143,20 @@ class CartView extends View {
 
 **Description** : Le modèle actuel, formalisé dans D19, RFC-0002 §9.4 et RFC-0003. Pas d'arbre virtuel. Le compilateur Pug génère des fonctions `setup()`/`project()`/`create()` qui opèrent **directement** sur les nœuds DOM. `ProjectionList` gère la réconciliation keyed des listes. Les selectors namespacés (D42) déterminent **quoi** projeter et **quand**.
 
-```
+```text
 ┌─────────────────── Cycle de rendu PDR ────────────────────┐
-│                                                            │
-│  1. Données changent (Event / localState)                  │
-│  2. Selector filtre les clés pertinentes                   │
-│  3. shallowEqual skip si données identiques                │
-│  4. template.project(nodes, data) →                        │
-│     - scalaires : if (node.textContent !== val) set        │
-│     - listes : ProjectionList.reconcile(items, handlers)   │
-│  5. Seuls les nœuds changés sont touchés                   │
-│                                                            │
+│                                                           │
+│  1. Données changent (Event / localState)                 │
+│  2. Selector filtre les clés pertinentes                  │
+│  3. shallowEqual skip si données identiques               │
+│  4. template.project(nodes, data) →                       │
+│     - scalaires : if (node.textContent !== val) set       │
+│     - listes : ProjectionList.reconcile(items, handlers)  │
+│  5. Seuls les nœuds changés sont touchés                  │
+│                                                           │
 │  Coût : O(nœuds changés) — jamais O(taille du template)   │
-│                                                            │
-└────────────────────────────────────────────────────────────┘
+│                                                           │
+└───────────────────────────────────────────────────────────┘
 ```
 
 ```typescript
@@ -200,7 +201,7 @@ export const CartItemsTemplate: TProjectionTemplate<CartItemsNodes, CartItem[]> 
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + **O(nœuds changés)** — jamais O(taille du template) | - Modèle mental moins « magique » : le développeur doit comprendre setup/project |
 | + **Zéro allocation intermédiaire** — pas d'arbre VNode à construire/diff/GC | - Le code généré est plus verbeux qu'un VDOM render() |
 | + **SSR natif** : `setup()` = hydratation, H2 (ADR-0014) | - Le compilateur est plus complexe (doit générer des guards par nœud) |
@@ -218,6 +219,7 @@ export const CartItemsTemplate: TProjectionTemplate<CartItemsNodes, CartItem[]> 
 **Description** : Un arbre virtuel est maintenu **uniquement pour chaque template island** (zone `@ui` avec template), jamais pour l'ensemble de la View ni pour l'application. Le VDOM est un détail d'implémentation interne du template compilé — invisible pour le développeur.
 
 En pratique :
+
 - Chaque template PugX est compilé en fonction Snabbdom (comme dans l'approche VDOM prototypée en amont)
 - Mais le VDOM n'est utilisé que pour calculer les mutations d'une sous-arborescence template
 - PDR reste le modèle dominant pour les mutations N1 (attributs, classes)
@@ -225,19 +227,19 @@ En pratique :
 - SSR `setup()` reste intact
 - Aucune logique métier n'est couplée au mini-VDOM
 
-```
+```text
 ┌─────────────────── Cycle VDOM local ──────────────────────┐
-│                                                            │
-│  View.el (DOM réel)                                        │
+│                                                           │
+│  View.el (DOM réel)                                       │
 │  ├── .header      ← N1 : mutations directes, pas de VDOM  │
 │  ├── .items (@ui) ← VDOM local : template → VNode → diff  │
-│  │   └── ProjectionList pour les <li> keyed                │
-│  └── .footer      ← statique, jamais touché                │
-│                                                            │
-│  Le VDOM couvre UNIQUEMENT la zone @ui="items"             │
-│  Le reste de la View n'a pas de VNode                      │
-│                                                            │
-└────────────────────────────────────────────────────────────┘
+│  │   └── ProjectionList pour les <li> keyed               │
+│  └── .footer      ← statique, jamais touché               │
+│                                                           │
+│  Le VDOM couvre UNIQUEMENT la zone @ui="items"            │
+│  Le reste de la View n'a pas de VNode                     │
+│                                                           │
+└───────────────────────────────────────────────────────────┘
 ```
 
 ```typescript
@@ -270,7 +272,7 @@ export const CartItemsTemplate: TProjectionTemplate<CartItemsNodes, CartItem[]> 
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Sécurité cognitive : diff garanti correct pour chaque island | - **Deux modèles de rendu** : VDOM pour les templates, N1 direct pour le reste |
 | + Compatible SSR (VNode₀ depuis DOM existant) | - `vnodeFromDom()` à l'hydratation : coût O(taille island) par template |
 | + Isolé : ne contamine pas N1 ni Behaviors | - **Contradiction avec ProjectionList** : le VDOM a son propre keyed diff |
@@ -286,7 +288,7 @@ export const CartItemsTemplate: TProjectionTemplate<CartItemsNodes, CartItem[]> 
 ## Analyse comparative
 
 | Critère | Option A — VDOM global | Option B — PDR chirurgicale | Option C — VDOM local |
-|---------|------------------------|----------------------------|----------------------|
+| --- | --- | --- | --- |
 | **Performance** (mutation) | ⭐ O(template) | ⭐⭐⭐ O(nœuds changés) | ⭐⭐ O(island) |
 | **Performance** (mémoire) | ⭐ Arbre VNode complet | ⭐⭐⭐ Refs DOM directes | ⭐⭐ VNodes par island |
 | **Performance** (GC) | ⭐ VNodes éphémères fréquents | ⭐⭐⭐ Zéro allocation | ⭐⭐ VNodes locaux |
@@ -312,7 +314,7 @@ export const CartItemsTemplate: TProjectionTemplate<CartItemsNodes, CartItem[]> 
 ### Scénario
 
 | Étape | État |
-|-------|------|
+| --- | --- |
 | **T0 — SSR** | Le serveur rend 50 produits triés par date (SEO). Le HTML existe dans le DOM. |
 | **T1 — Hydratation** | Bonsai bootstrap. La View s'attache. `setup()` indexe les 50 `<li>` existants. |
 | **T2 — Tri** | L'utilisateur clique « Trier par popularité ». |
@@ -357,7 +359,7 @@ type TFilterCriteria = {
 **Pourquoi on ne stocke pas la liste dérivée dans l'Entity :**
 
 | Stocker les items dérivés ? | Conséquence |
-|-|-|
+| --- | --- |
 | ❌ **Non** — c'est une donnée **calculée**, pas une donnée **métier** | Le tri/filtre ne change pas les données. Stocker `filteredItems` dans l'Entity crée une dénormalisation, un risque de désynchronisation, et **génère des patches inutiles** (RFC-0003 §6.5). Si 50 items sont réordonnés, l'Entity verrait 50 patches `replace` alors que seul le critère a changé. |
 | ✅ **Stocker uniquement les critères** | Un changement de tri = 1 patch (`sortCriteria`). Le calcul dérivé vit dans le selector de la View — c'est une projection, pas un état. |
 
@@ -408,7 +410,7 @@ setup(container: HTMLElement): ProductListNodes {
 
 ### Étape T2 — Tri : l'utilisateur clique « Trier par popularité »
 
-```
+```text
 User → click "Tri: Popularité"
   → View.trigger('catalog:setSortCriteria', { field: 'popularity', order: 'desc' })
   → CatalogFeature.handle('setSortCriteria', payload)
@@ -519,10 +521,10 @@ reconcile(items: TProduct[], handlers): void {
 ### Comparaison pas-à-pas : VDOM vs PDR pour le même tri
 
 | Étape | VDOM global | PDR chirurgicale |
-|-------|-------------|------------------|
+| --- | --- | --- |
 | **1. Détecter le changement** | Re-exécuter le template complet → VNode₁ | Selector filtre `sortCriteria` changé → `shallowEqual` détecte la différence |
 | **2. Calculer les mutations** | `diff(VNode₀, VNode₁)` : parcourir les deux arbres complets, comparer nœud par nœud | `ProjectionList.reconcile(items)` : parcourir la liste, lookup par clé |
-| **3. Appliquer au DOM** | `patch(dom, patches)` : appliquer les patches | `insertBefore()` pour déplacer, `textContent =` pour les valeurs | 
+| **3. Appliquer au DOM** | `patch(dom, patches)` : appliquer les patches | `insertBefore()` pour déplacer, `textContent =` pour les valeurs |
 | **4. Mettre à jour l'état interne** | `VNode₀ = VNode₁` : remplacer l'arbre complet | Rien — la map et les refs sont mutées en place |
 | **Allocations mémoire** | 50 VNodes × ~5 champs = ~250 objets créés + GC de VNode₀ | 0 objets créés |
 | **Complexité algorithmique** | O(n) pour le diff keyed + O(n) pour la construction VNode | O(n) pour le reconcile |
@@ -543,7 +545,7 @@ Si l'utilisateur retire le filtre, les 30 items supprimés seront **recréés** 
 
 ### Schéma temporel complet
 
-```
+```text
 T0 ─── SSR ──────────────────────────────────────────────────
        Serveur rend 50 <li> triés par date
        DOM = [p01, p02, ..., p50] (ordre date)
@@ -613,6 +615,7 @@ Nous choisissons **Option B — PDR chirurgicale** comme stratégie de rendu **u
 #### 1. Cohérence totale avec le corpus existant
 
 L'Option B est **déjà intégralement spécifiée** dans le corpus :
+
 - D19 pose l'hypothèse fondatrice (DOM préexiste)
 - RFC-0002 §9.4 définit le contrat PDR
 - RFC-0003 définit le compilateur, `ProjectionList`, les selectors
@@ -625,6 +628,7 @@ Choisir le VDOM (Option A ou C) **invaliderait** une partie significative de ce 
 #### 2. Le cas filtre/tri est parfaitement couvert
 
 Comme démontré ci-dessus (§ cas d'usage critique) :
+
 - Les opérations DOM finales sont **strictement identiques** entre VDOM et PDR
 - `ProjectionList.reconcile()` est l'équivalent algorithmique du keyed diff d'un VDOM
 - La complexité est O(n) dans les deux cas
@@ -633,7 +637,7 @@ Comme démontré ci-dessus (§ cas d'usage critique) :
 #### 3. Incompatibilité structurelle du VDOM avec les invariants Bonsai
 
 | Invariant | VDOM global (A) | VDOM local (C) | PDR (B) |
-|-----------|-----------------|-----------------|---------|
+| --- | --- | --- | --- |
 | D19 (DOM préexiste) | ❌ VDOM = copie | ⚠️ Copie partielle | ✅ DOM = source |
 | I31 (rootElement existe) | ⚠️ vnodeFromDom | ⚠️ vnodeFromDom | ✅ setup() localise |
 | I38 (niveaux N1/N2/N3) | ❌ Tout passe par re-render | ⚠️ N1 découplé mais N2/N3 via VDOM | ✅ Chaque niveau distinct |
@@ -647,7 +651,7 @@ Comme démontré ci-dessus (§ cas d'usage critique) :
 Le bénéfice réel d'un VDOM est son **algorithme de réconciliation keyed**. `ProjectionList` fournit exactement ce bénéfice, sans l'overhead :
 
 | Capacité | VDOM keyed diff | ProjectionList.reconcile() |
-|----------|-----------------|---------------------------|
+| --- | --- | --- |
 | Insertion | ✅ | ✅ |
 | Suppression | ✅ | ✅ |
 | Réordonnancement | ✅ | ✅ (insertBefore) |
@@ -689,13 +693,14 @@ Le confort cognitif du « diff me protège » ne justifie pas la complexité d'u
 **Règle normative (renforce RFC-0003 §6.5-6.6)** :
 
 | Donnée | Stockage | Muté par |
-|--------|----------|----------|
+| --- | --- | --- |
 | **Items bruts** (`items: TProduct[]`) | ✅ Entity | CRUD serveur (rare) |
 | **Critères de tri** (`sortCriteria`) | ✅ Entity | UI (fréquent) |
 | **Critères de filtre** (`filters`) | ✅ Entity | UI (fréquent) |
 | **Items dérivés** (filtrés + triés) | ❌ **JAMAIS dans l'Entity** | Calculé dans le selector de la View |
 
 **Justification** :
+
 - Un changement de tri génère **1 patch** (`sortCriteria`) au lieu de **50 patches** (items réordonnés)
 - La liste dérivée est une **projection**, pas un **état** — elle vit dans le selector, pas dans l'Entity
 - Compatible Event Sourcing : l'événement est « critère changé », pas « 50 items déplacés »
@@ -740,6 +745,7 @@ class ProductCatalogView extends View<[Catalog.Channel], TLocalState> {
 ```
 
 **Critère de décision** (arbre I42) :
+
 - Les critères intéressent un autre composant ? → Entity
 - Les critères doivent survivre au unmount ? → Entity
 - Sinon → localState suffit
@@ -750,7 +756,7 @@ class ProductCatalogView extends View<[Catalog.Channel], TLocalState> {
 
 1. **Accès au state complet dans le selector** : ~~RFC-0003 §7.1 spécifie que `any` contient les « clés changées ».~~ **Résolu (D46 FULL-STATE-SELECTOR)** : le framework passe le state complet par référence live dans `NamespacedData`. Le selector a toujours accès à l'intégralité du state de chaque Channel.
 
-2. **Render Contract unifié** : le corpus couvre le rendu par morceaux (`setup`, `project`, `create`, `ProjectionList`, selectors, `shallowEqual`) mais il manque un document qui décrit **le cycle de rendu complet de bout en bout** (du `any` émis au DOM muté). Ce document existe *de facto* dans RFC-0003 §7.5 (`attachView`) mais mérite une section normative dédiée. **À extraire dans RFC-0003.**
+2. **Render Contract unifié** : le corpus couvre le rendu par morceaux (`setup`, `project`, `create`, `ProjectionList`, selectors, `shallowEqual`) mais il manque un document qui décrit **le cycle de rendu complet de bout en bout** (du `any` émis au DOM muté). Ce document existe _de facto_ dans RFC-0003 §7.5 (`attachView`) mais mérite une section normative dédiée. **À extraire dans RFC-0003.**
 
 ---
 
@@ -774,7 +780,7 @@ class ProductCatalogView extends View<[Catalog.Channel], TLocalState> {
 ### Invariants impactés
 
 | Invariant | Impact |
-|-----------|--------|
+| --- | --- |
 | D19 | ✅ Confirmé et renforcé — PDR est définitif |
 | I38 | ✅ Confirmé — les trois niveaux N1/N2/N3 restent distincts |
 | I41 | ✅ Confirmé — source de mutation unique par @ui |
@@ -782,7 +788,7 @@ class ProductCatalogView extends View<[Catalog.Channel], TLocalState> {
 ### RFCs impactées
 
 | RFC | Action | Statut |
-|-----|--------|--------|
+| --- | --- | ------- |
 | RFC-0003 | Ajouté §7bis « Render Contract complet » — cycle `any` → selector → shallowEqual → project → guards → DOM | ✅ Fait |
 | RFC-0003 §6.5-6.6 | Renforcé la règle « critères dans Entity, dérivées dans selector » (D47 NO-DERIVED-STATE) | ✅ Fait |
 | RFC-0003 §6.1 | Formalisé la signature `update(itemNodes, item, index)` avec contrat normatif | ✅ Fait |
@@ -793,7 +799,7 @@ class ProductCatalogView extends View<[Catalog.Channel], TLocalState> {
 ### ADRs impactées
 
 | ADR | Impact |
-|-----|--------|
+| --- | --- |
 | ADR-0014 | ✅ Non impacté — H1-H5 restent valides |
 | ADR-0012 | ✅ Non impacté — `VirtualizedList` comme API séparée reste valide |
 
@@ -821,6 +827,7 @@ select: (data) => {
 ```
 
 **Justification** :
+
 - **DX la moins surprenante** : `data.catalog` retourne le state, point. Pas de `$changes` ni de getter exotique.
 - **Zéro coût** : le framework passe une référence vers le state frozen de l'Entity, pas une copie. L'Entity est déjà immutable (Immer) — la référence est safe.
 - **Compatible avec le skip** : le framework utilise `shallowEqual` sur la **sortie du selector** (pas sur l'input). Si le selector retourne la même liste dérivée, la projection est skippée.
@@ -835,6 +842,7 @@ select: (data) => {
 **Décision** : Pas de pool — `itemCreate()` est le seul mécanisme de création.
 
 **Justification** :
+
 - **Simplicité** : Bonsai est un framework généraliste, pas un moteur de jeu. Un pool introduit de la complexité (invalidation, sizing, lifecycle) disproportionnée pour le bénéfice.
 - **`VirtualizedList`** (ADR-0012) couvre les cas haute fréquence. Si la recréation de 30 `<li>` pose un problème de performance, la réponse est la virtualisation, pas le pooling.
 - **Le coût de `itemCreate()`** est faible pour des éléments simples. Le bottleneck est le layout/paint du navigateur, pas la création DOM.
@@ -862,7 +870,7 @@ select: (data) => {
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-03-26 | Création (Proposed) — formalisation de la décision VDOM vs PDR |
 | 2026-03-26 | **Accepted** — Q1 résolu (Q1-B : state complet par ref live → D46), Q2 résolu (Q2-A : pas de pool) |
 | 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

@@ -33,7 +33,7 @@ Bonsai epouse pleinement les capacites de TypeScript. Le workflow de
 developpement repose sur un investissement initial en typage qui se
 rembourse integralement en DX — et ce pour **chaque composant** :
 
-```
+```text
 +------------------------------------------------------------------+
 |  1. DECLARER LES TYPES (le contrat)                              |
 |                                                                   |
@@ -86,11 +86,11 @@ rembourse integralement en DX — et ce pour **chaque composant** :
 > directement par le developpeur, seulement compose par d'autres types —
 > n'en porte pas.
 
-| Categorie                                                                         | Préfixe | Regle           | Exemples                                                             |
-| --------------------------------------------------------------------------------- | ------- | --------------- | -------------------------------------------------------------------- |
-| **Types de la surface developpeur** — ecrits explicitement dans le code applicatif (signatures, `implements`, payloads, state), qu'ils soient structurels ou calcules (mapped/conditional) | `T`     | **DOIT**        | `TChannelDefinition`, `TEntityEvent`, `TFeatureCallbacks`, `TCommandCallbacks`, `TListenCallbacks`, `TViewCallbacks` |
-| **Types de plomberie type-level** — jamais ecrits directement par le developpeur, uniquement composes en interne par d'autres types exportes | —       | **NE DOIT PAS** | `StrictManifest`, `ValidatedManifest`, `CamelCase`, `CamelCaseNamespace`, `UnionToIntersection`, `HasNoDuplicates`, `ExtractEl` |
-| **Classes**                                                                       | —       | **NE DOIT PAS** | `Feature`, `Entity`, `Application`                                   |
+| Categorie | Préfixe | Regle | Exemples |
+| --- | --- | --- | --- |
+| **Types de la surface developpeur** — ecrits explicitement dans le code applicatif (signatures, `implements`, payloads, state), qu'ils soient structurels ou calcules (mapped/conditional) | `T` | **DOIT** | `TChannelDefinition`, `TEntityEvent`, `TFeatureCallbacks`, `TCommandCallbacks`, `TListenCallbacks`, `TViewCallbacks` |
+| **Types de plomberie type-level** — jamais ecrits directement par le developpeur, uniquement composes en interne par d'autres types exportes | — | **NE DOIT PAS** | `StrictManifest`, `ValidatedManifest`, `CamelCase`, `CamelCaseNamespace`, `UnionToIntersection`, `HasNoDuplicates`, `ExtractEl` |
+| **Classes** | — | **NE DOIT PAS** | `Feature`, `Entity`, `Application` |
 
 > **Justification** : le préfixe `T` signale au developpeur « ceci est un
 > contrat que vous manipulez directement ». Un type de plomberie interne n'a
@@ -438,19 +438,19 @@ type TEntityState<E extends Entity<TJsonSerializable>> =
 > I39–I41 sont des rappels contextuels déjà définis dans les invariants architecturaux.
 > I54–I56 actés suite aux décisions D43, D44, D18 et ADR-0016.
 
-| #       | Invariant                                                                                                                                                                                                                                                                                           | Principe                                                                                                 |
-| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **I46** | `TStructure` d'une Entity est contraint à `TJsonSerializable` — pas de classes, pas de fonctions, pas de cycles (D10)                                                                                                                                                                               | → [Entity §2](../3-couche-abstraite/entity.md)                                                           |
+| # | Invariant | Principe |
+| --- | --- | --- |
+| **I46** | `TStructure` d'une Entity est contraint à `TJsonSerializable` — pas de classes, pas de fonctions, pas de cycles (D10) | → [Entity §2](../3-couche-abstraite/entity.md) |
 | **I47** | ~~Les déclarations Channel se font via le token `Namespace.channel` (D11, D14)~~ — **supersédé par ADR-0040** : le token est `static readonly channel: TChannelToken<TDef, NS>` porté directement par la classe Feature (I73), plus de wrapper `namespace Cart { … }` (D14 abandonné). | → [Feature §2](../3-couche-abstraite/feature.md), [reference/invariants.md I73](../reference/invariants.md) |
-| **I48** | Les handlers sont des méthodes conventionnelles `on<Name><Command\|Event\|Request>` — le framework les découvre et les câble automatiquement (D12)                                                                                                                                                  | → [Feature §4](../3-couche-abstraite/feature.md)                                                         |
-| **I49** | ~~Chaque Feature exporte un TS `namespace` regroupant `Channel`, `State` et `channel` token~~ — **supersédé par ADR-0040/D13** : la co-localisation se fait par fichier (`*.feature.ts`), pas par un wrapper `namespace` TS ; `channel` est un `static readonly` sur la classe (I73, I74). | → [Feature §2](../3-couche-abstraite/feature.md)                                                         |
+| **I48** | Les handlers sont des méthodes conventionnelles `on<Name><Command\|Event\|Request>` — le framework les découvre et les câble automatiquement (D12) | → [Feature §4](../3-couche-abstraite/feature.md) |
+| **I49** | ~~Chaque Feature exporte un TS `namespace` regroupant `Channel`, `State` et `channel` token~~ — **supersédé par ADR-0040/D13** : la co-localisation se fait par fichier (`*.feature.ts`), pas par un wrapper `namespace` TS ; `channel` est un `static readonly` sur la classe (I73, I74). | → [Feature §2](../3-couche-abstraite/feature.md) |
 | **I50** | ~~L'instance runtime `Channel` est interne au framework — créée au `register()`~~ — **supersédé** : `Application.register()` n'existe plus (I69) ; le `Channel` est créé par `Radio.channel(namespace)` au bootstrap (Phase 1). Le principe reste vrai (jamais exposé ni manipulable par le développeur) — voir I80 (`reference/invariants.md`) pour la formulation à jour. | → [Communication §5](../2-architecture/communication.md), [reference/invariants.md I80](../reference/invariants.md) |
 | **I51** | Les mutations de l'Entity déclenchent des notifications auto-découvertes `on<Key>EntityUpdated` (per-key) et/ou `onAnyEntityUpdated` (catch-all) sur la Feature propriétaire — le framework les câble automatiquement (D16, D12). Mécanisme livré et détaillé par **I96** (`reference/invariants.md`) — dispatch, ordre, isolation des erreurs. | → [Entity §4](../3-couche-abstraite/entity.md), [reference/invariants.md I96](../reference/invariants.md) |
-| **I52** | L'Entity peut exposer des **méthodes query** (lecture seule, pures) pour servir les request handlers de la Feature — ces méthodes ne modifient jamais `this.state` (D16)                                                                                                                            | → [Entity §5](../3-couche-abstraite/entity.md)                                                           |
+| **I52** | L'Entity peut exposer des **méthodes query** (lecture seule, pures) pour servir les request handlers de la Feature — ces méthodes ne modifient jamais `this.state` (D16) | → [Entity §5](../3-couche-abstraite/entity.md) |
 | **I53** | Un handler `on<Key>EntityUpdated` où `<Key>` ne correspond pas à une clé de `TStructure` est une erreur. **La détection compile-time via `TEntityKeyHandlers<TStructure>` n'existe pas** (type jamais exporté) — seule la détection **runtime au bootstrap** est livrée (`hardInvariant`, voir **I96** dans `reference/invariants.md`). | → [Entity §6](../3-couche-abstraite/entity.md), [reference/invariants.md I96](../reference/invariants.md) |
-| **I54** | ⏳ **Cible strate 1, non livré.** Le framework **créerait** les metas au point d'entrée (trigger, timer, init) ; le développeur les **recevrait** en paramètre `(payload, metas)` et les **propagerait** explicitement à `emit()`, `request()` et `mutate()`, sans jamais en forger manuellement (D43 amendé par ADR-0016). Aujourd'hui, aucun `TMessageMetas` n'existe et les handlers reçoivent uniquement le payload (1 paramètre). | → [Metas](../2-architecture/metas.md)                                                                    |
-| **I55** | `reply()` ne throw jamais — retourne toujours un résultat ou `null` (D44 révisé par ADR-0023)                                                                                                                                                                                                       | → [Feature §3](../3-couche-abstraite/feature.md), [Communication](../2-architecture/communication.md)    |
-| **I56** | `onInit()` de chaque Feature est appelé avant la création des Foundations — la couche abstraite est intégralement active avant la couche concrète (D18, principe d'ordre de bootstrap)                                                                                                              | → [Lifecycle](../2-architecture/lifecycle.md)                                                            |
+| **I54** | ⏳ **Cible strate 1, non livré.** Le framework **créerait** les metas au point d'entrée (trigger, timer, init) ; le développeur les **recevrait** en paramètre `(payload, metas)` et les **propagerait** explicitement à `emit()`, `request()` et `mutate()`, sans jamais en forger manuellement (D43 amendé par ADR-0016). Aujourd'hui, aucun `TMessageMetas` n'existe et les handlers reçoivent uniquement le payload (1 paramètre). | → [Metas](../2-architecture/metas.md) |
+| **I55** | `reply()` ne throw jamais — retourne toujours un résultat ou `null` (D44 révisé par ADR-0023) | → [Feature §3](../3-couche-abstraite/feature.md), [Communication](../2-architecture/communication.md) |
+| **I56** | `onInit()` de chaque Feature est appelé avant la création des Foundations — la couche abstraite est intégralement active avant la couche concrète (D18, principe d'ordre de bootstrap) | → [Lifecycle](../2-architecture/lifecycle.md) |
 
 ---
 

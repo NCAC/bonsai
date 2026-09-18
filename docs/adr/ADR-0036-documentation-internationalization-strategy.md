@@ -1,11 +1,11 @@
 # ADR-0036 : Documentation Internationalization Strategy
 
-| Champ         | Valeur                             |
-| ------------- | ---------------------------------- |
-| **Statut**    | 🟢 Accepted                        |
-| **Date**      | 2026-04-20                         |
-| **Décideurs** | @ncac                              |
-| **RFC liée**  | — (transversal, toutes RFC et ADR) |
+| Champ | Valeur |
+| --- | --- |
+| **Statut** | 🟢 Accepted |
+| **Date** | 2026-04-20 |
+| **Décideurs** | @ncac |
+| **RFC liée** | — (transversal, toutes RFC et ADR) |
 
 ---
 
@@ -50,12 +50,12 @@ Le volume documentaire atteint une masse critique (35+ ADR, 10+ RFC, 5+ guides).
 
 **Description** : Réécrire tout le corpus en anglais. Le français devient obsolète.
 
-| Avantages                        | Inconvénients                                                     |
-| -------------------------------- | ----------------------------------------------------------------- |
-| + Une seule version à maintenir  | - Coût de réécriture massif (~35+ documents)                      |
-| + Audience internationale native | - Perte de nuance dans la conception architecturale               |
-|                                  | - L'auteur pense en FR → traduction mentale permanente → friction |
-|                                  | - Les RFC futures seront moins précises                           |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Une seule version à maintenir | - Coût de réécriture massif (~35+ documents) |
+| + Audience internationale native | - Perte de nuance dans la conception architecturale |
+| | - L'auteur pense en FR → traduction mentale permanente → friction |
+| | - Les RFC futures seront moins précises |
 
 ---
 
@@ -63,16 +63,16 @@ Le volume documentaire atteint une masse critique (35+ ADR, 10+ RFC, 5+ guides).
 
 **Description** : Le français reste la langue source pour la conception (RFC, ADR, guides). Des traductions anglaises sont produites comme fichiers dérivés avec le suffixe `-EN.md`. Liens croisés en en-tête de chaque fichier.
 
-| Avantages                                               | Inconvénients                                 |
-| ------------------------------------------------------- | --------------------------------------------- |
-| + Qualité maximale de la réflexion architecturale       | - Deux fichiers par document                  |
-| + Pattern déjà en place (README, BUILD)                 | - Coût de synchronisation traduction ↔ source |
-| + Traduction incrémentale (documents 🟢 Stable d'abord) | - La traduction peut prendre du retard        |
-| + L'auteur reste productif dans sa langue naturelle     |                                               |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Qualité maximale de la réflexion architecturale | - Deux fichiers par document |
+| + Pattern déjà en place (README, BUILD) | - Coût de synchronisation traduction ↔ source |
+| + Traduction incrémentale (documents 🟢 Stable d'abord) | - La traduction peut prendre du retard |
+| + L'auteur reste productif dans sa langue naturelle | |
 
 **Convention de nommage** :
 
-```
+```text
 RFC-0001-architecture-fondamentale.md       ← source FR (fait foi)
 RFC-0001-architecture-fondamentale-EN.md    ← traduction EN (dérivée)
 
@@ -98,24 +98,24 @@ ADR-0001-entity-diff-notification-strategy-EN.md    ← traduction EN
 
 **Description** : Inverser le pattern — tout rédiger en anglais, produire des traductions françaises.
 
-| Avantages                                   | Inconvénients                                      |
-| ------------------------------------------- | -------------------------------------------------- |
-| + Audience internationale = première classe | - L'auteur conçoit en L2 → perte de précision      |
-| + Pattern standard open-source              | - Le corpus existant est en FR → coût de migration |
-|                                             | - Friction cognitive permanente pour l'auteur      |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Audience internationale = première classe | - L'auteur conçoit en L2 → perte de précision |
+| + Pattern standard open-source | - Le corpus existant est en FR → coût de migration |
+| | - Friction cognitive permanente pour l'auteur |
 
 ---
 
 ## Analyse comparative
 
-| Critère                      | Option A (tout EN) | Option B (FR source) | Option C (EN source) |
-| ---------------------------- | ------------------ | -------------------- | -------------------- |
-| Qualité conception           | ⭐⭐               | ⭐⭐⭐               | ⭐⭐                 |
-| Accessibilité internationale | ⭐⭐⭐             | ⭐⭐                 | ⭐⭐⭐               |
-| Coût migration               | ⭐                 | ⭐⭐⭐               | ⭐                   |
-| Coût maintenance             | ⭐⭐⭐             | ⭐⭐                 | ⭐⭐                 |
-| Productivité auteur          | ⭐                 | ⭐⭐⭐               | ⭐⭐                 |
-| Cohérence avec l'existant    | ⭐                 | ⭐⭐⭐               | ⭐                   |
+| Critère | Option A (tout EN) | Option B (FR source) | Option C (EN source) |
+| --- | --- | --- | --- |
+| Qualité conception | ⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
+| Accessibilité internationale | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
+| Coût migration | ⭐ | ⭐⭐⭐ | ⭐ |
+| Coût maintenance | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ |
+| Productivité auteur | ⭐ | ⭐⭐⭐ | ⭐⭐ |
+| Cohérence avec l'existant | ⭐ | ⭐⭐⭐ | ⭐ |
 
 ---
 
@@ -186,6 +186,6 @@ ADR-0001-entity-diff-notification-strategy-EN.md    ← traduction EN
 
 ## Historique
 
-| Date       | Changement                                                                                             |
-| ---------- | ------------------------------------------------------------------------------------------------------ |
+| Date | Changement |
+| --- | --- |
 | 2026-04-20 | Création — Accepted. Français source, anglais dérivé (`-EN.md`), traduction incrémentale par priorité. |

@@ -1,7 +1,7 @@
 # ADR-0005 : Meta Lifecycle
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Date** | 2026-03-18 |
 | **Décideurs** | @ncac |
@@ -30,7 +30,7 @@ type TMessageMetas = {
 ### Questions non résolues
 
 | Question | Impact |
-|----------|--------|
+| --- | --- |
 | **Qui crée le correlationId ?** | UI uniquement ? Features aussi ? |
 | **Propagation dans async** | `await` perd le contexte ? |
 | **Accès aux metas** | Comment un handler accède aux metas du message courant ? |
@@ -81,7 +81,7 @@ class CartFeature extends Feature {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Conforme I8 | - Quid des timers/scheduled tasks ? |
 | + Traçabilité claire | - Quid des events système ? |
 
@@ -102,7 +102,7 @@ class SyncFeature extends Feature {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| ------------------------ | ---------------------------- |
 | + Couvre les cas système | - Deux types de correlations |
 | + Traçabilité préservée | - Plus complexe |
 
@@ -128,7 +128,7 @@ class CartFeature extends Feature {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| ---------------------------------- | ----------------------------- |
 | + Explicite, **pas de magie** | - Quelques caractères de plus |
 | + Context jamais perdu (closure) | |
 | + Async-safe (pas de global state) | |
@@ -147,7 +147,7 @@ class CartFeature extends Feature {
 ```
 
 | Raisons du rejet |
-|-----------------|
+| ------------------------------------------------------ |
 | - Magie (implicite) contraire au principe Bonsai |
 | - AsyncLocalStorage = Node only (pas browser natif) |
 | - Debugging complexe (où vient le context ?) |
@@ -157,7 +157,7 @@ class CartFeature extends Feature {
 
 Rejetée : ajoute un wrapper magique. Le pattern explicite est plus simple.
 
-**✅ Décision** : **2A (explicite via paramètre)**. 
+**✅ Décision** : **2A (explicite via paramètre)**.
 Le handler reçoit `metas` en paramètre, le closure le capture naturellement.
 Pas de getter implicite, pas de `withMetas()`, pas de magie.
 
@@ -177,7 +177,7 @@ class CartFeature extends Feature {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Explicite, **pas de magie** | - Signature plus longue |
 | + Type-safe | |
 | + Async-safe (closure) | |
@@ -207,7 +207,7 @@ onGetPrice(payload, metas) { }
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Chaîne causale complète | - Overhead |
 | + Debugging unifié | |
 
@@ -221,7 +221,7 @@ onGetPrice(payload) { }
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Plus simple | - Chaîne causale incomplète |
 | + Request = query pure | - Debugging difficile |
 
@@ -241,7 +241,7 @@ const messageId = uuid(); // 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Standard | - 36 chars, verbose |
 | + Unique garanti | - Pas de tri temporel |
 
@@ -253,7 +253,7 @@ const messageId = nanoid(); // 'V1StGXR8_Z5jdHi6B-myT'
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Court (21 chars) | - Dépendance externe |
 | + URL-safe | - Pas de tri temporel |
 | + Plus rapide que UUID | |
@@ -266,7 +266,7 @@ const messageId = ulid(); // '01ARZ3NDEKTSV4RRFFQ69G5FAV'
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + **Triable temporellement** | - Dépendance externe |
 | + Unique | - 26 chars |
 | + Idéal pour event log | |
@@ -280,7 +280,7 @@ const messageId = ulid(); // '01ARZ3NDEKTSV4RRFFQ69G5FAV'
 ## Synthèse des décisions
 
 | Question | Décision | Statut |
-|----------|----------|--------|
+| --- | --- | --- |
 | Création correlationId | UI (`usr-`) + système (`sys-`) | ✅ |
 | Propagation async | **Explicite via paramètre** (closure capture) | ✅ |
 | Accès metas handler | **Paramètre uniquement** (pas de getter) | ✅ |
@@ -432,7 +432,7 @@ it('should propagate metas', () => {
 ## Relation avec autres ADRs
 
 | ADR | Relation |
-|-----|----------|
+| --- | --- |
 | ADR-0002 (Errors) | Erreurs portent les metas du message qui a failed |
 | ADR-0003 (Channel) | Metas propagées dans tout le tri-lane |
 | ADR-0011 (Event Sourcing) | Metas = métadonnées des events stockés |
@@ -463,6 +463,6 @@ it('should propagate metas', () => {
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-03-17 | Création (Proposed) — 5 questions documentées |
 | 2026-03-18 | **Accepted** — Décisions finales : explicite via paramètre, ULID, usr-/sys- |

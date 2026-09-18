@@ -42,7 +42,7 @@
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
     "editor.formatOnSave": true,
-    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    // "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.foldingStrategy": "indentation",
     // The number of spaces a tab is equal to. This setting is overridden
     // based on the file contents when `editor.detectIndentation` is true.
@@ -73,7 +73,27 @@
 
     "files.associations": {
       "*.json": "jsonc"
-    }
+    },
+
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+
+    "[markdown]": {
+      "editor.unicodeHighlight.ambiguousCharacters": false,
+      "editor.unicodeHighlight.invisibleCharacters": false,
+      "diffEditor.ignoreTrimWhitespace": false,
+      "editor.wordWrap": "on",
+      "editor.quickSuggestions": {
+        "comments": "off",
+        "strings": "off",
+        "other": "off"
+      },
+      "editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
+      "editor.formatOnSave": true
+    },
+    "markdownlint.run": "onSave",
+    "markdownlint.configFile": "/bonsai/.markdownlint.json"
   },
   "extensions": {
     "recommendations": [

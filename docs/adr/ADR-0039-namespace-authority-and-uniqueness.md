@@ -1,14 +1,14 @@
 # ADR-0039 : Autorité, unicité et conformité des namespaces de Feature
 
-| Champ                   | Valeur                                                                                                                                                                                                                                                                                                                                                                   |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Statut**              | 🔵 Tested                                                                                                                                                                                                                                                                                                                                                                |
-| **Date**                | 2026-04-21                                                                                                                                                                                                                                                                                                                                                               |
-| **Décideurs**           | @ncac                                                                                                                                                                                                                                                                                                                                                                    |
-| **RFC liées**           | [invariants.md](../rfc/reference/invariants.md), [feature.md](../rfc/3-couche-abstraite/feature.md), [communication.md](../rfc/2-architecture/communication.md)                                                                                                                                                                                                          |
-| **ADR liées**           | [ADR-0001](ADR-0001-entity-diff-notification-strategy.md), [ADR-0003](ADR-0003-channel-runtime-semantics.md), [ADR-0004](ADR-0004-validation-modes.md), [ADR-0015](ADR-0015-local-state-mechanism.md), [ADR-0019](ADR-0019-mode-esm-modulaire.md), [ADR-0024](ADR-0024-component-capabilities-manifest-pattern.md), [ADR-0037](ADR-0037-feature-generic-entity-class.md) |
-| **Décisions amendées**  | I21, I24 (formulation runtime → compile-time + filet runtime) ; D5, D6 (registre de namespaces)                                                                                                                                                                                                                                                                          |
-| **Invariants impactés** | I21, I22, I24, I57 (amendés) — I68 à I72 (nouveaux, à intégrer dans RFC-0001-invariants-decisions)                                                                                                                                                                                                                                                                       |
+| Champ | Valeur |
+| --- | --- |
+| **Statut** | 🔵 Tested |
+| **Date** | 2026-04-21 |
+| **Décideurs** | @ncac |
+| **RFC liées** | [invariants.md](../rfc/reference/invariants.md), [feature.md](../rfc/3-couche-abstraite/feature.md), [communication.md](../rfc/2-architecture/communication.md) |
+| **ADR liées** | [ADR-0001](ADR-0001-entity-diff-notification-strategy.md), [ADR-0003](ADR-0003-channel-runtime-semantics.md), [ADR-0004](ADR-0004-validation-modes.md), [ADR-0015](ADR-0015-local-state-mechanism.md), [ADR-0019](ADR-0019-mode-esm-modulaire.md), [ADR-0024](ADR-0024-component-capabilities-manifest-pattern.md), [ADR-0037](ADR-0037-feature-generic-entity-class.md) |
+| **Décisions amendées** | I21, I24 (formulation runtime → compile-time + filet runtime) ; D5, D6 (registre de namespaces) |
+| **Invariants impactés** | I21, I22, I24, I57 (amendés) — I68 à I72 (nouveaux, à intégrer dans RFC-0001-invariants-decisions) |
 
 ---
 
@@ -46,12 +46,12 @@ Vérifications effectives ([packages/application/src/bonsai-application.ts](../.
 
 ### Pourquoi c'est critique
 
-| Faille                                                      | Conséquence                                                                          |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Deux Features avec même namespace                           | Channels qui se marchent dessus, Entities mélangées, état corrompu silencieusement   |
-| Namespace mal-formé (`my-cart`, `Cart`, `cart_v2`)          | Incohérence du nommage des handlers (`onCartItemAddedEvent`), bugs de matching regex |
-| Référence à un Channel inexistant (`channels = ["catlog"]`) | Listener silencieusement ignoré, bug de propagation indétectable                     |
-| Mot réservé (`local`) utilisé comme namespace               | Confusion avec mécanismes framework (ADR-0015), comportements imprévisibles          |
+| Faille | Conséquence |
+| --- | --- |
+| Deux Features avec même namespace | Channels qui se marchent dessus, Entities mélangées, état corrompu silencieusement |
+| Namespace mal-formé (`my-cart`, `Cart`, `cart_v2`) | Incohérence du nommage des handlers (`onCartItemAddedEvent`), bugs de matching regex |
+| Référence à un Channel inexistant (`channels = ["catlog"]`) | Listener silencieusement ignoré, bug de propagation indétectable |
+| Mot réservé (`local`) utilisé comme namespace | Confusion avec mécanismes framework (ADR-0015), comportements imprévisibles |
 
 Toute la couche événementielle et tout le state reposent sur ces invariants. Un bug détecté à l'exécution dans cette zone est, par construction, un bug détecté **trop tard**.
 
@@ -78,12 +78,12 @@ Bonsai n'a **pas** de cas d'usage multi-`Application` dans un même runtime. Une
 
 **Description** : conserver `static namespace` sur la classe, ajouter au `register()` une regex camelCase et une validation des `channels` contre le `Set` interne. Aucune garantie compile-time.
 
-| Avantages                                                 | Inconvénients                                                                       |
-| --------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| + Aucun changement d'API                                  | - Toute violation reste détectée au runtime, donc potentiellement après déploiement |
-| + Zéro coût de migration                                  | - L'IDE ne guide pas, la doc reste l'unique source d'apprentissage                  |
-| + Compatible avec n'importe quel pattern d'enregistrement | - Aucune garantie de cohérence des références croisées (`channels`)                 |
-|                                                           | - Échec frontal vs philosophie Bonsai « Compile-time > Runtime »                    |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Aucun changement d'API | - Toute violation reste détectée au runtime, donc potentiellement après déploiement |
+| + Zéro coût de migration | - L'IDE ne guide pas, la doc reste l'unique source d'apprentissage |
+| + Compatible avec n'importe quel pattern d'enregistrement | - Aucune garantie de cohérence des références croisées (`channels`) |
+| | - Échec frontal vs philosophie Bonsai « Compile-time > Runtime » |
 
 ```typescript
 // Inchangé
@@ -100,12 +100,12 @@ app.register(CartFeature); // validation runtime renforcée
 
 **Description** : `Application.use(Feature)` retourne un `Application<{...prev, ns: Feature}>`. L'unicité émerge de l'accumulation des types des namespaces dans la signature de l'instance.
 
-| Avantages                           | Inconvénients                                                                             |
-| ----------------------------------- | ----------------------------------------------------------------------------------------- |
-| + Unicité compile-time stricte      | - Impose un style fluent invasif (`app.use(F1).use(F2).use(F3).start()`)                  |
-| + Pas de manifest séparé            | - Pas de **vue centralisée** des namespaces (dispersés sur N appels chaînés)              |
-| + Aucun effort déclaratif explicite | - Mauvaise lisibilité au-delà de 3-4 Features                                             |
-|                                     | - Force le namespace à être passé en string littérale dans chaque `use()` → couplage fort |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Unicité compile-time stricte | - Impose un style fluent invasif (`app.use(F1).use(F2).use(F3).start()`) |
+| + Pas de manifest séparé | - Pas de **vue centralisée** des namespaces (dispersés sur N appels chaînés) |
+| + Aucun effort déclaratif explicite | - Mauvaise lisibilité au-delà de 3-4 Features |
+| | - Force le namespace à être passé en string littérale dans chaque `use()` → couplage fort |
 
 ```typescript
 const app = new Application({ foundation: AppFoundation })
@@ -120,12 +120,12 @@ const app = new Application({ foundation: AppFoundation })
 
 **Description** : chaque Feature augmente une interface globale `BonsaiNamespaceRegistry` ; la clé d'enregistrement est dérivée de `keyof BonsaiNamespaceRegistry`.
 
-| Avantages                             | Inconvénients                                                                                       |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Avantages | Inconvénients |
+| --- | --- |
 | + Déclaratif, sans manifest explicite | - **TS merge silencieusement** les augmentations en doublon : ne signale PAS les collisions de clés |
-| + Type centralisé virtuel             | - Mécanisme global, difficile à scoper à plusieurs Applications (hors cadre, mais futur fragile)    |
-|                                       | - Comportement opaque, difficile à enseigner                                                        |
-|                                       | - **Disqualifié** pour porter l'unicité                                                             |
+| + Type centralisé virtuel | - Mécanisme global, difficile à scoper à plusieurs Applications (hors cadre, mais futur fragile) |
+| | - Comportement opaque, difficile à enseigner |
+| | - **Disqualifié** pour porter l'unicité |
 
 ---
 
@@ -133,14 +133,14 @@ const app = new Application({ foundation: AppFoundation })
 
 **Description** : le namespace n'est plus déclaré sur la classe Feature. Il est porté par un **manifest applicatif** central : un objet TypeScript dont les clés sont les namespaces et les valeurs les classes Feature. La cohérence classe ↔ clé est vérifiée par un mapped type au `satisfies`. Une Feature déclare en paramètre de type `TSelfNS` le nom sous lequel elle s'attend à être enregistrée — ce qui résout le paradoxe de l'auto-référence (cf. _Décision_ §6).
 
-| Avantages                                                                                | Inconvénients                                                                |
-| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| + **Unicité gratuite** : un objet TS ne peut pas avoir deux fois la même clé (TS1117)    | - Deux artefacts manifest (interface + valeur) — séparation `type` / `value` |
-| + **Format compile-time** : index signature `[K in string as CamelCaseNamespace<K>]`     | - Légère verbosité : paramètre de type `TSelfNS` en plus sur Feature         |
-| + **Centralisation** : un seul endroit où l'on voit la totalité des namespaces actifs    | - Disparition de `Application.register()` (breaking change vs API strate 0)  |
-| + **Cohérence classe ↔ clé** vérifiée par `StrictManifest<M>` au `satisfies`             |                                                                              |
-| + **Inversion de responsabilité** : la Feature est anonyme en valeur, typée en signature |                                                                              |
-| + **Compatible** avec un futur typage des events `Exclude<AppNamespace, "self">`         |                                                                              |
+| Avantages | Inconvénients |
+| --- | --- |
+| + **Unicité gratuite** : un objet TS ne peut pas avoir deux fois la même clé (TS1117) | - Deux artefacts manifest (interface + valeur) — séparation `type` / `value` |
+| + **Format compile-time** : index signature `[K in string as CamelCaseNamespace<K>]` | - Légère verbosité : paramètre de type `TSelfNS` en plus sur Feature |
+| + **Centralisation** : un seul endroit où l'on voit la totalité des namespaces actifs | - Disparition de `Application.register()` (breaking change vs API strate 0) |
+| + **Cohérence classe ↔ clé** vérifiée par `StrictManifest<M>` au `satisfies` | |
+| + **Inversion de responsabilité** : la Feature est anonyme en valeur, typée en signature | |
+| + **Compatible** avec un futur typage des events `Exclude<AppNamespace, "self">` | |
 
 ```typescript
 // app/manifest.ts — TYPE-MANIFEST, zéro classe importée
@@ -189,16 +189,16 @@ app.start();
 
 ## Analyse comparative
 
-| Critère                               | A — Statu quo runtime | B — Builder fluent | C — `declare module`  | D — Manifest typé |
-| ------------------------------------- | --------------------- | ------------------ | --------------------- | ----------------- |
-| Unicité compile-time                  | ❌                    | ⭐⭐⭐             | ❌ (merge silencieux) | ⭐⭐⭐ (TS1117)   |
-| Format camelCase compile-time         | ❌                    | ⚠️ (par littéral)  | ❌                    | ⭐⭐⭐            |
-| Cohérence `channels` compile-time     | ❌                    | ⭐⭐⭐             | ⭐⭐                  | ⭐⭐⭐            |
-| Centralisation / lisibilité           | ⭐⭐                  | ⭐                 | ⭐                    | ⭐⭐⭐            |
-| Coût de migration                     | ⭐⭐⭐ (nul)          | ⭐                 | ⭐⭐                  | ⭐⭐              |
-| DX (autocomplétion / erreurs guidées) | ⭐                    | ⭐⭐               | ⭐⭐                  | ⭐⭐⭐            |
-| Conformité philosophie Bonsai         | ⭐                    | ⭐⭐               | ⭐                    | ⭐⭐⭐            |
-| Risque cyclique de type               | ⭐⭐⭐ (nul)          | ⭐⭐⭐ (nul)       | ⭐⭐⭐ (nul)          | ⭐⭐ (mitigé §8)  |
+| Critère | A — Statu quo runtime | B — Builder fluent | C — `declare module` | D — Manifest typé |
+| --- | --- | --- | --- | --- |
+| Unicité compile-time | ❌ | ⭐⭐⭐ | ❌ (merge silencieux) | ⭐⭐⭐ (TS1117) |
+| Format camelCase compile-time | ❌ | ⚠️ (par littéral) | ❌ | ⭐⭐⭐ |
+| Cohérence `channels` compile-time | ❌ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
+| Centralisation / lisibilité | ⭐⭐ | ⭐ | ⭐ | ⭐⭐⭐ |
+| Coût de migration | ⭐⭐⭐ (nul) | ⭐ | ⭐⭐ | ⭐⭐ |
+| DX (autocomplétion / erreurs guidées) | ⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
+| Conformité philosophie Bonsai | ⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ |
+| Risque cyclique de type | ⭐⭐⭐ (nul) | ⭐⭐⭐ (nul) | ⭐⭐⭐ (nul) | ⭐⭐ (mitigé §8) |
 
 ---
 
@@ -242,21 +242,21 @@ ou des effets de bord à l'import — deux anti‑patterns explicitement exclus 
 Ainsi, la « double présence » du namespace n'est pas une duplication de responsabilité,
 mais l'expression d'un **accord bilatéral vérifié** :
 
-| Acteur      | Rôle architectural                                                   |
-| ----------- | -------------------------------------------------------------------- |
-| Feature     | Précondition typée (« je m'attends à être enregistrée comme X »)     |
+| Acteur | Rôle architectural |
+| --- | --- |
+| Feature | Précondition typée (« je m'attends à être enregistrée comme X ») |
 | Application | Autorité et registre (« voici les X existants, uniques et valides ») |
-| TypeScript  | Juge compile-time garantissant la cohérence du contrat               |
+| TypeScript | Juge compile-time garantissant la cohérence du contrat |
 
 ### Le paradoxe de l'auto-référence et sa résolution
 
 Une formulation initiale typait les Channels externes via `Exclude<AppNamespace, "cart">` directement dans `cart.feature.ts`. Cela suppose que la Feature connaît déjà son propre nom — ce qui contredit l'intention « la Feature est anonyme, c'est le manifest qui la nomme ». Et c'est fragile au renommage : si le manifest renomme `cart → shoppingCart`, l'`Exclude<…, "cart">` continue à compiler en silence.
 
-| Option de résolution                      | Anonymat valeur                      | Self-exclusion compile-time | Détection rename | Compat. auto-discovery `on…Event` |
-| ----------------------------------------- | ------------------------------------ | --------------------------- | ---------------- | --------------------------------- |
-| **① Paramètre de type `TSelfNS`** ✅      | Anonyme en valeur, typé en signature | ✅                          | ✅               | ✅                                |
-| ② Renoncer à `Exclude` (auto-ref runtime) | Total                                | ❌                          | ⚠️               | ✅                                |
-| ③ Déplacer `channels` dans le manifest    | Total                                | ✅                          | ✅               | ❌ (casse `on…Event`)             |
+| Option de résolution | Anonymat valeur | Self-exclusion compile-time | Détection rename | Compat. auto-discovery `on…Event` |
+| --- | --- | --- | --- | --- |
+| **① Paramètre de type `TSelfNS`** ✅ | Anonyme en valeur, typé en signature | ✅ | ✅ | ✅ |
+| ② Renoncer à `Exclude` (auto-ref runtime) | Total | ❌ | ⚠️ | ✅ |
+| ③ Déplacer `channels` dans le manifest | Total | ✅ | ✅ | ❌ (casse `on…Event`) |
 
 L'option ① est retenue : la Feature **déclare en paramètre de type** son namespace attendu, et `StrictManifest<M>` confronte ce paramètre à la clé d'enregistrement.
 
@@ -381,32 +381,32 @@ Erreur typée : `BonsaiNamespaceError` (étend `BonsaiRegistryError` mentionné 
 
 ### Invariants nouveaux (intégrés dans [invariants.md](../rfc/reference/invariants.md))
 
-| Réf | Contenu                                                                                                                                                                                               |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| I68 | Le namespace d'une Feature est porté par le **manifest applicatif** uniquement (clé), pas par un `static` sur la classe Feature.                                                                      |
-| I69 | Le manifest applicatif est l'unique source de vérité de l'identité des Features.                                                                                                                      |
-| I70 | Toute référence à un namespace externe (`Feature.channels`) DOIT être validée contre le manifest, compile-time si possible, runtime au minimum.                                                       |
-| I71 | Les namespaces réservés sont définis dans une constante framework `RESERVED_NAMESPACES` — une Feature applicative ne peut pas les utiliser.                                                           |
+| Réf | Contenu |
+| --- | --- |
+| I68 | Le namespace d'une Feature est porté par le **manifest applicatif** uniquement (clé), pas par un `static` sur la classe Feature. |
+| I69 | Le manifest applicatif est l'unique source de vérité de l'identité des Features. |
+| I70 | Toute référence à un namespace externe (`Feature.channels`) DOIT être validée contre le manifest, compile-time si possible, runtime au minimum. |
+| I71 | Les namespaces réservés sont définis dans une constante framework `RESERVED_NAMESPACES` — une Feature applicative ne peut pas les utiliser. |
 | I72 | Le paramètre de type `TSelfNS` d'une Feature DOIT correspondre exactement à la clé sous laquelle elle est enregistrée dans le manifest — vérifié compile-time par `StrictManifest<M>` au `satisfies`. |
 
 ### Invariants amendés
 
-| Réf | Avant                                                | Après                                                                                                                                       |
-| --- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| I21 | « Chaque Feature DOIT déclarer un namespace unique » | « Chaque Feature DOIT être enregistrée dans le manifest applicatif sous une clé namespace unique camelCase plat »                           |
-| I24 | « Application garantit l'unicité au bootstrap »      | « Le typage du manifest garantit l'unicité au compile-time ; Application valide format + réservés + cohérence des `channels` au bootstrap » |
+| Réf | Avant | Après |
+| --- | --- | --- |
+| I21 | « Chaque Feature DOIT déclarer un namespace unique » | « Chaque Feature DOIT être enregistrée dans le manifest applicatif sous une clé namespace unique camelCase plat » |
+| I24 | « Application garantit l'unicité au bootstrap » | « Le typage du manifest garantit l'unicité au compile-time ; Application valide format + réservés + cohérence des `channels` au bootstrap » |
 
 ### Impact sur le code existant
 
-| Fichier                                                                                                      | Changement                                                                                                                                                                   |
-| ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [packages/feature/src/bonsai-feature.ts](../../packages/feature/src/bonsai-feature.ts)                       | Suppression `static namespace`, ajout `#namespace` immuable, constructeur paramétré, getter sans throw, ajout `TSelfNS` en 3ᵉ paramètre de type                              |
-| [packages/application/src/bonsai-application.ts](../../packages/application/src/bonsai-application.ts)       | Refonte : prend `features: TManifest` au lieu de `register()`, validation format/réservés/channels au start, `#namespaces: Set<string>` supprimé (clés du manifest font foi) |
-| `packages/feature/src/types.ts` (nouveau)                                                                    | `CamelCaseNamespace<S>`, `RESERVED_NAMESPACES`, `ValidatedManifest`, `BonsaiNamespaceError`                                                                                  |
-| [tests/fixtures/cart-feature.fixture.ts](../../tests/fixtures/cart-feature.fixture.ts)                       | Suppression `static namespace`, ajustement constructeur paramétré                                                                                                            |
-| [tests/e2e/strate-0.cart-round-trip.test.ts](../../tests/e2e/strate-0.cart-round-trip.test.ts)               | Le test crée son propre manifest                                                                                                                                             |
-| [tests/unit/strate-0/application.basic.test.ts](../../tests/unit/strate-0/application.basic.test.ts) | Tests de l'API manifest, plus de `register()`                                                                                                                                |
-| RFC-0002-feature, RFC-0001-invariants-decisions                                                              | Mise à jour des sections namespace + invariants amendés/nouveaux                                                                                                             |
+| Fichier | Changement |
+| --- | --- |
+| [packages/feature/src/bonsai-feature.ts](../../packages/feature/src/bonsai-feature.ts) | Suppression `static namespace`, ajout `#namespace` immuable, constructeur paramétré, getter sans throw, ajout `TSelfNS` en 3ᵉ paramètre de type |
+| [packages/application/src/bonsai-application.ts](../../packages/application/src/bonsai-application.ts) | Refonte : prend `features: TManifest` au lieu de `register()`, validation format/réservés/channels au start, `#namespaces: Set<string>` supprimé (clés du manifest font foi) |
+| `packages/feature/src/types.ts` (nouveau) | `CamelCaseNamespace<S>`, `RESERVED_NAMESPACES`, `ValidatedManifest`, `BonsaiNamespaceError` |
+| [tests/fixtures/cart-feature.fixture.ts](../../tests/fixtures/cart-feature.fixture.ts) | Suppression `static namespace`, ajustement constructeur paramétré |
+| [tests/e2e/strate-0.cart-round-trip.test.ts](../../tests/e2e/strate-0.cart-round-trip.test.ts) | Le test crée son propre manifest |
+| [tests/unit/strate-0/application.basic.test.ts](../../tests/unit/strate-0/application.basic.test.ts) | Tests de l'API manifest, plus de `register()` |
+| RFC-0002-feature, RFC-0001-invariants-decisions | Mise à jour des sections namespace + invariants amendés/nouveaux |
 
 ---
 
@@ -556,10 +556,10 @@ export type CamelCaseNamespace<S extends string> =
 
 ## Historique
 
-| Date       | Changement                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-04-21 | Pré-ADR rédigé (`docs/namespace-feature.md`) puis amendé pour intégrer Option ① (`TSelfNS`)                                                                                                                                                                                                                                                                                                                                             |
-| 2026-04-21 | Promotion en ADR formel — Accepted                                                                                                                                                                                                                                                                                                                                                                                                      |
-| 2026-04-24 | Amendement — Compatibilité avec ADR-0019 (Mode ESM Modulaire) : distinction manifest syntaxique / logique, unicité compile-time vs runtime, portée précisée                                                                                                                                                                                                                                                                             |
-| 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043)                                                                                                                                                                                                                                                                                                                                                                 |
+| Date | Changement |
+| --- | --- |
+| 2026-04-21 | Pré-ADR rédigé (`docs/namespace-feature.md`) puis amendé pour intégrer Option ① (`TSelfNS`) |
+| 2026-04-21 | Promotion en ADR formel — Accepted |
+| 2026-04-24 | Amendement — Compatibilité avec ADR-0019 (Mode ESM Modulaire) : distinction manifest syntaxique / logique, unicité compile-time vs runtime, portée précisée |
+| 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |
 | 2026-05-19 | **Amendé par [ADR-0046](ADR-0046-feature-contract-refonte.md)** — I70 reformulé : la validation des références croisées `listens`/`queries` est désormais lue depuis `instance.listens`/`instance.queries` en Phase 0c (après instanciation pure, avant tout side-effect Radio), et non plus depuis les membres `static` en Phase 0. L'invariant _réel_ « pas de side-effect avant validation » est préservé grâce à I94 (ctor inerte). |

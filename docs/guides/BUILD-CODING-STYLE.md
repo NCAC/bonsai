@@ -4,15 +4,16 @@
 
 ---
 
-| Champ             | Valeur                                           |
-|-------------------|--------------------------------------------------|
-| **Périmètre**     | Pipeline de build (`lib/build/`, `tools/`)        |
+| Champ             | Valeur                                                                           |
+| ----------------- | -------------------------------------------------------------------------------- |
+| **Périmètre**     | Pipeline de build (`lib/build/`, `tools/`)                                       |
 | **Ne couvre pas** | Le framework applicatif (voir [FRAMEWORK-STYLE-GUIDE](FRAMEWORK-STYLE-GUIDE.md)) |
-| **Statut**        | 🟢 Active                                        |
-| **Créé le**       | 2026-03-10                                        |
-| **Mis à jour**    | 2026-03-20                                        |
+| **Statut**        | 🟢 Active                                                                        |
+| **Créé le**       | 2026-03-10                                                                       |
+| **Mis à jour**    | 2026-03-20                                                                       |
 
-> ### Périmètre
+> ## Périmètre
+>
 > Ce guide s'applique au code **interne du framework** : système de build, bundling,
 > cache, orchestration Rollup, scripts npm, outils CLI — c'est-à-dire tout ce qui vit
 > dans `lib/`, `tools/` et les fichiers de configuration racine.
@@ -47,6 +48,7 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 - Utiliser la configuration TypeScript stricte (`strict: true`) dans tous les fichiers `tsconfig.json`
 - Étendre `tsconfig.base.json` pour maintenir la cohérence entre les packages
 - Spécifier explicitement les options TypeScript importantes:
+
   ```json
   {
     "compilerOptions": {
@@ -94,10 +96,12 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 
 - Quand vous importez le défaut d'une bibliothèque externe et que vous avez le choix du nom, **préférez systématiquement un nom explicite et verbeux**.
 - Exemple recommandé :
+
   ```ts
   import fileSystem from "fs-extra";
   // et non : import fs from "fs-extra";
   ```
+
 - Cela améliore la lisibilité et évite les confusions avec les modules natifs Node.js ou d'autres utilitaires.
 
 ## Modules et imports (ESM)
@@ -118,10 +122,12 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 - **N'utilisez jamais d'import relatif pour les modules internes du framework.**
 - Utilisez toujours les chemins d'alias (`@build/...`, `@lib/...`, etc.) définis dans `tsconfig.json` pour tous les imports internes.
 - Exemple :
+
   ```ts
   import { Logger } from "@build/monitoring/logger.class";
   // et non : import { Logger } from "../monitoring/logger.class";
   ```
+
 - Cette règle est obligatoire pour garantir la maintenabilité, la clarté et la robustesse des imports dans tout le projet.
 
 ## Structure du projet
@@ -190,6 +196,7 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 - Documenter toutes les fonctions, classes et interfaces publiques avec JSDoc
 - Inclure une description, les paramètres, le type de retour et les exceptions
 - Exemple:
+
   ```typescript
   /**
    * Nettoie le dossier dist d'un package spécifique
@@ -244,10 +251,12 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
   - Préférez toujours la librairie [`fs-extra`](https://github.com/jprichardson/node-fs-extra) pour toutes les opérations sur le système de fichiers.
   - `fs-extra` est plus moderne, propose une API compatible avec `fs` mais enrichie, et intègre nativement les promesses pour toutes ses méthodes.
   - Exemple :
+
     ```ts
     import fileSystem from "fs-extra";
     // et non : import { promises as fs } from 'node:fs';
     ```
+
   - **Note** : conformément à la convention de nommage verbeux (§ Imports par défaut), le nom `fileSystem` est préféré à `fs`.
   - Cela simplifie le code, améliore la compatibilité et réduit les erreurs potentielles.
 
@@ -257,6 +266,7 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
   - Le constructeur doit être `private`.
   - Une méthode statique `me()` doit retourner l’unique instance du service.
   - Exemple :
+
     ```ts
     export class MyService {
       private static instance: MyService;
@@ -271,6 +281,7 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
       }
     }
     ```
+
 - Ce pattern permet d’injecter d’autres services dans le constructeur privé et garantit l’unicité de l’instance dans tout le projet.
 - Voir les exemples dans `/bonsai/lib/build/initializing/build-options.class.ts` et `/bonsai/lib/build/initializing/components-registry.ts`.
 

@@ -6,12 +6,12 @@
 
 ---
 
-> ### ⏳ Périmètre d'implémentation (ADR-0028)
+> ## ⏳ Périmètre d'implémentation (ADR-0028)
 >
 > Ce document décrit le **contrat cible** de la validation. Les éléments suivants ne sont **pas encore implémentés** :
 >
 > | Élément | Strate cible | Sections concernées |
-> | ------- | ------------ | ------------------- |
+> | --- | --- | --- |
 > | Garde-fou anti-boucle (`hop > maxHops`) | Strate 1b | §2.1, §3.6 |
 > | Validation modale des Entities via `TEntitySchema` (Valibot, ADR-0022) | Strate 1 | — |
 > | `warning()` sur handlers orphelins et messages sans handler | Non planifié par ADR-0028 | §2.3, §3.6 |
@@ -46,7 +46,7 @@ this.emit('itemAdded', payload);
 ### 1.2 Erreurs de compilation attendues
 
 | # | Erreur TypeScript | Invariant | Cause |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | `Property 'emit' does not exist on type 'View'` | I4 | View n'a pas de méthode `emit()` |
 | 2 | `Argument of type '"cart:adddItem"' is not assignable to parameter of type 'TFlatTriggers<…>'` | I77 | Command inexistant ou typo dans la clé namespacee |
 | 3 | `Argument of type '"inventory:reserve"' is not assignable to parameter of type 'TFlatTriggers<…>'` | I14, I77 | Namespace non déclaré dans `get features()` |
@@ -57,7 +57,7 @@ this.emit('itemAdded', payload);
 Inventaire des patterns TypeScript utilises par le système de types Bonsai.
 
 | Pattern TypeScript | Usage dans Bonsai | Benefice DX |
-|----|----|----|
+| --- | --- | --- |
 | **Template literal types** | `` `on${Capitalize<K>}Command` `` (dans `TCommandCallbacks<TDef>`) : `"addItem"` -> `"onAddItemCommand"` | Autocompletion des noms de méthodes handler |
 | **Mapped types** | `TCommandCallbacks<TDef>`/`TRequestCallbacks<TDef>` : génère les signatures handler obligatoires, sans metas en strate 0 (ADR-0046) | `implements TFeatureCallbacks<…>` -> l'IDE liste les méthodes manquantes (TS2515 si absentes) |
 | **Conditional types + infer** | `TRequestResultFor<F, K>` : extrait le type de retour d'un Request depuis un `TFeatureContract` | Typage automatique des retours `T \| null` synchrone (D9 révisé, ADR-0023) |
@@ -83,7 +83,7 @@ Le framework fournit des garde-fous runtime pour les cas
 que le type system ne peut pas attraper :
 
 | Garde-fou | Condition | Action reelle |
-|-----------|-----------|--------|
+| --- | --- | --- |
 | Anti-boucle | `hop > maxHops` | ⏳ Cible strate 1b — aucune notion de `hop` n'existe dans le code livre |
 | Handler manquant | Command sans handler | `NoHandlerError` levee par `Channel.trigger()` — **livre** |
 | Replier manquant | Request sans replier | `Channel.request()` retourne `null`, **sans erreur** (D44, ADR-0023) — **livre** |
@@ -93,6 +93,7 @@ que le type system ne peut pas attraper :
 ### 2.2 Messages d'erreur et diagnostics
 
 Les messages d'erreur doivent être :
+
 - **Explicites** (pas de « undefined is not a function »)
 - **Contextuels** (quel composant, quel Channel, quel message)
 - **Actionnables** (« did you forget to add X.channel to listen? »)
@@ -101,7 +102,7 @@ Les messages d'erreur doivent être :
 `inventory:reserve` déclaré dans `get features()` mais sans Command
 `reserve` cote `InventoryFeature` :
 
-```
+```text
 [I10] cart — No handler for command "inventory:reserve"
   → Register a handler with channel.handle("reserve", handler)
 ```
@@ -113,7 +114,7 @@ Les messages d'erreur doivent être :
 **Exemple cible, non livre** (⏳ strate 1b — aucune notion de `hop` n'existe
 aujourd'hui) :
 
-```
+```text
 [Bonsai] Causal loop detected: hop 11 exceeds maxHops 10.
  correlationId: c-9f3a..., last 5 messages:
  1. cart:addItem (CartView, hop=0)
@@ -126,7 +127,7 @@ aujourd'hui) :
 > **Principe** : maximum de validations au compile-time, le runtime ne vérifie que ce que TypeScript ne peut pas attraper.
 
 | Categorie | Quand | Exemples reels | Action en cas de violation |
-|-----------|-------|----------|---------------------------|
+| --- | --- | --- | --- |
 | **Compile-time** | `tsc` | Types Channel, `get features()`/`get listens()`, payload types, handlers requis (I92) | Erreur de compilation |
 | **Bootstrap** | Au demarrage, une seule fois | Unicite namespace (TS1117, compile-time), handler/replier duplique (I10, `DuplicateHandlerError`), reference `listens`/`queries` inconnue (I70, `BonsaiNamespaceError`, Phase 0c) | `hardInvariant()` ou erreur dediee (`DuplicateHandlerError`, `BonsaiNamespaceError`) |
 | **Runtime** | Chaque appel | `NoHandlerError` (Command sans handler), `Channel.request()` retourne `null` sans handler | Erreur levee (Command) ou `null` silencieux (Request) — pas de distinction dev/prod |
@@ -271,7 +272,7 @@ hardInvariant(
 > silencieux en prod" pour les handlers manquants aujourd'hui.
 
 | Vérification | Debug (`__DEV__`) | Production | Mecanisme | État |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Duplicate handler/replier (I10) | Oui | Oui | `DuplicateHandlerError` (toujours leve, pas de strippage) | ✅ livré |
 | Reference `listens`/`queries` inconnue (I70) | Oui | Oui | `BonsaiNamespaceError` (Phase 0c, toujours leve) | ✅ livré |
 | Anti-boucle (hop) | — | — | — | ⏳ cible strate 1b |
@@ -287,7 +288,7 @@ Le pattern `if (__DEV__)` est le standard de l'industrie (React, Vue, Angular) p
 **Prerequis bundler** :
 
 | Bundler | Configuration |
-|---------|---------------|
+| --- | --- |
 | **Vite** | `define: { __DEV__: false }` (mode build) |
 | **Rollup** | `@rollup/plugin-replace: { __DEV__: 'false' }` |
 | **esbuild** | `--define:__DEV__=false` |

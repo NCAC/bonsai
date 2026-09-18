@@ -3,7 +3,7 @@
 > **Comment permettre à des modules tiers de contribuer dynamiquement des composants (Views, Features, Behaviors) dans une application Bonsai jouant le rôle de plateforme, sans casser l'isolation ni l'architecture ?**
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟡 Proposed |
 | **Date** | 2026-03-27 |
 | **Mis à jour** | 2026-04-01 |
@@ -39,12 +39,13 @@
 Ce document (ADR-0021) est le **troisième volet** d'une trilogie architecturale :
 
 | ADR | Sujet | Relation avec ADR-0021 |
-|-----|-------|------------------------|
+| --- | --- | --- |
 | **ADR-0019** | Mode ESM Modulaire | Fournit `BonsaiRegistry` comme mécanisme technique — ADR-0021 l'utilise pour la contribution ouverte |
 | **ADR-0020** | N-instances Composer + CDH réduit | Fournit `resolve()` étendu et la sémantique N-instances — ADR-0021 en dépend pour le Platform Composer |
 | **ADR-0021** | Monde ouvert / Plateforme | Ce document — Niveaux 2-3 d'extensibilité bâtis sur les primitives des deux ADR précédents |
 
 Le découpage résulte de la réflexion architecturale du 2026-03-30/31 :
+
 - Le périmètre initial de cet ADR était trop large (4 niveaux d'extensibilité très différents mélangés)
 - **Niveau 1** (Plugin packages bootstrap-time) → couvert par **ADR-0019** (ESM + `BonsaiRegistry`)
 - **Niveau 2** (Contribution points) + **Niveau 3** (Late registration) → couvert par **ADR-0021** (ce document)
@@ -71,12 +72,12 @@ Mais si Bonsai a du succès — et c'est le but — un besoin va émerger inévi
 
 ### Le besoin fondamental
 
-> *Comment permettre à des modules tiers (packages npm, plugins internes, widgets isolés) d'enregistrer dynamiquement des Features, Views, Composers, Behaviors, ou des « points d'intégration » dans une application Bonsai existante, sans casser l'isolation ni l'architecture ?*
+> _Comment permettre à des modules tiers (packages npm, plugins internes, widgets isolés) d'enregistrer dynamiquement des Features, Views, Composers, Behaviors, ou des « points d'intégration » dans une application Bonsai existante, sans casser l'isolation ni l'architecture ?_
 
 Ce besoin est universel dans les frameworks qui atteignent une certaine maturité :
 
 | Framework | Mécanisme d'extension | Modèle |
-|-----------|----------------------|--------|
+| --- | --- | --- |
 | **VS Code** | Extension API + contribution points (JSON manifest) | Déclaratif + lazy |
 | **WordPress** | Hooks (actions + filters) + plugin registry | Impératif |
 | **Vue.js** | `app.use(plugin)` avant `app.mount()` | Bootstrap-time |
@@ -91,7 +92,7 @@ Ce besoin est universel dans les frameworks qui atteignent une certaine maturit�
 On ne va pas implémenter les extension points en v1. Mais on doit **s'assurer que l'architecture v1 ne ferme pas la porte**. Concrètement :
 
 | Risque | Si non anticipé | Si anticipé |
-|--------|----------------|-------------|
+| --- | --- | --- |
 | **`register()` avant `start()` uniquement** | Un tiers ne peut pas s'ajouter après le bootstrap. Migration douloureuse. | L'API `register()` est conçue pour être extensible (phase 2). |
 | **Namespaces hardcodés** | Collision de namespaces entre l'hôte et un plugin — crash runtime. | Convention de namespaces scopés (ex: `@plugin/feature`). |
 | **Composer fermé** | `resolve()` ne peut retourner que des Views connues à la compilation. Pas de slot extensible. | `resolve()` peut consulter un registre de contributions. |
@@ -107,14 +108,16 @@ Les besoins d'extensibilité ne sont pas tous identiques. On identifie **4 nivea
 
 ### Niveau 1 — Plugin package (bibliothèque de composants)
 
-> *Un package npm exporte des composants Bonsai que l'application hôte importe et enregistre au bootstrap.*
+> _Un package npm exporte des composants Bonsai que l'application hôte importe et enregistre au bootstrap._
 
 **Exemples** :
+
 - `@bonsai/rich-text-editor` exporte `EditorFeature`, `EditorToolbarView`, `MarkdownBehavior`
 - `@my-org/analytics` exporte `AnalyticsFeature` qui écoute des Events applicatifs
 - `@bonsai/forms` exporte `FormBehavior` pour la validation de formulaires
 
 **Caractéristiques** :
+
 - Enregistrement **avant** `start()` — phase bootstrap classique
 - Types connus à la compilation (import statique)
 - Pas de late registration
@@ -133,14 +136,16 @@ app.start();
 
 ### Niveau 2 — Contribution point (slot extensible)
 
-> *L'application hôte définit des « points de contribution » où des modules tiers peuvent injecter du contenu sans que l'hôte les connaisse à l'avance.*
+> _L'application hôte définit des « points de contribution » où des modules tiers peuvent injecter du contenu sans que l'hôte les connaisse à l'avance._
 
 **Exemples** :
+
 - Un back-office définit un menu latéral → des plugins ajoutent des entrées de menu
 - Un dashboard définit une zone « widgets » → des plugins ajoutent des cartes
 - Un éditeur définit une toolbar → des plugins ajoutent des outils
 
 **Caractéristiques** :
+
 - L'hôte déclare **où** l'extension est possible (le contrat)
 - Le tiers déclare **quoi** il contribue (l'implémentation)
 - La liaison se fait au bootstrap (pas de late registration)
@@ -172,14 +177,16 @@ class MarkdownPlugin extends Feature {
 
 ### Niveau 3 — Late registration (enregistrement post-bootstrap)
 
-> *Un module est chargé dynamiquement (lazy-loading, code-splitting) et doit s'intégrer dans une application déjà démarrée.*
+> _Un module est chargé dynamiquement (lazy-loading, code-splitting) et doit s'intégrer dans une application déjà démarrée._
 
 **Exemples** :
+
 - Un route handler charge un feature module à la demande : `/admin → AdminFeature`
 - Un plugin marketplace installe un plugin sans recharger la page
 - Un A/B test active une Feature expérimentale au runtime
 
 **Caractéristiques** :
+
 - Le module arrive **après** `start()` — la couche abstraite est déjà câblée
 - Nécessite un re-câblage partiel de Radio (nouveaux Channels)
 - Les Views existantes doivent être notifiées (nouveau contenu dans un slot)
@@ -196,14 +203,16 @@ app.registerLate(AdminFeature.default);
 
 ### Niveau 4 — Micro-applications isolées
 
-> *Plusieurs instances d'Application coexistent sur la même page, chacune avec son scope DOM, son Radio et ses Features.*
+> _Plusieurs instances d'Application coexistent sur la même page, chacune avec son scope DOM, son Radio et ses Features._
 
 **Exemples** :
+
 - Un back-office avec des widgets EditorJS (chacun est une micro-app Bonsai)
 - Un portail agrège plusieurs micro-frontends Bonsai
 - Un outil de démonstration monte/démonte des apps dans des iframes logiques
 
 **Caractéristiques** :
+
 - Chaque Application a son propre Radio, ses propres Features
 - Les micro-apps ne partagent rien par défaut (isolation totale)
 - Communication inter-apps via un canal dédié (opt-in)
@@ -220,7 +229,7 @@ L'extensibilité par des tiers crée des tensions avec **5 piliers** de l'archit
 ### Tension T1 — Bootstrap statique vs enregistrement dynamique
 
 | Aujourd'hui (D6, ADR-0010) | Besoin extensibilité |
-|---------------------------|---------------------|
+| --- | --- |
 | `register()` puis `start()` — séquence figée | Un plugin doit pouvoir s'enregistrer après `start()` (Niveau 3) |
 | La couche abstraite est **intégralement définie** avant la couche concrète | Un lazy-loaded plugin apporte Feature + Views ensemble |
 | Vérifications d'unicité au bootstrap (I21, I24) | Un plugin post-bootstrap doit aussi être vérifié |
@@ -230,19 +239,20 @@ L'extensibilité par des tiers crée des tensions avec **5 piliers** de l'archit
 ### Tension T2 — Typage compile-time vs contributions runtime
 
 | Aujourd'hui | Besoin extensibilité |
-|-------------|---------------------|
+| --- | --- |
 | `listen: [Cart.channel]` — type vérifié à la compilation | Un plugin peut écouter un Channel qui n'existe pas encore dans l'hôte |
 | `trigger(Cart.channel, 'addItem', payload)` — commande et payload typés | Un plugin contribue des commandes inconnues de l'hôte |
 | `resolve()` retourne `typeof View` — constructeur connu | Un Composer ouvert reçoit des View classes d'un registre |
 
 **Impact** : Deux niveaux de typage :
+
 - **Intra-module** : full compile-time safety (le plugin connaît ses propres types)
 - **Inter-module** : contrat d'extension point (interface publique, vérification au `register()`)
 
 ### Tension T3 — Isolation Channel vs communication inter-modules
 
 | Aujourd'hui (D1, D14) | Besoin extensibilité |
-|-----------------------|---------------------|
+| --- | --- |
 | Radio câble uniquement les Channels déclarés statiquement | Un plugin apporte de nouveaux Channels |
 | `listen` / `trigger` requièrent un token importé → couplage explicite | Un plugin doit pouvoir écouter des Events de l'hôte sans import circulaire |
 | Pas de « bus global » — chaque Channel est scopé | Un mécanisme de découverte est nécessaire pour les contributions |
@@ -252,7 +262,7 @@ L'extensibilité par des tiers crée des tensions avec **5 piliers** de l'archit
 ### Tension T4 — Composer fermé vs slot extensible
 
 | Aujourd'hui (D21) | Besoin extensibilité |
-|-------------------|---------------------|
+| --- | --- |
 | `resolve()` retourne un constructeur de View connu | `resolve()` doit pouvoir consulter un registre de contributions |
 | Le Composer connaît statiquement ses Views possibles | Les contributions peuvent arriver de n'importe quel plugin |
 | Un Composer gère 0/1 View (D24) | Un slot extensible peut accueillir N contributions (liste) |
@@ -262,7 +272,7 @@ L'extensibilité par des tiers crée des tensions avec **5 piliers** de l'archit
 ### Tension T5 — Namespace unicité vs namespace tiers
 
 | Aujourd'hui (I21) | Besoin extensibilité |
-|-------------------|---------------------|
+| --- | --- |
 | Namespace = `camelCase` plat, unique dans l'app | Risque de collision entre l'hôte et un plugin, ou entre deux plugins |
 | Collision = erreur fatale au bootstrap | Le message d'erreur doit aider à diagnostiquer (quel plugin ?) |
 | Pas de convention de scoping | Pas de garantie qu'un plugin npm ne squatte un namespace interne |
@@ -276,7 +286,7 @@ L'extensibilité par des tiers crée des tensions avec **5 piliers** de l'archit
 Quel que soit le modèle d'extensibilité retenu, les contraintes suivantes **ne sont pas négociables** :
 
 | # | Contrainte | Justification |
-|---|-----------|---------------|
+| --- | --- | --- |
 | **C1** | **Isolation des Channels** — un plugin ne peut pas accéder à un Channel qu'il n'a pas déclaré dans `listen` / `trigger` / `request` | I4, I10, D14. L'extensibilité ne doit pas créer de couplages cachés. |
 | **C2** | **Vérification des namespaces** — collision = erreur, même pour les plugins | I21, I24. L'unicité des namespaces est un invariant non négociable. |
 | **C3** | **Pas de modification des composants hôte** — un plugin ne peut pas monkey-patcher une Feature, une View ou un Behavior de l'hôte | Principe d'encapsulation. Un plugin **ajoute**, il ne **modifie** pas. |
@@ -379,7 +389,7 @@ class CartFeature extends Feature {
 > **Convention** : les plugins **tiers** utilisent un namespace préfixé par le vendor en dot-notation (`vendor.featureName`). Les Features de l'application **hôte** utilisent un namespace plat (`featureName`). I21 s'applique sur l'ensemble.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + **Zéro changement d'architecture** — l'existant suffit | - Pas de late registration (Niveau 3 impossible) |
 | + Typage compile-time complet (import statique) | - L'hôte doit importer explicitement chaque plugin |
 | + Vérification bootstrap (D6) intacte | - Pas de slot extensible natif (Niveau 2 limité) |
@@ -395,7 +405,7 @@ class CartFeature extends Feature {
 
 #### Concepts introduits
 
-```
+```text
 ┌────────────────────────────────────────────────────────────┐
 │  Application hôte                                          │
 │                                                            │
@@ -595,7 +605,7 @@ await app.registerLate(SpellCheckPlugin.default);
 > ⚠️ **Garantie d'ordre** : les Events émis **avant** `registerLate()` ne sont pas rejoués. Le plugin late-registered démarre dans l'état courant. S'il a besoin de données antérieures, il utilise `request` pour interroger les Features existantes.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Extension points formalisés — contrat typé | - Nouveau concept (ContributionRegistry) |
 | + Late registration possible (Niveau 3) | - Complexité de `registerLate()` (re-câblage Radio) |
 | + Composer ouvert — sans casser D21/D23 | - Le type des contributions est `unknown` au point de liaison (cast nécessaire) |
@@ -641,7 +651,7 @@ const CartPlugin: IBonsaiPlugin = {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Architecture maximalement extensible | - **Remise en cause profonde** de D6 (Application légère) |
 | + Modèle uniforme (tout est plugin) | - Complexité exponentielle (résolution de dépendances, ordre, cycles) |
 | + Lazy-loading natif par plugin | - Le développeur perd la vue d'ensemble — tout est indirect |
@@ -655,7 +665,7 @@ const CartPlugin: IBonsaiPlugin = {
 ## Analyse comparative
 
 | Critère | Option A (Plugin packages) | Option B (Extension Registry) | Option C (Micro-kernel) |
-|---------|---------------------------|-------------------------------|------------------------|
+| --- | --- | --- | --- |
 | **Niveaux couverts** | 1 | 1, 2, 3 | 1, 2, 3 |
 | **Changement d'architecture** | Aucun (convention + helper) | Moyen (1 Feature framework + `registerLate`) | Majeur (refonte Application) |
 | **Type-safety** | ⭐⭐⭐ — compile-time complet | ⭐⭐ — intra-module compile-time, inter-module runtime | ⭐⭐ — idem B |
@@ -671,7 +681,7 @@ const CartPlugin: IBonsaiPlugin = {
 
 ### Matrice de compatibilité
 
-```
+```text
 Option A ─────────────▶ Option B ─────────────▶ Option C
   (v1)         (migration douce)     (migration lourde)
   Plugin       Extension Points     Micro-kernel
@@ -689,7 +699,7 @@ Option A ─────────────▶ Option B ──────�
 Comment un développeur de plugin sait-il quels extension points existent dans une application hôte ?
 
 | Approche | Description |
-|----------|-------------|
+| --- | --- |
 | **Documentation** | L'hôte documente ses extension points dans un README. Le plugin lit la doc. |
 | **TypeScript** | L'hôte exporte un package de types (`@app/extension-types`) avec les interfaces de contribution. Le plugin les importe. |
 | **DevTools** | RFC-0004 expose les extension points déclarés dans le panneau DevTools. |
@@ -719,11 +729,13 @@ interface IToolContribution_v2 extends IToolContribution_v1 {
 ### SP3 — Sécurité et sandboxing
 
 Un plugin tiers malveillant ou bogué pourrait :
+
 - Écouter des Channels sensibles (ex: `user.privateData`)
 - Envoyer des Commands non autorisées
 - Causer des erreurs qui crashent l'application hôte
 
 **Mesures immédiates (v1)** :
+
 - **C1** s'applique : un plugin ne peut écouter que les Channels déclarés dans ses dépendances
 - **ADR-0002** (error propagation) isole les erreurs : un crash dans un handler de plugin ne bloque pas les autres
 - **C3** empêche le monkey-patching
@@ -777,7 +789,7 @@ const AnalyticsPlugin: IBonsaiPlugin = {
 ### SP4 — Cycle de vie des plugins
 
 | Phase | Action |
-|-------|--------|
+| --- | --- |
 | **Installation** | `app.use(plugin)` (avant `start()`) ou `app.registerLate(plugin)` (après) |
 | **Activation** | Les Features sont instanciées, les Channels câblés, les contributions enregistrées |
 | **Runtime** | Le plugin participe normalement à l'application (Events, Commands, Requests, Views) |
@@ -789,7 +801,7 @@ const AnalyticsPlugin: IBonsaiPlugin = {
 Si l'Option B est retenue (Phase 2), `registerLate()` est le point d'entrée le plus critique du système d'extension. Ses garanties doivent être **non ambiguës** :
 
 | Garantie | Spécification |
-|----------|---------------|
+| --- | --- |
 | **Asynchrone** | `registerLate()` retourne **toujours** une `Promise<void>`. La micro-séquence de bootstrap est asynchrone (câblage, `onInit()`, enregistrement contributions). L'appelant **doit** `await` le résultat avant d'interagir avec le plugin. |
 | **Non annulable** | Une fois `registerLate()` appelée, la séquence s'exécute **jusqu'au bout**. Il n'existe pas de `AbortController` ni de mécanisme d'annulation. Si le plugin échoue en cours de route (namespace collision, Channel manquant), une `BonsaiError` est levée **après** rollback des étapes déjà exécutées. |
 | **Idempotente** | Appeler `registerLate(plugin)` deux fois avec le même `plugin.id` **ne produit pas d'erreur** — le deuxième appel est un no-op silencieux (mode debug : warning). Un plugin déjà enregistré n'est pas ré-enregistré. |
@@ -816,7 +828,7 @@ async registerLate(plugin: IBonsaiPlugin): Promise<void>;
 
 ### SP5 — Namespaces scopés — convention formelle
 
-```
+```text
 Namespace plat (application hôte) :
   cart, user, router, dashboard
 
@@ -870,6 +882,7 @@ Une fois la v1 stabilisée et le besoin de Niveau 2-3 confirmé :
 #### Option C rejetée
 
 L'Option C (micro-kernel) est **rejetée** pour la foreseeable future :
+
 - Complexité disproportionnée par rapport au bénéfice
 - Remise en cause de piliers fondamentaux (D6, ADR-0010)
 - Le modèle A → B couvre 95% des besoins d'extensibilité réels
@@ -897,10 +910,10 @@ Ce principe garantit que l'ajout ou le retrait d'un plugin ne peut pas provoquer
 #### Nouveaux éléments
 
 | # | Élément | Impact |
-|---|---------|--------|
-| **Interface `IBonsaiPlugin`** | Contrat TypeScript pour les packages tiers. Pas un concept framework — un type d'aide. |
-| **`Application.use(plugin)`** | Helper qui itère sur `plugin.features` et appelle `register()`. Vérifie `channelDependencies`. |
-| **Convention dot-notation** | Les namespaces avec `.` sont réservés aux plugins tiers. Documenté dans le glossaire. |
+| --- | --- | --- |
+| **Interface `IBonsaiPlugin`** | Contrat TypeScript pour les packages tiers. Pas un concept framework — un type d'aide. | |
+| **`Application.use(plugin)`** | Helper qui itère sur `plugin.features` et appelle `register()`. Vérifie `channelDependencies`. | |
+| **Convention dot-notation** | Les namespaces avec `.` sont réservés aux plugins tiers. Documenté dans le glossaire. | |
 
 #### Invariants préservés
 
@@ -909,7 +922,7 @@ Tous les invariants actuels (I1–I45, I57) restent **intacts**. La Phase 1 n'aj
 #### Fichiers impactés
 
 | Fichier | Impact |
-|---------|--------|
+| --- | --- |
 | [RFC-0002 §7](../rfc/3-couche-abstraite/application.md) | Ajout de `use(plugin)` dans l'API Application |
 | [RFC-0001-glossaire](../rfc/reference/glossaire.md) | Ajout définition « Plugin package », « Namespace scopé » |
 | [RFC-0001-invariants-decisions](../rfc/reference/invariants.md) | Note sur I21 : les namespaces scopés (dot-notation) sont autorisés |
@@ -922,7 +935,7 @@ Tous les invariants actuels (I1–I45, I57) restent **intacts**. La Phase 1 n'aj
      Numérotation à partir de I65 pour éviter les collisions. -->
 
 | # | Invariant |
-|---|-----------|
+| --- | --- |
 | **I65** | Le Channel `extensions` est un namespace **réservé** par le framework (comme `router`). Il est créé automatiquement si l'application déclare au moins un extension point. |
 | **I66** | Un plugin ne peut contribuer qu'à des extension points **déclarés**. Une contribution vers un extension point inexistant est une erreur au bootstrap (strict) ou un warning (debug). |
 | **I67** | `registerLate()` exécute une **micro-séquence de bootstrap** complète (vérification namespace, création Channel, câblage, onInit) avant que le plugin ne participe à l'application. Les Events émis avant `registerLate()` ne sont **pas** rejoués. |
@@ -930,7 +943,7 @@ Tous les invariants actuels (I1–I45, I57) restent **intacts**. La Phase 1 n'aj
 #### Nouvelles décisions (proposées)
 
 | # | Décision |
-|---|----------|
+| --- | --- |
 | **D53** | Le ContributionRegistry est une Feature framework réservée (comme Router). Namespace `extensions`. Opt-in : créé uniquement si au moins un extension point est déclaré. |
 | **D54** | `Composer.reevaluate()` est une méthode framework qui relance `resolve()` quand une contribution change. Le Composer **écoute** `extensions:contributionAdded` pour savoir quand ré-évaluer. |
 | **D55** | Les namespaces de plugins tiers utilisent la dot-notation (`vendor.featureName`). Le `.` est le séparateur de scope. Un namespace plat (sans `.`) est réservé à l'application hôte. |
@@ -940,7 +953,7 @@ Tous les invariants actuels (I1–I45, I57) restent **intacts**. La Phase 1 n'aj
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-03-27 | Création sous numéro ADR-0019 (Proposed) — 3 options, stratégie incrémentale A → B recommandée |
 | 2026-03-27 | Enrichissement : capabilities model (SP3), garanties formelles `registerLate()` (SP4b), isolation contractuelle des plugins |
 | 2026-04-01 | Renommé ADR-0019 → ADR-0021. Découpage en trilogie : ADR-0019 (ESM), ADR-0020 (N-instances), ADR-0021 (monde ouvert). Relation avec ADR-0019/0020 documentée. |

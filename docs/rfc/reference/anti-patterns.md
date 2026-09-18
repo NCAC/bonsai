@@ -11,6 +11,7 @@ Pour chaque anti-pattern : description, danger, invariant violé, alternative co
 et **détection** (compile-time, bootstrap ou runtime).
 
 > **Convention de détection** :
+>
 > - `[Compile]` — erreur TypeScript avant l'exécution. Zéro coût runtime.
 > - `[Bootstrap]` — erreur levée au démarrage (`app.start()`). Bloque l'application si non corrigée.
 > - `[Runtime]` — erreur ou warning pendant l'exécution, avec contexte causal complet.
@@ -44,7 +45,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 **Viole** : I13
 
-**Détection** : `[Code review]` — le pattern est légal syntaxiquement (une View *peut* listen ET trigger). C'est la sémantique (décision métier dans le handler `listen`) qui est interdite. À enforcer par convention et code review.
+**Détection** : `[Code review]` — le pattern est légal syntaxiquement (une View _peut_ listen ET trigger). C'est la sémantique (décision métier dans le handler `listen`) qui est interdite. À enforcer par convention et code review.
 
 **Alternative** : La View écoute des Events pour se mettre à jour (projection pure), elle trigger des Commands sur demande utilisateur. Jamais de logique métier dans la View.
 
@@ -55,6 +56,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 **Description** : Feature A qui envoie un Command (trigger) sur le Channel de Feature B.
 
 **Pourquoi c'est interdit** :
+
 - Les Features ne possèdent pas `trigger()` — seuls les Views/Behaviors l'utilisent (I25)
 - Les Features communiquent via emit (Events) + listen, jamais via Commands
 - Crée un couplage impératif entre Features
@@ -73,6 +75,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 **Description** : Feature A qui émet un Event (emit) sur le Channel de Feature B.
 
 **Pourquoi c'est interdit** :
+
 - Viole I1 et I12 (emit uniquement sur son propre Channel)
 - Usurpe l'identité d'une autre Feature
 - Rend le graphe causal incohérent
@@ -104,6 +107,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 **Description** : Entity accessible en dehors de sa Feature propriétaire.
 
 **Pourquoi c'est dangereux** :
+
 - Brise l'encapsulation
 - Permet des mutations non contrôlées
 - Rend impossible la traçabilité des changements
@@ -121,6 +125,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 **Description** : Feature fourre-tout qui gère trop de responsabilités.
 
 **Pourquoi c'est dangereux** :
+
 - Viole le principe de responsabilité unique
 - Rend les tests impossibles
 - Crée un point de couplage central
@@ -136,6 +141,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 **Description** : Logique métier qui branche sur les metas (origin, hop, correlationId).
 
 **Pourquoi c'est dangereux** :
+
 - Les metas sont pour la traçabilité, pas pour la logique métier
 - Crée des comportements imprévisibles
 - Casse le principe de découplage
@@ -153,6 +159,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 **Description** : Accéder à un Channel via `Radio.channel('name')` au lieu de le déclarer dans la définition du composant.
 
 **Pourquoi c'est dangereux** :
+
 - Couplages cachés dans l'implémentation, invisibles dans la définition
 - Impossible de vérifier les invariants à la compilation
 - Tests nécessitent un Radio complet au lieu des seuls Channels déclarés
@@ -171,6 +178,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 **Description** : Utiliser un Channel dans le corps d'un composant sans l'avoir déclaré dans sa définition (`get listens()`/`get queries()` pour une Feature, `get features()` pour une View/Behavior).
 
 **Pourquoi c'est dangereux** :
+
 - Dépendance invisible → couplage implicite
 - Le composant semble autonome mais ne l'est pas
 - Impossible à détecter sans exécuter le code
@@ -188,14 +196,16 @@ et **détection** (compile-time, bootstrap ou runtime).
 **Description** : View ou Behavior qui maintient un **domain state** local ou un **state ad hoc** non déclaré via le mécanisme framework (`this.isOpen`, `this.selectedIndex`, `this.data`). Cela inclut toute propriété mutable posée directement sur la classe sans passer par le mécanisme `localState` du framework.
 
 **Pourquoi c'est interdit** :
+
 - Le **domain state** (données métier, données partagées) dans une View crée une concurrence d'états avec les Entities
 - Un state **ad hoc** (propriété `this.xxx` classique) est invisible, non réactif, non typé par le framework — impossible à tracer, tester ou migrer
-- Un autre composant *pourrait* avoir besoin de cette donnée (analytics, persistance, dépendances inter-composants)
+- Un autre composant _pourrait_ avoir besoin de cette donnée (analytics, persistance, dépendances inter-composants)
 - Détruit le flux unidirectionnel si le state est du domain state
 
 **Viole** : I5, I6, I30
 
 **Alternative** :
+
 - **Donnée partagée / domain state** → Créer une Feature dédiée (ex: `ModalUiFeature`, `SliderUiFeature`). La View trigger un Command, la Feature modifie son Entity, la View écoute l'Event et se met à jour.
 - **Donnée purement locale à la View** → Utiliser le mécanisme **`localState`** du framework (I42, D33) : déclaratif, typé, réactif, encapsulé, non-broadcastable. **Jamais** de `this.xxx = value` ad hoc.
 
@@ -218,6 +228,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 > avant qu'un ADR ne redéfinisse sa forme (cf. R08/R19, composer.md).
 
 **Pourquoi c'est dangereux** :
+
 - Prolifération de classes pour des différences cosmétiques
 - Hiérarchie d'héritage fragile — une modification dans la classe parent casse les enfants
 - Mélange de logiques de configuration et de logiques métier
@@ -228,6 +239,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 **Détection** : `[Code review]` — pas de mécanisme mécanique v1. Indicateurs : chaine d'héritage > 2 niveaux entre Views, sous-classes de View sans override de template.
 
 **Alternative** : Utiliser l'algorithme de décision D38 :
+
 - Q0 : Sert de base de composition → View
 - Q1 : Même View, contexte différent → View + options
 - Q2 : Capacité orthogonale → Behavior
@@ -240,6 +252,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 **Description** : Un replier (handler `reply`) qui effectue un appel asynchrone (`fetch`, `await`, `Promise`) pour construire sa réponse.
 
 **Pourquoi c'est interdit** :
+
 - Un `request()` est une **lecture synchrone d'un état déjà matérialisé** dans une Entity. Si le replier a besoin d'être async, c'est que l'état n'est pas encore dans l'Entity — problème d'ordre de bootstrap (ADR-0010), pas de sémantique de `request`
 - Détruit la sémantique du tri-lane : `trigger()` = `void`, `emit()` = `void`, `request()` = `T` (immédiat)
 - Transforme la Request Lane en canal de side-effects déguisé
@@ -271,6 +284,7 @@ onTotalRequest(params: void): number | null {
 **Description** : View, Behavior, Foundation ou Composer qui exécute directement du code asynchrone (`fetch()`, `async/await`, `Promise`, `setTimeout`, `setInterval`, `XMLHttpRequest`, `WebSocket.send()`).
 
 **Pourquoi c'est interdit** :
+
 - La couche concrète **projette** un état et **émet des intentions** — elle ne produit pas de side-effects
 - L'async crée un état implicite (pending/resolved/rejected) non traçable par le framework
 - Détruit le flux unidirectionnel : la View devient un acteur autonome au lieu d'un projecteur passif
@@ -280,6 +294,7 @@ onTotalRequest(params: void): number | null {
 **Viole** : ADR-0023 (conséquence 1 et 2), I13, I30
 
 **Détection** : `[Code review]` + `[Lint]` — ce pattern n'est **pas détectable mécaniquement** au compile-time (TypeScript n'interdit pas `fetch()` dans une classe). Enforçable par :
+
 - Convention d'équipe et code review
 - Règle ESLint custom (future) : détecter `fetch`, `async`, `await`, `new Promise`, `setTimeout`, `setInterval` dans les fichiers `*.view.ts`, `*.behavior.ts`, `*.foundation.ts`, `*.composer.ts`
 

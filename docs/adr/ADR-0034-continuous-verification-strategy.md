@@ -2,12 +2,12 @@
 
 > **Comment garantir à chaque commit et à chaque PR que le code Bonsai ne régresse pas — au niveau typage ET au niveau comportemental ?**
 
-| Champ         | Valeur                                                                                                  |
-| ------------- | ------------------------------------------------------------------------------------------------------- |
-| **Statut**    | 🟢 Accepted                                                                                             |
-| **Date**      | 2026-04-20                                                                                              |
-| **Décideurs** | @NCAC                                                                                                   |
-| **RFC liée**  | ADR-0028 (phasage), ADR-0030 (tests comme preuve), ADR-0006 (testing strategy), ADR-0033 (workflow Git) |
+| Champ | Valeur |
+| --- | --- |
+| **Statut** | 🟢 Accepted |
+| **Date** | 2026-04-20 |
+| **Décideurs** | @NCAC |
+| **RFC liée** | ADR-0028 (phasage), ADR-0030 (tests comme preuve), ADR-0006 (testing strategy), ADR-0033 (workflow Git) |
 
 ---
 
@@ -38,19 +38,19 @@ Deux risques de régression existent :
 
 ### L'état existant au 2026-04-20
 
-| Élément                            | État                                         | Problème                                |
-| ---------------------------------- | -------------------------------------------- | --------------------------------------- |
-| `.husky/pre-commit`                | Non exécutable (`-rw-r--r--`)                | Ne s'exécute jamais                     |
-| `.husky/pre-commit` contenu        | `pnpm run test` (TOUS les tests)             | Trop lent pour un hook pre-commit       |
-| `.husky/commit-msg`                | Non exécutable                               | Ne s'exécute jamais                     |
-| `.husky/commit-msg` contenu        | Valide le format conventionnel               | Utilise `refacto` au lieu de `refactor` |
-| `.husky/pre-push`                  | Non exécutable                               | Ne s'exécute jamais                     |
-| `.husky/pre-push` contenu          | Merge `origin/develop` automatique           | Legacy, dangereux, non désiré           |
-| `.husky/_/husky.sh`                | Shim Husky v8 déprécié                       | « WILL FAIL in v10.0.0 »                |
-| `.devcontainer/scripts/`           | 13 scripts git-flow copiés d'un autre projet | Inutiles pré-v1 (ADR-0033)              |
-| `post-create-command.sh`           | `npx husky install` (API v8)                 | Obsolète                                |
-| `.github/workflows/regression.yml` | PR → `main`                                  | Devrait être PR → `develop` (ADR-0033)  |
-| `package.json`                     | `test:regression` existe                     | ✅ OK                                   |
+| Élément | État | Problème |
+| --- | --- | --- |
+| `.husky/pre-commit` | Non exécutable (`-rw-r--r--`) | Ne s'exécute jamais |
+| `.husky/pre-commit` contenu | `pnpm run test` (TOUS les tests) | Trop lent pour un hook pre-commit |
+| `.husky/commit-msg` | Non exécutable | Ne s'exécute jamais |
+| `.husky/commit-msg` contenu | Valide le format conventionnel | Utilise `refacto` au lieu de `refactor` |
+| `.husky/pre-push` | Non exécutable | Ne s'exécute jamais |
+| `.husky/pre-push` contenu | Merge `origin/develop` automatique | Legacy, dangereux, non désiré |
+| `.husky/_/husky.sh` | Shim Husky v8 déprécié | « WILL FAIL in v10.0.0 » |
+| `.devcontainer/scripts/` | 13 scripts git-flow copiés d'un autre projet | Inutiles pré-v1 (ADR-0033) |
+| `post-create-command.sh` | `npx husky install` (API v8) | Obsolète |
+| `.github/workflows/regression.yml` | PR → `main` | Devrait être PR → `develop` (ADR-0033) |
+| `package.json` | `test:regression` existe | ✅ OK |
 
 ### Déclencheur
 
@@ -60,15 +60,15 @@ Implémentation de la strate 0 : chaque PR doit garantir que les PI précédents
 
 ## Contraintes
 
-| #   | Contrainte                                                                                | Source             |
-| --- | ----------------------------------------------------------------------------------------- | ------------------ |
-| C1  | Compatible avec Jest (test runner en place)                                               | Existant           |
-| C2  | Compatible avec le monorepo pnpm                                                          | Existant           |
-| C3  | Le hook pre-commit DOIT s'exécuter en **< 30 secondes**                                   | DX                 |
-| C4  | La CI DOIT exécuter **tous** les tests (unit + integration + e2e)                         | Qualité            |
-| C5  | Compatible avec le workflow Git Flow adapté (ADR-0033) : PR → `develop`, release → `main` | ADR-0033           |
-| C6  | Explicite et traçable (philosophie Bonsai)                                                | Core               |
-| C7  | `tsc` comme première ligne de défense (« Compile-time > Runtime »)                        | Philosophie Bonsai |
+| # | Contrainte | Source |
+| --- | --- | --- |
+| C1 | Compatible avec Jest (test runner en place) | Existant |
+| C2 | Compatible avec le monorepo pnpm | Existant |
+| C3 | Le hook pre-commit DOIT s'exécuter en **< 30 secondes** | DX |
+| C4 | La CI DOIT exécuter **tous** les tests (unit + integration + e2e) | Qualité |
+| C5 | Compatible avec le workflow Git Flow adapté (ADR-0033) : PR → `develop`, release → `main` | ADR-0033 |
+| C6 | Explicite et traçable (philosophie Bonsai) | Core |
+| C7 | `tsc` comme première ligne de défense (« Compile-time > Runtime ») | Philosophie Bonsai |
 
 ---
 
@@ -76,10 +76,10 @@ Implémentation de la strate 0 : chaque PR doit garantir que les PI précédents
 
 Nous adoptons une stratégie à **deux niveaux complémentaires** :
 
-| Niveau                      | Déclencheur               | Vérifications                      | Temps cible | Bloquant ?                                     |
-| --------------------------- | ------------------------- | ---------------------------------- | ----------- | ---------------------------------------------- |
-| **1 — Pre-commit (Husky)**  | Chaque `git commit` local | `tsc --noEmit` + `test:regression` | < 30s       | Oui (local — contournable via `--no-verify`)   |
-| **2 — CI (GitHub Actions)** | PR vers `develop`         | `tsc --noEmit` + `pnpm test:ci`    | < 3 min     | **Oui (branch protection — non-contournable)** |
+| Niveau | Déclencheur | Vérifications | Temps cible | Bloquant ? |
+| --- | --- | --- | --- | --- |
+| **1 — Pre-commit (Husky)** | Chaque `git commit` local | `tsc --noEmit` + `test:regression` | < 30s | Oui (local — contournable via `--no-verify`) |
+| **2 — CI (GitHub Actions)** | PR vers `develop` | `tsc --noEmit` + `pnpm test:ci` | < 3 min | **Oui (branch protection — non-contournable)** |
 
 ### Justification
 
@@ -218,12 +218,12 @@ jobs:
 
 Le workflow ci-dessus DOIT être configuré comme **status check requis** sur la branche `develop` (Settings → Branches → Branch protection rule for `develop`).
 
-| Paramètre branch protection                          | Valeur                         | Justification                                                                                                                   |
-| ---------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| **Require status checks to pass before merging**     | ☑ activé                       | Sans ça, le bouton « Squash and merge » fonctionne même si la CI échoue → la gate du Niveau 2 devient purement informative      |
-| **Require branches to be up to date before merging** | ☑ activé                       | Force le rebase/merge de `develop` dans la branche feature avant le merge final → la CI a tourné sur le code _réellement mergé_ |
-| **Required check (nom exact)**                       | `Type-check + Full test suite` | Correspond au champ `name:` du job `verify` dans `regression.yml` (et non pas au nom du workflow)                               |
-| **Allow administrators to bypass**                   | ☑ activé (toi seul)            | Garde-fou en cas d'urgence ; ne doit jamais être utilisé en routine                                                             |
+| Paramètre branch protection | Valeur | Justification |
+| --- | --- | --- |
+| **Require status checks to pass before merging** | ☑ activé | Sans ça, le bouton « Squash and merge » fonctionne même si la CI échoue → la gate du Niveau 2 devient purement informative |
+| **Require branches to be up to date before merging** | ☑ activé | Force le rebase/merge de `develop` dans la branche feature avant le merge final → la CI a tourné sur le code _réellement mergé_ |
+| **Required check (nom exact)** | `Type-check + Full test suite` | Correspond au champ `name:` du job `verify` dans `regression.yml` (et non pas au nom du workflow) |
+| **Allow administrators to bypass** | ☑ activé (toi seul) | Garde-fou en cas d'urgence ; ne doit jamais être utilisé en routine |
 
 > ⚠️ La liste déroulante des status checks dans GitHub ne propose que les checks **déjà exécutés au moins une fois**. Si le check n'apparaît pas, taper exactement `Type-check + Full test suite`.
 
@@ -253,11 +253,11 @@ Un fichier `<strate>.regression.test.ts` par strate, qui importe tous les fichie
 
 ### Options analysées
 
-| Option                             | Description                                                 | Verdict                   |
-| ---------------------------------- | ----------------------------------------------------------- | ------------------------- |
-| **A — Fichier d'entrée cumulatif** | Imports explicites dans un `.regression.test.ts` par strate | ✅ **Retenue**            |
-| B — Jest projects                  | Config `projects` dans `jest.config.ts`                     | ❌ Perd la traçabilité PR |
-| C — Tags `@regression`             | Annotations dans chaque fichier + custom runner             | ❌ Infra disproportionnée |
+| Option | Description | Verdict |
+| --- | --- | --- |
+| **A — Fichier d'entrée cumulatif** | Imports explicites dans un `.regression.test.ts` par strate | ✅ **Retenue** |
+| B — Jest projects | Config `projects` dans `jest.config.ts` | ❌ Perd la traçabilité PR |
+| C — Tags `@regression` | Annotations dans chaque fichier + custom runner | ❌ Infra disproportionnée |
 
 ### Justification du choix (Option A)
 
@@ -269,7 +269,7 @@ Un fichier `<strate>.regression.test.ts` par strate, qui importe tous les fichie
 
 ### Convention de nommage
 
-```
+```text
 tests/
 ├── unit/
 │   └── strate-0/
@@ -345,11 +345,11 @@ import "./application.bootstrap.test";
 
 ### Risques identifiés
 
-| Risque                                             | Mitigation                             |
-| -------------------------------------------------- | -------------------------------------- |
-| Oubli d'ajout au fichier cumulatif                 | Checklist PR dans CONTRIBUTING.md      |
-| Pre-commit contourné (`--no-verify`)               | CI comme filet de sécurité obligatoire |
-| `tsc --noEmit` trop lent quand le monorepo grossit | Envisager `tsc --build` incrémental    |
+| Risque | Mitigation |
+| --- | --- |
+| Oubli d'ajout au fichier cumulatif | Checklist PR dans CONTRIBUTING.md |
+| Pre-commit contourné (`--no-verify`) | CI comme filet de sécurité obligatoire |
+| `tsc --noEmit` trop lent quand le monorepo grossit | Envisager `tsc --build` incrémental |
 
 ---
 
@@ -380,8 +380,8 @@ import "./application.bootstrap.test";
 
 ## Historique
 
-| Date       | Changement                                                                                                                                                           |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-04-17 | Création (Proposed) — scope initial : gate de non-régression cumulative                                                                                              |
-| 2026-04-20 | Élargi et renommé : stratégie de vérification continue (hooks + CI). Accepted.                                                                                       |
+| Date | Changement |
+| --- | --- |
+| 2026-04-17 | Création (Proposed) — scope initial : gate de non-régression cumulative |
+| 2026-04-20 | Élargi et renommé : stratégie de vérification continue (hooks + CI). Accepted. |
 | 2026-04-21 | Amendement : workflow CI promu **status check requis** sur `develop` (branch protection). Job exécute `pnpm test:ci` (full suite) au lieu de `pnpm test:regression`. |

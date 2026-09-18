@@ -1,11 +1,11 @@
 # ADR-0031 : Topologie des packages du monorepo — répartition des composants
 
-| Champ         | Valeur                                                                                           |
-| ------------- | ------------------------------------------------------------------------------------------------ |
-| **Statut**    | 🟢 Accepted                                                                                      |
-| **Date**      | 2026-04-10                                                                                       |
-| **Décideurs** | @ncac                                                                                            |
-| **RFC liée**  | RFC 2-architecture (taxonomie 10 composants), RFC 2-architecture/distribution (mode IIFE vs ESM) |
+| Champ | Valeur |
+| --- | --- |
+| **Statut** | 🟢 Accepted |
+| **Date** | 2026-04-10 |
+| **Décideurs** | @ncac |
+| **RFC liée** | RFC 2-architecture (taxonomie 10 composants), RFC 2-architecture/distribution (mode IIFE vs ESM) |
 
 ---
 
@@ -17,11 +17,11 @@ Bonsai est un monorepo pnpm contenant des packages internes (`packages/*`) et un
 
 Trois conventions d'import coexistent sans arbitrage :
 
-| Convention              | Exemple                                   | Source                                   |
-| ----------------------- | ----------------------------------------- | ---------------------------------------- |
-| Package npm `@bonsai/*` | `import { Channel } from "@bonsai/event"` | `packages/event/package.json`            |
-| Package npm sans scope  | `import { ... } from "bonsai"`            | `core/package.json` (`"name": "bonsai"`) |
-| Alias test `@core/*`    | `import { Entity } from "@core/bonsai"`   | `tsconfig.test.json` (`paths`)           |
+| Convention | Exemple | Source |
+| --- | --- | --- |
+| Package npm `@bonsai/*` | `import { Channel } from "@bonsai/event"` | `packages/event/package.json` |
+| Package npm sans scope | `import { ... } from "bonsai"` | `core/package.json` (`"name": "bonsai"`) |
+| Alias test `@core/*` | `import { Entity } from "@core/bonsai"` | `tsconfig.test.json` (`paths`) |
 
 La RFC distribution.md montre pourtant `import { Application } from '@bonsai/core'` — un nom de package qui n'existe nulle part dans le code source.
 
@@ -61,7 +61,7 @@ Tous les composants Bonsai vivent dans `core/src/`, organisés en fichiers indiv
 
 **Structure physique :**
 
-```
+```text
 core/
   package.json                    → "@bonsai/core"
   src/
@@ -105,13 +105,13 @@ import { Entity } from "@bonsai/core"; // résolu par moduleNameMapper → core/
 import { Entity } from "@bonsai/core/entity.class";
 ```
 
-| Avantages                                            | Inconvénients                                                         |
-| ---------------------------------------------------- | --------------------------------------------------------------------- |
-| + Un seul import pour tout le framework              | - `core/src/` devient un fourre-tout (8+ fichiers de classes)         |
-| + Conforme à la RFC distribution.md (`@bonsai/core`) | - Pas de séparation physique abstraite/concrète                       |
-| + Zéro package supplémentaire                        | - Le barrel ré-exporte des dépendances transitives (@bonsai/event)    |
-| + Tests et build simples                             | - Granularité insuffisante pour un futur tree-shaking ESM             |
-| + Pas de dépendances circulaires                     | - Difficult de tester un composant concret sans charger les abstraits |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Un seul import pour tout le framework | - `core/src/` devient un fourre-tout (8+ fichiers de classes) |
+| + Conforme à la RFC distribution.md (`@bonsai/core`) | - Pas de séparation physique abstraite/concrète |
+| + Zéro package supplémentaire | - Le barrel ré-exporte des dépendances transitives (@bonsai/event) |
+| + Tests et build simples | - Granularité insuffisante pour un futur tree-shaking ESM |
+| + Pas de dépendances circulaires | - Difficult de tester un composant concret sans charger les abstraits |
 
 ---
 
@@ -121,7 +121,7 @@ Les composants sont répartis en 2 packages miroir des 2 couches RFC.
 
 **Structure physique :**
 
-```
+```text
 core/
   package.json                    → "@bonsai/core"
   src/
@@ -151,13 +151,13 @@ import { Application, Feature, Entity } from "@bonsai/core";
 import { Foundation, Composer, View, Behavior } from "@bonsai/dom";
 ```
 
-| Avantages                                          | Inconvénients                                                                     |
-| -------------------------------------------------- | --------------------------------------------------------------------------------- |
-| + Miroir fidèle de l'architecture 2 couches        | - **2 imports à mémoriser** — viole C5                                            |
-| + Séparation physique abstraite/concrète           | - `@bonsai/dom` dépend de `@bonsai/core` (View a besoin d'Entity)                 |
-| + Composants concrets testables sans les abstraits | - Composer a besoin de View ET de Feature → dépendance croisée                    |
-| + Prépare le tree-shaking ESM                      | - Un dossier `dom/` au même niveau que `core/` et `packages/` alourdit la racine  |
-| + Frontières claires                               | - Le développeur doit savoir qu'Entity est "abstraite" pour trouver le bon import |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Miroir fidèle de l'architecture 2 couches | - **2 imports à mémoriser** — viole C5 |
+| + Séparation physique abstraite/concrète | - `@bonsai/dom` dépend de `@bonsai/core` (View a besoin d'Entity) |
+| + Composants concrets testables sans les abstraits | - Composer a besoin de View ET de Feature → dépendance croisée |
+| + Prépare le tree-shaking ESM | - Un dossier `dom/` au même niveau que `core/` et `packages/` alourdit la racine |
+| + Frontières claires | - Le développeur doit savoir qu'Entity est "abstraite" pour trouver le bon import |
 
 ---
 
@@ -167,7 +167,7 @@ Les composants vivent dans `core/src/` mais organisés en sous-dossiers miroir d
 
 **Structure physique :**
 
-```
+```text
 core/
   package.json                    → "@bonsai/core"
   src/
@@ -209,13 +209,13 @@ import { Entity } from "@bonsai/core/abstract";
 import { Entity } from "@bonsai/core";
 ```
 
-| Avantages                                    | Inconvénients                                                                                  |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Avantages | Inconvénients |
+| --- | --- |
 | + Un seul import pour le développeur (C5 ✅) | - Sous-exports `@bonsai/core/abstract` et `/concrete` à configurer dans package.json `exports` |
-| + Organisation interne reflète les 2 couches | - Complexité marginale du build (exports map)                                                  |
-| + Prépare le split ESM sans casser la DX     | - Le développeur _peut_ importer de `/abstract` — est-ce qu'on le veut ?                       |
-| + Tests isolables par couche                 | - Nommage `abstract/concrete` visible dans l'arborescence source (bien ou mal ?)               |
-| + Conforme à la RFC distribution.md          | - Trois niveaux de dossiers (`core/src/abstract/entity.class.ts`)                              |
+| + Organisation interne reflète les 2 couches | - Complexité marginale du build (exports map) |
+| + Prépare le split ESM sans casser la DX | - Le développeur _peut_ importer de `/abstract` — est-ce qu'on le veut ? |
+| + Tests isolables par couche | - Nommage `abstract/concrete` visible dans l'arborescence source (bien ou mal ?) |
+| + Conforme à la RFC distribution.md | - Trois niveaux de dossiers (`core/src/abstract/entity.class.ts`) |
 
 ---
 
@@ -225,7 +225,7 @@ Chaque composant framework est un package pnpm indépendant dans `packages/`. Le
 
 **Structure physique :**
 
-```
+```text
 packages/
   types/                          → "@bonsai/types"     (types cross-packages : TJsonValue, TConstructor, TNullish — nettoyé, legacy marionext purgé)
   error/                          → "@bonsai/error"     (BonsaiError, taxonomie ADR-0002, invariant(), hardInvariant())
@@ -283,26 +283,26 @@ core/                             → "@bonsai/core"  (méta-package — barrel 
 
 **Graphe de dépendances (DAG pur, zéro cycle) :**
 
-```
-                    @bonsai/types           ← types primitifs cross-packages
-                    ╱     │     ╲
-           @bonsai/error   │      │            ← BonsaiError, invariant(), hardInvariant()
-            ╱   │   ╲     │      │
-   @bonsai/event │  @bonsai/entity
-        │   ╲    │        │
-        │   @bonsai/feature
-        │
-  @bonsai/behavior
-        │
-   @bonsai/view
-        │
-  @bonsai/composer
-        │
- @bonsai/foundation
-        │
- @bonsai/application  ← orchestre tout
-        │
-  @bonsai/core        ← méta-package (barrel pur, zéro code propre)
+```text
+                   @bonsai/types           ← types primitifs cross-packages
+                   ╱     │     ╲
+          @bonsai/error   │      │            ← BonsaiError, invariant(), hardInvariant()
+           ╱   │   ╲     │      │
+  @bonsai/event │  @bonsai/entity
+       │   ╲    │        │
+       │   @bonsai/feature
+       │
+ @bonsai/behavior
+       │
+  @bonsai/view
+       │
+ @bonsai/composer
+       │
+@bonsai/foundation
+       │
+@bonsai/application  ← orchestre tout
+       │
+ @bonsai/core        ← méta-package (barrel pur, zéro code propre)
 ```
 
 > **`@bonsai/error` est une dépendance de quasi tout le graphe** : chaque composant
@@ -370,31 +370,31 @@ moduleNameMapper: {
 }
 ```
 
-| Avantages                                                                                                                                                                 | Inconvénients                                                                            |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| + **Le compilateur TS garantit les frontières architecturales** — si `@bonsai/view` n'a pas `@bonsai/entity` dans ses deps, l'import est impossible. Prouve I30 au build. | - 8 `package.json` + 8 `tsconfig.json` supplémentaires (boilerplate)                     |
-| + **Isolation de test maximale** — chaque test charge uniquement le composant et ses deps                                                                                 | - Plus de fichiers de configuration à maintenir                                          |
-| + **DAG de dépendances explicite** — vérifiable par `pnpm ls`, visible dans chaque `package.json`                                                                         | - Déplacer un type partagé entre packages = modifier les deps                            |
-| + **Chaque package est un module autonome** — frontière physique = frontière logique                                                                                      | - Le dev Bonsai interne doit ajouter une dep quand il crée un lien inter-composant       |
-| + **Conforme au pattern `@bonsai/event` existant** — même convention, même structure                                                                                      | - Risque de divergence si un package évolue sans les autres (mitigé : private, monorepo) |
-| + **`@bonsai/core` barrel conserve la DX unifiée** (C5 ✅)                                                                                                                | -                                                                                        |
-| + **Compile-time > Runtime** — philosophie Bonsai appliquée aux frontières de packages                                                                                    | -                                                                                        |
+| Avantages | Inconvénients |
+| --- | --- |
+| + **Le compilateur TS garantit les frontières architecturales** — si `@bonsai/view` n'a pas `@bonsai/entity` dans ses deps, l'import est impossible. Prouve I30 au build. | - 8 `package.json` + 8 `tsconfig.json` supplémentaires (boilerplate) |
+| + **Isolation de test maximale** — chaque test charge uniquement le composant et ses deps | - Plus de fichiers de configuration à maintenir |
+| + **DAG de dépendances explicite** — vérifiable par `pnpm ls`, visible dans chaque `package.json` | - Déplacer un type partagé entre packages = modifier les deps |
+| + **Chaque package est un module autonome** — frontière physique = frontière logique | - Le dev Bonsai interne doit ajouter une dep quand il crée un lien inter-composant |
+| + **Conforme au pattern `@bonsai/event` existant** — même convention, même structure | - Risque de divergence si un package évolue sans les autres (mitigé : private, monorepo) |
+| + **`@bonsai/core` barrel conserve la DX unifiée** (C5 ✅) | - |
+| + **Compile-time > Runtime** — philosophie Bonsai appliquée aux frontières de packages | - |
 
 ---
 
 ## Analyse comparative
 
-| Critère                        | A — Flat                 | B — 2 packages     | C — Sous-dossiers                     | D — Par composant                              |
-| ------------------------------ | ------------------------ | ------------------ | ------------------------------------- | ---------------------------------------------- |
-| **DX import appli** (C5)       | ⭐⭐⭐ un seul           | ⭐⭐ deux          | ⭐⭐⭐ un seul                        | ⭐⭐⭐ un seul via barrel                      |
-| **DX import test** (C7)        | ⭐⭐ barrel only         | ⭐⭐ deux packages | ⭐⭐ sous-dossier                     | ⭐⭐⭐ package exact                           |
-| **Miroir architecture RFC**    | ⭐ aucune structure      | ⭐⭐⭐ exact       | ⭐⭐⭐ exact (interne)                | ⭐⭐⭐ chaque composant = module               |
-| **Frontières compilateur**     | ⭐ aucune                | ⭐⭐ 2 frontières  | ⭐ aucune (sous-dossiers ≠ frontière) | ⭐⭐⭐ **TS + pnpm vérifient**                 |
-| **Simplicité build**           | ⭐⭐⭐ trivial           | ⭐⭐ deps inter    | ⭐⭐ exports map                      | ⭐⭐ N package.json (mais pattern identique)   |
-| **Testabilité isolation**      | ⭐⭐ tout via barrel     | ⭐⭐⭐ par package | ⭐⭐ sous-dossier (pas de frontière)  | ⭐⭐⭐ par package — charge minimale           |
-| **Compile-time > Runtime**     | ⭐ convention seule      | ⭐⭐ 2 frontières  | ⭐ convention seule                   | ⭐⭐⭐ **philosophie Bonsai**                  |
-| **Cohérence pattern monorepo** | ⭐ event est l'exception | ⭐⭐ event + dom   | ⭐ event reste l'exception            | ⭐⭐⭐ **même pattern partout**                |
-| **Boilerplate monorepo**       | ⭐⭐⭐ 1 package         | ⭐⭐ 2 packages    | ⭐⭐⭐ 1 package                      | ⭐⭐ 8+ packages (mitigé : template identique) |
+| Critère | A — Flat | B — 2 packages | C — Sous-dossiers | D — Par composant |
+| --- | --- | --- | --- | --- |
+| **DX import appli** (C5) | ⭐⭐⭐ un seul | ⭐⭐ deux | ⭐⭐⭐ un seul | ⭐⭐⭐ un seul via barrel |
+| **DX import test** (C7) | ⭐⭐ barrel only | ⭐⭐ deux packages | ⭐⭐ sous-dossier | ⭐⭐⭐ package exact |
+| **Miroir architecture RFC** | ⭐ aucune structure | ⭐⭐⭐ exact | ⭐⭐⭐ exact (interne) | ⭐⭐⭐ chaque composant = module |
+| **Frontières compilateur** | ⭐ aucune | ⭐⭐ 2 frontières | ⭐ aucune (sous-dossiers ≠ frontière) | ⭐⭐⭐ **TS + pnpm vérifient** |
+| **Simplicité build** | ⭐⭐⭐ trivial | ⭐⭐ deps inter | ⭐⭐ exports map | ⭐⭐ N package.json (mais pattern identique) |
+| **Testabilité isolation** | ⭐⭐ tout via barrel | ⭐⭐⭐ par package | ⭐⭐ sous-dossier (pas de frontière) | ⭐⭐⭐ par package — charge minimale |
+| **Compile-time > Runtime** | ⭐ convention seule | ⭐⭐ 2 frontières | ⭐ convention seule | ⭐⭐⭐ **philosophie Bonsai** |
+| **Cohérence pattern monorepo** | ⭐ event est l'exception | ⭐⭐ event + dom | ⭐ event reste l'exception | ⭐⭐⭐ **même pattern partout** |
+| **Boilerplate monorepo** | ⭐⭐⭐ 1 package | ⭐⭐ 2 packages | ⭐⭐⭐ 1 package | ⭐⭐ 8+ packages (mitigé : template identique) |
 
 ---
 
@@ -485,13 +485,13 @@ Concrètement :
 
 **Types conservés :**
 
-| Type                                                        | Justification                                                               |
-| ----------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Type | Justification |
+| --- | --- |
 | `TJsonValue`, `TJsonObject`, `TJsonArray`, `TJsonPrimitive` | Contrainte state Entity (D10), payload Channel — cross Entity/Event/Feature |
-| `TConstructor`, `TClass`                                    | `Application.register()`, factories — cross Application/Feature             |
-| `TNullish`, `TNonUndefined`                                 | Types de garde basiques transversaux                                        |
-| `AnyFunction` (renommé `TFunction`)                         | Handlers Channel, callbacks génériques                                      |
-| `TParameters`                                               | Utilitaire générique handlers                                               |
+| `TConstructor`, `TClass` | `Application.register()`, factories — cross Application/Feature |
+| `TNullish`, `TNonUndefined` | Types de garde basiques transversaux |
+| `AnyFunction` (renommé `TFunction`) | Handlers Channel, callbacks génériques |
+| `TParameters` | Utilitaire générique handlers |
 
 **Types supprimés** (fork type-fest/utility-types/lodash, aucun consommateur Bonsai identifié) :
 `TuplifyUnion`, `StrictArrayOfValues`, `StrictArrayOfKeys`, `MutableKeys`, `RequiredKeys`, `OptionalKeys`, `PickByValue`, `PickByValueExact`, `TPropertyNameByType`, `TFunctionPropertyNames`, `TNonFunctionPropertyNames`, `TOneLetter`, `StringDigit`, `Whitespace`, `StringHash`, `TNumericDictionary`, `TDictionaryValue`, `Entry`, `TEntries`, `AlwaysParameters`, `type-fest-empty-object.d.ts` (doublon).
@@ -504,13 +504,13 @@ Concrètement :
 
 **Contenu :**
 
-| Export                                                                                                                                              | Rôle                                                                                                       |
-| --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `BonsaiError` (classe de base)                                                                                                                      | Erreur structurée avec `invariantId`, `component`, `suggestion`. Toutes les erreurs framework en héritent. |
-| Sous-classes : `MutationError`, `CommandError`, `RequestError`, `ListenerError`, `NoHandlerError`, `RenderError`, `BehaviorError`, `BroadcastError` | Taxonomie ADR-0002 — une classe par catégorie                                                              |
-| `invariant(condition, message, invariantId)`                                                                                                        | Assertion runtime — throw `BonsaiError` si condition fausse. Strippable en prod via `__DEV__` (ADR-0004).  |
-| `hardInvariant(condition, message, invariantId)`                                                                                                    | Assertion **non-strippable** — erreurs structurelles fatales (bootstrap, I21, I10…). Reste en prod.        |
-| `warning(condition, message)`                                                                                                                       | Log conditionnel `__DEV__` only — ne throw jamais.                                                         |
+| Export | Rôle |
+| --- | --- |
+| `BonsaiError` (classe de base) | Erreur structurée avec `invariantId`, `component`, `suggestion`. Toutes les erreurs framework en héritent. |
+| Sous-classes : `MutationError`, `CommandError`, `RequestError`, `ListenerError`, `NoHandlerError`, `RenderError`, `BehaviorError`, `BroadcastError` | Taxonomie ADR-0002 — une classe par catégorie |
+| `invariant(condition, message, invariantId)` | Assertion runtime — throw `BonsaiError` si condition fausse. Strippable en prod via `__DEV__` (ADR-0004). |
+| `hardInvariant(condition, message, invariantId)` | Assertion **non-strippable** — erreurs structurelles fatales (bootstrap, I21, I10…). Reste en prod. |
+| `warning(condition, message)` | Log conditionnel `__DEV__` only — ne throw jamais. |
 
 **Pourquoi un package séparé et pas dans `@bonsai/types` ou `@bonsai/event` :**
 
@@ -562,11 +562,11 @@ import { Entity } from "../../packages/entity/src/entity.class";
 
 **Tests — l'import dépend du niveau de test :**
 
-| Niveau                                 | Objectif                                  | Import                  | Pourquoi                                        |
-| -------------------------------------- | ----------------------------------------- | ----------------------- | ----------------------------------------------- |
-| **Unit** (`tests/unit/`)               | Prouver le composant en isolation         | `from "@bonsai/entity"` | Valide les frontières du DAG, charge le minimum |
-| **Intégration** (`tests/integration/`) | Prouver les interactions inter-composants | `from "@bonsai/core"`   | Teste comme un consommateur, valide le barrel   |
-| **E2E** (`tests/e2e/`)                 | Prouver le round-trip complet             | `from "@bonsai/core"`   | Exactement comme le développeur d'application   |
+| Niveau | Objectif | Import | Pourquoi |
+| --- | --- | --- | --- |
+| **Unit** (`tests/unit/`) | Prouver le composant en isolation | `from "@bonsai/entity"` | Valide les frontières du DAG, charge le minimum |
+| **Intégration** (`tests/integration/`) | Prouver les interactions inter-composants | `from "@bonsai/core"` | Teste comme un consommateur, valide le barrel |
+| **E2E** (`tests/e2e/`) | Prouver le round-trip complet | `from "@bonsai/core"` | Exactement comme le développeur d'application |
 
 ```typescript
 // tests/unit/strate-0/entity.basic.test.ts
@@ -589,7 +589,7 @@ import { Application, Feature, View } from "@bonsai/core";
 
 Chaque package composant suit un **template structurel identique** :
 
-```
+```text
 packages/{name}/
   package.json
   tsconfig.json
@@ -618,18 +618,18 @@ packages/{name}/
 
 **Tableau récapitulatif :**
 
-| Package               | Barrel source           | Classe principale                        | `main` (dist)                | `types` (dist)                 |
-| --------------------- | ----------------------- | ---------------------------------------- | ---------------------------- | ------------------------------ |
-| `@bonsai/types`       | `index.d.ts`            | _(types only — pas de runtime)_          | —                            | `index.d.ts`                   |
-| `@bonsai/error`       | `bonsai-error.ts`       | `bonsai-error.class.ts`, `invariant.ts`  | `dist/bonsai-error.js`       | `dist/bonsai-error.d.ts`       |
-| `@bonsai/entity`      | `bonsai-entity.ts`      | `entity.class.ts`                        | `dist/bonsai-entity.js`      | `dist/bonsai-entity.d.ts`      |
-| `@bonsai/feature`     | `bonsai-feature.ts`     | `feature.class.ts`                       | `dist/bonsai-feature.js`     | `dist/bonsai-feature.d.ts`     |
-| `@bonsai/event`       | `bonsai-event.ts`       | `radio.singleton.ts`, `channel.class.ts` | `dist/bonsai-event.js`       | `dist/bonsai-event.d.ts`       |
-| `@bonsai/view`        | `bonsai-view.ts`        | `view.class.ts`                          | `dist/bonsai-view.js`        | `dist/bonsai-view.d.ts`        |
-| `@bonsai/composer`    | `bonsai-composer.ts`    | `composer.class.ts`                      | `dist/bonsai-composer.js`    | `dist/bonsai-composer.d.ts`    |
-| `@bonsai/foundation`  | `bonsai-foundation.ts`  | `foundation.class.ts`                    | `dist/bonsai-foundation.js`  | `dist/bonsai-foundation.d.ts`  |
-| `@bonsai/behavior`    | `bonsai-behavior.ts`    | `behavior.class.ts`                      | `dist/bonsai-behavior.js`    | `dist/bonsai-behavior.d.ts`    |
-| `@bonsai/application` | `bonsai-application.ts` | `application.class.ts`                   | `dist/bonsai-application.js` | `dist/bonsai-application.d.ts` |
+| Package | Barrel source | Classe principale | `main` (dist) | `types` (dist) |
+| --- | --- | --- | --- | --- |
+| `@bonsai/types` | `index.d.ts` | _(types only — pas de runtime)_ | — | `index.d.ts` |
+| `@bonsai/error` | `bonsai-error.ts` | `bonsai-error.class.ts`, `invariant.ts` | `dist/bonsai-error.js` | `dist/bonsai-error.d.ts` |
+| `@bonsai/entity` | `bonsai-entity.ts` | `entity.class.ts` | `dist/bonsai-entity.js` | `dist/bonsai-entity.d.ts` |
+| `@bonsai/feature` | `bonsai-feature.ts` | `feature.class.ts` | `dist/bonsai-feature.js` | `dist/bonsai-feature.d.ts` |
+| `@bonsai/event` | `bonsai-event.ts` | `radio.singleton.ts`, `channel.class.ts` | `dist/bonsai-event.js` | `dist/bonsai-event.d.ts` |
+| `@bonsai/view` | `bonsai-view.ts` | `view.class.ts` | `dist/bonsai-view.js` | `dist/bonsai-view.d.ts` |
+| `@bonsai/composer` | `bonsai-composer.ts` | `composer.class.ts` | `dist/bonsai-composer.js` | `dist/bonsai-composer.d.ts` |
+| `@bonsai/foundation` | `bonsai-foundation.ts` | `foundation.class.ts` | `dist/bonsai-foundation.js` | `dist/bonsai-foundation.d.ts` |
+| `@bonsai/behavior` | `bonsai-behavior.ts` | `behavior.class.ts` | `dist/bonsai-behavior.js` | `dist/bonsai-behavior.d.ts` |
+| `@bonsai/application` | `bonsai-application.ts` | `application.class.ts` | `dist/bonsai-application.js` | `dist/bonsai-application.d.ts` |
 
 > **Wrappers de libs tierces** (`@bonsai/rxjs`, `@bonsai/immer`, `@bonsai/valibot`) conservent leur convention courte (`{name}.ts`) — ce ne sont pas des composants Bonsai.
 >
@@ -693,9 +693,9 @@ packages/{name}/
 
 ## Historique
 
-| Date       | Changement                                                                                                                                                                                                                                                                                |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-04-10 | Création (Proposed) — motivée par le démarrage de l'implémentation strate 0                                                                                                                                                                                                               |
-| 2026-04-10 | Ajout Option D (un package par composant) — retenue comme décision                                                                                                                                                                                                                        |
-| 2026-04-10 | **Accepted** — rupture actée avec l'héritage marionext : `@bonsai/event` et `@bonsai/types` réécrits de zéro                                                                                                                                                                              |
+| Date | Changement |
+| --- | --- |
+| 2026-04-10 | Création (Proposed) — motivée par le démarrage de l'implémentation strate 0 |
+| 2026-04-10 | Ajout Option D (un package par composant) — retenue comme décision |
+| 2026-04-10 | **Accepted** — rupture actée avec l'héritage marionext : `@bonsai/event` et `@bonsai/types` réécrits de zéro |
 | 2026-04-16 | Amendement : ajout `@bonsai/error` (taxonomie ADR-0002, invariant/hardInvariant) comme package fondation dans le DAG. Périmètre post-nettoyage de `@bonsai/types` détaillé (critères d'appartenance, types conservés/supprimés). DAG, barrel, moduleNameMapper et conventions mis à jour. |

@@ -1,7 +1,7 @@
 # ADR-0011 : Event Sourcing Support
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟠 Suspended — post-v1, niveaux 0–1 déjà intégrés dans RFC-0002-entity §8 |
 | **Date** | 2026-03-17 |
 | **Décideurs** | @ncac |
@@ -14,7 +14,7 @@
 L'architecture Bonsai est naturellement alignée avec l'Event Sourcing :
 
 | Concept Bonsai | Concept Event Sourcing |
-|----------------|------------------------|
+| --- | --- |
 | Event (fait accompli) | Event immutable |
 | Entity (state) | Aggregate |
 | Metas (correlationId, causationId) | Event metadata |
@@ -104,7 +104,7 @@ class CartEntity extends EventSourcedEntity<TCartState, TCartEvent> {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| -------------------- | --------------------------------- |
 | + Intégré nativement | - **Breaking change** pour Entity |
 | + DX cohérente | - Overhead pour cas simples |
 | + Type-safe | - Complexité reducer |
@@ -162,7 +162,7 @@ class CartFeature extends Feature {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --------------------------- | ------------------------------------- |
 | + **Non-breaking** (opt-in) | - Deux sources de vérité potentielles |
 | + Flexible (quels events) | - Synchronisation Entity/EventStore |
 | + Storage interchangeable | - Plus de configuration |
@@ -208,7 +208,7 @@ class CartFeature extends Feature {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| ------------------------------- | ----------------------- |
 | + Events internes = granulaires | - Deux niveaux d'events |
 | + Channel events = publics | - Mapping à maintenir |
 | + Reconstruction locale | - Complexité |
@@ -242,7 +242,7 @@ log.export(); // pour debug
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + **Zero impact** sur le code existant | - Pas de reconstruction native |
 | + Ajout/retrait facile | - Middleware = indirection |
 | + Capture exhaustive | - Pas intégré à Entity |
@@ -292,14 +292,14 @@ class OrderEntity extends EventSourcedEntity<TOrderState, TOrderEvent> {
 ```
 
 | Niveau | Use case | Overhead |
-|--------|----------|----------|
+| --- | --- | --- |
 | **0** | State simple, pas besoin d'historique | Aucun |
 | **1** | Debug, audit, DevTools | Faible (log only) |
 | **2** | Undo/redo, time-travel local | Moyen |
 | **3** | Audit légal, CQRS, reconstruction | Élevé |
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + **Progressif** — on choisit le niveau | - Plus de types d'Entity |
 | + Pas de breaking change | - Documentation plus riche |
 | + Adapté à chaque use case | |
@@ -310,7 +310,7 @@ class OrderEntity extends EventSourcedEntity<TOrderState, TOrderEvent> {
 ## Analyse comparative
 
 | Critère | A (Natif) | B (Store séparé) | C (Hybrid) | D (Middleware) | E (À la carte) |
-|---------|-----------|------------------|------------|----------------|----------------|
+| --- | --- | --- | --- | --- | --- |
 | **Non-breaking** | ❌ | ✅ | ⚠️ | ✅ | ✅ |
 | **Opt-in** | ❌ | ✅ | ⚠️ | ✅ | ✅ |
 | **DX** | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
@@ -495,7 +495,7 @@ const history = paymentEntity.getEvents();
 ## Relation avec autres ADRs
 
 | ADR | Relation |
-|-----|----------|
+| ---------------------- | -------------------------------------------- |
 | ADR-0001 (Entity diff) | Option E (Immer) génère des patches = events |
 | ADR-0002 (Errors) | Erreurs dans replay ? Ignore ou fail ? |
 | ADR-0003 (Channel) | EventLog = interception des emit() |
@@ -526,5 +526,5 @@ const history = paymentEntity.getEvents();
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| ---------- | ------------------------------------------ |
 | 2026-03-17 | Création (Proposed) — 5 options, 4 niveaux |

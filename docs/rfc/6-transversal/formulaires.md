@@ -23,12 +23,12 @@ Les formulaires combinent **saisie utilisateur**, **validation**, **état transi
 
 L'état complet (valeurs, touched, errors) vit dans une Entity dédiée.
 
-```
+```text
 View (saisie) → trigger(Command) → Feature → entity.mutate() → Event → View (projection)
 ```
 
 | Avantage | Inconvénient |
-|----------|-------------|
+| --- | --- |
 | Traçabilité complète | Cérémonie élevée (Feature + Entity + Channel par formulaire) |
 | State persistable / restaurable | Chaque frappe = Command + mutate + Event |
 | Validation dans la Feature | Over-engineering pour les formulaires simples |
@@ -39,13 +39,13 @@ View (saisie) → trigger(Command) → Feature → entity.mutate() → Event →
 
 L'état pré-soumission vit dans le `localState` de la View (I42, D33). La soumission déclenche une Command.
 
-```
+```text
 View (saisie) → updateLocal() → re-projection locale
 View (submit) → trigger(Command) → Feature → entity.mutate()
 ```
 
 | Avantage | Inconvénient |
-|----------|-------------|
+| --- | --- |
 | Zéro cérémonie (pas de Feature/Entity pour le form) | State non partageable (strictement local) |
 | Validation synchrone instantanée | Pas de persistance/restauration |
 | Réactivité native via localState | |
@@ -57,13 +57,13 @@ View (submit) → trigger(Command) → Feature → entity.mutate()
 
 Un Behavior encapsule la logique de formulaire (touched, dirty, validation). Pluggable sur n'importe quelle View.
 
-```
+```text
 View + FormBehavior → Behavior gère localState form
 View (submit) → trigger(Command) → Feature
 ```
 
 | Avantage | Inconvénient |
-|----------|-------------|
+| --- | --- |
 | Réutilisable entre Views | Complexité d'abstraction |
 | Séparation View (rendu) / Behavior (logique form) | Le Behavior ne connaît pas la View hôte (I44) |
 | DRY pour les patterns récurrents | |
@@ -74,13 +74,13 @@ View (submit) → trigger(Command) → Feature
 
 L'état transitoire (saisie, validation) vit dans le `localState`. Le domain state (valeurs soumises) vit dans l'Entity.
 
-```
+```text
 View (saisie) → localState → validation locale
 View (submit) → trigger(Command) → Feature → entity.mutate() → Event
 ```
 
 | Avantage | Inconvénient |
-|----------|-------------|
+| --- | --- |
 | Séparation claire transitoire / domaine | Deux sources d'état à synchroniser |
 | Le domain state reste propre (pas de touched/dirty) | |
 | La Feature ne voit que des données validées | |
@@ -91,7 +91,7 @@ View (submit) → trigger(Command) → Feature → entity.mutate() → Event
 
 ## Arbre de décision
 
-```
+```text
 Q1 : Le state du formulaire doit-il être partagé entre composants ?
   → Oui : Pattern A (Entity)
   → Non :
@@ -103,8 +103,8 @@ Q1 : Le state du formulaire doit-il être partagé entre composants ?
           → Non : Pattern B (localState) — cas simple, le plus fréquent
 ```
 
-> **Recommandation ADR-0009 : Option D**, pas B. L'arbre ci-dessus décide *quel
-> mécanisme* utiliser cas par cas, mais la décision de l'ADR est que
+> **Recommandation ADR-0009 : Option D**, pas B. L'arbre ci-dessus décide _quel
+> mécanisme_ utiliser cas par cas, mais la décision de l'ADR est que
 > l'**approche globale recommandée est le Pattern D** : une combinaison
 > contextuelle où le Pattern B gère les formulaires simples, le Pattern C les
 > formulaires réutilisables, et l'Entity + localState par étape les wizards —
@@ -119,7 +119,7 @@ Q1 : Le state du formulaire doit-il être partagé entre composants ?
 ## Invariants respectés
 
 | Invariant | Comment |
-|-----------|---------|
+| --- | --- |
 | **I30** | Le domain state vit dans l'Entity, jamais dans la View |
 | **I42** | Le state local pré-soumission utilise le mécanisme `localState` |
 | **I6** | Seule la Feature mute l'Entity (via Command post-soumission) |

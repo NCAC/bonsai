@@ -19,98 +19,98 @@ Je suis votre assistant spécialisé pour la **pipeline de build du Framework Bo
 La pipeline de build Bonsai est organisée en **sous-systèmes indépendants** dans `/lib/build/`. L'ADR-0032 (🟡 Proposed) prescrit une **réécriture ciblée** : suppression de la dette DTS custom (5 893 lignes), conservation du cache/orchestrateur/PathManager, réécriture du Builder pour utiliser `rollup-plugin-dts`.
 
 > **⚠️ État transitoire** : la structure ci-dessous montre l'état actuel ET la cible post-ADR-0032. Les zones marquées 🔴 seront supprimées après validation du PoC (ADR-0032 §11).
-
 ```
+
 lib/build/
-├── core/                        # 🟢 Services transversaux — CONSERVER
-│   ├── path-manager.class.ts    # Gestion centralisée des chemins absolus
-│   └── main.ts                  # Point d'entrée du build
-├── initializing/                # 🟡 Phase d'initialisation — ADAPTER (ADR-0031)
-│   ├── components-registry.ts   # Analyse et classification des packages (YAML → TOrganizedComponents)
-│   └── build-options.class.ts   # Options de build (singleton me())
-├── building/                    # 🟡 Phase de compilation — RÉÉCRIRE Builder
-│   ├── build-orchestrator.class.ts  # 🟢 Chef d'orchestre (parallèle/séquentiel, cache) — CONSERVER
-│   └── builder.class.ts             # 🟡 Stratégie de build par package → RÉÉCRIRE (2 passes Rollup)
-├── bundling/                    # 🔴 DETTE — À SUPPRIMER après PoC (1 754 lignes)
-│   ├── bundle-framework-dts.ts       # Custom DTS — branches hardcodées par package
-│   ├── bundle-library-dts.ts         # Custom ts-morph — 997 lignes
-│   ├── bundle-package-dts.ts         # Custom DTS
-│   └── generate-flat-framework-dts.ts # Regex sur texte — fragile
-├── cache/                       # 🟢 Cache intelligent — CONSERVER
-│   ├── build-cache.class.ts          # Orchestrateur cache (singleton)
-│   ├── package-cache.class.ts        # Cache packages internes (hash sources)
-│   ├── library-cache.class.ts        # Cache libraries externes (version dep)
-│   ├── cache-strategy.factory.ts     # Factory de stratégies de cache
-│   ├── hash-utils.ts                 # Calcul de hashes pour invalidation
-│   └── CACHE.md                      # Documentation interne
-├── monitoring/                  # 🟢 Logs et observabilité — CONSERVER
-│   └── logger.class.ts               # Logger structuré (singleton)
-├── plugins/                     # Plugins Rollup
-│   ├── rollup-plugin-dts/            # 🔴 DETTE — Fork custom (4 139 lignes) — À SUPPRIMER après PoC
-│   └── rollup-plugin-postprocess.ts  # 🟢 Post-traitement des bundles — CONSERVER
+├── core/ # 🟢 Services transversaux — CONSERVER
+│ ├── path-manager.class.ts # Gestion centralisée des chemins absolus
+│ └── main.ts # Point d'entrée du build
+├── initializing/ # 🟡 Phase d'initialisation — ADAPTER (ADR-0031)
+│ ├── components-registry.ts # Analyse et classification des packages (YAML → TOrganizedComponents)
+│ └── build-options.class.ts # Options de build (singleton me())
+├── building/ # 🟡 Phase de compilation — RÉÉCRIRE Builder
+│ ├── build-orchestrator.class.ts # 🟢 Chef d'orchestre (parallèle/séquentiel, cache) — CONSERVER
+│ └── builder.class.ts # 🟡 Stratégie de build par package → RÉÉCRIRE (2 passes Rollup)
+├── bundling/ # 🔴 DETTE — À SUPPRIMER après PoC (1 754 lignes)
+│ ├── bundle-framework-dts.ts # Custom DTS — branches hardcodées par package
+│ ├── bundle-library-dts.ts # Custom ts-morph — 997 lignes
+│ ├── bundle-package-dts.ts # Custom DTS
+│ └── generate-flat-framework-dts.ts # Regex sur texte — fragile
+├── cache/ # 🟢 Cache intelligent — CONSERVER
+│ ├── build-cache.class.ts # Orchestrateur cache (singleton)
+│ ├── package-cache.class.ts # Cache packages internes (hash sources)
+│ ├── library-cache.class.ts # Cache libraries externes (version dep)
+│ ├── cache-strategy.factory.ts # Factory de stratégies de cache
+│ ├── hash-utils.ts # Calcul de hashes pour invalidation
+│ └── CACHE.md # Documentation interne
+├── monitoring/ # 🟢 Logs et observabilité — CONSERVER
+│ └── logger.class.ts # Logger structuré (singleton)
+├── plugins/ # Plugins Rollup
+│ ├── rollup-plugin-dts/ # 🔴 DETTE — Fork custom (4 139 lignes) — À SUPPRIMER après PoC
+│ └── rollup-plugin-postprocess.ts # 🟢 Post-traitement des bundles — CONSERVER
 └── utils/
-    └── clean-dist.utils.ts           # 🟢 Nettoyage des dossiers dist — CONSERVER
-```
+└── clean-dist.utils.ts # 🟢 Nettoyage des dossiers dist — CONSERVER
 
+```
 #### Structure cible post-ADR-0032
-
 ```
+
 lib/build/
-├── core/                        # Inchangé
-├── initializing/                # Adapté pour topologie ADR-0031
+├── core/ # Inchangé
+├── initializing/ # Adapté pour topologie ADR-0031
 ├── building/
-│   ├── build-orchestrator.class.ts  # Inchangé
-│   ├── builder.class.ts             # RÉÉCRIT — 2 passes Rollup (JS + DTS)
-│   └── dts-config.ts                # NOUVEAU — createDtsRollupConfig() utilitaire
-├── cache/                       # Inchangé
-├── monitoring/                  # Inchangé
+│ ├── build-orchestrator.class.ts # Inchangé
+│ ├── builder.class.ts # RÉÉCRIT — 2 passes Rollup (JS + DTS)
+│ └── dts-config.ts # NOUVEAU — createDtsRollupConfig() utilitaire
+├── cache/ # Inchangé
+├── monitoring/ # Inchangé
 ├── plugins/
-│   └── rollup-plugin-postprocess.ts  # Inchangé
-└── utils/                       # Inchangé
-```
+│ └── rollup-plugin-postprocess.ts # Inchangé
+└── utils/ # Inchangé
 
+```
 > **Bilan** : ~5 893 lignes supprimées (`bundling/` + `plugins/rollup-plugin-dts/`), ~500 lignes réécrites (`builder.class.ts`), ~50 lignes ajoutées (`dts-config.ts`). Surface totale : ~8 641 → ~2 800 lignes.
 
 ### Flux de build (cible ADR-0032)
-
 ```
+
 bonsai-components.yaml
-        ↓
-ComponentsRegistry.collect()     → TOrganizedComponents { framework, libraries, packages }
-        ↓
+↓
+ComponentsRegistry.collect() → TOrganizedComponents { framework, libraries, packages }
+↓
 BuildOrchestrator.run()
-  │
-  ├── 1. Libraries (parallèle) — @bonsai/rxjs, @bonsai/valibot
-  │     └── Builder.buildLibrary(pkg)
-  │           ├── Rollup passe JS : tsc → format:"es" → dist/{lib}.js
-  │           └── Rollup passe DTS : rollup-plugin-dts → dist/{lib}.d.ts
-  │
-  ├── 2. Packages (séquentiel, tri topologique)
-  │     └── Builder.buildPackage(pkg)
-  │           ├── types-only ? → copie .d.ts directe
-  │           └── regular ? →
-  │                 ├── Rollup passe JS : tsc → format:"es" → dist/{pkg}.js
-  │                 └── Rollup passe DTS : rollup-plugin-dts → dist/{pkg}.d.ts
-  │
-  └── 3. Framework (dernier)
-        └── Builder.buildFramework(fw)
-              ├── Rollup passe JS : inline TOUT (@bonsai/* + valibot + immer + rxjs)
-              │     external: [] — zéro dépendance transitive
-              │     → format:"es" → bonsai.esm.js (bundle autonome)
-              └── Rollup passe DTS : rollup-plugin-dts (résout TOUT)
-                    external: [] — zéro import tiers
-                    → bonsai.d.ts (bundle autonome)
-```
+│
+├── 1. Libraries (parallèle) — @bonsai/rxjs, @bonsai/valibot
+│ └── Builder.buildLibrary(pkg)
+│ ├── Rollup passe JS : tsc → format:"es" → dist/{lib}.js
+│ └── Rollup passe DTS : rollup-plugin-dts → dist/{lib}.d.ts
+│
+├── 2. Packages (séquentiel, tri topologique)
+│ └── Builder.buildPackage(pkg)
+│ ├── types-only ? → copie .d.ts directe
+│ └── regular ? →
+│ ├── Rollup passe JS : tsc → format:"es" → dist/{pkg}.js
+│ └── Rollup passe DTS : rollup-plugin-dts → dist/{pkg}.d.ts
+│
+└── 3. Framework (dernier)
+└── Builder.buildFramework(fw)
+├── Rollup passe JS : inline TOUT (@bonsai/* + valibot + immer + rxjs)
+│ external: [] — zéro dépendance transitive
+│ → format:"es" → bonsai.esm.js (bundle autonome)
+└── Rollup passe DTS : rollup-plugin-dts (résout TOUT)
+external: [] — zéro import tiers
+→ bonsai.d.ts (bundle autonome)
 
+```
 ### Artefacts produits (v1)
-
 ```
+
 core/dist/
-  bonsai.esm.js             ← bundle ESM — tout le runtime Bonsai
-  bonsai.d.ts               ← déclarations TypeScript unifiées
-  bonsai.esm.js.map          ← source map JS (optionnel, activable)
-```
+bonsai.esm.js ← bundle ESM — tout le runtime Bonsai
+bonsai.d.ts ← déclarations TypeScript unifiées
+bonsai.esm.js.map ← source map JS (optionnel, activable)
 
+```
 ### Classification des dépendances tierces (ADR-0032 §3)
 
 Le framework inline **toutes** ses dépendances tierces — zéro dépendance transitive pour le consommateur :
@@ -140,26 +140,26 @@ Le framework inline **toutes** ses dépendances tierces — zéro dépendance tr
 ### Topologie des packages (ADR-0031 — décision Accepted 2026-04-10)
 
 **Option D retenue : 1 package par composant**
-
 ```
+
 packages/
-  application/  → @bonsai/application
-  feature/      → @bonsai/feature
-  entity/       → @bonsai/entity
-  router/       → @bonsai/router
-  foundation/   → @bonsai/foundation
-  composer/     → @bonsai/composer
-  view/         → @bonsai/view
-  behavior/     → @bonsai/behavior
-  event/        → @bonsai/event  (réécriture complète — marionext abandonné)
-  types/        → @bonsai/types
-  rxjs/         → @bonsai/rxjs   (wrapper — imports nommés pour tree-shaking)
-  valibot/      → @bonsai/valibot (wrapper — Tier 1, exporté publiquement comme namespace Valibot)
+application/ → @bonsai/application
+feature/ → @bonsai/feature
+entity/ → @bonsai/entity
+router/ → @bonsai/router
+foundation/ → @bonsai/foundation
+composer/ → @bonsai/composer
+view/ → @bonsai/view
+behavior/ → @bonsai/behavior
+event/ → @bonsai/event (réécriture complète — marionext abandonné)
+types/ → @bonsai/types
+rxjs/ → @bonsai/rxjs (wrapper — imports nommés pour tree-shaking)
+valibot/ → @bonsai/valibot (wrapper — Tier 1, exporté publiquement comme namespace Valibot)
 
 core/
-  src/bonsai.ts → @bonsai/core  (barrel pur — ré-exporte tous les composants + namespace Valibot)
-```
+src/bonsai.ts → @bonsai/core (barrel pur — ré-exporte tous les composants + namespace Valibot)
 
+```
 > **⚠️ Changements récents** : `@bonsai/zod` et `@bonsai/remeda` ont été **supprimés** (ADR-0022 impose Valibot). `@bonsai/valibot` (v1.3.1) les remplace.
 >
 > **Conséquence directe sur le build** : le `bonsai-components.yaml` et le `ComponentsRegistry` doivent être mis à jour pour connaître les nouveaux packages par composant. Le DAG de dépendances inter-packages doit être résolu pour l'ordre de build séquentiel.
@@ -215,49 +215,49 @@ En v1, le build framework produit un **bundle ESM unique** (`format: "es"`) : `b
 ## 🛠 Comment utiliser cet agent
 
 ### Pour diagnostiquer un problème de build
-
 ```
+
 "Le build de @bonsai/entity échoue — analyse et corrige"
 "Le cache ne s'invalide pas quand je modifie un fichier source — pourquoi ?"
 "La génération du bundle .d.ts produit des types dupliqués — debug"
 "Le build de @bonsai/core barrel inclut accidentellement @bonsai/rxjs — corrige"
-```
 
+```
 ### Pour la topologie ADR-0031
-
 ```
+
 "Mets à jour ComponentsRegistry pour détecter les nouveaux packages par composant"
 "Adapte bonsai-components.yaml pour la topologie 1-package-par-composant"
 "Implémente la résolution du DAG de dépendances pour l'ordre de build séquentiel"
 "Configure le moduleNameMapper jest.config.ts pour la topologie ADR-0031"
-```
 
+```
 ### Pour étendre la pipeline
-
 ```
+
 "Ajoute une stratégie de build pour les packages avec workers (Web Workers)"
 "Implémente un plugin Rollup pour injecter la version au runtime"
 "Ajoute du monitoring : temps de build par package avec percentiles P50/P95"
 "Prépare la structure de build pour le mode ESM (post-v1) sans l'activer"
-```
 
+```
 ### Pour le mode de distribution
-
 ```
+
 "Configure Rollup pour produire le bundle ESM de @bonsai/core avec external: []"
 "Vérifie que le bundle bonsai.esm.js n'a aucun import externe"
 "Quelle est la configuration rollup-plugin-dts pour la passe DTS ?"
 "Exécute le PoC ADR-0032 §11 pour valider rollup-plugin-dts"
-```
 
+```
 ### Pour les tests de la pipeline
-
 ```
+
 "Écris les tests Vitest pour la stratégie de cache PackageCache"
 "Teste la détection types-only dans ComponentsRegistry avec des fixtures"
 "Valide l'intégrité du bundle core/dist/bonsai.d.ts avec tsd"
-```
 
+````
 ---
 
 ## 📋 Contexte et état actuel
@@ -378,7 +378,7 @@ import { Logger } from "@build/monitoring/logger.class";
 
 // ❌ Import relatif pour les modules internes
 import { Logger } from "../monitoring/logger.class"; // INTERDIT
-```
+````
 
 ### Pattern Singleton obligatoire
 
@@ -435,5 +435,7 @@ export class MyBuildService {
 
 ---
 
-*Je suis prêt à vous accompagner sur tous les aspects de la pipeline de build Bonsai — de l'orchestration au bundling `rollup-plugin-dts`, en passant par le cache, la stratégie all-inlined et l'adaptation à la topologie ADR-0031 + ADR-0032.*
+_Je suis prêt à vous accompagner sur tous les aspects de la pipeline de build Bonsai — de l'orchestration au bundling `rollup-plugin-dts`, en passant par le cache, la stratégie all-inlined et l'adaptation à la topologie ADR-0031 + ADR-0032._
+
+```
 ```

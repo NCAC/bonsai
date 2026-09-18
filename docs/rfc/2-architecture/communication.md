@@ -6,19 +6,19 @@
 
 ---
 
-> ### ⏳ Périmètre d'implémentation (ADR-0028)
+> ## ⏳ Périmètre d'implémentation (ADR-0028)
 >
 > Ce document décrit le **contrat cible** de la communication. État du code livré (strate 0 + strate 1a) — les éléments suivants ne sont **pas encore implémentés** :
 >
-> | Élément | Strate cible | Sections concernées |
-> | ------- | ------------ | ------------------- |
-> | Métadonnées causales (`correlationId`, `causationId`, `hop`) et anti-boucle I9 | Strate 1b | §8.3, §9.3 |
-> | Comportement `noHandler` selon le mode (dev/prod), `warn` sur `request()` sans replier | Strate 1b | §9.1, §9.5 |
-> | Isolation des exceptions levées par un handler Command (ADR-0002) | Strate 1b | §9.1, §9.3 |
-> | Consommation de l'événement `any` par les Views (re-projection) | Strate 1c | §7 |
-> | Nettoyage automatique des subscriptions (`onDetach()` View, `stop()` Application) | Strate 1c–1d / 1 | §9.4 |
-> | Capacités Channel de Composer et Foundation | Strate 1d / 1 | §8.2 |
-> | Configuration runtime du Channel (point d'entrée de configuration non tranché) | Strate 1 | §9.5 |
+> | Élément                                                                                | Strate cible     | Sections concernées |
+> | --- | --- | --- |
+> | Métadonnées causales (`correlationId`, `causationId`, `hop`) et anti-boucle I9         | Strate 1b        | §8.3, §9.3          |
+> | Comportement `noHandler` selon le mode (dev/prod), `warn` sur `request()` sans replier | Strate 1b        | §9.1, §9.5          |
+> | Isolation des exceptions levées par un handler Command (ADR-0002)                      | Strate 1b        | §9.1, §9.3          |
+> | Consommation de l'événement `any` par les Views (re-projection)                        | Strate 1c        | §7                  |
+> | Nettoyage automatique des subscriptions (`onDetach()` View, `stop()` Application)      | Strate 1c–1d / 1 | §9.4                |
+> | Capacités Channel de Composer et Foundation                                            | Strate 1d / 1    | §8.2                |
+> | Configuration runtime du Channel (point d'entrée de configuration non tranché)         | Strate 1         | §9.5                |
 >
 > **Périmètre effectif livré** : `Channel<TDef>` tri-lane typé (ADR-0040, I76) créé en Phase 1 du bootstrap ; `trigger()` sans handler lève **toujours** `NoHandlerError` (quel que soit le mode) et une exception levée dans un handler Command **se propage** à l'appelant ; `emit()` sans listener est silencieux et déclenche automatiquement `any` (payload `{ event, changes }` où `changes` est le **payload de l'Event émis**) ; les erreurs de listeners Event sont isolées (`ListenerError` loguée) ; `request()` est synchrone et retourne `null` sans log si aucun replier n'existe, `null` avec `console.error` si le replier lève ; câblage des handlers Feature en Phase 3 (I48) et des handlers View au `mount()` (ADR-0042). `Radio` et `Channel` sont exportés par `@bonsai/event` (usage inter-packages) mais **pas** par `@bonsai/core`, seule surface applicative (I15, I80).
 
@@ -35,12 +35,13 @@ Tous les messages suivent le format **`namespace:messageName`** :
 ### Sémantique par type de message (D5, D7)
 
 | Type | Primitive | Émetteur | Sémantique | Cardinalité | Convention | Exemples |
-|------|-----------|----------|-----------|------------|------------|----------|
+| --- | --- | --- | --- | --- | --- | --- |
 | **Command** | `trigger()` | View, Behavior | **Intention d'action** — peut être refusée | 1:1 (un handler) | `namespace:verbeObjet` | `cart:addItem`, `user:updateProfile` |
 | **Event** | `emit()` | Feature (propriétaire) | **Fait accompli** — changement de state survenu | 1:N (broadcast) | `namespace:objetVerbe` (passé) | `cart:itemAdded`, `inventory:stockUpdated` |
 | **Request** | `request()` | Feature, View, Behavior | **Interrogation** — lecture seule, retourne `T` synchrone (D9 révisé par [ADR-0023](../../adr/ADR-0023-request-reply-sync-vs-async.md)) | 1:1 (un replier) | `namespace:nominalMétier` | `cart:total`, `pricing:totalAmount` |
 
 > **Convention mnémotechnique** :
+>
 > - Command = "Fais ça" → impératif (`addItem`)
 > - Event = "Ça s'est passé" → passé (`itemAdded`)
 > - Request = "Donne-moi ça" → nominal (`total`)
@@ -56,13 +57,13 @@ Radio résout ces déclarations en interne.
 
 ### Feature (capacités C1–C5)
 
-| Capacité              | Son propre Channel      | Channels déclarés en `listen` | Channels déclarés en `request` |
-|-----------------------|-------------------------|-------------------------------|--------------------------------|
-| **C1 — Emit**         | ✅ Implicite             | ❌ **Interdit — sans exception** | ❌                              |
-| **C2 — Handle**       | ✅ Implicite             | ❌                             | ❌                              |
-| **C3 — Listen**       | ❌ *                     | ✅ Si déclaré                  | ❌                              |
-| **C4 — Reply**        | ✅ Implicite             | ❌                             | ❌                              |
-| **C5 — Request**      | ❌ *                     | ❌                             | ✅ Si déclaré (D3)              |
+| Capacité         | Son propre Channel | Channels déclarés en `listen`    | Channels déclarés en `request` |
+| --- | --- | --- | --- |
+| **C1 — Emit**    | ✅ Implicite       | ❌ **Interdit — sans exception** | ❌                             |
+| **C2 — Handle**  | ✅ Implicite       | ❌                               | ❌                             |
+| **C3 — Listen**  | ❌ *               | ✅ Si déclaré                    | ❌                             |
+| **C4 — Reply**   | ✅ Implicite       | ❌                               | ❌                             |
+| **C5 — Request** | ❌ *               | ❌                               | ✅ Si déclaré (D3)             |
 
 > \* Une Feature n'a pas de raison de `listen` ou `request` son propre Channel :
 > elle connaît déjà son propre state via son Entity.
@@ -85,11 +86,11 @@ Radio résout ces déclarations en interne.
 > clé racine.
 
 | Action                | Channels déclarés en `features[ns].triggers` | Channels déclarés en `features[ns].listens` | Channels déclarés en `features[ns].requests` |
-|-----------------------|--------------------------------|-------------------------------|--------------------------------|
-| **Trigger** (Command) | ✅ Si déclaré                   | ❌                             | ❌                              |
-| **Listen** (Event)    | ❌                              | ✅ Si déclaré                  | ❌                              |
-| **Request** (Query)   | ❌                              | ❌                             | ✅ Si déclaré                   |
-| **Emit** (Event)      | ❌ **Interdit — réservé aux Features (D7)** | ❌               | ❌                              |
+| --- | --- | --- | --- |
+| **Trigger** (Command) | ✅ Si déclaré                                | ❌                                          | ❌                                           |
+| **Listen** (Event)    | ❌                                           | ✅ Si déclaré                               | ❌                                           |
+| **Request** (Query)   | ❌                                           | ❌                                          | ✅ Si déclaré                                |
+| **Emit** (Event)      | ❌ **Interdit — réservé aux Features (D7)**  | ❌                                          | ❌                                           |
 
 > Les Views/Behaviors n'ont pas de Channel propre. Toute interaction
 > nécessite une déclaration explicite dans `get features()`.
@@ -98,11 +99,11 @@ Radio résout ces déclarations en interne.
 
 ### Accès aux Entities
 
-| Composant  | Accès Entity |
-|------------|-------------|
-| Feature    | ✅ Sa propre Entity uniquement |
-| View       | ❌ Jamais |
-| Behavior   | ❌ Jamais |
+| Composant | Accès Entity                   |
+| --- | --- |
+| Feature   | ✅ Sa propre Entity uniquement |
+| View      | ❌ Jamais                      |
+| Behavior  | ❌ Jamais                      |
 
 ### Règle de non-accès dynamique (D1)
 
@@ -116,7 +117,7 @@ Radio résout ces déclarations en interne.
 
 Le flux canonique d'une interaction utilisateur suit un chemin **strictement unidirectionnel** :
 
-```
+```text
 ┌─────────┐   trigger(Command)   ┌──────────┐   mutate()   ┌────────┐
 │  View   │ ──────────────────►  │ Feature  │ ───────────► │ Entity │
 │(trigger)│                      │ (handle) │              │(state) │
@@ -134,6 +135,7 @@ Le flux canonique d'une interaction utilisateur suit un chemin **strictement uni
 6. Les **Views** abonnées (`listen`) reçoivent l'Event et se mettent à jour
 
 > **Invariants garantis** :
+>
 > - Le Command a un **seul** handler (I10)
 > - L'Event peut avoir **N** subscribers (I11)
 > - Seule la Feature propriétaire peut `emit()` sur son Channel (I1, I12)
@@ -150,7 +152,7 @@ Chaque Feature est **autonome** : elle réagit aux événements qu'elle écoute 
 
 ### Flux cross-features canonique
 
-```
+```text
 1. View  →  trigger(cart:addItem)      → Channel Cart    [Command 1:1]
 2. CartFeature  ←  handle(cart:addItem)                   [traite, modifie Entity]
 3. CartFeature  →  emit(cart:itemAdded)  → Channel Cart    [Event 1:N]
@@ -169,11 +171,11 @@ Chaque Feature est **autonome** : elle réagit aux événements qu'elle écoute 
 
 Un Channel est un **contrat de communication typé** qui définit trois lanes :
 
-| Lane | Type de message | Cardinalité | Sémantique |
-|------|----------------|-------------|------------|
-| **Command Lane** | Commands | 1:1 | Intention → Feature propriétaire (seul handler) |
-| **Event Lane** | Events | 1:N | Fait accompli → tous les listeners |
-| **Request Lane** | Requests | 1:1 | Interrogation → Feature propriétaire (seul replier) |
+| Lane             | Type de message | Cardinalité | Sémantique                                          |
+| --- | --- | --- | --- |
+| **Command Lane** | Commands        | 1:1         | Intention → Feature propriétaire (seul handler)     |
+| **Event Lane**   | Events          | 1:N         | Fait accompli → tous les listeners                  |
+| **Request Lane** | Requests        | 1:1         | Interrogation → Feature propriétaire (seul replier) |
 
 Un Channel **n'est pas une classe à instancier**. C'est un contrat déclaré via `TChannelDefinition` dans la Feature. Le framework (via Radio) câble automatiquement les lanes.
 
@@ -188,7 +190,7 @@ Un Channel **n'est pas une classe à instancier**. C'est un contrat déclaré vi
 Radio est le **singleton interne** qui câble les Channels. Il n'est **jamais exposé** au développeur (I15).
 
 | Aspect | Détail |
-|--------|--------|
+| --- | --- |
 | **Rôle** | Résoudre les déclarations statiques des composants en connexions runtime |
 | **Visibilité** | Interne au framework — `Radio` n'est pas exporté par `@bonsai/core` (exporté par `@bonsai/event` pour l'usage inter-packages uniquement) |
 | **Invariant** | I15 — aucun composant n'y accède directement |
@@ -197,12 +199,13 @@ Radio est le **singleton interne** qui câble les Channels. Il n'est **jamais ex
 ### Namespaces : le système d'adressage
 
 Chaque Feature déclare un **namespace unique** (I21), `camelCase` plat, qui sert de :
+
 - Clé d'adressage du Channel (`namespace:messageName`)
 - Identifiant du store logique distribué (`namespace` → Entity)
 - Préfixe dans les DevTools et le Event Ledger
 
 | Règle | Invariant |
-|-------|-----------|
+| --- | --- |
 | Unicité stricte | I21, I24 — collision de clés = erreur **compile-time** (TS1117, clé d'objet dupliquée dans le manifest, ADR-0039) ; un cast `as any`/manifest construit dynamiquement reste un filet runtime |
 | Relation 1:1:1 | I22 — un namespace = une Feature = une Entity |
 | Réservés | `router` (I28), `local` (I57) |
@@ -218,14 +221,14 @@ Chaque Feature déclare un **namespace unique** (I21), `camelCase` plat, qui ser
 
 Après **chaque** Event granulaire émis sur l'event lane, le Channel émet automatiquement un événement technique **`any`**. **Cette émission est livrée** (`Channel.emit()`, `packages/event/src/channel.class.ts`) ; sa **consommation côté View** décrite plus bas (selectors, state complet par référence) ne l'est pas — voir l'encadré ⚠️ en fin de section.
 
-| Aspect | Description |
-|--------|-------------|
-| **Déclenchement** | Automatique, après chaque `emit()` d'un Event granulaire — livré |
-| **Payload** | `{ event: string, changes: Record<string, unknown> }` — nom de l'Event source + **`changes` est le payload de l'Event émis tel quel** (pas les clés du state modifiées, pas le state complet) — livré |
-| **Audience cible** | Les **Views** et **Behaviors** s'y abonneraient pour la réactivité UI (PDR) — ⏳ aucune View ne s'abonne à `any` aujourd'hui (ADR-0042 : handlers granulaires `on{NS}{Event}Event`) |
-| **Non destiné à** | La communication inter-Feature — les Features écoutent les Events granulaires |
-| **Filtrage** | ⏳ Cible strate 1c, non livré : les selectors de templates filtreraient les clés de changement pour ne ré-évaluer que les templates concernés |
-| **Émission** | Uniquement par le framework — jamais par le développeur |
+| Aspect             | Description                                                                                                                                                                                           |
+| --- | --- |
+| **Déclenchement**  | Automatique, après chaque `emit()` d'un Event granulaire — livré                                                                                                                                      |
+| **Payload**        | `{ event: string, changes: Record<string, unknown> }` — nom de l'Event source + **`changes` est le payload de l'Event émis tel quel** (pas les clés du state modifiées, pas le state complet) — livré |
+| **Audience cible** | Les **Views** et **Behaviors** s'y abonneraient pour la réactivité UI (PDR) — ⏳ aucune View ne s'abonne à `any` aujourd'hui (ADR-0042 : handlers granulaires `on{NS}{Event}Event`)                   |
+| **Non destiné à**  | La communication inter-Feature — les Features écoutent les Events granulaires                                                                                                                         |
+| **Filtrage**       | ⏳ Cible strate 1c, non livré : les selectors de templates filtreraient les clés de changement pour ne ré-évaluer que les templates concernés                                                         |
+| **Émission**       | Uniquement par le framework — jamais par le développeur                                                                                                                                               |
 
 ```typescript
 // Signature réelle — packages/event/src/channel.class.ts
@@ -243,7 +246,7 @@ type TAnyEventPayload = {
 };
 ```
 
-> ⚠️ **`any` ↔ mutations Entity — pas de lien direct livré** : le Channel ne connaît pas l'Entity (I5, I80) et ne calcule aucun `changedKeys`. `any.changes` est simplement le payload que la Feature a passé à `emit()` — qui *peut* contenir des données dérivées de `changedKeys` si la Feature les y met explicitement, mais rien ne l'impose. Le modèle « state complet par référence live » de [5-rendu.md §7](5-rendu.md#7-intégration-avec-la-view) (D42/D46) décrit une consommation **cible strate 1c en tension non tranchée** avec les handlers granulaires livrés par ADR-0042 — voir le bandeau de périmètre en tête de [5-rendu.md](5-rendu.md).
+> ⚠️ **`any` ↔ mutations Entity — pas de lien direct livré** : le Channel ne connaît pas l'Entity (I5, I80) et ne calcule aucun `changedKeys`. `any.changes` est simplement le payload que la Feature a passé à `emit()` — qui _peut_ contenir des données dérivées de `changedKeys` si la Feature les y met explicitement, mais rien ne l'impose. Le modèle « state complet par référence live » de [5-rendu.md §7](5-rendu.md#7-intégration-avec-la-view) (D42/D46) décrit une consommation **cible strate 1c en tension non tranchée** avec les handlers granulaires livrés par ADR-0042 — voir le bandeau de périmètre en tête de [5-rendu.md](5-rendu.md).
 
 ---
 
@@ -305,11 +308,11 @@ Les instances Channel existent déjà -- créées lors de la **Phase 1 du bootst
 
 ### 8.3 Validation des invariants
 
-| Type | Invariants vérifiés | Mecanisme reel |
-|------|--------------------|-----------| 
-| **Compile-time** | I4 (View n'a pas de méthode `emit()`), I21 (namespace non camelCase/reserve -> `never` via `StrictManifest<M>`), D9/D10 (types) | TypeScript strict, absence structurelle de méthode |
-| **Bootstrap** | I21 (namespace unique -> `BonsaiNamespaceError`), I10 (handler Command/Request duplique -> `DuplicateHandlerError`), I70 (reference `listens`/`queries` inconnue -> `BonsaiNamespaceError`, Phase 0c) | `Channel.handle()`/`reply()` (I10), `Application.start()` Phase 0c (I70), `assertValidNamespace()` (I21) |
-| **Runtime** | I1/I12 (`emit` cross-domain) : **absence structurelle** — `emit()` n'accepte que les clés du Channel propre, aucune vérification a faire | Contrainte de type sur `emit<K extends keyof TChannelDef['events']>` — pas de garde runtime nécessaire |
+| Type | Invariants vérifiés | Mecanisme réel |
+| --- | --- | --- |
+| **Compile-time** | I4 (View n'a pas de méthode `emit()`), I21 (namespace non camelCase/reserve -> `never` via `StrictManifest<M>`), D9/D10 (types)                                                                       | TypeScript strict, absence structurelle de méthode                                                       |
+| **Bootstrap**    | I21 (namespace unique -> `BonsaiNamespaceError`), I10 (handler Command/Request duplique -> `DuplicateHandlerError`), I70 (reference `listens`/`queries` inconnue -> `BonsaiNamespaceError`, Phase 0c) | `Channel.handle()`/`reply()` (I10), `Application.start()` Phase 0c (I70), `assertValidNamespace()` (I21) |
+| **Runtime**      | I1/I12 (`emit` cross-domain) : **absence structurelle** — `emit()` n'accepte que les clés du Channel propre, aucune vérification a faire                                                              | Contrainte de type sur `emit<K extends keyof TChannelDef['events']>` — pas de garde runtime nécessaire   |
 
 > ⏳ **I9** (`hop > maxHops`, anti-boucle causale) n'est pas implemente — aucune
 > notion de `hop` n'existe dans le code livre (cible strate 1b, cf. bandeau
@@ -326,7 +329,7 @@ Les instances Channel existent déjà -- créées lors de la **Phase 1 du bootst
 ### 9.1 Comportements selon le mode
 
 | Situation | Mode développement (`debug: true`) | Mode production |
-|-----------|-----------------------------------|----------------|
+| --- | --- | --- |
 | `trigger()` sans handler Command | 🔴 `throw` — erreur explicite (I10) | ⚠️ `warn` — ne bloque pas |
 | `emit()` sans listener Event | ✅ Silent — valide sémantiquement | ✅ Silent |
 | `request()` sans replier | ⚠️ `warn` + retourne `null` (D44 révisé) | ✅ Retourne `null` silencieusement |
@@ -335,7 +338,7 @@ Les instances Channel existent déjà -- créées lors de la **Phase 1 du bootst
 ### 9.2 Ordre d'exécution et isolation
 
 | Aspect | Comportement |
-|--------|-------------|
+| --- | --- |
 | **Ordre des listeners Event** | Séquentiel, dans l'ordre de déclaration |
 | **Isolation des erreurs** | Une exception dans un listener n'empêche pas les autres d'être appelés (ADR-0002) |
 | **Request sync** | `request()` retourne `T \| null` synchrone (D9 révisé par [ADR-0023](../../adr/ADR-0023-request-reply-sync-vs-async.md)). Pas de timeout — le replier lit l'état en mémoire |
@@ -358,6 +361,7 @@ Quand un Event déclenche des réactions en cascade, le framework garantit :
 ### 9.4 Nettoyage automatique des subscriptions
 
 Le framework nettoie automatiquement toutes les subscriptions Channel :
+
 - **View / Behavior** : au `onDetach()` — via AbortController interne
 - **Composer** : à l'état `destroyed`
 - **Feature** : au shutdown `app.stop()`
@@ -386,11 +390,11 @@ const channelConfig = {
 };
 ```
 
-| Config | Défaut | Override |
-|--------|--------|----------|
-| `noHandler` | `'mode-dependent'` | Global uniquement |
-| `autoCleanup` | Toujours actif | ❌ Non configurable |
-| `listenerExecution` | Séquentiel isolé | ❌ Non configurable |
+| Config              | Défaut             | Override            |
+| --- | --- | --- |
+| `noHandler`         | `'mode-dependent'` | Global uniquement   |
+| `autoCleanup`       | Toujours actif     | ❌ Non configurable |
+| `listenerExecution` | Séquentiel isolé   | ❌ Non configurable |
 
 > **Note** : `requestTimeout` a été supprimé — `request()` est synchrone (D9 révisé par [ADR-0023](../../adr/ADR-0023-request-reply-sync-vs-async.md)). Le replier lit l'état de son Entity en mémoire, aucun timeout n'a de sens.
 
@@ -398,29 +402,29 @@ const channelConfig = {
 
 L'instance runtime `Channel<TDef>` (ADR-0040 — typé) est un objet **interne au framework**, créé automatiquement par `Radio.channel(namespace)` lors de la **Phase 1 du bootstrap**, à partir des entrées du **manifest applicatif** passé au constructeur d'`Application` (ADR-0039). Le développeur ne la voit jamais.
 
-| Facette | Nature | Visibilité |
-|---------|--------|------------|
-| `TChannelDefinition` (type) | Contrat de communication tri-lane | Public — exporté |
-| `TChannelToken<TDef, NS>` (token) | Discriminant `{ namespace: NS }` typé | Public — exposé via `Feature.channel` (ADR-0040) |
-| `Channel<TDef>` (classe runtime) | Registres de handlers, dispatch typé | Interne framework — non exporté par `@bonsai/core` (I80) |
+| Facette                           | Nature                                | Visibilité                                               |
+| --- | --- | --- |
+| `TChannelDefinition` (type)       | Contrat de communication tri-lane     | Public — exporté                                         |
+| `TChannelToken<TDef, NS>` (token) | Discriminant `{ namespace: NS }` typé | Public — exposé via `Feature.channel` (ADR-0040)         |
+| `Channel<TDef>` (classe runtime)  | Registres de handlers, dispatch typé  | Interne framework — non exporté par `@bonsai/core` (I80) |
 
-```
-  Développeur                                   Framework
-  ────────────                                   ─────────
-  type TCartDef                       →   compile-time only
-  CartFeature.channel: TChannelToken  →   { namespace: 'cart' } typé
-       │  manifest applicatif :
-       │    const features = {
-       │      cart: CartFeature,
-       │    } satisfies StrictManifest<AppManifest>
-       │  new Application({ foundation, features }).start()
-       └────────────────────────────────────→   Phase 1 — Radio.channel('cart')
-                                                ↓
-                                                Channel<TCartDef>
-                                                │  commandHandlers : Map<string, Handler>
-                                                │  eventSubjects   : Map<string, RXJS.Subject>
-                                                │  requestRepliers : Map<string, Replier>
-                                                └─ instance interne, jamais exposée (I80)
+```text
+Développeur                                   Framework
+────────────                                   ─────────
+type TCartDef                       →   compile-time only
+CartFeature.channel: TChannelToken  →   { namespace: 'cart' } typé
+     │  manifest applicatif :
+     │    const features = {
+     │      cart: CartFeature,
+     │    } satisfies StrictManifest<AppManifest>
+     │  new Application({ foundation, features }).start()
+     └────────────────────────────────────→   Phase 1 — Radio.channel('cart')
+                                              ↓
+                                              Channel<TCartDef>
+                                              │  commandHandlers : Map<string, Handler>
+                                              │  eventSubjects   : Map<string, RXJS.Subject>
+                                              │  requestRepliers : Map<string, Replier>
+                                              └─ instance interne, jamais exposée (I80)
 ```
 
 > Simplifié à dessein : le registre des Events repose réellement sur un
@@ -429,12 +433,12 @@ L'instance runtime `Channel<TDef>` (ADR-0040 — typé) est un objet **interne a
 > conserve sa `Subscription` pour permettre `unlisten()`. Détail
 > d'implémentation interne, jamais manipulé par le développeur.
 
-| Étape | Déclencheur | Action |
-|-------|-------------|--------|
-| **Création** | `app.start()` — Phase 1 | Pour chaque entrée du manifest, `Radio.channel(namespace)` crée le `Channel<TDef>` |
-| **Câblage** | `app.start()` — Phase 3 (Features) | `Feature.bootstrap()` introspecte les `on{Name}Command/Request/Event` (I48), peuple les registres |
-| **Actif** | Phase 4+ | Dispatch typé des messages (Commands unicast / Events broadcast / Requests sync) |
-| **Destruction** | (Strate 2 — `app.stop()`) | Vide les registres, déréférence le Channel |
+| Étape           | Déclencheur                        | Action                                                                                            |
+| --- | --- | --- |
+| **Création**    | `app.start()` — Phase 1            | Pour chaque entrée du manifest, `Radio.channel(namespace)` crée le `Channel<TDef>`                |
+| **Câblage**     | `app.start()` — Phase 3 (Features) | `Feature.bootstrap()` introspecte les `on{Name}Command/Request/Event` (I48), peuple les registres |
+| **Actif**       | Phase 4+                           | Dispatch typé des messages (Commands unicast / Events broadcast / Requests sync)                  |
+| **Destruction** | (Strate 2 — `app.stop()`)          | Vide les registres, déréférence le Channel                                                        |
 
 > L'implémentation runtime peut s'appuyer sur **rxjs** (Subjects, Observables) pour le
 > dispatch et le multicasting. C'est un détail d'implémentation interne — le développeur

@@ -1,7 +1,7 @@
 # ADR-0004 : Validation Modes
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Date** | 2026-03-18 |
 | **Décideurs** | @ncac |
@@ -16,7 +16,7 @@ Les RFC définissent **58 invariants** (I1–I58) qui constituent le "contrat ar
 ### Types de validations
 
 | Type | Exemple | Coût |
-|------|---------|------|
+| --- | --- | --- |
 | **Compile-time** | Types TypeScript, déclarations Channel | Nul (runtime) |
 | **Bootstrap** | Unicité namespaces, handlers déclarés | Une fois |
 | **Runtime** | Hop > MAX_HOPS, accès Channel non déclaré | Chaque appel |
@@ -29,7 +29,7 @@ Les RFC définissent **58 invariants** (I1–I58) qui constituent le "contrat ar
 
 L'audit identifie ce manque :
 
-> *"La validation runtime / mode debug / strict / production n'est pas encore fermée."*
+> _"La validation runtime / mode debug / strict / production n'est pas encore fermée."_
 
 ---
 
@@ -64,7 +64,7 @@ this.listen('cart:itemAdded', handler); // ✅ Type-safe
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Zero overhead runtime | - Ne couvre pas tout (ex: unicité namespace) |
 | + Erreurs à la compilation | - Bugs runtime possibles |
 | + Simple | - Pas de protection contre `any` |
@@ -90,7 +90,7 @@ class Feature {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Protection maximale | - **Overhead performance** |
 | + Erreurs détectées immédiatement | - Même en production |
 | + Debugging facile | - Pas de tree-shaking |
@@ -125,13 +125,13 @@ class Feature {
 ```
 
 | Mode | Validations | Use case |
-|------|-------------|----------|
+| --- | --- | --- |
 | `development` | Bootstrap + runtime warnings | Dev local |
 | `production` | Bootstrap only | Prod |
 | `strict` | Tout + assertions fatales | Tests, CI |
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Flexible | - Configuration à gérer |
 | + Tree-shakeable | - Trois comportements à tester |
 | + Adapté à chaque contexte | |
@@ -192,7 +192,7 @@ define: {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + **Zero overhead en prod** (dead code) | - Dépend du bundler |
 | + Messages riches en dev | - Pattern à connaître |
 | + Assertions TypeScript (`asserts`) | |
@@ -203,7 +203,7 @@ define: {
 ## Analyse comparative
 
 | Critère | A (Compile) | B (Always) | C (Modes) | D (Conditional) |
-|---------|-------------|------------|-----------|-----------------|
+| --- | --- | --- | --- | --- |
 | **Perf prod** | ⭐⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
 | **Protection dev** | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
 | **DX messages** | ⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
@@ -228,7 +228,7 @@ Justification :
 ### Catégorisation des validations
 
 | Catégorie | Quand | Exemples | Action |
-|-----------|-------|----------|--------|
+| --- | --- | --- | --- |
 | **Compile-time** | tsc | Types Channel, déclarations | Erreur compilation |
 | **Bootstrap** | Au démarrage | Unicité namespace, handlers | `invariant()` fatal |
 | **Runtime dev** | Chaque appel (dev) | Hop limit, payload valid | `invariant()` |
@@ -305,6 +305,6 @@ invariant(
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-03-17 | Création (Proposed) |
 | 2026-03-18 | **Accepted** — Option D (Assertions conditionnelles) |

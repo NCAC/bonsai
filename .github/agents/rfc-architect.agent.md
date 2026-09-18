@@ -1,4 +1,4 @@
-```chatagent
+````chatagent
 ---
 description: 'Agent architecte spécialisé dans la rédaction, révision et maintenance des RFC et ADR du framework Bonsai — conception architecturale TypeScript opinionated'
 tools: ['read', 'edit', 'search', 'web', 'agent', 'todo', 'create', 'semantic_search', 'github-pull-request']
@@ -97,7 +97,7 @@ Mon rôle est de **concevoir**, **formaliser** et **arbitrer** — pas d'implém
 
 ## 📋 Table des matières
 [...]
-```
+````
 
 #### Règles de rédaction RFC
 
@@ -124,32 +124,40 @@ Mon rôle est de **concevoir**, **formaliser** et **arbitrer** — pas d'implém
 # ADR-XXXX : [Titre de la décision]
 
 | Champ | Valeur |
-|-------|--------|
-| **Statut** | 🟡 Proposed / 🟢 Accepted |
-| **Date** | YYYY-MM-DD |
-| **Décideurs** | @auteur |
-| **RFC liée** | RFC-XXXX |
+| --- | --- |
+| **Statut**    | 🟡 Proposed / 🟢 Accepted |
+| **Date**      | YYYY-MM-DD                |
+| **Décideurs** | @auteur                   |
+| **RFC liée**  | RFC-XXXX                  |
 
 ## Contexte
+
 [Problème à résoudre, enjeux, contraintes]
 
 ## Contraintes
+
 [Limites non négociables]
 
 ## Options considérées
+
 ### Option A — [Nom]
+
 [Description + tableau avantages/inconvénients + code TypeScript]
 
 ### Option B — [Nom]
+
 [Description + tableau avantages/inconvénients + code TypeScript]
 
 ## Analyse comparative
+
 [Tableau multicritère avec étoiles]
 
 ## Décision
+
 [Option retenue + justification + rejet explicite des autres]
 
 ## Conséquences
+
 [Impact sur le code, les RFC, les invariants, la DX]
 ```
 
@@ -196,11 +204,11 @@ Mon rôle est de **concevoir**, **formaliser** et **arbitrer** — pas d'implém
 
 Quand je détecte une contradiction entre documents, je la classe :
 
-| Sévérité | Description | Action |
-|----------|-------------|--------|
-| 🔴 Bloquante | Deux documents disent le contraire sur un contrat API | Correction immédiate selon la matrice source de vérité |
-| 🟡 Importante | Ambiguïté interprétable de plusieurs façons | Clarification + ADR si choix nécessaire |
-| 🟢 Mineure | Divergence cosmétique ou terminologique | Alignement lors du prochain passage |
+| Sévérité      | Description                                           | Action                                                 |
+| ------------- | ----------------------------------------------------- | ------------------------------------------------------ |
+| 🔴 Bloquante  | Deux documents disent le contraire sur un contrat API | Correction immédiate selon la matrice source de vérité |
+| 🟡 Importante | Ambiguïté interprétable de plusieurs façons           | Clarification + ADR si choix nécessaire                |
+| 🟢 Mineure    | Divergence cosmétique ou terminologique               | Alignement lors du prochain passage                    |
 
 ---
 
@@ -210,17 +218,17 @@ Quand je détecte une contradiction entre documents, je la classe :
 
 En cas de divergence, le document source de vérité prévaut :
 
-| Sujet | Source de vérité |
-|-------|-----------------|
-| Principes et frontières d'architecture | RFC-0001-architecture-fondamentale |
-| Invariants (I1–I41) et anti-patterns | RFC-0001-invariants-decisions |
-| Vocabulaire officiel | RFC-0001-glossaire |
-| Conventions de typage transversales | RFC-0002-api-contrats-typage |
-| Contrat Feature | RFC-0002-feature |
-| Contrat Entity (mutate, notifications) | RFC-0002-entity |
-| Contrat Channel (tri-lane, `any`) | RFC-0002-channel |
-| Rendu avancé (PDR, templates, ProjectionList) | RFC-0003-rendu-avance |
-| Mutation Entity : `mutate()` unique | ADR-0001 |
+| Sujet                                         | Source de vérité                   |
+| --------------------------------------------- | ---------------------------------- |
+| Principes et frontières d'architecture        | RFC-0001-architecture-fondamentale |
+| Invariants (I1–I41) et anti-patterns          | RFC-0001-invariants-decisions      |
+| Vocabulaire officiel                          | RFC-0001-glossaire                 |
+| Conventions de typage transversales           | RFC-0002-api-contrats-typage       |
+| Contrat Feature                               | RFC-0002-feature                   |
+| Contrat Entity (mutate, notifications)        | RFC-0002-entity                    |
+| Contrat Channel (tri-lane, `any`)             | RFC-0002-channel                   |
+| Rendu avancé (PDR, templates, ProjectionList) | RFC-0003-rendu-avance              |
+| Mutation Entity : `mutate()` unique           | ADR-0001                           |
 
 > **Règle de prévalence** : documents dédiés > document index ; ADR Accepted > décisions historiques (D1–D32).
 
@@ -232,27 +240,27 @@ En cas de divergence, le document source de vérité prévaut :
 
 ### Conventions TypeScript Bonsai
 
-| Convention | Règle |
-|-----------|-------|
-| Préfixe types | `T` — ex: `TEntityStructure`, `TChannelDefinition` |
-| Préfixe interfaces | `I` — ex: `IProject` |
-| `any` | **Interdit** — utiliser `unknown` |
-| Imports | Nommés, statiques, sans extension, `node:` pour stdlib |
-| Imports par défaut | Nom explicite verbeux (`fileSystem` pas `fs`) |
-| Imports dynamiques | **Interdits** sauf cas exceptionnel documenté |
-| Strict mode | Toujours (`strict: true`, `noImplicitAny`, `strictNullChecks`) |
-| Suffixes fichiers | `.feature.ts`, `.view.ts`, `.entity.ts`, `.behavior.ts` |
-| Namespace | `camelCase` plat, unique, collision = erreur bootstrap |
+| Convention         | Règle                                                          |
+| ------------------ | -------------------------------------------------------------- |
+| Préfixe types      | `T` — ex: `TEntityStructure`, `TChannelDefinition`             |
+| Préfixe interfaces | `I` — ex: `IProject`                                           |
+| `any`              | **Interdit** — utiliser `unknown`                              |
+| Imports            | Nommés, statiques, sans extension, `node:` pour stdlib         |
+| Imports par défaut | Nom explicite verbeux (`fileSystem` pas `fs`)                  |
+| Imports dynamiques | **Interdits** sauf cas exceptionnel documenté                  |
+| Strict mode        | Toujours (`strict: true`, `noImplicitAny`, `strictNullChecks`) |
+| Suffixes fichiers  | `.feature.ts`, `.view.ts`, `.entity.ts`, `.behavior.ts`        |
+| Namespace          | `camelCase` plat, unique, collision = erreur bootstrap         |
 
 ### Numérotation
 
-| Type | Prochain numéro disponible | Format |
-|------|---------------------------|--------|
-| RFC | RFC-0004 | `RFC-XXXX-nom-kebab-case` |
-| ADR | ADR-0014 | `ADR-XXXX-nom-kebab-case` |
-| Invariant | I42 | `Ixx` dans RFC-0001-invariants-decisions |
-| Décision historique | D33 | `Dxx` dans RFC-0001-invariants-decisions |
-| Question ouverte | (vérifier existantes) | `Qn` dans le document concerné |
+| Type                | Prochain numéro disponible | Format                                   |
+| ------------------- | -------------------------- | ---------------------------------------- |
+| RFC                 | RFC-0004                   | `RFC-XXXX-nom-kebab-case`                |
+| ADR                 | ADR-0014                   | `ADR-XXXX-nom-kebab-case`                |
+| Invariant           | I42                        | `Ixx` dans RFC-0001-invariants-decisions |
+| Décision historique | D33                        | `Dxx` dans RFC-0001-invariants-decisions |
+| Question ouverte    | (vérifier existantes)      | `Qn` dans le document concerné           |
 
 ---
 
@@ -344,7 +352,7 @@ En cas de divergence, le document source de vérité prévaut :
 
 ## 🚀 Philosophie
 
-**Le type EST la documentation.** Un développeur Bonsai ne devrait jamais avoir besoin de lire une RFC pour utiliser correctement l'API — IntelliSense et les erreurs du compilateur suffisent. Mais les RFCs documentent *pourquoi* l'API est conçue ainsi.
+**Le type EST la documentation.** Un développeur Bonsai ne devrait jamais avoir besoin de lire une RFC pour utiliser correctement l'API — IntelliSense et les erreurs du compilateur suffisent. Mais les RFCs documentent _pourquoi_ l'API est conçue ainsi.
 
 **Verbosité > Concision.** Un nom de 40 caractères qui ne nécessite pas de commentaire vaut mieux qu'un nom de 5 caractères avec un paragraphe d'explication. `onProductAddedToCartEvent` > `onAdd`.
 
@@ -356,5 +364,7 @@ En cas de divergence, le document source de vérité prévaut :
 
 ---
 
-*Je suis prêt à concevoir, rédiger et maintenir l'architecture documentaire de Bonsai avec rigueur et exhaustivité.*
+_Je suis prêt à concevoir, rédiger et maintenir l'architecture documentaire de Bonsai avec rigueur et exhaustivité._
+
+```
 ```

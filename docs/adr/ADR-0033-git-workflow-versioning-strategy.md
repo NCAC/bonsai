@@ -2,13 +2,13 @@
 
 > **Quel modèle de branching Git, quelle politique de versioning et quel processus de release pour le framework Bonsai ?**
 
-| Champ           | Valeur                                                                                                                                                                                                               |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Statut**      | 🟢 Accepted                                                                                                                                                                                                          |
-| **Date**        | 2026-04-14                                                                                                                                                                                                           |
-| **Décideurs**   | @ncac                                                                                                                                                                                                                |
-| **ADR liées**   | [ADR-0028](ADR-0028-implementation-phasing-strategy.md) (phasage kernel-first 3 strates), [ADR-0029](ADR-0029-v1-scope-freeze.md) (scope v1 gelé), [ADR-0032](ADR-0032-build-pipeline-toolchain.md) (build pipeline) |
-| **Déclencheur** | Tous les commits sont sur `main`, aucun tag, aucune release, aucun workflow Git formalisé — version `0.1.0` partout sans signification sémantique                                                                    |
+| Champ | Valeur |
+| --- | --- |
+| **Statut** | 🟢 Accepted |
+| **Date** | 2026-04-14 |
+| **Décideurs** | @ncac |
+| **ADR liées** | [ADR-0028](ADR-0028-implementation-phasing-strategy.md) (phasage kernel-first 3 strates), [ADR-0029](ADR-0029-v1-scope-freeze.md) (scope v1 gelé), [ADR-0032](ADR-0032-build-pipeline-toolchain.md) (build pipeline) |
+| **Déclencheur** | Tous les commits sont sur `main`, aucun tag, aucune release, aucun workflow Git formalisé — version `0.1.0` partout sans signification sémantique |
 
 ---
 
@@ -35,16 +35,16 @@
 
 L'état Git de Bonsai au 2026-04-14 :
 
-| Métrique             | Valeur                           | Problème                                                                      |
-| -------------------- | -------------------------------- | ----------------------------------------------------------------------------- |
-| Branches             | **1** (`main`)                   | Pas de branche d'intégration, pas de feature branches                         |
-| Tags                 | **0**                            | Aucun jalon traçable dans l'historique                                        |
-| Commits              | **15** sur `main`                | Tout est linéaire, pas de granularité                                         |
-| Version              | **`0.1.0`** partout              | Chiffre arbitraire, aucune sémantique                                         |
-| CHANGELOG            | **Inexistant**                   | Pas de trace des changements entre versions                                   |
-| Outils de release    | **Aucun**                        | Ni changesets, ni semantic-release, ni script                                 |
+| Métrique | Valeur | Problème |
+| --- | --- | --- |
+| Branches | **1** (`main`) | Pas de branche d'intégration, pas de feature branches |
+| Tags | **0** | Aucun jalon traçable dans l'historique |
+| Commits | **15** sur `main` | Tout est linéaire, pas de granularité |
+| Version | **`0.1.0`** partout | Chiffre arbitraire, aucune sémantique |
+| CHANGELOG | **Inexistant** | Pas de trace des changements entre versions |
+| Outils de release | **Aucun** | Ni changesets, ni semantic-release, ni script |
 | Conventional Commits | **Documentés** (CONTRIBUTING.md) | **Pas appliqués uniformément** (ex: `very-first-commit`, `🎉 Initial commit`) |
-| `private: true`      | **Tous les packages**            | Aucune publication npm — monorepo fermé                                       |
+| `private: true` | **Tous les packages** | Aucune publication npm — monorepo fermé |
 
 Ce chaos était acceptable en phase exploratoire (marionext → corpus documentaire). Il ne l'est plus maintenant que l'implémentation de la strate 0 (ADR-0028) démarre : chaque composant implémenté doit être traçable, chaque jalon identifiable.
 
@@ -69,17 +69,17 @@ Les traiter séparément créerait des incohérences.
 
 ## Contraintes
 
-| #   | Contrainte                                                                                                                 | Source                   |
-| --- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| C1  | Le workflow DOIT supporter le **phasage en 3 strates** (ADR-0028) — chaque fin de strate est un jalon identifiable         | ADR-0028                 |
-| C2  | Le workflow DOIT permettre de **travailler sur plusieurs features en parallèle** sans polluer la branche stable            | DX développeur           |
-| C3  | Le versioning DOIT suivre **SemVer 2.0.0** (`MAJOR.MINOR.PATCH[-prerelease]`)                                              | Standard industriel      |
-| C4  | En phase pré-v1 (`0.x.y`), **toute version `0.x.y`** signifie « API instable, breaking changes possibles » (SemVer §4)     | SemVer spec              |
-| C5  | Le workflow NE DOIT PAS être **surdimensionné** pour un développeur principal + contributeurs occasionnels                 | Pragmatisme              |
-| C6  | Chaque **merge sur `main`** DOIT être accompagné d'un **tag versionné** — `main` ne reçoit que des états stables           | Traçabilité              |
-| C7  | Les **Conventional Commits** DOIVENT être respectés — ils sont la base du changelog automatique et du bump de version      | CONTRIBUTING.md          |
-| C8  | Le processus de release DOIT être **reproductible et documenté** — pas de release manuelle ad hoc                          | Maintenabilité           |
-| C9  | Le versioning DOIT être **synchronisé** (version unique pour tout `@bonsai/*`) — pas de versioning indépendant par package | Monorepo privé, ADR-0031 |
+| # | Contrainte | Source |
+| --- | --- | --- |
+| C1 | Le workflow DOIT supporter le **phasage en 3 strates** (ADR-0028) — chaque fin de strate est un jalon identifiable | ADR-0028 |
+| C2 | Le workflow DOIT permettre de **travailler sur plusieurs features en parallèle** sans polluer la branche stable | DX développeur |
+| C3 | Le versioning DOIT suivre **SemVer 2.0.0** (`MAJOR.MINOR.PATCH[-prerelease]`) | Standard industriel |
+| C4 | En phase pré-v1 (`0.x.y`), **toute version `0.x.y`** signifie « API instable, breaking changes possibles » (SemVer §4) | SemVer spec |
+| C5 | Le workflow NE DOIT PAS être **surdimensionné** pour un développeur principal + contributeurs occasionnels | Pragmatisme |
+| C6 | Chaque **merge sur `main`** DOIT être accompagné d'un **tag versionné** — `main` ne reçoit que des états stables | Traçabilité |
+| C7 | Les **Conventional Commits** DOIVENT être respectés — ils sont la base du changelog automatique et du bump de version | CONTRIBUTING.md |
+| C8 | Le processus de release DOIT être **reproductible et documenté** — pas de release manuelle ad hoc | Maintenabilité |
+| C9 | Le versioning DOIT être **synchronisé** (version unique pour tout `@bonsai/*`) — pas de versioning indépendant par package | Monorepo privé, ADR-0031 |
 
 ---
 
@@ -89,7 +89,7 @@ Les traiter séparément créerait des incohérences.
 
 **Description** : le modèle complet de Vincent Driessen (2010). Deux branches permanentes (`main`, `develop`), trois types de branches éphémères (`feature/*`, `release/*`, `hotfix/*`).
 
-```
+```text
 main      ──●───────────────────────●───────────────●──── (releases uniquement)
              \                     / \             /
 develop    ───●──●──●──●──●──●──●──●───●──●──●──●──●──── (intégration)
@@ -117,7 +117,7 @@ hotfix/*                                   ●──●            (correctif d'
 
 #### Phase pré-v1 (maintenant → v1.0.0)
 
-```
+```text
 main      ──●─────────────────────────────────●──── (jalons uniquement)
              \                                 ↑
 develop    ───●──●──●──●──●──●──●──●──●──●──●──● ← intégration quotidienne
@@ -133,13 +133,13 @@ feature/*      ────●──●       ●──●          ●●    (�
 
 Passage au Git Flow complet : ajout de `release/*` et `hotfix/*` quand il y a des consommateurs externes.
 
-| Avantages                                        | Inconvénients                                         |
-| ------------------------------------------------ | ----------------------------------------------------- |
-| + Léger pré-v1 (3 types de branches)             | - Moins formalisé que Git Flow complet                |
-| + S'enrichit naturellement vers Git Flow complet | - Transition pré/post-v1 à documenter                 |
-| + `develop` isole `main` du WIP                  | - Discipline requise pour les merges `develop → main` |
-| + Pas de cérémonie inutile pré-v1                |                                                       |
-| + Compatible avec les strates ADR-0028           |                                                       |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Léger pré-v1 (3 types de branches) | - Moins formalisé que Git Flow complet |
+| + S'enrichit naturellement vers Git Flow complet | - Transition pré/post-v1 à documenter |
+| + `develop` isole `main` du WIP | - Discipline requise pour les merges `develop → main` |
+| + Pas de cérémonie inutile pré-v1 | |
+| + Compatible avec les strates ADR-0028 | |
 
 ---
 
@@ -147,19 +147,19 @@ Passage au Git Flow complet : ajout de `release/*` et `hotfix/*` quand il y a de
 
 **Description** : une seule branche permanente (`main`). Les feature branches sont mergées directement dans `main` via Pull Request.
 
-```
+```text
 main      ──●──●──●──●──●──●──●──●──●──●──●──●── (tout ici)
                \  /     \  /       \  /
 feature/*       ●●       ●●        ●●             (éphémères, merge direct)
 ```
 
-| Avantages                                  | Inconvénients                                                              |
-| ------------------------------------------ | -------------------------------------------------------------------------- |
-| + Extrêmement simple — 2 types de branches | - `main` reçoit du WIP en continu — pas de « stable » vs « en cours »      |
-| + Pas de branche `develop` à maintenir     | - Pas de notion de jalon/milestone dans le modèle                          |
-| + Adapté au déploiement continu (SaaS)     | - Un framework n'est pas un SaaS — il a des releases versionnées           |
-|                                            | - Pas de tampon d'intégration — un merge cassé pollue `main` immédiatement |
-|                                            | - Les strates ADR-0028 n'ont pas de représentation naturelle               |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Extrêmement simple — 2 types de branches | - `main` reçoit du WIP en continu — pas de « stable » vs « en cours » |
+| + Pas de branche `develop` à maintenir | - Pas de notion de jalon/milestone dans le modèle |
+| + Adapté au déploiement continu (SaaS) | - Un framework n'est pas un SaaS — il a des releases versionnées |
+| | - Pas de tampon d'intégration — un merge cassé pollue `main` immédiatement |
+| | - Les strates ADR-0028 n'ont pas de représentation naturelle |
 
 ---
 
@@ -167,19 +167,19 @@ feature/*       ●●       ●●        ●●             (éphémères, mer
 
 **Description** : une seule branche permanente (`main`/`trunk`). Les développeurs commitent directement sur `main` ou via des feature branches très courtes (<1 jour). Feature flags pour le WIP.
 
-```
+```text
 main      ──●──●──●──●──●──●──●──●──●──●── (tout ici, commits directs)
                 \  /                         (branches <1 jour exceptionnellement)
 feature/*        ●●
 ```
 
-| Avantages                          | Inconvénients                                                        |
-| ---------------------------------- | -------------------------------------------------------------------- |
-| + Intégration continue maximale    | - Feature flags nécessaires pour le WIP — overhead pour un framework |
-| + Pas de branches longues à gérer  | - Pas de notion de version/release native                            |
-| + Feedback rapide sur les conflits | - Discipliné : nécessite CI solide + review rapide                   |
-|                                    | - Inadapté aux jalons structurants (strates)                         |
-|                                    | - Un framework a besoin de versions, pas de déploiements continus    |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Intégration continue maximale | - Feature flags nécessaires pour le WIP — overhead pour un framework |
+| + Pas de branches longues à gérer | - Pas de notion de version/release native |
+| + Feedback rapide sur les conflits | - Discipliné : nécessite CI solide + review rapide |
+| | - Inadapté aux jalons structurants (strates) |
+| | - Un framework a besoin de versions, pas de déploiements continus |
 
 ---
 
@@ -191,7 +191,7 @@ feature/*        ●●
 
 **Schéma de versions** :
 
-```
+```text
 0.1.0           ← état actuel (historique marionext, pas de sémantique)
 0.1.1 … 0.1.N  ← correctifs/docs pendant la strate 0
 0.2.0           ← fin strate 0 (Entity, Channel, Radio)
@@ -212,12 +212,12 @@ feature/*        ●●
 - `PATCH` incrémenté = correctifs sans breaking change
 - **Pas de garantie de rétrocompatibilité** entre `0.x.0` et `0.(x+1).0`
 
-| Avantages                                            | Inconvénients                                                  |
-| ---------------------------------------------------- | -------------------------------------------------------------- |
-| + **Standard SemVer** — universellement compris      | - `0.x.y` ne signale pas la **maturité** au-delà de « pré-v1 » |
-| + Les MINOR mappent naturellement sur les strates    | - 4 incréments MINOR avant la v1 — historique court            |
-| + `1.0.0` a une signification forte (API stable)     |                                                                |
-| + Compatible avec tout outil (npm, pnpm, changesets) |                                                                |
+| Avantages | Inconvénients |
+| --- | --- |
+| + **Standard SemVer** — universellement compris | - `0.x.y` ne signale pas la **maturité** au-delà de « pré-v1 » |
+| + Les MINOR mappent naturellement sur les strates | - 4 incréments MINOR avant la v1 — historique court |
+| + `1.0.0` a une signification forte (API stable) | |
+| + Compatible avec tout outil (npm, pnpm, changesets) | |
 
 ---
 
@@ -227,7 +227,7 @@ feature/*        ●●
 
 **Schéma de versions** :
 
-```
+```text
 0.0.0           ← baseline (immédiatement après adoption de cet ADR)
 0.0.1 … 0.0.N  ← builds strate 0
 0.1.0           ← début strate 1
@@ -238,11 +238,11 @@ feature/*        ●●
 1.0.0           ← release publique
 ```
 
-| Avantages                                       | Inconvénients                                                                |
-| ----------------------------------------------- | ---------------------------------------------------------------------------- |
-| + Lecture immédiate de la strate dans le numéro | - Convention **non standard** — `0.STRATE.x` n'est pas SemVer orthodoxe      |
-| + Alignement ADR-0028 visible                   | - MINOR commence à 0 et va jusqu'à 2 — très court                            |
-|                                                 | - Conflit sémantique : est-ce que `0.1.0` = strate 1 ou premier minor bump ? |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Lecture immédiate de la strate dans le numéro | - Convention **non standard** — `0.STRATE.x` n'est pas SemVer orthodoxe |
+| + Alignement ADR-0028 visible | - MINOR commence à 0 et va jusqu'à 2 — très court |
+| | - Conflit sémantique : est-ce que `0.1.0` = strate 1 ou premier minor bump ? |
 
 ---
 
@@ -261,40 +261,40 @@ feature/*        ●●
 1.0.0             ← release publique
 ```
 
-| Avantages                                                             | Inconvénients                                                                            |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| + Labels significatifs (alpha → beta → rc)                            | - La version `0.1.0` ne change jamais — tout est dans le label                           |
-| + Tradition bien comprise (alpha = instable, beta = feature-complete) | - `alpha.47` — les compteurs montent indéfiniment, peu lisible                           |
-|                                                                       | - SemVer pre-release : `0.1.0-alpha.1 < 0.1.0-beta.1 < 0.1.0` — tri correct mais verbeux |
-|                                                                       | - Pas de granularité pour les jalons inter-strates                                       |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Labels significatifs (alpha → beta → rc) | - La version `0.1.0` ne change jamais — tout est dans le label |
+| + Tradition bien comprise (alpha = instable, beta = feature-complete) | - `alpha.47` — les compteurs montent indéfiniment, peu lisible |
+| | - SemVer pre-release : `0.1.0-alpha.1 < 0.1.0-beta.1 < 0.1.0` — tri correct mais verbeux |
+| | - Pas de granularité pour les jalons inter-strates |
 
 ---
 
 ## Analyse comparative — Workflow Git
 
-| Critère                          | A — Git Flow             | B — Git Flow adapté | C — GitHub Flow    | D — Trunk-Based     |
-| -------------------------------- | ------------------------ | ------------------- | ------------------ | ------------------- |
-| **Séparation stable/WIP**        | ⭐⭐⭐                   | ⭐⭐⭐              | ⭐ (tout sur main) | ⭐ (tout sur trunk) |
-| **Support des strates ADR-0028** | ⭐⭐⭐                   | ⭐⭐⭐              | ⭐ (pas naturel)   | ⭐ (pas naturel)    |
-| **Simplicité pré-v1**            | ⭐ (5 types de branches) | ⭐⭐⭐ (3 types)    | ⭐⭐⭐ (2 types)   | ⭐⭐⭐ (1-2 types)  |
-| **Scalabilité post-v1**          | ⭐⭐⭐ (complet)         | ⭐⭐⭐ (transition) | ⭐⭐ (limité)      | ⭐⭐ (limité)       |
-| **Overhead cognitif**            | ⭐ (lourd)               | ⭐⭐ (modéré)       | ⭐⭐⭐ (minimal)   | ⭐⭐⭐ (minimal)    |
-| **Adapté à un framework**        | ⭐⭐⭐                   | ⭐⭐⭐              | ⭐ (SaaS-oriented) | ⭐ (CI/CD-oriented) |
-| **Traçabilité des releases**     | ⭐⭐⭐                   | ⭐⭐⭐              | ⭐⭐               | ⭐                  |
+| Critère | A — Git Flow | B — Git Flow adapté | C — GitHub Flow | D — Trunk-Based |
+| --- | --- | --- | --- | --- |
+| **Séparation stable/WIP** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐ (tout sur main) | ⭐ (tout sur trunk) |
+| **Support des strates ADR-0028** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐ (pas naturel) | ⭐ (pas naturel) |
+| **Simplicité pré-v1** | ⭐ (5 types de branches) | ⭐⭐⭐ (3 types) | ⭐⭐⭐ (2 types) | ⭐⭐⭐ (1-2 types) |
+| **Scalabilité post-v1** | ⭐⭐⭐ (complet) | ⭐⭐⭐ (transition) | ⭐⭐ (limité) | ⭐⭐ (limité) |
+| **Overhead cognitif** | ⭐ (lourd) | ⭐⭐ (modéré) | ⭐⭐⭐ (minimal) | ⭐⭐⭐ (minimal) |
+| **Adapté à un framework** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐ (SaaS-oriented) | ⭐ (CI/CD-oriented) |
+| **Traçabilité des releases** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐ |
 
 ---
 
 ## Analyse comparative — Versioning
 
-| Critère                  | V1 — Pré-release SemVer        | V2 — Strate-based                   | V3 — Alpha/Beta labels            |
-| ------------------------ | ------------------------------ | ----------------------------------- | --------------------------------- |
-| **Conformité SemVer**    | ⭐⭐⭐ (standard)              | ⭐⭐ (convention)                   | ⭐⭐⭐ (standard)                 |
-| **Lisibilité**           | ⭐⭐⭐ (`0.2.0` = clair)       | ⭐⭐ (`0.1.3` = strate 1 patch 3 ?) | ⭐⭐ (`0.1.0-alpha.47` = verbeux) |
-| **Alignement strates**   | ⭐⭐ (par convention)          | ⭐⭐⭐ (natif)                      | ⭐⭐ (labels = phases)            |
-| **Granularité**          | ⭐⭐⭐ (MINOR + PATCH)         | ⭐⭐ (PATCH seul intra-strate)      | ⭐ (compteur monotone)            |
-| **Compatibilité outils** | ⭐⭐⭐ (npm, pnpm, changesets) | ⭐⭐⭐ (standard)                   | ⭐⭐⭐ (standard)                 |
-| **Signal v1.0.0**        | ⭐⭐⭐ (passage fort 0→1)      | ⭐⭐⭐ (idem)                       | ⭐⭐⭐ (idem)                     |
-| **Simple à expliquer**   | ⭐⭐⭐                         | ⭐⭐                                | ⭐⭐                              |
+| Critère | V1 — Pré-release SemVer | V2 — Strate-based | V3 — Alpha/Beta labels |
+| --- | --- | --- | --- |
+| **Conformité SemVer** | ⭐⭐⭐ (standard) | ⭐⭐ (convention) | ⭐⭐⭐ (standard) |
+| **Lisibilité** | ⭐⭐⭐ (`0.2.0` = clair) | ⭐⭐ (`0.1.3` = strate 1 patch 3 ?) | ⭐⭐ (`0.1.0-alpha.47` = verbeux) |
+| **Alignement strates** | ⭐⭐ (par convention) | ⭐⭐⭐ (natif) | ⭐⭐ (labels = phases) |
+| **Granularité** | ⭐⭐⭐ (MINOR + PATCH) | ⭐⭐ (PATCH seul intra-strate) | ⭐ (compteur monotone) |
+| **Compatibilité outils** | ⭐⭐⭐ (npm, pnpm, changesets) | ⭐⭐⭐ (standard) | ⭐⭐⭐ (standard) |
+| **Signal v1.0.0** | ⭐⭐⭐ (passage fort 0→1) | ⭐⭐⭐ (idem) | ⭐⭐⭐ (idem) |
+| **Simple à expliquer** | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ |
 
 ---
 
@@ -342,7 +342,7 @@ Nous choisissons **SemVer standard avec `0.x.y` pré-v1** parce que :
 
 Au moment de l'adoption de cet ADR, `main` contient **15 commits** dont l'historique est incohérent :
 
-```
+```text
 355af44 🎉 Initial commit: Bonsai framework v0.1.0
 9f170a9 chore: clean old documentation
 e332809 @Todo : make the buildFramework works ..
@@ -373,32 +373,32 @@ dbd167d feat(test): infrastructure TDD strate 0 — tests rouge/skip + fix devco
 
 Garder les 15 commits, poser le tag `v0.1.0` sur `HEAD`, et passer à autre chose.
 
-| Avantages                        | Inconvénients                                                   |
-| -------------------------------- | --------------------------------------------------------------- |
-| + Aucune opération destructive   | - Historique illisible pour tout nouvel arrivant                |
-| + Conservation des dates exactes | - 8 commits non-conventionnels polluent `git log` à perpétuité  |
-| + Pas de risque technique        | - Incohérent avec la discipline Conventional Commits de cet ADR |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Aucune opération destructive | - Historique illisible pour tout nouvel arrivant |
+| + Conservation des dates exactes | - 8 commits non-conventionnels polluent `git log` à perpétuité |
+| + Pas de risque technique | - Incohérent avec la discipline Conventional Commits de cet ADR |
 
 #### Option H2 — Squash en 1 commit baseline
 
 Squasher les 15 commits en **un seul commit baseline** qui représente l'état de départ du projet.
 
-| Avantages                                                             | Inconvénients                                        |
-| --------------------------------------------------------------------- | ---------------------------------------------------- |
-| + Historique **propre dès le premier commit** — cohérent avec cet ADR | - Opération destructive (`--force` sur `main`)       |
-| + Le `git log` commence par un commit lisible et conventionnel        | - Perte des dates individuelles (information faible) |
-| + Un nouveau contributeur voit un point de départ clair               | - Les SHAs actuels deviennent invalides              |
-| + 0 clones externes, 0 forks, 0 CI liée aux SHAs — aucun impact       |                                                      |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Historique **propre dès le premier commit** — cohérent avec cet ADR | - Opération destructive (`--force` sur `main`) |
+| + Le `git log` commence par un commit lisible et conventionnel | - Perte des dates individuelles (information faible) |
+| + Un nouveau contributeur voit un point de départ clair | - Les SHAs actuels deviennent invalides |
+| + 0 clones externes, 0 forks, 0 CI liée aux SHAs — aucun impact | |
 
 #### Option H3 — Rebase interactif (réécrire les messages)
 
 Conserver les 15 commits mais réécrire chaque message pour respecter Conventional Commits.
 
-| Avantages                                     | Inconvénients                                                          |
-| --------------------------------------------- | ---------------------------------------------------------------------- |
-| + Conservation de la granularité (15 commits) | - Effort de réécriture de 8+ messages sans valeur ajoutée              |
-| + Messages propres                            | - Opération destructive aussi (`rebase -i --root`)                     |
-| + Dates conservées                            | - Les 8 premiers commits n'ont pas de granularité utile de toute façon |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Conservation de la granularité (15 commits) | - Effort de réécriture de 8+ messages sans valeur ajoutée |
+| + Messages propres | - Opération destructive aussi (`rebase -i --root`) |
+| + Dates conservées | - Les 8 premiers commits n'ont pas de granularité utile de toute façon |
 
 ### Décision : Option H2 — Squash baseline
 
@@ -408,7 +408,7 @@ Nous choisissons le **squash en 1 commit baseline** parce que :
 
 2. **Lisibilité immédiate.** Le premier commit que voit un nouveau contributeur est :
 
-   ```
+   ```text
    chore: baseline v0.1.0 — corpus documentaire, infrastructure build et test
    ```
 
@@ -448,27 +448,27 @@ git push -u origin develop
 
 ### Branches permanentes
 
-| Branche       | Rôle                                                                                                                  | Protections                                                                                                            |
-| ------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **`main`**    | **Branche stable** — ne reçoit que des merges de `develop` aux jalons. Chaque commit sur `main` est taggé.            | Merge uniquement depuis `develop` via merge commit (no fast-forward). Pas de push direct.                              |
+| Branche | Rôle | Protections |
+| --- | --- | --- |
+| **`main`** | **Branche stable** — ne reçoit que des merges de `develop` aux jalons. Chaque commit sur `main` est taggé. | Merge uniquement depuis `develop` via merge commit (no fast-forward). Pas de push direct. |
 | **`develop`** | **Branche d'intégration** — reçoit les merges des feature branches en continu. C'est l'état « dernière intégration ». | Merge depuis `feature/*` via merge commit ou squash (au choix du développeur). Pas de push direct de code non-reviewé. |
 
 ### Branches éphémères (pré-v1)
 
-| Pattern            | Rôle                                         | Durée de vie            | Merge vers | Exemples                                                                                   |
-| ------------------ | -------------------------------------------- | ----------------------- | ---------- | ------------------------------------------------------------------------------------------ |
-| `feature/{scope}`  | Nouvelle fonctionnalité, composant, ADR, PoC | Heures → quelques jours | `develop`  | `feature/entity-strate0`, `feature/poc-rollup-plugin-dts`, `feature/adr-0033-git-workflow` |
-| `fix/{scope}`      | Correctif d'un bug identifié                 | Heures                  | `develop`  | `fix/channel-memory-leak`, `fix/cache-invalidation`                                        |
-| `docs/{scope}`     | Documentation pure (ADR, RFC, guides)        | Heures                  | `develop`  | `docs/adr-0032-build-pipeline`, `docs/contributing-update`                                 |
-| `refactor/{scope}` | Refactoring sans changement de comportement  | Heures → jours          | `develop`  | `refactor/builder-dts-cleanup`, `refactor/registry-adr0031`                                |
-| `test/{scope}`     | Ajout/modification de tests uniquement       | Heures                  | `develop`  | `test/entity-unit-tests`, `test/build-vitest`                                              |
+| Pattern | Rôle | Durée de vie | Merge vers | Exemples |
+| --- | --- | --- | --- | --- |
+| `feature/{scope}` | Nouvelle fonctionnalité, composant, ADR, PoC | Heures → quelques jours | `develop` | `feature/entity-strate0`, `feature/poc-rollup-plugin-dts`, `feature/adr-0033-git-workflow` |
+| `fix/{scope}` | Correctif d'un bug identifié | Heures | `develop` | `fix/channel-memory-leak`, `fix/cache-invalidation` |
+| `docs/{scope}` | Documentation pure (ADR, RFC, guides) | Heures | `develop` | `docs/adr-0032-build-pipeline`, `docs/contributing-update` |
+| `refactor/{scope}` | Refactoring sans changement de comportement | Heures → jours | `develop` | `refactor/builder-dts-cleanup`, `refactor/registry-adr0031` |
+| `test/{scope}` | Ajout/modification de tests uniquement | Heures | `develop` | `test/entity-unit-tests`, `test/build-vitest` |
 
 ### Branches additionnelles (post-v1)
 
-| Pattern             | Rôle                                                                | Ajouté quand                                    |
-| ------------------- | ------------------------------------------------------------------- | ----------------------------------------------- |
-| `release/{version}` | Préparation d'une release (bump version, CHANGELOG, derniers fixes) | Quand Bonsai a des consommateurs externes       |
-| `hotfix/{scope}`    | Correctif urgent sur `main` (backporté sur `develop`)               | Quand un bug critique affecte des consommateurs |
+| Pattern | Rôle | Ajouté quand |
+| --- | --- | --- |
+| `release/{version}` | Préparation d'une release (bump version, CHANGELOG, derniers fixes) | Quand Bonsai a des consommateurs externes |
+| `hotfix/{scope}` | Correctif urgent sur `main` (backporté sur `develop`) | Quand un bug critique affecte des consommateurs |
 
 ### Politique de merge
 
@@ -484,7 +484,7 @@ git push -u origin develop
 
 Tous les commits DOIVENT suivre **Conventional Commits** :
 
-```
+```text
 <type>(<scope>): <description courte>
 
 <body optionnel — détails, motivation, contexte>
@@ -519,7 +519,7 @@ docs(adr): ADR-0033 Accepted — workflow Git & versioning strategy
 
 ### Cycle de vie d'une feature
 
-```
+```text
 1. Créer la branche
    git checkout develop
    git pull origin develop
@@ -542,7 +542,7 @@ docs(adr): ADR-0033 Accepted — workflow Git & versioning strategy
 
 ### Cycle de vie d'un jalon (merge develop → main)
 
-```
+```text
 1. Vérifier que develop est stable
    - Tous les tests passent
    - Build produit un artefact valide
@@ -568,51 +568,51 @@ docs(adr): ADR-0033 Accepted — workflow Git & versioning strategy
 
 ### Version actuelle → version correcte
 
-| État                          | Version | Signification                                         |
-| ----------------------------- | ------- | ----------------------------------------------------- |
-| **Actuel** (2026-04-14)       | `0.1.0` | Arbitraire — pas de sémantique                        |
+| État | Version | Signification |
+| --- | --- | --- |
+| **Actuel** (2026-04-14) | `0.1.0` | Arbitraire — pas de sémantique |
 | **Après adoption de cet ADR** | `0.1.0` | Conservée — les prochains bumps auront une sémantique |
 
 > On ne bumpe pas la version maintenant. `0.1.0` devient rétroactivement « la baseline pré-strate 0 ». Le prochain bump (`0.1.1` ou `0.2.0`) sera le premier à avoir une sémantique réelle.
 
 ### Mapping versions → jalons
 
-| Version      | Jalon                 | Contenu attendu                                                  | Branche            |
-| ------------ | --------------------- | ---------------------------------------------------------------- | ------------------ |
-| `0.1.0`      | Baseline              | Corpus documentaire + infrastructure (état actuel)               | `main` actuel      |
-| `0.1.x`      | Patches strate 0 WIP  | Build pipeline (ADR-0032), PoC, correctifs                       | `develop` → `main` |
-| **`0.2.0`**  | **Fin strate 0**      | Entity, Channel, Radio — tests verts, build fonctionnel          | `develop` → `main` |
-| `0.2.x`      | Patches post-strate 0 | Correctifs, documentation                                        | `develop` → `main` |
-| **`0.3.0`**  | **Fin strate 1**      | Feature, Application — intégration Entity/Channel                | `develop` → `main` |
-| `0.3.x`      | Patches post-strate 1 | Correctifs, documentation                                        | `develop` → `main` |
-| **`0.4.0`**  | **Fin strate 2**      | Foundation, Composer, View, Behavior, Router — framework complet | `develop` → `main` |
-| `0.4.x`      | Patches post-strate 2 | Correctifs, stabilisation                                        | `develop` → `main` |
-| `1.0.0-rc.1` | Release candidate     | API gelée, tests E2E complets, documentation finale              | `develop` → `main` |
-| `1.0.0-rc.N` | Corrections RC        | Bug fixes uniquement, pas de nouvelles features                  | `develop` → `main` |
-| **`1.0.0`**  | **Release publique**  | Framework stable, premier `private: false`, publication npm      | `develop` → `main` |
+| Version | Jalon | Contenu attendu | Branche |
+| --- | --- | --- | --- |
+| `0.1.0` | Baseline | Corpus documentaire + infrastructure (état actuel) | `main` actuel |
+| `0.1.x` | Patches strate 0 WIP | Build pipeline (ADR-0032), PoC, correctifs | `develop` → `main` |
+| **`0.2.0`** | **Fin strate 0** | Entity, Channel, Radio — tests verts, build fonctionnel | `develop` → `main` |
+| `0.2.x` | Patches post-strate 0 | Correctifs, documentation | `develop` → `main` |
+| **`0.3.0`** | **Fin strate 1** | Feature, Application — intégration Entity/Channel | `develop` → `main` |
+| `0.3.x` | Patches post-strate 1 | Correctifs, documentation | `develop` → `main` |
+| **`0.4.0`** | **Fin strate 2** | Foundation, Composer, View, Behavior, Router — framework complet | `develop` → `main` |
+| `0.4.x` | Patches post-strate 2 | Correctifs, stabilisation | `develop` → `main` |
+| `1.0.0-rc.1` | Release candidate | API gelée, tests E2E complets, documentation finale | `develop` → `main` |
+| `1.0.0-rc.N` | Corrections RC | Bug fixes uniquement, pas de nouvelles features | `develop` → `main` |
+| **`1.0.0`** | **Release publique** | Framework stable, premier `private: false`, publication npm | `develop` → `main` |
 
 ### Règles de bump
 
 #### Pré-v1 (`0.x.y`) — API instable
 
-| Changement                          | Bump                                        | Exemple           |
-| ----------------------------------- | ------------------------------------------- | ----------------- |
-| Fin de strate (jalon majeur)        | **MINOR**                                   | `0.1.0` → `0.2.0` |
-| Nouvelle feature intra-strate       | **PATCH**                                   | `0.2.0` → `0.2.1` |
-| Bug fix                             | **PATCH**                                   | `0.2.1` → `0.2.2` |
-| Breaking change intra-strate        | **PATCH** + mention dans CHANGELOG          | `0.2.2` → `0.2.3` |
-| Documentation seule                 | Pas de bump                                 | —                 |
-| Refactoring interne sans impact API | Pas de bump (ou PATCH si release souhaitée) | —                 |
+| Changement | Bump | Exemple |
+| --- | --- | --- |
+| Fin de strate (jalon majeur) | **MINOR** | `0.1.0` → `0.2.0` |
+| Nouvelle feature intra-strate | **PATCH** | `0.2.0` → `0.2.1` |
+| Bug fix | **PATCH** | `0.2.1` → `0.2.2` |
+| Breaking change intra-strate | **PATCH** + mention dans CHANGELOG | `0.2.2` → `0.2.3` |
+| Documentation seule | Pas de bump | — |
+| Refactoring interne sans impact API | Pas de bump (ou PATCH si release souhaitée) | — |
 
 > **Note SemVer §4** : en `0.x.y`, les breaking changes n'imposent pas de bump MAJOR — c'est explicitement « tout peut changer ». On les documente dans le CHANGELOG mais on ne bumpe que le PATCH.
 
 #### Post-v1 (`x.y.z`) — SemVer strict
 
-| Changement                              | Bump      | Exemple           |
-| --------------------------------------- | --------- | ----------------- |
+| Changement | Bump | Exemple |
+| --- | --- | --- |
 | Breaking change (API publique modifiée) | **MAJOR** | `1.0.0` → `2.0.0` |
-| Nouvelle feature (rétrocompatible)      | **MINOR** | `1.0.0` → `1.1.0` |
-| Bug fix (rétrocompatible)               | **PATCH** | `1.1.0` → `1.1.1` |
+| Nouvelle feature (rétrocompatible) | **MINOR** | `1.0.0` → `1.1.0` |
+| Bug fix (rétrocompatible) | **PATCH** | `1.1.0` → `1.1.1` |
 
 ### Versioning synchronisé (monorepo)
 
@@ -696,10 +696,10 @@ Versioning : [SemVer](https://semver.org/lang/fr/)
 
 ### Tags Git
 
-| Format                            | Quand                         | Exemple                      |
-| --------------------------------- | ----------------------------- | ---------------------------- |
-| `v{MAJOR}.{MINOR}.{PATCH}`        | Chaque merge `develop → main` | `v0.2.0`, `v0.3.0`, `v1.0.0` |
-| `v{MAJOR}.{MINOR}.{PATCH}-rc.{N}` | Release candidates de la v1   | `v1.0.0-rc.1`, `v1.0.0-rc.2` |
+| Format | Quand | Exemple |
+| --- | --- | --- |
+| `v{MAJOR}.{MINOR}.{PATCH}` | Chaque merge `develop → main` | `v0.2.0`, `v0.3.0`, `v1.0.0` |
+| `v{MAJOR}.{MINOR}.{PATCH}-rc.{N}` | Release candidates de la v1 | `v1.0.0-rc.1`, `v1.0.0-rc.2` |
 
 **Règles** :
 
@@ -765,8 +765,8 @@ Versioning : [SemVer](https://semver.org/lang/fr/)
 
 ## Historique
 
-| Date       | Changement                                                                                                                                                                                                                                    |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-04-14 | Création (Proposed) — workflow Git Flow adapté + versioning SemVer `0.x.y`. 4 options Git (Git Flow, Git Flow adapté, GitHub Flow, Trunk-Based), 3 options versioning (SemVer pré-release, strate-based, alpha/beta labels)                   |
+| Date | Changement |
+| --- | --- |
+| 2026-04-14 | Création (Proposed) — workflow Git Flow adapté + versioning SemVer `0.x.y`. 4 options Git (Git Flow, Git Flow adapté, GitHub Flow, Trunk-Based), 3 options versioning (SemVer pré-release, strate-based, alpha/beta labels) |
 | 2026-04-14 | Ajout §8 Gestion de l'historique existant — 3 options (H1 conserver, H2 squash, H3 rebase), décision H2 (squash baseline). Justification : 0 clones, 0 forks, historique illisible, cohérence avec Conventional Commits. Exécution documentée |
-| 2026-04-17 | **Accepted** — workflow appliqué de facto (branches `develop` + `feature/*` actives). Passage formalisé suite à feedback review (point 5 : « Proposed mais déjà prescriptif »)                                                                |
+| 2026-04-17 | **Accepted** — workflow appliqué de facto (branches `develop` + `feature/*` actives). Passage formalisé suite à feedback review (point 5 : « Proposed mais déjà prescriptif ») |

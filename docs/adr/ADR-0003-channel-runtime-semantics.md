@@ -1,21 +1,21 @@
 # ADR-0003 : Channel Runtime Semantics
 
-| Champ         | Valeur           |
-| ------------- | ---------------- |
-| **Statut**    | 🔵 Tested      |
-| **Date**      | 2026-03-18       |
-| **Décideurs** | @ncac            |
-| **RFC liée**  | RFC-0002-channel |
+| Champ | Valeur |
+| --- | --- |
+| **Statut** | 🔵 Tested |
+| **Date** | 2026-03-18 |
+| **Décideurs** | @ncac |
+| **RFC liée** | RFC-0002-channel |
 
-> ### ⚠️ Amendement 2026-04-03 — Impact ADR-0023
+> ## ⚠️ Amendement 2026-04-03 — Impact ADR-0023
 >
 > **[ADR-0023](ADR-0023-request-reply-sync-vs-async.md)** (Accepted) révise D9 : `request()` retourne `T` **synchrone** (et non plus `Promise<T>`).
 > Les sections suivantes de cet ADR sont **partiellement supersédées** :
 >
 > - **Contraintes §Request** : `Promise<T>` → `T | null` sync
 > - **Question 2 (No Replier) — Cas A Timeout** : obsolète (un replier sync ne peut pas « prendre trop de temps »)
-
-> ### ⚠️ Amendement 2026-04-17 — Observabilité + frontière compile/runtime
+>
+> ## ⚠️ Amendement 2026-04-17 — Observabilité + frontière compile/runtime
 >
 > Suite à un feedback de review (PR #2), deux sections ajoutées :
 >
@@ -39,14 +39,14 @@ RFC-0002-channel définit le **contrat de typage** des Channels (tri-lane, TChan
 
 ### Questions à trancher
 
-| Question                                                                | Impact                                        |
-| ----------------------------------------------------------------------- | --------------------------------------------- |
-| **No handler** : un Command est envoyé mais aucun handler n'existe      | Erreur ? Silent ? Warning ?                   |
-| **No replier** : un Request est envoyé mais personne ne reply           | Timeout ? Erreur immédiate ? Pending infini ? |
-| **Ordre garanti** : les Events sont-ils reçus dans l'ordre d'émission ? | Correctness                                   |
-| **Teardown** : quand et comment unsubscribe les listeners ?             | Memory leaks                                  |
-| **Duplicate handlers** : deux handlers pour le même Command ?           | Architecture violation                        |
-| **Undelivered events** : un Event émis sans listeners                   | Warning ? Silent ?                            |
+| Question | Impact |
+| --- | --- |
+| **No handler** : un Command est envoyé mais aucun handler n'existe | Erreur ? Silent ? Warning ? |
+| **No replier** : un Request est envoyé mais personne ne reply | Timeout ? Erreur immédiate ? Pending infini ? |
+| **Ordre garanti** : les Events sont-ils reçus dans l'ordre d'émission ? | Correctness |
+| **Teardown** : quand et comment unsubscribe les listeners ? | Memory leaks |
+| **Duplicate handlers** : deux handlers pour le même Command ? | Architecture violation |
+| **Undelivered events** : un Event émis sans listeners | Warning ? Silent ? |
 
 ---
 
@@ -59,12 +59,12 @@ RFC-0002-channel définit le **contrat de typage** des Channels (tri-lane, TChan
 
 Cette contrainte a des conséquences majeures sur les vérifications runtime :
 
-| Vérification        | Sans TypeScript | Avec TypeScript                                                  |
-| ------------------- | --------------- | ---------------------------------------------------------------- |
-| Handler manquant    | Runtime check   | ✅ **Compile-time** via `implements TRequiredCommandHandlers<T>` |
-| Replier manquant    | Runtime check   | ✅ **Compile-time** via `implements TRequiredRequestHandlers<T>` |
-| Payload incorrect   | Runtime check   | ✅ **Compile-time** via typage générique                         |
-| Channel non déclaré | Runtime check   | ✅ **Compile-time** via `static readonly listen/request`         |
+| Vérification | Sans TypeScript | Avec TypeScript |
+| --- | --- | --- |
+| Handler manquant | Runtime check | ✅ **Compile-time** via `implements TRequiredCommandHandlers<T>` |
+| Replier manquant | Runtime check | ✅ **Compile-time** via `implements TRequiredRequestHandlers<T>` |
+| Payload incorrect | Runtime check | ✅ **Compile-time** via typage générique |
+| Channel non déclaré | Runtime check | ✅ **Compile-time** via `static readonly listen/request` |
 
 **Conséquence** : de nombreuses vérifications runtime deviennent **inutiles**.
 Les seuls cas runtime restants sont :
@@ -107,10 +107,10 @@ trigger("cart:unknownCommand", payload);
 // → throw NoHandlerError('cart:unknownCommand')
 ```
 
-| Avantages                   | Inconvénients                        |
-| --------------------------- | ------------------------------------ |
+| Avantages | Inconvénients |
+| --- | --- |
 | + Bug détecté immédiatement | - Crash si Feature pas encore loaded |
-| + Fail-fast                 | - Rigide                             |
+| + Fail-fast | - Rigide |
 
 #### Option 1B — Warning + silent fail
 
@@ -120,10 +120,10 @@ trigger("cart:unknownCommand", payload);
 // → Rien ne se passe
 ```
 
-| Avantages               | Inconvénients                |
-| ----------------------- | ---------------------------- |
-| + Résilient             | - Bug potentiellement masqué |
-| + Lazy loading friendly | - DX moins bonne             |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Résilient | - Bug potentiellement masqué |
+| + Lazy loading friendly | - DX moins bonne |
 
 #### Option 1C — Mode-dependent
 
@@ -133,8 +133,8 @@ trigger("cart:unknownCommand", payload);
 // strict → throw
 ```
 
-| Avantages             | Inconvénients                  |
-| --------------------- | ------------------------------ |
+| Avantages | Inconvénients |
+| --- | --- |
 | + Best of both worlds | - Configuration supplémentaire |
 
 **Recommandation** : **1C (Mode-dependent)** — cohérent avec ADR-0002.
@@ -155,10 +155,10 @@ trigger("cart:unknownCommand", payload);
 >
 > Restent **deux cas runtime distincts** :
 
-| Cas         | Cause                                             | Gestion                                   |
+| Cas | Cause | Gestion |
 | ----------- | ------------------------------------------------- | ----------------------------------------- |
-| **Timeout** | Replier trop lent (service externe, calcul lourd) | Timeout configurable                      |
-| **Erreur**  | Replier throw (service 500, validation, etc.)     | Propagation via `RequestError` (ADR-0002) |
+| **Timeout** | Replier trop lent (service externe, calcul lourd) | Timeout configurable |
+| **Erreur** | Replier throw (service 500, validation, etc.) | Propagation via `RequestError` (ADR-0002) |
 
 #### ~~Cas A : Timeout (reply trop long)~~ — OBSOLÈTE (ADR-0023)
 
@@ -171,7 +171,6 @@ const result = await request('pricing:getPrice', { id: '123' });
 // Après 5000ms → throw TimeoutError
 
 ````~~
-
 ~~| Config | Valeur | Notes |
 |--------|--------|-------|
 | **Global** | 5000ms (défaut) | Configurable au bootstrap |
@@ -246,11 +245,11 @@ onCartItemAddedEvent(payload) {
 
 #### Décision
 
-| Aspect                 | Décision                                        |
-| ---------------------- | ----------------------------------------------- |
-| **`emit()` signature** | `void` (fire-and-forget, non bloquant)          |
-| **Ordre sync**         | ✅ Garanti par JS single-thread                 |
-| **Ordre async**        | ⚠️ **Non garanti** — responsabilité développeur |
+| Aspec | Décision |
+| --- | --- |
+| **`emit()` signature** | `void` (fire-and-forget, non bloquant) |
+| **Ordre sync** | ✅ Garanti par JS single-thread |
+| **Ordre async** | ⚠️ **Non garanti** — responsabilité développeur |
 
 #### Pattern recommandé : Batch + Flush
 
@@ -357,12 +356,12 @@ class LoggingFeature extends Feature<...> {
 }
 ```
 
-| Aspect            | Décision                                       |
-| ----------------- | ---------------------------------------------- |
-| Exécution         | Séquentielle                                   |
-| Isolation erreurs | Oui (continue après throw)                     |
-| Priority          | Optionnelle, constantes sémantiques uniquement |
-| Nombres custom    | ❌ Interdit (pas de `priority: 99999`)         |
+| Aspect | Décision |
+| --- | --- |
+| Exécution | Séquentielle |
+| Isolation erreurs | Oui (continue après throw) |
+| Priority | Optionnelle, constantes sémantiques uniquement |
+| Nombres custom | ❌ Interdit (pas de `priority: 99999`) |
 
 **✅ Décision validée** : Séquentiel avec isolation, `ListenerPriority` optionnel.
 
@@ -410,11 +409,11 @@ abstract class View {
 }
 ```
 
-| Aspect       | Décision                           |
-| ------------ | ---------------------------------- |
-| Cleanup      | Automatique, géré par le framework |
-| API manuelle | ❌ Pas exposée                     |
-| Memory leaks | Impossibles (par design)           |
+| Aspect | Décision |
+| --- | --- |
+| Cleanup | Automatique, géré par le framework |
+| API manuelle | ❌ Pas exposée |
+| Memory leaks | Impossibles (par design) |
 
 **Justification** : exposer `unsubscribe()` n'apporte rien et crée un risque d'oubli.
 
@@ -444,10 +443,10 @@ emit("cart:itemAdded", item);
 // Personne n'écoute → rien ne se passe, normal
 ```
 
-| Avantages                                   | Inconvénients           |
-| ------------------------------------------- | ----------------------- |
+| Avantages | Inconvénients |
+| --- | --- |
 | + Events = broadcast, 0 listener est valide | - Peut masquer un oubli |
-| + Découplage total                          |                         |
+| + Découplage total | |
 
 #### Option 7B — Warning en dev
 
@@ -456,10 +455,10 @@ emit("cart:itemAdded", item);
 // production → silent
 ```
 
-| Avantages        | Inconvénients       |
-| ---------------- | ------------------- |
-| + Aide au debug  | - Peut être verbeux |
-| + Silent en prod |                     |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Aide au debug | - Peut être verbeux |
+| + Silent en prod | |
 
 **Recommandation** : **7A (Silent)** — 0 listeners est sémantiquement valide pour un broadcast.
 
@@ -471,25 +470,25 @@ emit("cart:itemAdded", item);
 
 ### Vérifications compile-time (TypeScript)
 
-| Vérification       | Mécanisme                                           |
-| ------------------ | --------------------------------------------------- |
-| Handler manquant   | `implements TRequiredCommandHandlers<T>`            |
-| Replier manquant   | `implements TRequiredRequestHandlers<T>`            |
-| Payload incorrect  | Typage générique `TChannel['commands'][K]`          |
+| Vérification | Mécanisme |
+| --- | --- |
+| Handler manquant | `implements TRequiredCommandHandlers<T>` |
+| Replier manquant | `implements TRequiredRequestHandlers<T>` |
+| Payload incorrect | Typage générique `TChannel['commands'][K]` |
 | Duplicate handlers | Impossible par architecture (1 Channel = 1 Feature) |
 
 ### Vérifications runtime
 
-| Question                  | Décision                                                                                  | Statut      |
-| ------------------------- | ----------------------------------------------------------------------------------------- | ----------- |
-| No handler (lazy loading) | Mode-dependent (dev: throw, prod: warn)                                                   | ✅          |
-| ~~Request timeout~~       | ~~5s défaut, configurable global + par request~~ → **Obsolète** (ADR-0023 : replier sync) | ❌ Supprimé |
-| Request erreur            | Replier throw → retourne `null` sync (D44 révisé par ADR-0023)                            | ✅ Amendé   |
-| Ordre Events (sync)       | Garanti par JS single-thread                                                              | ✅          |
-| Ordre Events (async)      | Non garanti — pattern Batch+Flush                                                         | ✅          |
-| Ordre Listeners           | Séquentiel + isolation + ListenerPriority                                                 | ✅          |
-| Teardown                  | Automatique via lifecycle                                                                 | ✅          |
-| Event sans listeners      | Silent (valide)                                                                           | ✅          |
+| Question | Décision | Statut |
+| --- | --- | --- |
+| No handler (lazy loading) | Mode-dependent (dev: throw, prod: warn) | ✅ |
+| ~~Request timeout~~ | ~~5s défaut, configurable global + par request~~ → **Obsolète** (ADR-0023 : replier sync) | ❌ Supprimé |
+| Request erreur | Replier throw → retourne `null` sync (D44 révisé par ADR-0023) | ✅ Amendé |
+| Ordre Events (sync) | Garanti par JS single-thread | ✅ |
+| Ordre Events (async) | Non garanti — pattern Batch+Flush | ✅ |
+| Ordre Listeners | Séquentiel + isolation + ListenerPriority | ✅ |
+| Teardown | Automatique via lifecycle | ✅ |
+| Event sans listeners | Silent (valide) | ✅ |
 
 ---
 
@@ -515,7 +514,6 @@ const app = createApplication({
 > `requestTimeout` supprimé par ADR-0023 (replier synchrone).
 
 ````
-
 ---
 
 ## Conséquences
@@ -655,10 +653,10 @@ Le `console.error` dans l'implémentation technique ci-dessus est un **minimum**
 
 ### Deux modes de reporting
 
-| Mode             | Comportement                                                                                                              | Justification                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| **dev / strict** | `console.error` + compteur interne + **optionnel `throw`** si flag `strict: true` dans la config channel                  | Fail-fast pour les tests et le développement — le développeur voit immédiatement le problème |
-| **prod**         | `ErrorReporter.captureRequestError(namespace, name, error)` → hook injectable (Sentry, DataDog, custom) + retourne `null` | Résilience pour l'utilisateur final, mais remontée centralisée pour le monitoring            |
+| Mode | Comportement | Justification |
+| --- | --- | --- |
+| **dev / strict** | `console.error` + compteur interne + **optionnel `throw`** si flag `strict: true` dans la config channel | Fail-fast pour les tests et le développement — le développeur voit immédiatement le problème |
+| **prod** | `ErrorReporter.captureRequestError(namespace, name, error)` → hook injectable (Sentry, DataDog, custom) + retourne `null` | Résilience pour l'utilisateur final, mais remontée centralisée pour le monitoring |
 
 ### Configuration
 
@@ -769,13 +767,13 @@ if (price === null) {
 
 ### Matrice des garanties selon le mode
 
-| Garantie                     | Compile-time (bundle IIFE)                  | Runtime (ESM + lazy)                                   | Mécanisme runtime                                                                           |
-| ---------------------------- | ------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| **Handler Command existe**   | ✅ `implements TRequiredCommandHandlers<T>` | ⚠️ Le module peut ne pas être chargé                   | `app.start()` vérifie la complétude ; `noHandler: 'mode-dependent'` pour le lazy post-start |
-| **Replier Request existe**   | ✅ `implements TRequiredRequestHandlers<T>` | ⚠️ Le module peut ne pas être chargé                   | `app.start()` vérifie ; `request()` retourne `null` si absent                               |
-| **Pas de duplicate handler** | ✅ Architecture (1 Channel = 1 Feature)     | ✅ `BonsaiRegistry` vérifie I21 au `registerFeature()` | Erreur immédiate `BonsaiRegistryError`                                                      |
-| **Payload correct**          | ✅ Generics contraints                      | ✅ Cross-module via `.d.ts` (ADR-0019 C7)              | Compile-time même en ESM si `.d.ts` présents                                                |
-| **Namespace unique**         | ✅ Bootstrap assertion                      | ✅ `BonsaiRegistry` + `app.start()`                    | `BonsaiRegistryError` + I21/I24                                                             |
+| Garantie | Compile-time (bundle IIFE) | Runtime (ESM + lazy) | Mécanisme runtime |
+| --- | --- | --- | --- |
+| **Handler Command existe** | ✅ `implements TRequiredCommandHandlers<T>` | ⚠️ Le module peut ne pas être chargé | `app.start()` vérifie la complétude ; `noHandler: 'mode-dependent'` pour le lazy post-start |
+| **Replier Request existe** | ✅ `implements TRequiredRequestHandlers<T>` | ⚠️ Le module peut ne pas être chargé | `app.start()` vérifie ; `request()` retourne `null` si absent |
+| **Pas de duplicate handler** | ✅ Architecture (1 Channel = 1 Feature) | ✅ `BonsaiRegistry` vérifie I21 au `registerFeature()` | Erreur immédiate `BonsaiRegistryError` |
+| **Payload correct** | ✅ Generics contraints | ✅ Cross-module via `.d.ts` (ADR-0019 C7) | Compile-time même en ESM si `.d.ts` présents |
+| **Namespace unique** | ✅ Bootstrap assertion | ✅ `BonsaiRegistry` + `app.start()` | `BonsaiRegistryError` + I21/I24 |
 
 ### Invariant I66 : le bootstrap est la frontière de confiance
 
@@ -790,12 +788,12 @@ if (price === null) {
 
 ### Ce que le type system NE PEUT PAS garantir
 
-| Contournement                     | Risque                                    | Mitigation                                                                          |
-| --------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------- |
-| `as any` / `@ts-ignore`           | Tout invariant compile-time tombe         | Lint rule `no-explicit-any` + code review                                           |
-| `import()` dynamique sans `await` | Module pas encore chargé quand on trigger | Convention : `await import()` puis `BonsaiRegistry.collect()` (ADR-0019)            |
-| Cast de payload                   | Payload incorrect à runtime               | Validation Valibot au handler (ADR-0022) — filet de sécurité runtime                |
-| Modules JS sans `.d.ts`           | Perte totale de type-safety inter-module  | `bonsai build --mode=esm` refuse de produire un artefact sans `.d.ts` (ADR-0019 C7) |
+| Contournement | Risque | Mitigation |
+| --- | --- | --- |
+| `as any` / `@ts-ignore` | Tout invariant compile-time tombe | Lint rule `no-explicit-any` + code review |
+| `import()` dynamique sans `await` | Module pas encore chargé quand on trigger | Convention : `await import()` puis `BonsaiRegistry.collect()` (ADR-0019) |
+| Cast de payload | Payload incorrect à runtime | Validation Valibot au handler (ADR-0022) — filet de sécurité runtime |
+| Modules JS sans `.d.ts` | Perte totale de type-safety inter-module | `bonsai build --mode=esm` refuse de produire un artefact sans `.d.ts` (ADR-0019 C7) |
 
 ---
 
@@ -811,11 +809,11 @@ if (price === null) {
 
 ## Historique
 
-| Date       | Changement                                                                                                                                                                                                        |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-03-17 | Création (Proposed) — 7 questions documentées                                                                                                                                                                     |
-| 2026-03-18 | Prérequis TypeScript ajouté, questions 6 caduque                                                                                                                                                                  |
-| 2026-03-18 | **Accepted** — Toutes les décisions validées                                                                                                                                                                      |
-| 2026-04-03 | **Amendement ADR-0023** — Request Lane sync : timeout supprimé, erreur → `null` sync, implémentation amendée, I29 révisé                                                                                          |
+| Date | Changement |
+| --- | --- |
+| 2026-03-17 | Création (Proposed) — 7 questions documentées |
+| 2026-03-18 | Prérequis TypeScript ajouté, questions 6 caduque |
+| 2026-03-18 | **Accepted** — Toutes les décisions validées |
+| 2026-04-03 | **Amendement ADR-0023** — Request Lane sync : timeout supprimé, erreur → `null` sync, implémentation amendée, I29 révisé |
 | 2026-04-17 | **Amendement observabilité + frontière compile/runtime** — §Observabilité Request Lane (I65, ErrorReporter dev/prod), §Frontière compile-time/runtime (I66, matrice ESM vs bundle). Suite à feedback review PR #2 |
 | 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

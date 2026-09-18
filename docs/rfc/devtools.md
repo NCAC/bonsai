@@ -4,16 +4,17 @@
 
 ---
 
-| Champ             | Valeur                                      |
-|-------------------|---------------------------------------------|
-| **RFC**           | 0004                                        |
-| **Composant**     | DevTools — infrastructure d'observabilité   |
-| **Statut**        | 🟡 Draft — aligné sur `rfc/README.md`/`docs/README.md` (rien n'est livré, cf. bandeau de périmètre ci-dessous) |
-| **Créé le**       | 2026-03-23                                  |
-| **Mis à jour**    | 2026-03-26                                  |
-| **ADRs liées**    | [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md), [ADR-0002](../adr/ADR-0002-error-propagation-strategy.md), [ADR-0004](../adr/ADR-0004-validation-modes.md), [ADR-0011](../adr/ADR-0011-event-sourcing-support.md), [ADR-0015](../adr/ADR-0015-local-state-mechanism.md) |
+| Champ | Valeur |
+| --- | --- |
+| **RFC** | 0004 |
+| **Composant** | DevTools — infrastructure d'observabilité |
+| **Statut** | 🟡 Draft — aligné sur `rfc/README.md`/`docs/README.md` (rien n'est livré, cf. bandeau de périmètre ci-dessous) |
+| **Créé le** | 2026-03-23 |
+| **Mis à jour** | 2026-03-26 |
+| **ADRs liées** | [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md), [ADR-0002](../adr/ADR-0002-error-propagation-strategy.md), [ADR-0004](../adr/ADR-0004-validation-modes.md), [ADR-0011](../adr/ADR-0011-event-sourcing-support.md), [ADR-0015](../adr/ADR-0015-local-state-mechanism.md) |
 
-> ### Statut normatif
+> ## Statut normatif
+>
 > Ce document définit le **scope v1 des DevTools** : contrats d'instrumentation,
 > API d'inspection, hooks framework, coût en production.
 > Les sections marquées ⏳ sont des extensions prévues post-v1.
@@ -21,12 +22,12 @@
 
 ---
 
-> ### ⏳ Périmètre d'implémentation (ADR-0028)
+> ## ⏳ Périmètre d'implémentation (ADR-0028)
 >
 > Ce document décrit le **contrat cible** des DevTools. **Aucun élément n'est encore implémenté** :
 >
 > | Élément | Strate cible | Sections concernées |
-> | ------- | ------------ | ------------------- |
+> | --- | --- | --- |
 > | `app.devTools` (`TBonsaiDevTools`), hooks, Event Ledger, snapshot/restore | Strate 2c | §3 à §8 |
 > | Configuration `enableDevTools`/`debug` | Strate 2c (point d'entrée de configuration non tranché) | §3.1, §9 |
 > | Time-travel, UI DevTools, profiling | Post-v1 | §10 |
@@ -61,7 +62,7 @@
 Sans DevTools, les problèmes suivants deviennent très difficiles à diagnostiquer :
 
 | Problème sans DevTools | Conséquence |
-|------------------------|-------------|
+| --- | --- |
 | Chaîne causale cassée (hop > maxHops) | Message "Max hops exceeded" sans contexte — impossible à remonter |
 | Event émis mais View non mise à jour | Vérifier visuellement si le Channel est câblé, si le selector `any` correspond |
 | Mutation Entity sans notification attendue | Inspecter `changedKeys`, vérifier le no-op |
@@ -79,7 +80,7 @@ Sans DevTools, les problèmes suivants deviennent très difficiles à diagnostiq
 ### ✅ Inclus dans le scope v1
 
 | Fonctionnalité | Description |
-|---------------|-------------|
+| --- | --- |
 | **Activation conditionnelle** | `enableDevTools: true` dans `TApplicationConfig` — zéro coût en production si désactivé |
 | **Inspection des Channels** | Liste des Channels enregistrés, handlers câblés, listeners actifs |
 | **Inspection et collecte des erreurs** | Ring buffer, hooks `onError()` / `getErrors()` / `getErrorsByInvariantId()`, liaison avec ADR-0002 ErrorReporter |
@@ -92,7 +93,7 @@ Sans DevTools, les problèmes suivants deviennent très difficiles à diagnostiq
 ### ⏳ Extensions post-v1
 
 | Fonctionnalité | Description |
-|---------------|-------------|
+| --- | --- |
 | **Time-travel** | Undo/redo via `inversePatches` d'Immer — rejouer l'état à un instant T |
 | **UI DevTools** | Extension navigateur (Chrome DevTools panel) |
 | **Profiling** | Mesure des temps d'exécution par handler, par Channel |
@@ -311,7 +312,7 @@ Toute `BonsaiError` capturée par le framework (Entity, Feature, Channel, View) 
 ### 5.2 Comportement par mode
 
 | Mode | `console.error()` | Ring buffer | Reporter custom | DevTools `onError()` |
-|------|-------------------|-------------|-----------------|---------------------|
+| --- | --- | --- | --- | --- |
 | `development` | ✅ Immédiat | ✅ Stocké | ✅ Si configuré | ✅ Appelé |
 | `production` | ❌ Silencieux | ✅ Stocké (FIFO) | ✅ Si configuré | ✅ Appelé |
 | `strict` (tests) | ✅ Immédiat | ❌ Pas de stockage | ❌ | ❌ Throw direct |
@@ -355,8 +356,8 @@ expect(app.devTools!.getErrorsByInvariantId('ADR-0002')).toHaveLength(1); // Mut
 
 ### 5.5 Erreurs applicatives vs erreurs d'infrastructure
 
-| Type | Exemple | Canal de communication | Concerne le DevTools ? |
-|------|---------|----------------------|----------------------|
+| Typ | Exemple | Canal de communication | Concerne le DevTools ? |
+| --- | --- | --- | --- |
 | **Infrastructure** | `RenderError`, `TimeoutError`, `MutationError` | ErrorReporter (automatique) | ✅ Oui |
 | **Applicative** | "Article en rupture de stock" | Channel métier (`cart:addItemFailed` Event) | ❌ Non — c'est du domain state |
 
@@ -450,7 +451,7 @@ app.devTools!.restoreSnapshot(savedSnapshot);
 ### 8.2 Garanties du restore
 
 | Aspect | Comportement |
-|--------|-------------|
+| --- | --- |
 | **Validation** | Le framework vérifie la conformité du snapshot (`TJsonSerializable`, structure compatible) |
 | **Notifications** | La restauration déclenche les notifications Entity → Feature pour chaque Entity modifiée |
 | **Views** | La restauration déclenche un `any` sur tous les Channels, forçant la re-projection des Views |
@@ -463,7 +464,7 @@ app.devTools!.restoreSnapshot(savedSnapshot);
 ### 9.1 Stratégie zéro-coût
 
 | Config | Overhead mémoire | Overhead CPU | Instruments actifs |
-|--------|-----------------|-------------|-------------------|
+| --- | --- | --- | --- |
 | `enableDevTools: false` (défaut prod) | ✅ Zéro | ✅ Zéro | Aucun |
 | `enableDevTools: true, debug: false` | ~KB (log buffer) | Minimal (hooks) | Event Ledger, inspection |
 | `enableDevTools: true, debug: true` | ~KB + freeze | Modéré (freeze + logs) | Tout |
@@ -511,6 +512,7 @@ app.devTools!.travelTo(timestamp); // Rejoue l'état à un instant T
 ### 10.2 Extension navigateur
 
 Interface utilisateur sous forme d'extension Chrome/Firefox :
+
 - Panel "Bonsai DevTools" dans les DevTools du navigateur
 - Visualisation en temps réel de l'Event Ledger
 - Graphe causal interactif (cliquer sur un message pour voir sa chaîne)
@@ -533,7 +535,7 @@ const report = app.devTools!.stopProfiling();
 ## Références croisées
 
 | Section | Concept | Lien DevTools |
-|-------------------|---------|---------------|
+| --- | --- | --- |
 | [application.md §4 `enableDevTools`](3-couche-abstraite/application.md#4-configuration-globale--cible-point-dinjection-non-tranché) | Flag dans `TApplicationConfig` | Active/désactive les hooks |
 | [Metas — traçabilité causale](2-architecture/metas.md) | `correlationId`, `causationId`, `hop` | Graphe causal, Event Ledger |
 | [§1 Motivation et position architecturale](#1-motivation-et-position-architecturale) | Principes d'observabilité | Motivation des DevTools |

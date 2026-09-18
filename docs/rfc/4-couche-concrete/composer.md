@@ -6,31 +6,31 @@
 
 ---
 
-| Champ          | Valeur                                                                                                                                                                                                                              |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Composant**  | Composer                                                                                                                                                                                                                            |
-| **Couche**     | Concrete (ephemere)                                                                                                                                                                                                                 |
-| **Source**     | Historique : RFC-0002-api-contrats-typage §12                                                                                                                                                                                       |
-| **Statut**     | Stable                                                                                                                                                                                                                              |
+| Champ | Valeur |
+| --- | --- |
+| **Composant** | Composer |
+| **Couche** | Concrete (ephemere) |
+| **Source** | Historique : RFC-0002-api-contrats-typage §12 |
+| **Statut** | Stable |
 | **ADRs liées** | ADR-0020 (N-instances, scope immutable), ADR-0024 (pattern manifeste value-first), ADR-0025 (pas de hooks lifecycle), ADR-0026 (rootElement string-only CSS), ADR-0027 (resolve(event) argument unique), ADR-0028 (phasage strates) |
 
 ---
 
-> ### ⏳ Périmètre d'implémentation (ADR-0028)
+> ## ⏳ Périmètre d'implémentation (ADR-0028)
 >
 > Ce document décrit le **contrat cible complet** du Composer. Pour s'aligner
 > sur la stratégie de phasage kernel-first, certaines capacités sont **différées
 > en strate 1 ou 2** et ne sont **pas implémentées en strate 0** :
 >
-> | Élément                                                            | Strate cible | Sections concernées     |
-> | ------------------------------------------------------------------ | ------------ | ----------------------- |
-> | `get params()` avec `listen` / `request` (ADR-0024)                | Strate 1     | §1.1, §1.2, §2.2, §2.3  |
-> | Type `TComposerEvent<TListen>` (union discriminée typée)           | Strate 1     | §1.1, §1.2, §3          |
-> | Generic de classe `Composer<TCapabilities>`                        | Strate 1     | §1.2                    |
-> | `protected request()` (request/reply synchrone)                    | Strate 1     | §1.2, §2.2, §2.3        |
-> | Auto-discovery handlers Channel                                    | Strate 1     | §3                      |
-> | Retour `TResolveResult[]` (N-instances hétérogènes, ADR-0020 §6.3) | Strate 2     | §3.2                    |
-> | Champ `options` dans `TResolveResult` (D34 merge)                  | Strate 2     | §1.1, §4.1 (étapes 3-4) |
+> | Élément | Strate cible | Sections concernées |
+> | --- | --- | --- |
+> | `get params()` avec `listen` / `request` (ADR-0024) | Strate 1 | §1.1, §1.2, §2.2, §2.3 |
+> | Type `TComposerEvent<TListen>` (union discriminée typée) | Strate 1 | §1.1, §1.2, §3 |
+> | Generic de classe `Composer<TCapabilities>` | Strate 1 | §1.2 |
+> | `protected request()` (request/reply synchrone) | Strate 1 | §1.2, §2.2, §2.3 |
+> | Auto-discovery handlers Channel | Strate 1 | §3 |
+> | Retour `TResolveResult[]` (N-instances hétérogènes, ADR-0020 §6.3) | Strate 2 | §3.2 |
+> | Champ `options` dans `TResolveResult` (D34 merge) | Strate 2 | §1.1, §4.1 (étapes 3-4) |
 > | Composers enfants, `get templates()`, `view.onDetach()`, désinscription Channel/DOM au détachement, cascade de destruction par scan de projection | Strate 1/2 | §4.1 (étapes 5-12), §4.2, §5 |
 > | Machine à états `idle/resolving/active(Views)/detaching/[destroyed]` | Strate 1 | §6 |
 >
@@ -65,8 +65,7 @@
 > TFeatureContract` + `class extends Composer<TComposerContract<typeof
 > features>>`, **pas** `TComposerParams`/`get params()`. Les exemples des §1–4
 > ci-dessous, écrits avant cette clarification, restent en forme ADR-0024 et
-> seront réécrits à l'implémentation strate 1 (cf. [ADR-0042 §Actions de
-> suivi](../../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md)).
+> seront réécrits à l'implémentation strate 1 (cf. [ADR-0042 §Actions de suivi](../../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md)).
 
 ---
 
@@ -74,10 +73,10 @@
 
 1. [Classe abstraite Composer](#1-classe-abstraite-composer)
 2. [Exemples de Composers](#2-exemples-de-composers)
-3. [Méthode resolve()](#3-methode-resolve)
+3. [Méthode resolve()](#3-méthode-resolve)
 4. [Cycle de vie et attachement](#4-cycle-de-vie-et-attachement)
 5. [Cascade de destruction](#5-cascade-de-destruction)
-6. [Cycle de vie -- machine a états](#6-cycle-de-vie----machine-a-etats)
+6. [Cycle de vie -- machine a états](#6-cycle-de-vie----machine-a-états)
 
 ---
 
@@ -380,7 +379,7 @@ class MainContentComposer extends Composer<TMainComposerCapabilities> {
 > C'est le pattern recommande pour les decisions multi-dimensionnelles (ADR-0027 §4.3).
 > L'argument `event` indique **quel Channel a change**, mais le Composer
 > peut toujours requeter l'état complet via `request()`.
-
+>
 > **Pas de `onXxxEvent` handlers** (ADR-0027) — le Composer n'a pas de méthodes
 > `onRouterRouteChangedEvent()` ni `onAuthStateChangedEvent()`. L'Event est reçu
 > en argument de `resolve()`. Pas de stockage intermediaire, pas de pseudo-state.
@@ -392,11 +391,11 @@ class MainContentComposer extends Composer<TMainComposerCapabilities> {
 `resolve(event)` est l'unique méthode abstraite du Composer (ADR-0027).
 Le framework l'appelle avec l'Event declencheur en argument :
 
-| Quand                     | Argument `event`                                                                                                            |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Premier montage**       | `null` — le scope existe pour la première fois (bootstrap ou apparition dynamique)                                          |
-| **Après un Event**        | `TComposerEvent` — l'Event écoute (listen) qui a declenche le recalcul. Discriminant, namespace, eventName et payload types |
-| **Reapparition du scope** | `null` — le scope avait disparu puis reapparait (ex: projection de la View parente)                                         |
+| Quand | Argument `event` |
+| --- | --- |
+| **Premier montage** | `null` — le scope existe pour la première fois (bootstrap ou apparition dynamique) |
+| **Après un Event** | `TComposerEvent` — l'Event écoute (listen) qui a declenche le recalcul. Discriminant, namespace, eventName et payload types |
+| **Reapparition du scope** | `null` — le scope avait disparu puis reapparait (ex: projection de la View parente) |
 
 > **ADR-0027** : l'Event est passe **en argument**, pas via un handler `onXxxEvent()`.
 > Le Composer n'a pas de state local ou le stocker — il recalcule sa decision a chaque appel.
@@ -407,14 +406,14 @@ Le framework l'appelle avec l'Event declencheur en argument :
 
 ### 3.1 Diff pour le retour simple (`TResolveResult | null`)
 
-| `resolve()` retourne | View montee         | Action framework                         |
-| -------------------- | ------------------- | ---------------------------------------- |
+| `resolve()` retourne | View montee | Action framework |
+| --- | --- | --- |
 | `SameView`, même `rootElement` | `SameView` instance | **No-op** (instance conservee, aucun remount) |
 | `SameView`, `rootElement` **different** | `SameView` instance | **Detach** -> **Attach** (traite comme un changement de View, pas comme un no-op) |
-| `NewView`            | `OldView` instance  | **Detach** OldView -> **Attach** NewView |
-| `NewView`            | null                | **Attach** NewView                       |
-| null                 | `OldView` instance  | **Detach** OldView                       |
-| null                 | null                | **No-op**                                |
+| `NewView` | `OldView` instance | **Detach** OldView -> **Attach** NewView |
+| `NewView` | null | **Attach** NewView |
+| null | `OldView` instance | **Detach** OldView |
+| null | null | **No-op** |
 
 ### 3.2 Diff pour le retour tableau (`TResolveResult[]`) -- ADR-0020
 
@@ -422,7 +421,7 @@ Le framework l'appelle avec l'Event declencheur en argument :
 > différé en strate 2. En strate 0, `resolve()` retourne strictement
 > `TResolveResult | null` (cf. §3.1 et l'encadré périmètre en tête).
 
-```
+```text
 resolve() retourne R' (nouveau)           Etat precedent R (ancien)
   -----------------------------------------------------------------
   Pour chaque resultat r dans R' :
@@ -445,7 +444,7 @@ resolve() retourne R' (nouveau)           Etat precedent R (ancien)
 
 ### 4.1 Sequence d'attachement (normative)
 
-```
+```text
 1. Composer.resolve(event) -> { view: ViewClass, rootElement, options? } (D34, ADR-0020, ADR-0027)
    --- le framework prend le relais ---
 2. view = new ViewClass()
@@ -475,7 +474,7 @@ resolve() retourne R' (nouveau)           Etat precedent R (ancien)
 
 ### 4.2 Sequence de detachement (normative)
 
-```
+```text
 1. Composer decide de detacher (resolve(event) -> null ou autre ViewClass)
    --- le framework prend le relais ---
 2. Pour chaque Composer enfant de la View :
@@ -498,7 +497,7 @@ resolve() retourne R' (nouveau)           Etat precedent R (ancien)
 
 Quand un slot disparait du DOM (suite a une projection de la View parente) :
 
-```
+```text
 View parente : projection (PDR)
   |  project() ou reconcile() supprime/modifie le DOM
   |
@@ -539,20 +538,20 @@ View parente : projection (PDR)
 > pas de `destroyed` (aucune notion de destruction n'est livree). `#state`
 > passe a `"active"` dans `#attachNew()` et a `"idle"` dans `#detachCurrent()`.
 
-```
+```text
 idle -> resolving -> active(Views) -> detaching -> idle
                    ^                |
                    +-- re-resolve --+  (diff Views)
                                    | [destroyed] (si View parente detruite)
 ```
 
-| État            | Description                                                  | Transitions                                                                       |
-| --------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------- |
-| `idle`          | Scope present, aucune View montee                            | -> `resolving` si condition remplie                                               |
-| `resolving`     | `resolve()` appele, Views determinees                        | -> `active(Views)` si resultat non-null, -> `idle` si null                        |
-| `active(Views)` | 1/N Views montees dans le scope                              | -> `resolving` si `resolve()` recalcule (diff), -> `detaching` si scope disparait |
-| `detaching`     | Detachement recursif des Views et de leurs Composers enfants | -> `idle` (scope toujours la) ou `destroyed` (scope disparu)                      |
-| `destroyed`     | Scope definitivement disparu (View parente detruite)         | -- (terminal)                                                                     |
+| État | Description | Transitions |
+| --- | --- | --- |
+| `idle` | Scope present, aucune View montee | -> `resolving` si condition remplie |
+| `resolving` | `resolve()` appele, Views determinees | -> `active(Views)` si resultat non-null, -> `idle` si null |
+| `active(Views)` | 1/N Views montees dans le scope | -> `resolving` si `resolve()` recalcule (diff), -> `detaching` si scope disparait |
+| `detaching` | Detachement recursif des Views et de leurs Composers enfants | -> `idle` (scope toujours la) ou `destroyed` (scope disparu) |
+| `destroyed` | Scope definitivement disparu (View parente detruite) | -- (terminal) |
 
 > **Invariants de transition** :
 >

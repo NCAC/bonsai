@@ -15,8 +15,8 @@
 >
 > Les briques courantes à utiliser au moment de la livraison du Router seront :
 >
->   - **Feature** : `class extends Feature<E, TDef, "router">` + `static readonly channel: TChannelToken<TDef, "router">` (ADR-0040). Plus de `static namespace` (I68).
->   - **Identité** : la clé `"router"` du manifest applicatif est l'autorité unique du namespace, réservée par le framework (I28, I68).
+> - **Feature** : `class extends Feature<E, TDef, "router">` + `static readonly channel: TChannelToken<TDef, "router">` (ADR-0040). Plus de `static namespace` (I68).
+> - **Identité** : la clé `"router"` du manifest applicatif est l'autorité unique du namespace, réservée par le framework (I28, I68).
 >
 > Le document sera réécrit à la livraison du Router.
 
@@ -46,7 +46,7 @@ class RouterFeature extends Feature<RouteEntity, TRouterDef, "router"> {
 ```
 
 | Aspect | Détail |
-|--------|--------|
+| --- | --- |
 | **Instanciation** | Par Application au bootstrap — pas par `register()` |
 | **Namespace** | `router` — réservé (`RESERVED_NAMESPACES`, I71) |
 | **History API** | Accès exclusif — aucun autre composant ne touche `window.history` |
@@ -72,7 +72,7 @@ class RouterFeature extends Feature<RouteEntity, TRouterDef, "router"> {
 ### Commands (trigger par les Views/Behaviors)
 
 | Command | Payload | Description |
-|---------|---------|-------------|
+| --- | --- | --- |
 | `router:navigate` | `{ path: string, params?: Record<string, string> }` | Navigation programmatique |
 | `router:back` | `void` | Historique arrière |
 | `router:forward` | `void` | Historique avant |
@@ -80,7 +80,7 @@ class RouterFeature extends Feature<RouteEntity, TRouterDef, "router"> {
 ### Events (emit par le Router)
 
 | Event | Payload | Description |
-|-------|---------|-------------|
+| --- | --- | --- |
 | `router:routeChanged` | `TRouteState` | Émis après chaque changement de route |
 
 > Les Features qui réagissent à la navigation écoutent `router:routeChanged`.
@@ -89,7 +89,7 @@ class RouterFeature extends Feature<RouteEntity, TRouterDef, "router"> {
 ### Requests
 
 | Request | Params | Result | Description |
-|---------|--------|--------|-------------|
+| --- | --- | --- | --- |
 | `router:currentRoute` | `void` | `TRouteState` | Lecture de la route courante |
 
 ---
@@ -144,7 +144,7 @@ type TRouterDef = TChannelDefinition & {
 
 ## 5. Flux de navigation canonique
 
-```
+```text
 1. View → trigger(router:navigate, { path: '/products/42' })
 2. RouterFeature ← handle(router:navigate)
 3. RouterFeature → window.history.pushState(...)

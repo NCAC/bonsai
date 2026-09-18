@@ -8,12 +8,12 @@
 
 ---
 
-| Champ        | Valeur                                                                                                                                                              |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Audience** | Développeur applicatif écrivant une Feature Bonsai                                                                                                                  |
-| **Statut**   | 🟢 Stable                                                                                                                                                            |
-| **Date**     | 2026-09-17 (réécrit — audit doc, régression : le mécanisme `static readonly channels: ExternalOf<…>[]` décrit précédemment est supersédé depuis ADR-0040/ADR-0046) |
-| **Sources**  | [ADR-0039](../adr/ADR-0039-namespace-authority-and-uniqueness.md), [ADR-0040](../adr/ADR-0040-typescript-first-api-channel-definition-typed.md), [ADR-0046](../adr/ADR-0046-feature-contract-refonte.md), [RFC feature.md](../rfc/3-couche-abstraite/feature.md), invariants I21, I24, I68–I73, I93, I95 |
+| Champ | Valeur |
+| ----- | ------ |
+| **Audience** | Développeur applicatif écrivant une Feature Bonsai |
+| **Statut** | 🟢 Stable |
+| **Date** | 2026-09-17 (réécrit — audit doc, régression : le mécanisme `static readonly channels: ExternalOf<…>[]` décrit précédemment est supersédé depuis ADR-0040/ADR-0046) |
+| **Sources** | [ADR-0039](../adr/ADR-0039-namespace-authority-and-uniqueness.md), [ADR-0040](../adr/ADR-0040-typescript-first-api-channel-definition-typed.md), [ADR-0046](../adr/ADR-0046-feature-contract-refonte.md), [RFC feature.md](../rfc/3-couche-abstraite/feature.md), invariants I21, I24, I68–I73, I93, I95 |
 
 ---
 
@@ -117,7 +117,7 @@ badge existe au runtime et n'importe qui peut le lire.
 > ⚠️ **Pas de `ExternalOf<TSelfNS>` compile-time** : `listens`/`queries`
 > retournent `readonly TChannelToken<TChannelDefinition, string>[]` — un type
 > générique, pas contraint aux namespaces externes du manifest. Rien
-> n'empêche *au compile-time* qu'une Feature déclare `get listens() { return
+> n'empêche _au compile-time_ qu'une Feature déclare `get listens() { return
 > [CartFeature.channel] }` dans `CartFeature` elle-même (auto-écoute), ni
 > qu'elle référence un token dont le namespace n'existe dans aucun manifest.
 > Les deux cas sont détectés **au runtime**, en Phase 0c du bootstrap
@@ -160,17 +160,17 @@ signale **immédiatement** (`TStrictFeatureClass<NS>`, I95).
 
 ## Les garanties du quadruple accord
 
-| Erreur                                    | Qui la détecte              | Quand               |
-| ----------------------------------------- | ---------------------------- | -------------------- |
-| Deux Features avec même namespace         | TS1117                       | Compile-time         |
-| Clé non camelCase (`Cart`, `my-cart`)     | `CamelCaseNamespace`         | Compile-time         |
-| Clé réservée (`local`, `router`)          | `StrictManifest<M>` → `never`| Compile-time         |
-| Feature enregistrée sous la mauvaise clé (`TSelfNS` ≠ clé) | `TStrictFeatureClass<NS>` (I95) | Compile-time |
-| `static readonly channel` absent ou mal typé | `TStrictFeatureClass<NS>` (I95) | Compile-time     |
-| Handler `on{NS}{Event}Event` manquant après un rename | `implements TFeatureCallbacks` (I92) — TS2515 | Compile-time |
-| `listens`/`queries` référence un namespace inconnu | `Application.start()` (I70) | Runtime (bootstrap, Phase 0c) |
-| Feature s'écoute elle-même via `listens`  | ⚠️ **non détecté** — ni compile-time ni runtime | — |
-| Cast `as any` + faute de frappe sur le namespace | `assertValidNamespace` | Runtime (bootstrap) |
+| Erreur                                                     | Qui la détecte                                 | Quand                         |
+| ---------------------------------------------------------- | ---------------------------------------------- | ----------------------------- |
+| Deux Features avec même namespace                          | TS1117                                         | Compile-time                  |
+| Clé non camelCase (`Cart`, `my-cart`)                      | `CamelCaseNamespace`                           | Compile-time                  |
+| Clé réservée (`local`, `router`)                           | `StrictManifest<M>` → `never`                  | Compile-time                  |
+| Feature enregistrée sous la mauvaise clé (`TSelfNS` ≠ clé) | `TStrictFeatureClass<NS>` (I95)                | Compile-time                  |
+| `static readonly channel` absent ou mal typé               | `TStrictFeatureClass<NS>` (I95)                | Compile-time                  |
+| Handler `on{NS}{Event}Event` manquant après un rename      | `implements TFeatureCallbacks` (I92) — TS2515  | Compile-time                  |
+| `listens`/`queries` référence un namespace inconnu         | `Application.start()` (I70)                    | Runtime (bootstrap, Phase 0c) |
+| Feature s'écoute elle-même via `listens`                   | ⚠️ **non détecté** — ni compile-time ni runtime | —                             |
+| Cast `as any` + faute de frappe sur le namespace           | `assertValidNamespace`                         | Runtime (bootstrap)           |
 
 ---
 

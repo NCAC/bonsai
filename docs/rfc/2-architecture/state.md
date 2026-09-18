@@ -12,25 +12,25 @@ L'Entity est le **seul conteneur de state** dans Bonsai. Chaque Feature possède
 
 ### Cinq propriétés fondamentales
 
-| # | Propriété | Invariant | Conséquence |
-|---|-----------|-----------|-------------|
-| 1 | **JsonSerializable** | D10 | Le state peut être sérialisé, snapshotté, transmis SSR. Pas de `Date`, `Map`, `Set`, `class` dans le state |
-| 2 | **Immuable en surface** | I5 | Toute modification passe par `mutate()` (ADR-0001). Pas d'affectation directe |
-| 3 | **Propriété exclusive de la Feature** | I6, I17 | Seule la Feature propriétaire accède à son Entity. Views/Behaviors n'y touchent jamais |
-| 4 | **Notificante** | D16 (supersédé ADR-0001) | Chaque `mutate()` produit des patches et des `changedKeys` qui alimentent le cycle réactif |
-| 5 | **Typée statiquement** | D10 | La structure est un `TEntityStructure extends TJsonSerializable` — le type EST le contrat |
+| # | Propriété                             | Invariant                | Conséquence                                                                                                |
+| - | ------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| 1 | **JsonSerializable**                  | D10                      | Le state peut être sérialisé, snapshotté, transmis SSR. Pas de `Date`, `Map`, `Set`, `class` dans le state |
+| 2 | **Immuable en surface**               | I5                       | Toute modification passe par `mutate()` (ADR-0001). Pas d'affectation directe                              |
+| 3 | **Propriété exclusive de la Feature** | I6, I17                  | Seule la Feature propriétaire accède à son Entity. Views/Behaviors n'y touchent jamais                     |
+| 4 | **Notificante**                       | D16 (supersédé ADR-0001) | Chaque `mutate()` produit des patches et des `changedKeys` qui alimentent le cycle réactif                 |
+| 5 | **Typée statiquement**                | D10                      | La structure est un `TEntityStructure extends TJsonSerializable` — le type EST le contrat                  |
 
 ---
 
 ## 2. Matrice d'ownership
 
-| Composant | Lit le state ? | Modifie le state ? | Accès Entity ? |
-|-----------|---------------|-------------------|---------------|
-| **Feature** | ✅ Via `this.entity.state` | ✅ Via `this.entity.mutate()` | ✅ Directement — propriétaire |
-| **View** | ✅ Indirectement via Request | ❌ Jamais | ❌ Aucun accès |
-| **Behavior** | ✅ Indirectement via Request | ❌ Jamais | ❌ Aucun accès |
-| **Composer** | ❌ aujourd'hui — ⏳ `protected request()` cible strate 1, cf. [composer.md](../4-couche-concrete/composer.md) | ❌ | ❌ |
-| **Foundation** | ❌ aujourd'hui — ⏳ idem, cf. [foundation.md](../4-couche-concrete/foundation.md) | ❌ | ❌ |
+| Composant      | Lit le state ?                                                                                                | Modifie le state ?            | Accès Entity ?                |
+| -------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------- | ----------------------------- |
+| **Feature**    | ✅ Via `this.entity.state`                                                                                    | ✅ Via `this.entity.mutate()` | ✅ Directement — propriétaire |
+| **View**       | ✅ Indirectement via Request                                                                                  | ❌ Jamais                     | ❌ Aucun accès                |
+| **Behavior**   | ✅ Indirectement via Request                                                                                  | ❌ Jamais                     | ❌ Aucun accès                |
+| **Composer**   | ❌ aujourd'hui — ⏳ `protected request()` cible strate 1, cf. [composer.md](../4-couche-concrete/composer.md) | ❌                            | ❌                            |
+| **Foundation** | ❌ aujourd'hui — ⏳ idem, cf. [foundation.md](../4-couche-concrete/foundation.md)                             | ❌                            | ❌                            |
 
 > **Mécanisme d'accès indirect** :
 > la View qui a besoin d'une donnée utilise `request(namespace:nomQuery)`.
@@ -57,11 +57,11 @@ inventory.entity →  { products: [{ id: "p1", stock: 4 }, ...] }   // pas de Ma
 
 ### Relation 1:1:1
 
-| Concept | Règle | Invariant |
-|---------|-------|-----------|
-| Un namespace | = une Feature | I21 |
-| Une Feature | = une Entity | I22 |
-| Donc : un namespace | = une Entity | Transitif |
+| Concept             | Règle         | Invariant |
+| ------------------- | ------------- | --------- |
+| Un namespace        | = une Feature | I21       |
+| Une Feature         | = une Entity  | I22       |
+| Donc : un namespace | = une Entity  | Transitif |
 
 > **Pas de state partagé** : si deux Features ont besoin de la même donnée,
 > l'une **possède** la donnée (source de vérité) et l'autre y accède

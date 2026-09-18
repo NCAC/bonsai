@@ -25,16 +25,16 @@ Most frontend frameworks let you _structure_ an app. Bonsai **forces** you to st
 
 ## Status — Strate 0 ✅
 
-| Component                       | Status                  | Coverage |
-| ------------------------------- | ----------------------- | -------- |
-| `@bonsai/entity`                | 🟢 Stable               | 100 %    |
-| `@bonsai/feature`               | 🟢 Stable               | 96 %     |
-| `@bonsai/view`                  | 🟢 Stable               | 95 %     |
-| `@bonsai/composer`              | 🟢 Stable               | 96 %     |
-| `@bonsai/foundation`            | 🟢 Stable               | 89 %     |
-| `@bonsai/application`           | 🟢 Stable               | 97 %     |
-| `@bonsai/event` (Channel/Radio) | 🟢 Stable               | 90 %     |
-| `@bonsai/behavior`              | 🟡 Stub (strate 1)      | —        |
+| Component                       | Status             | Coverage |
+| ------------------------------- | ------------------ | -------- |
+| `@bonsai/entity`                | 🟢 Stable          | 100 %    |
+| `@bonsai/feature`               | 🟢 Stable          | 96 %     |
+| `@bonsai/view`                  | 🟢 Stable          | 95 %     |
+| `@bonsai/composer`              | 🟢 Stable          | 96 %     |
+| `@bonsai/foundation`            | 🟢 Stable          | 89 %     |
+| `@bonsai/application`           | 🟢 Stable          | 97 %     |
+| `@bonsai/event` (Channel/Radio) | 🟢 Stable          | 90 %     |
+| `@bonsai/behavior`              | 🟡 Stub (strate 1) | —        |
 
 **E2E gate** is green: a full cart round-trip (click → trigger → handle → mutate → emit → DOM) traverses the six components without a single mock. See [`tests/e2e/strate-0.cart-round-trip.test.ts`](tests/e2e/strate-0.cart-round-trip.test.ts).
 
@@ -103,27 +103,27 @@ new Application({
 ## Architecture in 30 seconds
 
 ```
-                ┌─────────────────────────────────────┐
-                │             Application              │  ← bootstrap, namespaces
-                └─────────────────────────────────────┘
-                        │                       │
-                        ▼                       ▼
-                ┌──────────────┐        ┌──────────────┐
-                │  Foundation  │        │   Features   │  ← own State (Entity)
-                │  (composers) │        │              │     Channels (handlers)
-                └──────────────┘        └──────────────┘
-                        │                       ▲
-                        ▼                       │  Events
-                ┌──────────────┐       Commands │  Replies
-                │   Composer   │       (trigger)│  (reply)
-                │  (resolves)  │                │
-                └──────────────┘                │
-                        │                       │
-                        ▼                       │
-                ┌──────────────┐        ┌──────────────┐
-                │     View     │ ─────▶ │   Channel    │  ← Radio singleton
-                │  (DOM N1)    │        │ (tri-lane)   │     dispatches
-                └──────────────┘        └──────────────┘
+┌─────────────────────────────────────┐
+│             Application              │  ← bootstrap, namespaces
+└─────────────────────────────────────┘
+        │                       │
+        ▼                       ▼
+┌──────────────┐        ┌──────────────┐
+│  Foundation  │        │   Features   │  ← own State (Entity)
+│  (composers) │        │              │     Channels (handlers)
+└──────────────┘        └──────────────┘
+        │                       ▲
+        ▼                       │  Events
+┌──────────────┐       Commands │  Replies
+│   Composer   │       (trigger)│  (reply)
+│  (resolves)  │                │
+└──────────────┘                │
+        │                       │
+        ▼                       │
+┌──────────────┐        ┌──────────────┐
+│     View     │ ─────▶ │   Channel    │  ← Radio singleton
+│  (DOM N1)    │        │ (tri-lane)   │     dispatches
+└──────────────┘        └──────────────┘
 ```
 
 - **Foundation** owns the page layout (`<body>` + composer slots).
@@ -186,14 +186,14 @@ pnpm run build:no-watch               # one-shot build
 
 Architectural documentation (RFCs, ADRs) is written in **French** — the design language of the project (see [ADR-0036](docs/adr/ADR-0036-documentation-internationalization-strategy.md)). English translations are planned for stable documents.
 
-|             |                                                                                       |
-| ----------- | ------------------------------------------------------------------------------------- |
-| 📐 **RFCs** | [Source of truth](docs/rfc/README.md) — architecture, contracts, invariants            |
-| 📋 **ADRs** | [38 decisions](docs/adr/README.md) — every architectural trade-off                     |
-| 📖 **Guides** | [Coding conventions](docs/guides/) — TypeScript style, framework style               |
-| 🚪 **Strates** | [ADR-0028](docs/adr/ADR-0028-implementation-phasing-strategy.md) — delivery roadmap & gates          |
-| 🛠️ **Build** | [lib/BUILD-EN.md](lib/BUILD-EN.md), [lib/DEVELOPER-GUIDE-EN.md](lib/DEVELOPER-GUIDE-EN.md) |
-| 🇫🇷          | [French version](README.md) — primary language while the project is not yet publicly exposed |
+|                |                                                                                              |
+| -------------- | -------------------------------------------------------------------------------------------- |
+| 📐 **RFCs**    | [Source of truth](docs/rfc/README.md) — architecture, contracts, invariants                  |
+| 📋 **ADRs**    | [38 decisions](docs/adr/README.md) — every architectural trade-off                           |
+| 📖 **Guides**  | [Coding conventions](docs/guides/) — TypeScript style, framework style                       |
+| 🚪 **Strates** | [ADR-0028](docs/adr/ADR-0028-implementation-phasing-strategy.md) — delivery roadmap & gates  |
+| 🛠️ **Build**    | [lib/BUILD-EN.md](lib/BUILD-EN.md), [lib/DEVELOPER-GUIDE-EN.md](lib/DEVELOPER-GUIDE-EN.md)   |
+| 🇫🇷             | [French version](README.md) — primary language while the project is not yet publicly exposed |
 
 ## License
 

@@ -1,14 +1,14 @@
 # ADR-0046 : Refonte du contrat Feature — `listens`/`queries` `abstract get` instance, `TFeatureCallbacks` symétrique I88, enforcement compile-time via `TStrictFeatureClass`
 
-| Champ   | Valeur           |
-| ------- | ---------------- |
-| **Statut**  | 🔵 Tested  |
-| **Date**  | 2026-05-18     |
-| **Décideurs**   | @NCAC    |
-| **RFC liées**           | [feature.md](../rfc/3-couche-abstraite/feature.md), [invariants.md](../rfc/reference/invariants.md), [glossaire.md](../rfc/reference/glossaire.md)                                                                                                                                                                               |
-| **ADRs liées**          | [ADR-0039](ADR-0039-namespace-authority-and-uniqueness.md), [ADR-0040](ADR-0040-typescript-first-api-channel-definition-typed.md), [ADR-0042](ADR-0042-view-contract-unified-ui-deps-single-generic.md), [ADR-0037](ADR-0037-feature-generic-entity-class.md), [ADR-0043](ADR-0043-adr-tested-status-as-proof-gate.md)           |
-| **Décisions amendées**  | ADR-0039 — I70 reformulé (lecture après ctor inerte, plus lecture `static` avant instanciation). ADR-0040 — I79 amendé (syntaxe `abstract get` au lieu de `static readonly`, sémantique « tokens portés par `listens`/`queries` » préservée). ADR-0042 — I88 élargi (symétrie Contract/Callbacks vaut pour View **et** Feature). |
-| **Invariants impactés** | I70 (amendé), I88 (élargi), I92, I93, I94, I95 (nouveaux)                                                                                                                                                                                                                                                                        |
+| Champ | Valeur |
+| --- | --- |
+| **Statut** | 🔵 Tested |
+| **Date** | 2026-05-18 |
+| **Décideurs** | @NCAC |
+| **RFC liées** | [feature.md](../rfc/3-couche-abstraite/feature.md), [invariants.md](../rfc/reference/invariants.md), [glossaire.md](../rfc/reference/glossaire.md) |
+| **ADRs liées** | [ADR-0039](ADR-0039-namespace-authority-and-uniqueness.md), [ADR-0040](ADR-0040-typescript-first-api-channel-definition-typed.md), [ADR-0042](ADR-0042-view-contract-unified-ui-deps-single-generic.md), [ADR-0037](ADR-0037-feature-generic-entity-class.md), [ADR-0043](ADR-0043-adr-tested-status-as-proof-gate.md) |
+| **Décisions amendées** | ADR-0039 — I70 reformulé (lecture après ctor inerte, plus lecture `static` avant instanciation). ADR-0040 — I79 amendé (syntaxe `abstract get` au lieu de `static readonly`, sémantique « tokens portés par `listens`/`queries` » préservée). ADR-0042 — I88 élargi (symétrie Contract/Callbacks vaut pour View **et** Feature). |
+| **Invariants impactés** | I70 (amendé), I88 (élargi), I92, I93, I94, I95 (nouveaux) |
 
 ---
 
@@ -20,7 +20,7 @@ ADR-0042 a établi pour la couche View un contrat compile-time strict : trois `a
 
 ### Surface 1 — `static readonly listens` / `static readonly queries` non-enforceable
 
-```ts
+```typescript
 // packages/feature/src/bonsai-feature.ts:156–173
 static readonly listens: readonly TChannelToken<TChannelDefinition, string>[] = [];
 static readonly queries: readonly TChannelToken<TChannelDefinition, string>[] = [];
@@ -34,7 +34,7 @@ Limitation TypeScript : `abstract static` n'existe pas. Une sous-classe peut hé
 
 ### Surface 2 — Le `TChannelDef` reste générique dans les fixtures
 
-```ts
+```typescript
 // tests/unit/strate-0/feature.basic.test.ts:83
 class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart"> {
 //                                              ^^^^^^^^^^^^^^^^^^
@@ -43,19 +43,19 @@ class CartFeature extends Feature<CartEntity, TChannelDefinition, "cart"> {
 
 Conséquences en cascade :
 
-| Surface affectée                              | Effet                                                                         |
-| --------------------------------------------- | ----------------------------------------------------------------------------- |
-| `this.emit("itemAdded", payload)`             | `"itemAdded"` = `string` libre ; `payload` = `unknown` de fait                |
-| `this.request(TOKEN, "getItemPrice", params)` | Retour `unknown` → cast `as number \| null` ligne 110                         |
-| `onAddItemCommand(payload: …)`                | Signature écrite à la main, jamais confrontée à `TDef["commands"]["addItem"]` |
-| Handler oublié (`onAddItemCommand` absent)    | Silence du compilateur → bug runtime                                          |
-| Handler mal nommé (`onAddItmCommand`)         | Silence du compilateur → handler jamais découvert                             |
+| Surface affectée | Effet |
+| --- | --- |
+| `this.emit("itemAdded", payload)` | `"itemAdded"` = `string` libre ; `payload` = `unknown` de fait |
+| `this.request(TOKEN, "getItemPrice", params)` | Retour `unknown` → cast `as number \| null` ligne 110 |
+| `onAddItemCommand(payload: …)` | Signature écrite à la main, jamais confrontée à `TDef["commands"]["addItem"]` |
+| Handler oublié (`onAddItemCommand` absent) | Silence du compilateur → bug runtime |
+| Handler mal nommé (`onAddItmCommand`) | Silence du compilateur → handler jamais découvert |
 
 **ADR-0042 a résolu ce trou côté View via I88.** Le pendant Feature n'existe pas.
 
 ### Surface 3 — Aucune contrainte compile-time entre `TSelfNS`, `static channel` et la clé du manifest
 
-```ts
+```typescript
 class PricingFeature extends Feature<PricingEntity, TChannelDefinition, "pricing"> {
   // ✗ static channel oublié → silence à la déclaration de classe
 }
@@ -69,18 +69,18 @@ const features = { pricing: PricingFeature } satisfies StrictManifest<…>;
 
 ## Contraintes
 
-| #   | Contrainte                                                                                                                                                                                                                     | Source                                                          |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
-| C1  | Préserver l'invariant _réel_ « pas de side-effect Radio/Entity avant validation complète du manifest » — sans dépendre du couplage actuel « tout statique »                                                                    | I70, ADR-0039 §Décision                                         |
-| C2  | `static readonly channel` doit rester static — porteur de TYPE consommé sans instance (par Views dans `TFeatureContract`, par `static listens` d'autres Features dans des tableaux `as const` évalués au chargement de module) | ADR-0040 — I73, I74                                             |
-| C3  | Enforcement compile-time **strict** de la couverture des handlers — handler oublié = erreur TS, pas warning runtime                                                                                                            | C4 ADR-0042 ; principe « le type EST le contrat »               |
-| C4  | Symétrie Contract/Callbacks portée à Feature — pour tout `TChannelDef` (et tout `TListens`), il existe un `TFeatureCallbacks<TDef, TListens>` qui impose au compile-time les handlers `on*` dérivés                            | I88 élargi                                                      |
-| C5  | Le constructeur de `Feature` doit rester **inerte** : `assertValidNamespace` + assignement `#namespace` uniquement. Aucun side-effect Radio, aucune création d'Entity, aucun enregistrement de handler dans le ctor            | C1 + nouveau ordonnancement Phase 0                             |
-| C6  | `TStrictFeatureClass<NS, TDef>` doit pouvoir s'intégrer à `StrictManifest<M>` sans modifier la surface publique du manifest (la déclaration `features: { cart: CartFeature } satisfies StrictManifest<…>` reste identique)     | ADR-0039 §Décision                                              |
-| C7  | Réutiliser `UnionToIntersection` (`@bonsai/types`) — déjà consommé par `@bonsai/view` pour `TUICallbacks`. Aucune nouvelle dépendance, aucune duplication d'utilitaire                                                         | view.ts:52 ; ADR-0042                                           |
-| C8  | Aucun `any` ni `unknown` dans la surface publique des nouveaux types ; casts internes documentés et délimités                                                                                                                  | I75, ADR-0040                                                   |
-| C9  | Migration des fixtures et tests **mécanique** : `static readonly listens = […] as const` → `get listens() { return […] as const; }` ; ajout de `implements TFeatureCallbacks<TDef, typeof listens>`                            | Q8 §QA-0046 — bottom-up, compile-error driven                   |
-| C10 | Aucune dépendance circulaire entre M1 (`abstract get`), M2 (`TFeatureCallbacks`), M3 (`TStrictFeatureClass`) — les trois mouvements peuvent atterrir séparément si nécessaire (mais sont décidés ensemble)                     | Cohérence avec narratif « le type EST le contrat pour Feature » |
+| # | Contrainte | Source |
+| --- | --- | --- |
+| C1 | Préserver l'invariant _réel_ « pas de side-effect Radio/Entity avant validation complète du manifest » — sans dépendre du couplage actuel « tout statique » | I70, ADR-0039 §Décision |
+| C2 | `static readonly channel` doit rester static — porteur de TYPE consommé sans instance (par Views dans `TFeatureContract`, par `static listens` d'autres Features dans des tableaux `as const` évalués au chargement de module) | ADR-0040 — I73, I74 |
+| C3 | Enforcement compile-time **strict** de la couverture des handlers — handler oublié = erreur TS, pas warning runtime | C4 ADR-0042 ; principe « le type EST le contrat » |
+| C4 | Symétrie Contract/Callbacks portée à Feature — pour tout `TChannelDef` (et tout `TListens`), il existe un `TFeatureCallbacks<TDef, TListens>` qui impose au compile-time les handlers `on*` dérivés | I88 élargi |
+| C5 | Le constructeur de `Feature` doit rester **inerte** : `assertValidNamespace` + assignement `#namespace` uniquement. Aucun side-effect Radio, aucune création d'Entity, aucun enregistrement de handler dans le ctor | C1 + nouveau ordonnancement Phase 0 |
+| C6 | `TStrictFeatureClass<NS, TDef>` doit pouvoir s'intégrer à `StrictManifest<M>` sans modifier la surface publique du manifest (la déclaration `features: { cart: CartFeature } satisfies StrictManifest<…>` reste identique) | ADR-0039 §Décision |
+| C7 | Réutiliser `UnionToIntersection` (`@bonsai/types`) — déjà consommé par `@bonsai/view` pour `TUICallbacks`. Aucune nouvelle dépendance, aucune duplication d'utilitaire | view.ts:52 ; ADR-0042 |
+| C8 | Aucun `any` ni `unknown` dans la surface publique des nouveaux types ; casts internes documentés et délimités | I75, ADR-0040 |
+| C9 | Migration des fixtures et tests **mécanique** : `static readonly listens = […] as const` → `get listens() { return […] as const; }` ; ajout de `implements TFeatureCallbacks<TDef, typeof listens>` | Q8 §QA-0046 — bottom-up, compile-error driven |
+| C10 | Aucune dépendance circulaire entre M1 (`abstract get`), M2 (`TFeatureCallbacks`), M3 (`TStrictFeatureClass`) — les trois mouvements peuvent atterrir séparément si nécessaire (mais sont décidés ensemble) | Cohérence avec narratif « le type EST le contrat pour Feature » |
 
 ---
 
@@ -90,11 +90,11 @@ const features = { pricing: PricingFeature } satisfies StrictManifest<…>;
 
 **Description** : conserver `static readonly listens/queries`, `TChannelDef = TChannelDefinition` par défaut dans les fixtures, enforcement uniquement runtime via `Application#validateManifest`.
 
-| Avantages                      | Inconvénients                                                    |
-| ------------------------------ | ---------------------------------------------------------------- |
-| + Zéro changement de code      | − Trois surfaces de DX silencieuse (cf. Contexte) persistent     |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Zéro changement de code | − Trois surfaces de DX silencieuse (cf. Contexte) persistent |
 | + Aucune migration de fixtures | − Asymétrie permanente avec ADR-0042 (View strict, Feature laxe) |
-|                                | − Tests isolés (sans `Application`) sans protection              |
+| | − Tests isolés (sans `Application`) sans protection |
 
 **Verdict** : maintient les trois trous DX. Rejetée.
 
@@ -104,7 +104,7 @@ const features = { pricing: PricingFeature } satisfies StrictManifest<…>;
 
 **Description** : éliminer **tous** les `static` (y compris `channel`), exposer un accesseur singleton `ConcreteFeature.me()` à la manière des services Symfony/Drupal, paramétrer `Feature<TSelf, …>` via CRTP pour propager le type concret vers la classe de base.
 
-```ts
+```typescript
 abstract class Feature<TSelf extends Feature<TSelf, …>, TEntity, TChannelDef, TSelfNS> {
   static me<T extends Feature<T, …>>(this: new (ns: string) => T): T { … }
   abstract get channel():   TChannelToken<TChannelDef, TSelfNS>;  // ← plus de static
@@ -114,15 +114,15 @@ abstract class Feature<TSelf extends Feature<TSelf, …>, TEntity, TChannelDef, 
 class CartFeature extends Feature<CartFeature, CartEntity, TCartChannelDef, "cart"> { … }
 ```
 
-| Avantages                                          | Inconvénients                                                                                                                                                                                                                         |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| + Symétrie totale Views ↔ Features (tout instance) | − `channel` instance casse les call-sites `[CartFeature.channel] as const` dans `static listens` d'autres Features (consommation type-only au chargement de module)                                                                   |
-| + `me()` retourne le type concret                  | − `me()` inutilisable comme porteur de type au moment de l'import (la classe n'est pas encore instanciée) — donc `static channel` _doit_ rester de toute façon (C2)                                                                   |
-| + Alignement vocabulaire « services »              | − CRTP `Feature<TSelf, …>` viral : `extends Feature<CartFeature, …>` (auto-référence syntaxique exigée), threadage de `TSelf` dans `TFeatureClass`, `TFeaturesManifest`, `StrictManifest`, `TStrictFeatureClass`, `TFeatureCallbacks` |
-|                                                    | − Audit méthode par méthode (cf. annexe §1) : **0/7 méthodes de `Feature` nécessitent le type concret dans leur signature** — critère décisif rejette CRTP par construction                                                           |
-|                                                    | − `me()` duplique l'identité (manifest = source de vérité, I69) ou pollue avec un argument `me(ns)` ré-déclaratif                                                                                                                     |
-|                                                    | − Reset singleton entre tests → `__resetForTests()` à exposer, pollution API                                                                                                                                                          |
-|                                                    | − Anti-pattern PHP-singleton ≠ vrai DI Symfony : Bonsai fait _déjà_ du container-DI via `StrictManifest` + `Application`                                                                                                              |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Symétrie totale Views ↔ Features (tout instance) | − `channel` instance casse les call-sites `[CartFeature.channel] as const` dans `static listens` d'autres Features (consommation type-only au chargement de module) |
+| + `me()` retourne le type concret | − `me()` inutilisable comme porteur de type au moment de l'import (la classe n'est pas encore instanciée) — donc `static channel` _doit_ rester de toute façon (C2) |
+| + Alignement vocabulaire « services » | − CRTP `Feature<TSelf, …>` viral : `extends Feature<CartFeature, …>` (auto-référence syntaxique exigée), threadage de `TSelf` dans `TFeatureClass`, `TFeaturesManifest`, `StrictManifest`, `TStrictFeatureClass`, `TFeatureCallbacks` |
+| | − Audit méthode par méthode (cf. annexe §1) : **0/7 méthodes de `Feature` nécessitent le type concret dans leur signature** — critère décisif rejette CRTP par construction |
+| | − `me()` duplique l'identité (manifest = source de vérité, I69) ou pollue avec un argument `me(ns)` ré-déclaratif |
+| | − Reset singleton entre tests → `__resetForTests()` à exposer, pollution API |
+| | − Anti-pattern PHP-singleton ≠ vrai DI Symfony : Bonsai fait _déjà_ du container-DI via `StrictManifest` + `Application` |
 
 **Verdict** : trois objections décisives.
 
@@ -140,7 +140,7 @@ Rejetée. Clause de réouverture : « si une future méthode de `Feature` doit m
 
 #### M1 — `listens`/`queries` migrés en `abstract get` instance
 
-```ts
+```typescript
 // packages/feature/src/bonsai-feature.ts (cœur)
 export abstract class Feature<
   TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>,
@@ -170,7 +170,7 @@ export abstract class Feature<
 
 Réordonnancement bootstrap dans `Application.start()` :
 
-```
+```text
 Phase 0 — Validation (toute inerte, aucun side-effect Radio/Entity)
   · 0a : assertValidNamespace de chaque clé du manifest
   · 0b : new FeatureClass(ns) pour chaque entrée → ctor inerte (C5)
@@ -185,7 +185,7 @@ Phase 4 — Foundation : composers → views → attach
 
 #### M2 — `TFeatureCallbacks<TDef, TListens>` — symétrie I88 portée à Feature
 
-```ts
+```typescript
 // packages/feature/src/types.ts (nouveaux exports)
 import type { UnionToIntersection } from "@bonsai/types";
 
@@ -230,7 +230,7 @@ export type TFeatureCallbacks<
 
 DX cible (fixture migrée) :
 
-```ts
+```typescript
 type TCartChannelDef = {
   commands: { addItem: { productId: string; qty: number } };
   events: { itemAdded: { item: { productId: string; qty: number } } };
@@ -274,7 +274,7 @@ class CartFeature
 
 #### M3 — `TStrictFeatureClass<NS, TDef>` intégré à `StrictManifest`
 
-```ts
+```typescript
 // packages/feature/src/types.ts (nouvel export)
 export type TStrictFeatureClass<
   TNS extends string,
@@ -290,30 +290,30 @@ Intégration `StrictManifest<M>` : pour chaque clé `NS` du manifest, la valeur 
 
 > **M3 n'impose PAS la couverture des handlers.** Une première rédaction le prévoyait (type instance contraint à `Feature<…> & TFeatureCallbacks<…>`), mais c'est **inimplémentable** : (a) TS n'infère pas `TDef` à travers un type constructeur dont le retour est intersecté (`new (...) => Feature<…, TDef> & TFeatureCallbacks<TDef>`), et (b) le type-manifest d'ADR-0039 porte des valeurs `unknown` — il n'expose donc aucun `TDef` par clé à extraire. Résultat de la première version : un fallback `TChannelDefinition` générique **insatisfiable par toute Feature** (index-signature `on${Capitalize<string>}Command`). La couverture des handlers est donc garantie **uniquement** par I92 (`implements TFeatureCallbacks` sur la classe — strictement symétrique à View/ADR-0042, qui n'a jamais eu d'enforcement au point manifest) + le filet runtime d'auto-discovery. Ce que M3 apporte réellement : faire passer la présence de `static channel` + l'alignement `channel.namespace === NS` du **runtime** (`#validateManifest`) au **compile-time**.
 
-| Avantages                                                                          | Inconvénients                                                                            |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| + Trois trous DX comblés simultanément                                             | − Migration mécanique des fixtures (rendue inévitable par M1 — passage `static` → `get`) |
-| + Symétrie complète avec ADR-0042 (View)                                           | − Sentinel runtime nouveau pour I94 (ctor inerte) à ajouter dans `Application.start()`   |
-| + Zéro nouvelle dépendance (`UnionToIntersection` déjà publié par `@bonsai/types`) | − Promotion 🔵 lourde (5 invariants × 5 paliers — cf. §QA-0046 §9.7.4)                   |
-| + Trois mouvements logiquement séparables (C10)                                    | − ADR-0039 (I70) et ADR-0040 (I79) à amender                                             |
-| + Critère « le type EST le contrat » strictement respecté                          |                                                                                          |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Trois trous DX comblés simultanément | − Migration mécanique des fixtures (rendue inévitable par M1 — passage `static` → `get`) |
+| + Symétrie complète avec ADR-0042 (View) | − Sentinel runtime nouveau pour I94 (ctor inerte) à ajouter dans `Application.start()` |
+| + Zéro nouvelle dépendance (`UnionToIntersection` déjà publié par `@bonsai/types`) | − Promotion 🔵 lourde (5 invariants × 5 paliers — cf. §QA-0046 §9.7.4) |
+| + Trois mouvements logiquement séparables (C10) | − ADR-0039 (I70) et ADR-0040 (I79) à amender |
+| + Critère « le type EST le contrat » strictement respecté | |
 
 ---
 
 ## Analyse comparative
 
-| Critère                                                   | Option A (statu quo)                              | Option B (`me()` + CRTP)                                  | Option C (M1+M2+M3)                                 |
-| --------------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------- |
-| Enforcement présence `listens`/`queries`                  | ⚪ runtime seulement                              | ⭐⭐⭐ compile                                            | ⭐⭐⭐ compile (M1)                                 |
-| Enforcement présence `static channel`                     | ⚪ runtime seulement                              | ⭐ via `abstract get channel` (mais casse C2)             | ⭐⭐⭐ compile via `TStrictFeatureClass` (M3)       |
-| Enforcement couverture handlers                           | ⚪ aucun (silence sur oublis et fautes de frappe) | ⚪ aucun (pas couvert par CRTP)                           | ⭐⭐⭐ compile via `TFeatureCallbacks` (M2)         |
-| `TChannelDef` strict aux call-sites                       | ⚪ générique par défaut                           | ⭐⭐ via fixtures                                         | ⭐⭐⭐ via M2 (rendu nécessaire)                    |
-| Symétrie avec ADR-0042 (View)                             | ⚪ asymétrie permanente                           | ⭐⭐ partielle (mais `channel` reste static)              | ⭐⭐⭐ complète                                     |
-| Préservation I70 (validation avant side-effect)           | ⭐⭐⭐ inchangée                                  | ⭐ régression silencieuse possible (`me()` instancie tôt) | ⭐⭐⭐ préservée via C5 + Phase 0c                  |
-| Coût migration fixtures                                   | ⭐⭐⭐ nul                                        | ⭐ très élevé (CRTP threadé partout)                      | ⭐⭐ mécanique (compile-error driven, Q8)           |
-| Complexité de la signature `Feature<…>`                   | ⭐⭐⭐ inchangée                                  | ⭐ `Feature<TSelf, TEntity, TDef, TSelfNS>` — viral       | ⭐⭐⭐ inchangée                                    |
-| Compatibilité call-sites `[CartFeature.channel] as const` | ⭐⭐⭐                                            | ⚪ cassé (channel instance)                               | ⭐⭐⭐                                              |
-| Réutilisation `@bonsai/types`                             | n/a                                               | partielle                                                 | ⭐⭐⭐ `UnionToIntersection` déjà consommé par View |
+| Critère | Option A (statu quo) | Option B (`me()` + CRTP) | Option C (M1+M2+M3) |
+| --- | --- | --- | --- |
+| Enforcement présence `listens`/`queries` | ⚪ runtime seulement | ⭐⭐⭐ compile | ⭐⭐⭐ compile (M1) |
+| Enforcement présence `static channel` | ⚪ runtime seulement | ⭐ via `abstract get channel` (mais casse C2) | ⭐⭐⭐ compile via `TStrictFeatureClass` (M3) |
+| Enforcement couverture handlers | ⚪ aucun (silence sur oublis et fautes de frappe) | ⚪ aucun (pas couvert par CRTP) | ⭐⭐⭐ compile via `TFeatureCallbacks` (M2) |
+| `TChannelDef` strict aux call-sites | ⚪ générique par défaut | ⭐⭐ via fixtures | ⭐⭐⭐ via M2 (rendu nécessaire) |
+| Symétrie avec ADR-0042 (View) | ⚪ asymétrie permanente | ⭐⭐ partielle (mais `channel` reste static) | ⭐⭐⭐ complète |
+| Préservation I70 (validation avant side-effect) | ⭐⭐⭐ inchangée | ⭐ régression silencieuse possible (`me()` instancie tôt) | ⭐⭐⭐ préservée via C5 + Phase 0c |
+| Coût migration fixtures | ⭐⭐⭐ nul | ⭐ très élevé (CRTP threadé partout) | ⭐⭐ mécanique (compile-error driven, Q8) |
+| Complexité de la signature `Feature<…>` | ⭐⭐⭐ inchangée | ⭐ `Feature<TSelf, TEntity, TDef, TSelfNS>` — viral | ⭐⭐⭐ inchangée |
+| Compatibilité call-sites `[CartFeature.channel] as const` | ⭐⭐⭐ | ⚪ cassé (channel instance) | ⭐⭐⭐ |
+| Réutilisation `@bonsai/types` | n/a | partielle | ⭐⭐⭐ `UnionToIntersection` déjà consommé par View |
 
 ---
 
@@ -442,15 +442,15 @@ Nous choisissons **Option C** (M1 + M2 + M3 dans un ADR unique) parce que :
 
 > Critère décisif : **CRTP est justifié si et seulement si une méthode de la classe de base doit, dans sa signature, mentionner le type concret de la sous-classe.**
 
-| Méthode `Feature`                              | Signature                | Mentionne `TSelf` ? |
-| ---------------------------------------------- | ------------------------ | ------------------- |
-| `constructor(namespace: TSelfNS)`              | `TSelfNS` suffit         | ❌                  |
-| `get namespace(): TSelfNS`                     | `TSelfNS` suffit         | ❌                  |
-| `get entity(): TEntity`                        | `TEntity` suffit         | ❌                  |
-| `bootstrap(): void`                            | —                        | ❌                  |
-| `emit<K>(name: K, payload: TDef["events"][K])` | `TDef` suffit            | ❌                  |
-| `request<TDef, TNS, K>(token, name, params)`   | inférence depuis `token` | ❌                  |
-| `onInit(): void`                               | —                        | ❌                  |
+| Méthode `Feature` | Signature | Mentionne `TSelf` ? |
+| --- | --- | --- |
+| `constructor(namespace: TSelfNS)` | `TSelfNS` suffit | ❌ |
+| `get namespace(): TSelfNS` | `TSelfNS` suffit | ❌ |
+| `get entity(): TEntity` | `TEntity` suffit | ❌ |
+| `bootstrap(): void` | — | ❌ |
+| `emit<K>(name: K, payload: TDef["events"][K])` | `TDef` suffit | ❌ |
+| `request<TDef, TNS, K>(token, name, params)` | inférence depuis `token` | ❌ |
+| `onInit(): void` | — | ❌ |
 
 **0/7 méthodes nécessitent `TSelf`** — le critère décisif rejette CRTP par construction.
 
@@ -460,10 +460,10 @@ Fichier `POC-Q7-tlisten-callbacks.ts` (à la racine du repo, auto-ignoré ; à t
 
 Compile : `npx tsc --noEmit --strict --target es2022 --module esnext --moduleResolution bundler POC-Q7-tlisten-callbacks.ts` → **exit 0** (tous les `@ts-expect-error` consommés exactement, prouvant les deux comportements opposés des variantes naïve et fixée).
 
-| Variante POC                                         | Erreur TS                                                                                                                | Sens                                                                         |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| Variante POC | Erreur TS | Sens |
+| --- | --- | --- |
 | `TListenCallbacksNaive` (sans `UnionToIntersection`) | **TS2422** _« A class can only implement an object type OR intersection of object types with statically known members »_ | L'union d'objets n'est pas un target `implements` valide. Type inutilisable. |
-| `TListenCallbacksFixed` (avec `UnionToIntersection`) | **TS2420** sur classe incomplète, aucune erreur sur classe complète                                                      | Comportement attendu.                                                        |
+| `TListenCallbacksFixed` (avec `UnionToIntersection`) | **TS2420** sur classe incomplète, aucune erreur sur classe complète | Comportement attendu. |
 
 ---
 
@@ -483,7 +483,7 @@ Compile : `npx tsc --noEmit --strict --target es2022 --module esnext --moduleRes
 
 ## Historique
 
-| Date       | Changement                                                                                              |
-| ---------- | ------------------------------------------------------------------------------------------------------- |
+| Date | Changement |
+| --- | --- |
 | 2026-05-18 | Création (Proposed) — trajectoire singleton `me()`/CRTP examinée puis rejetée, refonte M1+M2+M3 retenue |
-| 2026-05-18 | Accepted — validation @NCAC après Q&A préparatoire, POC `UnionToIntersection` vert (cf. Annexe §2)      |
+| 2026-05-18 | Accepted — validation @NCAC après Q&A préparatoire, POC `UnionToIntersection` vert (cf. Annexe §2) |

@@ -3,7 +3,7 @@
 > **Comment distribuer et charger les composants Bonsai en mode ESM natif, sans bundler, avec un mécanisme de découverte dynamique des modules présents au runtime ?**
 
 | Champ | Valeur |
-|-------|--------|
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | **Statut** | 🔵 Tested |
 | **Date** | 2026-04-01 |
 | **Décideurs** | @ncac |
@@ -11,7 +11,8 @@
 | **Invariants impactés** | I21, I24, D6, D9, D15 |
 | **ADRs liées** | ADR-0010 (bootstrap order), ADR-0018 (Foundation contract), ADR-0020 (N-instances Composer), ADR-0021 (monde ouvert / plateforme) |
 
-> ### Statut normatif
+> ## Statut normatif
+>
 > Ce document est **normatif** pour le choix du mode de distribution et le mécanisme `BonsaiRegistry`.
 > En cas de divergence avec `reflexion-2026-03-30.md` (Partie I), **ce document prévaut**.
 
@@ -49,6 +50,7 @@ Cependant, les applications réelles — notamment les back-offices CMS, les das
 ### Qu'est-ce que le Mode ESM Modulaire ?
 
 Le mode ESM Modulaire propose de distribuer Bonsai sous la forme :
+
 - d'un **runtime ESM unique** (`bonsai.esm.js`) — le framework lui-même
 - de **modules ESM autonomes** — chacun représente un composant Bonsai (Feature, View, Composer, Behavior), compilé depuis TypeScript vers JS sans bundler
 - d'un **`BonsaiRegistry`** — point de collecte des modules réellement chargés dans la page, exploité par l'Application au bootstrap
@@ -60,7 +62,7 @@ Chaque module est un fichier JS distinct, chargé nativement par le navigateur v
 ## Contraintes
 
 | # | Contrainte | Justification |
-|---|-----------|---------------|
+| --- | --- | --- |
 | **C1** | **Bootstrap déterministe** — l'ordre de chargement des modules ESM ne doit pas changer le comportement de l'application | ADR-0010, D6 |
 | **C2** | **Unicité des namespaces** — deux modules ne peuvent pas enregistrer le même namespace | I21, I24 |
 | **C3** | **Pas de side-effects à l'import** — un module ESM ne démarre rien en l'important ; il déclare seulement | D9 (imports dynamiques explicites) |
@@ -97,7 +99,7 @@ app.start();
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Livraison unique — un seul fichier JS | - Bundler obligatoire (Webpack, Rollup, Vite) |
 | + Environnement maîtrisé — aucun risque de fuite | - Compilation centralisée — tout doit être connu au build |
 | + Runtime instancié une seule fois | - Impossible d'ajouter des Features dynamiquement après compilation |
@@ -150,7 +152,7 @@ app.start();
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + **Aucun bundler requis** — TypeScript → ES Modules, terminé | - Multiplication des requêtes HTTP (atténué par HTTP/2 & HTTP/3) |
 | + Modularité totale — chaque Feature vit dans son fichier | - Discipline modulaire requise (exposer ou non un module via API publique) |
 | + Découverte dynamique via `BonsaiRegistry` | - Bootstrap doit gérer l'ordre de chargement ESM (QO-ESM-1 → résolu) |
@@ -165,7 +167,7 @@ app.start();
 ## Analyse comparative
 
 | Critère | Option A — IIFE | Option B — ESM Modulaire |
-|---------|----------------|--------------------------|
+| --- | --- | --- |
 | **Build** | Bundler obligatoire | TS → JS direct |
 | **Découverte des composants** | Statique (compile-time) | Dynamique (BonsaiRegistry) |
 | **Extensibilité tiers** | Faible (import statique requis) | Forte (BonsaiRegistry ouvert) |
@@ -194,6 +196,7 @@ Le mode IIFE reste **supporté** comme mode alternatif pour les applications mon
 ### Ce qui est rejeté et pourquoi
 
 **Option A (IIFE seul)** rejetée comme mode principal :
+
 - Empêche structurellement tout chargement contextuel par page/route
 - Exige un outillage de build (bundler) non justifié pour la majorité des cas Bonsai
 - Ferme la porte à l'extensibilité tiers (Niveaux 1-3, cf. ADR-0021)
@@ -202,6 +205,7 @@ Le mode IIFE reste **supporté** comme mode alternatif pour les applications mon
 ### Périmètre de cette décision
 
 Cette ADR couvre :
+
 - ✅ Le mécanisme `BonsaiRegistry` (register*, collect)
 - ✅ La convention de déclaration des modules ESM
 - ✅ Le bootstrap dynamique (collect → register → start)
@@ -377,7 +381,7 @@ app.start();
 La séquence `collect → register → start` est **fully compatible** avec ADR-0010 :
 
 | Phase ADR-0010 | Correspondance Mode ESM |
-|----------------|------------------------|
+| --- | --- |
 | Phase 1 — Validation namespaces | Inchangée — déclenchée par `app.register()` |
 | Phase 2 — Création Channels | Inchangée |
 | Phase 3 — Câblage Radio | Inchangée |
@@ -400,7 +404,7 @@ L'analogie est directe avec les packages npm TypeScript : distribuer `cart-featu
 
 **Structure d'un module distribué** :
 
-```
+```text
 /modules/cart/
   cart.feature.esm.js       ← module ES natif (chargeable par le navigateur)
   cart.feature.d.ts         ← déclaration TypeScript (obligatoire)
@@ -409,7 +413,7 @@ L'analogie est directe avec les packages npm TypeScript : distribuer `cart-featu
 
 **Structure du runtime Bonsai distribué** :
 
-```
+```text
 /bonsai/
   bonsai.esm.js             ← runtime ESM natif
   bonsai.d.ts               ← déclarations TypeScript du runtime (BonsaiRegistry, Application, etc.)
@@ -427,14 +431,15 @@ Bonsai fournit un outil de build officiel (C8) capable de produire les deux mode
 
 **Sortie** : un fichier JS unique, auto-exécutable, sans `import`/`export`.
 
-```
+```text
 dist/
   app.bundle.iife.js        ← runtime Bonsai + tous les composants de l'application
   app.bundle.iife.js.map
 ```
 
 **Pipeline** :
-```
+
+```text
 TypeScript sources
   → tsc (transpilation + vérification)
   → bundler (Rollup/esbuild — agrégation + IIFE wrap)
@@ -463,7 +468,7 @@ TypeScript sources
 
 **Sortie** : un fichier `.esm.js` par module source, accompagné de son `.d.ts`.
 
-```
+```text
 dist/
   modules/
     cart/
@@ -479,7 +484,8 @@ dist/
 ```
 
 **Pipeline** :
-```
+
+```text
 TypeScript sources
   → tsc --declaration --declarationMap --module NodeNext
   → (optionnel) tsc-alias pour résoudre les path aliases TypeScript
@@ -529,7 +535,7 @@ import { CartFeature } from '/modules/cart/cart.feature.ts';
 ### Règles de nommage des fichiers
 
 | Type | Convention | Exemple |
-|------|-----------|---------|
+| --- | --- | --- |
 | Module ESM navigateur | `{nom}.esm.js` | `cart.feature.esm.js` |
 | Déclaration TypeScript | `{nom}.d.ts` | `cart.feature.d.ts` |
 | Source map déclaration | `{nom}.d.ts.map` | `cart.feature.d.ts.map` |
@@ -560,7 +566,7 @@ bonsai build --check
 **Garanties du `bonsai build --mode=esm`** :
 
 | Garantie | Description |
-|----------|-------------|
+| --- | --- |
 | **`.d.ts` systématiques** | Chaque `.esm.js` produit est accompagné de son `.d.ts`. Si `tsc` échoue à générer un `.d.ts`, le build échoue. |
 | **Extensions `.js` dans les imports** | Les imports TypeScript `./cart.feature` sont réécrits en `./cart.feature.js` dans la sortie (compatibilité ESM natif). |
 | **Résolution des path aliases** | Les alias TypeScript (`@bonsai/*`, `~/*`) sont résolus vers des chemins relatifs dans les artefacts de sortie. |
@@ -592,7 +598,7 @@ bonsai build --check
 ### Nouveaux éléments
 
 | Élément | Description |
-|---------|-------------|
+| --- | --- |
 | **`BonsaiRegistry`** | Singleton runtime — `registerFeature()`, `registerView()`, `registerComposer()`, `registerBehavior()`, `collect()`, `reset()` (test) |
 | **Convention de module ESM** | Top-level `BonsaiRegistry.register*()`, pas de side-effect métier (C3) |
 | **Pattern bootstrap ESM** | `collect → register × N → start` — pré-étape avant la séquence ADR-0010 |
@@ -603,7 +609,7 @@ bonsai build --check
 ### Invariants impactés
 
 | Invariant | Impact |
-|-----------|--------|
+| --- | --- |
 | **D6** | Complété — `register()` peut être appelé N fois consécutives (collecte ESM), puis `start()` une seule fois. La contrainte `register → start` reste valide. |
 | **D9** | Renforcé — les imports dynamiques (`import()`) en mode ESM sont **explicites et audités** ; les modules ne peuvent pas avoir de side-effects métier à l'import (C3). |
 | **I21** | Inchangé — `BonsaiRegistry.registerFeature()` vérifie les namespaces à la déclaration (avant `app.register()`). Collision → `BonsaiRegistryError` immédiate. |
@@ -611,7 +617,7 @@ bonsai build --check
 ### Fichiers impactés
 
 | Fichier | Impact |
-|---------|--------|
+| --- | --- |
 | [RFC-0002 §7 Application](../rfc/3-couche-abstraite/application.md) | Ajout de l'API `BonsaiRegistry` (register*, collect) |
 | [RFC-0001-glossaire](../rfc/reference/glossaire.md) | Ajout définitions : « Mode ESM Modulaire », « BonsaiRegistry », « Module ESM Bonsai », « artefact `.d.ts` » |
 | [ADR-0010](ADR-0010-bootstrap-order.md) | Note de compatibilité : pré-étape ESM (collect) avant phase 1 |
@@ -623,7 +629,7 @@ bonsai build --check
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-04-01 | Création — issu de Partie I de [`reflexion-2026-03-30.md`](../archive/explorations/reflexion-2026-03-30.md#partie-i--mode-esm-modulaire-et-mode-bundle-iife). Numéro ADR-0019 (anciennement occupé par l'ADR Extension Points, renommée ADR-0021). QO-ESM-1 et QO-ESM-3 stabilisées dans ce document. QO-ESM-2 déléguée à ADR-0020. |
 | 2026-04-01 | Ajout contraintes C7 (`.d.ts` obligatoire) et C8 (outillage de build officiel). Ajout §8 : artefacts de distribution, deux modes de build (IIFE vs ESM+`.d.ts`), `tsconfig` de référence, règles de nommage, CLI `bonsai build`. Passage en Accepted. |
 | 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

@@ -23,8 +23,8 @@
 
 ## Décisions D1–D9 (2026-03-10 — 2026-03-11)
 
-| Date       | Décision | Contexte | Alternatives rejetées |
-|------------|----------|----------|-----------------------|
+| Date | Décision | Contexte | Alternatives rejetées |
+| --- | --- | --- | --- |
 | 2026-03-10 | Création de la RFC | Phase de réflexion architecturale | — |
 | 2026-03-10 | **D1 — Radio interne, Channels déclaratifs** | Les dépendances de communication doivent être visibles dans la définition du composant, pas cachées dans l'implémentation. Features déclarent `listen`. Views/Behaviors déclarent `listen`, `trigger` et `request`. Radio devient infrastructure interne, jamais exposé au développeur. | Radio comme API publique (`Radio.channel('name')`) — rejeté car couplages cachés, invariants non vérifiables à la compilation, testabilité réduite |
 | 2026-03-10 | **D2 — Chorégraphie pure, Feature unique** | Une Feature a exactement 5 capacités (D7) : **emit** (propre Channel), **handle** (propre Channel), **listen** (Channels déclarés), **reply** (propre Channel), **request** (Channels déclarés, D3). Pas de sous-types. L'architecture est chorégraphique : les Features réagissent aux Events de manière autonome. Les metas assurent la traçabilité des chaînes causales. | 1) Orchestration via ProcessFeature (modèle C) — rejeté car introduit un sous-type avec droits supplémentaires, crée un couplage centralisé. 2) Typologie stricte à 4 sous-types — rejeté car over-engineering, pas de différence structurelle entre Domain/Integration/UI, rigidité inutile |
@@ -42,8 +42,8 @@
 
 ## Décisions D20–D32 (2026-03-16 — 2026-03-17)
 
-| Date       | Décision | Contexte | Alternatives rejetées |
-|------------|----------|----------|-----------------------|
+| Date | Décision | Contexte | Alternatives rejetées |
+| --- | --- | --- | --- |
 | 2026-03-16 | **D20 — Foundation unique sur `<body>`** | La Foundation est le composant unique qui couvre `<html>` et `<body>`. Comble le trou de couverture DOM. Déclare les Composers racines. Ajout de I33, I34. | Plusieurs RootNodes, DomRoot séparé, Pas de composant racine — tous rejetés |
 | 2026-03-16 | **D21 — Le Composer décide quelle View instancier** | Le Composer porte la logique de sélection via `resolve()`. La View ne compose jamais. Ajout de I36. | View parente décide, Configuration dans Application — tous rejetés |
 | 2026-03-16 | **D22 — Le Composer a des capacités Channel** | Le Composer déclare `listen` et `request` pour recueillir l'information nécessaire à ses décisions. | Composer sans Channels — rejeté |
@@ -63,8 +63,8 @@
 
 ## Décisions D34–D38 (2026-03-23) — View, Behavior, réutilisabilité
 
-| Date       | Décision | Contexte | Alternatives rejetées |
-|------------|----------|----------|-----------------------|
+| Date | Décision | Contexte | Alternatives rejetées |
+| --- | --- | --- | --- |
 | 2026-03-23 | **D34 — View params + Composer options (réutilisabilité) (amendé par ADR-0024 et ADR-0026)** | `abstract get params()` déclare le manifeste de la View (`listen`, `trigger`, `request`, `uiElements`, `behaviors`, `options`). `rootElement` n'est **plus** dans params (ADR-0026 : fourni par le Composer). Le pattern value-first `as const satisfies` (ADR-0024) élimine la double saisie. Le Composer override partiellement les options via `resolve()` → `{ view, rootElement, options? }`. Le framework merge shallow les options. | Getters abstraits en dur, Paramètres constructeur libres, Sous-classes légères — tous rejetés |
 | 2026-03-23 | **D35 — TUIMap : type d'élément HTML** | `TUIMap` contraint `el` (type d'élément HTML) au lieu de `sel` (sélecteur CSS). Le sélecteur migre vers `params.uiElements`. `getUI()` retourne `TProjectionNode<TUI[K]['el']>` typé par l'élément. Les handlers reçoivent `currentTarget` typé. | `sel` littéral dans TUIMap — rejeté car sur-contraint. Pas de type d'élément — rejeté car perd le typage fin |
 | 2026-03-23 | **D36 — Contrat Behavior** | Le Behavior est un plugin UI réutilisable aveugle (aucune connaissance de sa View hôte). TUIMap propre, uiEvents propres, templates Mode C uniquement, Channels indépendants, pas de rootElement, pas de slots/Composers, pas de `this.view` (I44), altération N1+N2 sur ses propres clés ui (I45), collision clés ui détectée au bootstrap (I43). | `this.view` accessible — rejeté. Behavior sans TUIMap — rejeté. Templates N3 — rejeté |
@@ -75,8 +75,8 @@
 
 ## Décisions D39–D42 (2026-03-19) — Rendu avancé
 
-| Date       | Décision | Contexte | Alternatives rejetées |
-|------------|----------|----------|-----------------------|
+| Date | Décision | Contexte | Alternatives rejetées |
+| --- | --- | --- | --- |
 | 2026-03-19 | **D39 — Animations via Callbacks + CSS** | Les animations sont gérées via des callbacks lifecycle (`onBeforeEnter`, `onAfterEnter`, `onBeforeLeave`, `onAfterLeave`) couplées à des transitions CSS. Le framework ne fournit pas de moteur d'animation intégré. | Moteur d'animation intégré — rejeté car complexité excessive, surcharge de la surface d'API |
 | 2026-03-19 | **D40 — VirtualizedList API séparée** | La virtualisation est une API distincte de `ProjectionList`, pas une option intégrée. Formalisé dans ADR-0012. | Virtualisation intégrée dans ProjectionList — rejeté car complexifie l'API de base |
 | 2026-03-19 | **D41 — Nested `each` supporté nativement** | Les boucles `each` imbriquées dans les templates PugJS sont supportées nativement par le compilateur PDR. | Interdire le nesting — rejeté. Flat uniquement avec workaround — rejeté |
@@ -86,18 +86,18 @@
 
 ## Décisions D43–D45 (2026-03-23/26) — Metas, erreurs et collection patterns
 
-| Date       | Décision | Contexte | Alternatives rejetées |
-|------------|----------|----------|-----------------------|
+| Date | Décision | Contexte | Alternatives rejetées |
+| --- | --- | --- | --- |
 | 2026-03-23 | **D43 — Metas : framework crée, développeur propage explicitement (amendé par [ADR-0016](../../adr/ADR-0016-metas-handler-signature.md))** | Le développeur ne forge jamais de metas (`correlationId`, `causationId`, `hop`, etc.). Le framework les **crée** au point d'entrée (trigger, onInit, timer). Les handlers **reçoivent** les metas explicitement en paramètre `(payload, metas)` et les **propagent** explicitement à `emit()`, `request()` et `mutate()`. Aucun contexte causal implicite — la closure capture les metas, rendant les handlers async-safe par construction. I54 formalisé. | Metas manuelles forgées par le développeur — rejeté car source d'erreurs. Contexte causal implicite (version initiale D43) — rejeté par ADR-0016 car vulnérable à l'interleaving async et violation du principe « Explicite > Implicite » |
-| 2026-03-23 | **D44 — Reply en erreur retourne `null` sync (pas `Result<T>`) ~~(révisé 2026-04-03)~~** | `reply()` retourne `T | null` (synchrone). Si le handler reply throw ou si le Channel n'est pas enregistré, le résultat est `null`. Pas de type `Result<T>` complexe. Pas de `Promise`. Simplicité DX. Ajout de I55. **Révisé par [ADR-0023](../../adr/ADR-0023-request-reply-sync-vs-async.md)** (ex-D44 : `Promise<T | null>`). | `Result<T, E>` (Rust-style) — rejeté car over-engineering pour le cas d'usage. Throw + try/catch — rejeté car le request cross-domain ne doit pas crasher le consommateur. `Promise<T | null>` — révoqué par ADR-0023 |
+| 2026-03-23 | **D44 — Reply en erreur retourne `null` sync (pas `Result<T>`) ~~(révisé 2026-04-03)~~** | `reply()` retourne `T | null`(synchrone). Si le handler reply throw ou si le Channel n'est pas enregistré, le résultat est`null`. Pas de type`Result<T>`complexe. Pas de`Promise`. Simplicité DX. Ajout de I55. **Révisé par [ADR-0023](../../adr/ADR-0023-request-reply-sync-vs-async.md)** (ex-D44 :`Promise<T |
 | 2026-03-26 | **D45 — COLLECTION-PATTERN : ProjectionList + Event Delegation** | Le pattern canonique pour les listes dans Bonsai est `ProjectionList` + event delegation (Option D de l'ADR-0008). Simple (un seul pattern), performant (keyed reconcile O(n) + un seul listener), scalable (1000+ items), standard (event delegation = pattern DOM natif). Les child Views via Slots × Composers sont réservées aux cas complexes (composants autonomes avec lifecycle propre). Absorbe [ADR-0008](../../adr/ADR-0008-collection-patterns.md). | ViewFragment dédié — rejeté car abstraction redondante. CollectionComposer — rejeté car overhead disproportionné pour les listes simples |
 
 ---
 
 ## Décisions D46–D47 (2026-03-26) — Rendu : selector et state dérivé
 
-| Date       | Décision | Contexte | Alternatives rejetées |
-|------------|----------|----------|-----------------------|
+| Date | Décision | Contexte | Alternatives rejetées |
+| --- | --- | --- | --- |
 | 2026-03-26 | **D46 — FULL-STATE-SELECTOR : NamespacedData = state complet par réf live** ⚠️ **en tension avec ADR-0042 — non tranché (cf. D42)** | Le selector de la View reçoit le **state complet** de chaque Channel écouté, pas seulement les clés changées par le dernier Event. Le framework passe une **référence live** vers le state frozen (Immer) de l'Entity — zéro copie, zéro coût. Le selector peut accéder à n'importe quelle clé du state pour calculer des dérivées (filtre, tri) sans être limité aux clés changées. Le `shallowEqual` opère sur la **sortie** du selector, pas sur l'input. **Présuppose que le Channel expose le state de l'Entity à la couche concrète — en tension avec I5/I80 (Channel privé derrière la Feature, Views sans accès Entity). Aucun document ne décrit comment un Channel, qui ignore l'Entity par construction, obtiendrait cette référence.** | Q1-A : state des seules clés changées + `$changes` auxiliaire — rejeté car complexifie le selector, force deux accès (`data.catalog` + `$changes`), nécessite un objet de changes additionnel alors que la ref frozen est gratuite |
 | 2026-03-26 | **D47 — NO-DERIVED-STATE : pas de données dérivées dans l'Entity** | Les données dérivées (filtrées, triées, paginées) ne sont **jamais** stockées dans l'Entity. L'Entity stocke les données brutes (`items: Product[]`) et les critères de vue (`sortCriteria`, `filters`, `page`). Les dérivées sont calculées dans le selector de la View — c'est une **projection**, pas un **état**. Un changement de tri génère 1 patch (`sortCriteria`) au lieu de N patches (items réordonnés). Compatible Event Sourcing. | Stocker la liste dérivée dans l'Entity — rejeté car explosion de patches, sémantique incorrecte (le state n'a pas changé, seule la présentation change), risque de désynchronisation brut/dérivé |
 
@@ -105,8 +105,8 @@
 
 ## Décision D48 (2026-03-26) — UI : auto-discovery des handlers DOM
 
-| Date       | Décision | Contexte | Alternatives rejetées |
-|------------|----------|----------|-----------------------|
+| Date | Décision | Contexte | Alternatives rejetées |
+| --- | --- | --- | --- |
 | 2026-03-26 | **D48 — AUTO-UI-EVENT-DISCOVERY : handlers UI auto-dérivés depuis TUIMap (amendé par [ADR-0042](../../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md))** | Le framework dérive automatiquement les handlers DOM depuis `TUIMap` : clé `addButton` + event `['click']` → méthode `onAddButtonClick`. Convention `on${Capitalize<Key>}${Capitalize<Event>}`. Même pattern que D12 (handlers Feature auto-découverts). `get uiEvents()` est supprimé. `TAutoUIEventHandlers<TUI>` remplace `TUIEvents`. S'applique aux Views ET aux Behaviors. **Note** : la convention D12 (`onXxx` handlers auto-découverts) ne s'applique **plus au Composer** — le Composer reçoit l'Event en argument de `resolve(event)` (ADR-0027). **Amendé par ADR-0042** : `TUIMap` est remplacé par le pattern modulaire `TUIContract` (module 2, `{ uiKey → ui<TEl>()(events) }`) + `TUIElements<TUI>` (module 3, sélecteurs CSS, 1:1 avec `TUIContract`). `get uiEvents()` est **réintroduit** — mais son sens change : ce n'est plus la map manuelle nom→handler que D48 supprimait, c'est le getter **value-first** (ADR-0024) qui expose le `TUIContract` lui-même (`abstract get uiEvents(): TVC["ui"]`). L'auto-discovery `on{Key}{Event}` décrite ci-contre est **inchangée** — elle dérive toujours les handlers depuis les entrées UI, seule leur source de vérité (`TUIMap` → `TUIContract`) a changé de forme. | `get uiEvents()` déclaratif (map manuelle) — rejeté car mapping redondant avec TUIMap. Décorateurs (`@OnClick('addButton')`) — rejeté car dépendance stage 3, overhead runtime |
 
 ---

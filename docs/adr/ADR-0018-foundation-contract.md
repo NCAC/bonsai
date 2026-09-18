@@ -1,7 +1,7 @@
 # ADR-0018 : Contrat Foundation — TUIMap globale, données serveur initiales, persistance concrète et lifecycle asymétrique
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟠 Suspended — contrat minimal spécifié dans RFC-0001-composants §9, invariants I59–I62 en attente d'implémentation |
 | **Date** | 2026-03-27 |
 | **Décideurs** | @ncac |
@@ -42,6 +42,7 @@ class AppFoundation extends Foundation {
 ```
 
 Ce pattern viole l'esprit de Bonsai :
+
 - **Pas d'auto-discovery** (D12) — le framework ne câble rien, c'est du DOM brut
 - **Pas de cleanup automatique** — risque de memory leak si le développeur oublie `removeEventListener`
 - **Pas de type-safety** — aucune vérification compile-time des événements écoutés
@@ -57,6 +58,7 @@ Dans une architecture SSR ou même en SPA classique, le serveur injecte fréquem
 ```
 
 Ce pattern est standard (Next.js `__NEXT_DATA__`, Nuxt `__NUXT__`, Django templates, Rails ERB) et offre des avantages majeurs :
+
 - **Zéro latence** — données disponibles dès le parsing HTML, pas de fetch initial
 - **SEO-friendly** — le crawler voit les données dans le source HTML
 - **Pas de flash** — l'UI se rend immédiatement avec les bonnes données
@@ -73,13 +75,14 @@ Tous les autres composants persistants (Application, Feature, Entity, Channel, R
 
 Le lifecycle actuel de la Foundation emprunte celui des Views :
 
-```
+```text
 created → wired → attached → detached → [destroyed]
 ```
 
 Or, `<body>` et `<html>` ne peuvent **jamais** être détachés du DOM pendant la durée de vie de l'application. Le passage par l'état `detached` est structurellement impossible. La Foundation est créée au bootstrap (étape 6) et ne meurt qu'au shutdown de la page.
 
 Conséquences de cette lacune :
+
 - **`onDetach()` est du code mort** — il ne sera jamais appelé en production (sauf shutdown complet)
 - **Incohérence sémantique** — `onDetach()` implique un possible `re-attach`, ce qui est impossible pour Foundation
 - **Confusion DX** — le développeur voit `onDetach()` et pense qu'il doit y mettre du cleanup, alors que le cleanup n'est jamais nécessaire (la page meurt)
@@ -96,6 +99,7 @@ Le lifecycle de Foundation devrait être **asymétrique** — un `onAttach()` sa
 Cet ADR traite du contrat Foundation dans le **modèle Application unique** — une seule `Application` par page, une seule `Foundation` point racine du document.
 
 La Foundation est le **seul composant** ayant accès exclusif aux 5 cibles globales du document :
+
 - `document` — l'objet Document
 - `window` — l'objet Window (viewport, système, réseau)
 - `<html>` — l'élément racine `document.documentElement`
@@ -107,6 +111,7 @@ Aucune View, aucun Behavior, aucun Composer n'a accès à ces cibles.
 ### Hors périmètre
 
 > **Multi-Application** : le cas d'Applications multiples isolées sur une même page (micro-apps, widgets EditorJS-like, contextes scopés) est **explicitement hors périmètre** de cet ADR. Ce sujet fera l'objet d'une **RFC dédiée** ultérieure, qui traitera notamment :
+>
 > - L'isolation des contextes Radio/Channel par Application
 > - La généralisation de `rootElement` (aujourd'hui `<body>`, potentiellement un `<div>` scopé)
 > - Le Router comme capacité optionnelle
@@ -220,7 +225,7 @@ class AppFoundation extends Foundation {
 **Cleanup automatique** : le framework câble les listeners au `onAttach()` et les décâble au shutdown — même pattern AbortController que pour les Views (RFC-0002-channel §6.5). Voir **Axe 4** pour la sémantique exacte du cleanup Foundation (`onShutdown()` vs absence de `onDetach()`).
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Cohérent avec D48 (auto-discovery UI events) | - Catalogue figé — si un événement DOM futur n'est pas dans la liste, il faut mettre à jour le framework |
 | + Type-safety complète (`MouseEvent`, `KeyboardEvent`, etc.) | - `window` et `document` ne sont pas des éléments HTML — extension du concept TUIMap |
 | + Cleanup automatique (zéro risque de leak) | - 4 cibles (body, html, window, document) au lieu de 2 — plus de surface d'API |
@@ -257,7 +262,7 @@ class AppFoundation extends Foundation {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Opt-in explicite — zéro listener inutile | - Boilerplate supplémentaire (déclaration `get globalEvents()`) |
 | + Le développeur voit exactement ce qui est câblé | - Risque de désynchronisation : déclarer un event sans le handler (ou l'inverse) |
 | + Plus facile d'étendre le catalogue | - Moins auto-discoverable que l'Option A |
@@ -285,7 +290,7 @@ class AppFoundation extends Foundation {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Meilleur des deux mondes : catalogue pré-formé + extensible | - Complexité d'implémentation plus élevée |
 | + Zéro boilerplate pour les cas courants | - Deux mécanismes (auto-discovery + extension) à comprendre |
 | + Évolutif sans casser le catalogue existant | - Le développeur doit connaître la frontière catalogue / custom |
@@ -298,7 +303,7 @@ class AppFoundation extends Foundation {
 ### Axe 1 : TUIMap pré-formée + événements DOM
 
 | Critère | Option A (Pré-formée) | Option B (Opt-in) | Option C (Hybride) |
-|---------|----------------------|-------------------|-------------------|
+| --- | --- | --- | --- |
 | DX (Developer Experience) | ⭐⭐⭐ — autocomplete immédiat | ⭐⭐ — boilerplate | ⭐⭐⭐ — autocomplete + extensible |
 | Type-safety | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
 | Cohérence D48 | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
@@ -352,7 +357,7 @@ class AppFoundation extends Foundation {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + API simple et explicite | - Pas de typage automatique (le développeur cast avec `<T>`) |
 | + One-shot : suppression après lecture = propreté DOM | - Scope `<body>` uniquement — les `<script>` dans `<head>` sont ignorés |
 | + Standard web (`<script type="application/json">`) | - Pas de validation JSON schema |
@@ -387,7 +392,7 @@ class AppFoundation extends Foundation {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Déclaratif — le framework gère tout | - Plus complexe à typer correctement |
 | + Validation optionnelle | - Coupling déclaration ↔ implémentation |
 | + Auto-dispatch vers les Features | - Moins flexible (doit passer par un Command) |
@@ -413,7 +418,7 @@ abstract class Foundation {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Flexible — couvre `<head>` et `<body>` | - `'document'` élargit le scope de la Foundation au-delà de `<body>` (tension avec D20/I33) |
 | + One-shot + suppression | - Deux comportements selon l'option — moins prévisible |
 | + Couvre le cas `__NEXT_DATA__` (souvent dans `<head>`) | |
@@ -428,7 +433,7 @@ Ajouter un invariant I59 :
 
 > **I59** : La Foundation est le **seul composant** qui appartient à la couche concrète (accès DOM) **et** qui est persistant (vit toute la session applicative). Tous les autres composants concrets (View, Behavior, Composer) sont éphémères. Tous les autres composants persistants (Application, Feature, Entity, Channel, Radio, Router) sont abstraits (pas d'accès DOM).
 
-```
+```text
 ┌──────────────────────────────────────────────────────────┐
 │                    Couche abstraite                      | 
 │                    (persistante)                         │
@@ -471,14 +476,14 @@ abstract class Foundation {
 }
 ```
 
-```
+```text
 Lifecycle Foundation (L1) :
   created → wired → attached → [page unload]
                                     └─ GC naturel, pas de hook
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Sémantiquement correct — pas de faux hook | - Pas de point d'extension pour le shutdown graceful |
 | + Simple — moins de surface d'API | - Tests : impossible de nettoyer proprement entre tests |
 | + Cohérent avec la réalité DOM | - Hot-reload : pas de hook pour libérer les ressources |
@@ -513,7 +518,7 @@ abstract class Foundation {
 }
 ```
 
-```
+```text
 Lifecycle Foundation (L2) :
   created → wired → attached ──────────────────→ shutdown
                     │                                │
@@ -524,7 +529,7 @@ Lifecycle Foundation (L2) :
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Sémantiquement correct — « shutdown » ≠ « detach » | - Introduit un nouveau concept lifecycle distinct des Views |
 | + Point d'extension pour tests et hot-reload | - `beforeunload` est best-effort (pas garanti par le navigateur) |
 | + Cleanup explicite possible (analytics flush, etc.) | - Nécessite que `Application.shutdown()` existe formellement |
@@ -550,7 +555,7 @@ abstract class Foundation {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Tout L2 + gestion `beforeunload` intégrée | - `onBeforeUnload` est un anti-pattern UX dans beaucoup de cas |
 | + Pas besoin d'écouter `window.beforeunload` manuellement | - Chrome/Safari ignorent le message custom depuis 2016 |
 | + Le framework peut orchestrer : `onBeforeUnload` → confirmation → `onShutdown` | - Over-engineering si peu d'apps en ont besoin |
@@ -558,7 +563,7 @@ abstract class Foundation {
 #### Comparaison Axe 4
 
 | Critère | L1 (pas de hook) | L2 (`onShutdown`) | L3 (`onShutdown` + `beforeunload`) |
-|---------|------------------|-------------------|------------------------------------|
+| --- | --- | --- | --- |
 | Cohérence sémantique | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
 | DX (tests, hot-reload) | ⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
 | Simplicité | ⭐⭐⭐ | ⭐⭐ | ⭐ |
@@ -691,6 +696,7 @@ class AppFoundation extends Foundation {
 **Axe 4** : **Sous-option L2** (`onShutdown()`) — le hook de shutdown est nécessaire pour les tests et le hot-reload, mais `onBeforeUnload` intégré (L3) est du over-engineering. Le lifecycle Foundation devient asymétrique et unique : `onAttach()` → `onShutdown()`, sans jamais passer par `detached`. `onDetach()` est **supprimé** du contrat Foundation.
 
 **Extensions** :
+
 - **E1 (getMedia)** : ✅ Recommandé — cas d'usage universel, API propre
 - **E2 (onIdle)** : 🟡 Différé post-v1 — utile mais pas essentiel
 - **E3 (onError global)** : ✅ Recommandé — pont naturel vers ErrorReporter (ADR-0002)
@@ -706,7 +712,7 @@ class AppFoundation extends Foundation {
 > Les invariants proposés ici commencent à **I59**.
 
 | # | Invariant |
-|---|------|------|
+| --- | --- | --- |
 | **I59** | La Foundation est le seul composant **concret persistant** — couche concrète (accès DOM) mais persistant (vit toute la session). Tous les autres concrets sont éphémères, tous les autres persistants sont abstraits. |
 | **I60** | La Foundation possède un `TFoundationUIMap` **pré-formé par le framework** couvrant `body`, `html`, `window` et `document`. Les handlers sont auto-découverts par convention `on<Target><Event>`. Le cleanup est automatique (AbortController). |
 | **I61** | Les `<script type="application/json">` lus par `readServerData()` sont **supprimés du DOM** après lecture (one-shot, pas de donnée résiduelle). |
@@ -715,7 +721,7 @@ class AppFoundation extends Foundation {
 ### Décisions nouvelles
 
 | # | Décision |
-|---|----------|
+| --- | --- |
 | **D49** | La Foundation a un `TFoundationUIMap` pré-formé couvrant 4 cibles (body, html, window, document) avec un catalogue d'événements DOM globaux. Auto-discovery D48 appliquée. |
 | **D50** | `readServerData<T>(id)` : méthode typée pour lire les `<script type="application/json">`. Scope `document` (couvre `<head>` et `<body>`). Suppression one-shot. |
 | **D51** | La Foundation a accès contrôlé en N1 à `<head>` pour les meta tags et le title. Amende D20 (Foundation couvre le document, pas seulement `<body>`). |
@@ -724,7 +730,7 @@ class AppFoundation extends Foundation {
 ### Fichiers impactés
 
 | Fichier | Impact |
-|---------|--------|
+| --- | --- |
 | [RFC-0002 §11](../rfc/4-couche-concrete/foundation.md) | Réécriture majeure — ajout TFoundationUIMap, readServerData, getMedia, setTitle, getMeta |
 | [RFC-0001-composants §9](../rfc/4-couche-concrete/foundation.md) | Ajout classification « concret persistant », lifecycle asymétrique (`onAttach` → `onShutdown`), suppression `onDetach` |
 | [RFC-0001-invariants-decisions](../rfc/reference/invariants.md) | Ajout I59, I60, I61, I62, D49, D50, D51, D52 ; amendement D20 |
@@ -736,7 +742,7 @@ class AppFoundation extends Foundation {
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-03-27 | Création (Proposed) — 3 axes + 4 extensions |
 | 2026-03-27 | Ajout Axe 4 — lifecycle asymétrique (`onShutdown()` vs `onDetach()`) |
 | 2026-03-27 | Ajout section Périmètre — multi-app explicitement hors périmètre (future RFC). Foundation = seul accès aux 5 cibles globales (document, window, head, html, body) |

@@ -23,16 +23,16 @@ La plupart des frameworks frontend te _laissent_ structurer une app. Bonsai te *
 
 ## Statut — Strate 0 ✅
 
-| Composant                       | Statut                  | Coverage |
-| ------------------------------- | ----------------------- | -------- |
-| `@bonsai/entity`                | 🟢 Stable               | 100 %    |
-| `@bonsai/feature`               | 🟢 Stable               | 96 %     |
-| `@bonsai/view`                  | 🟢 Stable               | 95 %     |
-| `@bonsai/composer`              | 🟢 Stable               | 96 %     |
-| `@bonsai/foundation`            | 🟢 Stable               | 89 %     |
-| `@bonsai/application`           | 🟢 Stable               | 97 %     |
-| `@bonsai/event` (Channel/Radio) | 🟢 Stable               | 90 %     |
-| `@bonsai/behavior`              | 🟡 Stub (strate 1)      | —        |
+| Composant                       | Statut             | Coverage |
+| ------------------------------- | ------------------ | -------- |
+| `@bonsai/entity`                | 🟢 Stable          | 100 %    |
+| `@bonsai/feature`               | 🟢 Stable          | 96 %     |
+| `@bonsai/view`                  | 🟢 Stable          | 95 %     |
+| `@bonsai/composer`              | 🟢 Stable          | 96 %     |
+| `@bonsai/foundation`            | 🟢 Stable          | 89 %     |
+| `@bonsai/application`           | 🟢 Stable          | 97 %     |
+| `@bonsai/event` (Channel/Radio) | 🟢 Stable          | 90 %     |
+| `@bonsai/behavior`              | 🟡 Stub (strate 1) | —        |
 
 **Gate E2E** vert : un cart round-trip complet (click → trigger → handle → mutate → emit → DOM) traverse les six composants sans aucun mock. Voir [`tests/e2e/strate-0.cart-round-trip.test.ts`](tests/e2e/strate-0.cart-round-trip.test.ts).
 
@@ -101,27 +101,27 @@ new Application({
 ## Architecture en 30 secondes
 
 ```
-                ┌─────────────────────────────────────┐
-                │             Application              │  ← bootstrap, namespaces
-                └─────────────────────────────────────┘
-                        │                       │
-                        ▼                       ▼
-                ┌──────────────┐        ┌──────────────┐
-                │  Foundation  │        │   Features   │  ← possèdent le State (Entity)
-                │  (composers) │        │              │     les Channels (handlers)
-                └──────────────┘        └──────────────┘
-                        │                       ▲
-                        ▼                       │  Events
-                ┌──────────────┐       Commands │  Replies
-                │   Composer   │       (trigger)│  (reply)
-                │  (resolves)  │                │
-                └──────────────┘                │
-                        │                       │
-                        ▼                       │
-                ┌──────────────┐        ┌──────────────┐
-                │     View     │ ─────▶ │   Channel    │  ← Radio singleton
-                │  (DOM N1)    │        │ (tri-lane)   │     dispatche
-                └──────────────┘        └──────────────┘
+┌─────────────────────────────────────┐
+│             Application              │  ← bootstrap, namespaces
+└─────────────────────────────────────┘
+        │                       │
+        ▼                       ▼
+┌──────────────┐        ┌──────────────┐
+│  Foundation  │        │   Features   │  ← possèdent le State (Entity)
+│  (composers) │        │              │     les Channels (handlers)
+└──────────────┘        └──────────────┘
+        │                       ▲
+        ▼                       │  Events
+┌──────────────┐       Commands │  Replies
+│   Composer   │       (trigger)│  (reply)
+│  (resolves)  │                │
+└──────────────┘                │
+        │                       │
+        ▼                       │
+┌──────────────┐        ┌──────────────┐
+│     View     │ ─────▶ │   Channel    │  ← Radio singleton
+│  (DOM N1)    │        │ (tri-lane)   │     dispatche
+└──────────────┘        └──────────────┘
 ```
 
 - **Foundation** possède le layout de la page (`<body>` + slots de composers).
@@ -184,14 +184,14 @@ pnpm run build:no-watch               # build one-shot
 
 La documentation architecturale (RFC, ADR) est rédigée en **français** — la langue de conception du projet (cf. [ADR-0036](docs/adr/ADR-0036-documentation-internationalization-strategy.md)). Des traductions anglaises sont prévues pour les documents stables.
 
-|             |                                                                                       |
-| ----------- | ------------------------------------------------------------------------------------- |
-| 📐 **RFC**  | [Source de vérité](docs/rfc/README.md) — architecture, contrats, invariants            |
-| 📋 **ADR**  | [38 décisions](docs/adr/README.md) — chaque arbitrage architectural                    |
-| 📖 **Guides** | [Conventions de code](docs/guides/) — style TypeScript, style framework             |
-| 🚪 **Strates** | [ADR-0028](docs/adr/ADR-0028-implementation-phasing-strategy.md) — roadmap de livraison & gates      |
-| 🛠️ **Build** | [lib/BUILD.md](lib/BUILD.md), [lib/DEVELOPER-GUIDE.md](lib/DEVELOPER-GUIDE.md)        |
-| 🇬🇧          | [English version](README-EN.md) — non maintenue en priorité tant que le projet n'est pas exposé publiquement |
+|                |                                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------------------ |
+| 📐 **RFC**     | [Source de vérité](docs/rfc/README.md) — architecture, contrats, invariants                                  |
+| 📋 **ADR**     | [38 décisions](docs/adr/README.md) — chaque arbitrage architectural                                          |
+| 📖 **Guides**  | [Conventions de code](docs/guides/) — style TypeScript, style framework                                      |
+| 🚪 **Strates** | [ADR-0028](docs/adr/ADR-0028-implementation-phasing-strategy.md) — roadmap de livraison & gates              |
+| 🛠️ **Build**    | [lib/BUILD.md](lib/BUILD.md), [lib/DEVELOPER-GUIDE.md](lib/DEVELOPER-GUIDE.md)                               |
+| 🇬🇧             | [English version](README-EN.md) — non maintenue en priorité tant que le projet n'est pas exposé publiquement |
 
 ## Licence
 

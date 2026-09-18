@@ -9,7 +9,7 @@
 
 La documentation RFC est organisée en **chapitres** suivant un parcours de lecture progressif, des principes fondateurs jusqu'aux détails d'implémentation.
 
-```
+```text
 rfc/
 ├── 1-philosophie.md              ← Pourquoi Bonsai existe
 ├── 2-architecture/               ← Comment c'est structuré
@@ -50,13 +50,13 @@ rfc/
 ### Chapitre 1 — Philosophie
 
 | Document | Description | Statut |
-|----------|-------------|--------|
+| --- | --- | --- |
 | [1-philosophie](1-philosophie.md) | Contexte, objectifs et principes fondateurs | 🟢 Stable |
 
 ### Chapitre 2 — Architecture
 
 | Document | Description | Statut |
-|----------|-------------|--------|
+| --- | --- | --- |
 | [Vue d'ensemble](2-architecture/README.md) | Taxonomie des composants, couches, principes structurants | 🟢 Stable |
 | [Communication](2-architecture/communication.md) | Flux unidirectionnel, tri-lane (command/event/request), Radio, namespaces | 🟢 Stable |
 | [State](2-architecture/state.md) | Entity comme seul state, ownership strict, store logique distribué | 🟢 Stable |
@@ -68,7 +68,7 @@ rfc/
 ### Chapitre 3 — Couche abstraite (composants persistants)
 
 | Document | Description | Statut |
-|----------|-------------|--------|
+| --- | --- | --- |
 | [Vue d'ensemble](3-couche-abstraite/README.md) | Application, Feature, Entity, Router — ce qui vit toute la session | 🟢 Stable |
 | [Application](3-couche-abstraite/application.md) | Orchestrateur bootstrap/shutdown, manifest applicatif typé | 🟢 Stable |
 | [Feature](3-couche-abstraite/feature.md) | Unité métier, 5 capacités, handlers auto-découverts, Channel | 🟢 Stable |
@@ -78,7 +78,7 @@ rfc/
 ### Chapitre 4 — Couche concrète (composants éphémères)
 
 | Document | Description | Statut |
-|----------|-------------|--------|
+| --- | --- | --- |
 | [Vue d'ensemble](4-couche-concrete/README.md) | Foundation, Composer, View, Behavior — ce qui touche le DOM | 🟢 Stable |
 | [Foundation](4-couche-concrete/foundation.md) | Singleton, écoute DOM globale, Composers racines, altération N1 | 🟢 Stable |
 | [Composer](4-couche-concrete/composer.md) | Décideur de composition, resolve(), scope DOM fixe | 🟢 Stable |
@@ -88,13 +88,13 @@ rfc/
 ### Chapitre 5 — Rendu avancé
 
 | Document | Description | Statut |
-|----------|-------------|--------|
+| --- | --- | --- |
 | [Rendu avancé](5-rendu.md) | Compilateur Pug → PDR, templates, ProjectionList, réconciliation | 🟢 Stable |
 
 ### Chapitre 6 — Transversal
 
 | Document | Description | Statut |
-|----------|-------------|--------|
+| --- | --- | --- |
 | [Conventions de typage](6-transversal/conventions-typage.md) | Préfixes, contraintes, patterns TypeScript fondamentaux | 🟢 Stable |
 | [Formulaires](6-transversal/formulaires.md) | 4 patterns de formulaire, du simple au complexe | 🟢 Stable |
 | [Validation](6-transversal/validation.md) | Compile-time, bootstrap, runtime — garanties et garde-fous | 🟢 Stable |
@@ -102,13 +102,13 @@ rfc/
 ### DevTools
 
 | Document | Description | Statut |
-|----------|-------------|--------|
+| --- | --- | --- |
 | [DevTools et observabilité](devtools.md) | Instrumentation, Event Ledger, inspection, hooks, perf policy | 🟡 Draft |
 
 ### Référence
 
 | Document | Description | Statut |
-|----------|-------------|--------|
+| --- | --- | --- |
 | [Invariants](reference/invariants.md) | Règles non négociables (I1–I98, I59–I62 réservés) | 🟢 Stable |
 | [Décisions historiques](reference/decisions.md) | Journal chronologique (D1–D48) | 🟢 Stable |
 | [Anti-patterns](reference/anti-patterns.md) | Patterns explicitement interdits | 🟢 Stable |
@@ -120,7 +120,7 @@ rfc/
 ## Statuts
 
 | Icône | Statut | Description |
-|-------|--------|-------------|
+| --- | --- | --- |
 | 🟢 | **Stable** | Spécification stabilisée — contrat figé, prêt à implémenter. Amendements mineurs possibles via ADR |
 | 🟡 | **Draft** | Rédaction/révision active |
 | ⚪ | **Brouillon** | Exploration, non normatif |
@@ -152,7 +152,7 @@ rfc/
 7. **[DevTools](devtools.md)** — Instrumentation et observabilité (Draft)
 8. **[Référence](reference/invariants.md)** — Invariants, décisions, anti-patterns, glossaire
 
-**Relation RFC ↔ ADR** : Les RFCs décrivent *quoi* construire. Quand un point nécessite un choix non trivial entre plusieurs options, on crée un [ADR](../adr/README.md) qui documente *pourquoi* ce choix.
+**Relation RFC ↔ ADR** : Les RFCs décrivent _quoi_ construire. Quand un point nécessite un choix non trivial entre plusieurs options, on crée un [ADR](../adr/README.md) qui documente _pourquoi_ ce choix.
 
 ---
 
@@ -168,6 +168,7 @@ rfc/
 En cas de divergence entre documents, le **document source de vérité** prévaut.
 
 > **Règles de prévalence** :
+>
 > 1. Les documents dédiés (feature.md, entity.md, communication.md…) prévalent sur les vues d'ensemble (README.md chapitres).
 > 2. Les ADR Accepted prévalent sur les décisions historiques (D1–D48).
 > 3. Un ADR reste la source de vérité **tant que** son contenu n'est pas absorbé dans la RFC dédiée.
@@ -175,7 +176,7 @@ En cas de divergence entre documents, le **document source de vérité** prévau
 ### Architecture et principes
 
 | Sujet | RFC source de vérité | ADR active | Statut absorption | Action |
-|-------|---------------------|------------|-------------------|--------|
+| --- | --- | --- | --- | --- |
 | Principes, flux, frontières | [Philosophie](1-philosophie.md) + [Architecture](2-architecture/README.md) | — | — | ✅ Complet |
 | Composants (10) | [Couche abstraite](3-couche-abstraite/README.md) + [Couche concrète](4-couche-concrete/README.md) | — | — | ✅ Complet |
 | Invariants (I1–I98, I59–I62 réservés) | [Invariants](reference/invariants.md) | — | — | ✅ Complet |
@@ -186,7 +187,7 @@ En cas de divergence entre documents, le **document source de vérité** prévau
 ### API, contrats et typage
 
 | Sujet | RFC source de vérité | ADR active | Statut absorption | Action |
-|-------|---------------------|------------|-------------------|--------|
+| --- | --- | --- | --- | --- |
 | Conventions de typage | [Conventions de typage](6-transversal/conventions-typage.md) | — | — | ✅ Complet |
 | Contrat Feature | [Feature](3-couche-abstraite/feature.md) | [ADR-0037](../adr/ADR-0037-feature-generic-entity-class.md) 🔵 / [ADR-0040](../adr/ADR-0040-typescript-first-api-channel-definition-typed.md) 🔵 / [ADR-0046](../adr/ADR-0046-feature-contract-refonte.md) 🔵 | ✅ Complet | `TFeatureCallbacks`/`TStrictFeatureClass` (I92, I95) absorbés |
 | Manifest applicatif (namespaces) | [Feature §3](3-couche-abstraite/feature.md) | [ADR-0039](../adr/ADR-0039-namespace-authority-and-uniqueness.md) 🔵 | ✅ Complet | `StrictManifest<M>`, réservés (`local`/`router`), camelCase absorbés |
@@ -201,7 +202,7 @@ En cas de divergence entre documents, le **document source de vérité** prévau
 ### Rendu et UI
 
 | Sujet | RFC source de vérité | ADR active | Statut absorption | Action |
-|-------|---------------------|------------|-------------------|--------|
+| --- | --- | --- | --- | --- |
 | PDR, templates, ProjectionList | [Rendu avancé](5-rendu.md) | — | — | ✅ RFC 🟢 Stable (D39–D48) |
 | Collections & listes | [Rendu avancé §6.4–6.8](5-rendu.md) | [ADR-0008](../adr/ADR-0008-collection-patterns.md) ⚪ | ✅ 100% | ✅ Absorbé — ADR superseded (D45) |
 | Listes virtualisées | [Rendu avancé §6, §12](5-rendu.md) | [ADR-0012](../adr/ADR-0012-virtualized-list.md) 🟢 | 🟡 50% | Absorber API `Virtualizer` |
@@ -212,21 +213,21 @@ En cas de divergence entre documents, le **document source de vérité** prévau
 ### Transversal
 
 | Sujet | RFC source de vérité | ADR active | Statut absorption | Action |
-|-------|---------------------|------------|-------------------|--------|
+| --- | --- | --- | --- | --- |
 | DevTools & observabilité | [DevTools](devtools.md) | — | — | 🟡 Promouvoir Draft → Stable |
-| Testing & `@bonsai/testing` | *Aucune RFC* — [Guide](../guides/TESTING.md) | [ADR-0006](../adr/ADR-0006-testing-strategy.md) 🟢 | 🟡 50% | Guide créé. Reste : implémenter `@bonsai/testing` |
+| Testing & `@bonsai/testing` | _Aucune RFC_ — [Guide](../guides/TESTING.md) | [ADR-0006](../adr/ADR-0006-testing-strategy.md) 🟢 | 🟡 50% | Guide créé. Reste : implémenter `@bonsai/testing` |
 | Formulaires | [Formulaires](6-transversal/formulaires.md) + [Guide](../guides/FORMS-GUIDE.md) | [ADR-0009](../adr/ADR-0009-forms-pattern.md) 🟢 | ✅ 100% | Patterns absorbés + guide dédié |
-| Event Sourcing | *Aucune RFC* | [ADR-0011](../adr/ADR-0011-event-sourcing-support.md) 🟠 | — | Post-v1 (🟠 Suspended) |
+| Event Sourcing | _Aucune RFC_ | [ADR-0011](../adr/ADR-0011-event-sourcing-support.md) 🟠 | — | Post-v1 (🟠 Suspended) |
 | Réutilisation code View | [Décisions D38](reference/decisions.md) | [ADR-0013](../adr/ADR-0013-view-code-reuse.md) ⚪ | — | ⚪ Superseded (→ D38) |
 | Distribution ESM | [Distribution](2-architecture/distribution.md) | [ADR-0019](../adr/ADR-0019-mode-esm-modulaire.md) 🔵 | 🔴 0% | ⏳ `BonsaiRegistry` n'existe pas (le code affirme explicitement le contraire — cf. glossaire.md, types-index.md) ; le format IIFE n'est pas produit par le builder (seul `format: "es"`) |
 | Extension Points | [Architecture](2-architecture/README.md) | [ADR-0021](../adr/ADR-0021-composition-monde-ouvert-plateforme.md) 🟡 | 🔴 0% | Proposed — en attente d'acceptation |
-| Build artifacts & versioning | *Aucune RFC* | [ADR-0035](../adr/ADR-0035-build-artifacts-versioning-strategy.md) 🟢 | 🔴 0% | Tout versionné, rebuild systématique, `main` fait foi |
-| Internationalisation docs | *Aucune RFC* | [ADR-0036](../adr/ADR-0036-documentation-internationalization-strategy.md) 🟢 | 🔴 0% | FR source, EN dérivée (`-EN.md`), traduction incrémentale |
+| Build artifacts & versioning | _Aucune RFC_ | [ADR-0035](../adr/ADR-0035-build-artifacts-versioning-strategy.md) 🟢 | 🔴 0% | Tout versionné, rebuild systématique, `main` fait foi |
+| Internationalisation docs | _Aucune RFC_ | [ADR-0036](../adr/ADR-0036-documentation-internationalization-strategy.md) 🟢 | 🔴 0% | FR source, EN dérivée (`-EN.md`), traduction incrémentale |
 
 ### Légende
 
 | Icône | Signification |
-|-------|---------------|
+| --- | --- |
 | ✅ | Absorption complète — la RFC fait foi |
 | 🟡 | Absorption partielle — l'ADR reste co-normative |
 | 🔴 | Non absorbé — l'ADR est seule source de vérité |
@@ -243,10 +244,10 @@ Les invariants I46–I56 sont définis dans [Conventions de typage](6-transversa
 > invariants architecturaux historiques (I1–I45, I57, I58), les invariants de contrats
 > TypeScript (I46–I56) et les invariants ajoutés par les ADR-0038 → ADR-0046
 > (I63–I98 — bootstrap, manifest applicatif, pattern modulaire consommateur, Entity strate 1a).
-> *(recompté par le script [annexe A.4](../AUDIT-DOCS-2026-09-16.md#a4--numérotation-des-invariants-et-décisions) de l'audit doc)*
+> _(recompté par le script [annexe A.4](../AUDIT-DOCS-2026-09-16.md#a4--numérotation-des-invariants-et-décisions) de l'audit doc)_
 
 | Thème | Invariants |
-|-------|------------|
+| --- | --- |
 | **Communication / Channels** | I1, I2, I3, I4, I7, I8, I9, I10, I11, I12, I14, I15, I16, I65, I70, I73, I76 |
 | **State / Encapsulation** | I5, I6, I17, I22, I29, I30, I42, I57, I63, I64, I80 |
 | **View / DOM** | I13, I18, I19, I31, I32, I34, I36, I38, I39, I40, I41, I77, I78, I82, I91 |
@@ -267,7 +268,7 @@ Les invariants I46–I56 sont définis dans [Conventions de typage](6-transversa
 > Table de correspondance entre les anciens noms de fichiers RFC et la structure actuelle.
 
 | Ancien fichier | Nouveau chemin |
-|---------------|----------------|
+| --- | --- |
 | `RFC-0001-architecture-fondamentale.md` | [1-philosophie.md](1-philosophie.md) + [2-architecture/](2-architecture/README.md) |
 | `RFC-0001-composants.md` | [3-couche-abstraite/](3-couche-abstraite/README.md) + [4-couche-concrete/](4-couche-concrete/README.md) |
 | `RFC-0001-invariants-decisions.md` | [reference/invariants.md](reference/invariants.md) + [reference/decisions.md](reference/decisions.md) |

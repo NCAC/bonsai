@@ -2,14 +2,14 @@
 
 > **Comment construire les artefacts du framework Bonsai (`.js` + `.d.ts`) et quel outillage fournir aux développeurs d'applications ?**
 
-| Champ           | Valeur                                                                                                                                                                                                                                                                                          |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Statut**      | 🟡 Proposed                                                                                                                                                                                                                                                                                     |
-| **Date**        | 2026-04-14                                                                                                                                                                                                                                                                                      |
-| **Décideurs**   | @ncac                                                                                                                                                                                                                                                                                           |
-| **RFC liées**   | [Distribution](../rfc/2-architecture/distribution.md) (mode IIFE vs ESM)                                                                                                                                                                                                                        |
-| **ADR liées**   | [ADR-0019](ADR-0019-mode-esm-modulaire.md) (ESM Modulaire, CLI `bonsai build`), [ADR-0028](ADR-0028-implementation-phasing-strategy.md) (phasage kernel-first), [ADR-0029](ADR-0029-v1-scope-freeze.md) (scope v1 gelé), [ADR-0031](ADR-0031-monorepo-package-topology.md) (topologie monorepo) |
-| **Déclencheur** | Audit de la pipeline de build existante — 5 893 lignes de code custom de bundling DTS identifiées comme dette technique pré-corpus                                                                                                                                                              |
+| Champ | Valeur |
+| --- | --- |
+| **Statut** | 🟡 Proposed |
+| **Date** | 2026-04-14 |
+| **Décideurs** | @ncac |
+| **RFC liées** | [Distribution](../rfc/2-architecture/distribution.md) (mode IIFE vs ESM) |
+| **ADR liées** | [ADR-0019](ADR-0019-mode-esm-modulaire.md) (ESM Modulaire, CLI `bonsai build`), [ADR-0028](ADR-0028-implementation-phasing-strategy.md) (phasage kernel-first), [ADR-0029](ADR-0029-v1-scope-freeze.md) (scope v1 gelé), [ADR-0031](ADR-0031-monorepo-package-topology.md) (topologie monorepo) |
+| **Déclencheur** | Audit de la pipeline de build existante — 5 893 lignes de code custom de bundling DTS identifiées comme dette technique pré-corpus |
 
 ---
 
@@ -54,10 +54,10 @@ Ce document couvre **deux builds distincts** qui partagent des choix fondamentau
 
 ## Les deux builds
 
-| #           | Build              | Objectif                                                                                        | Qui s'en sert                          | Quand                 | Statut v1                                 |
-| ----------- | ------------------ | ----------------------------------------------------------------------------------------------- | -------------------------------------- | --------------------- | ----------------------------------------- |
-| **Build 1** | Build framework    | Produire les artefacts du runtime Bonsai (`bonsai.esm.js` + `bonsai.d.ts`) à partir du monorepo | L'équipe Bonsai                        | Développement continu | ✅ **IN v1** — bloquant strate 0          |
-| **Build 2** | CLI `bonsai build` | Compiler l'application d'un développeur (`--mode=esm\|iife`)                                    | Les développeurs d'applications Bonsai | Après v1 runtime      | ⏳ **OUT v1** (ADR-0029, cf. ADR-0019 §8) |
+| # | Build | Objectif | Qui s'en sert | Quand | Statut v1 |
+| --- | --- | --- | --- | --- | --- |
+| **Build 1** | Build framework | Produire les artefacts du runtime Bonsai (`bonsai.esm.js` + `bonsai.d.ts`) à partir du monorepo | L'équipe Bonsai | Développement continu | ✅ **IN v1** — bloquant strate 0 |
+| **Build 2** | CLI `bonsai build` | Compiler l'application d'un développeur (`--mode=esm\|iife`) | Les développeurs d'applications Bonsai | Après v1 runtime | ⏳ **OUT v1** (ADR-0029, cf. ADR-0019 §8) |
 
 > **Périmètre de cette ADR** : les deux builds sont spécifiés, mais seul le Build 1 est implémenté en v1. Le Build 2 est conçu pour que les choix de toolchain v1 le supportent naturellement quand il sera implémenté.
 
@@ -67,7 +67,7 @@ Ce document couvre **deux builds distincts** qui partagent des choix fondamentau
 
 **Sortie** :
 
-```
+```text
 core/dist/
   bonsai.esm.js           ← bundle ESM unique — tout le runtime Bonsai
   bonsai.d.ts             ← bundle de déclarations TypeScript unifié
@@ -88,10 +88,10 @@ core/dist/
 
 **Sortie selon le mode** :
 
-| Mode          | Sortie                                                | Pipeline                                      |
-| ------------- | ----------------------------------------------------- | --------------------------------------------- |
-| `--mode=iife` | `app.bundle.iife.js` (bundle unique, auto-exécutable) | `tsc` → bundler (Rollup/esbuild) → IIFE wrap  |
-| `--mode=esm`  | `*.esm.js` + `*.d.ts` par module source               | `tsc --declaration` → résolution path aliases |
+| Mode | Sortie | Pipeline |
+| --- | --- | --- |
+| `--mode=iife` | `app.bundle.iife.js` (bundle unique, auto-exécutable) | `tsc` → bundler (Rollup/esbuild) → IIFE wrap |
+| `--mode=esm` | `*.esm.js` + `*.d.ts` par module source | `tsc --declaration` → résolution path aliases |
 
 **Caractéristiques** (ADR-0019 §8) :
 
@@ -110,11 +110,11 @@ Le framework Bonsai dépend de trois bibliothèques tierces (`valibot`, `immer`,
 
 ### Vue d'ensemble
 
-| Dépendance  | Tier                      | Le développeur l'utilise ?                      | JS bundle (`bonsai.esm.js`)       | DTS bundle (`bonsai.d.ts`) | `package.json` consommateur |
-| ----------- | ------------------------- | ----------------------------------------------- | --------------------------------- | -------------------------- | --------------------------- |
-| **valibot** | **Tier 1** — Intégrée     | ✅ Oui — schémas Entity (ADR-0022)              | **Inliné + exporté** (`Valibot`)  | **Inliné** (types résolus) | Aucune dépendance requise   |
-| **immer**   | **Tier 2** — Transparente | ❌ Non — concept `TDraft<T>` exposé, lib cachée | **Inliné, non exporté** (interne) | **Inliné** (types résolus) | Aucune dépendance requise   |
-| **rxjs**    | **Tier 3** — Opaque       | ❌ Non — mécanique interne invisible            | **Inliné, non exporté** (interne) | **Inliné** (types résolus) | Aucune dépendance requise   |
+| Dépendance | Tier | Le développeur l'utilise ? | JS bundle (`bonsai.esm.js`) | DTS bundle (`bonsai.d.ts`) | `package.json` consommateur |
+| --- | --- | --- | --- | --- | --- |
+| **valibot** | **Tier 1** — Intégrée | ✅ Oui — schémas Entity (ADR-0022) | **Inliné + exporté** (`Valibot`) | **Inliné** (types résolus) | Aucune dépendance requise |
+| **immer** | **Tier 2** — Transparente | ❌ Non — concept `TDraft<T>` exposé, lib cachée | **Inliné, non exporté** (interne) | **Inliné** (types résolus) | Aucune dépendance requise |
+| **rxjs** | **Tier 3** — Opaque | ❌ Non — mécanique interne invisible | **Inliné, non exporté** (interne) | **Inliné** (types résolus) | Aucune dépendance requise |
 
 > **Principe fondamental** : `@bonsai/core` a **zéro dépendance transitive**. Le développeur fait `npm install @bonsai/core` et n'a rien d'autre à installer. Bonsai contrôle la version exacte de chaque bibliothèque tierce — aucun conflit de version possible.
 
@@ -237,31 +237,31 @@ const externalPatterns: (string | RegExp)[] = [];
 
 ### Contraintes architecturales
 
-| #   | Contrainte                                                                                                                                                                             | Source                                                 |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| C1  | Le build framework DOIT produire un **artefact testable E2E** dès la strate 0 — pas de « pipeline seule sans sortie »                                                                  | ADR-0028 C1                                            |
-| C2  | Le `.d.ts` est un **artefact de première classe** — inséparable du `.js`. Sans `.d.ts`, pas de type-safety consommateur                                                                | ADR-0019 C7                                            |
-| C3  | Le build framework DOIT supporter la topologie **1 package/composant** avec résolution du DAG de dépendances                                                                           | ADR-0031 (Option D)                                    |
-| C4  | Le build framework DOIT produire un **bundle ESM** (`format: "es"`) — pas d'IIFE pour le runtime                                                                                       | ADR-0019 §8, Distribution RFC                          |
-| C5  | **Toutes** les dépendances tierces DOIVENT être **inlinées** (JS + DTS) selon leur tier (§3) — Tier 1 exporté publiquement, Tier 2/3 internes non exportés. Zéro dépendance transitive | DX développeur, encapsulation, zéro conflit de version |
-| C6  | Les artefacts produits DOIVENT permettre **IntelliSense complet** chez le consommateur (`Go to definition`, auto-completion, erreurs compile-time)                                     | Philosophie Bonsai — « le type EST la documentation »  |
-| C7  | La toolchain choisie DOIT être **compatible avec le futur CLI `bonsai build`** (Build 2) — pas de choix qui bloque le mode ESM per-module                                              | ADR-0019 C8                                            |
+| # | Contrainte | Source |
+| -- | --- | --- |
+| C1 | Le build framework DOIT produire un **artefact testable E2E** dès la strate 0 — pas de « pipeline seule sans sortie » | ADR-0028 C1 |
+| C2 | Le `.d.ts` est un **artefact de première classe** — inséparable du `.js`. Sans `.d.ts`, pas de type-safety consommateur | ADR-0019 C7 |
+| C3 | Le build framework DOIT supporter la topologie **1 package/composant** avec résolution du DAG de dépendances | ADR-0031 (Option D) |
+| C4 | Le build framework DOIT produire un **bundle ESM** (`format: "es"`) — pas d'IIFE pour le runtime | ADR-0019 §8, Distribution RFC |
+| C5 | **Toutes** les dépendances tierces DOIVENT être **inlinées** (JS + DTS) selon leur tier (§3) — Tier 1 exporté publiquement, Tier 2/3 internes non exportés. Zéro dépendance transitive | DX développeur, encapsulation, zéro conflit de version |
+| C6 | Les artefacts produits DOIVENT permettre **IntelliSense complet** chez le consommateur (`Go to definition`, auto-completion, erreurs compile-time) | Philosophie Bonsai — « le type EST la documentation » |
+| C7 | La toolchain choisie DOIT être **compatible avec le futur CLI `bonsai build`** (Build 2) — pas de choix qui bloque le mode ESM per-module | ADR-0019 C8 |
 
 ### Contraintes de maintenabilité
 
-| #   | Contrainte                                                                                                                                             | Justification         |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
-| C8  | La pipeline DOIT être **maintenable par un développeur standard** — pas de connaissance approfondie de l'AST TypeScript requise                        | Réduire le bus factor |
-| C9  | La pipeline NE DOIT PAS contenir de **branches hardcodées par package** (`if (name === "@bonsai/rxjs")`) — chaque package suit le même chemin de build | Généricité            |
-| C10 | La pipeline DOIT fonctionner **sans modification** quand un nouveau package composant est ajouté à `bonsai-components.yaml`                            | Extensibilité         |
-| C11 | Le code de la pipeline DOIT suivre le [BUILD-CODING-STYLE](../guides/BUILD-CODING-STYLE.md) — singleton `me()`, `fs-extra`, imports `@build/`, Vitest  | Cohérence interne     |
+| # | Contrainte | Justification |
+| --- | --- | --- |
+| C8 | La pipeline DOIT être **maintenable par un développeur standard** — pas de connaissance approfondie de l'AST TypeScript requise | Réduire le bus factor |
+| C9 | La pipeline NE DOIT PAS contenir de **branches hardcodées par package** (`if (name === "@bonsai/rxjs")`) — chaque package suit le même chemin de build | Généricité |
+| C10 | La pipeline DOIT fonctionner **sans modification** quand un nouveau package composant est ajouté à `bonsai-components.yaml` | Extensibilité |
+| C11 | Le code de la pipeline DOIT suivre le [BUILD-CODING-STYLE](../guides/BUILD-CODING-STYLE.md) — singleton `me()`, `fs-extra`, imports `@build/`, Vitest | Cohérence interne |
 
 ### Contraintes d'écosystème
 
-| #   | Contrainte                                                                                        | Justification    |
-| --- | ------------------------------------------------------------------------------------------------- | ---------------- |
-| C12 | La toolchain DOIT supporter **TypeScript 5.8+** et suivre les évolutions du compilateur           | Pérennité        |
-| C13 | La licence de tout outil tiers DOIT être compatible avec la licence MIT de Bonsai                 | Juridique        |
+| # | Contrainte | Justification |
+| --- | --- | --- |
+| C12 | La toolchain DOIT supporter **TypeScript 5.8+** et suivre les évolutions du compilateur | Pérennité |
+| C13 | La licence de tout outil tiers DOIT être compatible avec la licence MIT de Bonsai | Juridique |
 | C14 | La toolchain DOIT avoir un **écosystème actif** — pas de projet abandonné ou en maintenance seule | Risque technique |
 
 ---
@@ -270,19 +270,19 @@ const externalPatterns: (string | RegExp)[] = [];
 
 ### Inventaire quantitatif du code actuel (`/bonsai/lib/build/`)
 
-| Zone                                   | Fichiers        | Lignes    | Rôle                                                  | État                    |
-| -------------------------------------- | --------------- | --------- | ----------------------------------------------------- | ----------------------- |
-| `bundling/`                            | 4 fichiers      | **1 754** | Bundling DTS custom (ts-morph + regex)                | 🔴 À supprimer          |
-| `plugins/rollup-plugin-dts/`           | 15 fichiers     | **4 139** | Fork custom de rollup-plugin-dts avec gestion mémoire | 🔴 À supprimer          |
-| **Total DTS custom**                   | **19 fichiers** | **5 893** | —                                                     | —                       |
-| `building/`                            | 2 fichiers      | 793       | Builder + Orchestrator                                | 🟡 À refactorer         |
-| `initializing/`                        | 2 fichiers      | 648       | ComponentsRegistry + BuildOptions                     | 🟡 À adapter (ADR-0031) |
-| `cache/`                               | 6 fichiers      | 793       | Système de cache                                      | 🟢 Réutilisable         |
-| `core/`                                | 2 fichiers      | 390       | PathManager + BuildCache                              | 🟢 Réutilisable         |
-| `plugins/rollup-plugin-postprocess.ts` | 1 fichier       | 55        | Post-traitement Rollup                                | 🟢 Réutilisable         |
-| `build.type.ts`                        | 1 fichier       | 69        | Types centralisés                                     | 🟡 À adapter (ADR-0031) |
-| **Total hors DTS**                     | **14 fichiers** | **2 748** | —                                                     | —                       |
-| **Total pipeline**                     | **33 fichiers** | **8 641** | —                                                     | —                       |
+| Zone | Fichiers | Lignes | Rôle | État |
+| --- | --- | --- | --- | --- |
+| `bundling/` | 4 fichiers | **1 754** | Bundling DTS custom (ts-morph + regex) | 🔴 À supprimer |
+| `plugins/rollup-plugin-dts/` | 15 fichiers | **4 139** | Fork custom de rollup-plugin-dts avec gestion mémoire | 🔴 À supprimer |
+| **Total DTS custom** | **19 fichiers** | **5 893** | — | — |
+| `building/` | 2 fichiers | 793 | Builder + Orchestrator | 🟡 À refactorer |
+| `initializing/` | 2 fichiers | 648 | ComponentsRegistry + BuildOptions | 🟡 À adapter (ADR-0031) |
+| `cache/` | 6 fichiers | 793 | Système de cache | 🟢 Réutilisable |
+| `core/` | 2 fichiers | 390 | PathManager + BuildCache | 🟢 Réutilisable |
+| `plugins/rollup-plugin-postprocess.ts` | 1 fichier | 55 | Post-traitement Rollup | 🟢 Réutilisable |
+| `build.type.ts` | 1 fichier | 69 | Types centralisés | 🟡 À adapter (ADR-0031) |
+| **Total hors DTS** | **14 fichiers** | **2 748** | — | — |
+| **Total pipeline** | **33 fichiers** | **8 641** | — | — |
 
 > **68% du code de la pipeline** (5 893 / 8 641 lignes) est du bundling DTS custom qui sera supprimé par cette ADR quelle que soit l'option choisie.
 
@@ -323,14 +323,14 @@ Le code custom a contourné ce problème avec une approche différente (extracti
 
 **Description** : conserver le code existant dans `bundling/` et `plugins/rollup-plugin-dts/`. Adapter les branches hardcodées pour chaque nouveau package ADR-0031.
 
-| Avantages                          | Inconvénients                                                  |
-| ---------------------------------- | -------------------------------------------------------------- |
-| + Aucun coût de migration immédiat | - 5 893 lignes non testées à maintenir                         |
-| + Contrôle total sur la sortie     | - Branches hardcodées par package — viole C9, C10              |
-|                                    | - Nécessite une expertise AST TypeScript (ts-morph) — viole C8 |
-|                                    | - Deux systèmes redondants (bundling/ et plugins/)             |
-|                                    | - 0 test — régressions silencieuses garanties                  |
-|                                    | - Fork abandonné de rollup-plugin-dts — diverge de l'upstream  |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Aucun coût de migration immédiat | - 5 893 lignes non testées à maintenir |
+| + Contrôle total sur la sortie | - Branches hardcodées par package — viole C9, C10 |
+| | - Nécessite une expertise AST TypeScript (ts-morph) — viole C8 |
+| | - Deux systèmes redondants (bundling/ et plugins/) |
+| | - 0 test — régressions silencieuses garanties |
+| | - Fork abandonné de rollup-plugin-dts — diverge de l'upstream |
 
 ---
 
@@ -340,7 +340,7 @@ Le code custom a contourné ce problème avec une approche différente (extracti
 
 **Pipeline** :
 
-```
+```text
 Passe 1 — JS :
   tsc (via rollup-plugin-typescript2) → Rollup format:"es" → bonsai.esm.js
 
@@ -381,16 +381,16 @@ await dtsBundle.write(dtsBundleConfig.output as any);
 await dtsBundle.close();
 ```
 
-| Avantages                                                                         | Inconvénients                                                                      |
-| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| + **Déjà installé** (`rollup-plugin-dts@6.2.1` dans `package.json`) — coût zéro   | - Projet en **maintenance mode** (pas de nouvelles features, mais mises à jour TS) |
-| + Supprime **5 893 lignes** de code custom                                        | - Licence **LGPL-3.0** — à vérifier compatibilité avec MIT                         |
-| + **Intégration Rollup native** — même pipeline que le JS                         | - Ne produit pas de rapport API (pas de tracking des breaking changes)             |
-| + **Générique** — aucune branche par package (C9 ✅, C10 ✅)                      | - Ne fonctionne qu'avec des `.d.ts` existants (tsc doit d'abord les générer)       |
-| + **1,4M téléchargements/semaine** — écosystème validé                            |                                                                                    |
-| + Un développeur standard comprend la config (C8 ✅)                              |                                                                                    |
-| + Compatible Build 2 futur (C7 ✅) — même plugin pour bundler les DTS applicatifs |                                                                                    |
-| + Sourcemap support (`sourcemap: true`) pour Go-to-Definition (C6 ✅)             |                                                                                    |
+| Avantages | Inconvénients |
+| --- | --- |
+| + **Déjà installé** (`rollup-plugin-dts@6.2.1` dans `package.json`) — coût zéro | - Projet en **maintenance mode** (pas de nouvelles features, mais mises à jour TS) |
+| + Supprime **5 893 lignes** de code custom | - Licence **LGPL-3.0** — à vérifier compatibilité avec MIT |
+| + **Intégration Rollup native** — même pipeline que le JS | - Ne produit pas de rapport API (pas de tracking des breaking changes) |
+| + **Générique** — aucune branche par package (C9 ✅, C10 ✅) | - Ne fonctionne qu'avec des `.d.ts` existants (tsc doit d'abord les générer) |
+| + **1,4M téléchargements/semaine** — écosystème validé | |
+| + Un développeur standard comprend la config (C8 ✅) | |
+| + Compatible Build 2 futur (C7 ✅) — même plugin pour bundler les DTS applicatifs | |
+| + Sourcemap support (`sourcemap: true`) pour Go-to-Definition (C6 ✅) | |
 
 ---
 
@@ -400,7 +400,7 @@ await dtsBundle.close();
 
 **Pipeline** :
 
-```
+```text
 Passe 1 — JS :
   tsc (via rollup-plugin-typescript2) → Rollup format:"es" → bonsai.esm.js
 
@@ -455,14 +455,14 @@ if (!extractorResult.succeeded) {
 }
 ```
 
-| Avantages                                                                                      | Inconvénients                                                                                                        |
-| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| + **Outil Microsoft officiel** — maintenu activement, utilisé par TypeScript lui-même          | - **Pas installé** — nouvelle dépendance à ajouter                                                                   |
-| + **Rapport API** — détecte les breaking changes entre versions (`bonsai.api.md`)              | - **Complexité de configuration** — `api-extractor.json` verbeux (~200 lignes pour le template complet)              |
-| + **Qualité de sortie excellente** — trimming des déclarations internes (`@internal`, `@beta`) | - **Processus séparé** — n'est pas un plugin Rollup, nécessite une étape `tsc` + une étape api-extractor             |
-| + **Licence MIT** — compatible (C13 ✅)                                                        | - **Couplage version TS** — api-extractor embarque son propre compilateur TS, des conflits de version sont possibles |
-| + Fonctionne idéalement dans un monorepo (Rush Stack)                                          | - **N'est pas conçu pour le bundling cross-packages monorepo** — chaque invocation traite un seul point d'entrée     |
-|                                                                                                | - Surdimensionné pour v1 — le rapport API et le doc model ne sont pas des besoins immédiats                          |
+| Avantages | Inconvénients |
+| --- | --- |
+| + **Outil Microsoft officiel** — maintenu activement, utilisé par TypeScript lui-même | - **Pas installé** — nouvelle dépendance à ajouter |
+| + **Rapport API** — détecte les breaking changes entre versions (`bonsai.api.md`) | - **Complexité de configuration** — `api-extractor.json` verbeux (~200 lignes pour le template complet) |
+| + **Qualité de sortie excellente** — trimming des déclarations internes (`@internal`, `@beta`) | - **Processus séparé** — n'est pas un plugin Rollup, nécessite une étape `tsc` + une étape api-extractor |
+| + **Licence MIT** — compatible (C13 ✅) | - **Couplage version TS** — api-extractor embarque son propre compilateur TS, des conflits de version sont possibles |
+| + Fonctionne idéalement dans un monorepo (Rush Stack) | - **N'est pas conçu pour le bundling cross-packages monorepo** — chaque invocation traite un seul point d'entrée |
+| | - Surdimensionné pour v1 — le rapport API et le doc model ne sont pas des besoins immédiats |
 
 ---
 
@@ -472,7 +472,7 @@ if (!extractorResult.succeeded) {
 
 **Pipeline** :
 
-```
+```texy
 tsc --declaration --project tsconfig.framework.json
 → packages/entity/dist/bonsai-entity.d.ts
 → packages/feature/dist/bonsai-feature.d.ts
@@ -480,13 +480,13 @@ tsc --declaration --project tsconfig.framework.json
 → core/dist/bonsai.d.ts (contient: export * from "@bonsai/entity")
 ```
 
-| Avantages                                    | Inconvénients                                                                                                                           |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| + **Zéro outil supplémentaire** — `tsc` seul | - Les consommateurs voient les **imports internes** (`@bonsai/entity`, `@bonsai/feature`) dans les types                                |
-| + **Zéro code custom** à maintenir           | - **IntelliSense dégradé** — Go-to-Definition pointe vers les `.d.ts` intermédiaires, pas un fichier unifié (C6 ⚠️)                     |
-| + Rapide — pas de passe supplémentaire       | - **Ne produit pas un `.d.ts` autonome** — le consommateur doit résoudre les packages workspace (incompatible avec la distribution npm) |
-|                                              | - Incompatible avec le mode IIFE (un seul `.d.ts` requis pour le bundle)                                                                |
-|                                              | - Les types internes (`@bonsai/entity/src/internal-type`) fuient dans l'API publique                                                    |
+| Avantages | Inconvénients |
+| --- | --- |
+| + **Zéro outil supplémentaire** — `tsc` seul | - Les consommateurs voient les **imports internes** (`@bonsai/entity`, `@bonsai/feature`) dans les types |
+| + **Zéro code custom** à maintenir | - **IntelliSense dégradé** — Go-to-Definition pointe vers les `.d.ts` intermédiaires, pas un fichier unifié (C6 ⚠️) |
+| + Rapide — pas de passe supplémentaire | - **Ne produit pas un `.d.ts` autonome** — le consommateur doit résoudre les packages workspace (incompatible avec la distribution npm) |
+| | - Incompatible avec le mode IIFE (un seul `.d.ts` requis pour le bundle) |
+| | - Les types internes (`@bonsai/entity/src/internal-type`) fuient dans l'API publique |
 
 ---
 
@@ -496,11 +496,11 @@ tsc --declaration --project tsconfig.framework.json
 
 **Description** : conserver la structure existante de `lib/build/`, remplacer uniquement le bundling DTS, adapter `ComponentsRegistry` et `Builder` pour ADR-0031.
 
-| Avantages                                         | Inconvénients                                                                                |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| + Continuité — pas de big-bang                    | - Le code existant porte des conventions marionext (ex: champ `namespace` dans package.json) |
-| + Cache et orchestration réutilisés immédiatement | - Mélange de code neuf et ancien — risque de confusion                                       |
-| + Moins de travail initial                        |                                                                                              |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Continuité — pas de big-bang | - Le code existant porte des conventions marionext (ex: champ `namespace` dans package.json) |
+| + Cache et orchestration réutilisés immédiatement | - Mélange de code neuf et ancien — risque de confusion |
+| + Moins de travail initial | |
 
 ---
 
@@ -508,12 +508,12 @@ tsc --declaration --project tsconfig.framework.json
 
 **Description** : conserver l'architecture (`lib/build/` avec les sous-dossiers `building/`, `initializing/`, `cache/`, `core/`), mais réécrire les fichiers du `Builder` et supprimer tout le code DTS custom. Conserver le cache et l'orchestrateur tels quels.
 
-| Avantages                                                          | Inconvénients                                    |
-| ------------------------------------------------------------------ | ------------------------------------------------ |
+| Avantages | Inconvénients |
+| --- | --- |
 | + Architecture éprouvée conservée (orchestrateur, cache, registry) | - Travail de réécriture du Builder (~500 lignes) |
-| + Suppression nette de la dette (5 893 lignes)                     |                                                  |
-| + Les conventions ADR-0031 sont intégrées dès le départ            |                                                  |
-| + Tests Vitest écrits en même temps que la réécriture              |                                                  |
+| + Suppression nette de la dette (5 893 lignes) | |
+| + Les conventions ADR-0031 sont intégrées dès le départ | |
+| + Tests Vitest écrits en même temps que la réécriture | |
 
 ---
 
@@ -521,42 +521,42 @@ tsc --declaration --project tsconfig.framework.json
 
 **Description** : supprimer tout le contenu de `lib/build/` et repartir de zéro.
 
-| Avantages                            | Inconvénients                                                                    |
-| ------------------------------------ | -------------------------------------------------------------------------------- |
-| + Slate propre, aucun legacy         | - Perte du cache (793 lignes fonctionnelles)                                     |
-| + Conventions ADR-0031 dès le départ | - Perte de l'orchestrateur (296 lignes fonctionnelles, tri topologique)          |
-|                                      | - Perte du PathManager (186 lignes)                                              |
-|                                      | - Délai plus long avant un artefact testable (viole ADR-0028 C1 pragmatiquement) |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Slate propre, aucun legacy | - Perte du cache (793 lignes fonctionnelles) |
+| + Conventions ADR-0031 dès le départ | - Perte de l'orchestrateur (296 lignes fonctionnelles, tri topologique) |
+| | - Perte du PathManager (186 lignes) |
+| | - Délai plus long avant un artefact testable (viole ADR-0028 C1 pragmatiquement) |
 
 ---
 
 ## Analyse comparative — Stratégie DTS
 
-| Critère                            | A — Custom ts-morph        | B — rollup-plugin-dts                | C — api-extractor            | D — tsc seul                     |
-| ---------------------------------- | -------------------------- | ------------------------------------ | ---------------------------- | -------------------------------- |
-| **Qualité `.d.ts` produit**        | ⭐ (regex, fragile)        | ⭐⭐⭐ (résolution complète)         | ⭐⭐⭐ (trimming avancé)     | ⭐⭐ (pas de bundling)           |
-| **Maintenabilité** (C8)            | ⭐ (expertise AST requise) | ⭐⭐⭐ (~10 lignes de config)        | ⭐⭐ (config JSON verbeux)   | ⭐⭐⭐ (rien à maintenir)        |
-| **Généricité** (C9, C10)           | ⭐ (branches par package)  | ⭐⭐⭐ (générique)                   | ⭐⭐⭐ (générique)           | ⭐⭐⭐ (générique)               |
-| **IntelliSense** (C6)              | ⭐⭐ (approximatif)        | ⭐⭐⭐ (sourcemap support)           | ⭐⭐⭐ (excellent)           | ⭐⭐ (imports internes visibles) |
-| **Intégration Rollup**             | ⭐⭐ (plugin custom)       | ⭐⭐⭐ (natif)                       | ⭐ (processus séparé)        | N/A                              |
-| **Complexité d'adoption**          | ⭐⭐⭐ (déjà là)           | ⭐⭐⭐ (déjà installé)               | ⭐⭐ (nouvelle dep + config) | ⭐⭐⭐ (rien à faire)            |
-| **Pérennité** (C12, C14)           | ⭐ (non maintenu)          | ⭐⭐ (maintenance mode, mais MAJ TS) | ⭐⭐⭐ (Microsoft, actif)    | ⭐⭐⭐ (tsc = éternel)           |
-| **Rapport API / breaking changes** | ❌                         | ❌                                   | ✅                           | ❌                               |
-| **Licence** (C13)                  | N/A (interne)              | ⚠️ LGPL-3.0                          | ✅ MIT                       | ✅ N/A                           |
-| **Lignes de code pipeline**        | 5 893                      | ~20                                  | ~30 + JSON                   | 0                                |
-| **Compatible Build 2** (C7)        | ⚠️ Non portable            | ✅ Même plugin                       | ✅ Même outil                | ✅ tsc natif                     |
+| Critère | A — Custom ts-morph | B — rollup-plugin-dts | C — api-extractor | D — tsc seul |
+| --- | --- | --- | --- | --- |
+| **Qualité `.d.ts` produit** | ⭐ (regex, fragile) | ⭐⭐⭐ (résolution complète) | ⭐⭐⭐ (trimming avancé) | ⭐⭐ (pas de bundling) |
+| **Maintenabilité** (C8) | ⭐ (expertise AST requise) | ⭐⭐⭐ (~10 lignes de config) | ⭐⭐ (config JSON verbeux) | ⭐⭐⭐ (rien à maintenir) |
+| **Généricité** (C9, C10) | ⭐ (branches par package) | ⭐⭐⭐ (générique) | ⭐⭐⭐ (générique) | ⭐⭐⭐ (générique) |
+| **IntelliSense** (C6) | ⭐⭐ (approximatif) | ⭐⭐⭐ (sourcemap support) | ⭐⭐⭐ (excellent) | ⭐⭐ (imports internes visibles) |
+| **Intégration Rollup** | ⭐⭐ (plugin custom) | ⭐⭐⭐ (natif) | ⭐ (processus séparé) | N/A |
+| **Complexité d'adoption** | ⭐⭐⭐ (déjà là) | ⭐⭐⭐ (déjà installé) | ⭐⭐ (nouvelle dep + config) | ⭐⭐⭐ (rien à faire) |
+| **Pérennité** (C12, C14) | ⭐ (non maintenu) | ⭐⭐ (maintenance mode, mais MAJ TS) | ⭐⭐⭐ (Microsoft, actif) | ⭐⭐⭐ (tsc = éternel) |
+| **Rapport API / breaking changes** | ❌ | ❌ | ✅ | ❌ |
+| **Licence** (C13) | N/A (interne) | ⚠️ LGPL-3.0 | ✅ MIT | ✅ N/A |
+| **Lignes de code pipeline** | 5 893 | ~20 | ~30 + JSON | 0 |
+| **Compatible Build 2** (C7) | ⚠️ Non portable | ✅ Même plugin | ✅ Même outil | ✅ tsc natif |
 
 ---
 
 ## Analyse comparative — Architecture pipeline
 
-| Critère                           | I — Refactoring progressif | II — Réécriture ciblée                     | III — From scratch    |
-| --------------------------------- | -------------------------- | ------------------------------------------ | --------------------- |
-| **Délai avant artefact testable** | ⭐⭐⭐ (rapide)            | ⭐⭐ (quelques jours)                      | ⭐ (semaines)         |
-| **Qualité du résultat**           | ⭐⭐ (legacy résiduel)     | ⭐⭐⭐ (propre)                            | ⭐⭐⭐ (propre)       |
-| **Conservation des acquis**       | ⭐⭐⭐ (tout)              | ⭐⭐⭐ (cache, orchestrateur, PathManager) | ⭐ (rien)             |
-| **Conformité ADR-0031**           | ⭐⭐ (adaptation)          | ⭐⭐⭐ (intégré)                           | ⭐⭐⭐ (intégré)      |
-| **Testabilité**                   | ⭐⭐ (tests à ajouter)     | ⭐⭐⭐ (tests inclus)                      | ⭐⭐⭐ (tests inclus) |
+| Critère | I — Refactoring progressif | II — Réécriture ciblée | III — From scratch |
+| --- | --- | --- | --- |
+| **Délai avant artefact testable** | ⭐⭐⭐ (rapide) | ⭐⭐ (quelques jours) | ⭐ (semaines) |
+| **Qualité du résultat** | ⭐⭐ (legacy résiduel) | ⭐⭐⭐ (propre) | ⭐⭐⭐ (propre) |
+| **Conservation des acquis** | ⭐⭐⭐ (tout) | ⭐⭐⭐ (cache, orchestrateur, PathManager) | ⭐ (rien) |
+| **Conformité ADR-0031** | ⭐⭐ (adaptation) | ⭐⭐⭐ (intégré) | ⭐⭐⭐ (intégré) |
+| **Testabilité** | ⭐⭐ (tests à ajouter) | ⭐⭐⭐ (tests inclus) | ⭐⭐⭐ (tests inclus) |
 
 ---
 
@@ -624,30 +624,30 @@ Créer un script de validation **indépendant** (dans `lib/build/__poc__/` ou `t
 
 ### Critères de validation (tous obligatoires)
 
-| #   | Critère                        | Test                                                                                        | Résultat attendu                                                         |
-| --- | ------------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| VC1 | **Compilabilité**              | `tsc --noEmit --strict test-consumer.ts` où `test-consumer.ts` importe depuis `bonsai.d.ts` | Zéro erreur                                                              |
-| VC2 | **Aucun import tiers**         | `grep -c "from 'rxjs'\|from 'immer'\|from 'valibot'" bonsai.d.ts`                           | 0 occurrences                                                            |
-| VC3 | **Aucun import interne**       | `grep -c "from '@bonsai/" bonsai.d.ts`                                                      | 0 occurrences                                                            |
-| VC4 | **Namespace Valibot exporté**  | `grep -c "export.*Valibot" bonsai.d.ts`                                                     | ≥ 1 occurrence                                                           |
-| VC5 | **Types Event présents**       | `test-consumer.ts` utilise `Channel`, `Radio` → IntelliSense correct                        | Types résolus, auto-completion fonctionnelle                             |
-| VC6 | **Types utilitaires présents** | `test-consumer.ts` utilise `TJsonObject`, `TDictionary` etc.                                | Types résolus                                                            |
-| VC7 | **Pas de `any` implicite**     | Aucun type `any` dans le `.d.ts` sauf si explicitement marqué                               | `grep "any" bonsai.d.ts` ne contient que des `any` intentionnels         |
-| VC8 | **Taille raisonnable**         | `wc -c bonsai.d.ts`                                                                         | < 500 KB (heuristique — si plus grand, vérifier que rien n'est dupliqué) |
+| # | Critère | Test | Résultat attendu |
+| --- | --- | --- | --- |
+| VC1 | **Compilabilité** | `tsc --noEmit --strict test-consumer.ts` où `test-consumer.ts` importe depuis `bonsai.d.ts` | Zéro erreur |
+| VC2 | **Aucun import tiers** | `grep -c "from 'rxjs'\|from 'immer'\|from 'valibot'" bonsai.d.ts` | 0 occurrences |
+| VC3 | **Aucun import interne** | `grep -c "from '@bonsai/" bonsai.d.ts` | 0 occurrences |
+| VC4 | **Namespace Valibot exporté** | `grep -c "export.*Valibot" bonsai.d.ts` | ≥ 1 occurrence |
+| VC5 | **Types Event présents** | `test-consumer.ts` utilise `Channel`, `Radio` → IntelliSense correct | Types résolus, auto-completion fonctionnelle |
+| VC6 | **Types utilitaires présents** | `test-consumer.ts` utilise `TJsonObject`, `TDictionary` etc. | Types résolus |
+| VC7 | **Pas de `any` implicite** | Aucun type `any` dans le `.d.ts` sauf si explicitement marqué | `grep "any" bonsai.d.ts` ne contient que des `any` intentionnels |
+| VC8 | **Taille raisonnable** | `wc -c bonsai.d.ts` | < 500 KB (heuristique — si plus grand, vérifier que rien n'est dupliqué) |
 
 ### Scénarios de fallback si le PoC échoue
 
-| Échec                                      | Cause probable                                              | Fallback                                                                                                              |
-| ------------------------------------------ | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| VC1 échoue — erreurs TS dans le `.d.ts`    | rollup-plugin-dts résout mal les generics cross-packages    | Tester `api-extractor` (Option C). Si OK → changer la décision                                                        |
-| VC2 échoue — imports tiers résiduels       | `respectExternal: true` + `external: []` mal interprété     | Tester avec `respectExternal: false` ou pré-traiter les `.d.ts` intermédiaires                                        |
-| VC3 échoue — imports `@bonsai/*` résiduels | Path aliases non résolus                                    | Ajouter `compilerOptions.paths` explicite dans la config dts. Si insuffisant → Option C                               |
-| VC8 échoue — `.d.ts` gigantesque           | Types dupliqués (même type inliné N fois depuis N packages) | Activer `respectExternal` sélectivement ou restructurer les dépendances inter-packages                                |
-| **Tous les fallbacks échouent**            | —                                                           | Conserver le code custom en le **simplifiant** : supprimer le fork (4 139 lignes) mais garder ts-morph (1 754 lignes) |
+| Échec | Cause probable | Fallback |
+| --- | --- | --- |
+| VC1 échoue — erreurs TS dans le `.d.ts` | rollup-plugin-dts résout mal les generics cross-packages | Tester `api-extractor` (Option C). Si OK → changer la décision |
+| VC2 échoue — imports tiers résiduels | `respectExternal: true` + `external: []` mal interprété | Tester avec `respectExternal: false` ou pré-traiter les `.d.ts` intermédiaires |
+| VC3 échoue — imports `@bonsai/*` résiduels | Path aliases non résolus | Ajouter `compilerOptions.paths` explicite dans la config dts. Si insuffisant → Option C |
+| VC8 échoue — `.d.ts` gigantesque | Types dupliqués (même type inliné N fois depuis N packages) | Activer `respectExternal` sélectivement ou restructurer les dépendances inter-packages |
+| **Tous les fallbacks échouent** | — | Conserver le code custom en le **simplifiant** : supprimer le fork (4 139 lignes) mais garder ts-morph (1 754 lignes) |
 
 ### Workflow
 
-```
+```text
 1. Écrire le PoC (script + test-consumer.ts)     ← AVANT toute suppression
 2. Exécuter le PoC → résultats VC1–VC8
 3a. Tous OK → Option B confirmée → supprimer le code custom
@@ -663,7 +663,7 @@ Créer un script de validation **indépendant** (dans `lib/build/__poc__/` ou `t
 
 ### Artefacts produits par le Build 1
 
-```
+```text
 core/dist/
   bonsai.esm.js             ← bundle ESM — tout le runtime Bonsai
   bonsai.d.ts               ← déclarations TypeScript unifiées
@@ -676,7 +676,7 @@ packages/{composant}/dist/
 
 ### Pipeline v1 détaillée
 
-```
+```text
 bonsai-components.yaml
         │
         ▼
@@ -820,8 +820,8 @@ function createDtsRollupConfig(
 
 ## Historique
 
-| Date       | Changement                                                                                                                                                                                                                                                                                                                      |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-04-14 | Création (Proposed) — audit pipeline existante, 5 893 lignes DTS custom identifiées, choix `rollup-plugin-dts` + réécriture ciblée                                                                                                                                                                                              |
-| 2026-04-14 | Ajout §3 Classification des dépendances tierces — 3 tiers, all-inlined. Valibot Tier 1 (exporté), immer Tier 2 (interne), rxjs Tier 3 (interne). Zéro dépendance transitive, zéro conflit de version. Bundle autonome ~20-28 KB gzip                                                                                            |
+| Date | Changement |
+| --- | --- |
+| 2026-04-14 | Création (Proposed) — audit pipeline existante, 5 893 lignes DTS custom identifiées, choix `rollup-plugin-dts` + réécriture ciblée |
+| 2026-04-14 | Ajout §3 Classification des dépendances tierces — 3 tiers, all-inlined. Valibot Tier 1 (exporté), immer Tier 2 (interne), rxjs Tier 3 (interne). Zéro dépendance transitive, zéro conflit de version. Bundle autonome ~20-28 KB gzip |
 | 2026-04-14 | Ajout §11 Gate de validation PoC — contexte historique (code custom existait car rollup-plugin-dts échouait à l'époque). 8 critères de validation (VC1–VC8). Scénarios de fallback. Actions restructurées en 4 phases (PoC bloquant → Implémentation → Validation → Propagation). Statut reste Proposed tant que PoC non validé |

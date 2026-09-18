@@ -1,7 +1,7 @@
 # ADR-0047 : Typage du paramètre `intent` de `Entity.mutate()`
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟡 Proposed |
 | **Date** | 2026-05-20 |
 | **Décideurs** | @NCAC |
@@ -73,7 +73,7 @@ recommandation, pour décision ultérieure.
 review (ADR-0001 §Anti-patterns), sans mécanisme compile-time.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Zéro changement, zéro migration | - Incohérent avec I76 (Channel) — asymétrie qui interpelle à la lecture du code |
 | + `Entity` reste simple à sous-classer (une seule sous-classe minimale : `defineInitialState()`) | - Une faute de frappe dans l'intent ne casse rien à la compilation (juste un log/event mal nommé) |
 | + Aucune contrainte nouvelle sur C1/C2/C3 | - Pas d'auto-complétion IDE sur les intents existants d'une Entity |
@@ -103,7 +103,7 @@ cassant, C3 respectée). `mutate()` est contraint par `TIntent` uniquement
 quand il est spécifié.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Symétrie totale avec I76 (Channel) — même rigueur pour Entity | - Duplique la liste des intents dans chaque `Entity` (pas de source de vérité partagée avec la Feature qui les émet) |
 | + Non cassant par défaut (C3) — opt-in par sous-classe | - Verbeux : une union à maintenir en plus du state |
 | + Auto-complétion IDE immédiate sur les intents déclarés | - Ne capture pas la convention `namespace:verbNoun` (juste une énumération fermée) |
@@ -137,7 +137,7 @@ violation de C1 au sens strict, puisque c'est un artefact de type-checking,
 pas une donnée manipulée par l'instance).
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Vérifie mécaniquement une convention aujourd'hui non-outillée (I18-like) | - Ne détecte pas une typo dans le verbe (`"cart:addItm"` reste valide structurellement) |
 | + Pas de liste à maintenir — contrainte purement syntaxique | - Introduit un couplage type-level Entity → namespace, contraire à l'esprit actuel de C1 (même si sans effet runtime) |
 | + Composable avec l'Option B (les deux ne s'excluent pas) | - Le message d'erreur TS sur un template literal type mal respecté est nettement moins lisible qu'un TS2345 sur union fermée |
@@ -163,7 +163,7 @@ this.entity.mutate("cart:addItm", (draft) => { /* ... */ });   // ✅ compile qu
 ## Analyse comparative
 
 | Critère | Option A (statu quo) | Option B (union exhaustive) | Option C (template literal) |
-|---------|:---:|:---:|:---:|
+| --- | --- | --- | --- |
 | Symétrie avec I76 (Channel) | ⭐ | ⭐⭐⭐ | ⭐⭐ |
 | Détection de typo | ⭐ | ⭐⭐⭐ | ⭐ (verbe non couvert) |
 | Coût de maintenance (liste à jour) | ⭐⭐⭐ (rien à maintenir) | ⭐ (union à synchroniser) | ⭐⭐⭐ (rien à maintenir) |
@@ -193,7 +193,7 @@ pas commencé.
 
 ## Conséquences
 
-*(dépendent de l'option retenue — à documenter au moment de la décision)*
+_(dépendent de l'option retenue — à documenter au moment de la décision)_
 
 ### Risques identifiés
 
@@ -232,5 +232,5 @@ pas commencé.
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-05-20 | Création (Proposed) — question posée en revue de la strate 1a (Entity enrichie) |

@@ -6,7 +6,7 @@
 
 ## 📁 Structure
 
-```
+```text
 docs/
 ├── rfc/                    ← Spécifications (le QUOI)
 ├── adr/                    ← Décisions architecturales (le POURQUOI)
@@ -31,12 +31,12 @@ Les RFCs définissent l'architecture et les contrats techniques. C'est la **sour
 > — les liens pointent directement sur les fichiers actuels. Table de
 > correspondance complète : [rfc/README.md §Correspondance](rfc/README.md#correspondance-avec-les-anciens-noms-de-fichiers).
 
-| RFC      | Sujet                                                    | Chapitres actuels | Statut    |
-| -------- | -------------------------------------------------------- | ------------------ | --------- |
+| RFC | Sujet | Chapitres actuels | Statut |
+| --- | --- | --- | --- |
 | RFC-0001 | Architecture fondamentale (composants, invariants, flux) | [1. Philosophie](rfc/1-philosophie.md) · [2. Architecture](rfc/2-architecture/README.md) · [3. Couche abstraite](rfc/3-couche-abstraite/README.md) · [4. Couche concrète](rfc/4-couche-concrete/README.md) · [Invariants](rfc/reference/invariants.md) · [Décisions](rfc/reference/decisions.md) · [Glossaire](rfc/reference/glossaire.md) | 🟢 Stable |
-| RFC-0002 | API, contrats TypeScript (Channel, Feature, Entity)      | [6. Transversal — Conventions de typage](rfc/6-transversal/conventions-typage.md) · [Index des types](rfc/reference/types-index.md) | 🟢 Stable |
-| RFC-0003 | Rendu avancé (PDR, templates, ProjectionList)            | [5. Rendu avancé](rfc/5-rendu.md) | 🟢 Stable |
-| RFC-0004 | DevTools et observabilité (Event Ledger, hooks, perf)    | [DevTools](rfc/devtools.md) | 🟡 Draft   |
+| RFC-0002 | API, contrats TypeScript (Channel, Feature, Entity) | [6. Transversal — Conventions de typage](rfc/6-transversal/conventions-typage.md) · [Index des types](rfc/reference/types-index.md) | 🟢 Stable |
+| RFC-0003 | Rendu avancé (PDR, templates, ProjectionList) | [5. Rendu avancé](rfc/5-rendu.md) | 🟢 Stable |
+| RFC-0004 | DevTools et observabilité (Event Ledger, hooks, perf) | [DevTools](rfc/devtools.md) | 🟡 Draft |
 
 ### [ADRs — Décisions](adr/README.md)
 
@@ -44,28 +44,28 @@ Les ADRs documentent les choix architecturaux non triviaux : contexte, options �
 
 - **47 ADRs** (ADR-0001 à ADR-0047)
 - **22 Accepted**, 17 Tested, 3 Superseded, 3 Proposed, 2 Suspended
-- *(recalculé par le script [annexe A.2](AUDIT-DOCS-2026-09-16.md#a2--statuts-adr-pour-recalculer-les-compteurs) — à revérifier périodiquement plutôt qu'à la main)*
+- _(recalculé par le script [annexe A.2](AUDIT-DOCS-2026-09-16.md#a2--statuts-adr-pour-recalculer-les-compteurs) — à revérifier périodiquement plutôt qu'à la main)_
 - [Voir l'index complet →](adr/README.md)
 
 ### [Guides — Conventions](guides/)
 
-| Guide                                                       | Périmètre        | Description                                                                      |
-| ----------------------------------------------------------- | ---------------- | -------------------------------------------------------------------------------- |
-| [BUILD-CODING-STYLE.md](guides/BUILD-CODING-STYLE.md)       | `lib/`, `tools/` | Conventions pour la pipeline de build (TypeScript, imports, nommage, singleton)  |
-| [FRAMEWORK-STYLE-GUIDE.md](guides/FRAMEWORK-STYLE-GUIDE.md) | Code applicatif  | Conventions du framework (DOM, HTML, CSS, API TypeScript, patterns)              |
-| [FORMS-GUIDE.md](guides/FORMS-GUIDE.md)                     | Formulaires      | 3 patterns pratiques (B localState, C FormBehavior, D Entity+localState) + validation différée — recommandation ADR-0009 Option D |
+| Guide | Périmètre | Description |
+| --- | --- | --- |
+| [BUILD-CODING-STYLE.md](guides/BUILD-CODING-STYLE.md) | `lib/`, `tools/` | Conventions pour la pipeline de build (TypeScript, imports, nommage, singleton) |
+| [FRAMEWORK-STYLE-GUIDE.md](guides/FRAMEWORK-STYLE-GUIDE.md) | Code applicatif | Conventions du framework (DOM, HTML, CSS, API TypeScript, patterns) |
+| [FORMS-GUIDE.md](guides/FORMS-GUIDE.md) | Formulaires | 3 patterns pratiques (B localState, C FormBehavior, D Entity+localState) + validation différée — recommandation ADR-0009 Option D |
 | [NAMESPACE-MENTAL-MODEL.md](guides/NAMESPACE-MENTAL-MODEL.md) | Namespaces Feature | Les quatre lieux où vit le namespace d'une Feature — ADR-0039, ADR-0040, ADR-0046 |
-| [TESTING.md](guides/TESTING.md)                             | Tests            | Stratégie de test (unit, intégration, e2e) — ADR-0006                            |
+| [TESTING.md](guides/TESTING.md) | Tests | Stratégie de test (unit, intégration, e2e) — ADR-0006 |
 
 ---
 
 ## 🔍 Errata et audits
 
-| Document                                  | Date       | Statut                                     |
-| ----------------------------------------- | ---------- | ------------------------------------------ |
-| [ERRATA-2026-03-23](ERRATA-2026-03-23.md) | 2026-03-23 | 🟢 Clos — 36 constats, tous corrigés       |
-| [Audit sévère (v1)](audit-2026-04-01.md)  | 2026-04-01 | 🟡 Actif — 19 recommandations, 11 résolues |
-| [ERRATA-2026-04-08](ERRATA-2026-04-08.md) | 2026-04-08 | 🟡 À vérifier                              |
+| Document | Date | Statut |
+| --- | --- | --- |
+| [ERRATA-2026-03-23](ERRATA-2026-03-23.md) | 2026-03-23 | 🟢 Clos — 36 constats, tous corrigés |
+| [Audit sévère (v1)](audit-2026-04-01.md) | 2026-04-01 | 🟡 Actif — 19 recommandations, 11 résolues |
+| [ERRATA-2026-04-08](ERRATA-2026-04-08.md) | 2026-04-08 | 🟡 À vérifier |
 
 ---
 
@@ -74,25 +74,25 @@ Les ADRs documentent les choix architecturaux non triviaux : contexte, options �
 Documents ayant servi à alimenter les RFC/ADR. Conservés comme **mémoire de raisonnement**,
 mais ne sont plus des documents de référence actifs.
 
-| Dossier                                                              | Contenu                                        |
-| -------------------------------------------------------------------- | ---------------------------------------------- |
-| [archive/analyses/](archive/analyses/)                               | Audits et analyses RFC (mars 2026)             |
-| [archive/explorations/](archive/explorations/)                       | Notes de réflexion, conversations, comparatifs |
-| [archive/ROADMAP-CONSOLIDATION.md](archive/ROADMAP-CONSOLIDATION.md) | Plan de travail consolidation RFC              |
+| Dossier | Contenu |
+| --- | --- |
+| [archive/analyses/](archive/analyses/) | Audits et analyses RFC (mars 2026) |
+| [archive/explorations/](archive/explorations/) | Notes de réflexion, conversations, comparatifs |
+| [archive/ROADMAP-CONSOLIDATION.md](archive/ROADMAP-CONSOLIDATION.md) | Plan de travail consolidation RFC |
 
 ---
 
 ## 🧭 Comment naviguer
 
-| Je veux…                             | Je lis…                                                                            |
-| ------------------------------------ | ---------------------------------------------------------------------------------- |
-| Comprendre l'architecture Bonsai     | [Philosophie](rfc/1-philosophie.md) + [Architecture](rfc/2-architecture/README.md) |
-| Connaître les règles non-négociables | [Invariants I1–I98](rfc/reference/invariants.md)                                   |
-| Savoir pourquoi tel choix a été fait | [ADRs](adr/README.md)                                                              |
-| Écrire du code framework (build)     | [BUILD-CODING-STYLE](guides/BUILD-CODING-STYLE.md)                                 |
-| Écrire du code applicatif Bonsai     | [FRAMEWORK-STYLE-GUIDE](guides/FRAMEWORK-STYLE-GUIDE.md)                           |
-| Implémenter un formulaire            | [FORMS-GUIDE](guides/FORMS-GUIDE.md)                                               |
-| Retrouver une ancienne réflexion     | [Archive](archive/)                                                                |
+| Je veux… | Je lis… |
+| --- | --- |
+| Comprendre l'architecture Bonsai | [Philosophie](rfc/1-philosophie.md) + [Architecture](rfc/2-architecture/README.md) |
+| Connaître les règles non-négociables | [Invariants I1–I98](rfc/reference/invariants.md) |
+| Savoir pourquoi tel choix a été fait | [ADRs](adr/README.md) |
+| Écrire du code framework (build) | [BUILD-CODING-STYLE](guides/BUILD-CODING-STYLE.md) |
+| Écrire du code applicatif Bonsai | [FRAMEWORK-STYLE-GUIDE](guides/FRAMEWORK-STYLE-GUIDE.md) |
+| Implémenter un formulaire | [FORMS-GUIDE](guides/FORMS-GUIDE.md) |
+| Retrouver une ancienne réflexion | [Archive](archive/) |
 
 ---
 
@@ -104,9 +104,9 @@ mais ne sont plus des documents de référence actifs.
 
 ## 📏 Conventions de documentation
 
-| Type de document  | Rôle                           | Durée de vie               | Modifiable ?                |
-| ----------------- | ------------------------------ | -------------------------- | --------------------------- |
-| **RFC**           | Spécification (quoi + comment) | Vivant → se stabilise      | Oui, jusqu'à stabilisation  |
-| **ADR**           | Décision (pourquoi)            | Immutable une fois accepté | Non — on crée un nouvel ADR |
-| **Guide**         | Mode d'emploi                  | Vivant                     | Oui                         |
-| **Analyse/Audit** | Input temporaire               | Éphémère                   | Archivé une fois intégré    |
+| Type de document | Rôle | Durée de vie | Modifiable ? |
+| --- | --- | --- | --- |
+| **RFC** | Spécification (quoi + comment) | Vivant → se stabilise | Oui, jusqu'à stabilisation |
+| **ADR** | Décision (pourquoi) | Immutable une fois accepté | Non — on crée un nouvel ADR |
+| **Guide** | Mode d'emploi | Vivant | Oui |
+| **Analyse/Audit** | Input temporaire | Éphémère | Archivé une fois intégré |

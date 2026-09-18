@@ -1,7 +1,7 @@
 # 🌿 Analyse complète du framework Bonsai
 
 > **Document généré le 17 mars 2026**
-> 
+>
 > Relecture exhaustive des RFC du dossier `/docs/rfc/` pour évaluer la robustesse,
 > la cohérence et la complétude de l'architecture Bonsai, suivie d'une comparaison
 > avec les principaux frameworks front-end du marché.
@@ -56,6 +56,7 @@ Couche Abstraite (state + logique)     Couche Concrète (DOM + interaction)
 Cette séparation est **plus propre que React/Vue** où les composants mélangent state, logique et rendu.
 
 **Avantages observés** :
+
 - La couche abstraite peut être testée sans DOM
 - Le remplacement de la couche concrète (ex: React Native) est théoriquement possible
 - La logique métier est isolée des détails de rendu
@@ -64,13 +65,13 @@ Cette séparation est **plus propre que React/Vue** où les composants mélangen
 
 Le système de types de Bonsai va bien au-delà du "TypeScript supporté" des autres frameworks :
 
-| Pattern TypeScript | Usage dans Bonsai | Bénéfice |
-|-------------------|-------------------|----------|
-| Template literal types | `ExtractHandlerName` : `"addItem"` → `"onAddItemCommand"` | Autocomplétion des handlers |
-| Mapped types | `RequiredCommandHandlers<TChannel>` | Force l'implémentation complète |
-| Conditional types + infer | `RequestResult<TChannel, TName>` | Typage automatique des retours |
-| Constrained generics | `TStructure extends JsonSerializable` | Entities sérialisables garanties |
-| Surcharges discriminées | `getUI()` retourne `ProjectionRead` ou `ProjectionNode` selon `TTemplated` | I41 garanti au compile-time |
+| Pattern TypeScript        | Usage dans Bonsai                                                          | Bénéfice                         |
+| ------------------------- | -------------------------------------------------------------------------- | -------------------------------- |
+| Template literal types    | `ExtractHandlerName` : `"addItem"` → `"onAddItemCommand"`                  | Autocomplétion des handlers      |
+| Mapped types              | `RequiredCommandHandlers<TChannel>`                                        | Force l'implémentation complète  |
+| Conditional types + infer | `RequestResult<TChannel, TName>`                                           | Typage automatique des retours   |
+| Constrained generics      | `TStructure extends JsonSerializable`                                      | Entities sérialisables garanties |
+| Surcharges discriminées   | `getUI()` retourne `ProjectionRead` ou `ProjectionNode` selon `TTemplated` | I41 garanti au compile-time      |
 
 **Conséquence** : les erreurs architecturales sont détectées **avant** l'exécution.
 
@@ -91,6 +92,7 @@ Les notifications per-key (D16) fournissent déjà l'information « quoi a chang
 Pas besoin de diff runtime.
 
 **Avantages** :
+
 - Zéro allocation, zéro diff d'arbre
 - Pas de double template (front + back)
 - Compatible SSR natif sans hydration coûteuse
@@ -100,15 +102,15 @@ Pas besoin de diff runtime.
 La section §12 de RFC-0001 (Anti-patterns) est remarquable — aucun framework majeur
 ne documente aussi clairement ce qui est **interdit** :
 
-| Anti-pattern | Description | Invariant violé |
-|--------------|-------------|-----------------|
-| Smart View | View qui orchestre le métier | I13 |
-| Cross-domain Trigger | Feature A commande Feature B | I25 |
-| Cross-domain Emit | Feature A émet sur Channel de B | I1, I12 |
-| Double Handler | Plusieurs handlers pour un Command | I10 |
-| Entity leaking | Entity accessible hors Feature | I5, I6 |
-| Stateful View | View avec state local | I30 |
-| Radio Direct Access | `Radio.channel('name')` au lieu de déclaration | I14, I15, I16 |
+| Anti-pattern         | Description                                    | Invariant violé |
+| -------------------- | ---------------------------------------------- | --------------- |
+| Smart View           | View qui orchestre le métier                   | I13             |
+| Cross-domain Trigger | Feature A commande Feature B                   | I25             |
+| Cross-domain Emit    | Feature A émet sur Channel de B                | I1, I12         |
+| Double Handler       | Plusieurs handlers pour un Command             | I10             |
+| Entity leaking       | Entity accessible hors Feature                 | I5, I6          |
+| Stateful View        | View avec state local                          | I30             |
+| Radio Direct Access  | `Radio.channel('name')` au lieu de déclaration | I14, I15, I16   |
 
 Cette documentation explicite prévient les dérives architecturales.
 
@@ -128,6 +130,7 @@ type TMeta = {
 ```
 
 **Bénéfices** :
+
 - Debugging : suivre une transaction utilisateur de bout en bout
 - Anti-boucle : `hop > maxHops` → rejet automatique
 - DevTools : reconstruction du graphe causal (prévu RFC-0004)
@@ -142,15 +145,16 @@ type TMeta = {
 
 Le modèle Bonsai introduit de nombreux concepts :
 
-| Catégorie | Concepts |
-|-----------|----------|
-| Capacités Feature | C1 emit, C2 handle, C3 listen, C4 reply, C5 request |
-| Voies Channel | Commands (1:1), Events (1:N), Requests (async) |
-| Niveaux DOM | N1 (attributs), N2 (zones), N3 (template complet) |
-| Modes template | A (pas de template), B (root complet), C (fragments) |
-| Composants | Feature, Entity, Channel, View, Behavior, Foundation, Composer |
+| Catégorie         | Concepts                                                       |
+| ----------------- | -------------------------------------------------------------- |
+| Capacités Feature | C1 emit, C2 handle, C3 listen, C4 reply, C5 request            |
+| Voies Channel     | Commands (1:1), Events (1:N), Requests (async)                 |
+| Niveaux DOM       | N1 (attributs), N2 (zones), N3 (template complet)              |
+| Modes template    | A (pas de template), B (root complet), C (fragments)           |
+| Composants        | Feature, Entity, Channel, View, Behavior, Foundation, Composer |
 
 **Comparaison** :
+
 - **Vue** : `ref()`, `reactive()`, `computed()` — 3 concepts principaux
 - **React** : `useState`, `useEffect`, `useContext` — apprentissage progressif
 - **Svelte** : `$state`, `$derived`, `$effect` — syntaxe minimale
@@ -180,19 +184,19 @@ class DropdownView extends View {
 
 **Comparaison avec les autres frameworks** :
 
-| Framework | State local UI | Pattern |
-|-----------|---------------|---------|
-| React | ✅ `useState()` | Natif |
-| Vue | ✅ `ref()` | Natif |
-| Angular | ✅ Variables de classe | Natif |
-| Svelte | ✅ `$state` | Natif |
-| Solid | ✅ `createSignal()` | Natif |
-| **Bonsai** | ❌ | Feature + Entity obligatoire |
+| Framework  | State local UI         | Pattern                      |
+| ---------- | ---------------------- | ---------------------------- |
+| React      | ✅ `useState()`        | Natif                        |
+| Vue        | ✅ `ref()`             | Natif                        |
+| Angular    | ✅ Variables de classe | Natif                        |
+| Svelte     | ✅ `$state`            | Natif                        |
+| Solid      | ✅ `createSignal()`    | Natif                        |
+| **Bonsai** | ❌                     | Feature + Entity obligatoire |
 
 **Analyse** : La position Bonsai est **doctrinalement pure** (tout state dans des Entities)
 mais génère du boilerplate significatif pour des interactions UI simples.
 
-**Justification I30** : "un autre composant *pourrait* être intéressé par ce changement
+**Justification I30** : "un autre composant _pourrait_ être intéressé par ce changement
 d'état, même s'il semble pure-UI (analytics, persistance, dépendances entre composants)".
 
 **Contre-argument** : pour un dropdown isolé, ce surcoût architectural est disproportionné.
@@ -235,11 +239,13 @@ class ContentComposer extends Composer {
 ```
 
 **Avantages** :
+
 - Découplage explicite entre parent et enfant
 - Le Composer encapsule la logique de décision
 - Testabilité du Composer en isolation
 
 **Inconvénients** :
+
 - Plus verbeux (2 classes au lieu de JSX conditionnel)
 - Navigation mentale plus difficile (quel Composer monte quoi ?)
 
@@ -247,24 +253,24 @@ class ContentComposer extends Composer {
 
 Plusieurs questions restent en suspens dans les RFC :
 
-| Question | Statut | Impact |
-|----------|--------|--------|
-| Q14 (Metas auto-injectées) | 💬 Penchant fort, pas acté | Nécessite `AsyncLocalStorage` ou équivalent |
-| Q16 (Reply en erreur) | 💬 Penchant `null` | `Promise<T \| null>` vs `Result<T>` — impact DX |
-| Q7 (Behavior N1 ou N2 ?) | ⏳ Partiellement résolu | Niveau d'altération DOM des Behaviors |
+| Question                   | Statut                     | Impact                                          |
+| -------------------------- | -------------------------- | ----------------------------------------------- |
+| Q14 (Metas auto-injectées) | 💬 Penchant fort, pas acté | Nécessite `AsyncLocalStorage` ou équivalent     |
+| Q16 (Reply en erreur)      | 💬 Penchant `null`         | `Promise<T \| null>` vs `Result<T>` — impact DX |
+| Q7 (Behavior N1 ou N2 ?)   | ⏳ Partiellement résolu    | Niveau d'altération DOM des Behaviors           |
 
 **Recommandation** : résoudre Q14 et Q16 avant l'implémentation.
 
 #### 1.2.5 Écosystème à construire
 
-| Composant | État |
-|-----------|------|
-| Core framework | 🔶 Design complet, implémentation partielle |
-| Router | 🔶 Spécifié (D8), pas implémenté |
-| DevTools | 📋 Prévu RFC-0004 |
-| CLI / Scaffolding | ❌ Non mentionné |
-| Testing utilities | ❌ Non spécifié |
-| Documentation interactive | ❌ Non existant |
+| Composant                 | État                                        |
+| ------------------------- | ------------------------------------------- |
+| Core framework            | 🔶 Design complet, implémentation partielle |
+| Router                    | 🔶 Spécifié (D8), pas implémenté            |
+| DevTools                  | 📋 Prévu RFC-0004                           |
+| CLI / Scaffolding         | ❌ Non mentionné                            |
+| Testing utilities         | ❌ Non spécifié                             |
+| Documentation interactive | ❌ Non existant                             |
 
 **Comparaison** : React, Vue, Angular, Svelte ont des écosystèmes matures (CLI, DevTools, testing, etc.).
 
@@ -274,18 +280,18 @@ Plusieurs questions restent en suspens dans les RFC :
 
 ### 2.1 Tableau de synthèse
 
-| Aspect | **Bonsai** | **React** | **Vue 3** | **Angular** | **Svelte 5** | **Solid** |
-|--------|------------|-----------|-----------|-------------|--------------|-----------|
-| **Paradigme** | Event-driven chorégraphique | Composants déclaratifs | Composants réactifs | Modules + DI | Compile-time reactivity | Fine-grained reactivity |
-| **State management** | Entity + Channel (distribué) | useState/Redux/Zustand | ref/reactive/Pinia | Services + Signals | $state + stores | Signals + Context |
-| **Rendu** | PDR (mutations directes) | VDOM + diffing | VDOM + Proxy | Zone.js + DOM | Compilé en DOM ops | Fine-grained updates |
-| **Typage** | TypeScript-first (design) | TypeScript supporté | TypeScript supporté | TypeScript natif | TypeScript supporté | TypeScript supporté |
-| **Composition** | Composer → View | Composants imbriqués | Composants + slots | Composants + DI | Composants + snippets | Composants |
-| **State local UI** | ❌ Interdit (Entity obligatoire) | ✅ useState | ✅ ref() | ✅ Variables | ✅ $state | ✅ createSignal |
-| **SSR story** | ✅ Native (PDR sur DOM existant) | ⚠️ Hydration coûteuse | ⚠️ Hydration | ⚠️ Universal | ⚠️ Hydration | ⚠️ Hydration |
-| **Communication** | Channel explicite (D1) | Props drilling / Context | Props / Provide-Inject | Services / Observables | Props / Context | Props / Context |
-| **Courbe d'apprentissage** | 📈 Élevée (41 invariants) | 📊 Moyenne | 📊 Moyenne-Douce | 📈 Élevée | 📉 Douce | 📊 Moyenne |
-| **Maturité écosystème** | 🔶 Émergent | ✅ Mature | ✅ Mature | ✅ Mature | ✅ Mature | 📊 Croissant |
+| Aspect                     | **Bonsai**                       | **React**                | **Vue 3**              | **Angular**            | **Svelte 5**            | **Solid**               |
+| -------------------------- | -------------------------------- | ------------------------ | ---------------------- | ---------------------- | ----------------------- | ----------------------- |
+| **Paradigme**              | Event-driven chorégraphique      | Composants déclaratifs   | Composants réactifs    | Modules + DI           | Compile-time reactivity | Fine-grained reactivity |
+| **State management**       | Entity + Channel (distribué)     | useState/Redux/Zustand   | ref/reactive/Pinia     | Services + Signals     | $state + stores         | Signals + Context       |
+| **Rendu**                  | PDR (mutations directes)         | VDOM + diffing           | VDOM + Proxy           | Zone.js + DOM          | Compilé en DOM ops      | Fine-grained updates    |
+| **Typage**                 | TypeScript-first (design)        | TypeScript supporté      | TypeScript supporté    | TypeScript natif       | TypeScript supporté     | TypeScript supporté     |
+| **Composition**            | Composer → View                  | Composants imbriqués     | Composants + slots     | Composants + DI        | Composants + snippets   | Composants              |
+| **State local UI**         | ❌ Interdit (Entity obligatoire) | ✅ useState              | ✅ ref()               | ✅ Variables           | ✅ $state               | ✅ createSignal         |
+| **SSR story**              | ✅ Native (PDR sur DOM existant) | ⚠️ Hydration coûteuse     | ⚠️ Hydration            | ⚠️ Universal            | ⚠️ Hydration             | ⚠️ Hydration             |
+| **Communication**          | Channel explicite (D1)           | Props drilling / Context | Props / Provide-Inject | Services / Observables | Props / Context         | Props / Context         |
+| **Courbe d'apprentissage** | 📈 Élevée (41 invariants)        | 📊 Moyenne               | 📊 Moyenne-Douce       | 📈 Élevée              | 📉 Douce                | 📊 Moyenne              |
+| **Maturité écosystème**    | 🔶 Émergent                      | ✅ Mature                | ✅ Mature              | ✅ Mature              | ✅ Mature               | 📊 Croissant            |
 
 ---
 
@@ -293,15 +299,15 @@ Plusieurs questions restent en suspens dans les RFC :
 
 #### Comparaison détaillée
 
-| Aspect | React | Bonsai | Verdict |
-|--------|-------|--------|---------|
-| **Predictability** | Flux unidirectionnel | Flux unidirectionnel + traçabilité metas | ✅ **Bonsai** (correlationId, causationId, hop) |
-| **Boilerplate** | Minimal avec hooks | Plus élevé (Feature + Entity + Channel) | ✅ **React** |
-| **Testabilité** | Components testables en isolation | Channels mockables, Features testables | ≈ Équivalent |
-| **DevTools** | React DevTools matures | Prévu RFC-0004 (pas implémenté) | ✅ **React** |
-| **Performance SSR** | Hydration coûteuse | PDR sans re-render | ✅ **Bonsai** |
-| **State management** | Fragmenté (Context, Redux, Zustand, Jotai...) | Unifié (Entity + Channel) | ✅ **Bonsai** (cohérence) |
-| **Adoption** | Écosystème dominant | Framework émergent | ✅ **React** |
+| Aspect               | React                                         | Bonsai                                   | Verdict                                         |
+| -------------------- | --------------------------------------------- | ---------------------------------------- | ----------------------------------------------- |
+| **Predictability**   | Flux unidirectionnel                          | Flux unidirectionnel + traçabilité metas | ✅ **Bonsai** (correlationId, causationId, hop) |
+| **Boilerplate**      | Minimal avec hooks                            | Plus élevé (Feature + Entity + Channel)  | ✅ **React**                                    |
+| **Testabilité**      | Components testables en isolation             | Channels mockables, Features testables   | ≈ Équivalent                                    |
+| **DevTools**         | React DevTools matures                        | Prévu RFC-0004 (pas implémenté)          | ✅ **React**                                    |
+| **Performance SSR**  | Hydration coûteuse                            | PDR sans re-render                       | ✅ **Bonsai**                                   |
+| **State management** | Fragmenté (Context, Redux, Zustand, Jotai...) | Unifié (Entity + Channel)                | ✅ **Bonsai** (cohérence)                       |
+| **Adoption**         | Écosystème dominant                           | Framework émergent                       | ✅ **React**                                    |
 
 #### Flux typique comparé
 
@@ -374,14 +380,14 @@ class CartView extends View<[Cart.Channel], TCartUI> {
 
 #### Comparaison détaillée
 
-| Aspect | Vue 3 | Bonsai | Verdict |
-|--------|-------|--------|---------|
-| **Réactivité** | Proxy automatique sur ref/reactive | Entity + notifications per-key | ≈ Équivalent (approches différentes) |
-| **APIs multiples** | Options API + Composition API | Un seul paradigme | ✅ **Bonsai** (cohérence) |
-| **Template système** | SFC avec `<template>` | PugJS compilé → PDR | ≈ Équivalent |
-| **Écosystème** | Mature (Pinia, VueRouter, Vuetify) | À construire | ✅ **Vue** |
-| **Communication** | Events/Props/Provide-Inject | Channel tri-lane | ✅ **Bonsai** (plus structuré) |
-| **TypeScript** | Supporté (macros) | By design | ✅ **Bonsai** |
+| Aspect               | Vue 3                              | Bonsai                         | Verdict                              |
+| -------------------- | ---------------------------------- | ------------------------------ | ------------------------------------ |
+| **Réactivité**       | Proxy automatique sur ref/reactive | Entity + notifications per-key | ≈ Équivalent (approches différentes) |
+| **APIs multiples**   | Options API + Composition API      | Un seul paradigme              | ✅ **Bonsai** (cohérence)            |
+| **Template système** | SFC avec `<template>`              | PugJS compilé → PDR            | ≈ Équivalent                         |
+| **Écosystème**       | Mature (Pinia, VueRouter, Vuetify) | À construire                   | ✅ **Vue**                           |
+| **Communication**    | Events/Props/Provide-Inject        | Channel tri-lane               | ✅ **Bonsai** (plus structuré)       |
+| **TypeScript**       | Supporté (macros)                  | By design                      | ✅ **Bonsai**                        |
 
 #### Pattern de communication comparé
 
@@ -437,18 +443,19 @@ class ParentView extends View<[Counter.Channel], TParentUI> {
 
 #### Comparaison détaillée
 
-| Aspect | Angular | Bonsai | Verdict |
-|--------|---------|--------|---------|
-| **Architecture** | Modules + Services + DI | Features + Channels + Radio | ≈ Philosophies similaires |
-| **Typage** | TypeScript natif avec decorators | TypeScript-first sans decorators (D12) | ✅ **Bonsai** |
-| **Boilerplate** | Élevé (modules, services, pipes) | Élevé (mais différent) | ≈ Équivalent |
-| **Change Detection** | Zone.js (magique, patches async) | Explicite (Entity → Feature → View) | ✅ **Bonsai** (prévisible) |
-| **Enterprise ready** | ✅ Prouvé à grande échelle | 🔶 Non prouvé | ✅ **Angular** |
-| **Courbe d'apprentissage** | Élevée | Élevée | ≈ Équivalent |
+| Aspect                     | Angular                          | Bonsai                                 | Verdict                    |
+| -------------------------- | -------------------------------- | -------------------------------------- | -------------------------- |
+| **Architecture**           | Modules + Services + DI          | Features + Channels + Radio            | ≈ Philosophies similaires  |
+| **Typage**                 | TypeScript natif avec decorators | TypeScript-first sans decorators (D12) | ✅ **Bonsai**              |
+| **Boilerplate**            | Élevé (modules, services, pipes) | Élevé (mais différent)                 | ≈ Équivalent               |
+| **Change Detection**       | Zone.js (magique, patches async) | Explicite (Entity → Feature → View)    | ✅ **Bonsai** (prévisible) |
+| **Enterprise ready**       | ✅ Prouvé à grande échelle       | 🔶 Non prouvé                          | ✅ **Angular**             |
+| **Courbe d'apprentissage** | Élevée                           | Élevée                                 | ≈ Équivalent               |
 
 #### Philosophies comparées
 
 **Points communs** :
+
 - Architecture opinionated avec règles strictes
 - TypeScript obligatoire
 - Séparation des responsabilités
@@ -456,12 +463,12 @@ class ParentView extends View<[Counter.Channel], TParentUI> {
 
 **Différences fondamentales** :
 
-| Aspect | Angular | Bonsai |
-|--------|---------|--------|
-| Change detection | Zone.js patche les APIs async | Notifications explicites per-key |
-| State | Services injectables | Entities encapsulées dans Features |
-| Communication | Observable/Subject (rxjs exposé) | Channels (rxjs interne, jamais exposé) |
-| Rendu | Templates compilés + dirty checking | PDR sans VDOM |
+| Aspect           | Angular                             | Bonsai                                 |
+| ---------------- | ----------------------------------- | -------------------------------------- |
+| Change detection | Zone.js patche les APIs async       | Notifications explicites per-key       |
+| State            | Services injectables                | Entities encapsulées dans Features     |
+| Communication    | Observable/Subject (rxjs exposé)    | Channels (rxjs interne, jamais exposé) |
+| Rendu            | Templates compilés + dirty checking | PDR sans VDOM                          |
 
 **Insight** : Bonsai partage la rigueur d'Angular sans la magie de Zone.js.
 
@@ -471,14 +478,14 @@ class ParentView extends View<[Counter.Channel], TParentUI> {
 
 #### Comparaison détaillée
 
-| Aspect | Svelte 5 | Bonsai | Verdict |
-|--------|----------|--------|---------|
-| **Approche** | Compilateur élimine le runtime | Framework runtime avec PDR | Philosophies opposées |
-| **Performance** | Excellente (pas de VDOM) | Excellente (PDR sans VDOM) | ≈ Équivalent |
-| **Bundle size** | Minimal (compile away) | À mesurer | 🔶 Probablement **Svelte** |
-| **Simplicité** | `$state`, `$derived`, `$effect` | 5 capacités, 3 voies, N niveaux | ✅ **Svelte** |
-| **State local** | ✅ Natif avec `$state` | ❌ Interdit (Entity obligatoire) | Dépend du use case |
-| **TypeScript** | Supporté | By design | ✅ **Bonsai** |
+| Aspect          | Svelte 5                        | Bonsai                           | Verdict                    |
+| --------------- | ------------------------------- | -------------------------------- | -------------------------- |
+| **Approche**    | Compilateur élimine le runtime  | Framework runtime avec PDR       | Philosophies opposées      |
+| **Performance** | Excellente (pas de VDOM)        | Excellente (PDR sans VDOM)       | ≈ Équivalent               |
+| **Bundle size** | Minimal (compile away)          | À mesurer                        | 🔶 Probablement **Svelte** |
+| **Simplicité**  | `$state`, `$derived`, `$effect` | 5 capacités, 3 voies, N niveaux  | ✅ **Svelte**              |
+| **State local** | ✅ Natif avec `$state`          | ❌ Interdit (Entity obligatoire) | Dépend du use case         |
+| **TypeScript**  | Supporté                        | By design                        | ✅ **Bonsai**              |
 
 #### Exemple de réactivité comparé
 
@@ -527,13 +534,13 @@ class CounterView extends View<...> {
 
 #### Comparaison détaillée
 
-| Aspect | Solid | Bonsai | Verdict |
-|--------|-------|--------|---------|
-| **Réactivité** | Fine-grained signals | Notifications per-key | ≈ Similaire en granularité |
-| **Rendu** | No VDOM, compile-time tracking | No VDOM, PDR | ≈ Équivalent |
-| **API surface** | Simple (createSignal, createEffect) | Complexe (5 capacités, etc.) | ✅ **Solid** |
-| **Composition** | Components + Context | Features + Composers | ✅ **Bonsai** (plus structuré) |
-| **SSR** | Hydration (streaming) | PDR natif | ✅ **Bonsai** |
+| Aspect          | Solid                               | Bonsai                       | Verdict                        |
+| --------------- | ----------------------------------- | ---------------------------- | ------------------------------ |
+| **Réactivité**  | Fine-grained signals                | Notifications per-key        | ≈ Similaire en granularité     |
+| **Rendu**       | No VDOM, compile-time tracking      | No VDOM, PDR                 | ≈ Équivalent                   |
+| **API surface** | Simple (createSignal, createEffect) | Complexe (5 capacités, etc.) | ✅ **Solid**                   |
+| **Composition** | Components + Context                | Features + Composers         | ✅ **Bonsai** (plus structuré) |
+| **SSR**         | Hydration (streaming)               | PDR natif                    | ✅ **Bonsai**                  |
 
 #### Pattern de réactivité comparé
 
@@ -601,12 +608,12 @@ Pas un afterthought, mais le fondement même de l'architecture.
 
 #### 3.2.1 Écosystème à construire
 
-| Manque | Impact | Priorité |
-|--------|--------|----------|
-| DevTools | Debug difficile sans visualisation | 🔴 Haute |
-| CLI scaffolding | Boilerplate manuel | 🟡 Moyenne |
-| Testing utilities | Mocks ad-hoc | 🟡 Moyenne |
-| Documentation interactive | Courbe d'apprentissage | 🔴 Haute |
+| Manque                    | Impact                             | Priorité   |
+| ------------------------- | ---------------------------------- | ---------- |
+| DevTools                  | Debug difficile sans visualisation | 🔴 Haute   |
+| CLI scaffolding           | Boilerplate manuel                 | 🟡 Moyenne |
+| Testing utilities         | Mocks ad-hoc                       | 🟡 Moyenne |
+| Documentation interactive | Courbe d'apprentissage             | 🔴 Haute   |
 
 #### 3.2.2 Courbe d'apprentissage
 
@@ -627,27 +634,27 @@ purement visuelles (dropdown, tooltip, etc.) avec opt-in explicite.
 
 #### Public cible
 
-| **Bonsai convient pour** | **Bonsai ne convient pas pour** |
-|--------------------------|--------------------------------|
-| Applications critiques long terme | Prototypes rapides |
-| Équipes avec discipline architecturale | Développeurs débutants |
-| Contextes SSR/CMS avec DOM existant | SPA pure sans HTML serveur |
-| Entreprises qui valorisent la traçabilité | Startups en hypercroissance |
-| Codebases > 50k lignes | Projets < 5k lignes |
+| **Bonsai convient pour**                  | **Bonsai ne convient pas pour** |
+| ----------------------------------------- | ------------------------------- |
+| Applications critiques long terme         | Prototypes rapides              |
+| Équipes avec discipline architecturale    | Développeurs débutants          |
+| Contextes SSR/CMS avec DOM existant       | SPA pure sans HTML serveur      |
+| Entreprises qui valorisent la traçabilité | Startups en hypercroissance     |
+| Codebases > 50k lignes                    | Projets < 5k lignes             |
 
 #### Positionnement marché
 
 ```
-                    Simplicité
-                        ↑
-                        │
-           Svelte ●     │     ● Vue
-                        │
-        ─────────────────────────────→ Structure
-                        │
-           React ●      │     ● Bonsai
-                        │
-                   Angular ●
+            Simplicité
+                ↑
+                │
+   Svelte ●     │     ● Vue
+                │
+─────────────────────────────→ Structure
+                │
+   React ●      │     ● Bonsai
+                │
+           Angular ●
 ```
 
 **Comparaison finale** : Bonsai se positionne entre **Angular** (rigueur enterprise)
@@ -659,16 +666,16 @@ C'est un framework **d'architecte**, pas un framework de prototypage.
 
 ## Annexe A — Checklist de validation RFC
 
-| Aspect | RFC-0001 | RFC-0002 | RFC-0002-channel | RFC-0002-entity | RFC-0002-feature |
-|--------|----------|----------|------------------|-----------------|------------------|
-| Invariants complets | ✅ I1-I41 | ✅ I31-I41 | ✅ | ✅ | ✅ |
-| Décisions documentées | ✅ D1-D32 | ✅ D10-D19, D32 | ✅ D11-D15 | ✅ D10, D16, D17 | ✅ D12, D17, D18 |
-| Alternatives rejetées | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Glossaire | ✅ | ✅ | ✅ | ✅ | — |
-| Questions ouvertes | ✅ Q1-Q9 | ✅ Q9, Q11, Q14-Q17 | — | — | — |
-| Anti-patterns | ✅ §12 | — | — | — | — |
-| Exemples code | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Types TypeScript | — | ✅ Complets | ✅ | ✅ | ✅ |
+| Aspect                | RFC-0001  | RFC-0002            | RFC-0002-channel | RFC-0002-entity  | RFC-0002-feature |
+| --------------------- | --------- | ------------------- | ---------------- | ---------------- | ---------------- |
+| Invariants complets   | ✅ I1-I41 | ✅ I31-I41          | ✅               | ✅               | ✅               |
+| Décisions documentées | ✅ D1-D32 | ✅ D10-D19, D32     | ✅ D11-D15       | ✅ D10, D16, D17 | ✅ D12, D17, D18 |
+| Alternatives rejetées | ✅        | ✅                  | ✅               | ✅               | ✅               |
+| Glossaire             | ✅        | ✅                  | ✅               | ✅               | —                |
+| Questions ouvertes    | ✅ Q1-Q9  | ✅ Q9, Q11, Q14-Q17 | —                | —                | —                |
+| Anti-patterns         | ✅ §12    | —                   | —                | —                | —                |
+| Exemples code         | ✅        | ✅                  | ✅               | ✅               | ✅               |
+| Types TypeScript      | —         | ✅ Complets         | ✅               | ✅               | ✅               |
 
 ---
 

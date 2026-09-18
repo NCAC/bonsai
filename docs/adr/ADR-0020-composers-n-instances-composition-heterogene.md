@@ -3,7 +3,7 @@
 > **Comment permettre à un Composer de gérer N Views hétérogènes dans un scope DOM fixe, et quelle est la sémantique exacte de `get composers()` quand un sélecteur `uiElements` matche plusieurs éléments DOM ?**
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🔵 Tested |
 | **Date** | 2026-04-01 |
 | **Décideurs** | @ncac |
@@ -12,7 +12,8 @@
 | **ADRs liées** | ADR-0001 (entity mutation), ADR-0010 (bootstrap order), ADR-0019 (Mode ESM), ADR-0021 (monde ouvert) |
 | **Supersède** | I37 partiel (0/1 View → 0/N Views dans scope fixe) |
 
-> ### Statut normatif
+> ## Statut normatif
+>
 > Ce document est **normatif** pour le contrat du Composer et la sémantique de `get composers()`.
 > En cas de divergence avec `reflexion-composition-dynamique-heterogene.md`, **ce document prévaut**.
 > La RFC-0002 §9 est mise à jour en conséquence.
@@ -46,7 +47,7 @@
 
 ### Le problème de la composition hétérogène
 
-L'invariant I37 actuel énonce : *« Un Composer gère toujours 0 ou 1 View dans un slot. »* Les slots sont déclarés statiquement dans `get composers()` de la View. Ce modèle couvre les compositions statiques mais pas les cas où la structure UI est déterminée au runtime.
+L'invariant I37 actuel énonce : _« Un Composer gère toujours 0 ou 1 View dans un slot. »_ Les slots sont déclarés statiquement dans `get composers()` de la View. Ce modèle couvre les compositions statiques mais pas les cas où la structure UI est déterminée au runtime.
 
 Les applications réelles (CMS, back-offices, dashboards configurables) présentent des cas tels que :
 
@@ -77,7 +78,7 @@ Ce document formalise cette sémantique et précise le périmètre résiduel de 
 ## Contraintes
 
 | # | Contrainte | Justification |
-|---|-----------|---------------|
+| --- | --- | --- |
 | **C1** | **I36 absolu** — View ne compose jamais | Pilier non négociable de la séparation des responsabilités |
 | **C2** | **D21** — le Composer est le seul décideur d'instanciation | Aucune autre entité ne crée de View |
 | **C3** | **D24** — pas de CollectionComposer | Un Composer classique révisé couvre le cas N-Views hétérogènes |
@@ -166,7 +167,7 @@ class NodeEditFormComposer extends Composer {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + **Aucun nouveau concept** — sémantique CSS querySelectorAll bien comprise | - Mécanisme 1 : comportement N-instances à documenter explicitement |
 | + Type-safe compile-time pour le Mécanisme 1 | - Mécanisme 2 : I35 nuancé à formaliser (lecture DOM autorisée) |
 | + Rétrocompatible — Composers existants non impactés | - `rootElement: Element` est un ajout à `TResolveResult` |
@@ -193,7 +194,7 @@ class NodeEditFormView extends View {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + I37 préservé (chaque Composer reste 1:1) | - **I36 violé** — la View fait le mapping `type → Composer` = décision de composition |
 | + I35 préservé — pas d'accès DOM Composer | - **Bootstrap async** — change fondamentalement ADR-0010 |
 | | - View devient data-aware (fait un `request()`) |
@@ -216,7 +217,7 @@ class ParagraphsCollectionComposer extends CollectionComposer {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Séparation claire | - **D24 violé** — décision architecturale existante |
 | + Pattern familier (Collection) | - Crée une asymétrie — pourquoi Composer/CollectionComposer mais pas View/CollectionView ? |
 | | - L'Option A couvre le même périmètre sans nouveau concept |
@@ -228,7 +229,7 @@ class ParagraphsCollectionComposer extends CollectionComposer {
 ## Analyse comparative
 
 | Critère | Option A (querySelectorAll + resolve N) | Option B (async composers) | Option C (CollectionComposer) |
-|---------|----------------------------------------|---------------------------|-------------------------------|
+| --- | --- | --- | --- |
 | **I36 respecté** | ✅ | ❌ | ✅ |
 | **D21 respecté** | ✅ | ✅ partiel (View fait le mapping) | ✅ |
 | **D24 respecté** | ✅ | ✅ | ❌ |
@@ -253,6 +254,7 @@ L'insight décisif est que **le cas CDH typique (composition typée par attribut
 ### Périmètre de cette décision
 
 Cette ADR couvre :
+
 - ✅ Sémantique `querySelectorAll` de `uiElements` → N Composers
 - ✅ `TResolveResult` révisé (`rootElement: Element | string` dédié)
 - ✅ `resolve()` étendu (`TResolveResult | TResolveResult[] | null`)
@@ -334,7 +336,7 @@ class NodeEditFormView extends View<TNodeEditFormViewUI> {
 **Ce que ce mécanisme n'est PAS de la composition cachée** :
 
 | Aspect | Vérification |
-|--------|-------------|
+| --- | --- |
 | `TUIMap` est compile-time | ✅ — le type est déclaré statiquement dans la View |
 | `uiElements` est résolu au bootstrap | ✅ — `querySelectorAll` au moment de l'attachement View |
 | `composers` est compile-time | ✅ — `{ editorJsSlot: EditorJsComposer }` est statique |
@@ -373,7 +375,7 @@ type TResolveResult<V extends typeof View = typeof View> = {
 **Qui résout le `rootElement` ?**
 
 | Cas | `rootElement` | Qui résout | Quand |
-|-----|---------------|-----------|-------|
+| --- | --- | --- | --- |
 | Composer dynamique (SSR, CDH) | `Element` | **Composer** — `this.slot.querySelector(...)` | Dans `resolve()` |
 | Composer SPA classique | `string` | **Framework** — `slot.querySelector(selector)` | Après `resolve()` |
 | SPA, élément absent (D30) | `string` (descripteur objet) | **Framework** — crée l'élément | Après `resolve()` si absent |
@@ -411,7 +413,7 @@ abstract resolve(): TResolveResult | TResolveResult[] | null;
 
 **Comportement du framework lors du diff** :
 
-```
+```text
 resolve() retourne R'                    État précédent R
   ──────────────────────────────────────────────────────
   Pour chaque résultat r dans R' :
@@ -432,7 +434,7 @@ resolve() retourne R'                    État précédent R
 > Le scope DOM d'un Composer (son élément racine) est assigné une seule fois au bootstrap
 > et ne change jamais. Il existe exactement 3 états :
 >
-> ```
+> ```text
 > assigné → vivant    (scope dans le DOM, Composer actif)
 >         → suspendu  (scope retiré du DOM, Views détachées proprement)
 >         → détruit   (Composer libéré — irréversible)
@@ -445,7 +447,7 @@ resolve() retourne R'                    État précédent R
 **Propriétés dérivées** :
 
 | Propriété | Statut |
-|-----------|--------|
+| --- | --- |
 | Le scope est immutable — assigné une fois, jamais déplacé | ✅ Invariant |
 | Le Composer ne crée pas son scope — il le reçoit | ✅ Cohérent avec I35 |
 | La View contrôle l'existence du slot (markup), pas son contenu | ✅ Cohérent avec I36 |
@@ -456,7 +458,7 @@ resolve() retourne R'                    État précédent R
 mais elle ne peut **jamais modifier la structure interne** du sous-arbre d'un slot Composer vivant :
 
 | Action de la View sur un slot Composer vivant | Autorisé ? |
-|------------------------------------------------|-----------|
+| --- | --- |
 | Conserver l'élément slot tel quel | ✅ |
 | Détruire l'élément slot (re-rendu qui ne le recrée pas) | ✅ — lifecycle normal |
 | Modifier les attributs de l'élément slot lui-même | ✅ — l'élément reste dans le N1 scope |
@@ -621,7 +623,7 @@ class BadNodeEditFormView extends View {
 ## Impact sur les invariants
 
 | Invariant | Avant | Après | Nature |
-|-----------|-------|-------|--------|
+| --- | --- | --- | --- |
 | **I35** — Composer accès DOM | « Aucun droit DOM » | « Aucune **écriture** DOM. Lecture du scope autorisée. Le Composer résout le `rootElement` par `querySelector`. » | 🟡 Nuancé |
 | **I36** — View ne compose jamais | Inchangé | Inchangé — confirmé et renforcé | ❄️ Inchangé |
 | **I37** — Composer 0/1 View | « 0 ou 1 View par slot » | « 0/N Views hétérogènes dans un scope fixe via `resolve()` étendu » | 🔴 Révisé |
@@ -638,7 +640,7 @@ class BadNodeEditFormView extends View {
 ### Fichiers impactés
 
 | Fichier | Impact |
-|---------|--------|
+| --- | --- |
 | [RFC-0002 §9.4 TUIElements](../rfc/6-transversal/conventions-typage.md) | Sémantique querySelectorAll (0/1/N) — ✅ Déjà mis à jour |
 | [RFC-0002 §9.6 `get composers()`](../rfc/6-transversal/conventions-typage.md) | Sémantique N-instances (une instance par élément matché) |
 | [RFC-0002 §12.1–12.3 Composer, `TResolveResult`, `resolve()`](../rfc/6-transversal/conventions-typage.md) | `TResolveResult` révisé + retour `TResolveResult[]` |
@@ -657,7 +659,7 @@ class BadNodeEditFormView extends View {
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-04-01 | Création — issu de `reflexion-composition-dynamique-heterogene.md` §3–§11. Formalise les décisions stabilisées lors de la réflexion du 2026-03-30/31. |
 | 2026-04-01 | 🟢 **Accepted** — corrections A1–A4 (§9.7→§12.1–12.3, QO-CDH-4 harmonisé, Source retirée, §1.7→§4.7). Propagation downstream (RFC-0002 §9.6/§12, RFC-0001-invariants-decisions) planifiée comme tâches de suivi. |
 | 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

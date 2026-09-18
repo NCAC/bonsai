@@ -6,28 +6,28 @@
 
 ---
 
-| Champ          | Valeur                                                                                                                                             |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Composant**  | Foundation                                                                                                                                         |
-| **Couche**     | Concrete (persistant -- exception)                                                                                                                 |
-| **Source**     | Historique : RFC-0002-api-contrats-typage §11, ADR-0018                                                                                            |
-| **Statut**     | Stable                                                                                                                                             |
+| Champ | Valeur |
+| --- | --- |
+| **Composant** | Foundation |
+| **Couche** | Concrete (persistant -- exception) |
+| **Source** | Historique : RFC-0002-api-contrats-typage §11, ADR-0018 |
+| **Statut** | Stable |
 | **ADRs liées** | ADR-0010 (bootstrap order), ADR-0018 (Foundation contract), ADR-0028 (phasage strates), **ADR-0038 (Foundation.composers Record + I67 stabilite)** |
 
 ---
 
-> ### ⏳ Périmètre d'implémentation (ADR-0028)
+> ## ⏳ Périmètre d'implémentation (ADR-0028)
 >
 > Ce document décrit le **contrat cible complet** de Foundation. Conformément
 > au phasage kernel-first, certaines capacités sont **différées** :
 >
-> | Élément                                                         | Strate cible | Sections concernées |
-> | --------------------------------------------------------------- | ------------ | ------------------- |
-> | `get params()` avec `listen` / `trigger` / `request` (ADR-0024) | Strate 1     | §1, §2              |
-> | Generic de classe `Foundation<TCapabilities>`                   | Strate 1     | §1                  |
-> | Auto-discovery handlers Channel (`onXxxYyyEvent`)               | Strate 1     | §2                  |
-> | `protected this.html` / `this.body` exposés au développeur      | Strate 1     | §2                  |
-> | Hooks `onAttach()` / `onDetach()` côté Foundation               | Strate 1     | §1, §2              |
+> | Élément | Strate cible | Sections concernées |
+> | --- | --- | --- |
+> | `get params()` avec `listen` / `trigger` / `request` (ADR-0024) | Strate 1 | §1, §2 |
+> | Generic de classe `Foundation<TCapabilities>` | Strate 1 | §1 |
+> | Auto-discovery handlers Channel (`onXxxYyyEvent`) | Strate 1 | §2 |
+> | `protected this.html` / `this.body` exposés au développeur | Strate 1 | §2 |
+> | Hooks `onAttach()` / `onDetach()` côté Foundation | Strate 1 | §1, §2 |
 >
 > **Strate 0 — périmètre effectif** : `Foundation` non-générique, abstract `get composers(): Readonly<Record<string, typeof Composer>>` (ADR-0038), `attach()` orchestre la résolution + instanciation des Composers racines, garantie I33 (singleton), I34 (rootElement enfant de `<body>`), I67 (stabilité structurelle).
 >
@@ -43,8 +43,7 @@
 > quel. Ce qui est acquis : ce **ne sera pas** `TComposerParams`/`get
 > params()` (ADR-0024). Les exemples des §1–2 ci-dessous, écrits avant cette
 > clarification, restent en forme ADR-0024 et seront réécrits à
-> l'implémentation strate 1 (cf. [ADR-0042 §Actions de
-> suivi](../../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md)).
+> l'implémentation strate 1 (cf. [ADR-0042 §Actions de suivi](../../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md)).
 
 ---
 
@@ -137,7 +136,7 @@ abstract class Foundation<
 > **Invariant I33** : la Foundation est **unique** par application.
 > **Invariant I34** : le rootElement d'une View est forcement un enfant de `<body>`.
 > **Invariant I67 (ADR-0038)** : Foundation est **structurellement stable** — son `get composers()` est evalue une seule fois au bootstrap et ne change jamais. Toute composition dynamique est deleguee a une View dediee (cf. §3.bis).
-
+>
 > ### Principe directeur (ADR-0038)
 >
 > **Foundation est le premier composant concret, mais elle est stable et persistante.
@@ -245,7 +244,7 @@ dans **l'ordre d'insertion des clés** (garanti par ECMAScript 2015+ §9.1.12).
 type TFoundationComposers = Readonly<Record<string, typeof Composer>>;
 ```
 
-```
+```text
 Foundation(<body>)
   +-- '#header-slot'  -> HeaderComposer    -> HeaderView (#header-view)
   +-- '#main-slot'    -> MainContentComposer -> HomeView | ProductView | ...
@@ -370,7 +369,7 @@ class BadFoundation extends Foundation {
 > `mount()` résolvant lui-même le sélecteur via `document.querySelector()` **global**
 > (pas scopé au slot du Composer).
 
-```
+```text
 Application (bootstrap)
   |
   +-- Phases 0a-4 (cf. application.md) : manifest, Features, Channels, Entities

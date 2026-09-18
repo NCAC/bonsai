@@ -1,24 +1,26 @@
 # RFC-0003 : Rendu Avancé — Compilateur Pug → PDR
 
-> ### TL;DR
+> ## TL;DR
+>
 > Bonsai utilise la **Projection DOM Réactive (PDR)** : pas de VDOM, pas de diff d'arbre.
 > Les templates Pug sont compilés en fonctions TypeScript qui projettent les données sur
 > un DOM existant via des mutations chirurgicales O(Δ). Trois niveaux d'alteration :
 > **N1** (primitives `text()`, `attr()`, `visible()`), **N2** (templates partiels),
 > **N3** (templates complets). `ProjectionList` gère les listes par réconciliation keyée.
 
-| Champ             | Valeur                                      |
-|-------------------|---------------------------------------------|
-| **RFC**           | 0003                                        |
-| **Titre**         | Rendu Avancé — Compilateur Pug → PDR        |
-| **Statut**        | 🟢 Stable                                   |
-| **Date**          | 2026-03-18                                  |
-| **Auteur**        | @architecte                                 |
-| **Prérequis**     | [1-philosophie.md](1-philosophie.md), [view.md §4](4-couche-concrete/view.md#4-contrat-de-rendu-pdr) |
-| **Absorbe**       | [ADR-0008](../adr/ADR-0008-collection-patterns.md) (⚪ Superseded → §6.4–6.8) |
-| **Héritage**      | Inspiré d'un compilateur Pug → VDOM protétypé en amont (VDOM → PDR) |
+| Champ | Valeur |
+| --- | --- |
+| **RFC** | 0003 |
+| **Titre** | Rendu Avancé — Compilateur Pug → PDR |
+| **Statut** | 🟢 Stable |
+| **Date** | 2026-03-18 |
+| **Auteur** | @architecte |
+| **Prérequis** | [1-philosophie.md](1-philosophie.md), [view.md §4](4-couche-concrete/view.md#4-contrat-de-rendu-pdr) |
+| **Absorbe** | [ADR-0008](../adr/ADR-0008-collection-patterns.md) (⚪ Superseded → §6.4–6.8) |
+| **Héritage** | Inspiré d'un compilateur Pug → VDOM protétypé en amont (VDOM → PDR) |
 
 > ### Statut normatif
+>
 > Ce document est **stable et normatif** pour les mécanismes de rendu PDR,
 > les templates Pug, l'API `ProjectionList`, le Render Contract (§7bis), et les
 > collection patterns (§6.4–6.8). Les décisions D39–D48 y documentées font foi.
@@ -40,7 +42,7 @@
 > Ce document décrit le **contrat cible** du rendu. **Aucun mécanisme de ce document n'est encore implémenté**, hormis les primitives N1 de `getUI()` décrites dans [view.md](4-couche-concrete/view.md) :
 >
 > | Élément | Strate cible | Sections concernées |
-> | ------- | ------------ | ------------------- |
+> | --- | --- | --- |
 > | Compilateur Pug → PDR (`setup`/`project`/`create`), `ProjectionList`, réconciliation keyed | Strate 1c | §4, §5, §6, §8 |
 > | Templates réactifs, selectors, abonnement `any`, Render Contract | Strate 1c | §2, §7, §7bis |
 > | Hydratation SSR (H1–H5) | Strate 2c | §7bis.3 |
@@ -68,7 +70,7 @@ Cette RFC définit le **compilateur Pug → PDR** et les mécanismes de rendu av
 Le développeur choisit le niveau d'abstraction approprié à son cas d'usage :
 
 | Niveau | Cas d'usage | Mécanisme | Template ? |
-|--------|-------------|-----------|------------|
+| --- | --- | --- | --- |
 | **N1 — Mutation d'attributs** | Carrousel, modale `hidden`, badge count, toggle class | `getUI().text()`, `.toggleClass()`, `.attr()` | ❌ Non — overhead inutile |
 | **N2 — Mutation par zones** | Liste de produits, formulaire dynamique, onglets | Template sur clés `@ui` spécifiques | ✅ Oui — sur zones ciblées |
 | **N3 — Mutation complète** | Page entière change, dashboard reconfigurable | Template sur `root` | ✅ Oui — toute la View |
@@ -148,6 +150,7 @@ class CartView extends View<TCartViewCapabilities> {
 ```
 
 **Fonctionnement** (cible strate 1c — ⚠️ voir §7.1 pour la définition de `changes` qui prévaut, en tension avec celle utilisée ici) :
+
 1. Le Channel émet `any` automatiquement après chaque Event granulaire — **livré**
 2. Le payload transmis à `select()` contiendrait le **state complet du Channel**, pas seulement les clés changées (D46 — cf. §7.1 ; le libellé « clés changées » ci-dessus est imprécis, corrigé en §7.1)
 3. Le framework **namespace** le payload par le Channel source
@@ -155,6 +158,7 @@ class CartView extends View<TCartViewCapabilities> {
 5. Si les données ont changé (shallow equal), le template est re-projeté
 
 **Avantages** :
+
 - ✅ Un seul abonnement par Channel (événement `any`)
 - ✅ Le template reste du Pug pur, portable
 - ✅ Le selector filtre par clé de state, pas par nom d'Event
@@ -172,7 +176,7 @@ class CartView extends View<TCartViewCapabilities> {
 [view.md §4](4-couche-concrete/view.md#4-contrat-de-rendu-pdr) a établi les fondations de la **Projection DOM Réactive (PDR)** :
 
 | Concept | Statut | Source |
-|---------|--------|----------|
+| --- | --- | --- |
 | Stratégie PDR (D19) | ✅ Défini | view.md §4 |
 | `getUI()` → `TProjectionNode` | ✅ Défini | view.md §4 |
 | `TProjectionTemplate` type | ✅ Défini | view.md §4 |
@@ -181,7 +185,7 @@ class CartView extends View<TCartViewCapabilities> {
 ### 3.2 Ce qui manque
 
 | Concept | Statut | Besoin |
-|---------|--------|--------|
+| --- | --- | --- |
 | Compilateur Pug → PDR | ❌ | Comment génère-t-on `setup/project/create` ? |
 | `each` → reconcile | ❌ | Comment `each item in items` devient du keyed reconcile ? |
 | `ProjectionList` API | ❌ | Interface complète et algorithme |
@@ -191,11 +195,12 @@ class CartView extends View<TCartViewCapabilities> {
 
 Un compilateur Pug → VDOM (Snabbdom) avait été protétypé en amont. L'architecture de pipeline reste pertinente :
 
-```
+```text
 .pug → Lexer → Parser → AST → Compiler → .ts (VDOM functions)
 ```
 
 **Ce qui change pour Bonsai** :
+
 - VDOM → PDR (mutations directes, pas de diff d'arbre)
 - `VNode` → `TProjectionNode` / `ProjectionList`
 - Réactivité implicite (pas d'appel manuel à `render()`)
@@ -203,11 +208,13 @@ Un compilateur Pug → VDOM (Snabbdom) avait été protétypé en amont. L'archi
 ### 3.4 Le edge case des listes longues
 
 Le cas le plus complexe : une liste de 500+ items sur laquelle l'utilisateur :
+
 - Applique des filtres (affiche 50 items sur 500)
 - Change le tri (réordonne les 50 items)
 - Modifie un item (met à jour 1 item)
 
 **Exigences** :
+
 - Le filtrage/tri ne doit PAS muter les données (ADR-0008 anti-pattern)
 - La réconciliation doit être O(n) avec keyed diffing
 - Les mutations individuelles doivent être O(1)
@@ -256,6 +263,7 @@ class CartView extends View<TCartViewCapabilities> {
 
 Le compilateur tourne au **build time** (via Rollup/Vite plugin), pas au runtime.
 Cela garantit :
+
 - Zéro parsing Pug au runtime
 - Bundle optimisé (tree-shaking des parties non utilisées)
 - Erreurs de template détectées au build
@@ -314,7 +322,7 @@ for (const channel of view.listen) {
 
 ### 5.1 Pipeline de compilation
 
-```
+```text
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  .pug file  │────▶│  Pug AST    │────▶│  IR Bonsai  │────▶│  .ts file   │
 └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
@@ -326,6 +334,7 @@ for (const channel of view.listen) {
 ```
 
 **Composants du prototype Pug → VDOM** (à adapter) :
+
 - `lexer.ts` / `lexer.types.ts` — Tokenization
 - `parser.ts` / `token-stream.ts` — AST construction
 - `base-compiler.class.ts` — Visiteur d'AST
@@ -335,7 +344,7 @@ for (const channel of view.listen) {
 **Différences clés avec le prototype VDOM** :
 
 | Aspect | Prototype VDOM | Bonsai |
-|--------|------------------|--------|
+| --- | --- | --- |
 | Output | VDOM (Snabbdom `VNode`) | PDR (`TProjectionNode`, `ProjectionList`) |
 | Réactivité | Manuelle (`render()`) | Déclarée dans View (`listen`, `dataPath`) |
 | Diff | Runtime (VDOM diff) | Build-time (keyed reconcile généré) |
@@ -451,7 +460,7 @@ export const CartItemsTemplate: TProjectionTemplate<CartItemsNodes, CartItem[]> 
 
 ### 6.1 Interface
 
-```typescript
+````typescript
 /**
  * Gestionnaire de liste dynamique avec réconciliation keyed.
  * Utilisé en interne par les templates compilés.
@@ -531,7 +540,7 @@ type TReconcileHandlers<TItem, TItemNodes> = {
   onRemove?: (el: HTMLElement, item: TItem) => void | Promise<void>;
   onMove?: (el: HTMLElement, item: TItem, fromIndex: number, toIndex: number) => void;
 }
-```
+````
 
 ### 6.2 Algorithme de réconciliation
 
@@ -605,7 +614,7 @@ reconcile(items: TItem[], handlers: TReconcileHandlers<TItem, TItemNodes>): void
 ### 6.3 Complexité
 
 | Opération | Complexité |
-|-----------|------------|
+| --- | --- |
 | Réconciliation complète | O(n) |
 | Insertion d'un item | O(1) amortie |
 | Suppression d'un item | O(1) |
@@ -621,6 +630,7 @@ reconcile(items: TItem[], handlers: TReconcileHandlers<TItem, TItemNodes>): void
 est **ProjectionList + Event Delegation** (Option D de l'ADR-0008).
 
 Justification :
+
 1. **Simple** — un seul pattern à apprendre (pas de `ViewFragment`, pas de `CollectionComposer`)
 2. **Performant** — keyed reconcile O(n) + un seul listener par type d'événement
 3. **Scalable** — 1000+ items sans dégradation (un listener ≠ mille listeners)
@@ -807,9 +817,9 @@ onFilterByPopularity(payload) {
 **Pourquoi c'est un anti-pattern :**
 
 | # | Raison |
-|---|--------|
+| --- | --- |
 | 1 | **Explosion des patches** — 300 patches pour une opération logique |
-| 2 | **Sémantique incorrecte** — les données n'ont pas changé, seule la *présentation* change |
+| 2 | **Sémantique incorrecte** — les données n'ont pas changé, seule la _présentation_ change |
 | 3 | **Performance** — re-render complet de la liste |
 | 4 | **Event Sourcing** — stocker « tri changé » ≠ stocker 300 déplacements |
 
@@ -868,7 +878,7 @@ class ProductsView extends View {
 ### 6.6 Données vs Critères vs Dérivées
 
 | Type | Fréquence mutation | Stockage Entity | Exemple |
-|------|-------------------|-----------------|---------|
+| --- | --- | --- | --- |
 | **Données brutes** | Rare (CRUD serveur) | `items: Product[]` | Liste de produits |
 | **Critères de vue** | Fréquent (UI) | `sortCriteria`, `filters`, `page` | Tri, filtres, pagination |
 | **Données dérivées** | **Jamais** | Calculé dans le selector de la View | Liste filtrée et triée |
@@ -937,7 +947,7 @@ class WidgetComposer extends Composer {
 > ProjectionList + Event Delegation (§6.4).
 
 | Pattern | Cas d'usage | Overhead |
-|---------|-------------|----------|
+| --- | --- | --- |
 | ProjectionList + Event Delegation (§6.4) | Listes simples, items template-only | Faible (1 listener par type) |
 | Slots × Composers (§6.7) | Items complexes avec lifecycle propre | Élevé (n Composers + n Views) |
 
@@ -1016,6 +1026,7 @@ La View déclare les Channels qu'elle écoute. Le framework s'abonne **une seule
 à l'événement `any` de chaque Channel.
 
 **Contrat `NamespacedData`** :
+
 - Contient le **state complet** de chaque Channel écouté, par référence (frozen)
 - Est **namespacé** par le Channel source (ex: `data.cart`, `data.promo`)
 - Inclut le namespace réservé `local` pour le localState (I57, ADR-0015)
@@ -1180,6 +1191,7 @@ type TViewTemplates<TUI extends TUIContract> =
 > et les helpers `isAllUndefined()` / `shallowEqual()`.
 
 **Résumé du mécanisme** :
+
 1. Le framework appelle `template.setup(container)` pour localiser les nœuds dynamiques
 2. Un **seul** abonnement `any` par Channel (pas un listener par Event)
 3. Le framework namespace le state complet par Channel (D46 : référence live, zéro copie)
@@ -1197,11 +1209,11 @@ type TViewTemplates<TUI extends TUIContract> =
 ### 7.6 Séparation des audiences
 
 | Audience | Écoute | Payload | Cas d'usage |
-|----------|--------|---------|-------------|
+| --- | --- | --- | --- |
 | **Features** | Events granulaires (`itemAdded`) | Payload métier | Réactions inter-Feature |
 | **Views** | Event `any` (auto-émis) | `{ changes }` namespacé | Réactivité UI |
 
-```
+```text
 Feature.emit('itemAdded', payload)
         │
         ▼
@@ -1218,7 +1230,7 @@ Feature.emit('itemAdded', payload)
 ### 7.7 Résumé des responsabilités
 
 | Qui | Responsabilité |
-|-----|----------------|
+| --- | --- |
 | **Channel** | Émet automatiquement `any` après chaque Event granulaire |
 | **View** | Déclare `listen` (Channels) et `templates` avec selectors |
 | **Selector** | Extrait / dérive les données pertinentes depuis le state complet (D46) |
@@ -1240,7 +1252,7 @@ complet, du changement de données à la mutation DOM finale.
 
 ### 7bis.1 Pipeline de rendu : 6 étapes
 
-```
+```text
 ┌────────────────── Pipeline de rendu PDR ───────────────────┐
 │                                                          │
 │  1. MUTATION     entity.mutate() modifie le state         │
@@ -1275,7 +1287,7 @@ Bonsai élimine les mutations DOM inutiles à **4 niveaux** successifs. Chaque c
 agit comme un filtre — seules les mutations réellement nécessaires atteignent le DOM.
 
 | Couche | Nom | Où | Ce qu'elle filtre | Exemple |
-|--------|-----|-----|-------------------|----------|
+| --- | --- | --- | --- | --- |
 | **L1** | **Selector** | `select()` dans `get templates()` | Rejette les Events non pertinents pour ce template | `data.catalog?.items` retourne `undefined` quand seul `promo` a changé → skip |
 | **L2** | **shallowEqual** | Framework, après le selector | Rejette les projections quand les données n'ont pas changé | Premier `any` après SSR : données identiques → skip complet (ADR-0014 H4) |
 | **L3** | **Guards per-nœud** | `update()` dans `project()` (compilé) | Rejette les mutations de contenu quand la valeur est identique | `if (node.textContent !== item.name)` — évite le re-layout navigateur |
@@ -1292,14 +1304,14 @@ agit comme un filtre — seules les mutations réellement nécessaires atteignen
 #### Règles d'hydratation (H1–H5)
 
 | Règle | Nom | Énoncé |
-|-------|-----|--------|
+| --- | --- | --- |
 | **H1** | Détection par nœud | Pour chaque `rootElement` : `querySelector()` dans le scope → **trouvé** = mode SSR (`setup()`), **absent** = le framework **parse le sélecteur CSS** et crée l'élément (SPA, D30 révisé, ADR-0026). Si le sélecteur n'est pas parseable (combinateurs, pseudo-classes) → ERREUR. La détection est **par nœud**, pas globale. |
 | **H2** | `setup()` = hydratation | `setup()` localise les nœuds dynamiques dans un DOM existant. Il n'y a **pas** de procédure d'hydratation séparée — `setup()` EST l'hydratation. Pas de branche `if (SSR)` dans le code applicatif. |
 | **H3** | ProjectionList par `keyAttr` | `ProjectionList.setup()` indexe les items existants par `keyAttr` (`data-item-id` / `data-key`). Les items sont adoptés, jamais recréés. Résultat : `Map<key, { el, nodes }>` — zéro création DOM. |
 | **H4** | Premier `any` = no-op | Après `onAttach()`, le premier `any` passe dans le pipeline L1→L2. Le selector retourne des données identiques au DOM servi → `shallowEqual` → **SKIP**. Zéro mutation DOM après bootstrap. |
 | **H5** | `serverState` unique | `TBootstrapOptions.serverState` est le **seul** mécanisme d'état sérialisé du framework. Le framework ne lit **jamais** le DOM pour extraire du state (esprit I39). Le développeur contrôle l'injection (JSON inline, fetch, localStorage, etc.). |
 
-```
+```text
 T0 ─── SSR ──────────────────────────────────────────────────────────────
        Serveur rend le HTML complet (structure + contenu)
        DOM = source de vérité structurelle (D19)
@@ -1393,7 +1405,7 @@ function attachView(view: View): void {
 ### 7bis.5 Règles normatives du Render Contract
 
 | # | Règle | Source |
-|---|-------|--------|
+| --- | --- | --- |
 | **R1** | PDR est la stratégie de rendu **unique** de Bonsai. Pas de VDOM. | ADR-0017, D19 |
 | **R2** | Le selector reçoit le **state complet** de chaque Channel par référence live (frozen). | D46 |
 | **R3** | Les données dérivées (filtre, tri) sont calculées dans le selector, **jamais** stockées dans l'Entity. | D47 |
@@ -1416,6 +1428,7 @@ Le compilateur Bonsai **infère la clé** depuis un attribut de l'élément raci
 Cela reste du Pug standard tout en garantissant une réconciliation performante.
 
 **Attributs reconnus** (par ordre de priorité) :
+
 1. `data-item-id` — Convention Bonsai (sémantique)
 2. `data-key` — Alternative générique
 3. `id` — Fallback si unique par item
@@ -1482,12 +1495,11 @@ class CartView extends View<TCartViewCapabilities> {
 > dans le template Pug, plutôt que via `querySelector()`. Les `uiElements` dont la valeur
 > est un sélecteur CSS classique (ex: `'.Cart-total'`) restent valides pour les Views
 > sans template (Mode A, N1).
-```
 
 **Erreurs de compilation** :
 
 | Cas | Message |
-|-----|---------|
+| --- --- |
 | `@ui` dans Pug sans `uiElement` | `Error: @ui 'foo' in template but not declared in uiElements` |
 | `uiElement` sans `@ui` dans Pug | `Error: uiElement 'bar' requires @ui="bar" in template` |
 
@@ -1537,7 +1549,7 @@ if (nodes.name.textContent !== item.name) {
 ### 10.1 Erreurs de compilation
 
 | Erreur | Message |
-|--------|---------|
+| --- | --- |
 | `each` sans clé | `Error: List directive requires a key. Add 'key=expr' or use 'data-item-id' / 'data-key' attribute.` |
 | @ui non résolu | `Error: @ui 'foo' referenced but not found in uiElements declaration.` |
 | Syntaxe invalide | `Error: Invalid Pug syntax at line X.` |
@@ -1545,7 +1557,7 @@ if (nodes.name.textContent !== item.name) {
 ### 10.2 Erreurs runtime
 
 | Erreur | Cause | Message |
-|--------|-------|---------|
+| --- | --- | --- |
 | Clé dupliquée | Deux items avec la même clé | `Warning: Duplicate key 'X' in list. Reconciliation may be incorrect.` |
 | Élément manquant | DOM modifié hors framework | `Error: Expected element with key 'X' not found.` |
 
@@ -1560,11 +1572,12 @@ if (nodes.name.textContent !== item.name) {
 (composants autonomes avec lifecycle propre). Absorbe [ADR-0008](../adr/ADR-0008-collection-patterns.md).
 
 | Pattern | Cas d'usage | Overhead |
-|---------|-------------|----------|
+| --- | --- | --- |
 | ProjectionList + Delegation | 90% — listes simples, items template-only | Faible |
 | Slots × Composers | 10% — items complexes (dashboard widgets) | Élevé |
 
 **Anti-patterns associés** (§6.5) :
+
 - ❌ Muter les données brutes pour filtrer/trier
 - ❌ Un listener par item au lieu de delegation
 - ❌ `CollectionComposer` (D24 interdit)
@@ -1627,7 +1640,7 @@ class CartView extends View {
 
 #### Clarification : `el` = l'item individuel
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │  ul.Cart-items (@ui="items")     ← Conteneur (View.nodes)  │
 │  ┌─────────────────────────────────────────────────────┐   │
@@ -1671,7 +1684,7 @@ onInsert: (el, item: CartItem) => { /* item = { id, name, qty } */ }
 Voir [ADR-0012 — Listes Virtualisées](../adr/ADR-0012-virtualized-list.md) pour les détails.
 
 | Classe | Cas d'usage | Complexité |
-|--------|-------------|------------|
+| --- | --- | --- |
 | `ProjectionList` | Listes courtes (< 500 items) | Simple |
 | `VirtualizedList` | Listes longues (1000+ items) | Complexe |
 
@@ -1769,7 +1782,7 @@ each category in categories
 ## 13. Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-03-18 | Création (Draft) |
 | 2026-03-19 | **D42 (VIEW-SUBSCRIPTION)** : Views s'abonnent à `any` + selectors namespacés (§7 réécrit) |
 | 2026-03-19 | **D39** : Animations via Callbacks + CSS (§11) |
