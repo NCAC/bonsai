@@ -6,31 +6,50 @@
 
 ---
 
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible** du cycle de vie. Les éléments suivants ne sont **pas encore implémentés** :
+>
+> | Élément                                                                     | Strate cible | Sections concernées |
+> | --------------------------------------------------------------------------- | ------------ | ------------------- |
+> | `Application.stop()`, shutdown ordonné, `Feature.onDestroy()`               | Strate 1     | §3 (Shutdown)       |
+> | Bootstrap asynchrone (`onInit()` retournant une `Promise` attendue)         | Strate 1     | §3                  |
+> | `View.onDetach()` et nettoyage déterministe (désabonnements Channel et DOM) | Strate 1c    | §2, §4              |
+> | Cascade de destruction Composer → View → Composer enfant                    | Strate 1d    | §2                  |
+> | Hooks Behavior                                                              | Strate 2b    | §4                  |
+>
+> **Périmètre effectif livré** : `Feature.onInit()` **synchrone** appelé en Phase 3 ; `View.onAttach()` appelé à la fin de `mount()` ; `Foundation.onAttach()` appelé après l'attachement des Composers racines (`onDetach()` déclaré mais jamais invoqué). Quand un Composer détache une View, il **libère seulement sa référence** : les listeners Channel et DOM de la View ne sont pas retirés.
+
 ## 1. Deux catégories de composants
 
 ### Composants persistants (couche abstraite)
 
-| Composant | Durée de vie | Destruction | Nettoyage |
-|-----------|-------------|-------------|-----------|
-| **Feature** | Application entière | Jamais (sauf hot-reload) | N/A |
-| **Entity** | Application entière (via Feature) | Jamais (sauf hot-reload) | N/A |
-| **Channel** | Application entière (via Feature) | Jamais | N/A |
-| **Radio** | Application entière (singleton) | Jamais | N/A |
-| **Application** | Application entière (singleton) | Jamais | N/A |
-| **Router** | Application entière (singleton) | Jamais | N/A |
+| Composant       | Durée de vie                      | Destruction              | Nettoyage |
+| --------------- | --------------------------------- | ------------------------ | --------- |
+| **Feature**     | Application entière               | Jamais (sauf hot-reload) | N/A       |
+| **Entity**      | Application entière (via Feature) | Jamais (sauf hot-reload) | N/A       |
+| **Channel**     | Application entière (via Feature) | Jamais                   | N/A       |
+| **Radio**       | Application entière (singleton)   | Jamais                   | N/A       |
+| **Application** | Application entière (singleton)   | Jamais                   | N/A       |
+| **Router**      | Application entière (singleton)   | Jamais                   | N/A       |
 
-> **D4 — Cycle de vie passif** : les composants persistants n'ont pas
-> de lifecycle "actif" (pas de `onInit`/`onDestroy` appelés dynamiquement).
-> Ils sont créés au bootstrap et vivent jusqu'à la fermeture.
+> **D4 — Cycle de vie passif** : les composants persistants ne sont **ni
+> montés ni démontés à répétition** comme les composants volatils — pas de
+> cycle attach/detach déclenché par la navigation. `Feature.onInit()` **est**
+> appelé, mais une seule fois, à la fin de `bootstrap()` (Phase 3, I56) — ce
+> n'est pas « aucun hook », c'est un hook **appelé exactement une fois dans
+> la vie de l'application**, jamais en réponse à un événement runtime.
+> `onDestroy()` n'existe pas dans le code livré (cible strate 1, cf. bandeau
+> de périmètre en tête de document).
 
 ### Composants volatils (couche concrète)
 
-| Composant | Durée de vie | Destruction | Nettoyage |
-|-----------|-------------|-------------|-----------|
-| **Foundation** | Lié à l'Application | Fermeture de l'Application | Déterministe par le framework |
-| **Composer** | Mount → Unmount (via Foundation/Composer parent) | Retrait du DOM parent | Déterministe par le framework |
-| **View** | Mount → Unmount (via Composer) | Retrait du Composer | Déterministe par le framework |
-| **Behavior** | Mount → Unmount (via View parent) | Retrait de la View parent | Déterministe par le framework |
+| Composant      | Durée de vie                                     | Destruction                | Nettoyage                     |
+| -------------- | ------------------------------------------------ | -------------------------- | ----------------------------- |
+| **Foundation** | Lié à l'Application                              | Fermeture de l'Application | Déterministe par le framework |
+| **Composer**   | Mount → Unmount (via Foundation/Composer parent) | Retrait du DOM parent      | Déterministe par le framework |
+| **View**       | Mount → Unmount (via Composer)                   | Retrait du Composer        | Déterministe par le framework |
+| **Behavior**   | Mount → Unmount (via View parent)                | Retrait de la View parent  | Déterministe par le framework |
 
 > **Exception — Foundation** : bien que faisant partie de la couche concrète,
 > Foundation a un cycle de vie **lié à l'Application**. Il est créé au bootstrap
@@ -46,12 +65,12 @@
 
 Le framework garantit un **nettoyage automatique et complet** à la destruction d'un composant volatil :
 
-| Ressource nettoyée | Mécanisme |
-|--------------------|-----------|
-| Event listeners DOM | Désabonnement automatique |
-| Subscriptions Channel (listen) | Désabonnement automatique |
-| Timers / Intervals | Annulation automatique |
-| Références enfants | Cascade de destruction (Foundation → Composers → Views → Behaviors) |
+| Ressource nettoyée             | Mécanisme                                                           |
+| ------------------------------ | ------------------------------------------------------------------- |
+| Event listeners DOM            | Désabonnement automatique                                           |
+| Subscriptions Channel (listen) | Désabonnement automatique                                           |
+| Timers / Intervals             | Annulation automatique                                              |
+| Références enfants             | Cascade de destruction (Foundation → Composers → Views → Behaviors) |
 
 ### Cinq règles de nettoyage
 
@@ -67,30 +86,29 @@ Le framework garantit un **nettoyage automatique et complet** à la destruction 
 
 ---
 
-## 3. Bootstrap — 6 phases
+## 3. Bootstrap
 
-> Résumé de [ADR-0010](../../adr/ADR-0010-bootstrap-order.md).
+> Résumé de [ADR-0010](../../adr/ADR-0010-bootstrap-order.md). Table de phases
+> détaillée (strate 0 réelle **et** contrat cible 6 phases) → [application.md §2–§3](../3-couche-abstraite/application.md).
+> **Ne pas dupliquer la table de phases ici** — une description indépendante
+> a par le passé divergé du code réel ; ce document ne porte que les
+> garanties de haut niveau, la table détaillée vit dans un seul endroit.
 
-Le démarrage de l'application suit un ordre **strict et déterministe** :
+Le démarrage de l'application suit un ordre **strict et déterministe**. Il n'y
+a plus de `register()` explicite depuis [ADR-0039](../../adr/ADR-0039-namespace-authority-and-uniqueness.md) —
+les Features sont déclarées par le **manifest applicatif** passé au constructeur
+d'`Application`, et instanciées/câblées par `start()` :
 
-```
-Phase 1  register()      Enregistrer les Features (namespace, Entity, Channel)
-Phase 2  validate()      Vérifier l'unicité des namespaces (I21), pas de collision
-Phase 3  wire()          Radio résout les déclarations, câble les Channels
-Phase 4  init()          Appeler onInit() sur chaque Feature (séquentiel, async OK)
-Phase 5  foundation()    Créer la Foundation, résoudre les Composers racines
-Phase 6  mount()         Créer les Views/Behaviors initiaux, attacher au DOM
-```
-
-| Phase | Garantie |
-|-------|----------|
-| 1–3 | La couche abstraite est **complètement câblée** avant toute instanciation concrète |
-| 4 | Chaque `onInit()` peut faire un fetch async — le bootstrap attend la résolution |
-| 5–6 | Les Views sont créées **après** que toutes les Entities ont leur état initial |
+| Étape (résumé)                                                        | Garantie                                                                                                                                                                                                                                       |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Validation + instanciation des Features (manifest, ctor inerte — I94) | La couche abstraite est **complètement câblée** avant toute instanciation concrète                                                                                                                                                             |
+| `onInit()` de chaque Feature                                          | Séquentiel, dans l'ordre du manifest — **synchrone** : `onInit(): void` ne retourne rien à attendre, `bootstrap()` n'attend aucune `Promise` (un `onInit()` async serait ignoré, pas attendu — cible non tranchée pour un futur support async) |
+| Foundation → Composers → Views                                        | Les Views sont créées **après** que toutes les Entities ont leur état initial                                                                                                                                                                  |
 
 > **Invariant de séquence** : aucune View ne peut envoyer de `trigger()` avant
-> que toutes les Features soient en état `active`. Le bootstrap le garantit
-> par construction.
+> que le `bootstrap()` de sa Feature cible ait câblé ses handlers. Le bootstrap
+> le garantit par construction — `Feature` ne porte pas d'état `active` nommé
+> (pas de machine à états, cf. [feature.md §8.1](../3-couche-abstraite/feature.md#81-machine-à-états-de-la-feature--cible--non-livrée)) : seul un booléen interne `#bootstrapped` existe.
 
 ### Shutdown
 
@@ -108,22 +126,22 @@ Phase 3  cleanup()       Radio vide les registres, déréférence les Channels
 
 ### View
 
-| Hook | Quand | Usage typique |
-|------|-------|---------------|
-| `onAttach()` | View montée dans le DOM, Channels câblés | Setup initial, première projection |
-| `onDetach()` | View retirée du DOM | Nettoyage automatique par le framework |
+| Hook         | Quand                                    | Usage typique                          | État                                                                                                                                                  |
+| ------------ | ---------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `onAttach()` | View montée dans le DOM, Channels câblés | Setup initial, première projection     | ✅ livré                                                                                                                                              |
+| `onDetach()` | View retirée du DOM                      | Nettoyage automatique par le framework | ⏳ **n'existe pas** sur `View` (ni déclaré ni invoqué) — un Composer qui détache une View ne fait que libérer sa référence (cf. bandeau de périmètre) |
 
 ### Behavior
 
-| Hook | Quand | Usage typique |
-|------|-------|---------------|
-| `onAttach()` | Behavior attaché à sa View hôte | Initialisation du comportement |
-| `onDetach()` | View hôte détruite | Nettoyage automatique |
+| Hook         | Quand                           | Usage typique                  | État                                                     |
+| ------------ | ------------------------------- | ------------------------------ | -------------------------------------------------------- |
+| `onAttach()` | Behavior attaché à sa View hôte | Initialisation du comportement | ⏳ package `@bonsai/behavior` non livré (cible strate 2) |
+| `onDetach()` | View hôte détruite              | Nettoyage automatique          | ⏳ idem                                                  |
 
 ### Composer
 
-| Hook | Quand | Usage typique |
-|------|-------|---------------|
+| Hook             | Quand                                                                                              | Usage typique             |
+| ---------------- | -------------------------------------------------------------------------------------------------- | ------------------------- |
 | `resolve(event)` | Appelé avec l'Event déclencheur (ou `null` au premier montage) pour décider quelle View instancier | Logique de sélection pure |
 
 > Les Composers n'ont **aucun hook lifecycle** (ADR-0025) : ni `onMount()`, ni `onUnmount()`,

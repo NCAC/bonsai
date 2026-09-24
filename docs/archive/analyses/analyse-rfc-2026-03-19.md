@@ -5,12 +5,12 @@
 
 ---
 
-| Champ | Valeur |
-|-------|--------|
-| **Date** | 2026-03-19 |
-| **Scope** | RFC-0001, RFC-0002 (Feature, Entity, Channel), RFC-0003 |
-| **ADRs consultés** | ADR-0001 à ADR-0013 |
-| **Objectif** | Identifier forces, faiblesses, incohérences, recommandations |
+| Champ              | Valeur                                                       |
+| ------------------ | ------------------------------------------------------------ |
+| **Date**           | 2026-03-19                                                   |
+| **Scope**          | RFC-0001, RFC-0002 (Feature, Entity, Channel), RFC-0003      |
+| **ADRs consultés** | ADR-0001 à ADR-0013                                          |
+| **Objectif**       | Identifier forces, faiblesses, incohérences, recommandations |
 
 ---
 
@@ -30,13 +30,13 @@
 
 **Bonsai** est un framework front-end ambitieux avec une architecture **opinionated** proposant :
 
-| Concept | Description |
-|---------|-------------|
-| **Flux unidirectionnel strict** | Command → Feature → Entity → Event → View |
-| **Channel tri-lane** | Commands (1:1), Events (1:N), Requests (1:1 async) |
-| **View stateless (I30)** | Aucun state UI, même éphémère |
-| **PDR** | Projection DOM Réactive — mutations directes sans VDOM |
-| **Compilation Pug → TypeScript** | Templates compilés au build time |
+| Concept                          | Description                                            |
+| -------------------------------- | ------------------------------------------------------ |
+| **Flux unidirectionnel strict**  | Command → Feature → Entity → Event → View              |
+| **Channel tri-lane**             | Commands (1:1), Events (1:N), Requests (1:1 async)     |
+| **View stateless (I30)**         | Aucun state UI, même éphémère                          |
+| **PDR**                          | Projection DOM Réactive — mutations directes sans VDOM |
+| **Compilation Pug → TypeScript** | Templates compilés au build time                       |
 
 **Première impression** : La rigueur architecturale et la quantité de documentation sont impressionnantes. Les 41 invariants (I1-I41) et les anti-patterns documentés démontrent une réflexion profonde et mature.
 
@@ -48,11 +48,11 @@
 
 Le **tri-lane Channel** (Commands 1:1, Events 1:N, Requests 1:1 async) est une excellente abstraction :
 
-| Aspect | Évaluation |
-|--------|------------|
-| Clarté sémantique | ⭐⭐⭐⭐⭐ — `trigger` vs `emit` vs `request` sont distincts |
-| Cardinalités garanties | ⭐⭐⭐⭐⭐ — I10, I11 mécaniquement vérifiés |
-| Typage | ⭐⭐⭐⭐⭐ — Vérification compile-time |
+| Aspect                 | Évaluation                                                   |
+| ---------------------- | ------------------------------------------------------------ |
+| Clarté sémantique      | ⭐⭐⭐⭐⭐ — `trigger` vs `emit` vs `request` sont distincts |
+| Cardinalités garanties | ⭐⭐⭐⭐⭐ — I10, I11 mécaniquement vérifiés                 |
+| Typage                 | ⭐⭐⭐⭐⭐ — Vérification compile-time                       |
 
 Le pattern namespace TypeScript (D14) est particulièrement élégant :
 
@@ -71,16 +71,16 @@ Un seul import `{ Cart }` donne accès au type (`Cart.Channel`), au state (`Cart
 
 Le système de types est soigné :
 
-| Mécanisme | Bénéfice |
-|-----------|----------|
-| `RequiredCommandHandlers<TChannel>` | Force l'implémentation de tous les handlers |
-| `RequiredRequestHandlers<TChannel>` | Idem pour les requests |
-| Convention `onXXXCommand`, `onXXXEvent` | Autocomplétion IDE, pattern découvrable |
-| Channels déclarés statiquement | Vérification compile-time des dépendances |
+| Mécanisme                               | Bénéfice                                    |
+| --------------------------------------- | ------------------------------------------- |
+| `RequiredCommandHandlers<TChannel>`     | Force l'implémentation de tous les handlers |
+| `RequiredRequestHandlers<TChannel>`     | Idem pour les requests                      |
+| Convention `onXXXCommand`, `onXXXEvent` | Autocomplétion IDE, pattern découvrable     |
+| Channels déclarés statiquement          | Vérification compile-time des dépendances   |
 
 ### 2.3 ✅ Documentation des anti-patterns
 
-Excellente initiative. Les anti-patterns documentés sont précis et expliquent le *pourquoi* :
+Excellente initiative. Les anti-patterns documentés sont précis et expliquent le _pourquoi_ :
 
 - **Smart View** : View qui orchestre le métier → viole I13
 - **Cross-domain Trigger** : Feature A trigger sur Channel B → viole I25, D2
@@ -95,18 +95,19 @@ Excellente initiative. Les anti-patterns documentés sont précis et expliquent 
 
 Le choix de mutations DOM directes (ProjectionList keyed) vs VDOM est justifiable :
 
-| Aspect | VDOM | PDR Bonsai |
-|--------|------|------------|
-| Diff | Runtime (arbre complet) | Build-time (keyed reconcile généré) |
-| Mémoire | Double buffering | Direct |
-| Complexité | Framework gère tout | Développeur structure les templates |
-| Performance | O(n) diff + O(n) patch | O(n) reconcile direct |
+| Aspect      | VDOM                    | PDR Bonsai                          |
+| ----------- | ----------------------- | ----------------------------------- |
+| Diff        | Runtime (arbre complet) | Build-time (keyed reconcile généré) |
+| Mémoire     | Double buffering        | Direct                              |
+| Complexité  | Framework gère tout     | Développeur structure les templates |
+| Performance | O(n) diff + O(n) patch  | O(n) reconcile direct               |
 
 L'algorithme de réconciliation O(n) dans `ProjectionList` est standard et bien documenté.
 
 ### 2.5 ✅ RFC-0003 — Template pur + réactivité déclarative
 
 La séparation entre :
+
 - **Template Pug pur** (structure DOM, pas de métadonnées réactivité)
 - **View TypeScript** (déclare la réactivité via selectors)
 
@@ -143,6 +144,7 @@ ProductPageView                    ← UNE View pour toute la page
 ```
 
 Ce n'est **PAS** :
+
 ```
 ProductGalleryView     ← ❌ Trop granulaire
 ProductGalleryItemView ← ❌ 
@@ -158,13 +160,13 @@ Les interactions UI simples (accordéon, tabs, toggle) utilisent **HTML natif** 
 
 #### Cas NON problématiques (HTML natif ou N1)
 
-| Pattern UI | Solution native | State nécessaire ? |
-|------------|-----------------|-------------------|
-| Accordéon | `<details><summary>` | ❌ Non |
-| Tabs | `<input type="radio">` + CSS | ❌ Non |
-| Toggle visibility | `hidden` attribute | ❌ Non |
-| Modal basique | `<dialog>` | ❌ Non |
-| Dropdown menu | `:focus-within` + CSS | ❌ Non |
+| Pattern UI        | Solution native              | State nécessaire ? |
+| ----------------- | ---------------------------- | ------------------ |
+| Accordéon         | `<details><summary>`         | ❌ Non             |
+| Tabs              | `<input type="radio">` + CSS | ❌ Non             |
+| Toggle visibility | `hidden` attribute           | ❌ Non             |
+| Modal basique     | `<dialog>`                   | ❌ Non             |
+| Dropdown menu     | `:focus-within` + CSS        | ❌ Non             |
 
 #### Cas de friction réelle — État éphémère pendant interaction
 
@@ -208,13 +210,13 @@ class ColorPickerView extends View {
 
 #### Autres cas de friction réelle
 
-| Cas | Problème avec I30 |
-|-----|-------------------|
-| **Drag & drop** | Position (x, y) pendant le drag = 60 updates/sec |
-| **Resize handle** | Dimensions pendant le resize |
-| **Range slider avec tooltip** | Valeur affichée pendant le drag |
-| **Canvas drawing** | Coordonnées du tracé en cours |
-| **Gesture recognition** | État intermédiaire (pinch, swipe) |
+| Cas                           | Problème avec I30                                |
+| ----------------------------- | ------------------------------------------------ |
+| **Drag & drop**               | Position (x, y) pendant le drag = 60 updates/sec |
+| **Resize handle**             | Dimensions pendant le resize                     |
+| **Range slider avec tooltip** | Valeur affichée pendant le drag                  |
+| **Canvas drawing**            | Coordonnées du tracé en cours                    |
+| **Gesture recognition**       | État intermédiaire (pinch, swipe)                |
 
 #### Ce qui N'EST PAS une friction
 
@@ -236,13 +238,14 @@ L'invariant I30 peut sembler contraignant, mais il repose sur une expérience co
 
 #### La question à se poser
 
-> **"Est-ce que ce changement d'état pourrait *éventuellement* avoir un impact sur d'autres composants UI ?"**
+> **"Est-ce que ce changement d'état pourrait _éventuellement_ avoir un impact sur d'autres composants UI ?"**
 
 Si la réponse est "peut-être", ou "pas aujourd'hui mais un jour", alors le state **doit** être dans une Entity.
 
 #### L'expérience MarionetteJS — Deux sources de vérité
 
 Dans MarionetteJS, une View avait :
+
 - `this.model` (le Model Backbone partagé avec d'autres Views)
 - Des propriétés directes (`this.isOpen`, `this.selectedIndex`)
 
@@ -261,6 +264,7 @@ class AccordionView extends Marionette.View {
 ```
 
 **Problèmes rencontrés** :
+
 - Analytics veut tracker les ouvertures d'accordéon → où est l'info ?
 - Persistence de l'état UI au refresh → le state local est perdu
 - Une autre View veut afficher "3 sections dépliées" → elle ne peut pas
@@ -291,6 +295,7 @@ class ProductView {
 5. Analytics veut savoir quelle modale est vue (observabilité)
 
 → Ce qui semblait être un état "purement local" **impacte en réalité** :
+
 - La Foundation (scroll, overlay)
 - Potentiellement d'autres Views
 - Des services transverses
@@ -305,11 +310,11 @@ Bouton → trigger('modal:open') → ModalFeature → emit('modal:opened') → O
 
 I30 empêche la **prolifération de sources de vérité**.
 
-| Avec state local | Avec Entity |  
-|------------------|-------------|
-| N sources de vérité | 1 source de vérité |
-| "Qui sait que c'est ouvert ?" | "L'Entity sait" |
-| Tests : mock complexe | Tests : assert sur Entity |
+| Avec state local                  | Avec Entity                |
+| --------------------------------- | -------------------------- |
+| N sources de vérité               | 1 source de vérité         |
+| "Qui sait que c'est ouvert ?"     | "L'Entity sait"            |
+| Tests : mock complexe             | Tests : assert sur Entity  |
 | Debug : chercher dans chaque View | Debug : inspecter l'Entity |
 
 **Rappel** : La friction de I30 est réelle uniquement pour l'**état éphémère haute fréquence** (60fps pendant drag/resize). Le Behavior avec état éphémère (ADR-0007 Option E) résout ce cas.
@@ -334,12 +339,12 @@ get templates() {
 
 #### Analyse
 
-| Aspect | Observation |
-|--------|-------------|
+| Aspect          | Observation                                             |
+| --------------- | ------------------------------------------------------- |
 | **Pragmatisme** | ✅ Simple à implémenter, un seul abonnement par Channel |
-| **Performance** | ⚠️ Tous les selectors évalués à chaque mutation |
-| **Garde-fou** | ✅ `shallowEqual` empêche le re-render inutile |
-| **Scaling** | ⚠️ Feature avec 10 keys de state → 10 évaluations |
+| **Performance** | ⚠️ Tous les selectors évalués à chaque mutation          |
+| **Garde-fou**   | ✅ `shallowEqual` empêche le re-render inutile          |
+| **Scaling**     | ⚠️ Feature avec 10 keys de state → 10 évaluations        |
 
 **Risque** : Pour une View complexe avec 20 templates, chaque micro-mutation évalue 20 selectors. Le `shallowEqual` mitigue le DOM update, mais pas l'évaluation.
 
@@ -357,18 +362,19 @@ Foundation (unique, sur <body>)
 
 #### Analyse
 
-| Aspect | Observation |
-|--------|-------------|
-| **Séparation responsabilités** | ✅ Propre conceptuellement |
-| **Cognitive load** | ⚠️ 3 concepts pour afficher une View |
-| **Documentation** | ⚠️ Quand la Foundation suffit-elle vs Composer ? |
-| **Cas simple** | ⚠️ Over-engineering pour une page statique |
+| Aspect                         | Observation                                     |
+| ------------------------------ | ----------------------------------------------- |
+| **Séparation responsabilités** | ✅ Propre conceptuellement                      |
+| **Cognitive load**             | ⚠️ 3 concepts pour afficher une View             |
+| **Documentation**              | ⚠️ Quand la Foundation suffit-elle vs Composer ? |
+| **Cas simple**                 | ⚠️ Over-engineering pour une page statique       |
 
 **Question non répondue** : Heuristique pour décider "ici Composer, là Foundation suffit".
 
 ### 3.4 🟡 Absence de gestion d'effets explicite
 
 Les RFCs ne mentionnent pas :
+
 - Appels réseau (fetch)
 - Timers (debounce, throttle)
 - WebSockets
@@ -402,11 +408,11 @@ async onLoadProductsCommand(): Promise<void> {
 
 Le glossaire indique que Q7 (périmètre exact des Behaviors) est **OPEN**.
 
-| Question | Statut |
-|----------|--------|
-| Behavior = enrichissement DOM sans état ? | ❓ |
-| Behavior peut avoir un état local pour animations ? | ❓ |
-| Behavior accède à quels @ui ? | Partiellement défini |
+| Question                                            | Statut               |
+| --------------------------------------------------- | -------------------- |
+| Behavior = enrichissement DOM sans état ?           | ❓                   |
+| Behavior peut avoir un état local pour animations ? | ❓                   |
+| Behavior accède à quels @ui ?                       | Partiellement défini |
 
 C'est un trou conceptuel : les Behaviors ont les mêmes contraintes que les Views (I30 — stateless), mais leur rôle d'enrichissement comportemental (animations, drag & drop) implique souvent du state local.
 
@@ -426,6 +432,7 @@ ProductPageView
 ```
 
 Les trois ont le **même code View** (`CarouselView`), mais diffèrent par :
+
 - Le `rootElement` (selectors différents)
 - Les options (items visibles, autoplay, etc.)
 - Potentiellement les Behaviors attachés
@@ -451,12 +458,12 @@ const carousel2 = new CarouselView({
 
 #### Question non résolue dans Bonsai
 
-| Aspect | Documentation actuelle |
-|--------|------------------------|
-| Plusieurs instances d'une View | Oui, possible |
-| `rootElement` différent par instance | ❓ Non spécifié |
-| Options de configuration par instance | ❓ Non spécifié |
-| Pattern recommandé | ❓ Non documenté |
+| Aspect                                | Documentation actuelle |
+| ------------------------------------- | ---------------------- |
+| Plusieurs instances d'une View        | Oui, possible          |
+| `rootElement` différent par instance  | ❓ Non spécifié        |
+| Options de configuration par instance | ❓ Non spécifié        |
+| Pattern recommandé                    | ❓ Non documenté       |
 
 #### Pistes de résolution
 
@@ -492,6 +499,7 @@ const GalleryCarouselView = createCarouselView({
 ### 4.1 Nomenclature `TStructure` vs `TEntityStructure`
 
 RFC-0002-entity.md :
+
 > "Convention de nommage : `TEntityStructure` est le nom formel. [...] abrégé en `TStructure`"
 
 Dans RFC-0002-feature.md, c'est directement `TStructure`.
@@ -501,6 +509,7 @@ Dans RFC-0002-feature.md, c'est directement `TStructure`.
 ### 4.2 Prolifération de Features non contrainte
 
 L'architecture permet théoriquement des dizaines de Features :
+
 - `CartFeature`, `CartUiFeature`, `ModalUiFeature`, `TooltipUiFeature`, `DropdownUiFeature`...
 
 Chaque feature → 1 Entity → 1 Channel.
@@ -529,6 +538,7 @@ FeatureA.onCommand() {
 ### 4.4 `@ui` obligatoire vs sélecteurs CSS classiques
 
 RFC-0003 §8.2 rend `@ui` obligatoire :
+
 > "Chaque élément référencé dans `uiElements` de la View **doit** avoir un attribut `@ui`"
 
 Mais RFC-0002 mentionne `uiElements` avec des sélecteurs CSS :
@@ -542,8 +552,9 @@ get uiElements() {
 }
 ```
 
-**Clarification nécessaire** : 
-- `@ui` est le mécanisme unique ? 
+**Clarification nécessaire** :
+
+- `@ui` est le mécanisme unique ?
 - Ou les sélecteurs CSS sont aussi valides ?
 - Coexistence possible ?
 
@@ -562,10 +573,11 @@ Ajouter dans RFC-0001 ou RFC-0002-api une section explicite :
 
 ### R1 — Clarifier l'état éphémère d'interaction — Priorité MOYENNE
 
-**Problème** : I30 est strict, mais l'état *pendant* une interaction (drag, resize, draw) 
-est fondamentalement différent de l'état *résultant*.
+**Problème** : I30 est strict, mais l'état _pendant_ une interaction (drag, resize, draw)
+est fondamentalement différent de l'état _résultant_.
 
 **Options** :
+
 1. **Behavior comme lieu de l'état éphémère** — Q7 à trancher
 2. **Decorator `@ephemeral`** — pour les cas rares de haute fréquence
 3. **Documenter le pattern debounce** — trigger seulement au relâchement
@@ -592,26 +604,27 @@ class ColorPickerBehavior extends Behavior {
 
 Ajouter une section RFC-0002-feature §7 "Effets et I/O" :
 
-| Pattern | Documentation |
-|---------|---------------|
-| `fetch` + loading + error | Exemple complet |
-| Timers (`setTimeout`, `setInterval`) | Cleanup dans `onDestroy` |
-| WebSockets | Pattern d'abonnement |
-| Debounce/throttle | Framework ou applicatif ? |
+| Pattern                              | Documentation             |
+| ------------------------------------ | ------------------------- |
+| `fetch` + loading + error            | Exemple complet           |
+| Timers (`setTimeout`, `setInterval`) | Cleanup dans `onDestroy`  |
+| WebSockets                           | Pattern d'abonnement      |
+| Debounce/throttle                    | Framework ou applicatif ? |
 
 ### R3 — Clarifier le rôle du Behavior (Q7) — Priorité HAUTE
 
 Écrire un **ADR-0014** qui tranche :
 
-| Question | Décision attendue |
-|----------|-------------------|
-| Behavior = enrichissement DOM sans état ? | Oui/Non |
-| Behavior peut avoir un état local pour animations ? | Oui/Non |
-| Comportement drag & drop → state où ? | Entity ou exception locale |
+| Question                                            | Décision attendue          |
+| --------------------------------------------------- | -------------------------- |
+| Behavior = enrichissement DOM sans état ?           | Oui/Non                    |
+| Behavior peut avoir un état local pour animations ? | Oui/Non                    |
+| Comportement drag & drop → state où ?               | Entity ou exception locale |
 
 ### R4 — Ajouter des benchmarks perfs — Priorité BASSE
 
 Pour valider que PDR > VDOM dans les cas d'usage Bonsai :
+
 - Benchmarks style [js-framework-benchmark](https://github.com/nicokoenig/js-framework-benchmark)
 - Comparaison avec React, Vue, Svelte, Solid
 - Mesures : création, update, suppression, mémoire
@@ -620,13 +633,13 @@ Pour valider que PDR > VDOM dans les cas d'usage Bonsai :
 
 Pour convaincre des équipes de migrer depuis React/Vue :
 
-| Concept React | Équivalent Bonsai |
-|---------------|-------------------|
-| `useState` | Feature + Entity |
-| `useEffect` | `onInit`, `onDestroy`, handlers |
-| `useContext` | Channel (listen/request) |
-| Component | View |
-| Custom Hook | Behavior (?) |
+| Concept React | Équivalent Bonsai               |
+| ------------- | ------------------------------- |
+| `useState`    | Feature + Entity                |
+| `useEffect`   | `onInit`, `onDestroy`, handlers |
+| `useContext`  | Channel (listen/request)        |
+| Component     | View                            |
+| Custom Hook   | Behavior (?)                    |
 
 ### R6 — Clarifier `@ui` vs sélecteurs CSS — Priorité HAUTE
 
@@ -635,11 +648,11 @@ Dans RFC-0003 ou RFC-0002, ajouter une section qui tranche :
 ```markdown
 ### Résolution des uiElements
 
-| Mode | Syntaxe | Cas d'usage |
-|------|---------|-------------|
-| `@ui` (recommandé) | `items: '@ui'` | Templates compilés |
-| Sélecteur CSS | `items: '.Cart-items'` | Views sans template |
-| Mixte | Interdit / Autorisé ? | ? |
+| Mode               | Syntaxe                | Cas d'usage         |
+| ------------------ | ---------------------- | ------------------- |
+| `@ui` (recommandé) | `items: '@ui'`         | Templates compilés  |
+| Sélecteur CSS      | `items: '.Cart-items'` | Views sans template |
+| Mixte              | Interdit / Autorisé ?  | ?                   |
 ```
 
 ### R7 — Documenter la réutilisation de Views configurables — Priorité HAUTE
@@ -670,6 +683,7 @@ const GalleryCarouselView = createCarouselView({
 ```
 
 **Questions ouvertes** :
+
 - Le Composer peut-il passer des options à la View instanciée ?
 - La View a-t-elle un constructeur ou un hook d'initialisation avec options ?
 - Pattern recommandé pour plusieurs instances d'une même View ?
@@ -677,8 +691,8 @@ const GalleryCarouselView = createCarouselView({
 **→ Voir [ADR-0013-view-code-reuse.md](adr/ADR-0013-view-code-reuse.md)**
 | Sélecteur CSS | `items: '.Cart-items'` | Views sans template |
 | Mixte | Interdit / Autorisé ? | ? |
-```
 
+```
 ---
 
 ## 6. Verdict global
@@ -789,3 +803,4 @@ La **vraie friction** apparaît pour l'**état éphémère haute fréquence** :
 ### Staless View
 
 J()
+```

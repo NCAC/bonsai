@@ -44,7 +44,8 @@
         "zoma.vscode-auto-open-workspace",
         "GitHub.copilot-chat",
         "GitHub.copilot",
-        "Gxl.git-graph-3"
+        "Gxl.git-graph-3",
+        "DavidAnson.vscode-markdownlint"
       ]
     }
   },

@@ -12,6 +12,7 @@ import { Feature, type TFeatureCallbacks } from "@bonsai/feature";
 import { Entity } from "@bonsai/entity";
 import type { TEntityEvent } from "@bonsai/entity";
 import { Radio, type TChannelToken } from "@bonsai/event";
+import { entityOf } from "../../helpers/entity-of";
 
 type TCartState = {
   items: Array<{ productId: string; qty: number }>;
@@ -81,7 +82,7 @@ describe("Feature entity handlers dispatch — Strate 1a [I96]", () => {
     const feature = new CartFeature("cart");
     feature.bootstrap();
 
-    feature.entity.mutate("addItem", (draft) => {
+    entityOf(feature).mutate("addItem", (draft) => {
       draft.items.push({ productId: "1", qty: 1 });
       draft.total = 20;
     });
@@ -122,7 +123,7 @@ describe("Feature entity handlers dispatch — Strate 1a [I96]", () => {
     const feature = new CartFeature("cart");
     feature.bootstrap();
 
-    feature.entity.mutate("addItem", (draft) => {
+    entityOf(feature).mutate("addItem", (draft) => {
       draft.items.push({ productId: "1", qty: 1 });
       draft.total = 20;
     });
@@ -197,7 +198,7 @@ describe("Feature entity handlers dispatch — Strate 1a [I96]", () => {
     feature.bootstrap();
 
     expect(() =>
-      feature.entity.mutate("addItem", (draft) => {
+      entityOf(feature).mutate("addItem", (draft) => {
         draft.items.push({ productId: "1", qty: 1 });
       })
     ).not.toThrow();
@@ -206,7 +207,7 @@ describe("Feature entity handlers dispatch — Strate 1a [I96]", () => {
     expect(consoleErrorSpy).toHaveBeenCalled();
 
     // La notification suivante n'est pas affectée par l'erreur précédente
-    feature.entity.mutate("addItem", (draft) => {
+    entityOf(feature).mutate("addItem", (draft) => {
       draft.items.push({ productId: "2", qty: 1 });
     });
     expect(catchAllCalls).toEqual(["addItem", "addItem"]);

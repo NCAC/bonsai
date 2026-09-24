@@ -1,7 +1,7 @@
 # ADR-0023 : Sémantique de retour de `request()` / `reply()` — sync vs async
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🔵 Tested |
 | **Date** | 2026-04-03 |
 | **Décideurs** | @ncac |
@@ -41,7 +41,7 @@ La discussion a également mis en évidence un **principe plus large** sur l'asy
 L'analyse des cas légitimes d'asynchronicité montre qu'ils appartiennent **tous** à la couche Feature, jamais à la Request Lane :
 
 | Source async | Pattern correct | Pattern incorrect |
-|---|---|---|
+| --- | --- | --- |
 | Fetch HTTP au bootstrap | `Feature.onInit() → fetch() → Entity.mutate()` | `reply() → fetch()` 🚩 |
 | Fetch déclenché par Command | `trigger() → handle() → fetch() → Entity.mutate() → emit()` | `reply() → fetch()` 🚩 |
 | Réaction à un Event cross-feature | `listen(event) → fetch() → Entity.mutate()` | `reply() → fetch()` 🚩 |
@@ -58,7 +58,7 @@ L'analyse des cas légitimes d'asynchronicité montre qu'ils appartiennent **tou
 **Description** : le type de retour reste `Promise<T>` dans tous les cas. Le replier peut être async ou sync selon ses besoins.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Pas de migration | - Autorise le fetch paresseux dans un replier (anti-pattern masqué) |
 | + Encapsulation totale (le consommateur ignore si c'est async) | - Force tous les appelants à gérer `await` même pour une lecture en mémoire |
 | + Compatible avec un replier qui ferait un calcul long | - Brouille la frontière sémantique command/request |
@@ -72,7 +72,7 @@ L'analyse des cas légitimes d'asynchronicité montre qu'ils appartiennent **tou
 **Description** : `reply()` retourne `T` directement. `request()` retourne `T`. Le replier est contraint d'être synchrone — il ne peut lire que l'état de son Entity, déjà en mémoire.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Cohérence sémantique parfaite : request = lecture d'état connu | - Migration des usages existants (si implémentation en cours) |
 | + Interdit par construction le fetch paresseux dans un replier | - Perd la "flexibilité" de D9 (mais c'était une fausse flexibilité) |
 | + Les appelants n'ont pas à gérer `await` pour une lecture | - Nécessite de réviser D9, D44 (null sync) |
@@ -97,7 +97,7 @@ const total = request(pricing:totalAmount)  // T, pas Promise<T>
 **Où "caser" l'async** : le tableau complet des patterns autorisés avec `request() → T` :
 
 | Besoin | Solution |
-|---|---|
+| --- | --- |
 | Charger une donnée distante | `trigger(ns:refresh)` → Feature fetch → `Entity.mutate()` → `emit(ns:loaded)` |
 | Réagir à un Event pour charger | `listen(router:navigated)` → Feature fetch → `Entity.mutate()` |
 | Polling / refresh périodique | Timer interne Feature → fetch → `Entity.mutate()` |
@@ -111,7 +111,7 @@ const total = request(pricing:totalAmount)  // T, pas Promise<T>
 **Description** : le replier peut retourner `T` ou `Promise<T>` à sa discrétion. Le framework normalise en `Promise<T>` côté consommateur.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Flexible | - Exactement le problème que D9 voulait éviter (reply mixte) |
 | | - Complexifie le type du consommateur |
 | | - Aucune garantie que les mauvaises pratiques sont évitées |
@@ -123,7 +123,7 @@ const total = request(pricing:totalAmount)  // T, pas Promise<T>
 ## Analyse comparative
 
 | Critère | Option A (statu quo) | Option B (sync) | Option C (union) |
-|---------|---------------------|-----------------|------------------|
+| --- | --- | --- | --- |
 | Cohérence sémantique | ⭐⭐ | ⭐⭐⭐ | ⭐ |
 | Prévention des anti-patterns | ⭐ | ⭐⭐⭐ | ⭐ |
 | Simplicité DX | ⭐⭐ | ⭐⭐⭐ | ⭐ |
@@ -182,6 +182,7 @@ class CartFeature extends Feature {
 Il est impossible d'interdire **mécaniquement** (compile-time) qu'un développeur colle un `fetch()`, un `setTimeout()` ou un `await` dans une View ou un Behavior — TypeScript ne distingue pas structurellement un appel async d'un appel sync au niveau de la classe.
 
 Cet anti-pattern est donc documenté **explicitement** dans [anti-patterns.md](../rfc/reference/anti-patterns.md) et enforçable par :
+
 - `[Code review]` — convention d'équipe
 - `[Lint]` — règle ESLint custom (future) pour détecter `fetch`, `async`, `await`, `Promise`, `setTimeout`, `setInterval` dans les fichiers `.view.ts` et `.behavior.ts`
 
@@ -250,7 +251,7 @@ Cet anti-pattern est donc documenté **explicitement** dans [anti-patterns.md](.
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-04-02 | Création (Proposed) — issue de la discussion sur l'asynchronicité de `request()` |
 | 2026-04-03 | **Accepted** — Option B retenue. Seule la couche abstraite fait de l'async. Async dans View/Behavior = anti-pattern (code review). Révision D9 + D44 propagée |
 | 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

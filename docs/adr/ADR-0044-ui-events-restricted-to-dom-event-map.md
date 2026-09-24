@@ -1,13 +1,13 @@
 # ADR-0044 : `TEvts` restreint à `keyof HTMLElementEventMap` — noms d'événements DOM validés à la compilation
 
-| Champ                   | Valeur                                                                                                                                  |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **Statut**              | 🔵 Tested                                                                                                                               |
-| **Date**                | 2026-05-07                                                                                                                              |
-| **Décideurs**           | @NCAC                                                                                                                                   |
-| **RFC liée**            | [view.md](../rfc/4-couche-concrete/view.md)                                                                                             |
-| **ADRs liées**          | [ADR-0042](ADR-0042-view-contract-unified-ui-deps-single-generic.md), [ADR-0045](ADR-0045-teventsfor-semantic-element-event-mapping.md) |
-| **Invariants impactés** | I86 (amendé), I89 (nouveau), I90 (nouveau)                                                                                              |
+| Champ | Valeur |
+| --- | --- |
+| **Statut** | 🔵 Tested |
+| **Date** | 2026-05-07 |
+| **Décideurs** | @NCAC |
+| **RFC liée** | [view.md](../rfc/4-couche-concrete/view.md) |
+| **ADRs liées** | [ADR-0042](ADR-0042-view-contract-unified-ui-deps-single-generic.md), [ADR-0045](ADR-0045-teventsfor-semantic-element-event-mapping.md) |
+| **Invariants impactés** | I86 (amendé), I89 (nouveau), I90 (nouveau) |
 
 ---
 
@@ -49,20 +49,20 @@ export type TDOMEventFor<S extends string> = S extends keyof HTMLElementEventMap
 
 ### Option A — Conserver `readonly string[]` (statu quo)
 
-| Avantages              | Inconvénients                            |
-| ---------------------- | ---------------------------------------- |
-| + Zéro breaking change | - Fautes de frappe silencieuses          |
-|                        | - Branche morte dans `TDOMEventFor`      |
-|                        | - Contredit I75 (Compile-time > Runtime) |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Zéro breaking change | - Fautes de frappe silencieuses |
+| | - Branche morte dans `TDOMEventFor` |
+| | - Contredit I75 (Compile-time > Runtime) |
 
 ### Option B — Restreindre à `ReadonlyArray<keyof HTMLElementEventMap>` ✅
 
-| Avantages                                                      | Inconvénients                                  |
-| -------------------------------------------------------------- | ---------------------------------------------- |
-| + Erreur compile sur fautes de frappe (`"clic"`, `"onChange"`) | - Breaking change (scope faible)               |
-| + `addEventListener(domEvent, ...)` nativement typé            | - `CustomEvent` DOM arbitraires exclus (voulu) |
-| + Branche `: Event` de `TDOMEventFor` supprimable              |                                                |
-| + IntelliSense avec autocomplétion DOM                         |                                                |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Erreur compile sur fautes de frappe (`"clic"`, `"onChange"`) | - Breaking change (scope faible) |
+| + `addEventListener(domEvent, ...)` nativement typé | - `CustomEvent` DOM arbitraires exclus (voulu) |
+| + Branche `: Event` de `TDOMEventFor` supprimable | |
+| + IntelliSense avec autocomplétion DOM | |
 
 ```typescript
 // ❌ Erreur compile
@@ -121,12 +121,12 @@ ui<HTMLFormElement>()(["submit", "submit"]);
 
 ## Fichiers impactés
 
-| Fichier                              | Modification                                                |
-| ------------------------------------ | ----------------------------------------------------------- |
-| `packages/view/src/bonsai-view.ts`   | `TUIEntry`, `ui()`, `TDOMEventFor`, ajout `HasNoDuplicates` |
-| `docs/rfc/4-couche-concrete/view.md` | Signatures mises à jour                                     |
-| `docs/rfc/reference/invariants.md`   | Amendement I86, ajout I89–I90                               |
-| `docs/rfc/reference/glossaire.md`    | Entrée `TUIEntry`                                           |
+| Fichier | Modification |
+| --- | --- |
+| `packages/view/src/bonsai-view.ts` | `TUIEntry`, `ui()`, `TDOMEventFor`, ajout `HasNoDuplicates` |
+| `docs/rfc/4-couche-concrete/view.md` | Signatures mises à jour |
+| `docs/rfc/reference/invariants.md` | Amendement I86, ajout I89–I90 |
+| `docs/rfc/reference/glossaire.md` | Entrée `TUIEntry` |
 
 > **Note** : Si ADR-0045 est accepté, `keyof HTMLElementEventMap` dans `TEvts` est remplacé par `TEventsFor<TEl>` — contrainte plus fine qui subsume celle d'ADR-0044. ADR-0044 reste valide comme niveau de restriction minimal.
 
@@ -134,8 +134,8 @@ ui<HTMLFormElement>()(["submit", "submit"]);
 
 ## Historique
 
-| Date       | Changement                                                                          |
-| ---------- | ----------------------------------------------------------------------------------- |
-| 2026-05-07 | Création (🟡 Proposed)                                                              |
-| 2026-05-12 | 🟢 Accepted — décision validée                                                      |
+| Date | Changement |
+| --- | --- |
+| 2026-05-07 | Création (🟡 Proposed) |
+| 2026-05-12 | 🟢 Accepted — décision validée |
 | 2026-05-12 | 🔵 Tested — I90 cité dans `tests/types/strate-0/view-contract.types.test.ts` (ADR-0043 critère C-Inv) ; I86 amendé prouvé via `HasNoDuplicates<TEvts>` |

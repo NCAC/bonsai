@@ -5,7 +5,7 @@
 > `resolve()` est l'unique méthode abstraite du Composer.**
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🔵 Tested |
 | **Date** | 2026-04-07 |
 | **Décideurs** | @ncac |
@@ -16,6 +16,7 @@
 | **Complète** | ADR-0025 (supprimait les hooks, maintenant on supprime aussi les handlers `onXxxEvent`) |
 
 > ### Statut normatif
+>
 > Ce document est **normatif** pour le contrat de réactivité du Composer.
 > Il définit comment le Composer reçoit les événements des Channels qu'il écoute.
 > En cas de divergence avec `composer.md`, **ce document prévaut**.
@@ -84,7 +85,7 @@ pas exister.
 
 Le commentaire dans `composer.md` dit :
 
-> *Le framework appelle resolve() automatiquement après un Event*
+> _Le framework appelle resolve() automatiquement après un Event_
 
 Mais ce mécanisme n'est **visible nulle part** dans le code du développeur. Le flux réel :
 
@@ -105,6 +106,7 @@ la vraie décision. 13 méthodes pour un composant censé être un « décideur 
 ### Le paradoxe
 
 Le document dit que le Composer est un « **décideur pur** ». Mais il a :
+
 - Des handlers d'événements qui sont de purs passeurs (`onXxxEvent`)
 - Un state local mutable qui n'est même pas du state au sens Bonsai
 - Un mécanisme invisible de rappel de `resolve()`
@@ -126,7 +128,7 @@ ADR-0027 : Composer = resolve(event)   ← une seule méthode
 ## Contraintes
 
 | # | Contrainte | Justification |
-|---|-----------|---------------|
+| --- | --- | --- |
 | **C1** | **Explicite > Implicite** — le lien event → décision doit être visible dans le code | Philosophie Bonsai |
 | **C2** | **Compile-time > Runtime** — le type de l'événement doit être vérifié par TypeScript | Philosophie Bonsai |
 | **C3** | **D12** — les handlers `onXxx` sont le mécanisme standard pour Feature, View, Behavior | Cohérence API (mais le Composer est fondamentalement différent) |
@@ -179,7 +181,7 @@ class MainContentComposer extends Composer {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Cohérent avec D12 (convention `onXxx` uniforme) | - Handlers passeurs sans logique — boilerplate pur |
 | + Le Composer peut « accumuler » de l'info au fil des Events | - Pseudo-state mutable hors de tout contrôle framework |
 | + Familier pour les développeurs venant de MarionetteJS | - `resolve()` est rappelé magiquement — couplage invisible |
@@ -260,7 +262,7 @@ class FooterComposer extends Composer {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + **1 méthode** — surface API minimale absolue | - Rompt D12 (convention `onXxx`) pour le Composer |
 | + **Zéro pseudo-state** — pas de propriétés privées passeurs | - Le pattern `request()` systématique ajoute N appels par resolve |
 | + **Explicite** — l'event est visible, pas caché | - Si un Composer veut accumuler de l'info, il ne peut plus (sauf request) |
@@ -295,7 +297,7 @@ class MainContentComposer extends Composer {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Mêmes avantages que B | - `previous` est une info framework que le Composer n'a pas besoin de connaître |
 | + Optimisation possible (skip le request si seul un event non-pertinent a changé) | - Signature plus complexe |
 | | - Le framework fait déjà le diff sur le résultat — optimiser dans resolve est inutile |
@@ -306,7 +308,7 @@ class MainContentComposer extends Composer {
 ## Analyse comparative
 
 | Critère | Option A (statu quo) | Option B (resolve(event)) | Option C (reducer) |
-|---------|---------------------|--------------------------|-------------------|
+| --- | --- | --- | --- |
 | **Minimalisme API** | ⭐ (N handlers + resolve) | ⭐⭐⭐ (1 méthode) | ⭐⭐ (1 méthode, 2 args) |
 | **Explicite > Implicite** | ⭐ (magic call) | ⭐⭐⭐ (event visible) | ⭐⭐⭐ (event visible) |
 | **Type-safety** | ⭐⭐ (handlers typés) | ⭐⭐⭐ (union discriminée + narrowing) | ⭐⭐⭐ |
@@ -357,7 +359,7 @@ D12 (convention `onXxx` auto-découverte) continue de s'appliquer à **Feature, 
 Le Composer est la seule exception justifiée :
 
 | Composant | Reçoit les messages via | Justification |
-|-----------|------------------------|---------------|
+| --- | --- | --- |
 | Feature | `onXxxCommand`, `onXxxEvent`, `onXxxRequest` | La Feature traite N types de messages avec des sémantiques différentes (muter, écouter, répondre) |
 | View | `onXxxEvent` (via listen) | La View réagit aux Events pour se re-projeter |
 | Behavior | `onXxxEvent` (via listen) | Idem View |
@@ -542,7 +544,7 @@ Le câblage du Composer par Radio change :
 
 **Avant (statu quo)** :
 
-```
+```text
 1. Introspecter les méthodes onXxx du Composer
 2. Pour chaque onXxxEvent → enregistrer comme listener dans le Channel source
 3. Après chaque Event dispatché à un listener Composer → appeler resolve()
@@ -551,7 +553,7 @@ Le câblage du Composer par Radio change :
 
 **Après (ADR-0027)** :
 
-```
+```text
 1. Lire la déclaration statique `listen` du Composer
 2. Pour chaque Channel dans listen → enregistrer resolve comme handler universel
 3. Quand un Event est dispatché sur un Channel écouté :
@@ -655,7 +657,7 @@ TypeScript refuse `event.name` dans le body — cohérent.
 ### Impact sur le corpus
 
 | Document | Section | Modification |
-|----------|---------|-------------|
+| --- | --- | --- |
 | [composer.md](../rfc/4-couche-concrete/composer.md) | §1 Classe | Retirer `onXxxEvent`, ajouter `TListen`, signature `resolve(event)` |
 | [composer.md](../rfc/4-couche-concrete/composer.md) | §2 Exemples | Réécrire les 3 exemples avec `resolve(event)` |
 | [composer.md](../rfc/4-couche-concrete/composer.md) | §2 Notes | Supprimer la section « information décisionnelle » et ses 4 contraintes |
@@ -701,6 +703,6 @@ TypeScript refuse `event.name` dans le body — cohérent.
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-04-07 | Création (Proposed) — suite à l'analyse d'élégance du contrat Composer |
 | 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

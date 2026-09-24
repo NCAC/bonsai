@@ -23,29 +23,29 @@ Les formulaires combinent **saisie utilisateur**, **validation**, **état transi
 
 L'état complet (valeurs, touched, errors) vit dans une Entity dédiée.
 
-```
+```text
 View (saisie) → trigger(Command) → Feature → entity.mutate() → Event → View (projection)
 ```
 
 | Avantage | Inconvénient |
-|----------|-------------|
+| --- | --- |
 | Traçabilité complète | Cérémonie élevée (Feature + Entity + Channel par formulaire) |
 | State persistable / restaurable | Chaque frappe = Command + mutate + Event |
 | Validation dans la Feature | Over-engineering pour les formulaires simples |
 
 **Quand l'utiliser** : formulaires complexes multi-étapes, formulaires dont l'état doit être partagé entre composants ou persisté.
 
-### Pattern B — Formulaire piloté par localState (recommandé)
+### Pattern B — Formulaire piloté par localState (cas simple le plus fréquent — cf. note sur la recommandation ADR-0009 en fin de document)
 
 L'état pré-soumission vit dans le `localState` de la View (I42, D33). La soumission déclenche une Command.
 
-```
-View (saisie) → localState.mutate() → re-projection locale
+```text
+View (saisie) → updateLocal() → re-projection locale
 View (submit) → trigger(Command) → Feature → entity.mutate()
 ```
 
 | Avantage | Inconvénient |
-|----------|-------------|
+| --- | --- |
 | Zéro cérémonie (pas de Feature/Entity pour le form) | State non partageable (strictement local) |
 | Validation synchrone instantanée | Pas de persistance/restauration |
 | Réactivité native via localState | |
@@ -57,13 +57,13 @@ View (submit) → trigger(Command) → Feature → entity.mutate()
 
 Un Behavior encapsule la logique de formulaire (touched, dirty, validation). Pluggable sur n'importe quelle View.
 
-```
+```text
 View + FormBehavior → Behavior gère localState form
 View (submit) → trigger(Command) → Feature
 ```
 
 | Avantage | Inconvénient |
-|----------|-------------|
+| --- | --- |
 | Réutilisable entre Views | Complexité d'abstraction |
 | Séparation View (rendu) / Behavior (logique form) | Le Behavior ne connaît pas la View hôte (I44) |
 | DRY pour les patterns récurrents | |
@@ -74,13 +74,13 @@ View (submit) → trigger(Command) → Feature
 
 L'état transitoire (saisie, validation) vit dans le `localState`. Le domain state (valeurs soumises) vit dans l'Entity.
 
-```
+```text
 View (saisie) → localState → validation locale
 View (submit) → trigger(Command) → Feature → entity.mutate() → Event
 ```
 
 | Avantage | Inconvénient |
-|----------|-------------|
+| --- | --- |
 | Séparation claire transitoire / domaine | Deux sources d'état à synchroniser |
 | Le domain state reste propre (pas de touched/dirty) | |
 | La Feature ne voit que des données validées | |
@@ -91,7 +91,7 @@ View (submit) → trigger(Command) → Feature → entity.mutate() → Event
 
 ## Arbre de décision
 
-```
+```text
 Q1 : Le state du formulaire doit-il être partagé entre composants ?
   → Oui : Pattern A (Entity)
   → Non :
@@ -100,15 +100,26 @@ Q1 : Le state du formulaire doit-il être partagé entre composants ?
       → Non :
         Q3 : Les données soumises alimentent-elles un domain partagé ?
           → Oui : Pattern D (Hybride)
-          → Non : Pattern B (localState) ✅ défaut recommandé
+          → Non : Pattern B (localState) — cas simple, le plus fréquent
 ```
+
+> **Recommandation ADR-0009 : Option D**, pas B. L'arbre ci-dessus décide _quel
+> mécanisme_ utiliser cas par cas, mais la décision de l'ADR est que
+> l'**approche globale recommandée est le Pattern D** : une combinaison
+> contextuelle où le Pattern B gère les formulaires simples, le Pattern C les
+> formulaires réutilisables, et l'Entity + localState par étape les wizards —
+> **le Pattern A pur est explicitement rejeté** (traite `touched`/`errors`
+> comme du domain state, viole l'esprit de I30). Pattern B seul (sans jamais
+> passer par C ou l'Entity) reste un choix légitime pour une application qui
+> n'a que des formulaires simples, mais ce n'est pas ce que « recommandé »
+> désigne dans l'ADR.
 
 ---
 
 ## Invariants respectés
 
 | Invariant | Comment |
-|-----------|---------|
+| --- | --- |
 | **I30** | Le domain state vit dans l'Entity, jamais dans la View |
 | **I42** | Le state local pré-soumission utilise le mécanisme `localState` |
 | **I6** | Seule la Feature mute l'Entity (via Command post-soumission) |

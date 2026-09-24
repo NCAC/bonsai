@@ -17,6 +17,7 @@
 !QUICK-START.md
 !README-EN.md
 !pnpm-lock.yaml
+!.markdownlint.json
 
 # tests
 !/tests

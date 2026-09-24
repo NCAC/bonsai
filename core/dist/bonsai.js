@@ -14796,11 +14796,13 @@ _Radio_constructing = { value: false };
 /**
  * Namespaces réservés par le framework — interdits à toute Feature applicative.
  *
- * Constante framework non configurable. Toute extension future
- * (`router`, `extensions`, …) se fera par modification de cette constante,
- * propagée par le typage dérivé.
+ *   - `local`  : clé du localState dans les données namespacées (I57, ADR-0015)
+ *   - `router` : Feature framework de navigation, instanciée par Application (I28, D8)
+ *
+ * Constante framework non configurable. Toute extension future se fera par
+ * modification de cette constante, propagée par le typage dérivé (I71).
  */
-const RESERVED_NAMESPACES = ["local"];
+const RESERVED_NAMESPACES = ["local", "router"];
 /**
  * Erreur typée pour toute violation détectée au runtime.
  *
@@ -14946,7 +14948,8 @@ class Feature {
         return __classPrivateFieldGet(this, _Feature_namespace, "f");
     }
     /**
-     * Accès à l'Entity (I5 — propriétaire exclusif).
+     * Accès à l'Entity (I5, I6 — propriétaire exclusif).
+     * `protected` : seules la Feature et ses sous-classes y accèdent.
      * Typée par la classe concrète (TEntity) grâce à ADR-0037.
      */
     get entity() {
@@ -15823,4 +15826,4 @@ _Application_manifest = new WeakMap(), _Application_started = new WeakMap(), _Ap
     }
 };
 
-export { Application, BonsaiNamespaceError, Channel, Composer, Feature, Foundation, immer$1 as Immer, RESERVED_NAMESPACES, index$1 as RXJS, Radio, index as Valibot, View, assertValidNamespace, isCamelCaseNamespace, isReservedNamespace, ui };
+export { Application, BonsaiNamespaceError, Composer, Feature, Foundation, immer$1 as Immer, RESERVED_NAMESPACES, index$1 as RXJS, index as Valibot, View, assertValidNamespace, isCamelCaseNamespace, isReservedNamespace, ui };

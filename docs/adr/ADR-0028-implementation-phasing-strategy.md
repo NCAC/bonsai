@@ -1,7 +1,7 @@
 # ADR-0028 : Stratégie de phasage d'implémentation — Kernel-first en 3 strates
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Date** | 2026-04-08 |
 | **Décideurs** | @ncac |
@@ -33,7 +33,7 @@ L'ordre d'implémentation est une **décision architecturale** : il définit que
 ## Contraintes
 
 | # | Contrainte | Source |
-|---|-----------|--------|
+| --- | --- | --- |
 | C1 | Chaque strate DOIT produire un **round-trip testable E2E** — pas de strate « infrastructure seule » | Principe Bonsai : Compile-time > Runtime |
 | C2 | Les strates DOIVENT respecter les marqueurs de périmètre existants (✅ Contrat v1, ⏳ Post-v1) | Corpus normatif |
 | C3 | Chaque strate DOIT être **incrémentale** — la strate N+1 étend la strate N sans casser ses contrats | Stabilité API |
@@ -50,7 +50,7 @@ L'ordre d'implémentation est une **décision architecturale** : il définit que
 **Description** : implémenter l'ensemble du scope v1 (les 10 composants, tous les ADR Accepted) en un seul lot, sans phasage intermédiaire.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Pas de contrats intermédiaires à maintenir | - Aucun feedback avant la fin du développement |
 | + Pas de simplifications temporaires | - Hotspots A/B/C exposés simultanément — bugs d'interaction invisibles |
 | | - Impossible de tester un round-trip tant que tout n'est pas prêt |
@@ -64,7 +64,7 @@ L'ordre d'implémentation est une **décision architecturale** : il définit que
 **Description** : implémenter d'abord la couche abstraite complète (Radio, Channel, Entity, Feature, Application), puis la couche concrète complète (Foundation, Composer, View, Behavior).
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Séparation nette entre les deux couches | - La couche abstraite seule n'a pas de round-trip E2E visible (pas de DOM) |
 | + Respect du flux unidirectionnel conceptuel | - L'Entity complète (avec ré-entrance) est dans la première phase — pas d'isolation du hotspot A |
 | | - Le localState et le Composer N-instances sont dans la même phase — pas d'isolation des hotspots B/C |
@@ -77,7 +77,7 @@ L'ordre d'implémentation est une **décision architecturale** : il définit que
 **Description** : découper l'implémentation en 3 strates de **profondeur croissante**, chacune produisant un round-trip E2E testable. Chaque strate ajoute de la sophistication aux composants existants plutôt que de nouveaux composants.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Round-trip E2E dès la strate 0 | - Contrats intermédiaires à maintenir (simplifications temporaires) |
 | + Hotspots isolés dans des strates distinctes | - Le développeur doit savoir « à quelle strate on est » |
 | + Chaque strate est testable indépendamment | - Certains ADR sont « coupés » entre deux strates |
@@ -90,7 +90,7 @@ L'ordre d'implémentation est une **décision architecturale** : il définit que
 ## Analyse comparative
 
 | Critère | Option A (big bang) | Option B (par couche) | Option C (kernel-first) |
-|---------|--------------------|-----------------------|-------------------------|
+| --- | --- | --- | --- |
 | Round-trip E2E précoce (C1) | ❌ | ❌ | ⭐⭐⭐ |
 | Isolation des hotspots (C5) | ❌ | ⭐ | ⭐⭐⭐ |
 | Feedback utilisable tôt (C4) | ❌ | ⭐ | ⭐⭐⭐ |
@@ -130,7 +130,7 @@ L'ordre d'implémentation est une **décision architecturale** : il définit que
 #### Périmètre
 
 | Composant | Inclus | Exclus (reporté en strate 1 ou 2) |
-|-----------|--------|-----------------------------------|
+| --- | --- | --- |
 | **Radio** | Singleton, registres des 3 lanes (command handlers, event listeners, request repliers) | — |
 | **Channel** | `trigger()` → handler 1:1, `emit()` → listeners 1:N, `request()` → replier sync `T \| null` (ADR-0023). Détection `trigger()` sans handler en mode dev (I10). | Pas de metas causales (hop fixe à 0, correlationId stub). Pas de `noHandler` configurable. Pas d'anti-boucle I9 (une seule profondeur en strate 0). |
 | **Entity** | `mutate(intent, params?, recipe)` via Immer `produce()` (pas `produceWithPatches`). Dérivation de `changedKeys` par comparaison shallow avant/après. Notification catch-all `onAnyEntityUpdated(event)` uniquement. Détection no-op (aucune notification si state inchangé). `initialState` getter (D17). | Pas de per-key handlers `on${Key}EntityUpdated`. Pas de ré-entrance FIFO. Pas de `patches`/`inversePatches` exposés. Pas d'`eventLog`. Pas de `toJSON()`/`fromJSON()`. |
@@ -143,14 +143,14 @@ L'ordre d'implémentation est une **décision architecturale** : il définit que
 #### Simplifications temporaires acceptées
 
 | Simplification | Justification | Contrat strate 0 | Contrat final (strate 1+) |
-|----------------|---------------|-------------------|---------------------------|
+| --- | --- | --- | --- |
 | `changedKeys` par comparaison shallow (pas Immer patches) | `produceWithPatches` est nécessaire pour les per-key handlers et l'Event Sourcing — inutile tant qu'on n'a que le catch-all | `changedKeys: string[]` | Identique (dérivé des patches Immer) |
 | Metas stub (`{ id: ulid(), correlationId: '', causationId: '', hop: 0, ... }`) | La traçabilité causale n'est utile que quand les chaînes de réactions existent réellement | `TMessageMetas` (type complet, valeurs stub) | `TMessageMetas` (valeurs réelles) |
 | Un seul niveau de Composer (pas de récursion) | La cascade de destruction est le hotspot C — l'isoler dans la strate 1 | Foundation → Composer → View (pas de View → Composer enfant) | Foundation → Composer → View → Composer → View (récursion) |
 
 #### Critère de validation E2E — Strate 0
 
-```
+```text
 Test "CartView → addItem round-trip" :
 
 1. Application.register(CartFeature)
@@ -178,7 +178,7 @@ Test "CartView → addItem round-trip" :
 #### Périmètre
 
 | Composant | Ajout par rapport à la strate 0 | Hotspot ciblé |
-|-----------|-------------------------------|---------------|
+| --- | --- | --- |
 | **Entity** | Migration vers `produceWithPatches()`. Per-key handlers `on${Key}EntityUpdated(prev, next, patches)`. Détection no-op par patches vides. `TEntityEvent` complet avec `patches`, `inversePatches`, `timestamp`. | **Hotspot A — phase 1** |
 | **Entity** | Ré-entrance FIFO : mutation pendant un cycle de notification → file d'attente, `maxEntityNotificationDepth` (défaut : 3). | **Hotspot A — phase 2** (isolé et testable unitairement) |
 | **Entity** | `toJSON()`, `fromJSON()`, `eventLog` (🔵 Extension optionnelle). | Contrat v1 complet |
@@ -195,7 +195,7 @@ Test "CartView → addItem round-trip" :
 
 La strate 1 n'est pas monolithique. L'ordre interne recommandé isole les hotspots :
 
-```
+```text
 Strate 1a — Entity enrichie (Hotspot A)
   ├── produceWithPatches() + per-key handlers
   ├── Tests unitaires : ordre alphabétique, no-op, types
@@ -225,7 +225,7 @@ Strate 1d — Composition complète (Hotspot C)
 
 #### Critère de validation E2E — Strate 1
 
-```
+```text
 Test "Multi-feature chorégraphie avec metas traçables" :
 
 1. CartFeature + PricingFeature + InventoryFeature enregistrées
@@ -260,7 +260,7 @@ Test "Composer N-instances + cascade" :
 #### Périmètre
 
 | Composant | Ajout | Hotspot ciblé | Dépendance strate 1 |
-|-----------|-------|---------------|---------------------|
+| --- | --- | --- | --- |
 | **localState** | `updateLocal(recipe)`, `get local`, `get localState()`. Dual N1/N2-N3 : callbacks synchrones `onLocal${Key}Updated(TLocalUpdate<T>)` + re-projection microtask via `data.local`. Namespace `local` réservé (I57). Nettoyage au `onDetach()`. | **Hotspot B** | Pipeline PDR (strate 1c) doit être stable pour que le chemin N2/N3 soit testable |
 | **Behavior** | Classe `Behavior<TChannels, TUI>`. Clés ui propres (I43 — pas de collision avec la View). Handlers auto-dérivés D48. Capacités Channel propres (trigger, listen, request — jamais emit, D7). localState propre (D37, mêmes 5 contraintes I42). | — | localState (strate 2), View complète (strate 1) |
 | **SSR hydration** | `populateFromServer(state)` sur Entity (ADR-0014 H5). `TBootstrapOptions.serverState`. Détection mode SSR/SPA par nœud (H1). `setup()` vs `create()` (H2). | — | Entity complète (strate 1a), Composer (strate 1d) |
@@ -270,7 +270,7 @@ Test "Composer N-instances + cascade" :
 
 #### Ordre interne de la strate 2
 
-```
+```text
 Strate 2a — localState (Hotspot B)
   ├── updateLocal() + Immer produce
   ├── Callbacks N1 synchrones (onLocal${Key}Updated)
@@ -296,7 +296,7 @@ Strate 2c — SSR + DevTools + ESM (parallélisables)
 
 #### Critère de validation E2E — Strate 2
 
-```
+```text
 Test "localState dual N1/N2-N3 avec Behavior" :
 
 1. WizardView avec localState { currentStep: number, errors: string[] }
@@ -315,7 +315,7 @@ Test "localState dual N1/N2-N3 avec Behavior" :
 
 ## Matrice de dépendances inter-composants
 
-```
+```text
 Strate 0                    Strate 1                         Strate 2
 ────────                    ────────                         ────────
 
@@ -353,7 +353,7 @@ Composer         ──→ Composer (N-instances,           (TUIMap propre,
 ## Correspondance avec les marqueurs de périmètre existants
 
 | Marqueur corpus | Strate |
-|-----------------|--------|
+| --- | --- |
 | ✅ Contrat v1 (Entity §1–6, §7 sérialisation) | Strate 0 (mutate, catch-all) + Strate 1 (per-key, toJSON) |
 | ✅ Contrat v1 (DevTools scope v1) | Strate 2 |
 | ✅ Contrat v1 (Router API minimale) | Strate 1 (une Feature comme les autres) |
@@ -422,6 +422,6 @@ Composer         ──→ Composer (N-instances,           (TUIMap propre,
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-04-08 | Création (Proposed) — issue de la revue architecturale identifiant 3 hotspots de complexité runtime |
 | 2026-04-08 | 🟢 **Accepted** — Option C (kernel-first, 3 strates). Matrice de dépendances, critères de validation E2E, correspondance avec les 66 marqueurs de périmètre existants |

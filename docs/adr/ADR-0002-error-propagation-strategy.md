@@ -1,7 +1,7 @@
 # ADR-0002 : Error Propagation Strategy
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Date** | 2026-03-18 |
 | **Décideurs** | @ncac |
@@ -14,11 +14,12 @@
 
 Les RFC définissent les flux de communication (Commands, Events, Requests) mais ne spécifient pas le comportement en cas d'erreur. L'audit identifie ce manque :
 
-> *"Le second point à verrouiller est le **contrat d'erreur** : que se passe-t-il si un handler command throw ? Si un request handler rejette ? Si un event listener échoue au milieu d'une cascade ?"*
+> _"Le second point à verrouiller est le **contrat d'erreur** : que se passe-t-il si un handler command throw ? Si un request handler rejette ? Si un event listener échoue au milieu d'une cascade ?"_
 
 ### Lien avec ADR-0001
 
 ADR-0001 introduit `mutate(intent, params?, recipe)`. Cela crée de nouvelles questions :
+
 - Que se passe-t-il si le `recipe` throw ?
 - Que se passe-t-il si un `onXxxEntityUpdated` throw ?
 
@@ -30,7 +31,7 @@ ADR-0001 introduit `mutate(intent, params?, recipe)`. Cela crée de nouvelles qu
 
 Les erreurs sont catégorisées par **couche** et **type** :
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                        ERREURS BONSAI                           │
 ├─────────────────────────────────────────────────────────────────┤
@@ -58,7 +59,7 @@ Les erreurs sont catégorisées par **couche** et **type** :
 ### Matrice de comportement
 
 | Erreur | State | Historique | Continue ? | Remontée ? | Mode dev | Mode prod |
-|--------|-------|------------|------------|------------|----------|-----------|
+| --- | --- | --- | --- | --- | --- | --- |
 | **MutationError** | ❌ Rollback | ❌ Non ajouté | Non | ✅ throw | throw | throw |
 | **CommandError** | ❌ Pas muté | — | Non | ✅ throw | throw | throw |
 | **RequestError** | — | — | Non | ✅ reject | reject | reject |
@@ -388,7 +389,7 @@ const app = createApplication({
 ### Modes prédéfinis
 
 | Mode | Description | Comportement erreurs non-critiques |
-|------|-------------|-----------------------------------|
+| --- | --- | --- |
 | `development` | Fail-fast, erreurs visibles | throw |
 | `production` | Résilient, isolation | log + continue |
 | `strict` | Pour tests, tout throw | throw |
@@ -437,7 +438,7 @@ Le Router est un namespace réservé parce que c'est une **Feature spécialisée
 Les erreurs ne s'inscrivent **pas** dans ce modèle :
 
 | Aspect | Domain state (Feature+Entity+Channel) | Erreurs |
-|--------|---------------------------------------|--------|
+| --- | --- | --- |
 | Origine | Déclenchée par un trigger utilisateur | Capturée automatiquement par le framework |
 | Mutation | `mutate(intent, recipe)` contrôlée | Pas de mutation — les erreurs sont accumulées, pas modifiées |
 | Diffusion | Events (1:N) vers des listeners | Pas de listeners — les erreurs sont logguées/stockées |
@@ -447,28 +448,28 @@ Si un développeur veut **afficher** des erreurs utilisateur (toast, bannière),
 
 ### Architecture de l'ErrorReporter
 
-```
-┌──────────────────────────────────────────────────────┐
+```text
+┌───────────────────────────────────────────────────────┐
 │                    Application                        │
 │  ┌──────────────────────────────────────────────────┐ │
-│  │          ErrorReporter (infrastructure)           │ │
-│  │                                                    │ │
-│  │  ← Feature throw (MutationError, CommandError)    │ │
-│  │  ← Channel throw (ListenerError, TimeoutError)    │ │
-│  │  ← View throw (RenderError, BehaviorError)        │ │
-│  │                                                    │ │
-│  │  → console.error() [mode debug]                   │ │
-│  │  → ring buffer [mode prod]                        │ │
-│  │  → reporter custom (Sentry, Datadog)              │ │
-│  │  → DevTools hooks (onError, getErrors)            │ │
+│  │          ErrorReporter (infrastructure)          │ │
+│  │                                                  │ │
+│  │  ← Feature throw (MutationError, CommandError)   │ │
+│  │  ← Channel throw (ListenerError, TimeoutError)   │ │
+│  │  ← View throw (RenderError, BehaviorError)       │ │
+│  │                                                  │ │
+│  │  → console.error() [mode debug]                  │ │
+│  │  → ring buffer [mode prod]                       │ │
+│  │  → reporter custom (Sentry, Datadog)             │ │
+│  │  → DevTools hooks (onError, getErrors)           │ │
 │  └──────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────┘
+└───────────────────────────────────────────────────────┘
 ```
 
 ### Comportement par mode
 
 | Mode | `console.error()` | Ring buffer | Reporter custom | `onError()` hook |
-|------|-------------------|-------------|-----------------|------------------|
+| --- | --- | --- | --- | --- |
 | `development` | ✅ Immédiat, avec stack complète | ✅ Stocké | ✅ Appelé si configuré | ✅ Appelé |
 | `production` | ❌ Silencieux | ✅ Stocké (ring buffer) | ✅ Appelé si configuré | ✅ Appelé |
 | `strict` (tests) | ✅ Immédiat | ❌ Pas de stockage | ❌ Pas appelé | ❌ Throw direct |
@@ -494,7 +495,7 @@ type TErrorLogEntry = {
 ```
 
 | Paramètre | Valeur par défaut | Description |
-|-----------|-------------------|-------------|
+| --- | --- | --- |
 | `errorBufferSize` | `100` | Nombre maximum d'erreurs stockées. Au-delà, les plus anciennes sont écrasées (FIFO). |
 | `errorBufferSize: 0` | — | Désactive le stockage (les erreurs sont uniquement envoyées au reporter custom). |
 
@@ -613,7 +614,7 @@ const app = createApplication({
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-03-17 | Création (Proposed) — options documentées |
 | 2026-03-18 | **Accepted** — taxonomie, matrice, hiérarchie TypeScript |
 | 2026-03-25 | Ajout section ErrorReporter (ring buffer, DevTools hooks, position architecturale sur Channel `error`) |

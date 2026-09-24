@@ -1,7 +1,7 @@
 # ADR-0008 : Collection Patterns
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | ⚪ Superseded |
 | **Date** | 2026-03-18 |
 | **Décideurs** | @ncac |
@@ -100,7 +100,7 @@ type TProjectionList<T> = {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Simple API | - Items = DOM brut, pas de View |
 | + Performant (keyed reconcile) | - Pas de child Views |
 | + Cohérent avec PDR | - Events via delegation uniquement |
@@ -144,7 +144,7 @@ class CartItemView extends View {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Child Views complètes | - **Overhead** (1 Composer + 1 View par item) |
 | + Lifecycle propre par item | - Complexe |
 | + Conforme D24 (1 Composer : 0-1 View) | - Performance sur grandes listes |
@@ -186,7 +186,7 @@ class CartItemFragment extends ViewFragment {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Performant (pas de View overhead) | - Nouveau concept (Fragment) |
 | + Interactivité par item | - Complexité API |
 | + Scalable | |
@@ -236,7 +236,7 @@ class CartView extends View {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + **Simple** | - Pas de child Views |
 | + **Performant** (1 listener par type) | - Extraction itemId manuelle |
 | + **Scalable** (1000+ items OK) | - Logique dans la View parente |
@@ -247,7 +247,7 @@ class CartView extends View {
 ## Analyse comparative
 
 | Critère | A (ProjectionList) | B (Slots×Composers) | C (Hybrid) | D (Delegation) |
-|---------|-------------------|---------------------|------------|----------------|
+| ------------------ | ------------------ | ------------------- | ----------- | -------------- |
 | **Simplicité** | ⭐⭐⭐ | ⭐ | ⭐⭐ | ⭐⭐⭐ |
 | **Performance** | ⭐⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
 | **Child Views** | ❌ | ✅ | ⚠️ Fragments | ❌ |
@@ -517,8 +517,9 @@ onFilterByPopularity(payload) {
 ```
 
 **Pourquoi c'est un anti-pattern :**
+
 1. **Explosion des patches** — 300 patches pour une opération logique
-2. **Sémantique incorrecte** — les données n'ont pas changé, seule la *présentation* change
+2. **Sémantique incorrecte** — les données n'ont pas changé, seule la _présentation_ change
 3. **Performance** — re-render complet de la liste
 4. **Event Sourcing** — stocker "tri changé" ≠ stocker 300 déplacements
 
@@ -572,7 +573,7 @@ class ProductsView extends View {
 ### Principe : Données vs Critères vs Dérivées
 
 | Type | Fréquence mutation | Stockage Entity | Exemple |
-|------|-------------------|-----------------|---------|
+| --- | --- | --- | --- |
 | **Données brutes** | Rare (CRUD serveur) | `items: Product[]` | Liste de produits |
 | **Critères de vue** | Fréquent (UI) | `sortCriteria`, `filters`, `page` | Tri, filtres, pagination |
 | **Données dérivées** | Jamais | Calculé (View/getter) | Liste filtrée et triée |
@@ -580,6 +581,7 @@ class ProductsView extends View {
 ### Quand muter les données ?
 
 Les mutations sur `items[]` sont légitimes pour :
+
 - **Ajout** : `items.push(newProduct)`
 - **Suppression** : `items.splice(index, 1)`
 - **Modification d'un item** : `items[i].price = newPrice`
@@ -652,17 +654,13 @@ onRemove(e: Event) {
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-03-17 | Création (Proposed) — ProjectionList recommandé |
 | 2026-03-26 | Superseded — Absorbé par RFC-0003 §6.4–6.8 (D45 COLLECTION-PATTERN) |
 
-
-
-
-
-
 ## Exemple de template pour une liste
-```
+
+```pug
 .Cart
   h2.Cart-title Mon panier
   

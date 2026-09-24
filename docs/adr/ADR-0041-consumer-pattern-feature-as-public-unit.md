@@ -1,14 +1,14 @@
 # ADR-0041 : Feature comme référence publique inter-composants — pattern consommateur unifié
 
-| Champ                   | Valeur                                                                                                                   |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **Statut**              | 🔵 Tested                                                                                                                |
-| **Date**                | 2026-04-30                                                                                                               |
-| **Décideurs**           | @ncac                                                                                                                    |
-| **RFC liées**           | [communication.md](../rfc/2-architecture/communication.md), [invariants.md](../rfc/reference/invariants.md)             |
-| **ADR liées**           | [ADR-0024](ADR-0024-component-capabilities-manifest-pattern.md), [ADR-0040](ADR-0040-typescript-first-api-channel-definition-typed.md) |
-| **Décisions amendées**  | ADR-0040 — le hors-scope « `TListenTokens` enforcement compile-time des handlers d'events » est levé et résolu ici ; ADR-0040 §Bloc 4 (`View<TListenTokens, TUI>`) est remplacé dans sa totalité |
-| **Invariants impactés** | I48 (renforcé), I80–I83 (nouveaux)                                                                                      |
+| Champ | Valeur |
+| --- | --- |
+| **Statut** | 🔵 Tested |
+| **Date** | 2026-04-30 |
+| **Décideurs** | @ncac |
+| **RFC liées** | [communication.md](../rfc/2-architecture/communication.md), [invariants.md](../rfc/reference/invariants.md) |
+| **ADR liées** | [ADR-0024](ADR-0024-component-capabilities-manifest-pattern.md), [ADR-0040](ADR-0040-typescript-first-api-channel-definition-typed.md) |
+| **Décisions amendées** | ADR-0040 — le hors-scope « `TListenTokens` enforcement compile-time des handlers d'events » est levé et résolu ici ; ADR-0040 §Bloc 4 (`View<TListenTokens, TUI>`) est remplacé dans sa totalité |
+| **Invariants impactés** | I48 (renforcé), I80–I83 (nouveaux) |
 
 ---
 
@@ -16,12 +16,12 @@
 
 ADR-0040 a établi `TChannelToken` comme artefact de référence croisée et a laissé deux points hors-scope :
 
-> *« L'enforcement complet nécessite un type utilitaire `ValidateViewHandlers<>` — laissé à strate 2. »*
+> _« L'enforcement complet nécessite un type utilitaire `ValidateViewHandlers<>` — laissé à strate 2. »_
 > — ADR-0040, §Hors-scope
 
 L'implémentation post-ADR-0040 a comblé ce manque par un **declaration merging** :
 
-```ts
+```typescript
 export interface View<TParams extends TViewParams = TViewParams>
   extends TListenHandlers<TParams> {}
 ```
@@ -32,7 +32,7 @@ Ce mécanisme présente trois défauts structurels.
 
 `TViewParams.listen`, `TViewParams.trigger` et `TViewParams.request` acceptent des `TChannelToken` directement. Le développeur applicatif écrit :
 
-```ts
+```typescript
 const params = {
   listen:  [CartFeature.channel],   // TChannelToken exposé
   trigger: [CartFeature.channel],
@@ -44,7 +44,7 @@ const params = {
 
 ### Défaut 2 — Handlers optionnels, contrat invisible
 
-`TListenHandlers<TParams>` génère des signatures optionnelles (`?`) couvrant **tous** les events du Channel. Un développeur qui déclare `listen: [CartFeature.channel]` alors que ce Channel publie cinq events n'est pas contraint d'en implémenter un seul. `params.listen` ne précise pas non plus *quels* events la View traite réellement.
+`TListenHandlers<TParams>` génère des signatures optionnelles (`?`) couvrant **tous** les events du Channel. Un développeur qui déclare `listen: [CartFeature.channel]` alors que ce Channel publie cinq events n'est pas contraint d'en implémenter un seul. `params.listen` ne précise pas non plus _quels_ events la View traite réellement.
 
 Le declaration merging lui-même est opaque : il n'apparaît pas dans la signature de classe, n'est pas visible dans IntelliSense comme contrat à remplir, et ne peut pas être documenté par un `implements`.
 
@@ -54,11 +54,11 @@ Le declaration merging lui-même est opaque : il n'apparaît pas dans la signatu
 
 ### Asymétrie des trois lanes
 
-| Lane      | Déclaration actuelle dans `params` | Enforcement type | Mécanisme              |
-| --------- | ---------------------------------- | ---------------- | ---------------------- |
-| `trigger` | `TChannelToken[]`                  | ✅ token hors liste → erreur compile | Generic `View<TParams>` |
-| `request` | `TChannelToken[]`                  | ✅ token hors liste → erreur compile | Generic `View<TParams>` |
-| `listen`  | `TChannelToken[]`                  | ⚠️ partiel — payload typé si handler présent, mais handler non requis | Declaration merging avec `?` |
+| Lane | Déclaration actuelle dans `params` | Enforcement type | Mécanisme |
+| --- | --- | --- | --- |
+| `trigger` | `TChannelToken[]` | ✅ token hors liste → erreur compile | Generic `View<TParams>` |
+| `request` | `TChannelToken[]` | ✅ token hors liste → erreur compile | Generic `View<TParams>` |
+| `listen` | `TChannelToken[]` | ⚠️ partiel — payload typé si handler présent, mais handler non requis | Declaration merging avec `?` |
 
 L'objectif de cet ADR est de résoudre ces trois défauts simultanément en posant un principe architectural et un pattern réutilisable.
 
@@ -83,7 +83,7 @@ L'objectif de cet ADR est de résoudre ces trois défauts simultanément en posa
 
 Amender `params.listen` pour accepter `{ token: TChannelToken, events: string[] }` au lieu d'un token seul. Conserver le declaration merging mais le rendre opt-in via un `implements TListenHandlers<TParams>` explicite.
 
-```ts
+```typescript
 // @bonsai/view — TViewParams amendé
 export type TListenEntry<
   TDef extends TChannelDefinition = TChannelDefinition,
@@ -127,7 +127,7 @@ Le pattern se décompose en deux étapes de déclaration et une classe.
 
 Le développeur déclare quelles Features participent à chaque lane. Cette déclaration est un **type TypeScript**, sans valeur runtime associée.
 
-```ts
+```typescript
 // Dans MyComponent.view.ts (ou .composer.ts, .behavior.ts)
 type TMyComponentDeps = {
   readonly listens:  [typeof CartFeature, typeof UserFeature];
@@ -142,7 +142,7 @@ La contrainte structurelle `TFeatureRef` (définie dans `@bonsai/feature/src/typ
 
 Le développeur déclare les events/commands/requests exacts qu'il utilise, sous forme de clés namespacées `"namespace:name"`.
 
-```ts
+```typescript
 const myComponentContract = {
   listens:  ["cart:itemAdded", "cart:itemRemoved", "user:profileUpdated"] as const,
   triggers: ["cart:addItem"] as const,
@@ -155,7 +155,7 @@ const myComponentContract = {
 
 #### Étape 3 — `TMyContract` : type dérivé pour la signature de classe
 
-```ts
+```typescript
 type TMyComponentContract = typeof myComponentContract;
 ```
 
@@ -163,7 +163,7 @@ type TMyComponentContract = typeof myComponentContract;
 
 #### Étape 4 — la classe
 
-```ts
+```typescript
 class MyComponent
   extends View<TMyComponentDeps, TMyComponentContract>
   //     ↑ ou Composer<>, Behavior<> — même signature générique
@@ -199,16 +199,16 @@ class MyComponent
 
 ## Analyse comparative
 
-| Critère                                                         | A — `TListenEntry` + merging | B — Pattern consommateur unifié |
-| --------------------------------------------------------------- | ---------------------------- | ------------------------------- |
+| Critère | A — `TListenEntry` + merging | B — Pattern consommateur unifié |
+| --- | --- | --- |
 | Channel privé derrière Feature (`trigger`, `request`, `listen`) | ❌ Partiel — token encore visible sur `trigger`/`request` | ✅ Aucun token dans les déclarations publiques |
-| `params`/`contract` source de vérité complète                   | ⭐⭐ Events listés mais tokens exposés | ✅ Features + events exacts — tout lisible |
-| Handlers manquants → erreur compile                             | ⚠️ Opt-in via `implements` | ✅ `implements` obligatoire dans le pattern |
-| Contrat visible pour le développeur                             | ⚠️ Merging opaque + `implements` opt-in | ✅ `implements` explicite dans la signature |
-| Symétrie des trois lanes                                        | ❌ `listen` = `TListenEntry`, `trigger`/`request` = token | ✅ Toutes trois = Feature refs + clés namespacées |
-| Pattern unifié View / Composer / Behavior                       | ❌ Non                       | ✅ `TConsumerDeps`, `TConsumerContract`, `TListenCallbacks` |
-| IDE suggère les handlers à implémenter                          | ⚠️ Si `implements` écrit     | ✅ Toujours |
-| Verbosité du manifeste                                          | ⭐⭐ (`{ token, events }`)    | ⭐⭐ (type + valeur séparés) |
+| `params`/`contract` source de vérité complète | ⭐⭐ Events listés mais tokens exposés | ✅ Features + events exacts — tout lisible |
+| Handlers manquants → erreur compile | ⚠️ Opt-in via `implements` | ✅ `implements` obligatoire dans le pattern |
+| Contrat visible pour le développeur | ⚠️ Merging opaque + `implements` opt-in | ✅ `implements` explicite dans la signature |
+| Symétrie des trois lanes | ❌ `listen` = `TListenEntry`, `trigger`/`request` = token | ✅ Toutes trois = Feature refs + clés namespacées |
+| Pattern unifié View / Composer / Behavior | ❌ Non | ✅ `TConsumerDeps`, `TConsumerContract`, `TListenCallbacks` |
+| IDE suggère les handlers à implémenter | ⚠️ Si `implements` écrit | ✅ Toujours |
+| Verbosité du manifeste | ⭐⭐ (`{ token, events }`) | ⭐⭐ (type + valeur séparés) |
 
 ---
 
@@ -242,7 +242,7 @@ L'Option A corrige `listen` mais laisse `trigger` et `request` avec des tokens, 
 
 Ces types sont définis dans **`packages/feature/src/types.ts`** et exportés par **`packages/feature/src/bonsai-feature.ts`**. Ils dépendent de `TChannelDefinition` et `TChannelToken` (issus de `@bonsai/event`) mais non de la classe `Feature` elle-même — pas de dépendance circulaire.
 
-```ts
+```typescript
 // ─── Contrainte structurelle ──────────────────────────────────────────────────
 
 /**
@@ -380,7 +380,7 @@ export type TListenCallbacks<
 
 ## Exemple applicatif complet
 
-```ts
+```typescript
 // ── CartView.view.ts ──────────────────────────────────────────────────────────
 
 // Étape 1 — dépendances par lane (type pur)
@@ -452,23 +452,23 @@ Le même pattern s'applique à `Composer` et `Behavior` sans modification — se
 
 ### Nouveaux invariants
 
-| Réf  | Contenu |
-| ---- | ------- |
-| I80  | Tout composant consommateur (View, Composer, Behavior) déclare ses dépendances vers des **Feature refs** (`TFeatureRef`) — jamais vers des `TChannelToken` directement. |
-| I81  | `contract` (étape 2) est la source de vérité runtime du composant : il déclare les clés namespacées exactes utilisées pour chaque lane. |
-| I82  | `TListenCallbacks<TDeps, TContract>` est le mécanisme d'enforcement compile-time des handlers d'écoute — un composant qui déclare un event dans `contract.listens` DOIT implémenter le handler correspondant. |
-| I83  | Le pattern `TConsumerDeps` / `TConsumerContract<TDeps>` / `TListenCallbacks<TDeps, TContract>` s'applique uniformément à `View`, `Composer`, `Behavior` et tout futur composant consommateur de Features. |
+| Réf | Contenu |
+| --- | --- |
+| I80 | Tout composant consommateur (View, Composer, Behavior) déclare ses dépendances vers des **Feature refs** (`TFeatureRef`) — jamais vers des `TChannelToken` directement. |
+| I81 | `contract` (étape 2) est la source de vérité runtime du composant : il déclare les clés namespacées exactes utilisées pour chaque lane. |
+| I82 | `TListenCallbacks<TDeps, TContract>` est le mécanisme d'enforcement compile-time des handlers d'écoute — un composant qui déclare un event dans `contract.listens` DOIT implémenter le handler correspondant. |
+| I83 | Le pattern `TConsumerDeps` / `TConsumerContract<TDeps>` / `TListenCallbacks<TDeps, TContract>` s'applique uniformément à `View`, `Composer`, `Behavior` et tout futur composant consommateur de Features. |
 
 ### Invariant renforcé
 
-| Réf  | Formulation précédente (ADR-0040)                                               | Formulation renforcée                                                                                                                                               |
-| ---- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| I48  | Handlers auto-découverts et vérifiés compile-time via `implements TCommandHandlers<TDef>` | Handlers déclarés dans `contract.listens`, câblés par convention au runtime, et vérifiés compile-time via `implements TListenCallbacks<TDeps, TContract>` — la convention est un mécanisme de câblage, non une déclaration |
+| Réf | Formulation précédente (ADR-0040) | Formulation renforcée |
+| --- | --- | --- |
+| I48 | Handlers auto-découverts et vérifiés compile-time via `implements TCommandHandlers<TDef>` | Handlers déclarés dans `contract.listens`, câblés par convention au runtime, et vérifiés compile-time via `implements TListenCallbacks<TDeps, TContract>` — la convention est un mécanisme de câblage, non une déclaration |
 
 ### Impact sur le code existant
 
 | Fichier | Changement requis |
-| ------- | ----------------- |
+| --- | --- |
 | `packages/feature/src/types.ts` | Ajouter `TFeatureRef`, `TConsumerDeps`, `TConsumerContract<>`, `TNSEventKeys`, `TNSCommandKeys`, `TNSRequestKeys`, `THandlerName`, `TEventPayload`, `TCommandPayload`, `TRequestParams`, `TRequestResult`, `TListenCallbacks` |
 | `packages/feature/src/bonsai-feature.ts` | Exporter tous les nouveaux types |
 | `packages/view/src/bonsai-view.ts` | Supprimer `TViewParams` (token-based), `TListenHandlers`, le declaration merging `interface View extends TListenHandlers` ; réécrire `View<TDeps, TContract>` avec les nouveaux génériques ; typer `trigger()`, `request()`, `getUI()` via `TDeps`/`TContract` |
@@ -503,9 +503,9 @@ Le même pattern s'applique à `Composer` et `Behavior` sans modification — se
 
 ## Historique
 
-| Date       | Changement                                                                                   |
-| ---------- | -------------------------------------------------------------------------------------------- |
-| 2026-04-29 | Création (Proposed) — ADR-0041 initial sur `TListenEntry` et declaration merging             |
+| Date | Changement |
+| --- | --- |
+| 2026-04-29 | Création (Proposed) — ADR-0041 initial sur `TListenEntry` et declaration merging |
 | 2026-04-30 | Réécriture profonde — principe Feature-as-public-unit, pattern consommateur unifié, suppression declaration merging, types `TConsumerDeps`/`TConsumerContract`/`TListenCallbacks` |
 | 2026-05-07 | 🟢 **Accepted** — code mergé sur `develop` (PR #15 et #16) |
 | 2026-05-13 | 🔵 **Tested** — I48 cité dans `feature.basic.test.ts` ; I80 / I81 / I82 cités dans `tests/unit/strate-0/view.basic.test.ts` ; I83 cité dans `view.basic.test.ts` et `tests/e2e/strate-0.cart-round-trip.test.ts`. Critère C-Inv d'ADR-0043 satisfait. Note : les types `TConsumerDeps` / `TConsumerContract` / `TListenCallbacks` ont été supersédés par ADR-0042 (pattern modulaire) — l'ADR-0041 reste Tested pour ses principes structurants (Feature-as-public-unit, I80–I83). |

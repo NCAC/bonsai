@@ -24,7 +24,7 @@ La couche concrète contient les composants qui **gèrent le DOM**. Ils sont cr�
 L'ordre suit le **flux physique du DOM**, du parent vers l'enfant :
 
 | # | Composant | Rôle | Altérations DOM | Document |
-|---|-----------|------|----------------|----------|
+| - | --- | --- | --- | --- |
 | 1 | **Foundation** | Point d'ancrage `<body>`, singleton persistant | N1 uniquement | [foundation.md](foundation.md) |
 | 2 | **Composer** | Décideur de rendu : `resolve()` → quelle View ? | — (pas d'accès DOM direct) | [composer.md](composer.md) |
 | 3 | **View** | Rendu et interaction UI, template PDR | N1, N2, N3 (via templates) | [view.md](view.md) |
@@ -36,7 +36,7 @@ L'ordre suit le **flux physique du DOM**, du parent vers l'enfant :
 
 ## Flux de vie typique
 
-```
+```text
 Foundation (body, persistant)
   └─ Composer (décide)
        └─ View (affiche, éphémère)

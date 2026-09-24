@@ -1,4 +1,4 @@
-je n’avais pas imaginé le cas cross-features c’est-à-dire quand un trigger est traité par une premiere feature qui, elle même va déclencher un trigger sur une autre feature, etc. 
+je n’avais pas imaginé le cas cross-features c’est-à-dire quand un trigger est traité par une premiere feature qui, elle même va déclencher un trigger sur une autre feature, etc.
 Copilot said:
 Copilot
 
@@ -9,8 +9,8 @@ La bonne nouvelle : ce cas est normal dans un système CQRS/event-driven. La mau
 
 Je te propose une façon de penser ça avec des règles mécaniques (et des options), en restant cohérent avec Bonsai (Entities + Channels + Features + diff interne + CQRS).
 
-1) Pourquoi ça arrive (et pourquoi c’est légitime)
-Un “trigger” (Command) peut nécessiter plusieurs actions métier :
+1. Pourquoi ça arrive (et pourquoi c’est légitime)
+   Un “trigger” (Command) peut nécessiter plusieurs actions métier :
 
 ex : Checkout/SubmitOrder
 vérifier le stock
@@ -27,9 +27,9 @@ Est‑ce que les Features se parlent directement (Feature → trigger d’une au
 ou est‑ce qu’elles se parlent via des Events (Feature A → Event → Feature B)
 ou est‑ce qu’un orchestrateur dédié coordonne tout ?
 
-2) Les 3 modèles possibles (et leurs conséquences)
-Modèle A — Feature → Feature (direct)
-Flow :
+2. Les 3 modèles possibles (et leurs conséquences)
+   Modèle A — Feature → Feature (direct)
+   Flow :
 
 View trigger CommandA
 FeatureA traite
@@ -84,8 +84,8 @@ demande de décider quel Feature est “process owner”
 un peu plus de code
 👉 C’est le modèle le plus “DDD/CQRS propre” dès que tu as une vraie chaîne.
 
-3) Proposition de règle simple pour Bonsai
-Je te propose une règle en 2 niveaux qui évite 90% des ennuis :
+3. Proposition de règle simple pour Bonsai
+   Je te propose une règle en 2 niveaux qui évite 90% des ennuis :
 
 ✅ Règle 1 — Une Feature ne déclenche pas directement une autre Feature, sauf cas “même domaine”
 Par défaut : pas de Feature→Feature.
@@ -117,8 +117,8 @@ correlationId (transaction logique)
 causationId (message parent)
 Ça rend le cross-feature debuggable (et te prépare à des DevTools Bonsai).
 
-5) Prévenir les boucles et les cascades infinies
-Quand tu permets du cross-feature, tu dois prévenir :
+5. Prévenir les boucles et les cascades infinies
+   Quand tu permets du cross-feature, tu dois prévenir :
 
 🔁 Boucles
 Ex. FeatureA déclenche CommandB, FeatureB déclenche CommandA.
@@ -154,8 +154,8 @@ OrderEntity émet OrderConfirmed
 UI écoute OrderConfirmed et met à jour la View
 👉 Ici, aucune Feature “Inventory” n’appelle directement “Payment” : elles restent propres.
 
-8) Question clé pour trancher (et avancer)
-Pour Bonsai, tu veux plutôt :
+8. Question clé pour trancher (et avancer)
+   Pour Bonsai, tu veux plutôt :
 
 Chorégraphie par défaut (features découplées, events everywhere),
 ou
@@ -168,13 +168,6 @@ Deux petites questions pour adapter la règle à ton style Bonsai
 Est-ce que tu veux que les Features aient le droit de trigger() un Command d’un autre namespace directement, ou tu préfères qu’elles ne puissent le faire que via un ProcessFeature ?
 Tu imagines tes Features plutôt comme des bounded contexts (rare cross-feature) ou comme des modules fonctionnels (cross-feature fréquent) ?
 Si tu me réponds ça, je peux te proposer une règle d’architecture “officielle Bonsai” (2–3 invariants + 1 schéma + 1 anti-pattern) et même te générer un Markdown “spec cross-features” prêt pour le repo.
-
-
-
-
-
-
-
 
 You said:
 Je pencherais pour le modèle C. Intuitivement. Une Feature devrait pouvoir écouter des événements hors de son contexte.. je ne sais pas finalement.. il faudrait faire une typologie des Features
@@ -189,8 +182,9 @@ Je te propose une typologie simple, mécanique, documentable, qui répond préci
 
 ✅ “Une Feature devrait pouvoir écouter des événements hors de son contexte… ou pas ?”
 ✅ “Quand je fais cross-feature, qui a le droit de quoi ?”
-1) Pourquoi une typologie est nécessaire
-Sans typologie, tu risques ces dérives :
+
+1. Pourquoi une typologie est nécessaire
+   Sans typologie, tu risques ces dérives :
 
 Tout devient ProcessFeature → “god orchestrator”
 Tout devient chorégraphie → “spaghetti d’events” (ordre implicite)
@@ -251,8 +245,8 @@ Effets : UI-only (focus, scroll, animation triggers), pas de métier
 
 Exemple : CartUIFeature, DashboardUIFeature.
 
-3) Répondre à ta question : “Une Feature peut-elle écouter hors contexte ?”
-La réponse devient : oui, mais selon son type.
+3. Répondre à ta question : “Une Feature peut-elle écouter hors contexte ?”
+   La réponse devient : oui, mais selon son type.
 
 ✅ Autorisé quasi systématiquement
 UI Features : oui (elles projettent l’état global, c’est leur job)
@@ -287,8 +281,8 @@ causationId (parent)
 hopCount ou ttl (anti-boucle)
 Ça rend ton cross-feature débuggable et safe.
 
-5) Comment “mapper” ça à Bonsai tel que tu l’as déjà défini
-Tu as déjà :
+5. Comment “mapper” ça à Bonsai tel que tu l’as déjà défini
+   Tu as déjà :
 
 Entities + diff interne
 Channels namespacés
@@ -340,13 +334,6 @@ Est-ce que tu considères les Features comme des bounded contexts DDD (donc peu 
 Tu préfères un système où un ProcessFeature est obligatoire dès qu’il y a cross-domain, ou seulement à partir de “2 étapes / erreur / compensation” ?
 Donne-moi ces deux réponses et je te rédige la spec Markdown téléchargeable.
 
-
-
-
-
-
-
-
 Aujourd’hui
 You said:
 J’hésite encore avec l’option B. Dans ce cas, qu’est-ce qu’il faudrait faire pour pouvoir tracer et debugger?
@@ -367,8 +354,8 @@ Critère objectif pour savoir quand B est acceptable… et quand C devient oblig
 Dans l’option B (chorégraphie) :
 
 Command → Feature A → Event X
-                 ↘ Feature B écoute X → Event Y
-                                  ↘ Feature C écoute Y → …
+↘ Feature B écoute X → Event Y
+↘ Feature C écoute Y → …
 Les problèmes structurels sont :
 
 ❌ Orchestration implicite
@@ -401,16 +388,13 @@ Si tu choisis B, il faut accepter 4 contraintes non négociables.
 ✅ Brique 1 — Métadonnées causales obligatoires
 Chaque Command et chaque Event DOIT porter :
 
-
-
-
 TypeScript
 meta: {
-  correlationId: string; // transaction logique (user action, process)
-  causationId: string;   // message parent direct
-  hop: number;           // profondeur (anti-boucle)
-  timestamp: number;
-  origin: FeatureId;     // qui a émis
+correlationId: string; // transaction logique (user action, process)
+causationId: string; // message parent direct
+hop: number; // profondeur (anti-boucle)
+timestamp: number;
+origin: FeatureId; // qui a émis
 }
 👉 Sans ça, tu ne peux pas reconstruire un graphe causal.
 
@@ -423,16 +407,13 @@ Tu dois considérer que le système produit un graphe, pas juste des events.
 
 Un Event Ledger (en mémoire, dev-only au début) qui enregistre :
 
-
-
-
 TypeScript
 {
-  id,
-  type,
-  channel,
-  meta,
-  payload
+id,
+type,
+channel,
+meta,
+payload
 }
 Et surtout :
 
@@ -441,10 +422,10 @@ chaîné par causationId
 👉 Tu peux alors reconstruire :
 
 Command Z
- ├─ Event X (Feature A)
- │   ├─ Event Y (Feature B)
- │   │   └─ Event W (Feature C)
- │   └─ Event V (Feature D)
+├─ Event X (Feature A)
+│ ├─ Event Y (Feature B)
+│ │ └─ Event W (Feature C)
+│ └─ Event V (Feature D)
 Sans ça, option B = boîte noire.
 
 ✅ Brique 3 — Graphe de propagation observable
@@ -458,9 +439,9 @@ Donc :
 chaque subscription Feature listens Event doit être déclarative
 le framework doit pouvoir lister :
 Event X
-  → Feature B
-  → Feature D
-  → UIFeature Cart
+→ Feature B
+→ Feature D
+→ UIFeature Cart
 👉 Même sans UI fancy, une sortie texte est déjà énorme :
 
 [correlationId=abc]
@@ -493,9 +474,6 @@ et donc ses propres Events
 
 🔷 Règle B2 — Toute réaction est enregistrée
 Chaque fois qu’une Feature traite un Event :
-
-
-
 
 Plain Text
 [FeatureB] handled EventX
@@ -564,13 +542,6 @@ output texte + futur DevTools
 
 Tu as très bien senti le piège — maintenant tu es exactement au moment où une bonne règle d’architecture fait toute la différence.
 
-
-
-
-
-
-
-
 You said:
 Une View/Behavior peut aussi émettre des triggers (UI Events)
 Copilot said:
@@ -580,8 +551,8 @@ Le fait qu’une View / Behavior puisse émettre des triggers (UI events) change
 
 Je vais donc répondre précisément à ce que ça implique, et comment l’intégrer proprement dans Bonsai, en cohérence avec tout ce que tu as déjà posé.
 
-1) Clarification essentielle : quel type de trigger ?
-Quand tu dis :
+1. Clarification essentielle : quel type de trigger ?
+   Quand tu dis :
 
 Une View / Behavior peut aussi émettre des triggers (UI Events)
 
@@ -618,8 +589,8 @@ un point de couplage non traçable
 ✔️ Une View/Behavior peut déclencher des Commands
 ❌ Une View/Behavior ne doit pas orchestrer le métier
 
-2) Repositionner la View dans Bonsai (règle d’or)
-Voici la règle la plus importante que je te recommande :
+2. Repositionner la View dans Bonsai (règle d’or)
+   Voici la règle la plus importante que je te recommande :
 
 Une View / Behavior peut émettre des Commands,
 mais ne peut jamais être responsable de la causalité métier.
@@ -640,17 +611,15 @@ crée un nouveau correlationId
 a causationId = null
 est explicitement marqué comme origin = UI
 
-
-
 TypeScript
 trigger({
-  type: "Cart/AddItemRequested",
-  payload: { productId, qty },
-  meta: {
-    correlationId: uuid(),
-    causationId: null,
-    origin: "UI:CartView"
-  }
+type: "Cart/AddItemRequested",
+payload: { productId, qty },
+meta: {
+correlationId: uuid(),
+causationId: null,
+origin: "UI:CartView"
+}
 })
 👉 Ça te donne un point d’entrée clair pour le debug.
 
@@ -676,16 +645,16 @@ Avec l’option C, tout devient très lisible.
 
 Flow canonique recommandé
 View / Behavior
-  └─ trigger(UI Command)
-        ↓
+└─ trigger(UI Command)
+↓
 ProcessFeature (owner du flow)
-  ├─ trigger(Command A → DomainFeature A)
-  ├─ écoute Event A
-  ├─ trigger(Command B → DomainFeature B)
-  └─ …
-        ↓
+├─ trigger(Command A → DomainFeature A)
+├─ écoute Event A
+├─ trigger(Command B → DomainFeature B)
+└─ …
+↓
 Events
-  └─ View / Behavior (projection)
+└─ View / Behavior (projection)
 Avantages immédiats
 la View reste simple
 la causalité est centralisée
@@ -693,8 +662,8 @@ le debug est trivial
 la View n’a aucune dépendance cross-domain
 👉 C’est pour ça que ton intuition modèle C est très bonne.
 
-5) Traçabilité : ce que la View doit obligatoirement fournir
-Pour que le système soit débuggable, la View doit :
+5. Traçabilité : ce que la View doit obligatoirement fournir
+   Pour que le système soit débuggable, la View doit :
 
 ✅ Fournir une meta claire
 Chaque UI trigger doit inclure :
@@ -703,14 +672,12 @@ correlationId
 origin (View + action)
 uiAction (facultatif mais très utile)
 
-
-
 TypeScript
 meta: {
-  correlationId,
-  causationId: null,
-  origin: "UI:CheckoutForm",
-  uiAction: "submit"
+correlationId,
+causationId: null,
+origin: "UI:CheckoutForm",
+uiAction: "submit"
 }
 ✅ Ne jamais altérer la correlation
 La View :
@@ -728,10 +695,8 @@ Process Feature	✅ Cross-domain Commands	✅	✅
 Integration Feature	✅ Techniques	✅	❌
 👉 La View n’est jamais un ProcessFeature.
 
-7) Anti-pattern explicite à documenter (important)
-❌ Anti-pattern : “Smart View”
-
-
+7. Anti-pattern explicite à documenter (important)
+   ❌ Anti-pattern : “Smart View”
 
 Plain Text
 View écoute EventA
@@ -745,17 +710,17 @@ dépendance UI ↔ métier
 debug très difficile
 👉 À documenter noir sur blanc comme interdit.
 
-8) Règle finale (celle que tu peux graver dans la doc Bonsai)
-La View est un point d’entrée et un point de projection.
-La causalité métier n’y transite jamais.
+8. Règle finale (celle que tu peux graver dans la doc Bonsai)
+   La View est un point d’entrée et un point de projection.
+   La causalité métier n’y transite jamais.
 
 Ou, version encore plus concise :
 
 UI déclenche. Domaine décide. Process orchestre.
 
-9) Prochaine étape naturelle
-À ce stade, tu as tous les éléments pour écrire une spec claire.
-Si tu veux, je peux te générer :
+9. Prochaine étape naturelle
+   À ce stade, tu as tous les éléments pour écrire une spec claire.
+   Si tu veux, je peux te générer :
 
 ✅ un document Markdown “UI Triggers & Feature Boundaries” (repo‑ready)
 ✅ une section à ajouter dans features.md
@@ -763,15 +728,9 @@ Si tu veux, je peux te générer :
 ✅ ou un schéma causal ASCII montrant UI → Process → Domain → UI
 Dis‑moi ce que tu veux formaliser en premier, et je te le génère directement.
 
-
-
-
-
-
-
-
 You said:
 Non, ce qui est clair :
+
 1. View déclenche des triggers par des interactions User
 2. View écoute des events pour se mettre à jour.
 
@@ -786,8 +745,8 @@ Les metas servent précisément à rendre ces flux traçables, causaux et débug
 
 Je vais t’expliquer les metas pas comme un détail technique, mais comme un langage de causalité au cœur de Bonsai.
 
-1) À quoi servent les metas (vraiment)
-Les metas ne servent pas à :
+1. À quoi servent les metas (vraiment)
+   Les metas ne servent pas à :
 
 transporter du métier
 influencer la logique
@@ -804,16 +763,16 @@ Autrement dit :
 Les metas ne disent pas “quoi faire”,
 elles disent “pourquoi c’est arrivé”.
 
-2) Les 3 dimensions fondamentales d’une meta
-Dans Bonsai, une meta doit capturer trois axes orthogonaux :
+2. Les 3 dimensions fondamentales d’une meta
+   Dans Bonsai, une meta doit capturer trois axes orthogonaux :
 
 Corrélation → à quelle “histoire” ce message appartient
 Causalité → qu’est‑ce qui a provoqué ce message
 Origine → d’où vient ce message (UI, Feature, Process, etc.)
 Si tu as ces trois axes, tu peux reconstruire n’importe quel flux, même en chorégraphie pure (option B).
 
-3) Le cœur : correlationId vs causationId
-C’est LE point le plus important.
+3. Le cœur : correlationId vs causationId
+   C’est LE point le plus important.
 
 3.1 correlationId — « l’histoire »
 Le correlationId représente une transaction logique.
@@ -825,9 +784,6 @@ Exemple mental
 “L’utilisateur a cliqué sur Ajouter au panier”
 
 Tout ce qui découle de ce clic partage le même correlationId.
-
-
-
 
 TypeScript
 correlationId = "c-9f3a..."
@@ -842,79 +798,70 @@ un seul parent
 sauf la racine (UI trigger), qui a causationId = null
 Exemple
 UI Trigger (id=1, causation=null)
- └─ Event A (id=2, causation=1)
-     └─ Event B (id=3, causation=2)
+└─ Event A (id=2, causation=1)
+└─ Event B (id=3, causation=2)
 👉 Le graphe devient reconstructible mécaniquement.
 
-4) Origine : rendre le système lisible pour un humain
-La causalité ne suffit pas.
-Quand tu débugges, tu veux lire :
+4. Origine : rendre le système lisible pour un humain
+   La causalité ne suffit pas.
+   Quand tu débugges, tu veux lire :
 
 “Ah, ça vient de cette View”
 “Ah, c’est cette Feature qui a réagi”
 
 D’où origin.
 
-
-
-
 TypeScript
 origin: {
-  kind: "ui" | "feature" | "process" | "integration",
-  name: "CartView" | "InventoryFeature" | "CheckoutProcess",
+kind: "ui" | "feature" | "process" | "integration",
+name: "CartView" | "InventoryFeature" | "CheckoutProcess",
 }
 👉 Ce champ n’est jamais utilisé par la logique.
 Il est 100 % explicatif.
 
-5) Proposition de structure de meta (Bonsai‑friendly)
-Voici une structure suffisamment riche, mais pas sur‑ingénierée :
-
-
-
+5. Proposition de structure de meta (Bonsai‑friendly)
+   Voici une structure suffisamment riche, mais pas sur‑ingénierée :
 
 TypeScript
 interface Meta {
-  // Identité du message
-  messageId: string;
+// Identité du message
+messageId: string;
 
-  // Corrélation
-  correlationId: string;
+// Corrélation
+correlationId: string;
 
-  // Causalité
-  causationId: string | null;
+// Causalité
+causationId: string | null;
 
-  // Origine humaine
-  origin: {
-    kind: "ui" | "feature" | "process" | "integration";
-    name: string;
-  };
+// Origine humaine
+origin: {
+kind: "ui" | "feature" | "process" | "integration";
+name: string;
+};
 
-  // Sécurité / robustesse
-  hop: number;          // profondeur
-  timestamp: number;    // utile pour timeline
+// Sécurité / robustesse
+hop: number; // profondeur
+timestamp: number; // utile pour timeline
 }
 
 Afficher plus de lignes
 ✅ Tout le reste est optionnel.
 
-6) Cycle de vie typique d’une meta
-6.1 À l’entrée (UI trigger)
-La View crée la corrélation :
-
-
-
+6. Cycle de vie typique d’une meta
+   6.1 À l’entrée (UI trigger)
+   La View crée la corrélation :
 
 TypeScript
 meta = {
-  messageId: uuid(),
-  correlationId: uuid(),     // nouveau !
-  causationId: null,         // racine
-  origin: {
-    kind: "ui",
-    name: "CartView"
-  },
-  hop: 0,
-  timestamp: now()
+messageId: uuid(),
+correlationId: uuid(), // nouveau !
+causationId: null, // racine
+origin: {
+kind: "ui",
+name: "CartView"
+},
+hop: 0,
+timestamp: now()
 }
 👉 C’est la seule fois où correlationId est créé.
 
@@ -924,25 +871,23 @@ La Feature :
 ne touche pas au correlationId
 chaîne la causalité
 
-
-
 TypeScript
 meta = {
-  messageId: uuid(),
-  correlationId: parent.meta.correlationId,
-  causationId: parent.meta.messageId,
-  origin: {
-    kind: "feature",
-    name: "InventoryFeature"
-  },
-  hop: parent.meta.hop + 1,
-  timestamp: now()
+messageId: uuid(),
+correlationId: parent.meta.correlationId,
+causationId: parent.meta.messageId,
+origin: {
+kind: "feature",
+name: "InventoryFeature"
+},
+hop: parent.meta.hop + 1,
+timestamp: now()
 }
 👉 Le graphe se construit tout seul.
 
-7) À quoi servent concrètement ces metas ?
-7.1 Debugging (option B ou C)
-Tu peux répondre à :
+7. À quoi servent concrètement ces metas ?
+   7.1 Debugging (option B ou C)
+   Tu peux répondre à :
 
 “Pourquoi cet event existe ?”
 “Qui a réagi à quoi ?”
@@ -957,12 +902,9 @@ UI CartView triggered AddItemRequested
 7.2 Anti‑boucles et sécurité
 Le champ hop permet :
 
-
-
-
 TypeScript
 if (meta.hop > MAX_HOPS) {
-  throw new Error("Causal loop detected");
+throw new Error("Causal loop detected");
 }
 👉 Protection mécanique, pas heuristique.
 
@@ -975,8 +917,8 @@ time‑travel (replay logique)
 inspection “qui écoute quoi”
 Sans changer ton code métier.
 
-8) Ce que les metas ne doivent jamais faire
-Très important :
+8. Ce que les metas ne doivent jamais faire
+   Très important :
 
 ❌ Une Feature ne doit jamais brancher sa logique sur origin
 ❌ Une Feature ne doit jamais changer correlationId
@@ -985,10 +927,10 @@ Très important :
 
 👉 Les metas sont observables, pas décisionnelles.
 
-9) Règle d’or Bonsai (à documenter)
-Les metas décrivent la causalité.
-Le domaine décrit la vérité.
-L’UI déclenche et projette.
+9. Règle d’or Bonsai (à documenter)
+   Les metas décrivent la causalité.
+   Le domaine décrit la vérité.
+   L’UI déclenche et projette.
 
 Ou plus synthétique :
 

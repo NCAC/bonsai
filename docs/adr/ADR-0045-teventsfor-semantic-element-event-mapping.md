@@ -1,13 +1,13 @@
 # ADR-0045 : `TEventsFor<TEl>` — mapping sémantique élément → événements DOM autorisés
 
-| Champ                   | Valeur                                                                                                                              |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| **Statut**              | 🔵 Tested                                                                                                                           |
-| **Date**                | 2026-05-07                                                                                                                          |
-| **Décideurs**           | @NCAC                                                                                                                               |
-| **RFC liée**            | [view.md](../rfc/4-couche-concrete/view.md)                                                                                         |
-| **ADRs liées**          | [ADR-0042](ADR-0042-view-contract-unified-ui-deps-single-generic.md), [ADR-0044](ADR-0044-ui-events-restricted-to-dom-event-map.md) |
-| **Invariants impactés** | I89 (amendé), I91 (nouveau)                                                                                                         |
+| Champ | Valeur |
+| --- | --- |
+| **Statut** | 🔵 Tested |
+| **Date** | 2026-05-07 |
+| **Décideurs** | @NCAC |
+| **RFC liée** | [view.md](../rfc/4-couche-concrete/view.md) |
+| **ADRs liées** | [ADR-0042](ADR-0042-view-contract-unified-ui-deps-single-generic.md), [ADR-0044](ADR-0044-ui-events-restricted-to-dom-event-map.md) |
+| **Invariants impactés** | I89 (amendé), I91 (nouveau) |
 
 ---
 
@@ -282,13 +282,13 @@ ui<HTMLButtonElement>()(["play"]);
 // Type '"play"' is not assignable to type 'TUIBaseEvents'
 ```
 
-| Avantages                                              | Inconvénients                                                          |
-| ------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Avantages | Inconvénients |
+| --- | --- |
 | + Erreur compile sur events sémantiquement incohérents | - Type conditionnel à maintenir si de nouveaux sous-types sont ajoutés |
-| + IntelliSense contextualisé selon `TEl`               | - Plus strict que lib.dom.d.ts (acceptable — Bonsai est opinionated)   |
-| + Catégories nommées réexportables et documentées      | - Certains éléments non listés tombent dans le fallback large          |
-| + Zéro overhead runtime                                |                                                                        |
-| + Fallback `HTMLElement` non-régressif                 |                                                                        |
+| + IntelliSense contextualisé selon `TEl` | - Plus strict que lib.dom.d.ts (acceptable — Bonsai est opinionated) |
+| + Catégories nommées réexportables et documentées | - Certains éléments non listés tombent dans le fallback large |
+| + Zéro overhead runtime | |
+| + Fallback `HTMLElement` non-régressif | |
 
 ---
 
@@ -296,11 +296,11 @@ ui<HTMLButtonElement>()(["play"]);
 
 **Description** : Rester sur la contrainte syntaxique d'ADR-0044. Pas de restriction sémantique par élément.
 
-| Avantages                         | Inconvénients                                                             |
-| --------------------------------- | ------------------------------------------------------------------------- |
-| + Aucune cartographie à maintenir | - `ui<HTMLButtonElement>()(["change"])` reste valide sans avertissement   |
-| + Cohérence avec lib.dom.d.ts     | - IntelliSense identique pour tous les éléments — pas d'aide contextuelle |
-|                                   | - Contredit la philosophie "Explicit > Implicit"                          |
+| Avantages | Inconvénients |
+| --- | --- |
+| + Aucune cartographie à maintenir | - `ui<HTMLButtonElement>()(["change"])` reste valide sans avertissement |
+| + Cohérence avec lib.dom.d.ts | - IntelliSense identique pour tous les éléments — pas d'aide contextuelle |
+| | - Contredit la philosophie "Explicit > Implicit" |
 
 ---
 
@@ -308,25 +308,25 @@ ui<HTMLButtonElement>()(["play"]);
 
 **Description** : Analyse AST — vérification sémantique sans contrainte de type. La validation est externe au type system.
 
-| Avantages                            | Inconvénients                                      |
-| ------------------------------------ | -------------------------------------------------- |
+| Avantages | Inconvénients |
+| --- | --- |
 | + Messages d'erreur personnalisables | - Pas d'erreur dans l'IDE sans plugin ESLint actif |
-| + Pas de type conditionnel           | - Maintenance d'une règle ESLint séparée           |
-|                                      | - Pas d'impact sur IntelliSense (autocomplétion)   |
-|                                      | - Dépendance outillage externe obligatoire         |
+| + Pas de type conditionnel | - Maintenance d'une règle ESLint séparée |
+| | - Pas d'impact sur IntelliSense (autocomplétion) |
+| | - Dépendance outillage externe obligatoire |
 
 ---
 
 ## Analyse comparative
 
-| Critère                           | Option A (`TEventsFor`) | Option B (statu quo ADR-0044) | Option C (lint) |
-| --------------------------------- | ----------------------- | ----------------------------- | --------------- |
-| **Sécurité compile-time**         | ⭐⭐⭐                  | ⭐⭐                          | ⭐⭐            |
-| **IntelliSense contextualisé**    | ⭐⭐⭐                  | ⭐⭐                          | ⭐              |
-| **Philosophie Bonsai**            | ⭐⭐⭐                  | ⭐⭐                          | ⭐⭐            |
-| **Maintenabilité**                | ⭐⭐                    | ⭐⭐⭐                        | ⭐⭐            |
-| **Couverture des cas non-listés** | ⭐⭐ (fallback large)   | ⭐⭐⭐                        | ⭐⭐⭐          |
-| **Faisabilité immédiate**         | ⭐⭐⭐                  | ⭐⭐⭐                        | ⭐              |
+| Critère | Option A (`TEventsFor`) | Option B (statu quo ADR-0044) | Option C (lint) |
+| --- | --- | --- | --- |
+| **Sécurité compile-time** | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ |
+| **IntelliSense contextualisé** | ⭐⭐⭐ | ⭐⭐ | ⭐ |
+| **Philosophie Bonsai** | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ |
+| **Maintenabilité** | ⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
+| **Couverture des cas non-listés** | ⭐⭐ (fallback large) | ⭐⭐⭐ | ⭐⭐⭐ |
+| **Faisabilité immédiate** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐ |
 
 ---
 
@@ -393,14 +393,14 @@ ui<HTMLButtonElement>()(["play"]);
 
 ## Fichiers impactés
 
-| Fichier                                                      | Modification                                                                                                                                                                            |
-| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/view/src/bonsai-view.ts`                           | Ajout des types catégories (`TUIPointerEvents`, etc.) + `TEventsFor<TEl>` ; mise à jour de `TUIEntry<TEvts>` → contrainte `TEventsFor<TEl>` ; mise à jour de `ui<TEl>()()`              |
-| `packages/view/src/bonsai-view.ts`                           | `TDOMEventFor<S>` : `S extends keyof HTMLElementEventMap` → `S extends keyof HTMLElementEventMap` (inchangé syntaxiquement, mais `S` est maintenant garanti sous-type via `TEventsFor`) |
-| `docs/rfc/4-couche-concrete/view.md`                         | Documentation de `TEventsFor<TEl>` et des catégories                                                                                                                                    |
-| `docs/rfc/reference/types-index.md`                          | Ajout des entrées `TEventsFor`, `TUIBaseEvents`, `TUIFormValueEvents`, etc.                                                                                                             |
-| `docs/rfc/reference/invariants.md`                           | Amendement I89, ajout I91                                                                                                                                                               |
-| `docs/adr/ADR-0044-ui-events-restricted-to-dom-event-map.md` | Note de relation + lien ADR-0045                                                                                                                                                        |
+| Fichier | Modification |
+| --- | --- |
+| `packages/view/src/bonsai-view.ts` | Ajout des types catégories (`TUIPointerEvents`, etc.) + `TEventsFor<TEl>` ; mise à jour de `TUIEntry<TEvts>` → contrainte `TEventsFor<TEl>` ; mise à jour de `ui<TEl>()()` |
+| `packages/view/src/bonsai-view.ts` | `TDOMEventFor<S>` : `S extends keyof HTMLElementEventMap` → `S extends keyof HTMLElementEventMap` (inchangé syntaxiquement, mais `S` est maintenant garanti sous-type via `TEventsFor`) |
+| `docs/rfc/4-couche-concrete/view.md` | Documentation de `TEventsFor<TEl>` et des catégories |
+| `docs/rfc/reference/types-index.md` | Ajout des entrées `TEventsFor`, `TUIBaseEvents`, `TUIFormValueEvents`, etc. |
+| `docs/rfc/reference/invariants.md` | Amendement I89, ajout I91 |
+| `docs/adr/ADR-0044-ui-events-restricted-to-dom-event-map.md` | Note de relation + lien ADR-0045 |
 
 ---
 
@@ -429,8 +429,8 @@ ui<HTMLButtonElement>()(["play"]);
 
 ## Historique
 
-| Date       | Changement                                                                                          |
-| ---------- | --------------------------------------------------------------------------------------------------- |
-| 2026-05-07 | Création (🟡 Proposed) — résolution de Q1 (ADR-0044) via `TEventsFor<TEl>`                          |
-| 2026-05-12 | 🟢 Accepted — décision validée                                                                      |
+| Date | Changement |
+| --- | --- |
+| 2026-05-07 | Création (🟡 Proposed) — résolution de Q1 (ADR-0044) via `TEventsFor<TEl>` |
+| 2026-05-12 | 🟢 Accepted — décision validée |
 | 2026-05-12 | 🔵 Tested — I89/I91 cités dans `tests/types/strate-0/view-contract.types.test.ts` (ADR-0043 critère C-Inv) |

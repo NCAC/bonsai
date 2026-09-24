@@ -18,8 +18,8 @@ Avant toute implémentation, il est indispensable de poser formellement :
 - les **règles de communication** — qui parle à qui, par quel mécanisme ;
 - les **invariants non négociables** qui garantissent la cohérence du système.
 
-Ce document constitue le *quoi* architectural : il définit les pièces du puzzle
-et comment elles s'emboîtent, indépendamment du *comment* (API TypeScript,
+Ce document constitue le _quoi_ architectural : il définit les pièces du puzzle
+et comment elles s'emboîtent, indépendamment du _comment_ (API TypeScript,
 implémentation, typage) qui fait l'objet des documents composants.
 
 L'objectif est qu'un développeur puisse lire cette documentation et comprendre
@@ -69,8 +69,8 @@ pour garantir la cohérence et la lisibilité à l'échelle.
 
 Socle complet, pas une simple bibliothèque.
 Bonsai fournit l'architecture, les composants, les conventions
-et les garde-fous — le développeur construit *dans* le framework,
-pas *autour* d'une librairie.
+et les garde-fous — le développeur construit _dans_ le framework,
+pas _autour_ d'une librairie.
 
 ### 3.3 Flux unidirectionnel strict
 
@@ -96,6 +96,11 @@ Chaque composant est isolé, avec des responsabilités bien définies.
 Les dépendances sont déclarées statiquement → les tests ne montent
 que les Channels nécessaires, pas toute l'application.
 
+> **Les tests sont une preuve d'architecture** ([ADR-0030](../adr/ADR-0030-testing-as-architecture-proof.md)) :
+> chaque test documente explicitement l'invariant qu'il prouve — un test
+> n'est pas seulement une garantie de non-régression, c'est une démonstration
+> vérifiable qu'une frontière ou une règle du framework est respectée.
+
 ### 3.7 Lisibilité avant performance
 
 La clarté du code prime sur les micro-optimisations.
@@ -104,6 +109,10 @@ Le code se lit comme une spécification.
 
 ### 3.8 Typage fort et explicite
 
+> **Le type EST le contrat.** Un développeur Bonsai ne devrait jamais avoir
+> besoin de lire une RFC pour utiliser correctement l'API — IntelliSense et
+> les erreurs du compilateur suffisent.
+
 TypeScript strict, code auto-documenté via les types.
 Les contrats sont définis par les types (TChannelDefinition, TStructure),
 le compilateur vérifie les invariants à la compilation.
@@ -111,11 +120,14 @@ le compilateur vérifie les invariants à la compilation.
 > **Prérequis fondamental** : Bonsai impose **TypeScript** comme langage de développement.
 > Ce n'est pas une recommandation, c'est un prérequis.
 >
-> Cette contrainte permet de déplacer de nombreuses vérifications du runtime
+> Principe non négociable : **compile-time > runtime** — toute erreur
+> détectable à la compilation ne doit jamais atteindre le runtime. Cette
+> contrainte permet de déplacer de nombreuses vérifications du runtime
 > vers le compile-time :
-> - Handlers/repliers manquants → `implements TRequiredCommandHandlers<T>`
+>
+> - Handlers/repliers manquants → `TFeatureCallbacks` et `TStrictFeatureClass` ([feature.md §3bis](3-couche-abstraite/feature.md#3bis-tfeaturecallbacks-et-tstrictfeatureclass-adr-0046), ADR-0046, I92)
 > - Payloads incorrects → typage générique
-> - Channels non déclarés → déclarations statiques (`params` ADR-0024, `static readonly` Features)
+> - Channels non déclarés → manifest applicatif typé (ADR-0039) et `static readonly channel` sur la classe Feature (ADR-0040)
 >
 > Voir [ADR-0003](../adr/ADR-0003-channel-runtime-semantics.md) pour le détail.
 
@@ -127,6 +139,7 @@ n'est permis au runtime. Les dépendances de communication sont visibles
 dans la signature du composant, pas cachées dans son implémentation.
 
 **Conséquences** :
+
 - Le graphe de communication est lisible dans le code sans l'exécuter
 - Les invariants sont vérifiables à la compilation (TypeScript)
 - Les tests ne montent que les Channels déclarés

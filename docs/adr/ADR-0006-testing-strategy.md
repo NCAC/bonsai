@@ -1,7 +1,7 @@
 # ADR-0006 : Testing Strategy
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Date** | 2026-03-18 |
 | **Décideurs** | @ncac |
@@ -21,7 +21,7 @@ Aucune stratégie de test n'est documentée dans les RFC. Pour qu'un framework s
 ### Composants à tester
 
 | Composant | Dépendances | Difficulté |
-|-----------|-------------|------------|
+| --- | --- | --- |
 | **Feature** | Entity, Channel (listen, request) | Moyenne |
 | **Entity** | Aucune (ou Immer) | Basse |
 | **Channel** | Radio (interne) | Basse |
@@ -93,7 +93,7 @@ describe('CartFeature', () => {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Contrôle total | - Beaucoup de boilerplate |
 | + Pas de magie | - Chaque équipe réinvente |
 | + Flexible | - Incohérence entre projets |
@@ -165,7 +165,7 @@ describe('CartView', () => {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + DX excellente | - Plus de code framework à maintenir |
 | + Patterns cohérents | - API à concevoir et documenter |
 | + Mock auto depuis déclarations | - Risque d'abstraction fuyante |
@@ -194,7 +194,7 @@ describe('CartView', () => {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Patterns familiers (Testing Library) | - Dépendance externe |
 | + Accessibilité by default | - Adaptation peut être bancale |
 | + Grande communauté | - Perte de contrôle sur l'API |
@@ -233,7 +233,7 @@ describe('CartFeature contracts', () => {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Tests déclaratifs | - Moins flexible |
 | + Contrats explicites | - Cas complexes difficiles |
 | + Documentation vivante | - Nouveau pattern à apprendre |
@@ -243,7 +243,7 @@ describe('CartFeature contracts', () => {
 ## Analyse comparative
 
 | Critère | A (Manual) | B (Harness) | C (TL Adapter) | D (Contracts) |
-|---------|------------|-------------|----------------|---------------|
+| --- | --- | --- | --- | --- |
 | **DX** | ⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
 | **Flexibilité** | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐ |
 | **Cohérence** | ⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
@@ -269,7 +269,7 @@ Justification :
 
 ### Structure proposée
 
-```
+```text
 packages/
 ├── bonsai/                 # Core framework
 └── bonsai-testing/         # Test utilities
@@ -415,6 +415,6 @@ describe('Cart + Pricing integration', () => {
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| ---------- | --------------------------------------------- |
 | 2026-03-17 | Création (Proposed) — 4 options documentées |
 | 2026-03-18 | **Accepted** — Test Harness `@bonsai/testing` |

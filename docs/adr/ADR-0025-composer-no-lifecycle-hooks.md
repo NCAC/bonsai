@@ -4,7 +4,7 @@
 > Les hooks `onMount`/`onUnmount` n'ont aucun cas d'usage légitime et sont retirés.**
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Date** | 2026-04-07 |
 | **Décideurs** | @ncac |
@@ -13,7 +13,8 @@
 | **ADRs liées** | [ADR-0020](ADR-0020-composers-n-instances-composition-heterogene.md) (N-instances, scope immutable) |
 | **Supersède** | — (corrige une incohérence interne, pas de décision antérieure formelle) |
 
-> ### Statut normatif
+> ## Statut normatif
+>
 > Ce document est **normatif** pour le contrat de lifecycle du Composer.
 > Il résout la contradiction entre `composer.md` (qui déclarait les hooks)
 > et `lifecycle.md` (qui les niait). En cas de divergence résiduelle, **ce document prévaut**.
@@ -62,6 +63,7 @@ Pour déterminer si les hooks sont nécessaires, examinons les deux moments de v
 #### `onMount()` — le scope existe, le Composer est activé
 
 À ce moment, le framework :
+
 1. A résolu le slot DOM (l'élément `@ui` ou le sélecteur Foundation)
 2. A instancié le Composer avec `this.slot` assigné
 3. Va immédiatement appeler `resolve()`
@@ -69,7 +71,7 @@ Pour déterminer si les hooks sont nécessaires, examinons les deux moments de v
 **Question** : que pourrait faire le développeur dans `onMount()` que `resolve()` ne peut pas faire ?
 
 | Action hypothétique | Possible dans `resolve()` ? | Verdict |
-|--------------------|-----------------------------|---------|
+| --- | --- | --- |
 | Lire le DOM du scope (querySelector, getAttribute) | ✅ Oui — I35 autorise la lecture | Inutile |
 | Faire un `request()` pour obtenir une donnée décisionnelle | ✅ Oui — le Composer a ses Channels câblés | Inutile |
 | Stocker de l'information décisionnelle initiale | ✅ Oui — dans le handler d'Event ou dans `resolve()` | Inutile |
@@ -81,6 +83,7 @@ Pour déterminer si les hooks sont nécessaires, examinons les deux moments de v
 #### `onUnmount()` — le slot a disparu, le Composer est détruit
 
 À ce moment, le framework :
+
 1. A détaché récursivement toutes les Views du Composer et leurs sous-arbres
 2. A unsubscribed tous les listeners Channel
 3. A nettoyé les event listeners DOM
@@ -90,7 +93,7 @@ Pour déterminer si les hooks sont nécessaires, examinons les deux moments de v
 **Question** : que pourrait faire le développeur dans `onUnmount()` que le framework ne fait pas déjà ?
 
 | Action hypothétique | Gérée par le framework ? | Verdict |
-|--------------------|-------------------------|---------|
+| --- | --- | --- |
 | Nettoyer les subscriptions Channel | ✅ Automatique — §9.4 de communication.md | Inutile |
 | Nettoyer les event listeners DOM | ✅ Automatique — cascade de destruction | Inutile |
 | Libérer les références aux Views | ✅ Automatique — `currentView = null` | Inutile |
@@ -103,7 +106,7 @@ Pour déterminer si les hooks sont nécessaires, examinons les deux moments de v
 ### Pourquoi le Composer est fondamentalement différent de la View
 
 | Aspect | View | Composer |
-|--------|------|----------|
+| --- | --- | --- |
 | **Écrit dans le DOM** | ✅ Oui (PDR, getUI, templates) | ❌ Non (I35) |
 | **Possède des ressources** | ✅ Oui (nodes, uiCache, delegation) | ❌ Non |
 | **A du state observable** | ✅ localState (I42) | ❌ Info décisionnelle transitoire uniquement |
@@ -119,7 +122,7 @@ Le Composer ne possède rien — il décide.
 ## Contraintes
 
 | # | Contrainte | Justification |
-|---|-----------|---------------|
+| --- | --- | --- |
 | **C1** | **I35** — Le Composer n'a aucune écriture DOM | Pas de ressource à acquérir ni à libérer |
 | **C2** | **D21** — Le Composer est un décideur pur | Sa seule logique est dans `resolve()` et les event handlers |
 | **C3** | **Nettoyage framework 100%** | Le framework gère automatiquement tout le cleanup (§9.4, §5 cascade) |
@@ -135,7 +138,7 @@ Le Composer ne possède rien — il décide.
 pour s'aligner sur `composer.md`. Documenter que les hooks sont rarement nécessaires.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Symétrie API avec View (`onAttach`/`onDetach`) | - Aucun cas d'usage légitime identifié |
 | + Extensibilité « au cas où » | - Invite aux anti-patterns (side-effects, timers, accès DOM) |
 | | - Augmente la surface API sans bénéfice |
@@ -170,7 +173,7 @@ Le Composer n'a que `resolve()` comme point d'entrée et les event handlers
 comme canaux de réception. Corriger `composer.md` pour s'aligner sur `lifecycle.md`.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + API minimale — le Composer n'expose que ce qui est utile | - Perte de symétrie avec View |
 | + Impossible de faire des anti-patterns dans des hooks inexistants | - Si un cas d'usage émerge, il faudra un nouvel ADR pour réintroduire |
 | + Cohérent avec la nature de « décideur pur » | |
@@ -200,7 +203,7 @@ abstract class Composer {
 ## Analyse comparative
 
 | Critère | Option A (garder) | Option B (retirer) |
-|---------|-------------------|-------------------|
+| --- | --- | --- |
 | **Minimalisme API** | ⭐⭐ | ⭐⭐⭐ |
 | **Clarté du contrat** | ⭐⭐ | ⭐⭐⭐ |
 | **Prévention anti-patterns** | ⭐ | ⭐⭐⭐ |
@@ -272,5 +275,5 @@ L'Option A est rejetée car elle ajoute de la surface API sans bénéfice et cr�
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-04-07 | Création (Proposed) — suite à l'audit de cohérence documentaire |

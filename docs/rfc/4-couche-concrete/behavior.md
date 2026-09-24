@@ -1,20 +1,23 @@
 # Behavior -- Plugin UI reutilisable et aveugle
 
-> **Enrichissement DOM sans couplage a la View hote, handlers auto-derives, localState**
+> **Enrichissement DOM sans couplage a la View hote, handlers auto-dérivés, localState**
 
 [<- Retour couche concrete](README.md) | [<- View](view.md) | [-> Foundation](foundation.md)
 
 ---
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Composant** | Behavior |
 | **Couche** | Concrete (éphémère) |
-| **Source**    | Historique : RFC-0002-api-contrats-typage §10 |
+| **Source** | Historique : RFC-0002-api-contrats-typage §10 |
 | **Statut** | RFC anticipée — Strate 2 (ADR-0028). Pattern modulaire ADR-0042 applicable (cf. encadré ci-dessous). |
 | **ADRs liées** | **ADR-0042 (pattern modulaire — applicable à Behavior par I83)**, ADR-0007 (contrat Behavior), ADR-0009 (formulaires), ADR-0013 (code reuse), ADR-0015 (localState), ADR-0040 (Channel générique) |
 
-> Q7 résolu (D36) : le contrat Behavior est **stabilisé**.
+> Q7 résolu (D36) : le **principe** du contrat Behavior (plugin UI aveugle,
+> localState, handlers auto-dérivés) est stabilisé — sa **syntaxe concrète**
+> ne l'est pas : elle suit désormais le pattern modulaire ADR-0042 (cf.
+> encadré ci-dessous), non encore implémenté (Strate 2).
 
 > **⚠ Mise à jour ADR-0042 (2026-05-06)** — Behavior n'est pas encore implémentée
 > (livraison prévue Strate 2). Les exemples ci-dessous qui utilisent encore
@@ -23,10 +26,10 @@
 > pour l'implémentation Behavior est le **pattern modulaire ADR-0042**,
 > identique à celui de View (I83) :
 >
->   - Module 1 : `features: TFeatureContract` — Feature-groupé
->   - Module 2 : `uiEvents: TUIContract` — `ui<TEl>()(events)` typé
->   - Module 3 : `uiElements: TUIElements<typeof uiEvents>` — sélecteurs CSS
->   - Composition : `class XBehavior extends Behavior<TBehaviorContract<F, U>> implements TBehaviorCallbacks<TBC>`
+> - Module 1 : `features: TFeatureContract` — Feature-groupé
+> - Module 2 : `uiEvents: TUIContract` — `ui<TEl>()(events)` typé
+> - Module 3 : `uiElements: TUIElements<typeof uiEvents>` — sélecteurs CSS
+> - Composition : `class XBehavior extends Behavior<TBehaviorContract<F, U>> implements TBehaviorCallbacks<TBC>`
 >
 > Les sections suivantes seront **réécrites au démarrage de la Strate 2**, en
 > alignement strict sur l'API livrée. Cf. [view.md §1–3](view.md#1-classe-abstraite-view)
@@ -37,7 +40,7 @@
 ## Table des matieres
 
 1. [Classe abstraite Behavior](#1-classe-abstraite-behavior)
-2. [Declarations et API](#2-declarations-et-api)
+2. [Déclarations et API](#2-déclarations-et-api)
 3. [Cycle de vie](#3-cycle-de-vie)
 4. [Exemples](#4-exemples)
 
@@ -46,7 +49,7 @@
 ## 1. Classe abstraite Behavior
 
 Le Behavior est un **plugin UI reutilisable et aveugle** (D36). Il ne connait pas
-sa View hote -- pas de `this.view` (I44). Ses 3 parametres de type suivent le meme
+sa View hote -- pas de `this.view` (I44). Ses 3 parametres de type suivent le même
 pattern que la View :
 
 ```typescript
@@ -82,10 +85,10 @@ abstract class Behavior<
 }
 ```
 
-> **I30** : le Behavior ne possede **aucun domain state**, comme la View.
+> **I30** : le Behavior ne possède **aucun domain state**, comme la View.
 > **I42, D37** : le Behavior **PEUT** declarer un state local de presentation
-> (memes 5 contraintes que la View).
-> **I44** : le Behavior n'a **aucun acces** a sa View hote.
+> (mêmes 5 contraintes que la View).
+> **I44** : le Behavior n'a **aucun accès** a sa View hote.
 
 ### Types dedies au Behavior
 
@@ -107,12 +110,12 @@ type TBehaviorTemplates<TUI extends TUIMap<any>> =
 
 ---
 
-## 2. Declarations et API
+## 2. Déclarations et API
 
 ### 2.1 TUIMap propre (I43)
 
-Le Behavior declare ses propres cles ui avec le meme pattern que la View (D35) :
-`el` = type d'element HTML, `event` = evenements autorises.
+Le Behavior déclare ses propres clés ui avec le même pattern que la View (D35) :
+`el` = type d'élément HTML, `event` = événements autorises.
 
 ```typescript
 type TTrackingUI = TUIMap<{
@@ -120,15 +123,15 @@ type TTrackingUI = TUIMap<{
 }>;
 ```
 
-> **I43** : les cles TUIMap du Behavior **NE DOIVENT PAS** collisionner avec celles
-> de la View hote. Verifie au bootstrap par le framework. La responsabilite est portee
-> par la **View** (qui declare ses Behaviors), pas par le Behavior (qui est aveugle).
+> **I43** : les clés TUIMap du Behavior **NE DOIVENT PAS** collisionner avec celles
+> de la View hote. Vérifie au bootstrap par le framework. La responsabilite est portee
+> par la **View** (qui déclare ses Behaviors), pas par le Behavior (qui est aveugle).
 
 ### 2.2 Auto-discovery des handlers UI (D48)
 
-Meme convention que la View : **pas de `get uiEvents()`** -- le framework auto-derive
+Même convention que la View : **pas de `get uiEvents()`** -- le framework auto-dérive
 les handlers depuis `TUIMap` (D48). Nommage : `on${Capitalize<Key>}${Capitalize<Event>}`.
-Les handlers recoivent `TUIEventFor<TUI, K, E>` (D35) :
+Les handlers reçoivent `TUIEventFor<TUI, K, E>` (D35) :
 
 ```typescript
 // TTrackingUI declare : trackedElement + ['click']
@@ -141,9 +144,9 @@ onTrackedElementClick(e: TUIEventFor<TTrackingUI, 'trackedElement', 'click'>): v
 
 ### 2.3 Channels independants
 
-Le Behavior declare ses dependances Channel **independamment** de la View,
+Le Behavior déclare ses dependances Channel **independamment** de la View,
 dans ses `params` (ADR-0024).
-Memes primitives : `trigger`, `listen`, `request`. Jamais `emit()` (D7, I4).
+Mêmes primitives : `trigger`, `listen`, `request`. Jamais `emit()` (D7, I4).
 
 ```typescript
 class TrackingBehavior extends Behavior<[Analytics.Channel], TTrackingUI> {
@@ -160,7 +163,7 @@ class TrackingBehavior extends Behavior<[Analytics.Channel], TTrackingUI> {
 
 ### 2.4 Templates Mode C (N2 sur ses propres ui)
 
-Le Behavior peut declarer des templates sur ses propres cles ui, pour de l'alteration
+Le Behavior peut declarer des templates sur ses propres clés ui, pour de l'alteration
 structurelle par ilots (N2). Le Mode B (template root/N3) est **interdit** -- le Behavior
 n'a pas de rootElement.
 
@@ -175,7 +178,7 @@ get templates() {
 
 ### 2.5 localState (D37, ADR-0015)
 
-Meme mecanisme que la View (I42, ADR-0015). Le Behavior peut declarer un state local de
+Même mecanisme que la View (I42, ADR-0015). Le Behavior peut declarer un state local de
 presentation sous les 5 contraintes : type, reactif, encapsule, non-broadcastable,
 detruit au `onDetach()`.
 
@@ -197,76 +200,79 @@ abstract class Behavior<
 ```
 
 > Les callbacks N1 (`onLocal{Key}Updated`) et les selectors N2/N3 (`data.local?.xxx`)
-> fonctionnent de maniere identique a la View. Voir [view.md SS7](view.md#7-api-localstate)
-> pour la specification complete.
+> fonctionnent de maniere identique a la View. Voir [view.md §7](view.md#7-api-localstate)
+> pour la specification complète.
 
 ### 2.6 Droits d'alteration DOM (I45)
 
 | Niveau | Autorise | Scope |
-|--------|----------|-------|
-| **N1** (attributs, classes, text) | Oui | Ses propres cles ui uniquement |
-| **N2** (insertion/suppression noeuds) | Oui | Ses propres cles ui uniquement (via templates Mode C) |
+| --- | --- | --- |
+| **N1** (attributs, classes, text) | Oui | Ses propres clés ui uniquement |
+| **N2** (insertion/suppression noeuds) | Oui | Ses propres clés ui uniquement (via templates Mode C) |
 | **N3** (remplacement complet rootElement) | Non | Interdit -- pas de rootElement |
-| DOM de la View hote | Non | Aucun acces (I44) |
+| DOM de la View hote | Non | Aucun accès (I44) |
 
 ---
 
 ## 3. Cycle de vie
 
-Le cycle de vie du Behavior est **lie a celui de sa View hote** :
+Le cycle de vie du Behavior est **lié à celui de sa View hôte** :
 
 | Hook | Quand |
-|------|-------|
-| `onAttach()` | Quand la View hote est attachee au DOM |
-| `onDetach()` | Quand la View hote est detachee du DOM |
+| --- | --- |
+| `onAttach()` | Quand la View hôte est attachée au DOM |
+| `onDetach()` | Quand la View hôte est détachée du DOM |
 
-Le Behavior est instancie avec la View et detruit avec elle.
-Il ne survit jamais a sa View hote.
+Le Behavior est instancié avec la View et détruit avec elle.
+Il ne survit jamais à sa View hôte.
 Ces hooks sont des appels directs du framework (L2), pas des Events Channel.
 
 Au `onAttach()`, le framework :
-1. Resout les selecteurs `params.uiElements` du Behavior dans le scope du `rootElement` de la View hote
-2. Verifie la non-collision des cles ui avec la View (I43)
-3. Branche les uiEvents via la delegation d'evenements
-4. Initialise le localState si declare
+
+1. Résout les sélecteurs `params.uiElements` du Behavior dans le scope du `rootElement` de la View hôte
+2. Vérifie la non-collision des clés ui avec la View (I43)
+3. Branche les uiEvents via la délégation d'événements
+4. Initialise le localState si déclaré
 
 Au `onDetach()`, le framework :
-1. Detruit le localState
-2. Debranche les uiEvents
+
+1. Détruit le localState
+2. Débranche les uiEvents
 3. Nettoie les projections templates
 
-### 3.1 Machine a etats
+### 3.1 Machine à états
 
-```
+```text
 attached -> detached -> [destroyed]
 ```
 
-| Etat | Entree (declencheur) | Sorties possibles | Hooks disponibles |
-|------|----------------------|-------------------|-------------------|
-| `attached` | Attache a la View hote apres son `onAttach()` | -> `detached` | `onAttach()` |
-| `detached` | Detache quand la View hote recoit `onDetach()` | -> `destroyed` | `onDetach()` |
+| État | Entrée (déclencheur) | Sorties possibles | Hooks disponibles |
+| --- | --- | --- | --- |
+| `attached` | Attaché à la View hôte après son `onAttach()` | -> `detached` | `onAttach()` |
+| `detached` | Détaché quand la View hôte reçoit `onDetach()` | -> `destroyed` | `onDetach()` |
 | `destroyed` | Nettoyage complet | -- (terminal) | -- |
 
 > **Invariants de transition** :
-> - Le Behavior est toujours detache **avant** la View hote
-> - `localState` (I42, D37) est nettoye au `detached`
-> - Aucun Behavior ne peut exister sans View hote
+>
+> - Le Behavior est toujours détaché **avant** la View hôte
+> - `localState` (I42, D37) est nettoyé au `detached`
+> - Aucun Behavior ne peut exister sans View hôte
 
-### 3.2 Algorithme de decision (D38) -- Behavior vs View vs Heritage
+### 3.2 Algorithme de décision (D38) -- Behavior vs View vs Héritage
 
 Quand utiliser un Behavior vs une View+options vs l'heritage :
 
 - **Q0** : Sert de base de composition -> **View**
-- **Q1** : Meme View, contexte different -> **View + options** (D34)
+- **Q1** : Même View, contexte different -> **View + options** (D34)
 - **Q2** : Capacite orthogonale, applicable a des Views sans rapport -> **Behavior**
 - **Q3** : Alteration template principal -> **Heritage** (rare, a decourager)
-- **Q4** : Channels propres necessaires -> **Behavior** ; sinon -> methode privee
+- **Q4** : Channels propres nécessaires -> **Behavior** ; sinon -> méthode privee
 
 ---
 
 ## 4. Exemples
 
-### 4.1 TrackingBehavior -- handlers auto-derives (D48), pas d'alteration DOM
+### 4.1 TrackingBehavior -- handlers auto-dérivés (D48), pas d'alteration DOM
 
 ```typescript
 type TTrackingUI = TUIMap<{
@@ -295,7 +301,7 @@ class TrackingBehavior extends Behavior<[Analytics.Channel], TTrackingUI> {
 }
 ```
 
-### 4.2 IScrollBehavior -- alteration DOM N2, localState, handler auto-derive
+### 4.2 IScrollBehavior -- alteration DOM N2, localState, handler auto-dérive
 
 ```typescript
 type TScrollLocalState = {
@@ -344,11 +350,11 @@ class IScrollBehavior extends Behavior<[], TScrollUI, TScrollLocalState> {
 ### 4.3 ContactFormBehavior -- formulaire reutilisable (ADR-0009)
 
 Un `FormBehavior` encapsule la logique de saisie, validation et feedback
-d'un formulaire. Le Behavior gere le localState du formulaire (valeurs,
+d'un formulaire. Le Behavior gère le localState du formulaire (valeurs,
 touched, erreurs) et delegue la soumission a la View hote via un callback.
 
 > **ADR-0009 (Option C)** -- Le FormBehavior est le pattern recommande pour
-> les formulaires reutilisables (meme formulaire d'adresse sur 3 pages).
+> les formulaires reutilisables (même formulaire d'adresse sur 3 pages).
 > Pour les formulaires simples affiches une seule fois, le localState
 > directement dans la View suffit (ADR-0009, Option B).
 
@@ -497,7 +503,7 @@ class ContactFormBehavior extends Behavior<
 > mais dans le pattern formulaire la délégation est préférée pour respecter la séparation
 > des responsabilités (le Behavior gère le DOM, la View orchestre le métier).
 
-### 4.4 Declaration dans la View hote
+### 4.4 Déclaration dans la View hote
 
 ```typescript
 // Params declares selon ADR-0024 (rootElement fourni par le Composer, ADR-0026)
@@ -567,5 +573,5 @@ class ProductView extends View<TProductViewCapabilities> {
 ## Lecture suivante
 
 -> [foundation.md](foundation.md) -- le point d'ancrage DOM unique
--> [view.md SS7](view.md#7-api-localstate) -- specification complete localState
+-> [view.md §7](view.md#7-api-localstate) -- specification complète localState
 -> [ADR-0009](../../adr/ADR-0009-forms-pattern.md) -- patterns formulaires

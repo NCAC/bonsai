@@ -114,39 +114,44 @@ Je suis votre assistant spécialisé pour le développement du **Framework Bonsa
 
 ### Pour l'architecture
 ```
+
 "Analyse l'architecture des Features et propose une implémentation"
 "Comment structurer la communication entre Views et Features ?"
 "Valide la cohérence du pattern Entity/Feature"
-```
 
+```
 ### Pour le build system
 ```
+
 "Debug le problème de build du framework"
 "Optimise les performances du build cache"
 "Configure le hot reload pour les packages"
-```
 
+```
 ### Pour les tests
 ```
+
 "Implémente les tests TDD pour le composant Application"
 "Analyse la couverture de code actuelle"
 "Crée une suite de tests d'intégration"
-```
 
+```
 ### Pour l'environnement de dev
 ```
+
 "Configure un Dev Container pour Bonsai"
 "Optimise le workspace pnpm"
 "Configure les outils de développement"
-```
 
+```
 ### Pour la documentation
 ```
+
 "Rédige la documentation API pour les Features"
 "Crée un guide de démarrage rapide"
 "Documente les patterns d'architecture"
-```
 
+```
 ## 📚 Ressources et documentation
 
 ### Documentation normative (source de vérité)

@@ -1,7 +1,7 @@
 # ADR-0030 : Tests comme preuve d'architecture — Spécification exécutable par strate
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Date** | 2026-04-10 |
 | **Décideurs** | @ncac |
@@ -33,7 +33,7 @@ L'ADR-0006 (Testing Strategy) définit les **helpers publics** que Bonsai fourni
 Le présent ADR définit les **tests internes du framework lui-même** — la preuve que l'implémentation respecte les invariants documentés. Ce sont deux préoccupations orthogonales :
 
 | ADR-0006 | ADR-0030 |
-|----------|----------|
+| --- | --- |
 | Tests écrits par les **utilisateurs** du framework | Tests écrits par les **développeurs** du framework |
 | Helpers publics, patterns documentés | Assertions d'invariants, sémantiques runtime, E2E |
 | DX — reportée en v1.1 | Preuve d'architecture — **v1 bloquant** |
@@ -43,7 +43,7 @@ Le présent ADR définit les **tests internes du framework lui-même** — la pr
 ## Contraintes
 
 | # | Contrainte | Source |
-|---|-----------|--------|
+| --- | --- | ---------------------- |
 | C1 | Chaque strate DOIT avoir une suite de tests verte **avant** de passer à la suivante | ADR-0028 C1 |
 | C2 | Les tests DOIVENT prouver les invariants — pas simplement tester des méthodes | Principe Bonsai |
 | C3 | Un invariant compile-time est prouvé par un test `@ts-expect-error` ou `tsd` — pas par un test runtime | Compile-time > Runtime |
@@ -57,7 +57,7 @@ Le présent ADR définit les **tests internes du framework lui-même** — la pr
 
 ### Option A — Tests par composant (structure classique)
 
-```
+```text
 tests/
   unit/
     radio.test.ts
@@ -69,14 +69,14 @@ tests/
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Structure simple et familière | - Aucune traçabilité vers les invariants |
 | + Facile à naviguer par composant | - Impossible de savoir quels invariants sont couverts |
 | | - Les invariants cross-composant (I7, I8, I31) tombent entre les chaises |
 
 ### Option B — Tests par invariant (structure par spécification)
 
-```
+```text
 tests/
   invariants/
     I01-feature-emit-own-channel.test.ts
@@ -94,14 +94,14 @@ tests/
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Traçabilité parfaite : 1 fichier = 1 invariant prouvé | - Explosion du nombre de fichiers |
 | + Facile de vérifier la couverture (ls = % d'invariants testés) | - Certains invariants sont triviaux (1 assert) → fichiers trop petits |
 | + Tests cross-composant naturels | - Pas de vue d'ensemble par composant |
 
 ### Option C — Structure hybride : composant × strate avec traçabilité par annotation
 
-```
+```text
 tests/
   unit/
     strate-0/
@@ -154,7 +154,7 @@ tests/
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Navigation par composant ET par strate | - Structure plus profonde |
 | + Traçabilité par annotation dans chaque fichier (`# I10, I55`) | - Annotation manuelle (pas automatique) |
 | + Les hotspots ont des fichiers dédiés (testables en isolation) | |
@@ -167,7 +167,7 @@ tests/
 ## Analyse comparative
 
 | Critère | Option A (par composant) | Option B (par invariant) | Option C (hybride) |
-|---------|------------------------|-------------------------|-------------------|
+| --- | --- | --- | --- |
 | Traçabilité invariants → tests | ❌ | ⭐⭐⭐ | ⭐⭐⭐ |
 | Navigabilité par composant | ⭐⭐⭐ | ❌ | ⭐⭐⭐ |
 | Exécution par strate | ❌ | ⭐⭐ | ⭐⭐⭐ |
@@ -473,7 +473,7 @@ describe('Strate 0 Gate — Cart round-trip E2E', () => {
 ### Strate 0
 
 | Fichier de test | Invariants prouvés | Niveau |
-|----------------|-------------------|--------|
+| --- | --- | --- |
 | `compile-time/type-safety.test.ts` | I1, I2, I3, I4, I5, I12, I15, I17, I25, I26, I29p, I30, I35, I39, I44, I46, I47, I49, I50, I52 | Compile |
 | `unit/strate-0/radio.singleton.test.ts` | I15 (runtime) | Unit |
 | `unit/strate-0/channel.basic.test.ts` | I10, I11, I25r, I26r, I27, I29, I55 | Unit |
@@ -489,7 +489,7 @@ describe('Strate 0 Gate — Cart round-trip E2E', () => {
 ### Strate 1
 
 | Fichier de test | Invariants / Sémantiques prouvés | Niveau |
-|----------------|--------------------------------|--------|
+| --- | --- | --- |
 | `unit/strate-1/entity.patches.test.ts` | I51-perkey, I53, no-op par patches, changedKeys, TEntityEvent | Unit |
 | `unit/strate-1/entity.reentrance.test.ts` | **Hotspot A** — FIFO, maxDepth, ordre | Unit |
 | `unit/strate-1/metas.propagation.test.ts` | I7, I8, I54 | Unit |
@@ -507,7 +507,7 @@ describe('Strate 0 Gate — Cart round-trip E2E', () => {
 ### Strate 2
 
 | Fichier de test | Invariants / Sémantiques prouvés | Niveau |
-|----------------|--------------------------------|--------|
+| --- | --- | --- |
 | `unit/strate-2/localstate.timing.test.ts` | I42, I57, dual N1/N2-N3, batch | Unit |
 | `unit/strate-2/localstate.edge-cases.test.ts` | **Hotspot B** — ré-entrance, detach, double effet | Unit |
 | `unit/strate-2/behavior.isolation.test.ts` | I4-behavior, I43, I44, I45 | Unit |
@@ -519,7 +519,7 @@ describe('Strate 0 Gate — Cart round-trip E2E', () => {
 ### Anti-patterns (tests "must fail")
 
 | Fichier | Anti-patterns prouvés |
-|---------|----------------------|
+| --- | --- |
 | `compile-time/type-safety.test.ts` | Cross-domain emit, Entity leaking, Radio access, View emit, View stateful |
 | `unit/strate-0/channel.basic.test.ts` | Double handler (I10) |
 | `unit/strate-0/application.bootstrap.test.ts` | Undeclared channel, namespace collision |
@@ -530,7 +530,7 @@ describe('Strate 0 Gate — Cart round-trip E2E', () => {
 ## Comptage de couverture
 
 | Catégorie | Total | Couverts par la matrice | Non-testables mécaniquement |
-|-----------|-------|------------------------|---------------------------|
+| --- | --- | --- | --- |
 | Invariants (I1–I58, I63) | 57 v1 | **51** | 6 (I13, I18, I19, I23, I27, I36 — architecturaux/convention) |
 | Sémantiques runtime (ADR-0001/0003/0015) | ~30 | **~28** | 2 (ordre async non garanti — illustratif) |
 | Critères gate E2E (ADR-0028) | 4 | **4** | 0 |
@@ -608,6 +608,6 @@ pnpm test -- --testPathPattern="composer.cascade"
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-04-10 | Création — tests comme preuve d'architecture, structure hybride composant × strate |
 | 2026-04-10 | 🟢 **Accepted** — Option C (hybride). Matrice de couverture : 51 invariants, ~28 sémantiques, 4 E2E, 7 anti-patterns. ~35 fichiers de test pour v1. |

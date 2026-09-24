@@ -1,7 +1,7 @@
 # ADR-0014 : SSR hydration strategy
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Date** | 2026-03-24 |
 | **Décideurs** | @ncac |
@@ -18,15 +18,15 @@ données sur ce DOM existant via des mutations chirurgicales, sans VDOM, sans di
 Ce postulat fondateur est déjà ancré dans le corpus :
 
 | Référence | Ce qu'elle spécifie |
-|-----------|---------------------|
-| **D19** (PDR) | *« Le DOM préexiste (SSR/CMS/statique) »* — hypothèse fondatrice |
+| --- | --- |
+| **D19** (PDR) | _« Le DOM préexiste (SSR/CMS/statique) »_ — hypothèse fondatrice |
 | **I31** | Le `rootElement` DOIT exister au `onAttach()` ; si un élément correspondant au sélecteur existe dans le slot (SSR), il est **réutilisé** |
 | **D30** | Fallback SPA : si l'élément n'existe pas et qu'un descripteur objet est fourni, le framework **crée** l'élément |
-| **§9.4.7** (bootstrap) | Étape 1 : *« DOM serveur existe (SSR/CMS/statique) »* |
-| **§12.4** étape 5a | *« SI trouvé (SSR) → `el` = élément existant »* |
-| **§9.4.6** Mode C | *« Le DOM serveur est la source de vérité structurelle »* |
-| **RFC-0003** `setup()` | *« Localise les nœuds dynamiques dans le conteneur existant (SSR/hydratation) »* |
-| **RFC-0003** `create()` | *« Crée le DOM complet (mode SPA, pas de SSR) »* |
+| **§9.4.7** (bootstrap) | Étape 1 : _« DOM serveur existe (SSR/CMS/statique) »_ |
+| **§12.4** étape 5a | _« SI trouvé (SSR) → `el` = élément existant »_ |
+| **§9.4.6** Mode C | _« Le DOM serveur est la source de vérité structurelle »_ |
+| **RFC-0003** `setup()` | _« Localise les nœuds dynamiques dans le conteneur existant (SSR/hydratation) »_ |
+| **RFC-0003** `create()` | _« Crée le DOM complet (mode SPA, pas de SSR) »_ |
 
 **Problème** : ces mentions sont **éparpillées** et ne forment pas un contrat unifié.
 Il manque un arbitrage formel sur :
@@ -136,7 +136,7 @@ setup(container: HTMLElement): void {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Zéro concept nouveau — tout est déjà spécifié dans le corpus | - Double fetch : le serveur a les données, le client les re-demande |
 | + API View identique SSR/SPA — transparence totale | - Flash potentiel : entre le bootstrap et le retour du fetch, le DOM peut être stale |
 | + Aucune surface d'attaque XSS (pas de JSON inline) | - Latence perçue sur les données dynamiques (listes, compteurs) |
@@ -172,8 +172,8 @@ fetch initial, pas de flash, la première projection est un no-op garanti (donn�
 
 **Séquence de bootstrap modifiée** :
 
-```
-┌───────────── BOOTSTRAP (Option B) ──────────────────────┐
+```text
+┌───────────── BOOTSTRAP (Option B) ───────────────────────┐
 │                                                          │
 │  1. DOM serveur existe (HTML + <script> state)           │
 │  2. Framework lit #__BONSAI_STATE__ → parse JSON         │
@@ -183,7 +183,7 @@ fetch initial, pas de flash, la première projection est un no-op garanti (donn�
 │  4. Foundation/Composer crée les Views (D34)             │
 │  5. Pour chaque View :                                   │
 │     5a. rootElement trouvé → mode SSR (setup)            │
-│     5b. Entity déjà peuplée → première projection       │
+│     5b. Entity déjà peuplée → première projection        │
 │         = no-op (DOM serveur ≡ données)                  │
 │  6. Features : onAttach() → pas de fetch initial         │
 │     (Entities déjà peuplées)                             │
@@ -228,7 +228,7 @@ type TBonsaiSerializedState = Record<string, JsonSerializable>;
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Zéro fetch initial — Entities pré-peuplées | - Surface d'attaque XSS : JSON inline dans le HTML |
 | + Zéro flash — première projection = no-op garanti | - Duplication : données dans le HTML **et** dans le JSON |
 | + Time-to-interactive minimal | - Taille du HTML augmente (payload JSON) |
@@ -246,25 +246,25 @@ comme **100% statique par défaut**. Seules les zones déclarées dans `get temp
 touché par le framework. Le state peut être sérialisé **par island** (granulaire) au lieu
 d'un bloc global.
 
-```
-┌──────────── Page HTML serveur ──────────────────────┐
+```text
+┌──────────── Page HTML serveur ───────────────────────┐
 │                                                      │
 │  <header>  ← 100% statique, jamais touché            │
-│  <nav>     ← 100% statique                          │
+│  <nav>     ← 100% statique                           │
 │                                                      │
 │  <main id="product-view">                            │
-│    <h1 class="title">Widget Pro</h1>  ← statique    │
-│    ┌──────────────────────────────────┐               │
-│    │ <div class="ProductView-price"> │  ← Island 1  │
-│    │   42 €                          │    (Mode C)   │
-│    │ </div>                          │               │
-│    └──────────────────────────────────┘               │
-│    ┌──────────────────────────────────┐               │
-│    │ <ul class="ProductView-reviews">│  ← Island 2  │
-│    │   <li data-item-id="r1">...</li>│    (Mode C)   │
-│    │ </ul>                           │               │
-│    └──────────────────────────────────┘               │
-│    <footer> ← statique                              │
+│    <h1 class="title">Widget Pro</h1>  ← statique     │
+│    ┌──────────────────────────────────┐              │
+│    │ <div class="ProductView-price">  │  ← Island 1  │
+│    │   42 €                           │    (Mode C)  │
+│    │ </div>                           │              │
+│    └──────────────────────────────────┘              │
+│    ┌──────────────────────────────────┐              │
+│    │ <ul class="ProductView-reviews"> │  ← Island 2  │
+│    │   <li data-item-id="r1">...</li> │    (Mode C)  │
+│    │ </ul>                            │              │
+│    └──────────────────────────────────┘              │
+│    <footer> ← statique                               │
 │  </main>                                             │
 │                                                      │
 └──────────────────────────────────────────────────────┘
@@ -313,7 +313,7 @@ class ProductView extends View<[Product.Channel, Review.Channel], TProductViewUI
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Hydratation minimale — seules les zones interactives sont traitées | - Granularité du state plus complexe à gérer côté serveur |
 | + Parfait pour Mode C (déjà spécifié dans RFC-0002) | - Ne couvre pas le Mode B (template root) |
 | + Compatible avec les CMS/SSG (Markdown → HTML statique) | - Deux mécanismes de state (global vs par-island) |
@@ -325,7 +325,7 @@ class ProductView extends View<[Product.Channel, Review.Channel], TProductViewUI
 ## Analyse comparative
 
 | Critère | Option A | Option B | Option C |
-|---------|----------|----------|----------|
+| --- | --- | --- | --- |
 | **Performance** (TTI) | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
 | **Complexité framework** | ⭐⭐⭐ (rien à ajouter) | ⭐⭐ (hydrate, state block) | ⭐ (state granulaire) |
 | **Complexité serveur** | ⭐⭐⭐ (rend le HTML, c'est tout) | ⭐⭐ (rend HTML + sérialise state) | ⭐ (rend HTML + state par island) |
@@ -351,7 +351,7 @@ inacceptable.
    **rien à inventer** — seulement à formaliser ce qui est éparpillé. Bonsai n'invente pas
    de nouveaux concepts quand les existants suffisent.
 
-2. **Philosophie PDR** — D19 pose que *« le DOM préexiste »*. La conséquence logique :
+2. **Philosophie PDR** — D19 pose que _« le DOM préexiste »_. La conséquence logique :
    le DOM est la source de vérité structurelle, pas un blob JSON sérialisé. `setup()`
    **parcourt** le DOM existant et en extrait les références — c'est de l'hydratation
    par construction.
@@ -477,7 +477,7 @@ Le framework détecte le mode **individuellement pour chaque View**, pas globale
 l'application. Une même application peut avoir des Views en mode SSR et d'autres en mode
 SPA simultanément.
 
-```
+```text
 querySelector(rootElement) dans le scope du slot :
   ├─ TROUVÉ     → Mode SSR : adopter l'élément, setup()
   ├─ NON TROUVÉ + descripteur objet → Mode SPA : créer, create()
@@ -539,6 +539,6 @@ premier `onAttach()`.
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| ---------- | ----------------------------------------------------------------------------------- |
 | 2026-03-24 | Création (Proposed) — formalisation du contrat SSR éparpillé dans RFC-0002/RFC-0003 |
 | 2026-03-24 | Accepté — Option A (hydratation structurelle pure) retenue |

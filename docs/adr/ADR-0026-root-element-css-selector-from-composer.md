@@ -5,7 +5,7 @@
 > Si l'élément n'existe pas dans le slot, le framework le crée en parsant le sélecteur.**
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Date** | 2026-04-07 |
 | **Décideurs** | @ncac |
@@ -15,7 +15,8 @@
 | **ADRs liées** | [ADR-0014](ADR-0014-ssr-hydration-strategy.md) (SSR/hydratation), [ADR-0020](ADR-0020-composers-n-instances-composition-heterogene.md) (N-instances — §6.2 amendé) |
 | **Amende** | ADR-0020 §6.2 (`rootElement: Element \| string` → `rootElement: string`) |
 
-> ### Statut normatif
+> ## Statut normatif
+>
 > Ce document est **normatif** pour le contrat du `rootElement` dans `TResolveResult` et `TViewParams`.
 > Il amende ADR-0020 §6.2 sur le type de `rootElement`.
 > En cas de divergence avec les documents antérieurs, **ce document prévaut**.
@@ -102,6 +103,7 @@ mais ce type n'existe nulle part dans le corpus.
 ### La solution unifiée
 
 Un **sélecteur CSS simple** est parseable de manière déterministe et peut servir **à la fois** de :
+
 - **Requête de recherche** (`slot.querySelector(selector)`) en mode SSR/hydratation
 - **Descripteur de création** (parser le sélecteur → `createElement` + classes/id/attributs) en mode SPA
 
@@ -112,13 +114,13 @@ Le sélecteur **est** le descripteur. Pas besoin de type supplémentaire.
 ## Contraintes
 
 | # | Contrainte | Justification |
-|---|-----------|---------------|
+| --- | --- | --- |
 | **C1** | **D21** — Le Composer est le seul décideur d'instanciation | Il décide quelle View instancier **et où** |
 | **C2** | **I35** — Le Composer ne crée pas d'éléments DOM | C'est le framework qui crée, pas le Composer |
 | **C3** | **I36** — La View ne compose pas | La View ne connaît pas son point de montage, ne crée pas son rootElement |
 | **C4** | **Pas de « SSR-first »** — Bonsai supporte SSR, SPA et hybride (îlots SPA dans page SSR) | Le mécanisme de rootElement doit couvrir tous les cas uniformément |
 | **C5** | **I31** — Au `onAttach()`, la View DOIT avoir un `el` existant | Garanti par le framework qui résout ou crée l'élément |
-| **C6** | **Sélecteurs simples uniquement** — Un rootElement est un seul nœud DOM | Les combinateurs CSS (` `, `>`, `+`, `~`) n'ont pas de sens pour créer un élément |
+| **C6** | **Sélecteurs simples uniquement** — Un rootElement est un seul nœud DOM | Les combinateurs CSS (``, `>`, `+`, `~`) n'ont pas de sens pour créer un élément |
 
 ---
 
@@ -145,7 +147,7 @@ type TResolveResult<V extends typeof View = typeof View> = {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Maximum de flexibilité | - 3 types pour la même chose — complexité API |
 | + Le Composer peut passer un Element résolu | - Le cas `Element` n'a plus de justification post-ADR-0020 §6.1 |
 | | - `TElementDescriptor` est un nouveau type à apprendre |
@@ -174,7 +176,7 @@ type TViewParams<TUI extends TUIMap<any>> = {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Un seul type, un seul fournisseur — clarté maximale | - Perte du cas `Element` (le Composer ne peut plus passer un nœud résolu) |
 | + Élimine la dualité params/TResolveResult | - Limite aux sélecteurs CSS simples (pas de combinateurs pour la création) |
 | + Le sélecteur est le descripteur — pas de type supplémentaire | - La même View utilisée par 2 Composers → chacun doit spécifier le rootElement |
@@ -199,7 +201,7 @@ type TResolveResult<V extends typeof View = typeof View> = {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Confort DX — le Composer peut omettre rootElement si la View a un défaut | - Maintient la dualité (qui gagne ?) |
 | + Rétrocompatible avec le code existant | - `rootElement` reste dans `TViewParams` — la View « connaît » son point de montage |
 | | - Incohérent avec D21 : si le Composer décide, pourquoi la View a-t-elle un défaut ? |
@@ -210,7 +212,7 @@ type TResolveResult<V extends typeof View = typeof View> = {
 ## Analyse comparative
 
 | Critère | Option A (Element + descriptor) | Option B (string only, Composer) | Option C (string, défaut View) |
-|---------|--------------------------------|----------------------------------|-------------------------------|
+| --- | --- | --- | --- |
 | **Simplicité API** | ⭐ | ⭐⭐⭐ | ⭐⭐ |
 | **Cohérence avec D21** | ⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
 | **Pas de dualité** | ⭐ | ⭐⭐⭐ | ⭐ |
@@ -252,7 +254,7 @@ Un sélecteur CSS simple encode de manière lisible et déterministe **toutes le
 nécessaires pour créer un élément DOM** :
 
 | Sélecteur | Tag résolu | Classes | Id | Attributs | Élément créé |
-|-----------|------------|---------|-----|-----------|-------------|
+| --- | --- | --- | --- | --- | --- |
 | `.Cart-root` | `div` (défaut) | `Cart-root` | — | — | `<div class="Cart-root">` |
 | `section.HomePage-root` | `section` | `HomePage-root` | — | — | `<section class="HomePage-root">` |
 | `form#LoginForm` | `form` | — | `LoginForm` | — | `<form id="LoginForm">` |
@@ -423,7 +425,7 @@ function parseCSSSelector(selector: string): TParsedSelector | null {
 
 ### Séquence d'attachement révisée (remplace `composer.md` §4.1, étapes 3–5)
 
-```
+```text
 1. Composer.resolve() → { view: ViewClass, rootElement: selectorString, options? }
    --- le framework prend le relais ---
 2. view = new ViewClass()
@@ -460,6 +462,7 @@ attrValue     := [^"]*                           (tout sauf ")
 ```
 
 **Interdit** (entraîne une erreur si non trouvé par querySelector) :
+
 - Combinateur descendant : `div .child`
 - Combinateur enfant direct : `div > .child`
 - Combinateur de frère adjacent : `div + .sibling`
@@ -605,7 +608,7 @@ class AppFoundation extends Foundation {
 ## Impact sur les invariants et décisions
 
 | Élément | Avant | Après | Nature du changement |
-|---------|-------|-------|---------------------|
+| --- | --- | --- | --- |
 | **I31** | « Le rootElement DOIT exister au onAttach(). Si absent et descripteur objet → création (D30) » | « Au onAttach(), la View DOIT avoir un `el` existant. L'élément est résolu (querySelector) ou créé (parsing du sélecteur CSS) par le framework à partir du rootElement fourni par le Composer » | Reformulé — le mécanisme change, la garantie reste |
 | **I32** | Inchangé | Inchangé | — |
 | **I34** | Inchangé | Inchangé | — |
@@ -675,5 +678,5 @@ class AppFoundation extends Foundation {
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-04-07 | Création (Proposed) — suite à l'audit de cohérence documentaire et retour de lecture par un pair |

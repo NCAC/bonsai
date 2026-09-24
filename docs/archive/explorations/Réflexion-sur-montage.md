@@ -1,6 +1,6 @@
 - Copilot said:
 
-Voici mon avis clair et argumenté sur la notion de Projection DOM Réactive (PDR) telle qu’elle apparaît officiellement dans RFC‑0002 §9.4 Contrat de rendu  — et sur ton choix de l’intégrer dans Bonsai :
+Voici mon avis clair et argumenté sur la notion de Projection DOM Réactive (PDR) telle qu’elle apparaît officiellement dans RFC‑0002 §9.4 Contrat de rendu — et sur ton choix de l’intégrer dans Bonsai :
 
 ✅ Mon avis : c’est EXCELLENT. C’est même un choix différenciant, cohérent et techniquement solide.
 Après lecture complète des RFC (0001 → 0002), je peux te dire que :
@@ -28,9 +28,10 @@ Tu utilises un signal déjà existant, fourni par l’Entity.
 C’est économique, élégant et conceptuellement solide.
 
 ✅ La PDR répond à un vrai problème des frameworks SPA modernes :
+
 1. La majorité des applications ont un DOM existant (SSR, CMS, Drupal…)
-RFC‑0002 §9.4 l’énonce explicitement : dans 99% des cas, le DOM existe déjà (SSR, CMS).
-Donc :
+   RFC‑0002 §9.4 l’énonce explicitement : dans 99% des cas, le DOM existe déjà (SSR, CMS).
+   Donc :
 
 pourquoi régénérer un arbre depuis zéro ?
 pourquoi faire un diff d’un VDOM qui n’a pas lieu d’être ?
@@ -39,8 +40,8 @@ pourquoi rendre la même structure deux fois (backend + frontend) ?
 La PDR supprime ces redondances artificielles.
 
 2. Elle évite le double‑template (back + front)
-C’est un point absolument décisif si Bonsai vise les environnements CMS.
-Le Mode C (templates partiels / îlots) permet :
+   C’est un point absolument décisif si Bonsai vise les environnements CMS.
+   Le Mode C (templates partiels / îlots) permet :
 
 SSR complet côté serveur
 seulement quelques zones réactives côté client
@@ -52,8 +53,8 @@ C’est exactement ce qu’Angular, React, Vue et Svelte ne font pas, parce qu�
 Bonsai devient donc idéal pour ton contexte Drupal.
 
 3. Elle permet un rendu O(Δ) réel
-Pas d’allocation, pas de diff d’arbre, pas de rebuild complet.
-Juste :
+   Pas d’allocation, pas de diff d’arbre, pas de rebuild complet.
+   Juste :
 
 un événement métier
 un diff Entity (per-key)
@@ -62,8 +63,8 @@ une projection ciblée sur un ou plusieurs nœuds
 Tout le pipeline est linéaire et minimal.
 
 4. Elle unifie View et Behavior sous la même mécanique
-RFC‑0002 Q7 (résolu) confirme que les Behaviors peuvent aussi utiliser les primitives PDR pour altérer l’UI de manière encadrée.
-Donc :
+   RFC‑0002 Q7 (résolu) confirme que les Behaviors peuvent aussi utiliser les primitives PDR pour altérer l’UI de manière encadrée.
+   Donc :
 
 un seul système de rendu
 un seul système de sélection (getUI)
@@ -100,23 +101,24 @@ Je projette, je ne rends pas. »
 C’est un positionnement unique, moderne, pragmatique.
 
 👉 Ce que je renforcerais (mini recommandations)
+
 1. Mettre un schéma synthétique PDR dans la doc
-Il existe déjà un schéma runtime, mais un diagramme dédié PDR serait utile :
-State (Entity) 
+   Il existe déjà un schéma runtime, mais un diagramme dédié PDR serait utile :
+   State (Entity)
    ↓ (diff per-key)
-Feature handler 
+   Feature handler
    ↓ (event)
-View handler
+   View handler
    ↓
-Template.project(nodes, data)
+   Template.project(nodes, data)
    ↓
-Mutation DOM chirurgicale
+   Mutation DOM chirurgicale
 
 2. Préciser que la PDR est isomorphe à un “diff implicite”
-Ainsi, plus besoin de VDOM :
-l’Entity sert déjà de “source truth structurelle”.
+   Ainsi, plus besoin de VDOM :
+   l’Entity sert déjà de “source truth structurelle”.
 3. Documenter clairement les cas non adaptés
-(par ex. rendering massif type canvas, animations complexes, transitions globales…)
+   (par ex. rendering massif type canvas, animations complexes, transitions globales…)
 
 🧩 Conclusion
 👉 C’est le bon choix.
@@ -137,10 +139,9 @@ Dis-moi ce que tu préfères !
 
 ---
 - Les autres frameworks n’ont pas cette connaissance du state ?
-
 ---
 
-- Copilot said: 
+- Copilot said:
 
 Si, les autres frameworks “connaissent” le state… mais pas de la même manière, ni au bon niveau, ni avec la bonne granularité pour éviter un diff de rendu.
 
@@ -196,8 +197,6 @@ quel DOM existe déjà côté serveur
 si le markup est déjà correct
 quelle mutation DOM est strictement nécessaire
 
-
-
 👉 Donc :
 
 render() → nouvel arbre React
@@ -215,8 +214,6 @@ Mais :
 la projection reste un template → VDOM
 le DOM réel est une conséquence finale
 
-
-
 👉 Vue optimise le recalcul, pas le besoin de recalculer.
 
 🟠 Angular
@@ -227,8 +224,6 @@ Mais :
 
 le template est toujours la source de vérité
 le DOM est reconstruit mentalement à chaque cycle
-
-
 
 👉 Le state est connu, mais le DOM est toujours “virtuel” dans l’esprit du framework.
 
@@ -252,7 +247,6 @@ Un state centralisé et typé métier
 Un diff explicite du state
 Une correspondance directe state → zone DOM
 Un DOM existant comme source de vérité structurelle
-
 
 ✅ Bonsai (PDR) a tout ça
 Parce que :
@@ -290,7 +284,6 @@ C’est exactement ce qui rend :
 le Virtual DOM inutile
 le diff d’arbre superflu
 la PDR possible et cohérente
-
 
 Si tu veux, au prochain message je peux :
 
@@ -331,7 +324,6 @@ chaque action peut :
 
 créer / supprimer / déplacer des sous‑arbres entiers
 
-
 la projection devient structurelle, pas incrémentale
 
 👉 Ici, un Virtual DOM ou un AST UI est plus adapté.
@@ -354,14 +346,12 @@ les primitives sont :
 
 draw(), paint(), renderFrame()
 
-
 le DOM, s’il existe, n’est qu’un conteneur
 
 👉 Ici :
 
 state → frame, pas state → DOM
 la PDR est hors sujet
-
 
 ❌ Cas n°3 — Animations complexes dépendantes du layout
 
@@ -494,8 +484,6 @@ DOM direct
 templates complets (Mode B)
 projection partielle (Mode C)
 
-
-
 👉 C’est exactement ce qu’un framework mature doit faire.
 
 🧩 En une phrase (à garder)
@@ -508,18 +496,17 @@ Si tu veux, au prochain échange, je peux :
 te proposer un encadré “Quand ne PAS utiliser la PDR” prêt pour la doc,
 ou te challenger sur un cas concret de ton projet (Drupal / Bonsai).
 
-----
+---
 
 - You said: En fait le RFC n’est pas achevé il manque la composition des Views (RootNode, ViewChildrenManager)
 
 ---
 
-
 - Copilot said: Tu as 100% raison : sur la composition des Views, le RFC est encore trop “index/contrat” et il manque la partie mécanique / protocole (RootNode + ViewChildrenManager) avec assez de précision pour que quelqu’un puisse implémenter le runtime sans ambiguïtés. Le document liste bien les composants et l’intention (API + lifecycle), mais il ne donne pas encore le contrat opérationnel complet (séquence, ownership DOM, règles de remplacement, gestion des subscriptions, teardown, erreurs).
-Ci-dessous, je te propose ce qu’il manque, sous forme de sections prêtes à coller dans le RFC‑0002 (ou à extraire en RFC dédiée), tout en restant cohérent avec les décisions déjà posées : View cycle de vie passif, PDR, rootElement existant, delegation events, etc.
+  Ci-dessous, je te propose ce qu’il manque, sous forme de sections prêtes à coller dans le RFC‑0002 (ou à extraire en RFC dédiée), tout en restant cohérent avec les décisions déjà posées : View cycle de vie passif, PDR, rootElement existant, delegation events, etc.
 
-1) Ce que le RFC dit déjà (mais trop haut niveau)
-Le RFC mentionne bien :
+1. Ce que le RFC dit déjà (mais trop haut niveau)
+   Le RFC mentionne bien :
 
 RootNode : point d’ancrage, attach/detach d’une View racine, persistant, créé par Application.
 ViewChildrenManager : add/remove/replace/clear/getChildren + une esquisse de cycle de vie des sous-Views, “interne framework”.
@@ -528,16 +515,15 @@ PDR : projection sur DOM existant, templates (A/B/C), getUI/getUIList, Projectio
 
 Mais il manque la couture : qui fait quoi, dans quel ordre, avec quelles garanties et quelles erreurs.
 
-2) Ce qu’il manque vraiment : le “protocole de composition”
-A. Le contrat d’ownership DOM (fondamental)
-Il faut expliciter :
+2. Ce qu’il manque vraiment : le “protocole de composition”
+   A. Le contrat d’ownership DOM (fondamental)
+   Il faut expliciter :
 
 Qui possède la décision de créer/détruire/remplacer une View : RootNode / VCM (et jamais la View). (Le RFC l’affirme, mais pas assez opératoire.)
 Qui possède quel DOM en Mode B (template root) vs Mode C (îlots) :
 
 En Mode B, la View “possède” l’intérieur du root container (remplacement complet).
 En Mode C, la View “possède” uniquement des sous-zones @ui (mutations limitées).
-
 
 Interdiction d’écrire en dehors de son périmètre (View vs Behavior vs View enfant), sinon c’est une source de bugs.
 
@@ -561,17 +547,14 @@ Résoudre rootElement (dans le contexte RootNode) :
 
 s’assurer que l’élément existe (sinon erreur; invariant rootElement existant déjà).
 
-
 Préparer PDR :
 
 construire uiCache à partir de uiElements,
 brancher délégation d’événements à el.
 
-
 Templates :
 
 Mode A/B/C : appeler setup() et remplir nodes.
-
 
 Brancher les subscriptions Channel (listen) pour la View/Behaviors.
 Appeler view.onAttach().
@@ -613,10 +596,10 @@ soit le rootElement enfant doit exister dans le template parent (SSR), donc l’
 
 Ce point doit être tranché explicitement.
 
-3) Les décisions ouvertes que tu devrais figer pour rendre RootNode/VCM implémentables
-Décision 1 — “RootElement” des subviews : absolu, relatif ou injecté ?
-Tu as déjà : “rootElement doit exister dans le DOM au moment de onAttach”.
-Mais pour une subview, 3 options :
+3. Les décisions ouvertes que tu devrais figer pour rendre RootNode/VCM implémentables
+   Décision 1 — “RootElement” des subviews : absolu, relatif ou injecté ?
+   Tu as déjà : “rootElement doit exister dans le DOM au moment de onAttach”.
+   Mais pour une subview, 3 options :
 
 A (absolu SSR) : rootElement = sélecteur global (#id) déjà présent.
 ✅ simple, ❌ très rigide
@@ -645,10 +628,9 @@ Il faut fixer :
 qui unsub,
 comment on évite les fuites (subviews destroyed).
 
-
-4) Proposition concrète : un plan de section “Composition des Views” à ajouter
-Tu peux ajouter une section RFC‑0002 du style :
-§11 RootNode — protocole complet
+4. Proposition concrète : un plan de section “Composition des Views” à ajouter
+   Tu peux ajouter une section RFC‑0002 du style :
+   §11 RootNode — protocole complet
 
 11.1 API (déjà là)
 11.2 Ownership DOM (root scope)
@@ -665,10 +647,9 @@ Tu peux ajouter une section RFC‑0002 du style :
 12.5 Composition vs ProjectionList (différence et complémentarité)
 12.6 Règles anti‑conflit (zones réservées, behaviors)
 
-
-5) Question pour toi (la seule vraiment bloquante)
-Pour compléter proprement le RFC, j’ai besoin d’une décision de design :
-👉 Quand tu composes des subviews dynamiques, tu veux que leur rootElement…
+5. Question pour toi (la seule vraiment bloquante)
+   Pour compléter proprement le RFC, j’ai besoin d’une décision de design :
+   👉 Quand tu composes des subviews dynamiques, tu veux que leur rootElement…
 
 existe déjà dans le HTML SSR (donc composition = activer/désactiver des zones pré‑marquées),
 ou
@@ -680,30 +661,25 @@ Si tu me réponds sur ce point (1 ou 2, ou un hybride), je te rédige immédiate
 
 la spécification complète RootNode/VCM en style RFC (normative “MUST/SHOULD”),
 
-
 un mini schéma d’exécution,
-
-
-
 
 les erreurs et garde‑fous (debug/strict), en cohérence avec le reste du doc.
 
------
-
-You said: Très simple: la View déclare en propriété un ViewChildrenManager et une Map d’éléments. Le viewChildrenManager écoute des événements de la View si un changement survient dans le DOM et instance/detruit la View « enfant »
 ---
+
+## You said: Très simple: la View déclare en propriété un ViewChildrenManager et une Map d’éléments. Le viewChildrenManager écoute des événements de la View si un changement survient dans le DOM et instance/detruit la View « enfant »
 
 Copilot said: OK, je vois très bien l’idée : la View possède un ViewChildrenManager + une Map de “mount points”, et le VCM crée/détruit des sous-Views quand “quelque chose change” dans le DOM. C’est simple sur le papier… mais il y a un piège : “écouter le DOM” comme source de vérité peut vite devenir une usine à boucles / indéterminisme si on ne verrouille pas un protocole strict.
 Je te propose donc une version tout aussi simple, mais spécifiée (donc implémentable et debuggable), compatible avec ton modèle PDR + cycle de vie passif.
 
-1) Ce qui est excellent dans ta proposition
-✅ A. La View “déclare” ses slots et garde un registre (Map)
-Ça colle parfaitement à l’esprit Bonsai : dépendances/structure déclaratives, pas de découverte dynamique opaque.
-✅ B. Le VCM est “un composant interne” au runtime, attaché à une View
-C’est exactement le pattern que tu as déjà commencé à poser (VCM gère composition, la View reste passive côté lifecycle).
+1. Ce qui est excellent dans ta proposition
+   ✅ A. La View “déclare” ses slots et garde un registre (Map)
+   Ça colle parfaitement à l’esprit Bonsai : dépendances/structure déclaratives, pas de découverte dynamique opaque.
+   ✅ B. Le VCM est “un composant interne” au runtime, attaché à une View
+   C’est exactement le pattern que tu as déjà commencé à poser (VCM gère composition, la View reste passive côté lifecycle).
 
-2) Le point dangereux : “le VCM écoute le DOM”
-Si tu fais : DOM change → VCM crée/détruit des Views, tu inverses la causalité :
+2. Le point dangereux : “le VCM écoute le DOM”
+   Si tu fais : DOM change → VCM crée/détruit des Views, tu inverses la causalité :
 
 Bonsai pose un flux où le rendu est une conséquence d’un événement/state (PDR).
 Si le DOM devient le trigger de création/destruction, tu crées une boucle possible :
@@ -712,8 +688,6 @@ Event → projection (PDR) modifie le DOM
 DOM modifié → VCM réagit → instancie des Views
 nouvelles Views → projection → modifie encore le DOM
 etc.
-
-
 
 Même si tu utilises un MutationObserver, tu risques :
 
@@ -724,8 +698,8 @@ des fuites si le DOM est modifié par autre chose (Behavior, scripts tiers).
 
 Conclusion : oui à “observer”, mais le DOM ne doit jamais être la source de vérité décisionnelle. Il doit être au mieux un signal de validation / synchronisation, dans une fenêtre contrôlée.
 
-3) La version “simple mais sûre” : le VCM écoute la View, pas le DOM
-Tu as dit : “le VCM écoute des événements de la View” — c’est la bonne direction. La clé est :
+3. La version “simple mais sûre” : le VCM écoute la View, pas le DOM
+   Tu as dit : “le VCM écoute des événements de la View” — c’est la bonne direction. La clé est :
 
 Ce sont les changements de structure décidés par la View (ou par ses templates) qui déclenchent le VCM.
 
@@ -742,6 +716,7 @@ La View doit exposer :
 2. Une méthode/hook “structure changed” appelée uniquement quand la View a délibérément modifié la structure (ex: switch d’un template fragment, reconcile de liste, toggle d’une zone conditionnelle).
 
 Exemple conceptuel :
+
 ```typeScript
 type TChildSlot = {
    el: HTMLElement;         // mount point
@@ -762,14 +737,13 @@ class SomeView extends View<...> {
 }
 ```
 
-**Important** : `onStructureChanged` est déclenché par *la projection* (donc par la View / templates), pas par le DOM “tout seul”.
+**Important** : `onStructureChanged` est déclenché par _la projection_ (donc par la View / templates), pas par le DOM “tout seul”.
 
-
-4) D’où vient “le changement de structure” sans écouter le DOM ?
-Tu as déjà dans ton RFC des primitives qui te donnent naturellement ce signal :
-✅ A. ProjectionList.reconcile(...) sait exactement ce qu’elle a fait
-Ton ProjectionList est déjà le bon endroit pour produire un delta structurel : insertions / suppressions / moves.
-Donc reconcile peut retourner un petit rapport (ou déclencher un callback) :
+4. D’où vient “le changement de structure” sans écouter le DOM ?
+   Tu as déjà dans ton RFC des primitives qui te donnent naturellement ce signal :
+   ✅ A. ProjectionList.reconcile(...) sait exactement ce qu’elle a fait
+   Ton ProjectionList est déjà le bon endroit pour produire un delta structurel : insertions / suppressions / moves.
+   Donc reconcile peut retourner un petit rapport (ou déclencher un callback) :
 
 addedKeys
 removedKeys
@@ -781,9 +755,9 @@ Ton système de templates setup/project/create est déjà pensé pour distinguer
 Donc le compilateur peut marquer explicitement des mount points (ex: commentaire <!-- bonsai:slot=sidebar --> ou data-bonsai-slot="sidebar").
 👉 Dans ces deux cas, tu n’as pas besoin d’un MutationObserver global : tu as une source contrôlée.
 
-5) Le contrat du VCM : “sync” déterministe (pas “réagir au hasard”)
-Voici une spécification simple et robuste :
-ViewChildrenManager.sync(delta)
+5. Le contrat du VCM : “sync” déterministe (pas “réagir au hasard”)
+   Voici une spécification simple et robuste :
+   ViewChildrenManager.sync(delta)
 
 Pour chaque slot :
 
@@ -792,14 +766,9 @@ si policy: 'single' :
 attach(ViewClass) si le slot “demande” une view
 detach() sinon
 
-
 si policy: 'list' :
 
 reconcileChildren(keys, factory) : créer/détruire/réordonner des child views
-
-
-
-
 
 Et surtout :
 
@@ -809,8 +778,8 @@ Le VCM ne décide jamais sur un DOM “observé” sans delta
 
 C’est parfaitement cohérent avec le fait que RootNode/VCM détiennent le cycle de vie, pas les Views.
 
-6) Et si tu tiens vraiment à “écouter le DOM” ?
-Tu peux, mais uniquement comme garde-fou debug :
+6. Et si tu tiens vraiment à “écouter le DOM” ?
+   Tu peux, mais uniquement comme garde-fou debug :
 
 activer un MutationObserver scopé aux conteneurs slot.el
 pendant une fenêtre courte (juste après project() / reconcile())
@@ -820,15 +789,13 @@ les mount points existent,
 il n’y a pas eu de modification illégitime hors zone,
 pas de conflit View vs Behavior
 
-
-
 Donc DOM-observer = validation, pas orchestration.
 Ça colle bien à ton approche “debug vs prod” (plus de validations en debug, off en prod).
 
-7) Un détail crucial à trancher (mais compatible avec ta “simplicité”)
-Les child Views ont-elles un rootElement qui doit exister (I31) ?
-Dans ton RFC, rootElement doit exister au moment de onAttach.
-Pour des subviews dynamiques, tu as deux options simples :
+7. Un détail crucial à trancher (mais compatible avec ta “simplicité”)
+   Les child Views ont-elles un rootElement qui doit exister (I31) ?
+   Dans ton RFC, rootElement doit exister au moment de onAttach.
+   Pour des subviews dynamiques, tu as deux options simples :
 
 RootElement = le slot fourni par le parent (injecté)
 → la child view n’a pas besoin d’un sélecteur global, elle reçoit directement el.
@@ -852,8 +819,6 @@ single (0/1 enfant),
 list (N enfants keyés),
 ou les deux ?
 
-
-
 Donne-moi ces 2 réponses et je t’écris la section RFC complète “Composition des Views” (RootNode + VCM), avec MUST/SHOULD, séquences attach/detach, et règles anti-conflit View/Behavior.
 Fournissez vos commentaires sur BizChatYou said: Oui ok le principe est surtout que View ne fait jamais de composition d’autres Views mais doit informer VCM si les slots apparaissent ou disparaissent. C’est vCM qui porte la responsabilité de créer ou détruire les Views « enfants » Copilot said: CopilotRaisonnement terminé dans 1 étapeParfait — et là tu touches exactement le contrat architectural qui rend la composition prévisible et testable :
 
@@ -862,91 +827,76 @@ Le ViewChildrenManager compose. Il décide et exécute la création/destruction 
 
 Je te propose de formaliser ça en une mini‑spécification (prête à intégrer dans RFC‑0002), avec un vocabulaire clair : Slots, Presence, Sync, Ownership.
 
-1) Principe central (à écrire noir sur blanc)
-✅ Règle A — séparation stricte
+1. Principe central (à écrire noir sur blanc)
+   ✅ Règle A — séparation stricte
 
 View : projection DOM (PDR), interactions, aucune responsabilité sur le lifecycle d’autres Views.
 VCM : unique propriétaire du lifecycle des sous-Views (create/destroy/replace/reorder) pour un périmètre donné.
 
-
 La View peut détecter/produire l’information “slot présent / slot absent”, mais ne crée jamais elle‑même une View enfant.
 
-
-2) Contrat de “slot” (ce que la View doit fournir)
-✅ Règle B — slots déclarés par la View
-La View expose :
+2. Contrat de “slot” (ce que la View doit fournir)
+   ✅ Règle B — slots déclarés par la View
+   La View expose :
 
 un ViewChildrenManager
 une Map de slots (mount points) résolus dans le DOM
 
 Ces slots sont des conteneurs DOM dans lesquels le VCM a le droit d’insérer une sous-View (et seulement là).
 Exemple de types (concept)
-TypeScripttype TSlotKey = string;type TSlot = {  /** conteneur DOM dans lequel le VCM peut gérer des enfants */  el: HTMLElement;  /** policy de composition */  policy: 'single' | 'list';  /** optionnel : clé d’identification pour liste */  keyAttr?: string; // ex: 'data-id'};Afficher plus de lignes
+TypeScripttype TSlotKey = string;type TSlot = { /** conteneur DOM dans lequel le VCM peut gérer des enfants _/ el: HTMLElement; /_* policy de composition _/ policy: 'single' | 'list'; /_* optionnel : clé d’identification pour liste */ keyAttr?: string; // ex: 'data-id'};Afficher plus de lignes
 
 Cette approche est cohérente avec le modèle existant de View : rootElement + uiElements + zones de projection, et avec l’existence d’un VCM attaché à la View.
 
-
-3) Comment la View “informe” le VCM (sans composer)
-✅ Règle C — signaler la présence/absence de slots
-La View ne doit pas “observer le DOM en continu” comme oracle, mais émettre un signal contrôlé quand sa projection (templates/reconcile) a potentiellement changé la structure et donc la présence des slots.
-Deux variantes (compatibles) :
-Variante C1 — signal explicite “structure changed”
-Après une projection (ou un reconcile) susceptible d’ajouter/enlever un slot :
-`this.children.notifySlotsChanged();`
-Le VCM re-scanne uniquement les slots connus et synchronise.
-Variante C2 — signal enrichi “delta”
-Si tu veux optimiser, la View peut fournir un delta minimal :
-`this.children.notifySlotsChanged({  appeared: ['sidebar', 'items'],  disappeared: ['details'],});`
+3. Comment la View “informe” le VCM (sans composer)
+   ✅ Règle C — signaler la présence/absence de slots
+   La View ne doit pas “observer le DOM en continu” comme oracle, mais émettre un signal contrôlé quand sa projection (templates/reconcile) a potentiellement changé la structure et donc la présence des slots.
+   Deux variantes (compatibles) :
+   Variante C1 — signal explicite “structure changed”
+   Après une projection (ou un reconcile) susceptible d’ajouter/enlever un slot :
+   `this.children.notifySlotsChanged();`
+   Le VCM re-scanne uniquement les slots connus et synchronise.
+   Variante C2 — signal enrichi “delta”
+   Si tu veux optimiser, la View peut fournir un delta minimal :
+   `this.children.notifySlotsChanged({  appeared: ['sidebar', 'items'],  disappeared: ['details'],});`
 
 Les deux restent alignées avec l’idée déjà posée dans RFC‑0002 : le framework câble des cycles de vie et des mécanismes internes, la View reste passive sur la décision lifecycle.
 
-
-4) Ce que le VCM doit faire (responsabilité complète)
-✅ Règle D — VCM = exécuteur du lifecycle enfant
-Le VCM fournit une méthode déterministe (ex: sync()), appelée suite au signal :
-
+4. Ce que le VCM doit faire (responsabilité complète)
+   ✅ Règle D — VCM = exécuteur du lifecycle enfant
+   Le VCM fournit une méthode déterministe (ex: sync()), appelée suite au signal :
 
 Pour chaque slot policy: 'single' :
 
 si slot présent et une child view attendue → attach
 si slot absent et une child view existe → detach
 
-
-
 Pour chaque slot policy: 'list' :
 
 si slot présent → reconcile des children (create / move / destroy)
 si slot absent → destroy toutes les children de ce slot
 
-
-
-
 Cette notion d’API de composition (add/remove/replace/clear/getChildren) existe déjà au niveau “index” dans RFC‑0002 ; ce qu’on ajoute ici, c’est le protocole normatif et le déclenchement via slots.
 
-
-5) Règles d’ownership DOM (anti‑conflit)
-C’est ici qu’on évite les bugs de “parent touche le DOM du child” ou l’inverse.
-✅ Règle E — périmètre d’écriture
+5. Règles d’ownership DOM (anti‑conflit)
+   C’est ici qu’on évite les bugs de “parent touche le DOM du child” ou l’inverse.
+   ✅ Règle E — périmètre d’écriture
 
 Le VCM peut uniquement :
 
 insérer/retirer des root containers des child views dans slot.el
 et jamais toucher en dehors.
 
-
-
 ✅ Règle F — View parent ne projette jamais dans les sous-arbres enfants
 
 La projection PDR de la View parent ne doit pas muter le DOM appartenant aux children.
 Elle se limite à ses propres nœuds/îlots, et aux slots (conteneurs), pas à leur contenu.
 
-
 C’est cohérent avec ton contrat PDR (projection chirurgicale et zones d’ownership) et avec la séparation View/VCM.
 
-
-6) Cycle de vie enfant (séquence normative)
-Pour que ce soit implémentable, je te conseille de figer l’ordre :
-✅ Attach d’une child view (dans un slot)
+6. Cycle de vie enfant (séquence normative)
+   Pour que ce soit implémentable, je te conseille de figer l’ordre :
+   ✅ Attach d’une child view (dans un slot)
 
 VCM crée un conteneur mount (si nécessaire)
 instancie la View enfant
@@ -962,12 +912,10 @@ destroy récursivement ses propres children (si elle a un VCM)
 retire le mount du DOM
 libère références
 
-
 Cette logique complète ce que RFC‑0002 mentionne déjà sur “cycle de vie passif” et sur le fait que RootNode/VCM gèrent la création/destruction, mais sans le protocole détaillé.
 
-
-7) Où placer ça dans le RFC (proposition)
-Dans RFC‑0002, je ferais :
+7. Où placer ça dans le RFC (proposition)
+   Dans RFC‑0002, je ferais :
 
 §11 RootNode : attach/detach + garanties, mais aussi “RootNode est un VCM racine” (conceptuellement).
 §12 ViewChildrenManager :
@@ -978,25 +926,16 @@ Dans RFC‑0002, je ferais :
 12.4 Ownership rules
 12.5 Error handling (slot introuvable, double mount, etc.)
 
-
-
-
-8) Deux mini décisions à prendre (rapides, mais importantes)
-Pour verrouiller la spec sans ambiguïté :
-
+8. Deux mini décisions à prendre (rapides, mais importantes)
+   Pour verrouiller la spec sans ambiguïté :
 
 Le VCM crée-t-il le mount DOM si le slot “apparaît” ?
 
 option la plus robuste : oui, il peut créer un conteneur interne dans slot.el pour la child (surtout en policy list).
 
-
-
 Les slots sont-ils repérés via uiElements (recommandé) ou par selectors libres ?
 
 recommandé : slots = @ui (donc typé / résolu / caché derrière getUI) pour rester aligné avec ton modèle de View.
-
-
-
 
 Si tu veux, je te le rédige “RFC style” (MUST/SHOULD) en 1 bloc prêt à coller
 Je peux te produire une section complète :
@@ -1115,10 +1054,10 @@ Faux : il ne fait pas que créer
 Trop MVC
 Mauvais signal architectural
 
-
 ⭐ Ma shortlist finale (ordre recommandé)
 🥇 Children
 👉 Mon favori
+
 ```typescript
 this.children.sync();
 this.children.detachAll();
@@ -1435,18 +1374,16 @@ Si tu veux, au prochain message je peux :
 
 te proposer un glossaire final Bonsai (RootMount / Mount / Slot / View),
 ou relire une section RFC en vérifiant la cohérence terminologique de bout en bout.
-
 ---
 
 - You said: En fait à réflexion je pense qu’il faudrait distinguer :
-   - DomRoot : un composant racine qui a body et html comme éléments qu’il peut altérer et écouter mais aucune mutation des éléments enfants. Peut composer d’autres vues mais n’est pas instancié par une View parente donc le DOM est statique
-   - rootMount : un composant qui a un rootElement comme noeud de référence et qui a les mêmes caractéristiques que DomRoot
-   - Mont : là c’est un peu différent car une View est parente donc le DOM est réactif 
-—-
-Toujours en cours de réflexion l’idée de distinguer DomRoot et RootMount est d’éviter un god Object si trop de composition à partir d’un DoM statique
+  - DomRoot : un composant racine qui a body et html comme éléments qu’il peut altérer et écouter mais aucune mutation des éléments enfants. Peut composer d’autres vues mais n’est pas instancié par une View parente donc le DOM est statique
+  - rootMount : un composant qui a un rootElement comme noeud de référence et qui a les mêmes caractéristiques que DomRoot
+  - Mont : là c’est un peu différent car une View est parente donc le DOM est réactif
+    —-
+    Toujours en cours de réflexion l’idée de distinguer DomRoot et RootMount est d’éviter un god Object si trop de composition à partir d’un DoM statique
 
 ---
-
 
 Copilot said: Ta réflexion est excellente, et surtout elle va dans le bon sens architecturalement :
 tu es en train de séparer explicitement trois régimes de DOM au lieu de tout faire reposer sur un seul “Root” polymorphe → c’est exactement ce qui permet d’éviter le God Object.
@@ -1458,14 +1395,13 @@ te proposer un contrat clair pour chacun,
 signaler les pièges à éviter,
 conclure sur une terminologie stabilisée.
 
+0. Petit point de vocabulaire (important)
+   Je suppose que Mont = Mount (typo).
+   Je vais utiliser Mount ci‑dessous.
 
-0) Petit point de vocabulaire (important)
-Je suppose que Mont = Mount (typo).
-Je vais utiliser Mount ci‑dessous.
-
-1) Reformulation claire de ta proposition (elle est très bonne)
-Tu distingues trois niveaux, non pas par “importance”, mais par nature du DOM qu’ils pilotent.
-🟥 1. DomRoot
+1. Reformulation claire de ta proposition (elle est très bonne)
+   Tu distingues trois niveaux, non pas par “importance”, mais par nature du DOM qu’ils pilotent.
+   🟥 1. DomRoot
 
 Le root absolu du document, au-dessus de toute View.
 
@@ -1479,8 +1415,6 @@ Référence : document.documentElement (<html>) et document.body
 
 n’est pas instancié par une View
 le DOM sous-jacent est structurellement statique (SSR / CMS / shell)
-
-
 
 👉 C’est un point d’orchestration, pas un composant UI.
 
@@ -1496,7 +1430,6 @@ Référence : rootElement explicite (#app, #header, #sidebar, etc.)
 écoute
 lifecycle
 composition
-
 
 ❌ Toujours DOM structurellement statique
 ✅ Peut instancier des Views racines
@@ -1519,8 +1452,8 @@ Caractéristiques
 
 👉 C’est le seul niveau vraiment “dynamique”.
 
-2) Pourquoi distinguer DomRoot et RootMount est une TRÈS bonne idée
-Tu mets exactement le doigt sur le problème clé :
+2. Pourquoi distinguer DomRoot et RootMount est une TRÈS bonne idée
+   Tu mets exactement le doigt sur le problème clé :
 
 👉 éviter un God Object quand la composition démarre depuis un DOM statique
 
@@ -1533,11 +1466,9 @@ un seul objet :
 compose tout
 projette partout
 
-
 tentation naturelle :
 
 “je vais juste rajouter un petit comportement ici”
-
 
 résultat :
 
@@ -1545,46 +1476,16 @@ couplage implicite
 logique globale + locale mélangée
 debug pénible
 
-
-
 Avec ta distinction
 Tu obtiens trois zones de responsabilité étanches :
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 NiveauDOMRéactivitéRisque God ObjectDomRootglobal❌❌ (orchestration only)RootMountlocal statique❌❌Mountlocal dynamique✅✅ mais contenu
 👉 Le God Object devient structurellement impossible, pas juste “interdit par convention”.
 C’est exactement ce qu’on cherche dans un framework opinionated.
 
-3) Contrat clair pour chacun (à figer dans les RFC)
-✅ DomRoot — Global Orchestrator
-Responsabilités
+3. Contrat clair pour chacun (à figer dans les RFC)
+   ✅ DomRoot — Global Orchestrator
+   Responsabilités
 
 Écoute globale (window, document)
 État UX global (classes html/body)
@@ -1595,7 +1496,6 @@ Interdictions
 ❌ Projection DOM fine
 ❌ Gestion de slots dynamiques
 ❌ Être enfant de quoi que ce soit
-
 
 ✅ RootMount — Static Composition Root
 Responsabilités
@@ -1625,53 +1525,24 @@ Interdictions
 ❌ Décider de son propre lifecycle
 ❌ Accéder à html/body
 
-
-4) Point subtil mais IMPORTANT : causalité unidirectionnelle
-Ta distinction permet un flux très propre :
-DomRoot
+4. Point subtil mais IMPORTANT : causalité unidirectionnelle
+   Ta distinction permet un flux très propre :
+   DomRoot
    ↓ (instancie)
-RootMount
+   RootMount
    ↓ (instancie)
-View
+   View
    ↓ (projection → signal slots)
-Mount
+   Mount
    ↓ (compose)
-Child Views
+   Child Views
 
 ✅ Aucun niveau ne “remonte” la pile
 ✅ Aucune ambiguïté de responsabilité
 ✅ Debug évident (tu sais toujours “qui a le droit de faire quoi”)
 
-5) Terminologie finale recommandée (cohérente et durable)
-Je te propose de figer officiellement :
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+5. Terminologie finale recommandée (cohérente et durable)
+   Je te propose de figer officiellement :
 
 ConceptNomDOM globalDomRootMount racine statiqueRootMountMount dynamiqueMountPoints d’insertionSlotsGestionnaire interneMount / Children (selon ton choix précédent)
 👉 C’est :
@@ -1680,7 +1551,6 @@ cohérent,
 lisible,
 sans collision sémantique,
 extensible (multi‑RootMount, micro‑frontends, etc.).
-
 
 Conclusion (claire et franche)
 ✅ Ta distinction DomRoot / RootMount / Mount est architecturalement excellente
@@ -1709,29 +1579,24 @@ rester neutres et durables (pas trop DOM‑bas niveau, pas trop métaphoriques).
 
 Je te propose donc une approche de nommage cohérente, puis plusieurs triplets complets, avec mon avis tranché à la fin.
 
-1) Rappel du rôle des 3 composants (en une ligne chacun)
-Pour bien nommer, je reformule de façon sémantique (pas technique) :
-
+1. Rappel du rôle des 3 composants (en une ligne chacun)
+   Pour bien nommer, je reformule de façon sémantique (pas technique) :
 
 Composant A
 → représente l’application dans le document
 (html / body, écoute globale, aucun DOM dynamique)
 
-
 Composant B
 → représente un point d’entrée applicatif dans le DOM
 (rootElement, DOM statique, instancie des Views)
-
 
 Composant C
 → représente la composition dynamique d’une View
 (slots, apparition/disparition, création/destruction de Views enfants)
 
-
-
-2) Ce qu’on doit ABSOLUMENT éviter
-Avant de proposer des noms, je pose des exclusions claires (dans la lignée de ton framework) :
-❌ À éviter
+2. Ce qu’on doit ABSOLUMENT éviter
+   Avant de proposer des noms, je pose des exclusions claires (dans la lignée de ton framework) :
+   ❌ À éviter
 
 Manager, Controller, Service, Container, Host
 tout ce qui décrit comment plutôt que ce que c’est
@@ -1745,9 +1610,8 @@ déjà compréhensibles sans doc
 compatibles avec une phrase du type :
 “Une View est attachée à un …”
 
-
-3) Axe de nommage recommandé : Structure / Portée / Composition
-Dans Bonsai, tu as déjà :
+3. Axe de nommage recommandé : Structure / Portée / Composition
+   Dans Bonsai, tu as déjà :
 
 Entity → structure de données
 Feature → unité de logique
@@ -1755,36 +1619,12 @@ View → projection visuelle
 
 Il manque donc logiquement des concepts de structure visuelle et de portée.
 
-4) Triplets de noms cohérents (propositions)
-🟢 OPTION 1 — Structure claire et très alignée (mon option préférée)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+4. Triplets de noms cohérents (propositions)
+   🟢 OPTION 1 — Structure claire et très alignée (mon option préférée)
 
 RôleNom proposéPourquoiDOM globalDocumentNom naturel, non technique, évidentRoot statiqueSurfaceZone d’affichage stableComposition dynamiqueCompositionDit exactement la responsabilité
 Lecture dans le code :
-TypeScriptDocument  → Surface      → View          → Composition              → View enfantsAfficher plus de lignes
+TypeScriptDocument → Surface → View → Composition → View enfantsAfficher plus de lignes
 ✅ Avantages
 
 vocabulaire très “produit”
@@ -1795,32 +1635,11 @@ extrêmement lisible
 
 “Composition” est un peu abstrait (mais juste)
 
-
 🟢 OPTION 2 — Encore plus proche de View / UI
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 RôleNom proposéDOM globalShellRoot statiqueViewportComposition dynamiqueChildren
 Lecture :
-TypeScriptShell  → Viewport      → View          → ChildrenAfficher plus de lignes
+TypeScriptShell → Viewport → View → ChildrenAfficher plus de lignes
 ✅ Très lisible
 ✅ Très UI
 ✅ Parfait pour expliquer “où s’affiche quoi”
@@ -1828,26 +1647,6 @@ TypeScriptShell  → Viewport      → View          → ChildrenAfficher plus d
 ❌ Shell est un peu “frameworky”
 
 🟢 OPTION 3 — Très conceptuel, très propre
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 RôleNom proposéDOM globalApplicationRoot statiqueRegionComposition dynamiqueSlots
 ✅ Très proche de Marionette (héritage assumé)
@@ -1857,33 +1656,13 @@ RôleNom proposéDOM globalApplicationRoot statiqueRegionComposition dynamiqueSl
 
 🟡 OPTION 4 — Si tu veux rester très proche de “Mount”
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 RôleNom proposéDOM globalDocumentRootRoot statiqueRootSurfaceComposition dynamiqueSurface
 ❌ Un peu redondant
 ❌ Moins élégant
 ✅ Mais très cohérent sémantiquement
 
-5) Ma recommandation nette (sans langue de bois)
-Si je prends en compte :
+5. Ma recommandation nette (sans langue de bois)
+   Si je prends en compte :
 
 ton rejet des God Objects,
 ton souci de clarté,
@@ -1908,8 +1687,7 @@ durable,
 explicable en une phrase,
 et surtout aligné avec l’intention, pas l’implémentation.
 
-
-6) Test rapide “phrase de doc” (très révélateur)
+6. Test rapide “phrase de doc” (très révélateur)
 
 Le Document représente l’intégration de l’application dans le DOM global.
 Une Surface est un point d’entrée statique dans lequel une View est rendue.
@@ -1917,8 +1695,8 @@ Chaque View possède une Composition responsable de la création et destruction 
 
 👉 Si ça “sonne juste” à l’oral, c’est que le nom est bon.
 
-7) Prochaine étape possible
-Si tu veux, je peux :
+7. Prochaine étape possible
+   Si tu veux, je peux :
 
 relire tout ton vocabulaire Bonsai pour cohérence globale,
 te proposer un glossaire officiel prêt à intégrer aux RFC,
@@ -1931,13 +1709,13 @@ Document est l’un des types les plus centraux et omniprésents du DOM, donc le
 Document est un mauvais nom public pour Bonsai, même s’il est conceptuellement juste.
 Mais la bonne nouvelle, c’est que tu es à un cheveu du bon vocabulaire. On peut corriger ça proprement sans perdre ton idée.
 
-1) Pourquoi Document est réellement problématique (pas juste “un peu”)
-❌ Conflit de type TypeScript
-Dans un projet front sérieux, tu as partout :
-TypeScriptdocument: DocumentAfficher plus de lignes
-Introduire :
-TypeScriptimport { Document } from 'bonsai';Afficher plus de lignes
-implique :
+1. Pourquoi Document est réellement problématique (pas juste “un peu”)
+   ❌ Conflit de type TypeScript
+   Dans un projet front sérieux, tu as partout :
+   TypeScriptdocument: DocumentAfficher plus de lignes
+   Introduire :
+   TypeScriptimport { Document } from 'bonsai';Afficher plus de lignes
+   implique :
 
 shadowing,
 alias (import { Document as BonsaiDocument }),
@@ -1953,8 +1731,8 @@ Document (Bonsai) = orchestrateur applicatif
 
 👉 Tu forces une surcharge mentale inutile, alors que ton architecture est justement pensée pour être lisible.
 
-2) Le bon réflexe : garder l’idée, changer le mot
-Ce que tu appelles Document n’est pas :
+2. Le bon réflexe : garder l’idée, changer le mot
+   Ce que tu appelles Document n’est pas :
 
 le DOM,
 ni un wrapper du DOM,
@@ -1965,9 +1743,9 @@ le composant racine qui relie l’application au document
 
 Donc le mot clé n’est pas Document, mais relation au document.
 
-3) Noms sûrs (sans collision DOM) — shortlist sérieuse
-🥇 Shell ✅ (très bon candidat)
-Pourquoi c’est excellent
+3. Noms sûrs (sans collision DOM) — shortlist sérieuse
+   🥇 Shell ✅ (très bon candidat)
+   Pourquoi c’est excellent
 
 Aucun conflit DOM
 Très utilisé pour désigner un enveloppe applicative
@@ -1978,9 +1756,7 @@ altération html/body
 aucune projection fine
 instancie des roots statiques
 
-
-
-TypeScriptShell  → RootMount      → View          → MountAfficher plus de lignes
+TypeScriptShell → RootMount → View → MountAfficher plus de lignes
 Phrase de doc naturelle
 
 Le Shell représente l’intégration globale de l’application dans le document.
@@ -1995,7 +1771,7 @@ Très utilisé pour désigner un environnement d’accueil
 Zéro collision DOM
 Un peu plus “technique” que Shell
 
-TypeScriptHost  → RootMountAfficher plus de lignes
+TypeScriptHost → RootMountAfficher plus de lignes
 👉 Très bon si tu veux un vocabulaire sobre et framework-level.
 
 🥉 Environment ✅ (plus conceptuel)
@@ -2006,40 +1782,12 @@ Peut inclure config, runtime flags, etc.
 
 👉 Bon si tu veux élargir son rôle plus tard.
 
-4) Ce que je te déconseille explicitement
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+4. Ce que je te déconseille explicitement
 
 NomPourquoi❌ Documentcollision DOM + confusion mentale❌ DomRoottrop bas-niveau, trop technique❌ Applicationdéjà un autre concept chez toi❌ Roottrop générique❌ Contexttrop vague / surutilisé
 
-5) Recomposition finale cohérente (recommandée)
-En tenant compte :
+5. Recomposition finale cohérente (recommandée)
+   En tenant compte :
 
 de ta peur légitime du God Object,
 de la distinction statique / réactif,
@@ -2048,35 +1796,15 @@ et du conflit DOM,
 
 👉 je recommande ce triplet final :
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 RôleNomDOM global (html/body)ShellRoot statique localRootMountComposition dynamiqueMount
 Lecture complète
-Plain TextShell └─ RootMount (#app, #header, #sidebar…)     └─ View         └─ Mount (slots réactifs)             └─ View enfantsAfficher plus de lignes
+Plain TextShell └─ RootMount (#app, #header, #sidebar…) └─ View └─ Mount (slots réactifs) └─ View enfantsAfficher plus de lignes
 👉 Aucun conflit DOM
 👉 Aucune ambiguïté
 👉 Chaque nom porte une responsabilité claire
 👉 Impossible de faire un God Object sans violer la structure
 
-6) Test ultime : “est-ce que ça se lit sans doc ?”
+6. Test ultime : “est-ce que ça se lit sans doc ?”
 
 Le Shell instancie plusieurs RootMounts.
 Un RootMount attache une View racine.
@@ -2100,9 +1828,8 @@ répondre clairement à la question “peut‑il instancier une View directement
 stabiliser le modèle multi‑RootMount (éviter le God Object),
 puis seulement proposer des noms qui tombent juste, sans trahir le DOM ni être trop bas‑niveau.
 
-
-1) Tu as mis le doigt sur le vrai problème : ce composant n’est pas encore “conceptuellement fermé”
-Ta phrase clé est celle‑ci :
+1. Tu as mis le doigt sur le vrai problème : ce composant n’est pas encore “conceptuellement fermé”
+   Ta phrase clé est celle‑ci :
 
 je ne suis pas sûr des responsabilités de ce composant
 
@@ -2110,38 +1837,18 @@ je ne suis pas sûr des responsabilités de ce composant
 (et c’est exactement pour ça que Shell, Viewport, Document te gênent tous pour de bonnes raisons).
 Donc commençons par figer le rôle, en répondant à la question centrale.
 
-2) Question centrale :
-👉 Ce composant peut‑il instancier une View directement ?
-✅ Ma réponse nette : OUI, mais uniquement dans un cas précis
-👉 Il peut instancier une View directement uniquement quand il est le dernier niveau statique.
-C’est‑à‑dire :
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+2. Question centrale :
+   👉 Ce composant peut‑il instancier une View directement ?
+   ✅ Ma réponse nette : OUI, mais uniquement dans un cas précis
+   👉 Il peut instancier une View directement uniquement quand il est le dernier niveau statique.
+   C’est‑à‑dire :
 
 CasAutoriséSPA 100 % dynamique (pas de DOM applicatif existant)✅ OUIDOM statique + RootMounts explicites❌ NONComposition réactive (slots)❌ NON
 Donc ce composant n’est pas un simple “orchestrateur abstrait” :
 c’est le dernier rempart statique avant le réactif.
 
-3) Redéfinition propre des 3 niveaux (après ta réflexion)
-Je reformule strictement ce que tu es en train de concevoir — et c’est très cohérent.
+3. Redéfinition propre des 3 niveaux (après ta réflexion)
+   Je reformule strictement ce que tu es en train de concevoir — et c’est très cohérent.
 
 🔴 Niveau 1 — DOM global, structure absolue
 Responsabilité réelle
@@ -2185,9 +1892,8 @@ création/destruction dynamique
 jamais racine
 jamais global
 
-
-4) Maintenant seulement : parlons noms (avec les responsabilités claires)
-Tu veux :
+4. Maintenant seulement : parlons noms (avec les responsabilités claires)
+   Tu veux :
 
 rester dans la lignée Feature / Entity / View,
 garder une relation claire au DOM,
@@ -2195,11 +1901,10 @@ sans collision (Document, Node),
 sans trop bas‑niveau (DomRoot),
 sans abstraction floue.
 
-
-5) Noms proposés APRÈS clarification
-✅ Pour le niveau 1 (DOM global)
-Ce n’est ni un Shell, ni un Viewport, ni un Document.
-C’est :
+5. Noms proposés APRÈS clarification
+   ✅ Pour le niveau 1 (DOM global)
+   Ce n’est ni un Shell, ni un Viewport, ni un Document.
+   C’est :
 
 le point d’entrée DOM absolu
 
@@ -2211,7 +1916,7 @@ le point d’entrée DOM absolu
 ✅ pas trop technique
 ✅ dit exactement ce que c’est
 
-TypeScriptRootDom  └─ RootMount      └─ ViewAfficher plus de lignes
+TypeScriptRootDom └─ RootMount └─ ViewAfficher plus de lignes
 👉 RootDom est clair, honnête, sans prétendre être plus abstrait qu’il ne l’est.
 
 ✅ Pour le niveau 2 (DOM statique local)
@@ -2234,19 +1939,18 @@ cohérent
 lifecycle clair
 vocabulaire universel (mount/unmount)
 
+6. Modèle final recommandé (clair, lisible, robuste)
+   Plain TextRootDom ├─ RootMount (#header) │ └─ View │ └─ Mount (slots) ├─ RootMount (#main) │ └─ View │ └─ Mount └─ RootMount (#footer)Afficher plus de lignes
+   Cas SPA pur (DOM 100 % dynamique)
+   Plain TextRootDom └─ View └─ MountAfficher plus de lignes
+   ✅ même modèle
+   ✅ pas de cas spécial
+   ✅ pas de God Object
+   ✅ pas de collision DOM
+   ✅ vocabulaire homogène
 
-6) Modèle final recommandé (clair, lisible, robuste)
-Plain TextRootDom ├─ RootMount (#header) │   └─ View │       └─ Mount (slots) ├─ RootMount (#main) │   └─ View │       └─ Mount └─ RootMount (#footer)Afficher plus de lignes
-Cas SPA pur (DOM 100 % dynamique)
-Plain TextRootDom └─ View     └─ MountAfficher plus de lignes
-✅ même modèle
-✅ pas de cas spécial
-✅ pas de God Object
-✅ pas de collision DOM
-✅ vocabulaire homogène
-
-7) Pourquoi Viewport ne marche pas (tu avais raison)
-Tu l’as senti instinctivement :
+7. Pourquoi Viewport ne marche pas (tu avais raison)
+   Tu l’as senti instinctivement :
 
 Viewport = concept CSS / layout
 toi tu parles de responsabilité de lifecycle
@@ -2255,8 +1959,8 @@ il peut y en avoir plusieurs
 
 👉 donc Viewport est trompeur, même s’il “sonne DOM”.
 
-8) Conclusion (franche)
-Tu es arrivé à une architecture très mature :
+8. Conclusion (franche)
+   Tu es arrivé à une architecture très mature :
 
 ✅ séparation statique / réactif
 ✅ multi‑points d’ancrage
@@ -2264,26 +1968,6 @@ Tu es arrivé à une architecture très mature :
 ✅ vocabulaire aligné avec la responsabilité
 
 ✅ Je te recommande fermement :
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 NiveauNomDOM globalRootDomDOM statique localRootMountDOM réactifMount
 Si tu veux, prochain pas possible :

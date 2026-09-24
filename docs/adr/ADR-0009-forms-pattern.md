@@ -1,7 +1,7 @@
 # ADR-0009 : Pattern Formulaires dans Bonsai
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Date** | 2026-04-01 |
 | **Décideurs** | @ncac |
@@ -17,10 +17,12 @@ Les formulaires sont un cas d'usage omniprésent qui combine **saisie utilisateu
 **Où vit l'état du formulaire ?**
 
 L'état d'un formulaire a une nature hybride :
+
 - **Pré-soumission** : état UI transitoire (valeurs saisies, champs touchés, erreurs de validation, mode de soumission) — ne fait pas partie du domaine tant que l'utilisateur n'a pas validé.
 - **Post-soumission** : état métier — les valeurs validées deviennent du domain state géré par une Entity.
 
 Cette dualité crée une tension avec les invariants Bonsai :
+
 - **I30** : la View ne possède **aucun domain state** — elle est une projection pure.
 - **I42** : la View **peut** déclarer un state local de présentation (D33) — typé, réactif, encapsulé, non-broadcastable.
 - **I6** : seule la Feature (via Entity.mutate()) peut modifier le domain state.
@@ -29,7 +31,7 @@ Cette dualité crée une tension avec les invariants Bonsai :
 Depuis la rédaction initiale de cet ADR, plusieurs décisions clés ont été formalisées et changent fondamentalement le paysage :
 
 | Décision | Impact sur les formulaires |
-|----------|---------------------------|
+| --- | --- |
 | **ADR-0001** (mutate) | Plus de méthodes nommées sur Entity — `mutate()` unique avec Immer |
 | **ADR-0015** (localState) | La View a maintenant un mécanisme formel pour l'état UI transitoire |
 | **ADR-0007** (Behavior) | Plugin UI réutilisable avec TUIMap propre, localState, Channels |
@@ -45,7 +47,7 @@ Depuis la rédaction initiale de cet ADR, plusieurs décisions clés ont été f
 ### Non-négociables
 
 | # | Contrainte | Source |
-|---|-----------|--------|
+| --- | --- | --- |
 | C1 | L'état du formulaire pré-soumission est un **état UI transitoire**, pas du domain state | I30 |
 | C2 | La soumission du formulaire produit une **Command** vers la Feature | I1, I10 |
 | C3 | Toute mutation Entity passe par `mutate(intent, params?, recipe)` | ADR-0001 |
@@ -61,7 +63,7 @@ Depuis la rédaction initiale de cet ADR, plusieurs décisions clés ont été f
 ### Souhaitables
 
 | # | Contrainte | Motivation |
-|---|-----------|-----------|
+| --- | --- | --- |
 | S1 | Validation synchrone sans round-trip Feature | UX réactive (feedback < 16ms) |
 | S2 | Support de la validation asynchrone (unicité email, etc.) via Request Channel | Cas d'usage courant |
 | S3 | Pattern réutilisable entre formulaires similaires | DRY, Behavior pattern |
@@ -78,7 +80,7 @@ L'état complet du formulaire (valeurs, touched, errors) vit dans l'Entity de la
 
 #### Architecture
 
-```
+```text
 View (saisie) → trigger(Command) → Feature → entity.mutate() → Event → View (projection)
 ```
 
@@ -302,7 +304,7 @@ class ContactFormView extends View<
 #### Avantages / Inconvénients
 
 | ✅ Avantages | ❌ Inconvénients |
-|-------------|-----------------|
+| --- | --- |
 | Domain state centralisé, sérialisable, historisable | **Chaque frappe clavier = Command → mutate()** — overhead pour de l'état transitoire |
 | DevTools : l'état du formulaire est visible dans l'Entity | L'Entity contient des données UI (`touched`, `errors`) qui ne sont pas du domaine |
 | Undo/redo natif (via inversePatches Immer) | **Latence perceptible** sur des formulaires complexes (round-trip View→Feature→Entity→View) |
@@ -317,7 +319,7 @@ L'état du formulaire vit entièrement dans le **localState** de la View. La Fea
 
 #### Architecture
 
-```
+```text
 View (saisie) → updateLocal() → View (projection N1/N2)
 View (submit) → trigger(Command) → Feature → entity.mutate()
 ```
@@ -544,7 +546,7 @@ class ContactFormView extends View<
 #### Avantages / Inconvénients
 
 | ✅ Avantages | ❌ Inconvénients |
-|-------------|-----------------|
+| --- | --- |
 | **Zéro round-trip** : updateLocal() est synchrone, feedback immédiat | L'état de saisie n'apparaît pas dans l'Entity (pas de time-travel sur la saisie) |
 | Respecte I30 : le domain state n'est peuplé qu'à la soumission | Validation dupliquée si la Feature doit aussi valider (défense en profondeur) |
 | Le Channel est minimal — seule la soumission transite | **Non réutilisable** : la validation est locale à cette View |
@@ -559,7 +561,7 @@ La logique de formulaire est encapsulée dans un **Behavior** réutilisable. Le 
 
 #### Architecture
 
-```
+```text
 View (saisie) → Behavior.handleInput() → Behavior.updateLocal() → N1 callbacks
 View (submit) → Behavior.handleSubmit() → View.trigger(Command) → Feature
 ```
@@ -789,7 +791,7 @@ class ContactPageView extends View<
 #### Avantages / Inconvénients
 
 | ✅ Avantages | ❌ Inconvénients |
-|-------------|-----------------|
+| --- | --- |
 | **Réutilisable** : le Behavior encapsule la logique de formulaire | Plus de code structurel (Behavior + View hôte) |
 | **Testable isolément** — le Behavior a son propre TUIMap et localState | Le Behavior ne peut pas `trigger()` un Channel directement (I44) — callback vers la View |
 | Conforme ADR-0007 : Behavior = plugin UI avec TUIMap propre, localState, D48 | Les clés TUIMap du Behavior ne doivent pas collisionner avec celles de la View (I43) |
@@ -803,7 +805,7 @@ class ContactPageView extends View<
 Combine les **Options B et C** selon la complexité du formulaire :
 
 | Complexité | Pattern | Justification |
-|-----------|---------|---------------|
+| --- | --- | --- |
 | **Simple** (contact, newsletter, login) | localState dans la View (Option B) | Overhead minimal, code localisé |
 | **Réutilisable** (formulaire d'adresse sur 3 pages) | FormBehavior (Option C) | DRY, testable isolément |
 | **Complexe** (wizard multi-step, checkout) | localState + Entity pour les étapes validées | Les étapes validées deviennent du domain state |
@@ -811,7 +813,7 @@ Combine les **Options B et C** selon la complexité du formulaire :
 
 #### Règles de décision
 
-```
+```text
 Le formulaire est-il affiché sur plusieurs pages ?
 ├── OUI → FormBehavior (Option C)
 └── NON → L'état de saisie a-t-il une valeur métier ?
@@ -1348,7 +1350,7 @@ class ShippingStepView extends View<
 ## Analyse comparative
 
 | Critère | A — Entity | B — localState | C — FormBehavior | D — Hybride |
-|---------|-----------|---------------|-----------------|-------------|
+| --- | --- | --- | --- | --- |
 | **Performance** | ⭐⭐ (round-trip par frappe) | ⭐⭐⭐⭐⭐ (synchrone) | ⭐⭐⭐⭐⭐ (synchrone) | ⭐⭐⭐⭐⭐ |
 | **Type-safety** | ⭐⭐⭐⭐ (Channel typé) | ⭐⭐⭐⭐ (localState typé) | ⭐⭐⭐⭐⭐ (config typée) | ⭐⭐⭐⭐⭐ |
 | **Réutilisabilité** | ⭐⭐ (Feature entière) | ⭐⭐ (View unique) | ⭐⭐⭐⭐⭐ (Behavior plug) | ⭐⭐⭐⭐ |
@@ -1484,7 +1486,7 @@ onSubmitCommand(payload: void, metas: TMessageMetas): void { ... }
 ### Impact sur le code
 
 | Élément | Impact |
-|---------|--------|
+| --- | --- |
 | **Views avec formulaires simples** | Utilisent `localState` (ADR-0015) — `updateLocal()`, callbacks N1, `getUI()` |
 | **Formulaires réutilisables** | Encapsulés dans un `Behavior` (ADR-0007) avec TUIMap propre |
 | **Features recevant des soumissions** | Handlers `(payload, metas)` (ADR-0016), `entity.mutate()` (ADR-0001) |
@@ -1493,7 +1495,7 @@ onSubmitCommand(payload: void, metas: TMessageMetas): void { ... }
 ### Impact sur les RFC
 
 | Document | Impact |
-|----------|--------|
+| --- | --- |
 | **RFC-0002 §9.1** (localState) | Ajouter une note mentionnant les formulaires comme cas d'usage typique |
 | **RFC-0002 §10** (Behavior) | Mentionner `FormBehavior` comme exemple canonique de Behavior |
 | **RFC-0002-entity §4** | Aucun — `mutate()` reste le seul pattern de mutation (conforme ADR-0001) |
@@ -1501,6 +1503,7 @@ onSubmitCommand(payload: void, metas: TMessageMetas): void { ... }
 ### Impact sur les invariants
 
 Aucun nouvel invariant requis. Ce pattern respecte intégralement :
+
 - **I30** (View sans domain state), **I42** (localState 5 contraintes), **I39** (getUI seul accès DOM)
 - **I43** (TUIMap Behavior non-collision), **I44** (Behavior ne touche pas le DOM View)
 - **I41** (source unique de mutation @ui), **I54** (metas explicites)
@@ -1508,7 +1511,7 @@ Aucun nouvel invariant requis. Ce pattern respecte intégralement :
 ### Actions
 
 | # | Action | Priorité |
-|---|--------|----------|
+| --- | --- | --- |
 | A1 | Ajouter un exemple `FormBehavior` dans RFC-0002 §10.4 | P2 |
 | A2 | Ajouter une note « formulaires » dans RFC-0002 §9.1 (localState) | P3 |
 | A3 | Écrire un guide pratique `docs/guides/FORMS-GUIDE.md` avec les 4 patterns | P3 |
@@ -1520,7 +1523,7 @@ Aucun nouvel invariant requis. Ce pattern respecte intégralement :
 ## Historique
 
 | Date | Changement |
-|------|-----------|
+| --- | --- |
 | 2026-03-18 | Création initiale — 4 options (Entity/FormController/View local/Hybrid) |
 | 2026-04-01 | **Réécriture complète** — alignement sur ADR-0001 (mutate), ADR-0015 (localState), D36/D38 (ex-ADR-0007, Behavior ⚪ Superseded), D48 (auto-discovery), ADR-0016 (metas), I41 (TProjectionNode API). Suppression Option B (FormController) obsolète. Ajout Option C (FormBehavior). Tous les exemples réécrits avec les API actuelles. |
 | 2026-04-01 | Passage à 🟢 **Accepted** — prototype sandbox validé. |

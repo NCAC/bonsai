@@ -1,6 +1,6 @@
 # 🤝 Guide de Contribution - Framework Bonsai
 
-## Bienvenue !
+## Bienvenue
 
 Merci de votre intérêt pour contribuer au Framework Bonsai ! Ce guide vous explique comment participer efficacement au développement.
 
@@ -28,24 +28,28 @@ Merci de votre intérêt pour contribuer au Framework Bonsai ! Ce guide vous exp
 ## Types de Contributions
 
 ### 🐛 Bug Reports
+
 - Utiliser les templates d'issue GitHub
 - Fournir des étapes de reproduction claires
 - Inclure la version de Node.js/TypeScript/navigateur
 - Joindre les logs d'erreur complets
 
 ### ✨ Feature Requests
+
 - Expliquer le cas d'usage et la motivation
 - Proposer une API ou interface
 - Vérifier que cela s'aligne avec la philosophie Bonsai
 - Discuter dans une issue avant l'implémentation
 
 ### 📖 Documentation
+
 - Améliorer la clarté et les exemples
 - Corriger les erreurs et typos
 - Ajouter des cas d'usage pratiques
 - Traduire en différentes langues
 
 ### 🔧 Code Contributions
+
 - Nouvelles features
 - Bug fixes
 - Optimisations performance
@@ -89,13 +93,13 @@ git checkout -b fix/correction-bug-123
 
 ### 3. Conventions de Nommage des Branches
 
-| Type | Format | Exemple |
-|------|--------|---------|
-| Feature | `feature/description-courte` | `feature/entity-validation` |
-| Bug Fix | `fix/description-courte` | `fix/channel-memory-leak` |
-| Documentation | `docs/description-courte` | `docs/api-reference-update` |
-| Refactoring | `refactor/description-courte` | `refactor/build-system-optimization` |
-| Tests | `test/description-courte` | `test/feature-integration-tests` |
+| Type          | Format                        | Exemple                              |
+| ------------- | ----------------------------- | ------------------------------------ |
+| Feature       | `feature/description-courte`  | `feature/entity-validation`          |
+| Bug Fix       | `fix/description-courte`      | `fix/channel-memory-leak`            |
+| Documentation | `docs/description-courte`     | `docs/api-reference-update`          |
+| Refactoring   | `refactor/description-courte` | `refactor/build-system-optimization` |
+| Tests         | `test/description-courte`     | `test/feature-integration-tests`     |
 
 ### 4. Développement TDD
 
@@ -127,6 +131,7 @@ vim packages/mon-package/src/ma-feature.ts
 ```
 
 **Types autorisés** :
+
 - `feat`: nouvelle fonctionnalité
 - `fix`: correction de bug
 - `docs`: documentation uniquement
@@ -138,6 +143,7 @@ vim packages/mon-package/src/ma-feature.ts
 - `ci`: configuration CI/CD
 
 **Exemples** :
+
 ```bash
 feat(event): add request timeout handling to Channel class
 
@@ -171,15 +177,18 @@ git rebase upstream/main
 
 ```markdown
 ## Description
+
 Brève description des changements apportés.
 
 ## Type de changement
+
 - [ ] Bug fix (changement non-breaking qui corrige un problème)
 - [ ] Nouvelle fonctionnalité (changement non-breaking qui ajoute une fonctionnalité)
 - [ ] Breaking change (correction ou fonctionnalité qui casserait la compatibilité)
 - [ ] Documentation uniquement
 
 ## Tests
+
 - [ ] Tests unitaires ajoutés/modifiés
 - [ ] Tests d'intégration ajoutés/modifiés
 - [ ] Couverture de code maintenue/améliorée
@@ -187,6 +196,7 @@ Brève description des changements apportés.
 - [ ] Tests ajoutés au fichier de régression cumulatif (ADR-0034)
 
 ## Checklist
+
 - [ ] Code suit les standards du projet
 - [ ] Documentation mise à jour si nécessaire
 - [ ] Changements testés localement
@@ -297,7 +307,7 @@ export default UserFeature; // Éviter
 
 #### JSDoc pour l'API Publique
 
-```typescript
+````typescript
 /**
  * Feature responsible for user management and authentication.
  * 
@@ -329,7 +339,7 @@ class UserFeature extends Feature<UserEntity> {
     // Implementation
   }
 }
-```
+````
 
 ---
 
@@ -414,6 +424,7 @@ describe('UserFeature', () => {
 ### Couverture de Code
 
 **Objectifs de couverture** :
+
 - **Components Core** : 100%
 - **Features** : 95%+
 - **Utilities** : 90%+
@@ -448,7 +459,7 @@ import "./mon-nouveau.test";
 import "./mon-autre.test";
 ```
 
-4. **Vérifiez localement** :
+1. **Vérifiez localement** :
 
 ```bash
 pnpm test:regression
@@ -456,10 +467,10 @@ pnpm test:regression
 
 #### Scripts disponibles
 
-| Script | Cible |
-|--------|-------|
-| `pnpm test:regression` | Tous les fichiers `*.regression.test.ts` (toutes strates) |
-| `pnpm test:strate-0:regression` | Strate 0 uniquement |
+| Script                          | Cible                                                     |
+| ------------------------------- | --------------------------------------------------------- |
+| `pnpm test:regression`          | Tous les fichiers `*.regression.test.ts` (toutes strates) |
+| `pnpm test:strate-0:regression` | Strate 0 uniquement                                       |
 
 #### CI
 
@@ -508,7 +519,7 @@ describe('Channel Performance', () => {
 
 #### Structure Markdown
 
-```markdown
+````markdown
 # Titre Principal (H1)
 
 ## Section Principale (H2)
@@ -528,6 +539,7 @@ channel.on('user:login', (data) => {
   console.log('User logged in:', data);
 });
 ```
+````
 
 ## Notes et Warnings
 
@@ -536,8 +548,8 @@ channel.on('user:login', (data) => {
 > 💡 **Tip**: Utilisez les types pour une meilleure DX
 
 > 📝 **Note**: Voir la documentation API pour plus de détails
-```
 
+```
 ---
 
 ## Review Process
@@ -604,3 +616,4 @@ channel.on('user:login', (data) => {
 Merci à tous les contributeurs qui font évoluer le Framework Bonsai ! Votre travail aide à créer un framework plus robuste et plus utile pour la communauté.
 
 **Happy coding! 🌱**
+```

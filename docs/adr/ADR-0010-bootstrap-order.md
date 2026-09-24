@@ -1,7 +1,7 @@
 # ADR-0010 : Bootstrap Order & Dependencies
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🔵 Tested |
 | **Date** | 2026-03-18 |
 | **Décideurs** | @ncac |
@@ -86,7 +86,7 @@ bootstrap().catch(console.error);
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Explicite, pas de magie | - **Très verbeux** |
 | + Ordre visible | - Risque d'oubli |
 | + Flexible | - Pas de DI automatique |
@@ -158,7 +158,7 @@ async function bootstrap(module: Module, root: Element) {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Déclaratif | - Magie (résolution auto) |
 | + Moins de boilerplate | - Erreurs potentiellement obscures |
 | + DI automatique | - Moins flexible |
@@ -269,7 +269,7 @@ type PhaseKey = 'config' | 'channels' | 'entities' | 'features' | 'views' | 'sta
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Phases explicites | - Un peu plus de structure |
 | + Ordre garanti | - Phases prédéfinies |
 | + Async supporté | |
@@ -299,7 +299,7 @@ function showCart() {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Démarrage ultra-rapide | - Complexité |
 | + Code splitting | - Ordre non garanti |
 | + Pay-as-you-go | - Debugging difficile |
@@ -309,7 +309,7 @@ function showCart() {
 ## Analyse comparative
 
 | Critère | A (Impératif) | B (Container) | C (Phases) | D (Lazy) |
-|---------|--------------|---------------|------------|----------|
+| --- | --- | --- | --- | --- |
 | **Clarté** | ⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐ |
 | **Boilerplate** | ⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ |
 | **Flexibilité** | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
@@ -335,48 +335,48 @@ function showCart() {
 
 ## Ordre de bootstrap
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
-│                    BOOTSTRAP SEQUENCE                    │
+│                    BOOTSTRAP SEQUENCE                   │
 ├─────────────────────────────────────────────────────────┤
-│                                                          │
+│                                                         │
 │  Phase 1: CONFIG                                        │
 │  ├─ Fetch remote config (if any)                        │
 │  ├─ Merge with local defaults                           │
 │  └─ Validate config schema                              │
-│           │                                              │
-│           ▼                                              │
+│           │                                             │
+│           ▼                                             │
 │  Phase 2: CHANNELS                                      │
 │  ├─ Create all channels                                 │
 │  ├─ Register with Radio singleton                       │
 │  └─ Setup debug listeners (__DEV__)                     │
-│           │                                              │
-│           ▼                                              │
+│           │                                             │
+│           ▼                                             │
 │  Phase 3: ENTITIES                                      │
 │  ├─ Create entities with initial state                  │
 │  ├─ Restore from storage (if persistence)               │
 │  └─ Setup change listeners                              │
-│           │                                              │
-│           ▼                                              │
+│           │                                             │
+│           ▼                                             │
 │  Phase 4: FEATURES                                      │
 │  ├─ Create features with channel/entity refs            │
 │  ├─ Setup message handlers                              │
 │  └─ Initialize feature state                            │
-│           │                                              │
-│           ▼                                              │
+│           │                                             │
+│           ▼                                             │
 │  Phase 5: VIEWS (after DOM ready)                       │
 │  ├─ Query DOM for mount points                          │
 │  ├─ Create views with channel refs                      │
 │  ├─ Attach behaviors                                    │
 │  ├─ Create composers                                    │
 │  └─ Initial render                                      │
-│           │                                              │
-│           ▼                                              │
+│           │                                             │
+│           ▼                                             │
 │  Phase 6: START                                         │
 │  ├─ Enable message flow                                 │
 │  ├─ Trigger initial data fetch                          │
 │  └─ App ready                                           │
-│                                                          │
+│                                                         │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -384,44 +384,44 @@ function showCart() {
 
 ## Dépendances entre composants
 
-```
-                    ┌──────────┐
-                    │  Config  │
-                    └────┬─────┘
-                         │
-                         ▼
-                    ┌──────────┐
-                    │  Radio   │ (singleton)
-                    └────┬─────┘
-                         │
-         ┌───────────────┼───────────────┐
-         ▼               ▼               ▼
-    ┌─────────┐    ┌─────────┐    ┌─────────┐
-    │Channel A│    │Channel B│    │Channel C│
-    └────┬────┘    └────┬────┘    └────┬────┘
-         │              │              │
-         ▼              ▼              ▼
-    ┌─────────┐    ┌─────────┐    ┌─────────┐
-    │Entity A │    │Entity B │    │Entity C │
-    └────┬────┘    └────┬────┘    └────┬────┘
-         │              │              │
-         └──────────────┼──────────────┘
-                        │
-                        ▼
-                  ┌──────────┐
-                  │ Features │ (peuvent accéder N channels/entities)
-                  └────┬─────┘
-                       │
-                       ▼
-                  ┌──────────┐
-                  │  Views   │ (dans le DOM)
-                  └────┬─────┘
-                       │
-         ┌─────────────┼─────────────┐
-         ▼             ▼             ▼
-    ┌─────────┐  ┌──────────┐  ┌──────────┐
-    │Behaviors│  │ Composers│  │Projections│
-    └─────────┘  └──────────┘  └──────────┘
+```text
+                ┌──────────┐
+                │  Config  │
+                └────┬─────┘
+                     │
+                     ▼
+                ┌──────────┐
+                │  Radio   │ (singleton)
+                └────┬─────┘
+                     │
+     ┌───────────────┼───────────────┐
+     ▼               ▼               ▼
+┌─────────┐    ┌─────────┐    ┌─────────┐
+│Channel A│    │Channel B│    │Channel C│
+└────┬────┘    └────┬────┘    └────┬────┘
+     │              │              │
+     ▼              ▼              ▼
+┌─────────┐    ┌─────────┐    ┌─────────┐
+│Entity A │    │Entity B │    │Entity C │
+└────┬────┘    └────┬────┘    └────┬────┘
+     │              │              │
+     └──────────────┼──────────────┘
+                    │
+                    ▼
+              ┌──────────┐
+              │ Features │ (peuvent accéder N channels/entities)
+              └────┬─────┘
+                   │
+                   ▼
+              ┌──────────┐
+              │  Views   │ (dans le DOM)
+              └────┬─────┘
+                   │
+     ┌─────────────┼─────────────┐
+     ▼             ▼             ▼
+┌─────────┐  ┌──────────┐  ┌──────────┐
+│Behaviors│  │ Composers│  │Projections│
+└─────────┘  └──────────┘  └──────────┘
 ```
 
 ---
@@ -603,7 +603,7 @@ app.lazyPhase('adminFeatures', async ({ channels }) => {
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-03-18 | Création (Proposed) — Phases recommandé |
 | 2026-03-23 | Accepté — Option C retenue (bootstrap par phases explicites) |
 | 2026-04-01 | Note de compatibilité ADR-0019 : le Mode ESM Modulaire ajoute une **pré-étape** `BonsaiRegistry.collect() → app.register() × N` **avant** `app.start()`. Les phases 1–6 restent intactes. Voir ADR-0019 §7 pour le détail. |

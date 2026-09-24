@@ -1,13 +1,13 @@
 # ADR-0043 : Statut `🔵 Tested` — gate de preuve d'architecture dans le cycle de vie ADR
 
-| Champ                   | Valeur |
-| ----------------------- | ------ |
-| **Statut**              | 🟢 Accepted |
-| **Date**                | 2026-05-07 |
-| **Décideurs**           | @ncac |
-| **RFC liées**           | — (méta-ADR sur le process documentaire) |
-| **ADR liées**           | [ADR-0030](ADR-0030-testing-as-architecture-proof.md) (tests = preuve d'architecture), [ADR-0034](ADR-0034-continuous-verification-strategy.md) (vérification continue), [ADR-0033](ADR-0033-git-workflow-versioning-strategy.md) (workflow Git), [ADR-0028](ADR-0028-implementation-phasing-strategy.md) (phasage par strates) |
-| **Décisions amendées**  | TEMPLATE ADR — ajout d'un statut `🔵 Tested` ; `docs/adr/README.md` — légende et diagramme de cycle mis à jour ; `.husky/pre-commit` — instrumentation informative ajoutée |
+| Champ | Valeur |
+| --- | --- |
+| **Statut** | 🟢 Accepted |
+| **Date** | 2026-05-07 |
+| **Décideurs** | @ncac |
+| **RFC liées** | — (méta-ADR sur le process documentaire) |
+| **ADR liées** | [ADR-0030](ADR-0030-testing-as-architecture-proof.md) (tests = preuve d'architecture), [ADR-0034](ADR-0034-continuous-verification-strategy.md) (vérification continue), [ADR-0033](ADR-0033-git-workflow-versioning-strategy.md) (workflow Git), [ADR-0028](ADR-0028-implementation-phasing-strategy.md) (phasage par strates) |
+| **Décisions amendées** | TEMPLATE ADR — ajout d'un statut `🔵 Tested` ; `docs/adr/README.md` — légende et diagramme de cycle mis à jour ; `.husky/pre-commit` — instrumentation informative ajoutée |
 | **Invariants impactés** | — (méta-ADR : pas d'invariants runtime, l'ADR définit lui-même son critère de transition) |
 
 ---
@@ -44,13 +44,14 @@ Or l'esprit même d'ADR-0030 est de transformer la spécification prose en asser
 **Description** : Ajouter `🔵 Tested` comme état terminal au-dessus d'`🟢 Accepted`. Un ADR progresse linéairement. Les états parallèles `⚪ Superseded` et `🟠 Suspended` restent hors de cette chaîne.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Lecture en un coup d'œil — le lecteur sait immédiatement si l'ADR est éprouvé | - Un ADR re-testé après amendement ne peut pas être « re-Accepted » sans churn |
 | + Cohérent avec le diagramme `Proposed → Review → Accepted` existant | - Force à choisir un état terminal (pas d'« Accepted-mais-en-cours-de-test ») |
 | + Critère unique par ADR (pas de matrice à maintenir) | |
 
 **Cycle** :
-```
+
+```text
 🟡 Proposed  →  🟢 Accepted  →  🔵 Tested
                      ↓                ↓
                 ⚪ Superseded   ⚪ Superseded
@@ -65,7 +66,7 @@ Or l'esprit même d'ADR-0030 est de transformer la spécification prose en asser
 **Description** : Ajouter un champ `Test status` séparé (par ex. `❌ Untested / ✅ Tested`), distinct du `Statut`. Un ADR Accepted peut être Untested ou Tested.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Permet de capter « Accepted sans encore tester » sans churner le statut | - Deux dimensions à lire et à maintenir |
 | + N'invalide aucun statut existant | - Rompt la convention « un statut = un état » du TEMPLATE |
 | | - Demande un second symbole et un second pipeline de validation |
@@ -77,7 +78,7 @@ Or l'esprit même d'ADR-0030 est de transformer la spécification prose en asser
 **Description** : Émettre un statut Tested différencié selon la strate (ADR-0028). Un ADR peut être `Tested-S0` (couvert par les tests strate 0) sans encore l'être en strate 1.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Très précis — capture la couverture progressive prévue par ADR-0028 | - Forte complexité — 4 statuts en plus, matrice de transition |
 | + Aligne avec le phasage explicite | - La plupart des ADRs touchent une seule strate — surcharge non justifiée |
 | | - L'auteur d'un ADR doit qualifier la strate à chaque check — friction |
@@ -86,13 +87,13 @@ Or l'esprit même d'ADR-0030 est de transformer la spécification prose en asser
 
 ## Analyse comparative
 
-| Critère                              | Option A (linéaire) | Option B (parallèle) | Option C (par-strate) |
-| ------------------------------------ | ------------------- | -------------------- | --------------------- |
-| Lisibilité (un coup d'œil)           | ⭐⭐⭐                 | ⭐⭐                   | ⭐                     |
-| Cohérence avec convention existante  | ⭐⭐⭐                 | ⭐                    | ⭐⭐                    |
-| Coût de maintenance                  | ⭐⭐⭐                 | ⭐⭐                   | ⭐                     |
-| Précision sémantique                 | ⭐⭐                  | ⭐⭐⭐                  | ⭐⭐⭐                   |
-| Adaptation au workflow réel          | ⭐⭐⭐                 | ⭐⭐                   | ⭐                     |
+| Critère | Option A (linéaire) | Option B (parallèle) | Option C (par-strate) |
+| --- | --- | --- | --- |
+| Lisibilité (un coup d'œil) | ⭐⭐⭐ | ⭐⭐ | ⭐ |
+| Cohérence avec convention existante | ⭐⭐⭐ | ⭐ | ⭐⭐ |
+| Coût de maintenance | ⭐⭐⭐ | ⭐⭐ | ⭐ |
+| Précision sémantique | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
+| Adaptation au workflow réel | ⭐⭐⭐ | ⭐⭐ | ⭐ |
 
 ---
 
@@ -121,7 +122,7 @@ l'ADR reste `🟢 Accepted` perpétuellement. **C'est son état terminal.** La p
 
 ### Cycle de vie complet
 
-```
+```text
 🟡 Proposed  ──review──►  🟢 Accepted  ──tests──►  🔵 Tested
                               │                      │
                               ├──nouveau ADR──►  ⚪ Superseded
@@ -176,7 +177,7 @@ l'ADR reste `🟢 Accepted` perpétuellement. **C'est son état terminal.** La p
 
 ## Historique
 
-| Date       | Changement                                                         |
-| ---------- | ------------------------------------------------------------------ |
-| 2026-05-07 | Création (Proposed)                                                |
-| 2026-05-07 | Accepted — décision validée, critère trichotomique acté            |
+| Date | Changement |
+| --- | --- |
+| 2026-05-07 | Création (Proposed) |
+| 2026-05-07 | Accepted — décision validée, critère trichotomique acté |

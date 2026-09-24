@@ -22,7 +22,7 @@ La couche abstraite contient les composants qui **survivent aux changements d'in
 ## Composants
 
 | Composant | Rôle | Cardinalité | Document |
-|-----------|------|-------------|----------|
+| --- | --- | --- | --- |
 | **Application** | Orchestrateur, bootstrap, registre | Singleton | [application.md](application.md) |
 | **Feature** | Unité métier autonome, chorégraphe | N instances | [feature.md](feature.md) |
 | **Entity** | État encapsulé, `mutate()`, query | 1 par Feature | [entity.md](entity.md) |

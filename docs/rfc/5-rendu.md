@@ -1,30 +1,54 @@
 # RFC-0003 : Rendu Avancé — Compilateur Pug → PDR
 
-> ### TL;DR
+> ## TL;DR
+>
 > Bonsai utilise la **Projection DOM Réactive (PDR)** : pas de VDOM, pas de diff d'arbre.
 > Les templates Pug sont compilés en fonctions TypeScript qui projettent les données sur
 > un DOM existant via des mutations chirurgicales O(Δ). Trois niveaux d'alteration :
 > **N1** (primitives `text()`, `attr()`, `visible()`), **N2** (templates partiels),
 > **N3** (templates complets). `ProjectionList` gère les listes par réconciliation keyée.
 
-| Champ             | Valeur                                      |
-|-------------------|---------------------------------------------|
-| **RFC**           | 0003                                        |
-| **Titre**         | Rendu Avancé — Compilateur Pug → PDR        |
-| **Statut**        | 🟢 Stable                                   |
-| **Date**          | 2026-03-18                                  |
-| **Auteur**        | @architecte                                 |
-| **Prérequis**     | [RFC-0001](1-philosophie.md), [RFC-0002 §9.4](6-transversal/conventions-typage.md) |
-| **Absorbe**       | [ADR-0008](../adr/ADR-0008-collection-patterns.md) (⚪ Superseded → §6.4–6.8) |
-| **Héritage**      | Inspiré d'un compilateur Pug → VDOM protétypé en amont (VDOM → PDR) |
+| Champ | Valeur |
+| --- | --- |
+| **RFC** | 0003 |
+| **Titre** | Rendu Avancé — Compilateur Pug → PDR |
+| **Statut** | 🟢 Stable |
+| **Date** | 2026-03-18 |
+| **Auteur** | @architecte |
+| **Prérequis** | [1-philosophie.md](1-philosophie.md), [view.md §4](4-couche-concrete/view.md#4-contrat-de-rendu-pdr) |
+| **Absorbe** | [ADR-0008](../adr/ADR-0008-collection-patterns.md) (⚪ Superseded → §6.4–6.8) |
+| **Héritage** | Inspiré d'un compilateur Pug → VDOM protétypé en amont (VDOM → PDR) |
 
 > ### Statut normatif
+>
 > Ce document est **stable et normatif** pour les mécanismes de rendu PDR,
 > les templates Pug, l'API `ProjectionList`, le Render Contract (§7bis), et les
 > collection patterns (§6.4–6.8). Les décisions D39–D48 y documentées font foi.
-> Ce document dépend de [RFC-0002](6-transversal/conventions-typage.md) pour les contrats View, Channel et Entity.
+> Ce document dépend de [view.md](4-couche-concrete/view.md), [communication.md](2-architecture/communication.md) et [entity.md](3-couche-abstraite/entity.md) pour les contrats View, Channel et Entity.
+
+> **⚠ Surface View pré-ADR-0042** — Plusieurs exemples de ce document déclarent
+> encore `get params() { return cartViewParams; }` (forme unique ADR-0024,
+> antérieure à [ADR-0042](../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md)).
+> Ils illustrent le mécanisme de rendu (PDR, templates, `ProjectionList`) —
+> pas le contrat consommateur — et doivent être lus avec le `get params()`
+> mentalement remplacé par les trois getters `features`/`uiEvents`/`uiElements`
+> (`TFeatureContract`/`TUIContract`/`TUIElements`). Pattern courant complet :
+> [view.md §2.2](4-couche-concrete/view.md#22-exemple-complet--cartview).
 
 ---
+
+> ### ⏳ Périmètre d'implémentation (ADR-0028)
+>
+> Ce document décrit le **contrat cible** du rendu. **Aucun mécanisme de ce document n'est encore implémenté**, hormis les primitives N1 de `getUI()` décrites dans [view.md](4-couche-concrete/view.md) :
+>
+> | Élément | Strate cible | Sections concernées |
+> | --- | --- | --- |
+> | Compilateur Pug → PDR (`setup`/`project`/`create`), `ProjectionList`, réconciliation keyed | Strate 1c | §4, §5, §6, §8 |
+> | Templates réactifs, selectors, abonnement `any`, Render Contract | Strate 1c | §2, §7, §7bis |
+> | Hydratation SSR (H1–H5) | Strate 2c | §7bis.3 |
+> | Animations de liste (D39), listes virtualisées (D40, ADR-0012) | Non planifié par ADR-0028 | §11 |
+>
+> Seul un prototype de compilation existe (`tools/pug-to-ts-template`). Le modèle d'abonnement des Views décrit ici (D42/D46 : `any` + state complet) diffère de la surface livrée par ADR-0042 (handlers `on{NS}{Event}Event` sur les Events granulaires) : l'articulation des deux reste **à trancher** avant la strate 1c.
 
 ## 1. Résumé exécutif
 
@@ -46,12 +70,12 @@ Cette RFC définit le **compilateur Pug → PDR** et les mécanismes de rendu av
 Le développeur choisit le niveau d'abstraction approprié à son cas d'usage :
 
 | Niveau | Cas d'usage | Mécanisme | Template ? |
-|--------|-------------|-----------|------------|
+| --- | --- | --- | --- |
 | **N1 — Mutation d'attributs** | Carrousel, modale `hidden`, badge count, toggle class | `getUI().text()`, `.toggleClass()`, `.attr()` | ❌ Non — overhead inutile |
 | **N2 — Mutation par zones** | Liste de produits, formulaire dynamique, onglets | Template sur clés `@ui` spécifiques | ✅ Oui — sur zones ciblées |
 | **N3 — Mutation complète** | Page entière change, dashboard reconfigurable | Template sur `root` | ✅ Oui — toute la View |
 
-**Principe** : on ne sur-ingénierie pas. Un carrousel n'a pas besoin d'un template, un `.setAttribute("data-active", false)` suffit.
+**Principe** : on ne sur-ingénierie pas. Un carrousel n'a pas besoin d'un template, un `getUI("slide").attr("data-active", "false")` suffit (I39 — jamais de `setAttribute` brut, toujours via `getUI()`).
 
 ### 2.2 Template = Délégation totale du rendu
 
@@ -125,14 +149,16 @@ class CartView extends View<TCartViewCapabilities> {
 }
 ```
 
-**Fonctionnement** :
-1. Le Channel émet `any` automatiquement après chaque Event granulaire
-2. Le payload contient uniquement les **clés changées**
+**Fonctionnement** (cible strate 1c — ⚠️ voir §7.1 pour la définition de `changes` qui prévaut, en tension avec celle utilisée ici) :
+
+1. Le Channel émet `any` automatiquement après chaque Event granulaire — **livré**
+2. Le payload transmis à `select()` contiendrait le **state complet du Channel**, pas seulement les clés changées (D46 — cf. §7.1 ; le libellé « clés changées » ci-dessus est imprécis, corrigé en §7.1)
 3. Le framework **namespace** le payload par le Channel source
 4. Le selector filtre les données pertinentes (ex: `data.cart?.items`)
 5. Si les données ont changé (shallow equal), le template est re-projeté
 
 **Avantages** :
+
 - ✅ Un seul abonnement par Channel (événement `any`)
 - ✅ Le template reste du Pug pur, portable
 - ✅ Le selector filtre par clé de state, pas par nom d'Event
@@ -145,21 +171,21 @@ class CartView extends View<TCartViewCapabilities> {
 
 ## 3. Contexte et motivation
 
-### 3.1 Ce qui est défini (RFC-0002 §9.4)
+### 3.1 Ce qui est défini ([view.md §4](4-couche-concrete/view.md#4-contrat-de-rendu-pdr))
 
-RFC-0002 a établi les fondations de la **Projection DOM Réactive (PDR)** :
+[view.md §4](4-couche-concrete/view.md#4-contrat-de-rendu-pdr) a établi les fondations de la **Projection DOM Réactive (PDR)** :
 
-| Concept | Statut | RFC-0002 |
-|---------|--------|----------|
-| Stratégie PDR (D19) | ✅ Défini | §9.4 |
-| `getUI()` → `TProjectionNode` | ✅ Défini | §9.4.4 |
-| `TProjectionTemplate` type | ✅ Défini | §9.4.5 |
-| 3 modes de rendu (A, B, C) | ✅ Défini | §9.4.5 |
+| Concept | Statut | Source |
+| --- | --- | --- |
+| Stratégie PDR (D19) | ✅ Défini | view.md §4 |
+| `getUI()` → `TProjectionNode` | ✅ Défini | view.md §4 |
+| `TProjectionTemplate` type | ✅ Défini | view.md §4 |
+| 3 modes de rendu (A, B, C) | ✅ Défini | view.md §4 |
 
 ### 3.2 Ce qui manque
 
 | Concept | Statut | Besoin |
-|---------|--------|--------|
+| --- | --- | --- |
 | Compilateur Pug → PDR | ❌ | Comment génère-t-on `setup/project/create` ? |
 | `each` → reconcile | ❌ | Comment `each item in items` devient du keyed reconcile ? |
 | `ProjectionList` API | ❌ | Interface complète et algorithme |
@@ -169,11 +195,12 @@ RFC-0002 a établi les fondations de la **Projection DOM Réactive (PDR)** :
 
 Un compilateur Pug → VDOM (Snabbdom) avait été protétypé en amont. L'architecture de pipeline reste pertinente :
 
-```
+```text
 .pug → Lexer → Parser → AST → Compiler → .ts (VDOM functions)
 ```
 
 **Ce qui change pour Bonsai** :
+
 - VDOM → PDR (mutations directes, pas de diff d'arbre)
 - `VNode` → `TProjectionNode` / `ProjectionList`
 - Réactivité implicite (pas d'appel manuel à `render()`)
@@ -181,11 +208,13 @@ Un compilateur Pug → VDOM (Snabbdom) avait été protétypé en amont. L'archi
 ### 3.4 Le edge case des listes longues
 
 Le cas le plus complexe : une liste de 500+ items sur laquelle l'utilisateur :
+
 - Applique des filtres (affiche 50 items sur 500)
 - Change le tri (réordonne les 50 items)
 - Modifie un item (met à jour 1 item)
 
 **Exigences** :
+
 - Le filtrage/tri ne doit PAS muter les données (ADR-0008 anti-pattern)
 - La réconciliation doit être O(n) avec keyed diffing
 - Les mutations individuelles doivent être O(1)
@@ -234,6 +263,7 @@ class CartView extends View<TCartViewCapabilities> {
 
 Le compilateur tourne au **build time** (via Rollup/Vite plugin), pas au runtime.
 Cela garantit :
+
 - Zéro parsing Pug au runtime
 - Bundle optimisé (tree-shaking des parties non utilisées)
 - Erreurs de template détectées au build
@@ -292,7 +322,7 @@ for (const channel of view.listen) {
 
 ### 5.1 Pipeline de compilation
 
-```
+```text
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  .pug file  │────▶│  Pug AST    │────▶│  IR Bonsai  │────▶│  .ts file   │
 └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
@@ -304,6 +334,7 @@ for (const channel of view.listen) {
 ```
 
 **Composants du prototype Pug → VDOM** (à adapter) :
+
 - `lexer.ts` / `lexer.types.ts` — Tokenization
 - `parser.ts` / `token-stream.ts` — AST construction
 - `base-compiler.class.ts` — Visiteur d'AST
@@ -313,7 +344,7 @@ for (const channel of view.listen) {
 **Différences clés avec le prototype VDOM** :
 
 | Aspect | Prototype VDOM | Bonsai |
-|--------|------------------|--------|
+| --- | --- | --- |
 | Output | VDOM (Snabbdom `VNode`) | PDR (`TProjectionNode`, `ProjectionList`) |
 | Réactivité | Manuelle (`render()`) | Déclarée dans View (`listen`, `dataPath`) |
 | Diff | Runtime (VDOM diff) | Build-time (keyed reconcile généré) |
@@ -429,7 +460,7 @@ export const CartItemsTemplate: TProjectionTemplate<CartItemsNodes, CartItem[]> 
 
 ### 6.1 Interface
 
-```typescript
+````typescript
 /**
  * Gestionnaire de liste dynamique avec réconciliation keyed.
  * Utilisé en interne par les templates compilés.
@@ -509,7 +540,7 @@ type TReconcileHandlers<TItem, TItemNodes> = {
   onRemove?: (el: HTMLElement, item: TItem) => void | Promise<void>;
   onMove?: (el: HTMLElement, item: TItem, fromIndex: number, toIndex: number) => void;
 }
-```
+````
 
 ### 6.2 Algorithme de réconciliation
 
@@ -583,7 +614,7 @@ reconcile(items: TItem[], handlers: TReconcileHandlers<TItem, TItemNodes>): void
 ### 6.3 Complexité
 
 | Opération | Complexité |
-|-----------|------------|
+| --- | --- |
 | Réconciliation complète | O(n) |
 | Insertion d'un item | O(1) amortie |
 | Suppression d'un item | O(1) |
@@ -599,6 +630,7 @@ reconcile(items: TItem[], handlers: TReconcileHandlers<TItem, TItemNodes>): void
 est **ProjectionList + Event Delegation** (Option D de l'ADR-0008).
 
 Justification :
+
 1. **Simple** — un seul pattern à apprendre (pas de `ViewFragment`, pas de `CollectionComposer`)
 2. **Performant** — keyed reconcile O(n) + un seul listener par type d'événement
 3. **Scalable** — 1000+ items sans dégradation (un listener ≠ mille listeners)
@@ -609,24 +641,46 @@ Justification :
 La View gère les interactions utilisateur sur les items **via delegation sur le conteneur**,
 jamais via des listeners individuels sur chaque élément.
 
+> **Terminologie** : `TUIMap` (D35) est remplacé par le pattern modulaire
+> `TUIContract` + `TUIElements<TUI>` depuis [ADR-0042](../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md)
+> (`get params()` unique est lui aussi remplacé par les trois getters `features`/`uiEvents`/`uiElements`).
+> L'exemple ci-dessous se concentre sur l'auto-discovery DOM (D48) — le pattern
+> modulaire complet (avec `TFeatureContract` et `implements TViewCallbacks`) est
+> documenté dans [view.md §2.2](4-couche-concrete/view.md#22-exemple-complet--cartview).
+
 ```typescript
-// ── TUIMap : contrat structurel de la CartView ──
-// Chaque clé = un nœud d'interaction, le framework auto-dérive les handlers (D48)
-type TCartViewUI = TUIMap<{
-  items:              { el: HTMLUListElement;   event: [] };              // Conteneur liste
-  removeButton:       { el: HTMLButtonElement;  event: ['click'] };       // → onRemoveButtonClick
-  increaseQtyButton:  { el: HTMLButtonElement;  event: ['click'] };       // → onIncreaseQtyButtonClick
-  decreaseQtyButton:  { el: HTMLButtonElement;  event: ['click'] };       // → onDecreaseQtyButtonClick
-  qtyInput:           { el: HTMLInputElement;   event: ['input'] };       // → onQtyInputInput
-}>;
+import { View, ui, type TUIContract, type TUIElements } from "@bonsai/view";
+
+// ── Module 2 — TUIContract : contrat structurel de la CartView (ADR-0042) ──
+// Chaque clé = un nœud d'interaction ; `ui<TEl>()(events)` déclare le
+// sous-type HTML ET les events DOM (I85). Le framework auto-dérive les
+// handlers depuis cette déclaration (D48, amendé ADR-0042).
+const cartViewUiEvents = {
+  items:              ui<HTMLUListElement>()([]),           // Conteneur liste — non-interactif (I86)
+  removeButton:       ui<HTMLButtonElement>()(["click"]),   // → onRemoveButtonClick
+  increaseQtyButton:  ui<HTMLButtonElement>()(["click"]),   // → onIncreaseQtyButtonClick
+  decreaseQtyButton:  ui<HTMLButtonElement>()(["click"]),   // → onDecreaseQtyButtonClick
+  qtyInput:           ui<HTMLInputElement>()(["input"]),    // → onQtyInputInput
+} satisfies TUIContract;
+
+// ── Module 3 — TUIElements : sélecteurs CSS, 1:1 avec uiEvents ──
+const cartViewUiElements = {
+  items:              "[data-ui='items']",
+  removeButton:       "[data-ui='removeButton']",
+  increaseQtyButton:  "[data-ui='increaseQtyButton']",
+  decreaseQtyButton:  "[data-ui='decreaseQtyButton']",
+  qtyInput:           "[data-ui='qtyInput']",
+} satisfies TUIElements<typeof cartViewUiEvents>;
 
 class CartView extends View<TCartViewCapabilities> {
-  get params() { return cartViewParams; }
+  get uiEvents()   { return cartViewUiEvents;   }
+  get uiElements() { return cartViewUiElements; }
 
   // ══════════════════════════════════════════════════════════════════
-  // PAS DE get uiEvents() — D48 (AUTO-UI-EVENT-DISCOVERY)
-  //
-  // Le framework introspecte TUIMap et découvre les handlers par convention :
+  // `get uiEvents()` expose le contrat (value-first, ADR-0024) — ce
+  // N'EST PAS la map manuelle nom→handler que D48 supprimait à l'origine.
+  // Le framework introspecte `TUIContract` et découvre les handlers par
+  // convention :
   //   clé 'increaseQtyButton' + event 'click'
   //   → cherche méthode on${Capitalize<key>}${Capitalize<event>}
   //   → onIncreaseQtyButtonClick
@@ -645,7 +699,7 @@ class CartView extends View<TCartViewCapabilities> {
   }
 
   // ────────────────────────────────────────────────────────────────────
-  // Handlers auto-dérivés depuis TUIMap (D48)
+  // Handlers auto-dérivés depuis `uiEvents` (D48, amendé ADR-0042)
   // Noms conventionnels : on${Capitalize<key>}${Capitalize<event>}
   // Le framework vérifie leur existence au bootstrap
   // ────────────────────────────────────────────────────────────────────
@@ -708,21 +762,27 @@ items.forEach(item => {
   item.el.addEventListener('click', () => this.onRemove(item.id));
 });
 
-// ❌ OBSOLÈTE — get uiEvents() manuel (avant D48)
-get uiEvents() {
-  return {
-    'click @ui.removeButton': 'onRemoveButtonClick',
-  } as const;
+// ❌ OBSOLÈTE — mapping manuel nom→handler (pré-D48, jamais réintroduit)
+class LegacyView {
+  getUIEvents() {
+    return {
+      'click @ui.removeButton': 'onRemoveButtonClick',
+    } as const;
+  }
 }
-// Problème : mapping manuel redondant avec TUIMap, source de désynchronisation.
+// Problème : mapping manuel redondant avec la déclaration UI, source de
+// désynchronisation. C'est CE pattern que D48 a supprimé — pas `get uiEvents()`
+// en tant que tel, qui a été réintroduit par ADR-0042 avec un sens différent
+// (voir encadré « Terminologie » en tête de §6.4).
 
-// ✅ CORRECT — D48 : TUIMap déclare tout, le framework câble automatiquement
-type TCartViewUI = TUIMap<{
-  removeButton: { el: HTMLButtonElement; event: ['click'] };
-  //                                             ^^^^^^^^^
+// ✅ CORRECT — D48 (amendé ADR-0042) : `get uiEvents()` expose le TUIContract,
+// le framework câble automatiquement les handlers depuis cette déclaration
+const cartViewUiEvents = {
+  removeButton: ui<HTMLButtonElement>()(["click"]),
+  //                                      ^^^^^^^
   // Le framework dérive : onRemoveButtonClick(event: MouseEvent)
   // et attache via délégation sur this.el + closest(@ui.removeButton)
-}>;
+} satisfies TUIContract;
 ```
 
 ### 6.5 Anti-pattern : muter les données pour filtrer/trier
@@ -757,9 +817,9 @@ onFilterByPopularity(payload) {
 **Pourquoi c'est un anti-pattern :**
 
 | # | Raison |
-|---|--------|
+| --- | --- |
 | 1 | **Explosion des patches** — 300 patches pour une opération logique |
-| 2 | **Sémantique incorrecte** — les données n'ont pas changé, seule la *présentation* change |
+| 2 | **Sémantique incorrecte** — les données n'ont pas changé, seule la _présentation_ change |
 | 3 | **Performance** — re-render complet de la liste |
 | 4 | **Event Sourcing** — stocker « tri changé » ≠ stocker 300 déplacements |
 
@@ -818,7 +878,7 @@ class ProductsView extends View {
 ### 6.6 Données vs Critères vs Dérivées
 
 | Type | Fréquence mutation | Stockage Entity | Exemple |
-|------|-------------------|-----------------|---------|
+| --- | --- | --- | --- |
 | **Données brutes** | Rare (CRUD serveur) | `items: Product[]` | Liste de produits |
 | **Critères de vue** | Fréquent (UI) | `sortCriteria`, `filters`, `page` | Tri, filtres, pagination |
 | **Données dérivées** | **Jamais** | Calculé dans le selector de la View | Liste filtrée et triée |
@@ -887,7 +947,7 @@ class WidgetComposer extends Composer {
 > ProjectionList + Event Delegation (§6.4).
 
 | Pattern | Cas d'usage | Overhead |
-|---------|-------------|----------|
+| --- | --- | --- |
 | ProjectionList + Event Delegation (§6.4) | Listes simples, items template-only | Faible (1 listener par type) |
 | Slots × Composers (§6.7) | Items complexes avec lifecycle propre | Élevé (n Composers + n Views) |
 
@@ -945,6 +1005,8 @@ onCellClick(event: Event): void {
 
 ## 7. Intégration avec la View
 
+> ⚠️ **D42/D46 sont en tension avec ADR-0042 — non tranché** (cf. [decisions.md](reference/decisions.md)). Le contrat **livré** pour la couche View (ADR-0028 strate 0/1a) est celui d'[ADR-0042](../adr/ADR-0042-view-contract-unified-ui-deps-single-generic.md) : des handlers **granulaires** `on{NS}{Event}Event` par Event déclaré dans `features[ns].listens` — l'exact opposé de l'abonnement unique `any` + selector décrit ci-dessous. Aucune View ne s'abonne à `any` aujourd'hui. Ce §7 documente une proposition **cible strate 1c** dont l'articulation avec ADR-0042 reste à trancher par un ADR dédié.
+
 > **Décision D42 (VIEW-SUBSCRIPTION)** : Les Views s'abonnent aux Channels via l'événement `any`
 > (auto-émis par le Channel après chaque Event). Les Events granulaires sont destinés
 > à la communication inter-Feature. Les selectors des templates filtrent les clés
@@ -964,6 +1026,7 @@ La View déclare les Channels qu'elle écoute. Le framework s'abonne **une seule
 à l'événement `any` de chaque Channel.
 
 **Contrat `NamespacedData`** :
+
 - Contient le **state complet** de chaque Channel écouté, par référence (frozen)
 - Est **namespacé** par le Channel source (ex: `data.cart`, `data.promo`)
 - Inclut le namespace réservé `local` pour le localState (I57, ADR-0015)
@@ -1061,19 +1124,34 @@ ul.Cart-items
 
 ### 7.4 Types TypeScript
 
+> ⚠️ **Nom réel et faisabilité structurelle** : le type livré s'appelle
+> `TAnyEventPayload` (`packages/event/src/channel.class.ts`), pas
+> `TChannelAnyPayload` — et son champ `changes` est le **payload de l'Event
+> granulaire tel quel**, pas des « clés changées » (cf.
+> [communication.md §7](../2-architecture/communication.md), corrigé). Par
+> ailleurs, `Channel<TDef>` (`packages/event/src/channel.class.ts`) n'a ni
+> `.namespace` (le champ s'appelle `.name`) ni `.state` — **le Channel ne
+> connaît pas l'Entity** (I5, I80). `NamespacedData` telle qu'esquissée
+> ci-dessous n'est donc pas seulement non livrée : sa lecture `C['state']`
+> est **structurellement impossible** avec l'encapsulation actuelle sans
+> changer où vit la référence au state (cf. la tension D42/D46 documentée
+> dans [decisions.md](reference/decisions.md) et le bandeau en tête de ce
+> document).
+
 ```typescript
-// Payload de l'événement 'any' (interne framework — pas exposé au développeur)
-type TChannelAnyPayload = {
+// Payload de l'événement 'any' — nom réel TAnyEventPayload, cf. note ci-dessus
+type TAnyEventPayload = {
   event: string;                  // Nom de l'Event granulaire
-  changes: TJsonSerializable;     // Clés changées (pour optimisation interne)
+  changes: Record<string, unknown>; // Payload de l'Event tel quel (PAS les clés changées)
 }
 
 // Données reçues par le selector (après namespace par le framework)
-// D46 (FULL-STATE-SELECTOR) : le state est COMPLET, pas juste les changes.
-// Le framework passe une référence live vers le state frozen de l'Entity.
+// D46 (FULL-STATE-SELECTOR) : le state serait COMPLET, pas juste les changes.
+// ⏳ Suppose une référence live vers le state frozen de l'Entity — mécanisme
+// non spécifié (cf. note ci-dessus : Channel n'a pas accès à l'Entity).
 // Inclut le namespace réservé 'local' pour le localState (I57, ADR-0015)
 type NamespacedData<TChannels extends Channel[], TLocal = never> = 
-  & { [C in TChannels[number] as C['namespace']]?: C['state'] }
+  & { [C in TChannels[number] as C['name']]?: unknown /* état de l'Entity — voie d'accès non spécifiée */ }
   & ([TLocal] extends [never] ? {} : { local?: Partial<TLocal> });
 
 // Note : le namespace 'local' est réservé par le framework (I57).
@@ -1100,7 +1178,7 @@ type TViewTemplateBinding<TData = unknown> = {
   select?: (data: NamespacedData<any, any>) => TData | undefined;
 }
 
-type TViewTemplates<TUI extends TUIMap<any>> =
+type TViewTemplates<TUI extends TUIContract> =
   | null
   | { root: TViewTemplateBinding }
   | { [K in keyof TUI & string]?: TViewTemplateBinding };
@@ -1113,6 +1191,7 @@ type TViewTemplates<TUI extends TUIMap<any>> =
 > et les helpers `isAllUndefined()` / `shallowEqual()`.
 
 **Résumé du mécanisme** :
+
 1. Le framework appelle `template.setup(container)` pour localiser les nœuds dynamiques
 2. Un **seul** abonnement `any` par Channel (pas un listener par Event)
 3. Le framework namespace le state complet par Channel (D46 : référence live, zéro copie)
@@ -1130,28 +1209,28 @@ type TViewTemplates<TUI extends TUIMap<any>> =
 ### 7.6 Séparation des audiences
 
 | Audience | Écoute | Payload | Cas d'usage |
-|----------|--------|---------|-------------|
-| **Features** | Events granulaires (`item-added`) | Payload métier | Réactions inter-Feature |
+| --- | --- | --- | --- |
+| **Features** | Events granulaires (`itemAdded`) | Payload métier | Réactions inter-Feature |
 | **Views** | Event `any` (auto-émis) | `{ changes }` namespacé | Réactivité UI |
 
-```
-Feature.emit('item-added', payload)
+```text
+Feature.emit('itemAdded', payload)
         │
         ▼
     Channel
-        ├─► emit('item-added', payload)      → Autres Features
+        ├─► emit('itemAdded', payload)       → Autres Features
         │
         └─► emit('any', { event, changes })  → Views (selector filtre)
 ```
 
-> **Avantage clé** : Si la Feature ajoute un nouvel Event (`item-quantity-changed`),
+> **Avantage clé** : Si la Feature ajoute un nouvel Event (`itemQuantityChanged`),
 > la View **fonctionne toujours** sans modification — le selector filtre sur les clés,
 > pas sur les noms d'Events.
 
 ### 7.7 Résumé des responsabilités
 
 | Qui | Responsabilité |
-|-----|----------------|
+| --- | --- |
 | **Channel** | Émet automatiquement `any` après chaque Event granulaire |
 | **View** | Déclare `listen` (Channels) et `templates` avec selectors |
 | **Selector** | Extrait / dérive les données pertinentes depuis le state complet (D46) |
@@ -1173,7 +1252,7 @@ complet, du changement de données à la mutation DOM finale.
 
 ### 7bis.1 Pipeline de rendu : 6 étapes
 
-```
+```text
 ┌────────────────── Pipeline de rendu PDR ───────────────────┐
 │                                                          │
 │  1. MUTATION     entity.mutate() modifie le state         │
@@ -1208,7 +1287,7 @@ Bonsai élimine les mutations DOM inutiles à **4 niveaux** successifs. Chaque c
 agit comme un filtre — seules les mutations réellement nécessaires atteignent le DOM.
 
 | Couche | Nom | Où | Ce qu'elle filtre | Exemple |
-|--------|-----|-----|-------------------|----------|
+| --- | --- | --- | --- | --- |
 | **L1** | **Selector** | `select()` dans `get templates()` | Rejette les Events non pertinents pour ce template | `data.catalog?.items` retourne `undefined` quand seul `promo` a changé → skip |
 | **L2** | **shallowEqual** | Framework, après le selector | Rejette les projections quand les données n'ont pas changé | Premier `any` après SSR : données identiques → skip complet (ADR-0014 H4) |
 | **L3** | **Guards per-nœud** | `update()` dans `project()` (compilé) | Rejette les mutations de contenu quand la valeur est identique | `if (node.textContent !== item.name)` — évite le re-layout navigateur |
@@ -1225,14 +1304,14 @@ agit comme un filtre — seules les mutations réellement nécessaires atteignen
 #### Règles d'hydratation (H1–H5)
 
 | Règle | Nom | Énoncé |
-|-------|-----|--------|
+| --- | --- | --- |
 | **H1** | Détection par nœud | Pour chaque `rootElement` : `querySelector()` dans le scope → **trouvé** = mode SSR (`setup()`), **absent** = le framework **parse le sélecteur CSS** et crée l'élément (SPA, D30 révisé, ADR-0026). Si le sélecteur n'est pas parseable (combinateurs, pseudo-classes) → ERREUR. La détection est **par nœud**, pas globale. |
 | **H2** | `setup()` = hydratation | `setup()` localise les nœuds dynamiques dans un DOM existant. Il n'y a **pas** de procédure d'hydratation séparée — `setup()` EST l'hydratation. Pas de branche `if (SSR)` dans le code applicatif. |
 | **H3** | ProjectionList par `keyAttr` | `ProjectionList.setup()` indexe les items existants par `keyAttr` (`data-item-id` / `data-key`). Les items sont adoptés, jamais recréés. Résultat : `Map<key, { el, nodes }>` — zéro création DOM. |
 | **H4** | Premier `any` = no-op | Après `onAttach()`, le premier `any` passe dans le pipeline L1→L2. Le selector retourne des données identiques au DOM servi → `shallowEqual` → **SKIP**. Zéro mutation DOM après bootstrap. |
 | **H5** | `serverState` unique | `TBootstrapOptions.serverState` est le **seul** mécanisme d'état sérialisé du framework. Le framework ne lit **jamais** le DOM pour extraire du state (esprit I39). Le développeur contrôle l'injection (JSON inline, fetch, localStorage, etc.). |
 
-```
+```text
 T0 ─── SSR ──────────────────────────────────────────────────────────────
        Serveur rend le HTML complet (structure + contenu)
        DOM = source de vérité structurelle (D19)
@@ -1244,12 +1323,12 @@ T1 ─── Bootstrap (setup) ────────────────�
        Résultat : Map<key, { el, nodes }> — zéro création DOM
 
 T2 ─── Premier any ──────────────────────────────────────────────────────
-       Feature.onAttach() → request / Entity peuplée → emit('any')
+       Feature.onInit() → request / Entity peuplée → emit('any')
        Selector → données identiques au DOM → shallowEqual → SKIP (H4)
        ✅ Zéro mutation DOM après bootstrap
 
 T3 ─── Interaction utilisateur (ex: tri) ────────────────────────────────
-       View.trigger(command) → Feature.mutate(critères) → emit('any')
+       View.trigger(command) → Feature → entity.mutate(critères) → emit('any')
        Selector → deriveVisibleProducts(fullState) → liste réordonnée
        shallowEqual → différent → project()
        ProjectionList.reconcile(items) → déplacements + guards
@@ -1282,6 +1361,13 @@ function attachView(view: View): void {
     }
   }
   
+  // ⚠️ Pseudocode illustratif, noms non alignés sur l'API réelle : la View
+  // n'a pas de propriété `listen` (le contrat réel est `get features()`,
+  // ADR-0042) ; `Channel` n'a pas de méthode `.on()` (l'API réelle est
+  // `listenAny(listener)`) ni de champ `.namespace` (`.name`) ; `channel.entity`
+  // n'existe pas — le Channel ne connaît pas l'Entity (I5, I80), cf. la note
+  // de §7.4 sur la faisabilité structurelle de cette lecture.
+
   // UN SEUL abonnement par Channel — événement 'any'
   for (const channel of view.listen) {
     channel.on('any', ({ event, changes }) => {
@@ -1319,7 +1405,7 @@ function attachView(view: View): void {
 ### 7bis.5 Règles normatives du Render Contract
 
 | # | Règle | Source |
-|---|-------|--------|
+| --- | --- | --- |
 | **R1** | PDR est la stratégie de rendu **unique** de Bonsai. Pas de VDOM. | ADR-0017, D19 |
 | **R2** | Le selector reçoit le **state complet** de chaque Channel par référence live (frozen). | D46 |
 | **R3** | Les données dérivées (filtre, tri) sont calculées dans le selector, **jamais** stockées dans l'Entity. | D47 |
@@ -1342,6 +1428,7 @@ Le compilateur Bonsai **infère la clé** depuis un attribut de l'élément raci
 Cela reste du Pug standard tout en garantissant une réconciliation performante.
 
 **Attributs reconnus** (par ordre de priorité) :
+
 1. `data-item-id` — Convention Bonsai (sémantique)
 2. `data-key` — Alternative générique
 3. `id` — Fallback si unique par item
@@ -1408,12 +1495,11 @@ class CartView extends View<TCartViewCapabilities> {
 > dans le template Pug, plutôt que via `querySelector()`. Les `uiElements` dont la valeur
 > est un sélecteur CSS classique (ex: `'.Cart-total'`) restent valides pour les Views
 > sans template (Mode A, N1).
-```
 
 **Erreurs de compilation** :
 
 | Cas | Message |
-|-----|---------|
+| --- --- |
 | `@ui` dans Pug sans `uiElement` | `Error: @ui 'foo' in template but not declared in uiElements` |
 | `uiElement` sans `@ui` dans Pug | `Error: uiElement 'bar' requires @ui="bar" in template` |
 
@@ -1463,7 +1549,7 @@ if (nodes.name.textContent !== item.name) {
 ### 10.1 Erreurs de compilation
 
 | Erreur | Message |
-|--------|---------|
+| --- | --- |
 | `each` sans clé | `Error: List directive requires a key. Add 'key=expr' or use 'data-item-id' / 'data-key' attribute.` |
 | @ui non résolu | `Error: @ui 'foo' referenced but not found in uiElements declaration.` |
 | Syntaxe invalide | `Error: Invalid Pug syntax at line X.` |
@@ -1471,7 +1557,7 @@ if (nodes.name.textContent !== item.name) {
 ### 10.2 Erreurs runtime
 
 | Erreur | Cause | Message |
-|--------|-------|---------|
+| --- | --- | --- |
 | Clé dupliquée | Deux items avec la même clé | `Warning: Duplicate key 'X' in list. Reconciliation may be incorrect.` |
 | Élément manquant | DOM modifié hors framework | `Error: Expected element with key 'X' not found.` |
 
@@ -1486,11 +1572,12 @@ if (nodes.name.textContent !== item.name) {
 (composants autonomes avec lifecycle propre). Absorbe [ADR-0008](../adr/ADR-0008-collection-patterns.md).
 
 | Pattern | Cas d'usage | Overhead |
-|---------|-------------|----------|
+| --- | --- | --- |
 | ProjectionList + Delegation | 90% — listes simples, items template-only | Faible |
 | Slots × Composers | 10% — items complexes (dashboard widgets) | Élevé |
 
 **Anti-patterns associés** (§6.5) :
+
 - ❌ Muter les données brutes pour filtrer/trier
 - ❌ Un listener par item au lieu de delegation
 - ❌ `CollectionComposer` (D24 interdit)
@@ -1553,7 +1640,7 @@ class CartView extends View {
 
 #### Clarification : `el` = l'item individuel
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │  ul.Cart-items (@ui="items")     ← Conteneur (View.nodes)  │
 │  ┌─────────────────────────────────────────────────────┐   │
@@ -1597,7 +1684,7 @@ onInsert: (el, item: CartItem) => { /* item = { id, name, qty } */ }
 Voir [ADR-0012 — Listes Virtualisées](../adr/ADR-0012-virtualized-list.md) pour les détails.
 
 | Classe | Cas d'usage | Complexité |
-|--------|-------------|------------|
+| --- | --- | --- |
 | `ProjectionList` | Listes courtes (< 500 items) | Simple |
 | `VirtualizedList` | Listes longues (1000+ items) | Complexe |
 
@@ -1682,7 +1769,7 @@ each category in categories
 
 ## 12. Références
 
-- [RFC-0002 §9.4 — PDR](6-transversal/conventions-typage.md) — Contrat de base
+- [view.md §4 — PDR](4-couche-concrete/view.md#4-contrat-de-rendu-pdr) — Contrat de base
 - [pugx](../pugx/) — Projet séparé d'extension de Pug avec typage (hors scope)
 - [React Reconciliation](https://reactjs.org/docs/reconciliation.html)
 - [Vue v-for with key](https://vuejs.org/guide/essentials/list.html#maintaining-state-with-key)
@@ -1695,7 +1782,7 @@ each category in categories
 ## 13. Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-03-18 | Création (Draft) |
 | 2026-03-19 | **D42 (VIEW-SUBSCRIPTION)** : Views s'abonnent à `any` + selectors namespacés (§7 réécrit) |
 | 2026-03-19 | **D39** : Animations via Callbacks + CSS (§11) |

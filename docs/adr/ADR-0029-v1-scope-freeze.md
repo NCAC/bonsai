@@ -1,7 +1,7 @@
 # ADR-0029 : Périmètre gelé v1 — Ce qui entre, ce qui attend
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Date** | 2026-04-08 |
 | **Décideurs** | @ncac |
@@ -34,7 +34,7 @@ Un ADR Accepted signifie : **la décision architecturale est prise** — si/quan
 ## Contraintes
 
 | # | Contrainte | Source |
-|---|-----------|--------|
+| --- | --- | --- |
 | C1 | Le périmètre v1 DOIT produire un framework **utilisable** pour une application métier réelle (pas un prototype académique) | Viabilité |
 | C2 | Le périmètre v1 DOIT couvrir les strates 0 et 1 d'ADR-0028 **au minimum** | ADR-0028 |
 | C3 | Le périmètre v1 NE DOIT PAS inclure de mécaniques dont aucune Feature métier ne dépend | Pragmatisme |
@@ -50,7 +50,7 @@ Un ADR Accepted signifie : **la décision architecturale est prise** — si/quan
 **Description** : implémenter tous les ADR Accepted dans v1, y compris ADR-0012 (VirtualizedList), ADR-0009 (FormBehavior complet), ADR-0019 (ESM BonsaiRegistry), ADR-0014 (SSR complet).
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Aucune ambiguïté — Accepted = implémenté | - Périmètre trop large : 22 ADR, dont des mécaniques sophistiquées non nécessaires au kernel |
 | + Pas de gestion « v1 vs v1.x » | - VirtualizedList et FormBehavior sont des patterns applicatifs, pas du kernel |
 | | - Risque élevé de v1 qui ne sort jamais |
@@ -61,7 +61,7 @@ Un ADR Accepted signifie : **la décision architecturale est prise** — si/quan
 **Description** : limiter v1 aux strates 0 et 1 d'ADR-0028. Exclure toute la strate 2 (localState, Behavior, SSR, DevTools, ESM).
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Périmètre très serré, livrable rapide | - Pas de Behavior → pas de réutilisation de logique UI (D34-D38 inapplicables) |
 | + Hotspot B (localState) totalement exclu | - Pas de SSR → en contradiction avec le postulat PDR (DOM préexiste) |
 | | - Pas de DevTools → pas d'observabilité, debug artisanal |
@@ -73,7 +73,7 @@ Un ADR Accepted signifie : **la décision architecturale est prise** — si/quan
 **Description** : le périmètre v1 couvre les 3 strates d'ADR-0028 mais **exclut explicitement** les mécaniques Accepted qui ne sont pas nécessaires au kernel. Chaque exclusion est justifiée.
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Framework complet : Entity, Channel, Feature, View, Composer, Behavior, localState, SSR, DevTools | - Strate 2 reste ambitieuse (hotspot B) |
 | + Exclusions chirurgicales et justifiées | - Certains ADR Accepted ne sont pas dans v1 → peut surprendre |
 | + Chaque exclusion est réversible sans impact architectural | - Gestion « v1 vs v1.x » nécessaire |
@@ -84,7 +84,7 @@ Un ADR Accepted signifie : **la décision architecturale est prise** — si/quan
 ## Analyse comparative
 
 | Critère | Option A (tout Accepted) | Option B (strates 0+1) | Option C (strates 0+1+2 avec exclusions) |
-|---------|------------------------|----------------------|----------------------------------------|
+| --- | --- | --- | --- |
 | Livrable dans un délai raisonnable | ❌ | ⭐⭐⭐ | ⭐⭐ |
 | Application métier réelle possible | ⭐⭐⭐ | ⭐ | ⭐⭐⭐ |
 | Pas de superflu (C3) | ❌ | ⭐⭐⭐ | ⭐⭐⭐ |
@@ -108,7 +108,7 @@ Un ADR Accepted signifie : **la décision architecturale est prise** — si/quan
 #### Strate 0 — Kernel minimal
 
 | Composant | ADR source | Description |
-|-----------|-----------|-------------|
+| --- | --- | --- |
 | Radio singleton | — | Registres des 3 lanes |
 | Channel basic | ADR-0003, ADR-0023 | trigger() 1:1, emit() 1:N, request() sync T\|null |
 | Entity basic | ADR-0001 | mutate() + Immer produce, catch-all, no-op, initialState |
@@ -121,7 +121,7 @@ Un ADR Accepted signifie : **la décision architecturale est prise** — si/quan
 #### Strate 1 — Enrichissement
 
 | Composant | ADR source | Description |
-|-----------|-----------|-------------|
+| --- | --- | --- |
 | Entity full | ADR-0001 | produceWithPatches, per-key handlers, ré-entrance FIFO, toJSON/fromJSON, eventLog (opt-in) |
 | Metas complet | ADR-0005, ADR-0016 | correlationId, causationId, hop, origin — propagation explicite |
 | Channel enrichi | ADR-0003, ADR-0002 | Anti-boucle I9, isolation erreurs listeners, noHandler configurable |
@@ -130,14 +130,14 @@ Un ADR Accepted signifie : **la décision architecturale est prise** — si/quan
 | Composer N-instances | ADR-0020, ADR-0027 | Retour tableau, diff rootElement+viewClass, cascade destruction, 5 états |
 | Foundation complète | — | Event delegation globale, capacités Channel |
 | Application complète | ADR-0010 | stop(), 6 phases, BootstrapError par phase |
-| Validation Entity | ADR-0022 | TEntitySchema via Valibot, validation modale (__DEV__/prod) |
+| Validation Entity | ADR-0022 | TEntitySchema via Valibot, validation modale (**DEV**/prod) |
 | Erreurs | ADR-0002 | Taxonomie BonsaiError, ErrorReporter, ring buffer |
 | Validation modes | ADR-0004 | dev/prod/strict |
 
 #### Strate 2 — Extensions
 
 | Composant | ADR source | Description |
-|-----------|-----------|-------------|
+| --- | --- | --- |
 | localState | ADR-0015 | updateLocal(), dual N1/N2-N3, nettoyage onDetach() |
 | Behavior | ADR-0015 | Classe Behavior, TUIMap propre (I43), localState propre (D37), D48 |
 | SSR hydration | ADR-0014 | populateFromServer(), serverState, détection mode SSR/SPA |
@@ -146,7 +146,7 @@ Un ADR Accepted signifie : **la décision architecturale est prise** — si/quan
 #### Transversal
 
 | Item | ADR source | Description |
-|------|-----------|-------------|
+| --- | --- | --- |
 | Phasage d'implémentation | ADR-0028 | Ordre strate 0 → 1 → 2 |
 | Périmètre gelé | ADR-0029 | Ce document |
 
@@ -161,7 +161,7 @@ Un ADR Accepted signifie : **la décision architecturale est prise** — si/quan
 #### ADR Accepted reportées
 
 | ADR | Titre | Raison de l'exclusion | Impact de l'exclusion |
-|-----|-------|----------------------|----------------------|
+| --- | --- | --- | --- |
 | **ADR-0012** | VirtualizedList | Pattern applicatif, pas du kernel. L'API est explicitement séparée de `ProjectionList` (D40). Aucune Feature métier standard ne dépend de listes virtualisées. Absent des 3 strates ADR-0028. | **Nul** — `ProjectionList` couvre les listes normales. Les listes de 10 000+ items sont un besoin edge-case. |
 | **ADR-0009** | FormBehavior complet | Pattern applicatif construit sur Behavior + localState + Valibot. ADR-0028 le qualifie de « pattern applicatif, pas un composant kernel ». | **Faible** — les formulaires fonctionnent via Behavior brut + localState + validation manuelle. Le pattern FormBehavior est du sucre d'abstraction. |
 | **ADR-0019** | Mode ESM BonsaiRegistry | Mécanisme de distribution, pas de runtime. `Application.register()` (strate 0) couvre le cas monolithique. BonsaiRegistry est nécessaire uniquement pour les projets multi-modules/lazy-loading. | **Faible** — les applications monolithiques fonctionnent sans. Report en v1.1 ou v1.2 quand le besoin multi-modules se matérialise. |
@@ -170,7 +170,7 @@ Un ADR Accepted signifie : **la décision architecturale est prise** — si/quan
 #### Features post-v1 (pas d'ADR Accepted correspondante)
 
 | Feature | Source documentaire | Raison de l'exclusion |
-|---------|-------------------|----------------------|
+| --- | --- | --- |
 | Time-travel (undo/redo via inversePatches) | Entity RFC §8, DevTools RFC ⏳ | Nécessite un Event Store durable — mécanique v2 |
 | Extension navigateur DevTools | DevTools RFC ⏳ | UI complexe, non nécessaire — console.log + Event Ledger suffisent en v1 |
 | Profiling (temps d'exécution par handler) | DevTools RFC ⏳ | Optimisation prématurée — le framework n'a pas encore de vrais utilisateurs |
@@ -191,7 +191,7 @@ Un ADR Accepted signifie : **la décision architecturale est prise** — si/quan
 > Référence rapide : pour chaque ADR existante, son statut v1.
 
 | ADR | Statut ADR | Statut v1 | Strate ADR-0028 |
-|-----|-----------|-----------|-----------------|
+| --- | --- | --- | --- |
 | 0001 | 🟢 Accepted | 🟩 **IN** | 0 + 1 |
 | 0002 | 🟢 Accepted | 🟩 **IN** | 1 |
 | 0003 | 🟢 Accepted | 🟩 **IN** | 0 + 1 |
@@ -273,6 +273,6 @@ Un ADR Accepted signifie : **la décision architecturale est prise** — si/quan
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-04-08 | Création — périmètre gelé v1 : 16 ADR IN, 4 Accepted OUT, 2 Suspended OUT, 1 Proposed OUT |
 | 2026-04-08 | 🟢 **Accepted** — Option C (strates 0+1+2 avec exclusions chirurgicales) |

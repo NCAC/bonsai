@@ -1,7 +1,7 @@
 # ADR-0001 : Entity Mutation & Notification Strategy
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | 🔵 Tested |
 | **Date** | 2026-03-18 |
 | **Décideurs** | @ncac |
@@ -23,7 +23,9 @@ L'Entity est le **cœur de la gestion d'état** dans Bonsai. Chaque Feature poss
 
 ### Enjeux identifiés (audit)
 
-> *"Le principal risque est de loin le **coût et la complexité de la mécanique de notification**. Le document décrit un modèle avec snapshots avant/après, diff, changedKeys, handlers per-key, catch-all, ré-entrance, file FIFO, profondeur maximale. C'est conceptuellement très fort, mais c'est aussi un des coins les plus compliqués du runtime."*
+> _"Le principal risque est de loin le **coût et la complexité de la mécanique de notification**._
+> _Le document décrit un modèle avec snapshots avant/après, diff, changedKeys, handlers per-key, catch-all, ré-entrance, file FIFO, profondeur maximale._
+> _C'est conceptuellement très fort, mais c'est aussi un des coins les plus compliqués du runtime."_
 
 ### Exigences architecte
 
@@ -357,7 +359,7 @@ const state = await eventStore.replay("cart-123");
 ## Pourquoi Immer ?
 
 | Critère | Sans Immer | Avec Immer |
-|---------|-----------|------------|
+| ------------------------ | ------------------------------------------------------------ | --------------------------------- |
 | **Mutations profondes** | Spread hell `{ ...state, items: [...state.items, newItem] }` | `draft.items.push(newItem)` |
 | **Patches automatiques** | Implémentation manuelle complexe | Natif |
 | **Structural sharing** | Manuel et error-prone | Automatique |
@@ -430,7 +432,8 @@ this.state = new Proxy(state, {
 });
 ```
 
-**Rejeté** : 
+**Rejeté** :
+
 - Magie exposée (debugging difficile)
 - Pas de patches sérialisables
 - Pas de prev/next snapshot pour handlers
@@ -442,7 +445,8 @@ this.set('quantity', 5);
 this.update({ quantity: 5, price: 10 });
 ```
 
-**Rejeté** : 
+**Rejeté** :
+
 - Mutations profondes impossibles sans helper complexes
 - Pas d'API unique
 
@@ -453,7 +457,8 @@ this.entity.set('quantity', 5);           // Simple
 this.entity.mutate(draft => {...});       // Complexe
 ```
 
-**Rejeté** : 
+**Rejeté** :
+
 - Deux APIs à connaître
 - Incohérence potentielle
 - Préférence architecte pour API unique
@@ -502,7 +507,7 @@ this.entity.mutate(draft => {...});       // Complexe
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| ---------- | ----------------------------------------------------------------------- |
 | 2026-03-17 | Création (Proposed) — 5 options documentées |
 | 2026-03-18 | **Accepted** — API unique `mutate(intent, params?, recipe)` avec Immer |
 | 2026-05-07 | 🔵 **Tested** — invariants prouvés par la suite de tests (cf. ADR-0043) |

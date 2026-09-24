@@ -1,7 +1,7 @@
 # ADR-0007 : Behavior Contract
 
 | Champ | Valeur |
-|-------|--------|
+| --- | --- |
 | **Statut** | ⚪ Superseded — absorbé par RFC-0001 (D36, D37, D38, I43–I45) et RFC-0002 §10 |
 | **Date** | 2026-03-18 |
 | **Mis à jour** | 2026-03-23 |
@@ -16,7 +16,7 @@
 > **Différences principales RFC vs cet ADR :**
 >
 > | Aspect | ADR-0007 (obsolète) | RFC (normatif) |
-> |--------|---------------------|----------------|
+> | --- | --- | --- |
 > | Types | `Behavior` + `RenderableBehavior` | `Behavior` unique (D36) |
 > | Accès View | `this.view.el` implicite | **Aucun** `this.view` (I44) |
 > | DOM | Container isolé par RenderableBehavior | TUIMap propre + templates Mode C (I45) |
@@ -25,6 +25,7 @@
 > | Réutilisabilité | Non formalisée | Algorithme Q0–Q4 (D38) |
 >
 > **Documents normatifs :**
+>
 > - [RFC-0001-invariants-decisions](../rfc/reference/invariants.md) — D36, D37, D38, I43, I44, I45
 > - [RFC-0001-composants §8](../rfc/2-architecture/README.md) — contrat Behavior complet
 > - [RFC-0002 §10](../rfc/6-transversal/conventions-typage.md) — classe abstraite, types, API, exemples
@@ -58,7 +59,7 @@ L'invariant **I30** (View stateless) est justifié pour l'état métier et l'ét
 Cependant, une friction réelle apparaît pour l'**état éphémère pendant une interaction** :
 
 | Cas d'usage | Fréquence | Problème avec I30 strict |
-|-------------|-----------|--------------------------|
+| --- | --- | --- |
 | **Drag & drop** | Position (x, y) à 60fps | 60 cycles trigger→Feature→Entity→emit→View par seconde |
 | **Resize handle** | Dimensions pendant resize | Idem |
 | **Color picker** | Couleur pendant drag sur gradient | Latence perceptible |
@@ -67,13 +68,15 @@ Cependant, une friction réelle apparaît pour l'**état éphémère pendant une
 | **Gesture recognition** | État pinch/swipe en cours | Idem |
 
 **Distinction clé** :
+
 - **État pendant l'interaction** : position du drag, valeur pendant slide, couleur preview
 - **État résultant** : position finale, valeur validée, couleur sélectionnée
 
-L'état *résultant* doit aller dans une Entity (traçabilité, persistance).
-L'état *pendant* l'interaction est **éphémère** — il n'a de sens que durant le geste.
+L'état _résultant_ doit aller dans une Entity (traçabilité, persistance).
+L'état _pendant_ l'interaction est **éphémère** — il n'a de sens que durant le geste.
 
 **Le Behavior est le lieu naturel pour cet état éphémère** car :
+
 1. Il gère les interactions DOM (son rôle)
 2. Il n'a pas vocation à être tracé/persisté (éphémère)
 3. Il `trigger()` uniquement le résultat final vers la Feature
@@ -98,7 +101,7 @@ L'état *pendant* l'interaction est **éphémère** — il n'a de sens que duran
 ### Taxonomie émergente (Q7)
 
 | Type | Exemples | Altération DOM | Risque collision |
-|------|----------|----------------|------------------|
+| --- | --- | --- | --- |
 | **Listener** | TrackingBehavior, ShortcutsBehavior | Aucune ou N1 minimal | Faible |
 | **Renderable** | TooltipBehavior, DragDropBehavior | N1 ou N2 | Élevé |
 
@@ -132,7 +135,7 @@ class TrackingBehavior extends Behavior {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Simple | - Use cases limités |
 | + Pas de collision DOM | - TooltipBehavior impossible |
 | + Générique par nature | |
@@ -163,7 +166,7 @@ class TooltipBehavior extends Behavior {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + Altération encadrée | - Tooltip content : où le créer ? |
 | + Pas de collision structurelle | - DragDrop : où drop l'élément ? |
 | + Réversible | |
@@ -205,7 +208,7 @@ class TooltipBehavior extends Behavior {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + N2 possible | - Complexité |
 | + Isolation dans container | - Coordination View/Behavior |
 | + Pattern explicite | |
@@ -293,7 +296,7 @@ class TooltipBehavior extends RenderableBehavior {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + **Deux contrats clairs** | - Deux types à connaître |
 | + Listener = simple, safe | - Héritage |
 | + Renderable = encadré | |
@@ -422,7 +425,7 @@ class ColorPickerBehavior extends RenderableBehavior {
 ```
 
 | Avantages | Inconvénients |
-|-----------|---------------|
+| --- | --- |
 | + **Résout la friction I30** pour les cas réels | - État local (exception à I30) |
 | + Performance 60fps possible | - Doit être bien documenté |
 | + Trigger seulement le résultat final | - Risque de dérive si mal utilisé |
@@ -432,7 +435,7 @@ class ColorPickerBehavior extends RenderableBehavior {
 #### Règles pour l'état éphémère
 
 | Règle | Description |
-|-------|-------------|
+| --- | --- |
 | **Scope** | Uniquement dans Behavior, jamais dans View |
 | **Durée** | Valide pendant l'interaction uniquement |
 | **Reset** | Automatique au `onDetach()` |
@@ -445,7 +448,7 @@ class ColorPickerBehavior extends RenderableBehavior {
 ## Analyse comparative
 
 | Critère | A (Minimal) | B (N1 only) | C (Zones) | D (Deux types) | E (État éphémère) |
-|---------|-------------|-------------|-----------|----------------|-------------------|
+| --- | --- | --- | --- | --- | --- |
 | **Use cases** | ⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 | **Simplicité** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐ | ⭐⭐ | ⭐⭐ |
 | **Safety** | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
@@ -474,7 +477,7 @@ Justification :
 
 ### Clarification sur I30 et l'état éphémère
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  ÉTAT INTERDIT (I30 strict)                                         │
 │  ─────────────────────────────────────────────────────────────────  │
@@ -510,7 +513,7 @@ class CartView extends View {
 
 ### Scope DOM
 
-```
+```text
 ┌─────────────────────────────────────────────┐
 │  View.rootElement                           │
 │  ┌──────────────────────────────────────┐   │
@@ -702,7 +705,7 @@ class InfiniteScrollBehavior extends RenderableBehavior {
 ## Historique
 
 | Date | Changement |
-|------|------------|
+| --- | --- |
 | 2026-03-17 | Création (Proposed) — Deux types proposés |
 | 2026-03-18 | **Accepted** — `Behavior` + `RenderableBehavior` |
 | 2026-03-19 | **Mise à jour** — Option E : état éphémère d'interaction autorisé dans Behavior |
