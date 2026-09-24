@@ -1,19 +1,19 @@
 /**
- * Tests Strate 0 — Application bootstrap (refondu ADR-0039)
+ * Tests Strate 0 — Application bootstrap (refondu ADR-08)
  *
  * Invariants prouvés :
  *   I23  — Application est dormante au runtime
  *   I24  — Manifest garantit l'unicité au compile-time ; Application valide
- *          format + réservés + cohérence des `channels` au bootstrap (amendé ADR-0039)
+ *          format + réservés + cohérence des `channels` au bootstrap (amendé ADR-08)
  *   I33  — Application sans Foundation ne peut rien afficher
  *   I56  — onInit() de chaque Feature appelé avant la création de la Foundation
- *   I68  — Le namespace est porté par le manifest, pas par un static (ADR-0039)
- *   I69  — Le manifest est l'unique source de vérité de l'identité (ADR-0039)
- *   I70  — Toute référence à un namespace externe DOIT être validée (ADR-0039)
- *   I71  — `RESERVED_NAMESPACES` est une constante framework (ADR-0039)
+ *   I68  — Le namespace est porté par le manifest, pas par un static (ADR-08)
+ *   I69  — Le manifest est l'unique source de vérité de l'identité (ADR-08)
+ *   I70  — Toute référence à un namespace externe DOIT être validée (ADR-08)
+ *   I71  — `RESERVED_NAMESPACES` est une constante framework (ADR-08)
  *   I73  — Filet runtime — chaque Feature DOIT exposer `static readonly channel:
  *          TChannelToken<TDef, TSelfNS>` ; le manifest key DOIT correspondre à
- *          `channel.namespace` (ADR-0040). Tests négatifs explicites :
+ *          `channel.namespace` (ADR-14). Tests négatifs explicites :
  *          FEATURE_MISSING_CHANNEL et FEATURE_CHANNEL_NAMESPACE_MISMATCH
  *
  * Sémantiques strate 0 :
@@ -98,15 +98,15 @@ class EmptyFoundation extends Foundation {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
+describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-08]", () => {
   beforeEach(() => {
     resetDOM();
     Radio.reset();
   });
 
-  // ── Manifest API (ADR-0039) ────────────────────────────────────────────
+  // ── Manifest API (ADR-08) ────────────────────────────────────────────
 
-  describe("Manifest applicatif (ADR-0039 — I68/I69)", () => {
+  describe("Manifest applicatif (ADR-08 — I68/I69)", () => {
     it("Application accepts a features manifest in its constructor", () => {
       expect(
         () =>
@@ -141,7 +141,7 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
       expect(() => Radio.me().channel("orders")).not.toThrow();
     });
 
-    it("Application has no register() method anymore (ADR-0039 D-η)", () => {
+    it("Application has no register() method anymore (ADR-08)", () => {
       const app = new Application({
         foundation: EmptyFoundation as unknown as typeof Foundation,
         features: { cart: CartFeature }
@@ -238,9 +238,9 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
     });
   });
 
-  // ── Filet runtime du manifest (ADR-0039 — I70/I71) ─────────────────────
+  // ── Filet runtime du manifest (ADR-08 — I70/I71) ─────────────────────
 
-  describe("Manifest validation runtime [ADR-0039 — I70, I71]", () => {
+  describe("Manifest validation runtime [ADR-08 — I70, I71]", () => {
     it.each(["local", "router"])("I71 — namespace '%s' is reserved → BonsaiNamespaceError(NAMESPACE_RESERVED)", (reserved) => {
       class BadFeature extends StubFeature<string> {
         get listens() {
@@ -303,7 +303,7 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
           TChannelDefinition,
           "ghostListener"
         > = { namespace: "ghostListener" };
-        // Référence "catlog" inexistant → filet runtime (ADR-0040)
+        // Référence "catlog" inexistant → filet runtime (ADR-14)
         get listens() {
           return [{ namespace: "catlog" }] as const;
         }
@@ -356,7 +356,7 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
     });
 
     it("I73 — Feature without `static readonly channel` → BonsaiNamespaceError(FEATURE_MISSING_CHANNEL)", () => {
-      // Test négatif explicite : prouve I73 par contradiction. ADR-0040 exige
+      // Test négatif explicite : prouve I73 par contradiction. ADR-14 exige
       // `static readonly channel` sur chaque Feature concrète. Le filet runtime
       // d'Application.start() rejette une Feature qui ne le déclare pas.
       class NoChannelFeature extends StubFeature<"noChannel"> {
@@ -447,7 +447,7 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
     });
 
     it("Feature class with get listens()/queries() returning [] — Phase 0c accepts empty arrays", () => {
-      // Depuis ADR-0046 (I93), listens/queries sont des abstract get instance.
+      // Depuis ADR-09 (I93), listens/queries sont des abstract get instance.
       // Les branches `?? []` ont disparu — Phase 0c lit directement instance.listens
       // et instance.queries. Ce test vérifie qu'une Feature avec des tableaux vides
       // est acceptée sans throw.
@@ -474,7 +474,7 @@ describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-0039]", () => {
 
   // ── Bootstrap guards ───────────────────────────────────────────────────
 
-  describe("Bootstrap guards [I33, I56, ADR-0010]", () => {
+  describe("Bootstrap guards [I33, I56, ADR-07]", () => {
     it("start() throws if no Foundation provided (I33)", () => {
       const app = new Application({ features: { cart: CartFeature } });
       expect(() => app.start()).toThrow(/no Foundation/i);

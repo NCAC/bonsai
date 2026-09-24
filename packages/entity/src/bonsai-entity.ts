@@ -1,22 +1,22 @@
 /**
  * @bonsai/entity — Entity base class
  *
- * Implémentation ADR-0001 (🔵 Tested) :
- *   - mutate(intent, params?, recipe) via Immer produceWithPatches
- *   - changedKeys dérivées depuis les patches (1er segment de path)
- *   - Détection no-op (aucun patch produit → pas de notification)
- *   - Notification catch-all onAnyEntityUpdated (I51) — event enrichi
+ * Implements ADR-10:
+ *   - mutate(intent, params?, recipe) through Immer produceWithPatches
+ *   - changedKeys derived from the patches (first path segment)
+ *   - No-op detection (no patch produced → no notification)
+ *   - Catch-all notification onAnyEntityUpdated (I51) — enriched event
  *     (patches, inversePatches, payload, metas)
- *   - Ré-entrance FIFO bornée par maxEntityNotificationDepth (I98,
- *     ADR-0028 strate 1a) — cf. RFC entity.md §Ré-entrance
- *   - MutationError si la recipe throw (rollback Immer automatique,
- *     ADR-0002)
- *   - initialState getter (D17)
+ *   - FIFO re-entrance bounded by maxEntityNotificationDepth (I98,
+ *     stratum 1a) — see docs/spec/3-couche-abstraite/entity.md
+ *   - MutationError when the recipe throws (automatic Immer rollback,
+ *     ADR-05)
+ *   - initialState getter (ADR-10)
  *
- * NOTE : les handlers per-key `on<Key>EntityUpdated` ne sont PAS dispatchés
- * ici — c'est la responsabilité de `Feature#registerEntityHandlers` (I96),
- * qui s'abonne à `onAnyEntityUpdated` et route en interne. Entity ne connaît
- * jamais sa Feature (I5, I6).
+ * NOTE: per-key `on<Key>EntityUpdated` handlers are NOT dispatched here —
+ * that is the job of `Feature#registerEntityHandlers` (I96), which
+ * subscribes to `onAnyEntityUpdated` and routes internally. An Entity never
+ * knows its Feature (I5, I6).
  */
 
 import { Immer } from "@bonsai/immer";
@@ -25,10 +25,10 @@ import { EntityReentrancyError, MutationError } from "@bonsai/error";
 
 Immer.enablePatches();
 
-// ─── Types publics ───────────────────────────────────────────────────────────
+// ─── Public types ────────────────────────────────────────────────────────────
 
 /**
- * Contrainte structurelle : le state d'une Entity doit être JsonSerializable (I46).
+ * Structural constraint: an Entity state must be JsonSerializable (I46).
  */
 export type TJsonSerializable =
   | string
@@ -39,10 +39,10 @@ export type TJsonSerializable =
   | { [key: string]: TJsonSerializable };
 
 /**
- * Extrait la structure d'état (TStructure) d'une classe Entity concrète.
+ * Extracts the state structure (TStructure) of a concrete Entity class.
  *
- * Introduit par ADR-0037 — permet de dériver la forme du state
- * depuis une classe Entity, sans la redéclarer manuellement.
+ * Introduced by ADR-09 — derives the state shape from an Entity class
+ * without declaring it again by hand.
  *
  * @example
  *   type TCartState = TEntityState<CartEntity>;  // = { items: [...]; total: number }
@@ -51,7 +51,7 @@ export type TEntityState<E extends Entity<TJsonSerializable>> =
   E extends Entity<infer S> ? S : never;
 
 /**
- * Paramètres optionnels passés à mutate() — payload + metas (traçabilité).
+ * Optional parameters passed to mutate() — payload + metas (traceability).
  */
 export type TMutationParams = {
   payload?: unknown;
@@ -59,9 +59,9 @@ export type TMutationParams = {
 };
 
 /**
- * Événement émis après une mutation réussie (non no-op).
- * Reçu par les listeners onAnyEntityUpdated, et dispatché par Feature vers
- * les handlers per-key/catch-all (I96).
+ * Event emitted after a successful (non no-op) mutation.
+ * Received by onAnyEntityUpdated listeners, and dispatched by the Feature to
+ * its per-key/catch-all handlers (I96).
  */
 export type TEntityEvent<
   TStructure extends TJsonSerializable = TJsonSerializable
@@ -78,14 +78,14 @@ export type TEntityEvent<
 };
 
 /**
- * Signature du listener catch-all.
+ * Signature of the catch-all listener.
  */
 export type TEntityUpdateListener<
   TStructure extends TJsonSerializable = TJsonSerializable
 > = (event: TEntityEvent<TStructure>) => void;
 
 /**
- * Mutation en attente dans la file de ré-entrance (I98).
+ * Mutation waiting in the re-entrance queue (I98).
  */
 type TPendingMutation<TStructure extends TJsonSerializable> = {
   intent: string;
@@ -93,51 +93,51 @@ type TPendingMutation<TStructure extends TJsonSerializable> = {
   recipe: (draft: Draft<TStructure>) => void;
 };
 
-// ─── Classe abstraite Entity ─────────────────────────────────────────────────
+// ─── Abstract Entity class ───────────────────────────────────────────────────
 
 /**
- * Entity — Conteneur d'état immutable d'une Feature (I6, I22, I46).
+ * Entity — immutable state container of a Feature (I6, I22, I46).
  *
- * Classe abstraite : les sous-classes doivent implémenter `get initialState()`.
+ * Abstract class: subclasses must implement `defineInitialState()`.
  *
- * @template TStructure - Le type du state, contraint à TJsonSerializable.
+ * @template TStructure - The state type, constrained to TJsonSerializable.
  */
 export abstract class Entity<TStructure extends TJsonSerializable> {
   /**
-   * State courant de l'Entity. Accessible en lecture par les sous-classes
-   * et par le code qui détient une référence à l'Entity.
+   * Current Entity state. Readable by subclasses and by any code holding a
+   * reference to the Entity.
    */
   #state!: TStructure;
 
   /**
-   * Copie du state initial pour pouvoir le retourner via `initialState` (D17).
+   * Copy of the initial state, returned by `initialState` (ADR-10).
    */
   #initialState!: TStructure;
 
   /**
-   * Listeners catch-all (I51).
+   * Catch-all listeners (I51).
    */
   #listeners: Array<TEntityUpdateListener<TStructure>> = [];
 
   /**
-   * Flag d'initialisation (lazy init pour contourner la restriction abstraite).
+   * Initialisation flag (lazy init, to work around the abstract-member restriction).
    */
   #initialized = false;
 
-  // ─── Ré-entrance FIFO (I98) ────────────────────────────────────────────
+  // ─── FIFO re-entrance (I98) ────────────────────────────────────────────
 
-  /** `true` pendant qu'un cycle mutate → notify est en cours (pilote externe). */
+  /** `true` while a mutate → notify cycle is running (external driver). */
   #draining = false;
 
-  /** Profondeur du cycle en cours (1 = appel externe, incrémenté par dépilement). */
+  /** Depth of the current cycle (1 = external call, incremented on each dequeue). */
   #cycleDepth = 0;
 
-  /** File FIFO des mutations déclenchées pendant une notification. */
+  /** FIFO queue of mutations triggered during a notification. */
   #queue: TPendingMutation<TStructure>[] = [];
 
   constructor() {
-    // L'initialisation réelle est faite dans #ensureInitialized()
-    // car TS interdit l'accès aux propriétés abstraites dans le constructeur.
+    // Actual initialisation happens in #ensureInitialized(), because
+    // TS forbids accessing abstract members in the constructor.
     this.#ensureInitialized();
   }
 
@@ -152,16 +152,16 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
   // ─── Abstract ────────────────────────────────────────────────────────
 
   /**
-   * Retourne l'état initial de l'Entity.
-   * Chaque sous-classe concrète DOIT implémenter ce getter.
+   * Returns the initial state of the Entity.
+   * Every concrete subclass MUST implement this method.
    */
   protected abstract defineInitialState(): TStructure;
 
-  // ─── Configuration overridable ─────────────────────────────────────────
+  // ─── Overridable configuration ─────────────────────────────────────────
 
   /**
-   * Profondeur maximale de ré-entrance (I98, ADR-0028 strate 1a — défaut 3).
-   * Overridable par une sous-classe concrète pour un cas d'usage avancé.
+   * Maximum re-entrance depth (I98, stratum 1a — default 3).
+   * A concrete subclass may override it for advanced use cases.
    */
   protected get maxEntityNotificationDepth(): number {
     return 3;
@@ -170,37 +170,37 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
   // ─── Public API ──────────────────────────────────────────────────────
 
   /**
-   * State courant (lecture seule depuis l'extérieur).
+   * Current state (read-only from outside).
    */
   get state(): TStructure {
     return this.#state;
   }
 
   /**
-   * Retourne l'état initial tel que défini à la construction (D17).
-   * Accessible publiquement pour reset ou comparaison.
+   * Returns the initial state as defined at construction (ADR-10).
+   * Public, for reset or comparison.
    */
   get initialState(): TStructure {
     return this.#initialState;
   }
 
   /**
-   * Mutation immutable via Immer produceWithPatches (ADR-0001, I97).
+   * Immutable mutation through Immer produceWithPatches (ADR-10, I97).
    *
-   * Overload 1 : mutate(intent, recipe)
-   * Overload 2 : mutate(intent, params, recipe)
+   * Overload 1: mutate(intent, recipe)
+   * Overload 2: mutate(intent, params, recipe)
    *
-   * Détecte les no-ops : si aucun patch n'est produit → pas de notification,
-   * retourne `null`.
+   * Detects no-ops: when no patch is produced → no notification, returns
+   * `null`.
    *
-   * Ré-entrance (I98) : si appelé pendant un cycle de notification en cours,
-   * la mutation est mise en file FIFO et exécutée après la fin du cycle
-   * courant — retourne `null` immédiatement (l'event n'est pas disponible
-   * synchrone). Throw `EntityReentrancyError` si `maxEntityNotificationDepth`
-   * serait dépassé.
+   * Re-entrance (I98): when called during a running notification cycle, the
+   * mutation is queued (FIFO) and executed once the current cycle ends —
+   * returns `null` immediately (the event is not available synchronously).
+   * Throws `EntityReentrancyError` if `maxEntityNotificationDepth` would be
+   * exceeded.
    *
-   * @throws MutationError si la recipe throw (state intact, rollback Immer).
-   * @throws EntityReentrancyError si la profondeur max de ré-entrance est dépassée.
+   * @throws MutationError when the recipe throws (state intact, Immer rollback).
+   * @throws EntityReentrancyError when the maximum re-entrance depth is exceeded.
    */
   mutate(
     intent: string,
@@ -216,7 +216,7 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
     paramsOrRecipe: TMutationParams | ((draft: Draft<TStructure>) => void),
     maybeRecipe?: (draft: Draft<TStructure>) => void
   ): TEntityEvent<TStructure> | null {
-    // Résolution des overloads
+    // Overload resolution
     let params: TMutationParams | null = null;
     let recipe: (draft: Draft<TStructure>) => void;
 
@@ -227,22 +227,22 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
       recipe = maybeRecipe!;
     }
 
-    // Ré-entrance : un cycle est déjà en cours — mise en file (I98)
+    // Re-entrance: a cycle is already running — enqueue (I98)
     if (this.#draining) {
       const wouldBeDepth = this.#cycleDepth + this.#queue.length + 1;
       if (wouldBeDepth > this.maxEntityNotificationDepth) {
         throw new EntityReentrancyError(
-          `Ré-entrance Entity au-delà de maxEntityNotificationDepth (${this.maxEntityNotificationDepth}) — intent "${intent}"`,
+          `Entity re-entrance exceeded maxEntityNotificationDepth (${this.maxEntityNotificationDepth}) — intent "${intent}"`,
           "I98",
           "Entity",
-          "Vérifier qu'un handler entity ne déclenche pas une boucle de mutations en cascade."
+          "Check that no entity handler triggers a cascading mutation loop."
         );
       }
       this.#queue.push({ intent, params, recipe });
       return null;
     }
 
-    // Appel externe — ce mutate() pilote tout le cycle (premier + file)
+    // External call — this mutate() drives the whole cycle (first + queue)
     this.#draining = true;
     this.#cycleDepth = 1;
     try {
@@ -263,11 +263,11 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
   }
 
   /**
-   * Enregistre un listener catch-all (I51).
-   * Appelé après chaque mutation non no-op. Pas d'isolation d'erreur ici —
-   * les exceptions d'un listener se propagent jusqu'à l'appelant externe de
-   * `mutate()` (I98 s'appuie sur cette propagation). L'isolation
-   * `BroadcastError` est une responsabilité du dispatch Feature (I96).
+   * Registers a catch-all listener (I51).
+   * Called after every non no-op mutation. No error isolation here — a
+   * listener exception propagates up to the external caller of `mutate()`
+   * (I98 relies on that propagation). `BroadcastError` isolation is the
+   * responsibility of the Feature dispatch (I96).
    */
   onAnyEntityUpdated(listener: TEntityUpdateListener<TStructure>): void {
     this.#listeners.push(listener);
@@ -276,8 +276,8 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
   // ─── Private ─────────────────────────────────────────────────────────
 
   /**
-   * Exécute un cycle complet : recipe → patches → notification.
-   * Ne gère pas la file — c'est la responsabilité de l'appelant (`mutate()`).
+   * Runs a full cycle: recipe → patches → notification.
+   * Does not handle the queue — that is the caller's job (`mutate()`).
    */
   #runCycle(
     intent: string,
@@ -296,19 +296,19 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
       ) as [TStructure, Patch[], Patch[]];
     } catch (error) {
       throw new MutationError(
-        `Recipe throw pour l'intent "${intent}" — state conservé (rollback Immer)`,
-        "ADR-0002",
+        `Recipe threw for intent "${intent}" — state kept (Immer rollback)`,
+        "ADR-05",
         "Entity",
         error instanceof Error ? error.message : String(error)
       );
     }
 
     if (patches.length === 0) {
-      // No-op — pas de notification
+      // No-op — no notification
       return null;
     }
 
-    // changedKeys dérivées du 1er segment de path des patches (I97)
+    // changedKeys derived from the first path segment of each patch (I97)
     const changedKeys = [...new Set(patches.map((p) => String(p.path[0])))];
 
     this.#state = nextState;

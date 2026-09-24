@@ -1,0 +1,81 @@
+# State : encapsulation et ownership
+
+> **Entity comme seule forme de state, ownership strict, store logique distribué**
+
+[← Retour à l'architecture](README.md) · [← Communication](communication.md)
+
+---
+
+## 1. Encapsulation de l'Entity (I5, I6, I17)
+
+L'Entity est le **seul conteneur de state** dans Bonsai. Chaque Feature possède exactement une Entity (I22). Aucun autre composant ne peut posséder ou modifier directement du state.
+
+### Cinq propriétés fondamentales
+
+| # | Propriété | Invariant | Conséquence |
+| --- | --- | --- | --- |
+| 1 | **JsonSerializable** | I46, ADR-10 | Le state peut être sérialisé, snapshotté, transmis SSR. Pas de `Date`, `Map`, `Set`, `class` dans le state |
+| 2 | **Immuable en surface** | I97, ADR-10 | Toute modification passe par `mutate()` (ADR-10). Pas d'affectation directe |
+| 3 | **Propriété exclusive de la Feature** | I5, I6 | Seule la Feature propriétaire accède à son Entity. Views/Behaviors n'y touchent jamais ; les autres Features ne font que `request()` en lecture seule (I17) |
+| 4 | **Notificante** | I96, I97 | Chaque `mutate()` produit des patches et des `changedKeys` qui alimentent le cycle réactif |
+| 5 | **Typée statiquement** | I46 | La structure est le générique `TStructure extends TJsonSerializable` de `Entity<TStructure>` — le type EST le contrat |
+
+---
+
+## 2. Matrice d'ownership
+
+| Composant | Lit le state ? | Modifie le state ? | Accès Entity ? |
+| --- | --- | --- | --- |
+| **Feature** | ✅ Via `this.entity.state` | ✅ Via `this.entity.mutate()` | ✅ Directement — propriétaire |
+| **View** | ✅ Indirectement via Request | ❌ Jamais | ❌ Aucun accès |
+| **Behavior** | ✅ Indirectement via Request | ❌ Jamais | ❌ Aucun accès |
+| **Composer** | ❌ aujourd'hui — ⏳ `protected request()` cible strate 1, cf. [composer.md](../4-couche-concrete/composer.md) | ❌ | ❌ |
+| **Foundation** | ❌ aujourd'hui — ⏳ idem, cf. [foundation.md](../4-couche-concrete/foundation.md) | ❌ | ❌ |
+
+> **Mécanisme d'accès indirect** :
+> la View qui a besoin d'une donnée utilise `request(namespace:nomQuery)`.
+> La Feature propriétaire répond via un `reply` handler qui consulte
+> son Entity et retourne la valeur. La View ne sait pas **où** ni **comment**
+> le state est stocké.
+
+---
+
+## 3. Store logique distribué
+
+Bonsai n'a **pas de store global** (conséquence directe de I21/I22 — un
+namespace = une Feature = une Entity, jamais de conteneur d'état partagé
+entre Features). Le state de l'application est la **somme logique** de
+toutes les Entities :
+
+```text
+Application State = ∑(Feature.Entity)
+
+cart.entity      →  { items: [...], couponCode: null }
+user.entity      →  { name: "Alice", preferences: {...} }
+inventory.entity →  { products: [{ id: "p1", stock: 4 }, ...] }   // pas de Map (ADR-10, §1)
+```
+
+### Relation 1:1:1
+
+| Concept | Règle | Invariant |
+| --- | --- | --- |
+| Un namespace | = une Feature | I21 |
+| Une Feature | = une Entity | I22 |
+| Donc : un namespace | = une Entity | Transitif |
+
+> **Pas de state partagé** : si deux Features ont besoin de la même donnée,
+> l'une **possède** la donnée (source de vérité) et l'autre y accède
+> via Request (lecture cross-domain autorisée, ADR-01).
+
+### Avantages du store distribué
+
+- **Isolation** : un bug dans `cart.entity` ne corrompt pas `user.entity`
+- **Testabilité** : chaque Feature se teste avec son Entity, sans mock global
+- **Sérialisation** : snapshot/restore par namespace, pas monolithique
+- **SSR** : chaque Entity se (dé)sérialise indépendamment (ADR-10)
+
+---
+
+## Lecture suivante
+
+→ [Cycle de vie](lifecycle.md) — persistants vs volatils, nettoyage déterministe

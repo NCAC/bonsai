@@ -1,187 +1,98 @@
-# Architecture Decision Records (ADR)
+# Décisions d'architecture (ADR)
 
-> Les ADRs documentent les décisions architecturales importantes de Bonsai.
-> Chaque ADR capture le contexte, les options considérées et le choix final.
+> Le **pourquoi** de Bonsai : une décision par fichier, 30–80 lignes.
+> Le **quoi** (contrats, signatures) vit dans la spec ; les règles non négociables
+> dans le [registre des invariants](../spec/reference/invariants.md).
 
----
+## Comment lire un ADR
 
-## Index des ADRs
+| Statut | Sens |
+| --- | --- |
+| 🟡 Proposed | Question ouverte, options documentées, pas de décision |
+| 🟢 Accepted | Décidé ; livré ou non (voir la ligne **Livré**) |
+| 🔵 Tested | Décidé, livré, et chaque invariant impacté est cité dans un test (ADR-32) |
 
-| #                                                                     | Titre                                                                                                                                                            | Statut        | Date                            | RFC liée                                                                                                                                |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| [ADR-0001](ADR-0001-entity-diff-notification-strategy.md)             | Entity mutation & notification strategy                                                                                                                          | 🔵 Tested     | 2026-03-18                      | RFC-0002-entity                                                                                                                         |
-| [ADR-0002](ADR-0002-error-propagation-strategy.md)                    | Error propagation strategy                                                                                                                                       | 🟢 Accepted   | 2026-03-18                      | RFC-0002-feature                                                                                                                        |
-| [ADR-0003](ADR-0003-channel-runtime-semantics.md)                     | Channel runtime semantics                                                                                                                                        | 🔵 Tested     | 2026-03-18                      | RFC-0002-channel                                                                                                                        |
-| [ADR-0004](ADR-0004-validation-modes.md)                              | Validation modes                                                                                                                                                 | 🟢 Accepted   | 2026-03-18                      | RFC-0002-api                                                                                                                            |
-| [ADR-0005](ADR-0005-meta-lifecycle.md)                                | Meta lifecycle                                                                                                                                                   | 🟢 Accepted   | 2026-03-18                      | RFC-0001 §10                                                                                                                            |
-| [ADR-0006](ADR-0006-testing-strategy.md)                              | Testing strategy                                                                                                                                                 | 🟢 Accepted   | 2026-03-18                      | —                                                                                                                                       |
-| [ADR-0007](ADR-0007-behavior-contract.md)                             | Behavior contract                                                                                                                                                | ⚪ Superseded | 2026-03-18                      | RFC-0001 D36                                                                                                                            |
-| [ADR-0008](ADR-0008-collection-patterns.md)                           | Collection patterns                                                                                                                                              | ⚪ Superseded | 2026-03-18                      | RFC-0003 §6.4–6.8                                                                                                                       |
-| [ADR-0009](ADR-0009-forms-pattern.md)                                 | Forms pattern — localState, FormBehavior, Hybride                                                                                                                | 🟢 Accepted   | 2026-04-01                      | ADR-0001, ADR-0007, ADR-0015, ADR-0016                                                                                                  |
-| [ADR-0010](ADR-0010-bootstrap-order.md)                               | Bootstrap order & dependencies                                                                                                                                   | 🔵 Tested     | 2026-03-18                      | RFC-0001 §5.1                                                                                                                           |
-| [ADR-0011](ADR-0011-event-sourcing-support.md)                        | Event Sourcing support                                                                                                                                           | 🟠 Suspended  | 2026-03-17                      | RFC-0002-entity                                                                                                                         |
-| [ADR-0012](ADR-0012-virtualized-list.md)                              | Virtualized lists                                                                                                                                                | 🟢 Accepted   | 2026-03-19                      | RFC-0003 §6, §12                                                                                                                        |
-| [ADR-0013](ADR-0013-view-code-reuse.md)                               | View code reuse                                                                                                                                                  | ⚪ Superseded | 2026-03-18                      | D34–D38 (RFC-0001)                                                                                                                      |
-| [ADR-0014](ADR-0014-ssr-hydration-strategy.md)                        | SSR hydration strategy                                                                                                                                           | 🟢 Accepted   | 2026-03-24                      | RFC-0002 §7.2, §9.4, §9.4.7, §12.4 · RFC-0003 §5.3, §6, §7.5                                                                            |
-| [ADR-0015](ADR-0015-local-state-mechanism.md)                         | Local state mechanism (View & Behavior)                                                                                                                          | 🟢 Accepted   | 2026-03-25                      | RFC-0001-composants §7–8, RFC-0003 §2.1/§7.4, I42, I57, D33, D37                                                                        |
-| [ADR-0016](ADR-0016-metas-handler-signature.md)                       | Metas handler signature (explicite vs auto-injectée)                                                                                                             | 🟢 Accepted   | 2026-03-25                      | RFC-0001 §10, RFC-0002 §13, ADR-0005                                                                                                    |
-| [ADR-0017](ADR-0017-rendering-strategy-vdom-vs-pdr.md)                | Rendering strategy — VDOM vs PDR chirurgicale                                                                                                                    | 🔵 Tested     | 2026-03-26                      | RFC-0001 (D19), RFC-0002 §9.4, RFC-0003, ADR-0012, ADR-0014                                                                             |
-| [ADR-0018](ADR-0018-foundation-contract.md)                           | Foundation contract — TUIMap globale, données serveur, persistance concrète                                                                                      | 🟠 Suspended  | 2026-03-27                      | RFC-0002 §11, RFC-0001-composants §9                                                                                                    |
-| [ADR-0019](ADR-0019-mode-esm-modulaire.md)                            | Mode ESM Modulaire — BonsaiRegistry, bootstrap dynamique                                                                                                         | 🔵 Tested     | 2026-04-01                      | RFC-0002 §7 Application                                                                                                                 |
-| [ADR-0020](ADR-0020-composers-n-instances-composition-heterogene.md)  | Sémantique N-instances Composer & CDH périmètre réduit                                                                                                           | 🔵 Tested     | 2026-04-01                      | RFC-0002 §9 Composer                                                                                                                    |
-| [ADR-0021](ADR-0021-composition-monde-ouvert-plateforme.md)           | Composition monde ouvert — Plateforme & extension points                                                                                                         | 🟡 Proposed   | 2026-03-27 (renommé 2026-04-01) | RFC-0001-composants, RFC-0002 §7                                                                                                        |
-| [ADR-0022](ADR-0022-entity-schema-validation.md)                      | Entity Schema Validation — Valibot imposé, `abstract get schema()`, validation modale                                                                            | 🟢 Accepted   | 2026-04-01                      | RFC-0002-entity, ADR-0004, ADR-0009                                                                                                     |
-| [ADR-0023](ADR-0023-request-reply-sync-vs-async.md)                   | Sémantique request()/reply() — sync vs async                                                                                                                     | 🔵 Tested     | 2026-04-03                      | Communication (tri-lane)                                                                                                                |
-| [ADR-0024](ADR-0024-component-capabilities-manifest-pattern.md)       | Déclaration capacités composants — Pattern Manifeste value-first (`as const satisfies`)                                                                          | 🔵 Tested     | 2026-04-03                      | Couche concrète, Feature                                                                                                                |
-| [ADR-0025](ADR-0025-composer-no-lifecycle-hooks.md)                   | Retrait des hooks de lifecycle du Composer (`onMount`/`onUnmount` supprimés)                                                                                     | 🟢 Accepted   | 2026-04-07                      | composer.md, lifecycle.md                                                                                                               |
-| [ADR-0026](ADR-0026-root-element-css-selector-from-composer.md)       | `rootElement` — sélecteur CSS unique, fourni exclusivement par le Composer                                                                                       | 🟢 Accepted   | 2026-04-07                      | composer.md, view.md, ADR-0020 §6.2                                                                                                     |
-| [ADR-0027](ADR-0027-composer-resolve-event-argument.md)               | `resolve(event)` — l'événement déclencheur comme argument unique du Composer                                                                                     | 🔵 Tested     | 2026-04-07                      | composer.md, communication.md §8, ADR-0025                                                                                              |
-| [ADR-0028](ADR-0028-implementation-phasing-strategy.md)               | Stratégie de phasage d'implémentation — Kernel-first en 3 strates                                                                                                | 🟢 Accepted   | 2026-04-08                      | Transversal (toutes RFC/ADR)                                                                                                            |
-| [ADR-0029](ADR-0029-v1-scope-freeze.md)                               | Périmètre gelé v1 — Ce qui entre, ce qui attend                                                                                                                  | 🟢 Accepted   | 2026-04-08                      | ADR-0028, ADR-0012, ADR-0021                                                                                                            |
-| [ADR-0030](ADR-0030-testing-as-architecture-proof.md)                 | Tests comme preuve d'architecture — Spécification exécutable par strate                                                                                          | 🟢 Accepted   | 2026-04-10                      | ADR-0028, ADR-0029, ADR-0006                                                                                                            |
-| [ADR-0031](ADR-0031-monorepo-package-topology.md)                     | Topologie des packages du monorepo — 1 package par composant                                                                                                     | 🟢 Accepted   | 2026-04-10                      | RFC 2-architecture, distribution                                                                                                        |
-| [ADR-0032](ADR-0032-build-pipeline-toolchain.md)                      | Build Pipeline — Toolchain, artefacts et stratégie de bundling DTS                                                                                               | 🟡 Proposed   | 2026-04-14                      | ADR-0019, ADR-0028, ADR-0029, ADR-0031                                                                                                  |
-| [ADR-0033](ADR-0033-git-workflow-versioning-strategy.md)              | Workflow Git & stratégie de versioning — Git Flow adapté, SemVer `0.x.y`                                                                                         | 🟢 Accepted   | 2026-04-14                      | ADR-0028, ADR-0029, ADR-0032                                                                                                            |
-| [ADR-0034](ADR-0034-continuous-verification-strategy.md)              | Stratégie de vérification continue — Hooks Husky + CI GitHub Actions                                                                                             | 🟢 Accepted   | 2026-04-20                      | ADR-0028, ADR-0030, ADR-0006, ADR-0033                                                                                                  |
-| [ADR-0035](ADR-0035-build-artifacts-versioning-strategy.md)           | Stratégie artefacts de build — tout versionné, rebuild systématique, `main` fait foi                                                                             | 🟢 Accepted   | 2026-04-17                      | ADR-0032, ADR-0034, ADR-0033                                                                                                            |
-| [ADR-0036](ADR-0036-documentation-internationalization-strategy.md)   | Internationalisation documentation — FR source, EN dérivée (`-EN.md`), traduction incrémentale                                                                   | 🟢 Accepted   | 2026-04-20                      | ADR-0033                                                                                                                                |
-| [ADR-0037](ADR-0037-feature-generic-entity-class.md)                  | Generic principal de Feature — `Feature<TEntityClass, TChannel>` (amende D17)                                                                                    | 🔵 Tested     | 2026-04-21                      | feature.md, entity.md, conventions-typage.md, ADR-0001, ADR-0024                                                                        |
-| [ADR-0038](ADR-0038-foundation-composers-record-stable-layout.md)     | `Foundation.composers` — `Readonly<Record<string, typeof Composer>>` & principe de stabilité (I67)                                                               | 🟢 Accepted   | 2026-04-21                      | foundation.md, composer.md, view.md, ADR-0020, ADR-0026, ADR-0028                                                                       |
-| [ADR-0039](ADR-0039-namespace-authority-and-uniqueness.md)            | Autorité, unicité et conformité des namespaces de Feature — manifest applicatif typé + `TSelfNS` (amende I21, I24 ; ajoute I68–I72)                              | 🔵 Tested     | 2026-04-21                      | RFC-0001-invariants-decisions, RFC-0002-feature, RFC-0002-channel, ADR-0001, ADR-0003, ADR-0004, ADR-0015, ADR-0019, ADR-0024, ADR-0037 |
-| [ADR-0040](ADR-0040-typescript-first-api-channel-definition-typed.md) | API TypeScript-First — `TChannelDefinition`, `ChannelToken` et projections UI typées (ajoute I73–I79)                                                            | 🔵 Tested     | 2026-04-27                      | communication.md, view.md, feature.md, ADR-0024, ADR-0037                                                                               |
-| [ADR-0041](ADR-0041-consumer-pattern-feature-as-public-unit.md)       | Feature comme référence publique inter-composants — pattern consommateur unifié (supersédée pour `TConsumerDeps` par ADR-0042)                                   | 🔵 Tested     | 2026-04-30                      | view.md, behavior.md, ADR-0040, ADR-0024, ADR-0029                                                                                      |
-| [ADR-0042](ADR-0042-view-contract-unified-ui-deps-single-generic.md)  | Pattern modulaire de contrat consommateur — `TFeatureContract` Feature-groupé + `TUIContract` + `TUIElements` (ajoute I84–I88)                                   | 🔵 Tested     | 2026-05-06                      | view.md, invariants.md, glossaire.md, ADR-0041, ADR-0040, ADR-0039, ADR-0029                                                            |
-| [ADR-0043](ADR-0043-adr-tested-status-as-proof-gate.md)               | Statut `🔵 Tested` — gate de preuve d'architecture dans le cycle de vie ADR                                                                                      | 🟢 Accepted   | 2026-05-07                      | ADR-0030, ADR-0034, ADR-0033, ADR-0028                                                                                                  |
-| [ADR-0044](ADR-0044-ui-events-restricted-to-dom-event-map.md)         | `TEvts` restreint à `keyof HTMLElementEventMap` — noms d'événements DOM validés à la compilation (amende I86, ajoute I89–I90)                                    | 🔵 Tested     | 2026-05-07                      | view.md, ADR-0042, invariants.md                                                                                                        |
-| [ADR-0045](ADR-0045-teventsfor-semantic-element-event-mapping.md)     | `TEventsFor<TEl>` — mapping sémantique élément → événements DOM autorisés par sous-type HTML (amende I89, ajoute I91)                                            | 🔵 Tested     | 2026-05-07                      | view.md, ADR-0042, ADR-0044, invariants.md                                                                                              |
-| [ADR-0046](ADR-0046-feature-contract-refonte.md)                      | Refonte du contrat Feature — `listens`/`queries` `abstract get` instance, `TFeatureCallbacks` symétrique I88, `TStrictFeatureClass` (amende I70, ajoute I92–I95) | 🔵 Tested     | 2026-05-18                      | feature.md, invariants.md, glossaire.md, ADR-0039, ADR-0040, ADR-0042, ADR-0037, ADR-0043                                               |
-| [ADR-0047](ADR-0047-entity-mutate-intent-typing.md)                   | Typage du paramètre `intent` de `Entity.mutate()` — question ouverte, décision différée                                                                          | 🟡 Proposed   | 2026-05-20                      | entity.md §4, ADR-0001, ADR-0040                                                                                                        |
+Dans l'index, ⚠️ / ⏳ signalent une livraison partielle ou à venir (ligne **Livré** de l'ADR).
 
-> **Note** : ADR-0035 est daté 2026-04-17, antérieur à ADR-0034 (2026-04-20)
-> malgré un numéro plus élevé — numérotation attribuée à la création du
-> document, date de champ **Date** reflétant la date de décision effective.
-> Pas une anomalie corrigée ici (dates de décision figées, ADR 🟢 Accepted) ;
-> documenté pour éviter toute confusion en relisant l'index par ordre de date.
+Un ADR est **vivant** : quand une décision évolue, il est réécrit en place et git
+garde l'historique. Il n'y a plus de statut `Superseded` ni `Suspended` : une
+décision abandonnée disparaît, une piste reportée va dans la [roadmap](../ROADMAP.md).
+Modèle : [TEMPLATE.md](TEMPLATE.md). Correspondance avec l'ancienne numérotation
+(`ADR-00xx`, `D1–D48`) : [archive/adr-v0](../archive/adr-v0/README.md).
 
----
+## Index
 
-## Statuts
+### Communication et runtime
 
-| Icône | Statut         | Description                                                                                            |
-| ----- | -------------- | ------------------------------------------------------------------------------------------------------ |
-| 🟡    | **Proposed**   | ADR rédigé, en attente de décision                                                                     |
-| 🟢    | **Accepted**   | Décision prise, ADR figé                                                                               |
-| 🔵    | **Tested**     | Invariants prouvés par la suite de tests (cf. [ADR-0043](ADR-0043-adr-tested-status-as-proof-gate.md)) |
-| 🟠    | **Suspended**  | ADR proposé, bloqué par une dépendance externe                                                         |
-| ⚪    | **Superseded** | Remplacé par un autre ADR                                                                              |
-| ⏳    | **À rédiger**  | Identifié comme nécessaire                                                                             |
+| ADR | Décision | Statut |
+| --- | --- | --- |
+| [ADR-01](ADR-01-channels-tri-lane.md) | Radio + Channels tri-lane déclaratifs, chorégraphie, `trigger`/`emit` | 🟢 ⚠️ |
+| [ADR-02](ADR-02-request-synchrone.md) | `request` synchrone → `T \| null` | 🔵 |
+| [ADR-03](ADR-03-channel-runtime.md) | Sémantique runtime du Channel | 🟢 ⚠️ |
+| [ADR-04](ADR-04-metas-explicites.md) | Metas causales explicites `(payload, metas)` | 🟢 ⏳ |
+| [ADR-05](ADR-05-propagation-erreurs.md) | Propagation des erreurs | 🟢 ⚠️ |
+| [ADR-06](ADR-06-modes-validation.md) | Modes de validation | 🟢 ⚠️ |
 
----
+### Couche abstraite
 
-## Processus
+| ADR | Décision | Statut |
+| --- | --- | --- |
+| [ADR-07](ADR-07-application-bootstrap.md) | Application dormante, bootstrap par phases | 🔵 |
+| [ADR-08](ADR-08-namespace-manifest.md) | Namespace : manifest applicatif typé | 🔵 |
+| [ADR-09](ADR-09-feature-contract.md) | Contrat Feature `Feature<TEntity, TChannelDef, TSelfNS>` | 🔵 |
+| [ADR-10](ADR-10-entity-mutation.md) | Entity : mutation Immer, patches, pas de state dérivé | 🔵 |
+| [ADR-11](ADR-11-entity-schema-valibot.md) | Entity : schema Valibot | 🟢 |
+| [ADR-12](ADR-12-entity-intent-typing.md) | Typage de l'`intent` de `mutate()` | 🟡 |
+| [ADR-13](ADR-13-router.md) | Router : Feature framework spécialisée | 🟢 |
 
-```
-1. PROPOSED   → ADR rédigé, options documentées
-2. REVIEW     → Discussion, ajustements
-3. ACCEPTED   → Décision prise, ADR figé (date + décideurs)
-4. TESTED     → Invariants prouvés par tests citant I<N> (ADR-0043)
-5. SUPERSEDED → Remplacé par un autre ADR (lien vers successeur)
-```
+### Contrats typés
 
-**Règle fondamentale** : Un ADR `Accepted` ou `Tested` ne se modifie plus. Si la décision change, on crée un nouvel ADR qui supersède l'ancien. La transition `Accepted → Tested` n'est pas une modification de la décision — c'est la matérialisation de sa preuve par les tests (ADR-0030).
+| ADR | Décision | Statut |
+| --- | --- | --- |
+| [ADR-14](ADR-14-contrats-types.md) | Contrats typés : `TChannelDefinition`, Feature unité publique, contrat consommateur modulaire | 🟢 ⚠️ |
+| [ADR-15](ADR-15-evenements-ui.md) | Événements UI : `ui<TEl>()`, `TEventsFor<TEl>`, auto-discovery | 🟢 ⚠️ |
 
-**Trichotomie de testabilité** (ADR-0043) :
+### Couche concrète
 
-- ADR avec `Invariants impactés` → `Tested` requiert citation `I<N>` (bare token avec frontière de mot, ou `[I<N>]`) dans les tests pour chaque ID.
-- ADR sans invariants mais avec sémantique runtime → `Tested` requiert couverture de la sémantique (jugement, sans citation d'ID).
-- ADR purement process/structurel (phasage, périmètre, conventions doc, monorepo, i18n, workflow) → reste `Accepted` perpétuellement (état terminal).
+| ADR | Décision | Statut |
+| --- | --- | --- |
+| [ADR-16](ADR-16-view-scope-projection.md) | View : monopole du rendu, scope exclusif, `getUI`, niveaux N1/N2/N3 | 🟢 ⚠️ |
+| [ADR-17](ADR-17-local-state.md) | `localState` de présentation | 🟢 ⏳ |
+| [ADR-18](ADR-18-composer.md) | Composer : décideur pur, `resolve(event)`, N instances | 🟢 ⚠️ |
+| [ADR-19](ADR-19-root-element.md) | `rootElement` : sélecteur CSS fourni par le Composer | 🟢 ⚠️ |
+| [ADR-20](ADR-20-foundation.md) | Foundation : `<body>`, `Record` stable, N1 seul | 🟢 ⚠️ |
+| [ADR-21](ADR-21-behavior-reutilisation.md) | Behavior et réutilisation de View | 🟢 ⏳ |
 
----
+### Rendu
 
-## Template
+| ADR | Décision | Statut |
+| --- | --- | --- |
+| [ADR-22](ADR-22-pdr.md) | PDR chirurgicale (pas de VDOM), modes de template A/B/C | 🟢 ⚠️ |
+| [ADR-23](ADR-23-listes.md) | Listes : `ProjectionList` + délégation, `VirtualizedList` séparée | 🟢 ⏳ |
+| [ADR-24](ADR-24-hydratation-ssr.md) | Hydratation SSR structurelle, `serverState` opt-in | 🟢 ⏳ |
+| [ADR-25](ADR-25-formulaires.md) | Formulaires : `localState` pendant la saisie, Command à la soumission | 🟢 ⏳ |
+| [ADR-26](ADR-26-souscription-view.md) | Souscription View : handlers granulaires ou `any` + selectors | 🟡 |
 
-Voir [TEMPLATE.md](TEMPLATE.md) pour le format standard d'un ADR.
+### Distribution et build
 
----
+| ADR | Décision | Statut |
+| --- | --- | --- |
+| [ADR-27](ADR-27-mode-esm-modulaire.md) | Mode ESM modulaire, IIFE en alternative | 🟢 ⏳ |
+| [ADR-28](ADR-28-monorepo-packages.md) | Monorepo : un package par composant, `@bonsai/core` barrel | 🟢 ⚠️ |
+| [ADR-29](ADR-29-toolchain-build.md) | Toolchain : Rollup + `rollup-plugin-dts`, zéro dépendance transitive | 🟢 ⚠️ |
+| [ADR-30](ADR-30-artefacts-versionnes.md) | Artefacts de build versionnés, reconstruits à chaque changement | 🟢 ⚠️ |
 
-## Priorités
+### Processus
 
-D'après la [Roadmap de consolidation](../archive/ROADMAP-CONSOLIDATION.md) :
+| ADR | Décision | Statut |
+| --- | --- | --- |
+| [ADR-31](ADR-31-strates-perimetre-v1.md) | Strates d'implémentation et périmètre v1 gelé | 🟢 |
+| [ADR-32](ADR-32-tests-preuve-architecture.md) | Tests = preuve d'architecture, statut `Tested` | 🟢 |
+| [ADR-33](ADR-33-workflow-git-ci.md) | Workflow git, SemVer, hooks et CI | 🟢 ⚠️ |
+| [ADR-34](ADR-34-documentation-francais.md) | Documentation et commits en français, code et JSDoc en anglais | 🟢 ⚠️ |
 
-> **⚠ Section historique (snapshot roadmap)** — les statuts `→ 🟢 Accepted`
-> ci-dessous figent l'état constaté au moment de la clôture de chaque priorité
-> dans la roadmap de consolidation ; plusieurs ADR ont depuis été promus
-> `🔵 Tested` (ADR-0010, 0017, 0019, 0020, 0023, 0024, 0027 notamment — audit
-> 2026-09-16). **Le tableau principal ci-dessus fait foi pour le statut
-> courant** ; ne pas se fier à cette section pour l'état actuel.
+### Pistes post-v1
 
-### 🔴 P1 — Bloquants pour v1
-
-- ~~ADR-0001 Entity diff strategy~~ → 🟢 Accepted
-- ~~ADR-0002 Error propagation~~ → 🟢 Accepted
-- ~~ADR-0003 Channel runtime semantics~~ → 🟢 Accepted
-- ~~ADR-0006 Testing strategy~~ → 🟢 Accepted
-
-### 🟡 P2 — Nécessaires pour v1 complète
-
-- ~~ADR-0004 Validation modes~~ → 🟢 Accepted
-- ~~ADR-0005 Meta lifecycle~~ → 🟢 Accepted
-- ~~ADR-0008 Collection patterns~~ → ⚪ Superseded (RFC-0003 §6.4–6.8)
-
-### 🟢 P3 — Post-v1
-
-- ~~ADR-0009 Forms pattern~~ → 🟢 Accepted
-- ~~ADR-0010 Bootstrap order~~ → 🟢 Accepted
-- ~~ADR-0011 Event Sourcing support~~ → 🟠 Suspended (post-v1)
-- ~~ADR-0012 Listes virtualisées~~ → 🟢 Accepted
-- ~~ADR-0013 Réutilisation de code entre Views~~ → ⚪ Superseded (D34–D38)
-- ~~ADR-0014 SSR hydration strategy~~ → 🟢 Accepted
-
-### 🟡 P2 — Ajouts récents
-
-- ~~ADR-0015 Local state mechanism (View & Behavior)~~ → 🟢 Accepted
-- ~~ADR-0016 Metas handler signature~~ → 🟢 Accepted
-
-### 🔴 P1 — Ajouts stratégiques
-
-- ~~ADR-0017 Rendering strategy (VDOM vs PDR)~~ → 🟢 Accepted
-- ~~ADR-0018 Foundation contract (TUIMap globale, données serveur, persistance concrète)~~ → 🟠 Suspended
-- ~~ADR-0019 Mode ESM Modulaire (BonsaiRegistry, bootstrap dynamique)~~ → 🟢 Accepted
-- ~~ADR-0020 N-instances Composer & CDH périmètre réduit~~ → 🟢 Accepted
-- ~~ADR-0021 Composition monde ouvert (plateforme & extension points)~~ → 🟡 Proposed (réflexion pré-ADR)
-- ~~ADR-0022 Entity Schema Validation (Valibot imposé, `abstract get schema()`, validation modale)~~ → 🟢 Accepted
-- ~~ADR-0023 Sémantique request()/reply() — sync vs async~~ → 🟢 Accepted
-- ~~ADR-0024 Pattern Manifeste value-first (déclaration capacités composants)~~ → 🟢 Accepted
-- ~~ADR-0025 Retrait hooks lifecycle Composer~~ → 🟢 Accepted
-- ~~ADR-0026 `rootElement` string-only, CSS parseable, fourni par Composer~~ → 🟢 Accepted
-- ~~ADR-0027 `resolve(event)` — événement comme argument unique du Composer~~ → 🟢 Accepted
-- ~~ADR-0028 Stratégie de phasage d'implémentation — Kernel-first en 3 strates~~ → 🟢 Accepted
-- ~~ADR-0029 Périmètre gelé v1 — 16 ADR IN, 4 Accepted OUT~~ → 🟢 Accepted
-- ~~ADR-0030 Tests comme preuve d'architecture — spécification exécutable par strate~~ → 🟢 Accepted
-
-### 🔴 P1 — Infrastructure et build
-
-- ~~ADR-0031 Topologie des packages du monorepo~~ → 🟢 Accepted
-- ADR-0032 Build Pipeline — Toolchain, DTS bundling → 🟡 Proposed
-- ~~ADR-0033 Workflow Git & stratégie de versioning~~ → 🟢 Accepted
-- ~~ADR-0034 Stratégie de vérification continue (Husky + CI)~~ → 🟢 Accepted
-- ~~ADR-0035 Stratégie artefacts de build (tout versionné, rebuild systématique)~~ → 🟢 Accepted
-- ~~ADR-0036 Internationalisation documentation (FR source, EN dérivée)~~ → 🟢 Accepted
-
----
-
-## Références
-
-- [Index des RFCs](../rfc/README.md)
-- [Philosophie et principes](../rfc/1-philosophie.md)
-- [Architecture](../rfc/2-architecture/README.md)
-- [Couche abstraite](../rfc/3-couche-abstraite/README.md)
-- [Couche concrète](../rfc/4-couche-concrete/README.md)
-- [Rendu avancé](../rfc/5-rendu.md)
-- [DevTools et observabilité](../rfc/devtools.md)
-
-### Documents archivés
-
-- [Roadmap de consolidation](../archive/ROADMAP-CONSOLIDATION.md)
-- [Audit RFC (2026-03-17)](../archive/analyses/audit-rfc-2026-03-17.md)
-- [Analyse RFC (2026-03-19)](../archive/analyses/analyse-rfc-2026-03-19.md)
+Ce qui n'est pas une décision (helpers de test publics, event sourcing,
+extensions de la Foundation, plateforme et plugins…) vit dans la
+[roadmap](../ROADMAP.md).

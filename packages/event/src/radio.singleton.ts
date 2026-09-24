@@ -1,12 +1,12 @@
 /**
- * Radio — Singleton registre des Channels.
+ * Radio — singleton registry of Channels.
  *
- * Radio est le point central de câblage des communications Bonsai.
- * Il gère les instances Channel par namespace (get-or-create).
+ * Radio is the central wiring point of Bonsai communication. It manages
+ * Channel instances by namespace (get-or-create).
  *
- * I15 — Radio n'est jamais exposé au développeur d'application.
+ * I15 — Radio is never exposed to application developers.
  *
- * @see RFC 2-architecture/communication.md §8
+ * @see docs/spec/2-architecture/communication.md §8
  */
 
 import { Channel, type TChannelDefinition, type TChannelToken } from "./channel.class";
@@ -16,7 +16,7 @@ export class Radio {
   static #constructing = false;
   readonly #channels = new Map<string, Channel>();
 
-  /** Constructeur privé — force le pattern singleton via `me()`. */
+  /** Private constructor — enforces the singleton through `me()`. */
   private constructor() {
     if (!Radio.#constructing) {
       throw new Error(
@@ -25,7 +25,7 @@ export class Radio {
     }
   }
 
-  /** Retourne l'instance unique du Radio. */
+  /** Returns the single Radio instance. */
   static me(): Radio {
     if (!Radio.#instance) {
       Radio.#constructing = true;
@@ -36,9 +36,9 @@ export class Radio {
   }
 
   /**
-   * Obtient ou crée un Channel par namespace (API interne).
-   * Retourne `Channel<TChannelDefinition>` — toutes lanes `Record<string, unknown>`.
-   * Pour un accès typé depuis l'extérieur, utiliser `channelFor(token)`.
+   * Gets or creates a Channel by namespace (internal API).
+   * Returns `Channel<TChannelDefinition>` — all lanes `Record<string, unknown>`.
+   * For typed access from outside, use `channelFor(token)`.
    */
   channel(name: string): Channel {
     if (!this.#channels.has(name)) {
@@ -48,10 +48,10 @@ export class Radio {
   }
 
   /**
-   * Obtient ou crée un Channel typé via son token (ADR-0040, I77, I79).
+   * Gets or creates a typed Channel from its token (ADR-14, I77, I79).
    *
-   * Le cast `as Channel<TDef>` est sûr par I22 : un namespace ne peut être
-   * associé qu'à une seule Feature et donc à un seul `TDef`.
+   * The `as Channel<TDef>` cast is safe by I22: a namespace belongs to a
+   * single Feature, hence to a single `TDef`.
    */
   channelFor<TDef extends TChannelDefinition, TNS extends string>(
     token: TChannelToken<TDef, TNS>
@@ -59,19 +59,19 @@ export class Radio {
     return this.channel(token.namespace) as Channel<TDef>;
   }
 
-  /** Vérifie si un Channel existe pour ce namespace. */
+  /** Checks whether a Channel exists for this namespace. */
   hasChannel(name: string): boolean {
     return this.#channels.has(name);
   }
 
-  /** Liste tous les namespaces enregistrés. */
+  /** Lists all registered namespaces. */
   getChannelNames(): string[] {
     return Array.from(this.#channels.keys());
   }
 
   /**
-   * Supprime un Channel. Appelle `clear()` sur le Channel avant suppression.
-   * @returns `true` si le Channel existait, `false` sinon
+   * Removes a Channel, calling `clear()` on it first.
+   * @returns `true` if the Channel existed, `false` otherwise
    */
   removeChannel(name: string): boolean {
     const channel = this.#channels.get(name);
@@ -82,7 +82,7 @@ export class Radio {
     return false;
   }
 
-  /** Reset complet — détruit le singleton. Usage : tests uniquement. */
+  /** Full reset — destroys the singleton. Tests only. */
   static reset(): void {
     if (Radio.#instance) {
       for (const [, channel] of Radio.#instance.#channels) {

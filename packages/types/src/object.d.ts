@@ -5,8 +5,8 @@ import { TDictionary } from "./dictionaries";
 /**
  * emptyObjectSymbol
  * ---
- * Un symbole unique utilisé comme clé pour le type EmptyObject.
- * Doit être exporté explicitement pour être inclus dans le bundle de types.
+ * Unique symbol used as the key of the EmptyObject type.
+ * Must be exported explicitly to be included in the type bundle.
  */
 export declare const emptyObjectSymbol: unique symbol;
 

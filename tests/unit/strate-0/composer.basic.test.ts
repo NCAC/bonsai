@@ -6,14 +6,14 @@
  *   I35  — Composer n'a aucune écriture DOM — resolve(event) unique méthode abstraite
  *   I37  — Un seul type de Composer, gère 0/N Views (strate 0 : 0/1 seulement)
  *
- * Sémantiques strate 0 (ADR-0025, ADR-0026, ADR-0027) :
+ * Sémantiques strate 0 (ADR-18, ADR-19) :
  *   - resolve(event | null) → TResolveResult | null (pas de tableau en strate 0)
  *   - rootElement = string CSS, fourni par le parent (Foundation ou View)
  *   - Machine à états minimal : idle → active → idle
- *   - Création d'élément DOM si absent (D30)
- *   - Pas de lifecycle hooks (ADR-0025)
+ *   - Création d'élément DOM si absent (ADR-19)
+ *   - Pas de lifecycle hooks (ADR-18)
  *
- * Transitions diff resolve() §3.1 (ADR-0027) :
+ * Transitions diff resolve() §3.1 (ADR-18) :
  *   | resolve()          | View montée       | Action                                 |
  *   | SameView+SameRoot  | SameView instance | No-op (instance conservée)             |
  *   | NewView (ou root)  | OldView instance  | Detach OldView → Attach NewView        |
@@ -35,7 +35,7 @@ import {
 } from "@bonsai/view";
 import type { TFeatureContract } from "@bonsai/feature";
 
-// ─── Fixtures (ADR-0042 — pattern modulaire) ─────────────────────────────────
+// ─── Fixtures (ADR-14 — pattern modulaire) ─────────────────────────────────
 
 const emptyFeatures = {} as const satisfies TFeatureContract;
 
@@ -136,7 +136,7 @@ describe("Composer basic — Strate 0 [I20, I35, I37]", () => {
     });
   });
 
-  describe("ADR-0026 — rootElement is a CSS selector string", () => {
+  describe("ADR-19 — rootElement is a CSS selector string", () => {
     it("rootElement is a CSS selector provided by the parent", () => {
       class MainComposer extends Composer {
         resolve(event: unknown | null): TResolveResult | null {
@@ -150,7 +150,7 @@ describe("Composer basic — Strate 0 [I20, I35, I37]", () => {
       expect(composer.rootElement).toBe("[data-region='main']");
     });
 
-    it("D30 — Composer creates DOM element if selector not found", () => {
+    it("ADR-19 — Composer creates DOM element if selector not found", () => {
       class MainComposer extends Composer {
         resolve(event: unknown | null): TResolveResult | null {
           return { view: CartView, rootElement: "[data-view='cart']" };
@@ -167,7 +167,7 @@ describe("Composer basic — Strate 0 [I20, I35, I37]", () => {
     });
   });
 
-  describe("ADR-0025 — Composer has no lifecycle hooks", () => {
+  describe("ADR-18 — Composer has no lifecycle hooks", () => {
     it("Composer does not have onMount/onUnmount/onAttach/onDetach", () => {
       class TestComposer extends Composer {
         resolve(event: unknown | null): TResolveResult | null {
@@ -230,7 +230,7 @@ describe("Composer basic — Strate 0 [I20, I35, I37]", () => {
 
 // ─── Diff resolve() §3.1 — 5 transitions ─────────────────────────────────────
 
-describe("Composer diff resolve() §3.1 — 5 transitions [I20, I35, I37, ADR-0027]", () => {
+describe("Composer diff resolve() §3.1 — 5 transitions [I20, I35, I37, ADR-18]", () => {
   beforeEach(() => {
     resetDOM();
     setupDiffDOM();
@@ -335,7 +335,7 @@ describe("Composer diff resolve() §3.1 — 5 transitions [I20, I35, I37, ADR-00
     expect(composer.currentView).toBeInstanceOf(CheckoutView);
   });
 
-  it("ADR-0027 — resolve() est recalculé à chaque appel (pas de cache local)", () => {
+  it("ADR-18 — resolve() est recalculé à chaque appel (pas de cache local)", () => {
     const composer = createProgrammableComposer();
     let toggle = true;
     composer.decide = () =>

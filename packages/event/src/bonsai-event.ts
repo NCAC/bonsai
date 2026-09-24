@@ -1,10 +1,10 @@
 /**
- * @bonsai/event — Infrastructure de communication tri-lane du framework Bonsai.
+ * @bonsai/event — Tri-lane communication infrastructure of the Bonsai framework.
  *
- * Exports :
- * - `Channel` : contrat de communication tri-lane (Command/Event/Request)
- * - `Radio` : singleton registre des Channels
- * - Types : `TChannelDefinition`, `TChannelToken`, `TTokenDef`, `TAnyEventPayload`
+ * Exports:
+ * - `Channel`: tri-lane communication contract (Command/Event/Request)
+ * - `Radio`: singleton registry of Channels
+ * - Types: `TChannelDefinition`, `TChannelToken`, `TTokenDef`, `TAnyEventPayload`
  *
  * @packageDocumentation
  */

@@ -12,53 +12,51 @@
 | Export        | Rôle                                                                                  | Visibilité                                              |
 | ------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | **`Channel`** | Contrat de communication tri-lane : Commands (1:1), Events (1:N), Requests (1:1 sync) | Interne framework — jamais instancié par le développeur |
-| **`Radio`**   | Singleton registre des Channels — câblage au bootstrap                                | Interne framework (I15)                                 |
+| **`Radio`**   | Singleton registre des Channels (get-or-create par namespace)                         | Interne framework (I15)                                 |
+
+Le package exporte aussi les types `TChannelDefinition`, `TChannelToken`, `TTokenDef` et
+`TAnyEventPayload` ; `@bonsai/core` ne ré-exporte que ces **types**, jamais `Channel` ni `Radio` (I15, I80).
 
 > **Ce package est une infrastructure interne.** Le développeur d'application
-> interagit avec les Channels indirectement via `Feature.emit()`, `View.trigger()`,
-> `View.request()`, etc. Il n'importe jamais `Channel` ni `Radio` directement.
+> interagit avec les Channels indirectement via `Feature.emit()`, `Feature.request()`,
+> `View.trigger()`, `View.request()`, etc. Il n'importe jamais `Channel` ni `Radio` directement.
 
 ---
 
 ## Architecture — Channel tri-lane
 
-Chaque Channel expose trois lanes indépendantes :
+`Channel<TDef extends TChannelDefinition>` (nom lisible par `channel.name`) expose trois lanes
+indépendantes, toutes typées par `keyof TDef[lane]` (I76) :
 
-```
-                 Channel "cart"                       │
-
-  Command Lane   │  trigger(name, payload)    → 1:1  │
-                 │  handle(name, handler)             │
-
-  Event Lane     │  emit(name, payload)       → 1:N  │
-                 │  on(name, handler)                 │
-                 │  off(name, handler)                │
-                 │  → émet `any` automatiquement      │
-
-  Request Lane   │  request(name, params)     → sync │
-                 │  reply(name, handler)       T|null │
+```text
+Command Lane   handle(name, handler)                    trigger(name, payload)   → 1:1
+Event Lane     listen(name, listener)                   emit(name, payload)      → 1:N
+               unlisten(name, listener)                 listenAny / unlistenAny  → événement technique `any`
+Request Lane   reply(name, replier)   unreply(name)     request(name, params)    → sync, T | null
+Cycle de vie   clear()  — vide tous les registres et complète les Subjects RxJS
 ```
 
-### Sémantiques runtime (ADR-0003)
+### Sémantiques runtime (ADR-03)
 
-| Situation                | Comportement                                              |
-| ------------------------ | --------------------------------------------------------- |
-| `trigger()` sans handler | `throw NoHandlerError` (strate 0 : toujours throw)        |
-| `handle()` dupliqué      | `throw DuplicateHandlerError` (I10)                       |
-| `emit()` sans listener   | Silencieux — valide sémantiquement                        |
-| `request()` sans replier | Retourne `null` (D44, ADR-0023)                           |
-| `reply()` qui throw      | Retourne `null`, erreur loguée (I55)                      |
-| Listener qui throw       | Erreur isolée, les autres listeners continuent (ADR-0002) |
+| Situation                | Comportement                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| `trigger()` sans handler | `throw NoHandlerError` (toujours, quel que soit le mode)                              |
+| `handle()` / `reply()` dupliqué | `throw DuplicateHandlerError` (I10)                                            |
+| `emit()` sans listener   | Silencieux — valide sémantiquement                                                    |
+| `request()` sans replier | Retourne `null` (ADR-02), sans log                                                    |
+| Replier qui throw        | `request()` retourne `null` et journalise via `console.error` (I55)                   |
+| Listener qui throw       | `ListenerError` journalisée via `console.error` ; les autres listeners continuent (ADR-05) |
+| Handler Command qui throw | Exception **non capturée** : remonte à l'appelant de `trigger()`                     |
 
 ### Événement réservé `any`
 
 Après chaque `emit()` d'un Event granulaire, le Channel émet automatiquement
-un événement technique `any` avec le payload :
+un événement technique `any` :
 
 ```typescript
 type TAnyEventPayload = {
-  readonly event: string;
-  readonly changes: Record<string, unknown>;
+  readonly event: string;                      // nom de l'Event granulaire
+  readonly changes: Record<string, unknown>;   // payload de l'Event tel quel ({} si ce n'est pas un objet)
 };
 ```
 
@@ -68,14 +66,16 @@ type TAnyEventPayload = {
 
 ```typescript
 Radio.me()                    // → instance unique
-Radio.me().channel("cart")    // → Channel (get or create)
+Radio.me().channel("cart")    // → Channel (get or create, non typé)
+Radio.me().channelFor(token)  // → Channel<TDef> typé depuis un TChannelToken (get or create)
 Radio.me().hasChannel("cart") // → boolean
+Radio.me().getChannelNames()  // → string[]
+Radio.me().removeChannel("cart") // → boolean (appelle clear() avant retrait)
 Radio.reset()                 // → reset complet (tests only)
 ```
 
-Radio est le **registre central** des instances Channel. Au bootstrap
-(`app.start()`), le framework résout les déclarations statiques des composants
-en connexions runtime via Radio.
+Radio est un registre **passif** : il ne résout aucune déclaration. `Application.start()` crée un
+Channel par clé du manifest (Phase 1) et valide les références croisées avant (Phases 0a–0c).
 
 > **I15** — Radio n'est jamais exposé au développeur d'application.
 
@@ -83,62 +83,62 @@ en connexions runtime via Radio.
 
 ## Dépendances
 
+```text
+@bonsai/error   ← NoHandlerError, DuplicateHandlerError, ListenerError
+@bonsai/rxjs    ← RXJS.Subject, RXJS.Subscription (dispatch interne)
 ```
-@bonsai/types   ← TJsonValue (payloads)
-@bonsai/error   ← NoHandlerError, DuplicateHandlerError, invariant()
-@bonsai/rxjs    ← Subject, Subscription (dispatch interne)
-```
+
+(`package.json` déclare aussi `@bonsai/types`, non importé par le code.)
 
 ---
 
 ## Structure des fichiers
 
-```
+```text
 src/
-  bonsai-event.ts         ← barrel (exports publics)
-  channel.class.ts        ← Channel tri-lane
+  bonsai-event.ts         ← barrel (Channel, Radio, types publics)
+  channel.class.ts        ← Channel tri-lane + types TChannelDefinition/TChannelToken/TTokenDef/TAnyEventPayload
   radio.singleton.ts      ← Radio singleton
-  types.ts                ← types publics (TAnyEventPayload, etc.)
 ```
 
 ---
 
-## Périmètre strate 0 (ADR-0028)
+## Périmètre livré (ADR-31)
 
 **Inclus :**
 
-- Channel tri-lane : `handle`/`trigger`, `on`/`off`/`emit` + `any`, `reply`/`request` sync
-- Radio singleton : registre, get-or-create, reset
-- Détection handler absent (`trigger` sans `handle`) → throw
-- Détection handler dupliqué → throw
+- Channel tri-lane typé (`Channel<TDef>`, ADR-14) : `handle`/`trigger`, `listen`/`unlisten`/`emit` + `any`, `reply`/`unreply`/`request` synchrone
+- Radio singleton : registre, get-or-create, `channelFor(token)`, `reset()`
+- Détection handler absent (`trigger` sans `handle`) et handler dupliqué → throw
 - Isolation des erreurs entre listeners (`emit`)
-- `dispose()` — nettoyage des registres et Subjects RxJS
+- `clear()` — nettoyage des registres et Subjects RxJS
 
-**Exclu (strate 1+) :**
+**Exclu (strates suivantes) :**
 
-- Metas causales (`correlationId`, `causationId`, `hop`) — stub
-- Anti-boucle I9 (`hop > maxHops`)
-- `noHandler` configurable par mode (dev/prod)
-- ~~Generics `TChannelDefinition` typés~~ — **livré** par [ADR-0040](../../docs/adr/ADR-0040-typescript-first-api-channel-definition-typed.md) : `Channel<TDef>` strictement typé, `TChannelToken<TDef, NS>` exposé par `Feature.channel`
+- Metas causales (`correlationId`, `causationId`, `hop`) et anti-boucle I9 — strate 1b
+- `ErrorReporter` (I65) et rejet des messages avant `start()` (I66)
+- Nettoyage automatique des abonnements au démontage d'un composant
 
 ---
 
 ## Documents normatifs
 
-| Document                                                               | Ce qu'il spécifie                                   |
-| ---------------------------------------------------------------------- | --------------------------------------------------- |
-| [RFC communication.md](../../docs/rfc/2-architecture/communication.md) | Tri-lane, matrice des droits, flux, `any`, Radio §8 |
-| [ADR-0003](../../docs/adr/ADR-0003-channel-runtime-semantics.md)       | Sémantiques runtime (throw/warn/silent par mode)    |
-| [ADR-0023](../../docs/adr/ADR-0023-request-reply-sync-vs-async.md)     | `request()` synchrone, `T \| null`                  |
-| [ADR-0002](../../docs/adr/ADR-0002-error-propagation-strategy.md)      | Isolation des erreurs, taxonomie `BonsaiError`      |
-| [ADR-0028](../../docs/adr/ADR-0028-implementation-phasing-strategy.md) | Périmètre strate 0                                  |
-| [ADR-0031](../../docs/adr/ADR-0031-monorepo-package-topology.md)       | Topologie packages, DAG                             |
+| Document                                                                 | Ce qu'il spécifie                                   |
+| ------------------------------------------------------------------------ | --------------------------------------------------- |
+| [spec communication.md](../../docs/spec/2-architecture/communication.md) | Tri-lane, matrice des droits, flux, `any`, Radio §8 |
+| [ADR-03](../../docs/adr/ADR-03-channel-runtime.md)                       | Sémantiques runtime du Channel                      |
+| [ADR-02](../../docs/adr/ADR-02-request-synchrone.md)                     | `request()` synchrone, `T \| null`                  |
+| [ADR-05](../../docs/adr/ADR-05-propagation-erreurs.md)                   | Isolation des erreurs, taxonomie `BonsaiError`      |
+| [ADR-14](../../docs/adr/ADR-14-contrats-types.md)                        | `TChannelDefinition`, `TChannelToken`               |
+| [ADR-31](../../docs/adr/ADR-31-strates-perimetre-v1.md)                  | Périmètre des strates                               |
+| [ADR-28](../../docs/adr/ADR-28-monorepo-packages.md)                     | Topologie packages, DAG                             |
 
 ---
 
 ## Tests
 
-Les tests de spécification sont dans `tests/unit/strate-0/` :
+Les tests de spécification sont dans `tests/unit/` :
 
-- `channel.basic.test.ts` — invariants I10, I11, I25, I26, I27, I29, I55
-- `radio.singleton.test.ts` — invariant I15
+- `strate-0/channel.basic.test.ts` — invariants I10, I11, I25, I26, I27, I29, I55
+- `strate-0/radio.singleton.test.ts` — comportement runtime de Radio (I15 est prouvé côté types par `tests/types/strate-0/encapsulation.types.test.ts`)
+- `channel.class.test.ts`, `radio.singleton.test.ts` — tests historiques hors strate

@@ -67,32 +67,15 @@ async buildPackage(package: TPackage): Promise<void> {
 }
 ```
 
-#### 3. Générateur de bundle de types
+#### 3. Passe DTS du framework
 
-**Responsabilité** : Création du bundle framework unifié
+**Responsabilité** : produire `core/dist/bonsai.d.ts`, un bundle de types plat (ADR-29).
 
-```typescript
-// Utilisation de ts-morph pour l'analyse AST
-const project = new Project();
-const sourceFile = project.addSourceFileAtPath(filePath);
+1. `tsc --emitDeclarationOnly` émet les `.d.ts` individuels dans `.dts-temp/` ;
+2. `rollup` + `rollup-plugin-dts` (configuré par `building/dts-config.ts`) les assemble, `external: []` ;
+3. `postProcessDts()` retire les directives triple-slash et renomme les namespaces tiers.
 
-// Extraction des types
-const typeAliases = sourceFile.getTypeAliases();
-const interfaces = sourceFile.getInterfaces();
-const enums = sourceFile.getEnums();
-```
-
-**Système de déduplication** :
-
-```typescript
-const definedTypes = new Set<string>();
-
-// Vérification avant ajout
-if (!definedTypes.has(typeName)) {
-  definedTypes.add(typeName);
-  // Ajouter le type au bundle
-}
-```
+La déduplication des types est assurée par Rollup ; il n'y a plus de code d'analyse AST maison.
 
 ## Flux de données
 
@@ -123,10 +106,10 @@ graph TD
 
 ```mermaid
 graph TD
-    A[Packages .d.ts] --> B[ts-morph Parser]
-    B --> C[AST Analysis]
-    C --> D[Type Extraction]
-    D --> E[Deduplication]
+    A[Sources .ts] --> B[tsc --emitDeclarationOnly]
+    B --> C[.dts-temp/*.d.ts]
+    C --> D[rollup + rollup-plugin-dts]
+    D --> E[postProcessDts]
     E --> F[core/dist/bonsai.d.ts]
 ```
 

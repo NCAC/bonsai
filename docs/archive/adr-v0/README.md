@@ -1,0 +1,107 @@
+# Archive — ADR et journal de décisions v0
+
+> Corpus de décisions **avant la refonte documentaire du 2026-09-24**.
+> Non normatif : la source de vérité est [docs/adr/](../../adr/README.md).
+> Les textes originaux (options détaillées, analyses comparatives) sont conservés
+> ici au fil de la migration ; le journal court `D1–D48` est archivé dans
+> [decisions-D1-D48.md](decisions-D1-D48.md).
+
+## Correspondance ancien → nouveau
+
+| Ancien | Nouveau |
+| --- | --- |
+| ADR-0001 | ADR-10 |
+| ADR-0002 | ADR-05 |
+| ADR-0003 | ADR-03 |
+| ADR-0004 | ADR-06 |
+| ADR-0005 | ADR-04 |
+| ADR-0006 | [ROADMAP](../../ROADMAP.md) |
+| ADR-0007 | ADR-21 |
+| ADR-0008 | ADR-23 |
+| ADR-0009 | ADR-25 |
+| ADR-0010 | ADR-07 |
+| ADR-0011 | [ROADMAP](../../ROADMAP.md) |
+| ADR-0012 | ADR-23 |
+| ADR-0013 | ADR-21 |
+| ADR-0014 | ADR-24 |
+| ADR-0015 | ADR-17 |
+| ADR-0016 | ADR-04 |
+| ADR-0017 | ADR-22 |
+| ADR-0018 | [ROADMAP](../../ROADMAP.md) |
+| ADR-0019 | ADR-27 |
+| ADR-0020 | ADR-18 |
+| ADR-0021 | [ROADMAP](../../ROADMAP.md) |
+| ADR-0022 | ADR-11 |
+| ADR-0023 | ADR-02 |
+| ADR-0024 | ADR-14 |
+| ADR-0025 | ADR-18 |
+| ADR-0026 | ADR-19 |
+| ADR-0027 | ADR-18 |
+| ADR-0028 | ADR-31 |
+| ADR-0029 | ADR-31 |
+| ADR-0030 | ADR-32 |
+| ADR-0031 | ADR-28 |
+| ADR-0032 | ADR-29 |
+| ADR-0033 | ADR-33 |
+| ADR-0034 | ADR-33 |
+| ADR-0035 | ADR-30 |
+| ADR-0036 | ADR-34 |
+| ADR-0037 | ADR-09 |
+| ADR-0038 | ADR-20 |
+| ADR-0039 | ADR-08 |
+| ADR-0040 | ADR-14 |
+| ADR-0041 | ADR-14 |
+| ADR-0042 | ADR-14 |
+| ADR-0043 | ADR-32 |
+| ADR-0044 | ADR-15 |
+| ADR-0045 | ADR-15 |
+| ADR-0046 | ADR-09 |
+| ADR-0047 | ADR-12 |
+| D1 | ADR-01 |
+| D2 | ADR-01 |
+| D3 | ADR-01 |
+| D4 | ADR-16 |
+| D5 | ADR-08 |
+| D6 | ADR-07 |
+| D7 | ADR-01 |
+| D8 | ADR-13 |
+| D9 | ADR-02 |
+| D10 | ADR-10 |
+| D11 | ADR-14 |
+| D12 | ADR-09 |
+| D13 | ADR-09 |
+| D14 | ADR-14 |
+| D15 | ADR-14 |
+| D16 | ADR-09 |
+| D17 | ADR-09 |
+| D18 | ADR-07 |
+| D19 | ADR-22 |
+| D20 | ADR-20 |
+| D21 | ADR-18 |
+| D22 | ADR-18 |
+| D23 | ADR-18 |
+| D24 | ADR-18 |
+| D25 | ADR-18 |
+| D26 | ADR-16 |
+| D27 | ADR-20 |
+| D28 | ADR-19 |
+| D29 | ADR-20 |
+| D30 | ADR-19 |
+| D31 | ADR-16 |
+| D32 | ADR-16 |
+| D33 | ADR-17 |
+| D34 | ADR-21 |
+| D35 | ADR-16 |
+| D36 | ADR-21 |
+| D37 | ADR-17 |
+| D38 | ADR-21 |
+| D39 | ADR-22 |
+| D40 | ADR-23 |
+| D41 | ADR-22 |
+| D42 | ADR-26 |
+| D43 | ADR-04 |
+| D44 | ADR-02 |
+| D45 | ADR-23 |
+| D46 | ADR-26 |
+| D47 | ADR-10 |
+| D48 | ADR-15 |

@@ -47,7 +47,7 @@
 !/docs
 /docs/*
 !/docs/README.md
-!/docs/rfc
+!/docs/specs
 !/docs/TODO.md
 !/docs/CACHE_WORK_IN_PROGRESS.md
 !/docs/adr

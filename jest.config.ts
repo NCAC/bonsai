@@ -36,7 +36,7 @@ const config: Config = {
 
   // Module aliases (consistent with tsconfig.json)
   moduleNameMapper: {
-    // ── Packages composants framework (ADR-0031 Option D) ──
+    // ── Packages composants framework (ADR-28 Option D) ──
     "^@bonsai/entity$": "<rootDir>/packages/entity/src/bonsai-entity.ts",
     "^@bonsai/feature$": "<rootDir>/packages/feature/src/bonsai-feature.ts",
     "^@bonsai/event$": "<rootDir>/packages/event/src/bonsai-event.ts",
@@ -78,7 +78,7 @@ const config: Config = {
 
   // Coverage thresholds — baseline figée à la livraison strate 0 (2026-04-21).
   // Toute régression sous ces seuils fait échouer la CI.
-  // Cf. ADR-0028 (gate strate 0) et bilan coverage post-livraison.
+  // Cf. ADR-31 (gate strate 0) et bilan coverage post-livraison.
   //
   // NB Jest : un fichier matché par un seuil path-specific est EXCLU du calcul
   // global. Les seuils ci-dessous couvrent donc explicitement chaque package

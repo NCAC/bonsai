@@ -1,5 +1,5 @@
 /**
- * Test consumer — PoC ADR-0032 §11
+ * Test consumer — PoC ADR-29
  *
  * Ce fichier est compilé avec tsc --noEmit pour valider que le
  * bonsai.d.ts bundlé est consommable par un projet TypeScript.
@@ -43,7 +43,7 @@ const ch: Channel = radio.channel("app");
 // TAnyEventPayload — événement technique `any`
 const anyPayload: TAnyEventPayload = { event: "itemAdded", changes: {} };
 
-// --- VC4 : Namespace Valibot (Tier 1 — ADR-0022 + ADR-0032 §3) ---
+// --- VC4 : Namespace Valibot (Tier 1 — ADR-11 + ADR-29) ---
 import { Valibot } from "@bonsai/core";
 
 // Le développeur utilise Valibot.* — pas de pollution du top-level
@@ -53,7 +53,7 @@ const userSchema = Valibot.object({
 });
 type User = Valibot.InferOutput<typeof userSchema>;
 
-// --- VC4b : Namespace Immer (Tier 3 — ADR-0001 + ADR-0032 §3) ---
+// --- VC4b : Namespace Immer (Tier 3 — ADR-10 + ADR-29) ---
 import { Immer } from "@bonsai/core";
 
 // Le framework utilise Immer.produce en interne — namespace opaque

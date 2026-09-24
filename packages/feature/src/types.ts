@@ -1,37 +1,37 @@
 /**
  * @bonsai/feature — Types & runtime helpers
  *
- * Implémente :
- *   - ADR-0039 : autorité, unicité et conformité des namespaces de Feature.
- *   - ADR-0042 : pattern modulaire de contrat consommateur — `TFeatureContract`
- *     Feature-groupé + helpers d'aplatissement (`TFlatListens`, `TFlatTriggers`,
- *     `TFlatRequests`) + extracteurs de payload (`TEventPayloadFor`,
- *     `TCommandPayloadFor`, `TRequestParamsFor`, `TRequestResultFor`) +
- *     `TChannelCallbacks` (handlers requis dérivés du contrat).
+ * Implements:
+ *   - ADR-08: authority, uniqueness and conformity of Feature namespaces.
+ *   - ADR-14: modular consumer contract — Feature-grouped `TFeatureContract`
+ *     + flattening helpers (`TFlatListens`, `TFlatTriggers`, `TFlatRequests`)
+ *     + payload extractors (`TEventPayloadFor`, `TCommandPayloadFor`,
+ *     `TRequestParamsFor`, `TRequestResultFor`) + `TChannelCallbacks`
+ *     (required handlers derived from the contract).
  *
- * Trois rôles assumés par ce module :
- *   1. Types compile-time (`CamelCaseNamespace<S>`, `StrictManifest<M>`,
- *      `ValidatedManifest<M>`) qui encodent les invariants I68–I72.
- *   2. Constante framework `RESERVED_NAMESPACES` (I71) — non configurable
- *      par l'application.
- *   3. Filet de sécurité runtime (`assertValidNamespace`,
- *      `BonsaiNamespaceError`) pour les cas où le compile-time est contourné
- *      (cast `as any`, code JS, manifest dynamique).
+ * This module has three roles:
+ *   1. Compile-time types (`CamelCaseNamespace<S>`, `StrictManifest<M>`,
+ *      `ValidatedManifest<M>`) encoding invariants I68–I72.
+ *   2. The framework constant `RESERVED_NAMESPACES` (I71) — not configurable
+ *      by the application.
+ *   3. A runtime safety net (`assertValidNamespace`, `BonsaiNamespaceError`)
+ *      for when compile-time checks are bypassed (`as any` cast, plain JS,
+ *      dynamic manifest).
  *
- * Invariants couverts :
- *   I21 (amendé) — namespace unique camelCase plat
- *   I24 (amendé) — Application valide format + réservés au bootstrap
- *   I57          — `local` réservé (ADR-0015)
- *   I68          — namespace porté par le manifest, pas par un `static`
- *   I69          — manifest = unique source de vérité de l'identité
- *   I70          — toute référence à un namespace externe DOIT être validée
- *   I71          — `RESERVED_NAMESPACES` est une constante framework
- *   I72          — `TSelfNS` doit correspondre à la clé du manifest
- *   I81 (ADR-0042) — `get features()` est la source de vérité runtime
- *   I82 (ADR-0042) — `implements TViewCallbacks<TVC>` impose les handlers
- *   I83 (ADR-0042) — pattern modulaire `T{Component}Contract` réutilisable
- *   I87 (ADR-0042) — clé d'objet ≡ namespace de la Feature référencée
- *   I88 (ADR-0042) — symétrie Contract/Callbacks
+ * Invariants covered:
+ *   I21          — unique, flat camelCase namespace
+ *   I24          — Application validates format + reserved names at bootstrap
+ *   I57          — `local` is reserved (ADR-17)
+ *   I68          — the namespace is carried by the manifest, not by a `static`
+ *   I69          — the manifest is the single source of truth for identity
+ *   I70          — every reference to an external namespace MUST be validated
+ *   I71          — `RESERVED_NAMESPACES` is a framework constant
+ *   I72          — `TSelfNS` must match the manifest key
+ *   I81 (ADR-14) — `get features()` is the runtime source of truth
+ *   I82 (ADR-14) — `implements TViewCallbacks<TVC>` enforces the handlers
+ *   I83 (ADR-14) — reusable modular `T{Component}Contract` pattern
+ *   I87 (ADR-14) — object key ≡ namespace of the referenced Feature
+ *   I88 (ADR-14) — Contract/Callbacks symmetry
  *
  * @packageDocumentation
  */
@@ -41,63 +41,62 @@ import type { TChannelDefinition, TChannelToken } from "@bonsai/event";
 import type { CamelCase, UnionToIntersection } from "@bonsai/types";
 import type { Feature } from "./bonsai-feature";
 
-// ─── Mots réservés (I71, ADR-0015) ──────────────────────────────────────────
+// ─── Reserved words (I71, ADR-17) ─────────────────────────────────────────
 
 /**
- * Namespaces réservés par le framework — interdits à toute Feature applicative.
+ * Namespaces reserved by the framework — forbidden to application Features.
  *
- *   - `local`  : clé du localState dans les données namespacées (I57, ADR-0015)
- *   - `router` : Feature framework de navigation, instanciée par Application (I28, D8)
+ *   - `local`  : localState key in namespaced data (I57, ADR-17)
+ *   - `router` : framework navigation Feature, instantiated by Application (I28, ADR-13)
  *
- * Constante framework non configurable. Toute extension future se fera par
- * modification de cette constante, propagée par le typage dérivé (I71).
+ * Non-configurable framework constant. Any future extension changes this
+ * constant and propagates through the derived types (I71).
  */
 export const RESERVED_NAMESPACES = ["local", "router"] as const;
 
-/** Union des namespaces réservés (dérivée de la constante). */
+/** Union of the reserved namespaces (derived from the constant). */
 export type ReservedNamespace = (typeof RESERVED_NAMESPACES)[number];
 
 // ─── Compile-time camelCase enforcement ─────────────────────────────────────
 
 /**
- * Alias local de `CamelCase` (ADR-0039 §Annexe — `CamelCaseNamespace<S>`).
+ * Local alias of `CamelCase` (ADR-08 — `CamelCaseNamespace<S>`).
  *
- * Le type générique vit dans `@bonsai/types` (réutilisable). Cet alias rend
- * lisible son rôle dans le contexte « namespace de Feature » et tient
- * la promesse de l'ADR sur le nom local.
+ * The generic type lives in `@bonsai/types` (reusable). This alias makes its
+ * role explicit in the "Feature namespace" context, as named by the ADR.
  */
 export type CamelCaseNamespace<S extends string> = CamelCase<S>;
 
-// ─── Manifest types (ADR-0039 §Décision) ────────────────────────────────────
+// ─── Manifest types (ADR-08) ────────────────────────────────────
 
 /**
- * Filtre du manifest : exclut les clés réservées au compile-time.
+ * Manifest filter: drops reserved keys at compile time.
  *
- * `ValidatedManifest<M>` retire les entrées dont la clé est dans
- * `RESERVED_NAMESPACES`. Combiné à `StrictManifest<M>`, garantit qu'aucune
- * Feature applicative ne squatte un namespace framework.
+ * `ValidatedManifest<M>` removes the entries whose key is in
+ * `RESERVED_NAMESPACES`. Combined with `StrictManifest<M>`, it guarantees no
+ * application Feature takes a framework namespace.
  */
 export type ValidatedManifest<M> = {
   [K in keyof M as K extends ReservedNamespace ? never : K]: M[K];
 };
 
 /**
- * Type structurel du value-manifest applicatif.
+ * Structural type of the application value-manifest.
  *
- * Pour chaque clé `K` du type-manifest `M` :
- *   - `K` doit être camelCase plat (sinon `never` → erreur `satisfies`)
- *   - `K` ne doit pas être réservé (sinon `never`)
- *   - La valeur doit être un constructeur acceptant la clé `K` comme namespace
- *     ET produisant une `Feature<any, K>` — c'est ce qui force `TSelfNS === K`
- *     au compile-time (I72).
+ * For each key `K` of the type-manifest `M`:
+ *   - `K` must be flat camelCase (otherwise `never` → `satisfies` error)
+ *   - `K` must not be reserved (otherwise `never`)
+ *   - The value must be a constructor taking `K` as namespace AND producing
+ *     a `Feature<any, K>` — this is what forces `TSelfNS === K` at compile
+ *     time (I72).
  *
- * Usage côté application :
+ * Application-side usage:
  *
  * ```ts
  * const features = {
  *   cart: CartFeature,        // ✅
  *   user: UserFeature,        // ✅
- *   // local: BadFeature,     // ❌ never (réservé)
+ *   // local: BadFeature,     // ❌ never (reserved)
  *   // Cart: CartFeature,     // ❌ never (PascalCase)
  *   // user: CartFeature,     // ❌ TSelfNS "cart" ≠ "user"
  * } satisfies StrictManifest<AppManifest>;
@@ -105,27 +104,26 @@ export type ValidatedManifest<M> = {
  */
 
 /**
- * Contrainte compile-time d'une classe Feature enregistrable dans un manifest.
+ * Compile-time constraint on a Feature class that can be registered in a manifest.
  *
- * Exige (ADR-0046 — M3, I95 reformulé) :
- *   - Un constructeur `(namespace: TNS) => Feature<…, TDef, TNS>` — force
+ * Requires (ADR-09, I95):
+ *   - A `(namespace: TNS) => Feature<…, TDef, TNS>` constructor — forces
  *     `TSelfNS === TNS` (I72).
- *   - Un membre statique `channel: TChannelToken<TDef, TNS>` — présence ET
- *     alignement `channel.namespace === TNS` au compile-time (I73/I74/I22).
+ *   - A static `channel: TChannelToken<TDef, TNS>` member — presence AND
+ *     `channel.namespace === TNS` alignment at compile time (I73/I74/I22).
  *
- * **La couverture des handlers n'est PAS imposée ici** (ADR-0046 §Décision) :
- * un manifest type-only à valeurs `unknown` (ADR-0039) ne permet pas d'extraire
- * `TDef` par clé, donc aucune inférence de handlers n'est possible au point
- * manifest. La couverture est garantie par I92 (`implements TFeatureCallbacks`
- * sur chaque classe — symétrie View/ADR-0042), strictement au compile-time :
- * il n'existe pas de filet runtime symétrique côté Feature (contrairement à
- * View/I82) — voir feature.md §3bis.
+ * **Handler coverage is NOT enforced here** (ADR-09): a type-only manifest
+ * with `unknown` values (ADR-08) cannot yield `TDef` per key, so no handler
+ * inference is possible at the manifest. Coverage is guaranteed by I92
+ * (`implements TFeatureCallbacks` on each class — same as View, ADR-14),
+ * strictly at compile time: unlike View (I82), there is no runtime safety
+ * net on the Feature side — see feature.md §3bis.
  *
  * @example
  * ```ts
- * // ✅ CartFeature satisfait TStrictFeatureClass<"cart">
- * // ❌ Classe sans static channel → erreur compile
- * // ❌ channel.namespace ≠ "cart" → erreur compile
+ * // ✅ CartFeature satisfies TStrictFeatureClass<"cart">
+ * // ❌ Class without a static channel → compile error
+ * // ❌ channel.namespace ≠ "cart" → compile error
  * ```
  */
 export type TStrictFeatureClass<
@@ -145,14 +143,14 @@ export type StrictManifest<M> = {
     : never;
 };
 
-// ─── Erreur typée (ADR-0039 §Décision — Filet de sécurité runtime) ──────────
+// ─── Typed error (ADR-08 — runtime safety net) ──────────────────
 
 /**
- * Codes d'erreur stables pour les violations de l'invariant namespace.
+ * Stable error codes for namespace invariant violations.
  *
- * `NAMESPACE_DUPLICATE` est théoriquement impossible avec un manifest
- * (TS1117 le détecte), mais reste levé par le filet runtime au cas où le
- * manifest serait construit dynamiquement.
+ * `NAMESPACE_DUPLICATE` is theoretically impossible with a manifest (TS1117
+ * catches it), but the runtime safety net still raises it in case the
+ * manifest is built dynamically.
  */
 export type TBonsaiNamespaceErrorCode =
   | "NAMESPACE_INVALID_FORMAT"
@@ -163,11 +161,10 @@ export type TBonsaiNamespaceErrorCode =
   | "FEATURE_CHANNEL_NAMESPACE_MISMATCH";
 
 /**
- * Erreur typée pour toute violation détectée au runtime.
+ * Typed error for any violation detected at runtime.
  *
- * Étend la hiérarchie d'erreurs framework évoquée par ADR-0003
- * (`BonsaiRegistryError`). Les codes sont stables et destinés à être
- * matchables par les consommateurs.
+ * Belongs to the framework error family (ADR-05). Codes are stable and
+ * meant to be matched by consumers.
  */
 export class BonsaiNamespaceError extends Error {
   readonly code: TBonsaiNamespaceErrorCode;
@@ -179,20 +176,20 @@ export class BonsaiNamespaceError extends Error {
   }
 }
 
-// ─── Filet runtime ──────────────────────────────────────────────────────────
+// ─── Runtime safety net ─────────────────────────────────────────────────────
 
 const CAMEL_CASE_REGEX = /^[a-z][a-zA-Z]*$/;
 
-// ─── Pattern consommateur modulaire (ADR-0042) ──────────────────────────────
+// ─── Modular consumer pattern (ADR-14) ────────────────────────────────────
 
 /**
- * Contrainte structurelle minimale pour toute Feature référençable par un
- * composant consommateur (View, Composer, Behavior).
+ * Minimal structural constraint on any Feature a consumer component
+ * (View, Composer, Behavior) can reference.
  *
- * En pratique : `typeof CartFeature` (constructeur avec `static readonly channel`)
- * satisfait ce type. Le Channel reste privé — seul son token est exposé.
+ * In practice `typeof CartFeature` (a constructor with `static readonly channel`)
+ * satisfies it. The Channel stays private — only its token is exposed.
  *
- * I80 — aucun consommateur ne référence `TChannelToken` directement.
+ * I80 — no consumer references `TChannelToken` directly.
  */
 export type TFeatureRef<
   TDef extends TChannelDefinition = TChannelDefinition,
@@ -200,16 +197,20 @@ export type TFeatureRef<
 > = { readonly channel: TChannelToken<TDef, TNS> };
 
 /**
- * `TFeatureRef` contraint à un namespace donné (ADR-0042 C10, I87).
+ * `TFeatureRef` constrained to a given namespace (ADR-14, I87).
  *
- * Utilisé par `TFeatureContract` pour imposer compile-time que la clé d'objet
- * (`cart`, `user`) corresponde au namespace de la Feature référencée :
+ * Used by `TFeatureContract` so that the object key (`cart`, `user`) matches
+ * the namespace of the referenced Feature:
  *
  * ```ts
  * const features = {
- *   cart: { feature: UserFeature, ... },  // ❌ erreur compile — "cart" ≠ "user"
+ *   cart: { feature: UserFeature, ... },  // "cart" ≠ "user"
  * } satisfies TFeatureContract;
  * ```
+ *
+ * Known gap (ADR-14): TypeScript does not check the index signature per key
+ * at the `satisfies`; the mismatch is only rejected at use sites, where the
+ * extractors resolve to `never`.
  */
 export type TFeatureRefForNS<NS extends string> = TFeatureRef<
   TChannelDefinition,
@@ -217,24 +218,24 @@ export type TFeatureRefForNS<NS extends string> = TFeatureRef<
 >;
 
 /**
- * Module contractuel Feature — Feature-groupé (ADR-0042).
+ * Feature contract module — Feature-grouped (ADR-14).
  *
- * Une entrée par Feature consommée. La clé d'objet DOIT correspondre au
- * namespace de la Feature référencée par `feature` (validation par
- * `TFeatureRefForNS<NS>` — I87).
+ * One entry per consumed Feature. The object key MUST match the namespace of
+ * the Feature referenced by `feature` (`TFeatureRefForNS<NS>` — I87).
  *
- * Pour chaque Feature :
- *   - `feature`  : ref runtime (`typeof XxxFeature`) — extrait
- *                  channel/events/commands/requests via le token
- *   - `listens`  : noms d'events sans préfixe namespace (la clé EST le NS)
- *   - `triggers` : noms de commands sans préfixe namespace
- *   - `requests` : noms de requests sans préfixe namespace
+ * For each Feature:
+ *   - `feature`  : runtime ref (`typeof XxxFeature`) — channel/events/
+ *                  commands/requests are extracted through its token
+ *   - `listens`  : event names without namespace prefix (the key IS the NS)
+ *   - `triggers` : command names without namespace prefix
+ *   - `requests` : request names without namespace prefix
  *
- * Le mapped type `[NS in string]` capture chaque clé littérale et instancie
- * `TFeatureRefForNS<NS>` per-key — c'est ce qui produit l'erreur compile
- * sur incohérence clé/namespace.
+ * Known gap (ADR-14): the three lists are typed `readonly string[]`, so a
+ * typo is not caught here. In `triggers`/`requests` it surfaces at the call
+ * site (payload `never`); in `listens` it compiles and the handler is never
+ * called.
  *
- * Usage :
+ * Usage:
  *
  * ```ts
  * const cartViewFeatures = {
@@ -253,9 +254,9 @@ export type TFeatureRefForNS<NS extends string> = TFeatureRef<
  * } satisfies TFeatureContract;
  * ```
  *
- * I81 — source de vérité runtime du composant consommateur.
- * I83 — module réutilisable par View / Composer / Behavior.
- * I87 — clé ≡ namespace, contrôle compile-time.
+ * I81 — runtime source of truth of the consumer component.
+ * I83 — module reused by View / Composer / Behavior.
+ * I87 — key ≡ namespace (checked at use sites).
  */
 export type TFeatureContract = {
   readonly [NS in string]: {
@@ -266,10 +267,10 @@ export type TFeatureContract = {
   };
 };
 
-// ─── Helpers d'aplatissement (clés flat-préfixées) ──────────────────────────
+// ─── Flattening helpers (flat prefixed keys) ─────────────────────────────────
 
 /**
- * Aplatit toutes les `listens` du contrat en union de clés `"ns:event"`.
+ * Flattens every `listens` of the contract into a union of `"ns:event"` keys.
  *
  * @example
  *   TFlatListens<{ cart: { listens: ["itemAdded"] }; user: { listens: ["profileUpdated"] } }>
@@ -283,7 +284,7 @@ export type TFlatListens<F extends TFeatureContract> = {
     : never;
 }[keyof F & string];
 
-/** Aplatit toutes les `triggers` en union de clés `"ns:cmd"`. */
+/** Flattens every `triggers` into a union of `"ns:cmd"` keys. */
 export type TFlatTriggers<F extends TFeatureContract> = {
   [NS in keyof F & string]: F[NS]["triggers"][number] extends infer C
     ? C extends string
@@ -292,7 +293,7 @@ export type TFlatTriggers<F extends TFeatureContract> = {
     : never;
 }[keyof F & string];
 
-/** Aplatit toutes les `requests` en union de clés `"ns:req"`. */
+/** Flattens every `requests` into a union of `"ns:req"` keys. */
 export type TFlatRequests<F extends TFeatureContract> = {
   [NS in keyof F & string]: F[NS]["requests"][number] extends infer R
     ? R extends string
@@ -301,15 +302,15 @@ export type TFlatRequests<F extends TFeatureContract> = {
     : never;
 }[keyof F & string];
 
-// ─── Extracteurs de payload depuis une clé flat-préfixée ───────────────────
+// ─── Payload extractors from a flat prefixed key ────────────────────────────
 
 /**
- * Payload d'un event depuis une clé `"ns:event"` et le contrat Feature.
+ * Payload of an event from a `"ns:event"` key and the Feature contract.
  *
- * Résolution :
- *   1. Décompose `K` en `${NS}:${E}` via template literal.
- *   2. Extrait la définition `D` du Channel via le token static.
- *   3. Lit `D["events"][E]`.
+ * Resolution:
+ *   1. Splits `K` into `${NS}:${E}` with a template literal.
+ *   2. Extracts the Channel definition `D` through the static token.
+ *   3. Reads `D["events"][E]`.
  */
 export type TEventPayloadFor<
   F extends TFeatureContract,
@@ -324,7 +325,7 @@ export type TEventPayloadFor<
     : never
   : never;
 
-/** Payload d'une command depuis une clé `"ns:cmd"`. */
+/** Payload of a command from a `"ns:cmd"` key. */
 export type TCommandPayloadFor<
   F extends TFeatureContract,
   K extends string
@@ -338,7 +339,7 @@ export type TCommandPayloadFor<
     : never
   : never;
 
-/** Params d'une request depuis une clé `"ns:req"`. */
+/** Params of a request from a `"ns:req"` key. */
 export type TRequestParamsFor<
   F extends TFeatureContract,
   K extends string
@@ -352,7 +353,7 @@ export type TRequestParamsFor<
     : never
   : never;
 
-/** Résultat d'une request depuis une clé `"ns:req"`. */
+/** Result of a request from a `"ns:req"` key. */
 export type TRequestResultFor<
   F extends TFeatureContract,
   K extends string
@@ -366,12 +367,12 @@ export type TRequestResultFor<
     : never
   : never;
 
-// ─── Channel handlers (D48 channel) ──────────────────────────────────────────
+// ─── Channel handlers (I48 channel) ──────────────────────────────────────────
 
 /**
- * Dérive le nom du handler channel depuis un namespace + event name.
- * Convention D48 channel : `on{NS}{EventName}Event` (suffixe `Event` conservé
- * pour anti-collision avec les handlers DOM, ADR-0042 C13).
+ * Derives the channel handler name from a namespace + event name.
+ * I48 channel convention: `on{NS}{EventName}Event` (the `Event` suffix
+ * avoids collisions with DOM handlers, ADR-14).
  *
  * @example
  *   TChannelHandlerName<"cart", "itemAdded">  → "onCartItemAddedEvent"
@@ -382,20 +383,18 @@ export type TChannelHandlerName<
 > = `on${Capitalize<NS>}${Capitalize<E>}Event`;
 
 /**
- * Handlers channel REQUIS pour un `TFeatureContract` — un par event déclaré
- * dans `listens` de chaque Feature.
+ * Channel handlers REQUIRED by a `TFeatureContract` — one per event declared
+ * in each Feature's `listens`.
  *
- * Symétrie Contract/Callbacks (ADR-0042 C15, I88) : pour chaque entrée dans
- * `features[NS].listens`, le compilateur impose la présence de la méthode
- * `on{NS}{EventName}Event` avec la signature exacte `(payload) => void`.
+ * Contract/Callbacks symmetry (ADR-14, I88): for every entry of
+ * `features[NS].listens`, the compiler requires an `on{NS}{EventName}Event`
+ * method with the exact `(payload) => void` signature.
  *
- * Le payload est résolu via `TEventPayloadFor` — typé par le `TChannelDefinition`
- * de la Feature.
+ * The payload is resolved through `TEventPayloadFor`, typed by the Feature's
+ * `TChannelDefinition`.
  *
- * Note strate 0/1 : ADR-0040 §615 met les metas hors-scope strate 0. Le second
- * paramètre `metas: TMessageMetas` sera ajouté à la signature en strate 1, via
- * un ADR dédié amendant ADR-0040 et ADR-0042. Le code actuel est volontairement
- * sans metas.
+ * No `metas` parameter yet: a second `metas: TMessageMetas` parameter comes
+ * with stratum 1b (ADR-04).
  */
 export type TChannelCallbacks<F extends TFeatureContract> = UnionToIntersection<
   {
@@ -407,13 +406,13 @@ export type TChannelCallbacks<F extends TFeatureContract> = UnionToIntersection<
   }[keyof F & string]
 >;
 
-// ─── Feature callbacks (ADR-0046 — M2 — symétrie I88 portée à Feature) ──────
+// ─── Feature callbacks (ADR-09 — I88 symmetry extended to Feature) ──
 
 /**
- * Handlers command REQUIS pour une Feature concrète.
+ * Command handlers REQUIRED by a concrete Feature.
  *
- * Convention D48 command : `on{Cmd}Command` (suffixe `Command`).
- * Pour chaque commande `K ∈ keyof TDef["commands"]`, impose la méthode
+ * I48 command convention: `on{Cmd}Command` (`Command` suffix).
+ * For each command `K ∈ keyof TDef["commands"]`, requires the method
  * `onKCommand(payload: TDef["commands"][K]): void`.
  *
  * @example
@@ -427,10 +426,10 @@ export type TCommandCallbacks<TDef extends TChannelDefinition> = {
 };
 
 /**
- * Handlers request REQUIS pour une Feature concrète.
+ * Request handlers REQUIRED by a concrete Feature.
  *
- * Convention D48 request : `on{Req}Request` (suffixe `Request`).
- * Pour chaque request `K ∈ keyof TDef["requests"]`, impose la méthode
+ * I48 request convention: `on{Req}Request` (`Request` suffix).
+ * For each request `K ∈ keyof TDef["requests"]`, requires the method
  * `onKRequest(params: TDef["requests"][K]["params"]): TDef["requests"][K]["result"]`.
  */
 export type TRequestCallbacks<TDef extends TChannelDefinition> = {
@@ -440,16 +439,16 @@ export type TRequestCallbacks<TDef extends TChannelDefinition> = {
 };
 
 /**
- * Handlers listen REQUIS pour chaque token `TListens[number]`.
+ * Listen handlers REQUIRED for each token of `TListens[number]`.
  *
- * Convention D48 channel : `on{NS}{EventName}Event` — le préfixe namespace
- * différencie les events de Channels distincts (anti-collision).
+ * I48 channel convention: `on{NS}{EventName}Event` — the namespace prefix
+ * tells events of distinct Channels apart (no collision).
  *
- * **`UnionToIntersection` OBLIGATOIRE** (cf. POC QA-0046 §9.5 + Annexe §2 ADR-0046).
- * Sans wrapper : la distributivité du conditionnel produit une union d'objets
- * `{ …cart } | { …wishlist }` que TS refuse comme cible `implements` (TS2422).
- * `UnionToIntersection` fusionne les objets en intersection, rendant le type
- * utilisable comme target `implements`.
+ * **`UnionToIntersection` is REQUIRED** (see ADR-09).
+ * Without it, the distributive conditional yields a union of objects
+ * `{ …cart } | { …wishlist }` that TS rejects as an `implements` target
+ * (TS2422). `UnionToIntersection` merges them into an intersection usable
+ * as an `implements` target.
  */
 export type TListenCallbacks<
   TListens extends readonly TChannelToken<TChannelDefinition, string>[]
@@ -467,16 +466,16 @@ export type TListenCallbacks<
 >;
 
 /**
- * Type d'enforcement compile-time des handlers d'une Feature concrète.
+ * Compile-time enforcement type for the handlers of a concrete Feature.
  *
- * Symétrie Contract/Callbacks (ADR-0046 — M2, I88 élargi, I92) :
- * `implements TFeatureCallbacks<TDef, TListens>` impose au compilateur
- * la présence et la signature exacte de TOUS les handlers dérivés :
- *   - `onXxxCommand`        pour chaque `K ∈ keyof TDef["commands"]`
- *   - `onXxxRequest`        pour chaque `K ∈ keyof TDef["requests"]`
- *   - `on{NS}{Evt}Event`    pour chaque `(token, event) ∈ TListens`
+ * Contract/Callbacks symmetry (ADR-09, I88, I92):
+ * `implements TFeatureCallbacks<TDef, TListens>` makes the compiler require
+ * the presence and exact signature of ALL derived handlers:
+ *   - `onXxxCommand`        for each `K ∈ keyof TDef["commands"]`
+ *   - `onXxxRequest`        for each `K ∈ keyof TDef["requests"]`
+ *   - `on{NS}{Evt}Event`    for each `(token, event) ∈ TListens`
  *
- * Handler oublié → TS2515 ; signature fautive → TS2416.
+ * Missing handler → TS2515; wrong signature → TS2416.
  *
  * @example
  * ```ts
@@ -494,24 +493,24 @@ export type TFeatureCallbacks<
   TRequestCallbacks<TDef> &
   TListenCallbacks<TListens>;
 
-// ─── Filet runtime ──────────────────────────────────────────────────────────
+// ─── Runtime safety net ─────────────────────────────────────────────────────
 
-/** Test runtime du format camelCase. */
+/** Runtime camelCase format check. */
 export function isCamelCaseNamespace(ns: string): boolean {
   return CAMEL_CASE_REGEX.test(ns);
 }
 
-/** Test runtime de réservation. */
+/** Runtime reserved-name check. */
 export function isReservedNamespace(ns: string): ns is ReservedNamespace {
   return (RESERVED_NAMESPACES as readonly string[]).includes(ns);
 }
 
 /**
- * Filet de sécurité — vérifie format + réservation au runtime.
+ * Safety net — checks format + reservation at runtime.
  *
- * Appelé par le constructeur de `Feature` (immuabilité dès construction) et
- * par `Application.start()` (validation du manifest entier). Lève
- * `BonsaiNamespaceError` avec un code stable.
+ * Called by the `Feature` constructor (immutable from construction) and by
+ * `Application.start()` (whole-manifest validation). Throws
+ * `BonsaiNamespaceError` with a stable code.
  */
 export function assertValidNamespace(ns: string): void {
   if (typeof ns !== "string" || ns.length === 0) {

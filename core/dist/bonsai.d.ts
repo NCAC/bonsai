@@ -74,8 +74,8 @@ type TDictionaryValue = TJsonPrimitive | object | TDictionaryArray;
 /**
  * emptyObjectSymbol
  * ---
- * Un symbole unique utilisé comme clé pour le type EmptyObject.
- * Doit être exporté explicitement pour être inclus dans le bundle de types.
+ * Unique symbol used as the key of the EmptyObject type.
+ * Must be exported explicitly to be included in the type bundle.
  */
 declare const emptyObjectSymbol: unique symbol;
 
@@ -620,18 +620,18 @@ type TOneLetter =
 type TNonEmptyString<T extends string> = "" extends T ? never : T;
 
 /**
- * Lettre minuscule unique (a–z). Dérivée de `TOneLetter`.
+ * Single lowercase letter (a–z). Derived from `TOneLetter`.
  */
 type TLowerLetter = Lowercase<TOneLetter>;
 
 /**
- * Lettre majuscule unique (A–Z). Dérivée de `TOneLetter`.
+ * Single uppercase letter (A–Z). Derived from `TOneLetter`.
  */
 type TUpperLetter = Uppercase<TOneLetter>;
 
 /**
- * Vrai si `S` est composée exclusivement de lettres (a–z ou A–Z).
- * `""` est considérée comme valide (cas terminal de la récursion).
+ * True if `S` consists only of letters (a–z or A–Z).
+ * `""` is considered valid (terminal case of the recursion).
  */
 type TAllLetters<S extends string> = S extends ""
   ? true
@@ -642,13 +642,13 @@ type TAllLetters<S extends string> = S extends ""
     : false;
 
 /**
- * camelCase plat — première lettre minuscule, reste exclusivement lettres.
+ * Flat camelCase — lowercase first letter, letters only afterwards.
  *
- * Retourne `S` si `S` est camelCase, sinon `never`. Conçu pour être utilisé
- * dans un mapped type afin de rejeter au compile-time les clés non
- * conformes (typiquement : clés d'un manifest applicatif).
+ * Returns `S` if `S` is camelCase, `never` otherwise. Designed for use in a
+ * mapped type to reject non-conforming keys at compile time (typically the
+ * keys of an application manifest).
  *
- * | Entrée          | Résultat        |
+ * | Input           | Result          |
  * | --------------- | --------------- |
  * | `"cart"`        | `"cart"`        |
  * | `"userProfile"` | `"userProfile"` |
@@ -658,10 +658,9 @@ type TAllLetters<S extends string> = S extends ""
  * | `"cart2"`       | `never`         |
  * | `""`            | `never`         |
  *
- * Si tolérer les chiffres après la première lettre devient nécessaire,
- * étendre via une nouvelle variante (`CamelCaseAlnum<S>`) plutôt que
- * d'élargir ce type — préserver la garantie « lettres seules » pour les
- * appelants existants.
+ * If digits after the first letter ever need to be allowed, add a new
+ * variant (`CamelCaseAlnum<S>`) rather than widening this type, to keep
+ * the "letters only" guarantee for existing callers.
  */
 type CamelCase<S extends string> =
   S extends `${infer First}${infer Rest}`
@@ -24639,28 +24638,28 @@ declare namespace Immer {
 }
 
 /**
- * Channel tri-lane — infrastructure de communication interne Bonsai.
+ * Tri-lane Channel — Bonsai's internal communication infrastructure.
  *
- * Un Channel est un contrat de communication à 3 lanes :
- * - **Command Lane** : `handle()` / `trigger()` — 1:1 (un seul handler)
- * - **Event Lane** : `listen()` / `unlisten()` / `emit()` — 1:N (broadcast)
- * - **Request Lane** : `reply()` / `unreply()` / `request()` — 1:1 synchrone, T | null
+ * A Channel is a communication contract with 3 lanes:
+ * - **Command lane**: `handle()` / `trigger()` — 1:1 (a single handler)
+ * - **Event lane**: `listen()` / `unlisten()` / `emit()` — 1:N (broadcast)
+ * - **Request lane**: `reply()` / `unreply()` / `request()` — 1:1 synchronous, T | null
  *
- * Le Channel émet automatiquement un événement `any` après chaque `emit()`.
+ * The Channel automatically emits an `any` event after each `emit()`.
  *
- * `Channel` est générique sur `TDef extends TChannelDefinition` (ADR-0040).
- * La valeur par défaut `TChannelDefinition` (toutes lanes `Record<string, unknown>`)
- * assure une rétrocompatibilité totale avec le code non-paramétré.
+ * `Channel` is generic over `TDef extends TChannelDefinition` (ADR-14).
+ * The default `TChannelDefinition` (all lanes `Record<string, unknown>`)
+ * keeps untyped code fully compatible.
  *
- * @see RFC 2-architecture/communication.md
- * @see ADR-0003 — Sémantiques runtime Channel
- * @see ADR-0023 — request() synchrone
- * @see ADR-0040 — API TypeScript-First : TChannelDefinition, TChannelToken
+ * @see docs/spec/2-architecture/communication.md
+ * @see ADR-03 — Channel runtime semantics
+ * @see ADR-02 — synchronous request()
+ * @see ADR-14 — typed contracts: TChannelDefinition, TChannelToken
  */
 /**
- * Déclare le contrat complet d'un Channel : toutes les lanes et leurs types.
- * Chaque Feature déclare son propre `TChannelDefinition` dans son fichier
- * `.feature.ts` (source de vérité unique, co-localisée — I74).
+ * Declares the full contract of a Channel: every lane and its types.
+ * Each Feature declares its own `TChannelDefinition` in its `.feature.ts`
+ * file (single, co-located source of truth — I74).
  */
 type TChannelDefinition = {
     readonly commands: Record<string, unknown>;
@@ -24671,26 +24670,26 @@ type TChannelDefinition = {
     }>;
 };
 /**
- * Token phantom porté en `static readonly channel` sur chaque Feature.
+ * Phantom token carried as `static readonly channel` on every Feature.
  *
- * Encode à la fois le namespace (runtime) et la définition du Channel
- * (compile-time). Permet à tout consommateur (View, Feature externe) d'obtenir
- * un `Channel<TDef>` typé via `Radio.me().channelFor(token)` sans tenir de
- * référence à une instance Feature (ADR-0040 §Décision).
+ * Encodes both the namespace (runtime) and the Channel definition
+ * (compile time). Lets any consumer (View, external Feature) get a typed
+ * `Channel<TDef>` through `Radio.me().channelFor(token)` without holding a
+ * reference to a Feature instance (ADR-14).
  *
- * `_def` est un champ phantom optionnel — jamais assigné en runtime, présent
- * uniquement pour que TypeScript distingue structurellement deux tokens portant
- * des `TDef` différents sur le même namespace.
+ * `_def` is an optional phantom field — never assigned at runtime, present
+ * only so TypeScript structurally distinguishes two tokens carrying
+ * different `TDef` on the same namespace.
  */
 type TChannelToken<TDef extends TChannelDefinition, TNS extends string = string> = {
     readonly namespace: TNS;
     readonly _def?: TDef;
 };
-/** Extrait le `TDef` d'un `TChannelToken`. */
+/** Extracts the `TDef` of a `TChannelToken`. */
 type TTokenDef<T> = T extends TChannelToken<infer TDef, any> ? TDef : never;
 /**
- * Payload de l'événement technique `any`, émis automatiquement
- * après chaque `emit()` d'un Event granulaire.
+ * Payload of the technical `any` event, emitted automatically after
+ * each `emit()` of a granular Event.
  */
 type TAnyEventPayload = {
     readonly event: string;
@@ -24700,41 +24699,41 @@ type TAnyEventPayload = {
 /**
  * @bonsai/entity — Entity base class
  *
- * Implémentation ADR-0001 (🔵 Tested) :
- *   - mutate(intent, params?, recipe) via Immer produceWithPatches
- *   - changedKeys dérivées depuis les patches (1er segment de path)
- *   - Détection no-op (aucun patch produit → pas de notification)
- *   - Notification catch-all onAnyEntityUpdated (I51) — event enrichi
+ * Implements ADR-10:
+ *   - mutate(intent, params?, recipe) through Immer produceWithPatches
+ *   - changedKeys derived from the patches (first path segment)
+ *   - No-op detection (no patch produced → no notification)
+ *   - Catch-all notification onAnyEntityUpdated (I51) — enriched event
  *     (patches, inversePatches, payload, metas)
- *   - Ré-entrance FIFO bornée par maxEntityNotificationDepth (I98,
- *     ADR-0028 strate 1a) — cf. RFC entity.md §Ré-entrance
- *   - MutationError si la recipe throw (rollback Immer automatique,
- *     ADR-0002)
- *   - initialState getter (D17)
+ *   - FIFO re-entrance bounded by maxEntityNotificationDepth (I98,
+ *     stratum 1a) — see docs/spec/3-couche-abstraite/entity.md
+ *   - MutationError when the recipe throws (automatic Immer rollback,
+ *     ADR-05)
+ *   - initialState getter (ADR-10)
  *
- * NOTE : les handlers per-key `on<Key>EntityUpdated` ne sont PAS dispatchés
- * ici — c'est la responsabilité de `Feature#registerEntityHandlers` (I96),
- * qui s'abonne à `onAnyEntityUpdated` et route en interne. Entity ne connaît
- * jamais sa Feature (I5, I6).
+ * NOTE: per-key `on<Key>EntityUpdated` handlers are NOT dispatched here —
+ * that is the job of `Feature#registerEntityHandlers` (I96), which
+ * subscribes to `onAnyEntityUpdated` and routes internally. An Entity never
+ * knows its Feature (I5, I6).
  */
 
 /**
- * Contrainte structurelle : le state d'une Entity doit être JsonSerializable (I46).
+ * Structural constraint: an Entity state must be JsonSerializable (I46).
  */
 type TJsonSerializable = string | number | boolean | null | TJsonSerializable[] | {
     [key: string]: TJsonSerializable;
 };
 /**
- * Paramètres optionnels passés à mutate() — payload + metas (traçabilité).
+ * Optional parameters passed to mutate() — payload + metas (traceability).
  */
 type TMutationParams = {
     payload?: unknown;
     metas?: Record<string, unknown>;
 };
 /**
- * Événement émis après une mutation réussie (non no-op).
- * Reçu par les listeners onAnyEntityUpdated, et dispatché par Feature vers
- * les handlers per-key/catch-all (I96).
+ * Event emitted after a successful (non no-op) mutation.
+ * Received by onAnyEntityUpdated listeners, and dispatched by the Feature to
+ * its per-key/catch-all handlers (I96).
  */
 type TEntityEvent<TStructure extends TJsonSerializable = TJsonSerializable> = {
     readonly intent: string;
@@ -24748,64 +24747,64 @@ type TEntityEvent<TStructure extends TJsonSerializable = TJsonSerializable> = {
     readonly timestamp: number;
 };
 /**
- * Signature du listener catch-all.
+ * Signature of the catch-all listener.
  */
 type TEntityUpdateListener<TStructure extends TJsonSerializable = TJsonSerializable> = (event: TEntityEvent<TStructure>) => void;
 /**
- * Entity — Conteneur d'état immutable d'une Feature (I6, I22, I46).
+ * Entity — immutable state container of a Feature (I6, I22, I46).
  *
- * Classe abstraite : les sous-classes doivent implémenter `get initialState()`.
+ * Abstract class: subclasses must implement `defineInitialState()`.
  *
- * @template TStructure - Le type du state, contraint à TJsonSerializable.
+ * @template TStructure - The state type, constrained to TJsonSerializable.
  */
 declare abstract class Entity<TStructure extends TJsonSerializable> {
     #private;
     constructor();
     /**
-     * Retourne l'état initial de l'Entity.
-     * Chaque sous-classe concrète DOIT implémenter ce getter.
+     * Returns the initial state of the Entity.
+     * Every concrete subclass MUST implement this method.
      */
     protected abstract defineInitialState(): TStructure;
     /**
-     * Profondeur maximale de ré-entrance (I98, ADR-0028 strate 1a — défaut 3).
-     * Overridable par une sous-classe concrète pour un cas d'usage avancé.
+     * Maximum re-entrance depth (I98, stratum 1a — default 3).
+     * A concrete subclass may override it for advanced use cases.
      */
     protected get maxEntityNotificationDepth(): number;
     /**
-     * State courant (lecture seule depuis l'extérieur).
+     * Current state (read-only from outside).
      */
     get state(): TStructure;
     /**
-     * Retourne l'état initial tel que défini à la construction (D17).
-     * Accessible publiquement pour reset ou comparaison.
+     * Returns the initial state as defined at construction (ADR-10).
+     * Public, for reset or comparison.
      */
     get initialState(): TStructure;
     /**
-     * Mutation immutable via Immer produceWithPatches (ADR-0001, I97).
+     * Immutable mutation through Immer produceWithPatches (ADR-10, I97).
      *
-     * Overload 1 : mutate(intent, recipe)
-     * Overload 2 : mutate(intent, params, recipe)
+     * Overload 1: mutate(intent, recipe)
+     * Overload 2: mutate(intent, params, recipe)
      *
-     * Détecte les no-ops : si aucun patch n'est produit → pas de notification,
-     * retourne `null`.
+     * Detects no-ops: when no patch is produced → no notification, returns
+     * `null`.
      *
-     * Ré-entrance (I98) : si appelé pendant un cycle de notification en cours,
-     * la mutation est mise en file FIFO et exécutée après la fin du cycle
-     * courant — retourne `null` immédiatement (l'event n'est pas disponible
-     * synchrone). Throw `EntityReentrancyError` si `maxEntityNotificationDepth`
-     * serait dépassé.
+     * Re-entrance (I98): when called during a running notification cycle, the
+     * mutation is queued (FIFO) and executed once the current cycle ends —
+     * returns `null` immediately (the event is not available synchronously).
+     * Throws `EntityReentrancyError` if `maxEntityNotificationDepth` would be
+     * exceeded.
      *
-     * @throws MutationError si la recipe throw (state intact, rollback Immer).
-     * @throws EntityReentrancyError si la profondeur max de ré-entrance est dépassée.
+     * @throws MutationError when the recipe throws (state intact, Immer rollback).
+     * @throws EntityReentrancyError when the maximum re-entrance depth is exceeded.
      */
     mutate(intent: string, recipe: (draft: Draft<TStructure>) => void): TEntityEvent<TStructure> | null;
     mutate(intent: string, params: TMutationParams, recipe: (draft: Draft<TStructure>) => void): TEntityEvent<TStructure> | null;
     /**
-     * Enregistre un listener catch-all (I51).
-     * Appelé après chaque mutation non no-op. Pas d'isolation d'erreur ici —
-     * les exceptions d'un listener se propagent jusqu'à l'appelant externe de
-     * `mutate()` (I98 s'appuie sur cette propagation). L'isolation
-     * `BroadcastError` est une responsabilité du dispatch Feature (I96).
+     * Registers a catch-all listener (I51).
+     * Called after every non no-op mutation. No error isolation here — a
+     * listener exception propagates up to the external caller of `mutate()`
+     * (I98 relies on that propagation). `BroadcastError` isolation is the
+     * responsibility of the Feature dispatch (I96).
      */
     onAnyEntityUpdated(listener: TEntityUpdateListener<TStructure>): void;
 }
@@ -24813,115 +24812,113 @@ declare abstract class Entity<TStructure extends TJsonSerializable> {
 /**
  * @bonsai/feature — Types & runtime helpers
  *
- * Implémente :
- *   - ADR-0039 : autorité, unicité et conformité des namespaces de Feature.
- *   - ADR-0042 : pattern modulaire de contrat consommateur — `TFeatureContract`
- *     Feature-groupé + helpers d'aplatissement (`TFlatListens`, `TFlatTriggers`,
- *     `TFlatRequests`) + extracteurs de payload (`TEventPayloadFor`,
- *     `TCommandPayloadFor`, `TRequestParamsFor`, `TRequestResultFor`) +
- *     `TChannelCallbacks` (handlers requis dérivés du contrat).
+ * Implements:
+ *   - ADR-08: authority, uniqueness and conformity of Feature namespaces.
+ *   - ADR-14: modular consumer contract — Feature-grouped `TFeatureContract`
+ *     + flattening helpers (`TFlatListens`, `TFlatTriggers`, `TFlatRequests`)
+ *     + payload extractors (`TEventPayloadFor`, `TCommandPayloadFor`,
+ *     `TRequestParamsFor`, `TRequestResultFor`) + `TChannelCallbacks`
+ *     (required handlers derived from the contract).
  *
- * Trois rôles assumés par ce module :
- *   1. Types compile-time (`CamelCaseNamespace<S>`, `StrictManifest<M>`,
- *      `ValidatedManifest<M>`) qui encodent les invariants I68–I72.
- *   2. Constante framework `RESERVED_NAMESPACES` (I71) — non configurable
- *      par l'application.
- *   3. Filet de sécurité runtime (`assertValidNamespace`,
- *      `BonsaiNamespaceError`) pour les cas où le compile-time est contourné
- *      (cast `as any`, code JS, manifest dynamique).
+ * This module has three roles:
+ *   1. Compile-time types (`CamelCaseNamespace<S>`, `StrictManifest<M>`,
+ *      `ValidatedManifest<M>`) encoding invariants I68–I72.
+ *   2. The framework constant `RESERVED_NAMESPACES` (I71) — not configurable
+ *      by the application.
+ *   3. A runtime safety net (`assertValidNamespace`, `BonsaiNamespaceError`)
+ *      for when compile-time checks are bypassed (`as any` cast, plain JS,
+ *      dynamic manifest).
  *
- * Invariants couverts :
- *   I21 (amendé) — namespace unique camelCase plat
- *   I24 (amendé) — Application valide format + réservés au bootstrap
- *   I57          — `local` réservé (ADR-0015)
- *   I68          — namespace porté par le manifest, pas par un `static`
- *   I69          — manifest = unique source de vérité de l'identité
- *   I70          — toute référence à un namespace externe DOIT être validée
- *   I71          — `RESERVED_NAMESPACES` est une constante framework
- *   I72          — `TSelfNS` doit correspondre à la clé du manifest
- *   I81 (ADR-0042) — `get features()` est la source de vérité runtime
- *   I82 (ADR-0042) — `implements TViewCallbacks<TVC>` impose les handlers
- *   I83 (ADR-0042) — pattern modulaire `T{Component}Contract` réutilisable
- *   I87 (ADR-0042) — clé d'objet ≡ namespace de la Feature référencée
- *   I88 (ADR-0042) — symétrie Contract/Callbacks
+ * Invariants covered:
+ *   I21          — unique, flat camelCase namespace
+ *   I24          — Application validates format + reserved names at bootstrap
+ *   I57          — `local` is reserved (ADR-17)
+ *   I68          — the namespace is carried by the manifest, not by a `static`
+ *   I69          — the manifest is the single source of truth for identity
+ *   I70          — every reference to an external namespace MUST be validated
+ *   I71          — `RESERVED_NAMESPACES` is a framework constant
+ *   I72          — `TSelfNS` must match the manifest key
+ *   I81 (ADR-14) — `get features()` is the runtime source of truth
+ *   I82 (ADR-14) — `implements TViewCallbacks<TVC>` enforces the handlers
+ *   I83 (ADR-14) — reusable modular `T{Component}Contract` pattern
+ *   I87 (ADR-14) — object key ≡ namespace of the referenced Feature
+ *   I88 (ADR-14) — Contract/Callbacks symmetry
  *
  * @packageDocumentation
  */
 
 /**
- * Namespaces réservés par le framework — interdits à toute Feature applicative.
+ * Namespaces reserved by the framework — forbidden to application Features.
  *
- *   - `local`  : clé du localState dans les données namespacées (I57, ADR-0015)
- *   - `router` : Feature framework de navigation, instanciée par Application (I28, D8)
+ *   - `local`  : localState key in namespaced data (I57, ADR-17)
+ *   - `router` : framework navigation Feature, instantiated by Application (I28, ADR-13)
  *
- * Constante framework non configurable. Toute extension future se fera par
- * modification de cette constante, propagée par le typage dérivé (I71).
+ * Non-configurable framework constant. Any future extension changes this
+ * constant and propagates through the derived types (I71).
  */
 declare const RESERVED_NAMESPACES: readonly ["local", "router"];
-/** Union des namespaces réservés (dérivée de la constante). */
+/** Union of the reserved namespaces (derived from the constant). */
 type ReservedNamespace = (typeof RESERVED_NAMESPACES)[number];
 /**
- * Alias local de `CamelCase` (ADR-0039 §Annexe — `CamelCaseNamespace<S>`).
+ * Local alias of `CamelCase` (ADR-08 — `CamelCaseNamespace<S>`).
  *
- * Le type générique vit dans `@bonsai/types` (réutilisable). Cet alias rend
- * lisible son rôle dans le contexte « namespace de Feature » et tient
- * la promesse de l'ADR sur le nom local.
+ * The generic type lives in `@bonsai/types` (reusable). This alias makes its
+ * role explicit in the "Feature namespace" context, as named by the ADR.
  */
 type CamelCaseNamespace<S extends string> = CamelCase<S>;
 /**
- * Filtre du manifest : exclut les clés réservées au compile-time.
+ * Manifest filter: drops reserved keys at compile time.
  *
- * `ValidatedManifest<M>` retire les entrées dont la clé est dans
- * `RESERVED_NAMESPACES`. Combiné à `StrictManifest<M>`, garantit qu'aucune
- * Feature applicative ne squatte un namespace framework.
+ * `ValidatedManifest<M>` removes the entries whose key is in
+ * `RESERVED_NAMESPACES`. Combined with `StrictManifest<M>`, it guarantees no
+ * application Feature takes a framework namespace.
  */
 type ValidatedManifest<M> = {
     [K in keyof M as K extends ReservedNamespace ? never : K]: M[K];
 };
 /**
- * Type structurel du value-manifest applicatif.
+ * Structural type of the application value-manifest.
  *
- * Pour chaque clé `K` du type-manifest `M` :
- *   - `K` doit être camelCase plat (sinon `never` → erreur `satisfies`)
- *   - `K` ne doit pas être réservé (sinon `never`)
- *   - La valeur doit être un constructeur acceptant la clé `K` comme namespace
- *     ET produisant une `Feature<any, K>` — c'est ce qui force `TSelfNS === K`
- *     au compile-time (I72).
+ * For each key `K` of the type-manifest `M`:
+ *   - `K` must be flat camelCase (otherwise `never` → `satisfies` error)
+ *   - `K` must not be reserved (otherwise `never`)
+ *   - The value must be a constructor taking `K` as namespace AND producing
+ *     a `Feature<any, K>` — this is what forces `TSelfNS === K` at compile
+ *     time (I72).
  *
- * Usage côté application :
+ * Application-side usage:
  *
  * ```ts
  * const features = {
  *   cart: CartFeature,        // ✅
  *   user: UserFeature,        // ✅
- *   // local: BadFeature,     // ❌ never (réservé)
+ *   // local: BadFeature,     // ❌ never (reserved)
  *   // Cart: CartFeature,     // ❌ never (PascalCase)
  *   // user: CartFeature,     // ❌ TSelfNS "cart" ≠ "user"
  * } satisfies StrictManifest<AppManifest>;
  * ```
  */
 /**
- * Contrainte compile-time d'une classe Feature enregistrable dans un manifest.
+ * Compile-time constraint on a Feature class that can be registered in a manifest.
  *
- * Exige (ADR-0046 — M3, I95 reformulé) :
- *   - Un constructeur `(namespace: TNS) => Feature<…, TDef, TNS>` — force
+ * Requires (ADR-09, I95):
+ *   - A `(namespace: TNS) => Feature<…, TDef, TNS>` constructor — forces
  *     `TSelfNS === TNS` (I72).
- *   - Un membre statique `channel: TChannelToken<TDef, TNS>` — présence ET
- *     alignement `channel.namespace === TNS` au compile-time (I73/I74/I22).
+ *   - A static `channel: TChannelToken<TDef, TNS>` member — presence AND
+ *     `channel.namespace === TNS` alignment at compile time (I73/I74/I22).
  *
- * **La couverture des handlers n'est PAS imposée ici** (ADR-0046 §Décision) :
- * un manifest type-only à valeurs `unknown` (ADR-0039) ne permet pas d'extraire
- * `TDef` par clé, donc aucune inférence de handlers n'est possible au point
- * manifest. La couverture est garantie par I92 (`implements TFeatureCallbacks`
- * sur chaque classe — symétrie View/ADR-0042), strictement au compile-time :
- * il n'existe pas de filet runtime symétrique côté Feature (contrairement à
- * View/I82) — voir feature.md §3bis.
+ * **Handler coverage is NOT enforced here** (ADR-09): a type-only manifest
+ * with `unknown` values (ADR-08) cannot yield `TDef` per key, so no handler
+ * inference is possible at the manifest. Coverage is guaranteed by I92
+ * (`implements TFeatureCallbacks` on each class — same as View, ADR-14),
+ * strictly at compile time: unlike View (I82), there is no runtime safety
+ * net on the Feature side — see feature.md §3bis.
  *
  * @example
  * ```ts
- * // ✅ CartFeature satisfait TStrictFeatureClass<"cart">
- * // ❌ Classe sans static channel → erreur compile
- * // ❌ channel.namespace ≠ "cart" → erreur compile
+ * // ✅ CartFeature satisfies TStrictFeatureClass<"cart">
+ * // ❌ Class without a static channel → compile error
+ * // ❌ channel.namespace ≠ "cart" → compile error
  * ```
  */
 type TStrictFeatureClass<TNS extends string, TDef extends TChannelDefinition = TChannelDefinition> = (new (namespace: TNS) => Feature<Entity<TJsonSerializable>, TDef, TNS>) & {
@@ -24931,68 +24928,71 @@ type StrictManifest<M> = {
     [K in keyof M & string]: K extends CamelCaseNamespace<K> ? K extends ReservedNamespace ? never : TStrictFeatureClass<K, TChannelDefinition> : never;
 };
 /**
- * Codes d'erreur stables pour les violations de l'invariant namespace.
+ * Stable error codes for namespace invariant violations.
  *
- * `NAMESPACE_DUPLICATE` est théoriquement impossible avec un manifest
- * (TS1117 le détecte), mais reste levé par le filet runtime au cas où le
- * manifest serait construit dynamiquement.
+ * `NAMESPACE_DUPLICATE` is theoretically impossible with a manifest (TS1117
+ * catches it), but the runtime safety net still raises it in case the
+ * manifest is built dynamically.
  */
 type TBonsaiNamespaceErrorCode = "NAMESPACE_INVALID_FORMAT" | "NAMESPACE_RESERVED" | "NAMESPACE_DUPLICATE" | "NAMESPACE_UNKNOWN_REFERENCE" | "FEATURE_MISSING_CHANNEL" | "FEATURE_CHANNEL_NAMESPACE_MISMATCH";
 /**
- * Erreur typée pour toute violation détectée au runtime.
+ * Typed error for any violation detected at runtime.
  *
- * Étend la hiérarchie d'erreurs framework évoquée par ADR-0003
- * (`BonsaiRegistryError`). Les codes sont stables et destinés à être
- * matchables par les consommateurs.
+ * Belongs to the framework error family (ADR-05). Codes are stable and
+ * meant to be matched by consumers.
  */
 declare class BonsaiNamespaceError extends Error {
     readonly code: TBonsaiNamespaceErrorCode;
     constructor(code: TBonsaiNamespaceErrorCode, message: string);
 }
 /**
- * Contrainte structurelle minimale pour toute Feature référençable par un
- * composant consommateur (View, Composer, Behavior).
+ * Minimal structural constraint on any Feature a consumer component
+ * (View, Composer, Behavior) can reference.
  *
- * En pratique : `typeof CartFeature` (constructeur avec `static readonly channel`)
- * satisfait ce type. Le Channel reste privé — seul son token est exposé.
+ * In practice `typeof CartFeature` (a constructor with `static readonly channel`)
+ * satisfies it. The Channel stays private — only its token is exposed.
  *
- * I80 — aucun consommateur ne référence `TChannelToken` directement.
+ * I80 — no consumer references `TChannelToken` directly.
  */
 type TFeatureRef<TDef extends TChannelDefinition = TChannelDefinition, TNS extends string = string> = {
     readonly channel: TChannelToken<TDef, TNS>;
 };
 /**
- * `TFeatureRef` contraint à un namespace donné (ADR-0042 C10, I87).
+ * `TFeatureRef` constrained to a given namespace (ADR-14, I87).
  *
- * Utilisé par `TFeatureContract` pour imposer compile-time que la clé d'objet
- * (`cart`, `user`) corresponde au namespace de la Feature référencée :
+ * Used by `TFeatureContract` so that the object key (`cart`, `user`) matches
+ * the namespace of the referenced Feature:
  *
  * ```ts
  * const features = {
- *   cart: { feature: UserFeature, ... },  // ❌ erreur compile — "cart" ≠ "user"
+ *   cart: { feature: UserFeature, ... },  // "cart" ≠ "user"
  * } satisfies TFeatureContract;
  * ```
+ *
+ * Known gap (ADR-14): TypeScript does not check the index signature per key
+ * at the `satisfies`; the mismatch is only rejected at use sites, where the
+ * extractors resolve to `never`.
  */
 type TFeatureRefForNS<NS extends string> = TFeatureRef<TChannelDefinition, NS>;
 /**
- * Module contractuel Feature — Feature-groupé (ADR-0042).
+ * Feature contract module — Feature-grouped (ADR-14).
  *
- * Une entrée par Feature consommée. La clé d'objet DOIT correspondre au
- * namespace de la Feature référencée par `feature` (validation par
- * `TFeatureRefForNS<NS>` — I87).
+ * One entry per consumed Feature. The object key MUST match the namespace of
+ * the Feature referenced by `feature` (`TFeatureRefForNS<NS>` — I87).
  *
- * Pour chaque Feature :
- *   - `feature`  : ref runtime (`typeof XxxFeature`) — extrait
- *                  channel/events/commands/requests via le token
- *   - `listens`  : noms d'events sans préfixe namespace (la clé EST le NS)
- *   - `triggers` : noms de commands sans préfixe namespace
- *   - `requests` : noms de requests sans préfixe namespace
+ * For each Feature:
+ *   - `feature`  : runtime ref (`typeof XxxFeature`) — channel/events/
+ *                  commands/requests are extracted through its token
+ *   - `listens`  : event names without namespace prefix (the key IS the NS)
+ *   - `triggers` : command names without namespace prefix
+ *   - `requests` : request names without namespace prefix
  *
- * Le mapped type `[NS in string]` capture chaque clé littérale et instancie
- * `TFeatureRefForNS<NS>` per-key — c'est ce qui produit l'erreur compile
- * sur incohérence clé/namespace.
+ * Known gap (ADR-14): the three lists are typed `readonly string[]`, so a
+ * typo is not caught here. In `triggers`/`requests` it surfaces at the call
+ * site (payload `never`); in `listens` it compiles and the handler is never
+ * called.
  *
- * Usage :
+ * Usage:
  *
  * ```ts
  * const cartViewFeatures = {
@@ -25011,9 +25011,9 @@ type TFeatureRefForNS<NS extends string> = TFeatureRef<TChannelDefinition, NS>;
  * } satisfies TFeatureContract;
  * ```
  *
- * I81 — source de vérité runtime du composant consommateur.
- * I83 — module réutilisable par View / Composer / Behavior.
- * I87 — clé ≡ namespace, contrôle compile-time.
+ * I81 — runtime source of truth of the consumer component.
+ * I83 — module reused by View / Composer / Behavior.
+ * I87 — key ≡ namespace (checked at use sites).
  */
 type TFeatureContract = {
     readonly [NS in string]: {
@@ -25024,7 +25024,7 @@ type TFeatureContract = {
     };
 };
 /**
- * Aplatit toutes les `listens` du contrat en union de clés `"ns:event"`.
+ * Flattens every `listens` of the contract into a union of `"ns:event"` keys.
  *
  * @example
  *   TFlatListens<{ cart: { listens: ["itemAdded"] }; user: { listens: ["profileUpdated"] } }>
@@ -25033,53 +25033,51 @@ type TFeatureContract = {
 type TFlatListens<F extends TFeatureContract> = {
     [NS in keyof F & string]: F[NS]["listens"][number] extends infer E ? E extends string ? `${NS}:${E}` : never : never;
 }[keyof F & string];
-/** Aplatit toutes les `triggers` en union de clés `"ns:cmd"`. */
+/** Flattens every `triggers` into a union of `"ns:cmd"` keys. */
 type TFlatTriggers<F extends TFeatureContract> = {
     [NS in keyof F & string]: F[NS]["triggers"][number] extends infer C ? C extends string ? `${NS}:${C}` : never : never;
 }[keyof F & string];
-/** Aplatit toutes les `requests` en union de clés `"ns:req"`. */
+/** Flattens every `requests` into a union of `"ns:req"` keys. */
 type TFlatRequests<F extends TFeatureContract> = {
     [NS in keyof F & string]: F[NS]["requests"][number] extends infer R ? R extends string ? `${NS}:${R}` : never : never;
 }[keyof F & string];
 /**
- * Payload d'un event depuis une clé `"ns:event"` et le contrat Feature.
+ * Payload of an event from a `"ns:event"` key and the Feature contract.
  *
- * Résolution :
- *   1. Décompose `K` en `${NS}:${E}` via template literal.
- *   2. Extrait la définition `D` du Channel via le token static.
- *   3. Lit `D["events"][E]`.
+ * Resolution:
+ *   1. Splits `K` into `${NS}:${E}` with a template literal.
+ *   2. Extracts the Channel definition `D` through the static token.
+ *   3. Reads `D["events"][E]`.
  */
 type TEventPayloadFor<F extends TFeatureContract, K extends string> = K extends `${infer NS}:${infer E}` ? NS extends keyof F ? F[NS]["feature"]["channel"] extends TChannelToken<infer D, NS> ? E extends keyof D["events"] ? D["events"][E] : never : never : never : never;
-/** Payload d'une command depuis une clé `"ns:cmd"`. */
+/** Payload of a command from a `"ns:cmd"` key. */
 type TCommandPayloadFor<F extends TFeatureContract, K extends string> = K extends `${infer NS}:${infer C}` ? NS extends keyof F ? F[NS]["feature"]["channel"] extends TChannelToken<infer D, NS> ? C extends keyof D["commands"] ? D["commands"][C] : never : never : never : never;
-/** Params d'une request depuis une clé `"ns:req"`. */
+/** Params of a request from a `"ns:req"` key. */
 type TRequestParamsFor<F extends TFeatureContract, K extends string> = K extends `${infer NS}:${infer R}` ? NS extends keyof F ? F[NS]["feature"]["channel"] extends TChannelToken<infer D, NS> ? R extends keyof D["requests"] ? D["requests"][R]["params"] : never : never : never : never;
-/** Résultat d'une request depuis une clé `"ns:req"`. */
+/** Result of a request from a `"ns:req"` key. */
 type TRequestResultFor<F extends TFeatureContract, K extends string> = K extends `${infer NS}:${infer R}` ? NS extends keyof F ? F[NS]["feature"]["channel"] extends TChannelToken<infer D, NS> ? R extends keyof D["requests"] ? D["requests"][R]["result"] : never : never : never : never;
 /**
- * Dérive le nom du handler channel depuis un namespace + event name.
- * Convention D48 channel : `on{NS}{EventName}Event` (suffixe `Event` conservé
- * pour anti-collision avec les handlers DOM, ADR-0042 C13).
+ * Derives the channel handler name from a namespace + event name.
+ * I48 channel convention: `on{NS}{EventName}Event` (the `Event` suffix
+ * avoids collisions with DOM handlers, ADR-14).
  *
  * @example
  *   TChannelHandlerName<"cart", "itemAdded">  → "onCartItemAddedEvent"
  */
 type TChannelHandlerName<NS extends string, E extends string> = `on${Capitalize<NS>}${Capitalize<E>}Event`;
 /**
- * Handlers channel REQUIS pour un `TFeatureContract` — un par event déclaré
- * dans `listens` de chaque Feature.
+ * Channel handlers REQUIRED by a `TFeatureContract` — one per event declared
+ * in each Feature's `listens`.
  *
- * Symétrie Contract/Callbacks (ADR-0042 C15, I88) : pour chaque entrée dans
- * `features[NS].listens`, le compilateur impose la présence de la méthode
- * `on{NS}{EventName}Event` avec la signature exacte `(payload) => void`.
+ * Contract/Callbacks symmetry (ADR-14, I88): for every entry of
+ * `features[NS].listens`, the compiler requires an `on{NS}{EventName}Event`
+ * method with the exact `(payload) => void` signature.
  *
- * Le payload est résolu via `TEventPayloadFor` — typé par le `TChannelDefinition`
- * de la Feature.
+ * The payload is resolved through `TEventPayloadFor`, typed by the Feature's
+ * `TChannelDefinition`.
  *
- * Note strate 0/1 : ADR-0040 §615 met les metas hors-scope strate 0. Le second
- * paramètre `metas: TMessageMetas` sera ajouté à la signature en strate 1, via
- * un ADR dédié amendant ADR-0040 et ADR-0042. Le code actuel est volontairement
- * sans metas.
+ * No `metas` parameter yet: a second `metas: TMessageMetas` parameter comes
+ * with stratum 1b (ADR-04).
  */
 type TChannelCallbacks<F extends TFeatureContract> = UnionToIntersection<{
     [NS in keyof F & string]: {
@@ -25087,10 +25085,10 @@ type TChannelCallbacks<F extends TFeatureContract> = UnionToIntersection<{
     };
 }[keyof F & string]>;
 /**
- * Handlers command REQUIS pour une Feature concrète.
+ * Command handlers REQUIRED by a concrete Feature.
  *
- * Convention D48 command : `on{Cmd}Command` (suffixe `Command`).
- * Pour chaque commande `K ∈ keyof TDef["commands"]`, impose la méthode
+ * I48 command convention: `on{Cmd}Command` (`Command` suffix).
+ * For each command `K ∈ keyof TDef["commands"]`, requires the method
  * `onKCommand(payload: TDef["commands"][K]): void`.
  *
  * @example
@@ -25101,41 +25099,41 @@ type TCommandCallbacks<TDef extends TChannelDefinition> = {
     [K in keyof TDef["commands"] & string as `on${Capitalize<K>}Command`]: (payload: TDef["commands"][K]) => void;
 };
 /**
- * Handlers request REQUIS pour une Feature concrète.
+ * Request handlers REQUIRED by a concrete Feature.
  *
- * Convention D48 request : `on{Req}Request` (suffixe `Request`).
- * Pour chaque request `K ∈ keyof TDef["requests"]`, impose la méthode
+ * I48 request convention: `on{Req}Request` (`Request` suffix).
+ * For each request `K ∈ keyof TDef["requests"]`, requires the method
  * `onKRequest(params: TDef["requests"][K]["params"]): TDef["requests"][K]["result"]`.
  */
 type TRequestCallbacks<TDef extends TChannelDefinition> = {
     [K in keyof TDef["requests"] & string as `on${Capitalize<K>}Request`]: (params: TDef["requests"][K]["params"]) => TDef["requests"][K]["result"];
 };
 /**
- * Handlers listen REQUIS pour chaque token `TListens[number]`.
+ * Listen handlers REQUIRED for each token of `TListens[number]`.
  *
- * Convention D48 channel : `on{NS}{EventName}Event` — le préfixe namespace
- * différencie les events de Channels distincts (anti-collision).
+ * I48 channel convention: `on{NS}{EventName}Event` — the namespace prefix
+ * tells events of distinct Channels apart (no collision).
  *
- * **`UnionToIntersection` OBLIGATOIRE** (cf. POC QA-0046 §9.5 + Annexe §2 ADR-0046).
- * Sans wrapper : la distributivité du conditionnel produit une union d'objets
- * `{ …cart } | { …wishlist }` que TS refuse comme cible `implements` (TS2422).
- * `UnionToIntersection` fusionne les objets en intersection, rendant le type
- * utilisable comme target `implements`.
+ * **`UnionToIntersection` is REQUIRED** (see ADR-09).
+ * Without it, the distributive conditional yields a union of objects
+ * `{ …cart } | { …wishlist }` that TS rejects as an `implements` target
+ * (TS2422). `UnionToIntersection` merges them into an intersection usable
+ * as an `implements` target.
  */
 type TListenCallbacks<TListens extends readonly TChannelToken<TChannelDefinition, string>[]> = UnionToIntersection<TListens[number] extends infer Tok ? Tok extends TChannelToken<infer DEF, infer NS> ? {
     [E in keyof DEF["events"] & string as `on${Capitalize<NS & string>}${Capitalize<E>}Event`]: (payload: DEF["events"][E]) => void;
 } : never : never>;
 /**
- * Type d'enforcement compile-time des handlers d'une Feature concrète.
+ * Compile-time enforcement type for the handlers of a concrete Feature.
  *
- * Symétrie Contract/Callbacks (ADR-0046 — M2, I88 élargi, I92) :
- * `implements TFeatureCallbacks<TDef, TListens>` impose au compilateur
- * la présence et la signature exacte de TOUS les handlers dérivés :
- *   - `onXxxCommand`        pour chaque `K ∈ keyof TDef["commands"]`
- *   - `onXxxRequest`        pour chaque `K ∈ keyof TDef["requests"]`
- *   - `on{NS}{Evt}Event`    pour chaque `(token, event) ∈ TListens`
+ * Contract/Callbacks symmetry (ADR-09, I88, I92):
+ * `implements TFeatureCallbacks<TDef, TListens>` makes the compiler require
+ * the presence and exact signature of ALL derived handlers:
+ *   - `onXxxCommand`        for each `K ∈ keyof TDef["commands"]`
+ *   - `onXxxRequest`        for each `K ∈ keyof TDef["requests"]`
+ *   - `on{NS}{Evt}Event`    for each `(token, event) ∈ TListens`
  *
- * Handler oublié → TS2515 ; signature fautive → TS2416.
+ * Missing handler → TS2515; wrong signature → TS2416.
  *
  * @example
  * ```ts
@@ -25146,333 +25144,336 @@ type TListenCallbacks<TListens extends readonly TChannelToken<TChannelDefinition
  * ```
  */
 type TFeatureCallbacks<TDef extends TChannelDefinition, TListens extends readonly TChannelToken<TChannelDefinition, string>[] = readonly []> = TCommandCallbacks<TDef> & TRequestCallbacks<TDef> & TListenCallbacks<TListens>;
-/** Test runtime du format camelCase. */
+/** Runtime camelCase format check. */
 declare function isCamelCaseNamespace(ns: string): boolean;
-/** Test runtime de réservation. */
+/** Runtime reserved-name check. */
 declare function isReservedNamespace(ns: string): ns is ReservedNamespace;
 /**
- * Filet de sécurité — vérifie format + réservation au runtime.
+ * Safety net — checks format + reservation at runtime.
  *
- * Appelé par le constructeur de `Feature` (immuabilité dès construction) et
- * par `Application.start()` (validation du manifest entier). Lève
- * `BonsaiNamespaceError` avec un code stable.
+ * Called by the `Feature` constructor (immutable from construction) and by
+ * `Application.start()` (whole-manifest validation). Throws
+ * `BonsaiNamespaceError` with a stable code.
  */
 declare function assertValidNamespace(ns: string): void;
 
 /**
  * @bonsai/feature — Feature base class
  *
- * Strate 0 — Les 5 capacités :
- *   C1 — emit(event, payload) sur son propre Channel (typé TChannelDef, ADR-0040)
- *   C2 — handle(command) via auto-discovery des méthodes on{Name}Command
- *   C3 — listen(event) sur Channels externes déclarés via on{Channel}{EventName}Event
- *   C4 — reply(request) via auto-discovery des méthodes on{Name}Request
- *   C5 — request(token, name, params) vers Channels déclarés (typé via token, ADR-0040)
+ * The 5 capabilities (ADR-01):
+ *   C1 — emit(event, payload) on its own Channel (typed by TChannelDef, ADR-14)
+ *   C2 — handle(command) through auto-discovered on{Name}Command methods
+ *   C3 — listen(event) on declared external Channels through on{Channel}{EventName}Event
+ *   C4 — reply(request) through auto-discovered on{Name}Request methods
+ *   C5 — request(token, name, params) to declared Channels (typed by the token, ADR-14)
  *
- * Invariants :
- *   I1  — Feature ne peut emit() que sur son propre Channel
- *   I2  — Feature peut listen les Events des Channels externes déclarés
- *   I3  — Feature ne peut reply que sur son propre Channel
- *   I5  — Entity n'est accessible que par sa Feature propriétaire
- *   I12 — Aucune Feature ne peut emit sur le Channel d'une autre
- *   I21 — Chaque Feature DOIT être enregistrée dans le manifest applicatif
- *         sous une clé namespace unique camelCase plat (amendé ADR-0039)
- *   I22 — Relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte
- *   I48 — Handlers auto-découverts par convention de nommage
- *   I68 — Le namespace est porté par le manifest applicatif, pas par
- *         un `static` sur la classe Feature (ADR-0039)
- *   I72 — `TSelfNS` doit correspondre exactement à la clé sous laquelle
- *         la Feature est enregistrée dans le manifest (ADR-0039)
- *   I73 — Chaque Feature concrète DOIT exposer `static readonly channel:
- *         TChannelToken<TChannelDef, TSelfNS>` — pont entre la classe et son
- *         Channel typé (ADR-0040)
- *   I74 — `TChannelDef` co-localisé dans le fichier `.feature.ts` du domaine
- *         (pas de `.channel.ts` séparé) (ADR-0040)
- *   I75 — Aucun `any`/`unknown` dans la surface publique de Channel/Feature/
- *         View ; casts internes documentés et délimités (ADR-0040)
- *   I76 — `Channel.{trigger,emit,request,handle,listen,reply}` strictement
- *         typés par `TDef` — clé = `keyof TDef[lane]`, jamais `string` libre
- *         (ADR-0040)
- *   I79 — `Feature.request()` accepte uniquement un `TChannelToken` typé ;
- *         `abstract get listens()`/`abstract get queries()` portent ces tokens
- *         comme déclarations instance (ADR-0040, amendé ADR-0046 — I93)
- *   I93 — `listens` et `queries` sont des `abstract get` instance sur Feature
- *         (ADR-0046 — TS2515 si absent sur une classe concrète)
- *   I94 — Le constructeur de Feature est inerte : assertValidNamespace + #namespace
- *         uniquement. Aucun side-effect Radio/Entity.
- *   I96 — Handlers Entity `on<Key>EntityUpdated`/`onAnyEntityUpdated` auto-
- *         découverts sur la Feature (même mécanisme que I48), dispatchés par
- *         ordre alphabétique des `changedKeys` puis catch-all. Clé inconnue
- *         → erreur bootstrap. Handler qui throw → isolé (BroadcastError,
- *         ADR-0002), notification suivante non interrompue (ADR-0028 strate 1a)
+ * Invariants:
+ *   I1  — A Feature can only emit() on its own Channel
+ *   I2  — A Feature can listen to Events of declared external Channels
+ *   I3  — A Feature can only reply on its own Channel
+ *   I5  — An Entity is only accessible to its owning Feature
+ *   I12 — No Feature can emit on another Feature's Channel
+ *   I21 — Every Feature MUST be registered in the application manifest under
+ *         a unique, flat camelCase namespace key (ADR-08)
+ *   I22 — namespace ↔ Feature ↔ Entity is a strict 1:1:1 relation
+ *   I48 — Handlers are auto-discovered by naming convention
+ *   I68 — The namespace is carried by the application manifest, not by a
+ *         `static` on the Feature class (ADR-08)
+ *   I72 — `TSelfNS` must match exactly the key the Feature is registered
+ *         under in the manifest (ADR-08)
+ *   I73 — Every concrete Feature MUST expose `static readonly channel:
+ *         TChannelToken<TChannelDef, TSelfNS>` — the bridge between the class
+ *         and its typed Channel (ADR-14)
+ *   I74 — `TChannelDef` is co-located in the domain's `.feature.ts` file
+ *         (no separate `.channel.ts`) (ADR-14)
+ *   I75 — No `any`/`unknown` in the public surface of Channel/Feature/View;
+ *         internal casts are documented and contained (ADR-14)
+ *   I76 — `Channel.{trigger,emit,request,handle,listen,reply}` are strictly
+ *         typed by `TDef` — key = `keyof TDef[lane]`, never a free `string`
+ *         (ADR-14)
+ *   I79 — `Feature.request()` only accepts a typed `TChannelToken`;
+ *         `abstract get listens()`/`abstract get queries()` carry these tokens
+ *         as instance declarations (ADR-14, ADR-09 — I93)
+ *   I93 — `listens` and `queries` are instance `abstract get` on Feature
+ *         (ADR-09 — TS2515 when missing on a concrete class)
+ *   I94 — The Feature constructor is inert: assertValidNamespace + #namespace
+ *         only. No Radio/Entity side effect.
+ *   I96 — Entity handlers `on<Key>EntityUpdated`/`onAnyEntityUpdated` are
+ *         auto-discovered on the Feature (same mechanism as I48), dispatched
+ *         in alphabetical order of `changedKeys`, then the catch-all. Unknown
+ *         key → bootstrap error. A throwing handler is isolated (BroadcastError,
+ *         ADR-05) and the next notification still runs (stratum 1a)
  *
  * @packageDocumentation
  */
 
 /**
- * Constructeur concret d'une sous-classe de Feature.
+ * Concrete constructor of a Feature subclass.
  *
- * Depuis ADR-0039, le constructeur prend obligatoirement `namespace: TSelfNS`
- * en paramètre — ce qui permet à `StrictManifest<M>` de vérifier au
- * compile-time que la classe est compatible avec sa clé d'enregistrement (I72).
+ * The constructor always takes `namespace: TSelfNS` (ADR-08), which lets
+ * `StrictManifest<M>` check at compile time that the class matches its
+ * registration key (I72).
  *
- * Ce type n'encode que la signature du constructeur. Les membres `static`
- * (`channel`, `listens`, `queries` — ADR-0040) font partie du contrat de classe
- * mais ne peuvent pas être exprimés dans un type constructeur sans intersection
- * explicite. Leur présence est garantie par convention et par le filet runtime
- * de `Application.start()` — cf. limitation `abstract static` ci-dessous.
+ * This type only encodes the constructor signature. The static `channel`
+ * member (ADR-14) is checked by `TStrictFeatureClass` at the manifest and by
+ * the runtime safety net of `Application.start()`; `listens`/`queries` are
+ * instance getters (ADR-09).
  */
 type TFeatureClass<TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>, TChannelDef extends TChannelDefinition = TChannelDefinition, TSelfNS extends string = string> = new (namespace: TSelfNS) => Feature<TEntity, TChannelDef, TSelfNS>;
 /**
- * Feature — unité métier paramétrée par sa classe Entity, son contrat Channel
- * et son namespace.
+ * Feature — business unit parameterised by its Entity class, its Channel
+ * contract and its namespace.
  *
- * Paramètres de type :
- *   - `TEntity`     : la classe Entity (ADR-0037 — encode I22 au type-level)
- *   - `TChannelDef` : le contrat du Channel propre — types de commandes, events,
- *                     requests (ADR-0040 — I74, I76). Par défaut `TChannelDefinition`
- *                     (toutes lanes `Record<string, unknown>`) pour une utilisation
- *                     non paramétrée rétrocompatible.
- *   - `TSelfNS`     : le namespace sous lequel cette Feature s'attend à être
- *                     enregistrée dans le manifest applicatif (ADR-0039 — I72).
- *                     Par défaut `string` pour les sous-classes non paramétrées.
+ * Type parameters:
+ *   - `TEntity`     : the Entity class (ADR-09 — encodes I22 at type level)
+ *   - `TChannelDef` : the contract of its own Channel — command, event and
+ *                     request types (ADR-14 — I74, I76). Defaults to
+ *                     `TChannelDefinition` (all lanes `Record<string, unknown>`)
+ *                     for untyped use.
+ *   - `TSelfNS`     : the namespace this Feature expects to be registered
+ *                     under in the application manifest (ADR-08 — I72).
+ *                     Defaults to `string` for unparameterised subclasses.
  *
- * **Le namespace n'est plus déclaré sur la classe** (`static namespace`
- * supprimé, ADR-0039 — I68). Il est :
- *   - injecté par le constructeur (immuabilité dès construction)
- *   - dérivé de la clé du manifest applicatif (source de vérité — I69)
- *   - validé au compile-time par `StrictManifest<M>` au `satisfies`
- *   - validé au runtime par `assertValidNamespace()` (filet — I71)
+ * **The namespace is not declared on the class** (no `static namespace`,
+ * ADR-08 — I68). It is:
+ *   - injected by the constructor (immutable from construction)
+ *   - derived from the application manifest key (source of truth — I69)
+ *   - checked at compile time by `StrictManifest<M>` through `satisfies`
+ *   - checked at runtime by `assertValidNamespace()` (safety net — I71)
  */
 declare abstract class Feature<TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>, TChannelDef extends TChannelDefinition = TChannelDefinition, TSelfNS extends string = string> {
     #private;
     /**
-     * Tokens des Channels externes écoutés par cette Feature (C3 — I2, ADR-0040,
-     * amendé ADR-0046 — I93).
+     * Tokens of the external Channels this Feature listens to (C3 — I2, ADR-14,
+     * ADR-09 — I93).
      *
-     * Déclaration **instance** (`abstract get`) depuis ADR-0046 — symétrie avec
-     * les `abstract get` de View (ADR-0042). Chaque Feature concrète DOIT
-     * implémenter ce getter (TS2515 sinon).
+     * **Instance** declaration (`abstract get`, ADR-09), like View's
+     * `abstract get` (ADR-14). Every concrete Feature MUST implement this
+     * getter (TS2515 otherwise).
      *
-     * Les tokens retournés sont lus par `Application.start()` en Phase 0c,
-     * APRÈS instanciation pure (ctor inerte — I94) et AVANT tout side-effect
-     * Radio/Entity, pour valider les dépendances croisées (I70 amendé).
+     * `Application.start()` reads the returned tokens in Phase 0c, AFTER pure
+     * instantiation (inert ctor — I94) and BEFORE any Radio/Entity side effect,
+     * to validate cross-dependencies (I70).
      */
     abstract get listens(): readonly TChannelToken<TChannelDefinition, string>[];
     /**
-     * Tokens des Channels externes interrogés par cette Feature (C5 — I17,
-     * ADR-0040, amendé ADR-0046 — I93).
+     * Tokens of the external Channels this Feature queries (C5 — I17,
+     * ADR-14, ADR-09 — I93).
      *
-     * Déclaration **instance** (`abstract get`) depuis ADR-0046 — voir `listens`.
+     * **Instance** declaration (`abstract get`, ADR-09) — see `listens`.
+     * Not enforced yet: `request()` accepts any token (ADR-01).
      */
     abstract get queries(): readonly TChannelToken<TChannelDefinition, string>[];
     /**
-     * Crée une Feature attachée au namespace passé en paramètre.
+     * Creates a Feature bound to the given namespace.
      *
-     * Appelé exclusivement par `Application.start()` qui transmet la clé du
-     * manifest. L'instanciation manuelle (tests) doit aussi passer le namespace.
+     * Called only by `Application.start()`, which passes the manifest key.
+     * Manual instantiation (tests) must pass the namespace too.
      *
-     * @throws `BonsaiNamespaceError` si le namespace est invalide ou réservé.
+     * @throws `BonsaiNamespaceError` when the namespace is invalid or reserved.
      */
     constructor(namespace: TSelfNS);
     /**
-     * Liaison Feature → Entity concrète (D17 amendé par ADR-0037).
+     * Feature → concrete Entity binding (ADR-09).
      *
-     * Chaque Feature concrète DOIT fournir ce getter retournant le constructeur
-     * de son Entity. Le retour est typé par TEntity (la classe concrète), ce qui
-     * permet à `this.entity` d'être typé sans cast.
+     * Every concrete Feature MUST provide this getter returning its Entity
+     * constructor. The return type is TEntity (the concrete class), so
+     * `this.entity` is typed without a cast.
      */
     protected abstract get Entity(): new () => TEntity;
     /**
-     * Le namespace de cette instance — immuable, défini au constructeur.
-     * Typé `TSelfNS` (string littéral si la Feature est paramétrée).
+     * Namespace of this instance — immutable, set by the constructor.
+     * Typed `TSelfNS` (a string literal when the Feature is parameterised).
      */
     get namespace(): TSelfNS;
     /**
-     * Accès à l'Entity (I5, I6 — propriétaire exclusif).
-     * `protected` : seules la Feature et ses sous-classes y accèdent.
-     * Typée par la classe concrète (TEntity) grâce à ADR-0037.
+     * Access to the Entity (I5, I6 — exclusive owner).
+     * `protected`: only the Feature and its subclasses reach it.
+     * Typed by the concrete class (TEntity) thanks to ADR-09.
      */
     protected get entity(): TEntity;
     /**
-     * Bootstrap : crée l'Entity, enregistre les handlers sur le Channel,
-     * et appelle onInit(). Appelé par Application ou manuellement en test.
+     * Bootstrap: creates the Entity, registers the handlers on the Channel and
+     * calls onInit(). Called by Application, or manually in tests.
      */
     bootstrap(): void;
     /**
-     * C1 — Émet un Event typé sur le propre Channel de cette Feature (I1, I12, ADR-0040).
+     * C1 — Emits a typed Event on this Feature's own Channel (I1, I12, ADR-14).
      */
     protected emit<K extends keyof TChannelDef["events"] & string>(eventName: K, payload: TChannelDef["events"][K]): void;
     /**
-     * C5 — Effectue une Request typée vers un Channel déclaré (I17, ADR-0040).
-     * Retourne le résultat typé ou null (ADR-0023).
+     * C5 — Performs a typed Request to a declared Channel (I17, ADR-14).
+     * Returns the typed result or null (ADR-02).
      */
     protected request<TDef extends TChannelDefinition, TNS extends string, K extends keyof TDef["requests"] & string>(token: TChannelToken<TDef, TNS>, requestName: K, params: TDef["requests"][K]["params"]): TDef["requests"][K]["result"] | null;
     /**
-     * Hook appelé après le bootstrap. Override dans les sous-classes.
+     * Hook called after bootstrap. Override it in subclasses.
      */
     onInit(): void;
 }
 
 /**
- * @bonsai/view — View base class (ADR-0042)
+ * @bonsai/view — View base class (ADR-14)
  *
- * Strate 1 — Capacités :
- *   - trigger("ns:cmd", payload) → envoie un Command typé via Channel
- *   - request("ns:req", params)  → interroge un Channel typé
- *   - getUI(key) → TProjectionNode<TEl> typé au sous-type HTMLElement (phantom)
- *   - Auto-discovery D48 channel : on{NS}{Event}Event → channel.listen
- *   - Auto-discovery D48 UI      : on{UIKey}{DomEvent} → addEventListener
+ * Capabilities:
+ *   - trigger("ns:cmd", payload) → sends a typed Command through the Channel
+ *   - request("ns:req", params)  → queries a typed Channel
+ *   - getUI(key) → TProjectionNode<TEl>, typed to the HTMLElement subtype (phantom)
+ *   - I48 channel auto-discovery: on{NS}{Event}Event → channel.listen
+ *   - I48 UI auto-discovery     : on{UIKey}{DomEvent} → addEventListener
  *   - onAttach() lifecycle hook
  *
- * Pattern modulaire ADR-0042 :
- *   1. `const features satisfies TFeatureContract` — Feature-groupé
- *   2. `const uiEvents satisfies TUIContract`      — events DOM + phantom TEl
- *   3. `const uiElements satisfies TUIElements<typeof uiEvents>` — sélecteurs
+ * ADR-14 modular pattern:
+ *   1. `const features satisfies TFeatureContract` — Feature-grouped
+ *   2. `const uiEvents satisfies TUIContract`      — DOM events + phantom TEl
+ *   3. `const uiElements satisfies TUIElements<typeof uiEvents>` — selectors
  *   4. `type TVC = TViewContract<typeof features, typeof uiEvents>`
  *   5. `class XxxView extends View<TVC> implements TViewCallbacks<TVC>`
  *
- * Trois getters abstraits :
- *   - `get features()`   → Feature refs + lanes (structurel, non-overridable)
- *   - `get uiEvents()`   → events DOM + phantom TEl (structurel)
- *   - `get uiElements()` → sélecteurs CSS (overridable par Composer D34)
+ * Three abstract getters:
+ *   - `get features()`   → Feature refs + lanes (structural, not overridable)
+ *   - `get uiEvents()`   → DOM events + phantom TEl (structural)
+ *   - `get uiElements()` → CSS selectors (overridable by the Composer, ADR-21 — not delivered)
  *
- * Channel reste privé derrière sa Feature (I80) — aucun `TChannelToken` dans
- * la surface publique.
+ * The Channel stays private behind its Feature (I80) — no `TChannelToken` in
+ * the public surface.
  *
- * Invariants :
- *   I4  — View n'a JAMAIS emit() — absent du type
- *   I31 — rootElement est un sélecteur CSS string injecté au mount
- *   I36 — View ne compose jamais d'autres Views directement
- *   I39 — Accès DOM exclusivement via getUI(key)
- *   I40 — Scope DOM : résolution dans rootElement uniquement
- *   I48 — Handlers auto-découverts par convention de nommage
- *   I75 — Aucun `any` dans la surface publique ; casts internes documentés
- *   I80 — Aucun TChannelToken dans la surface publique consommateur
- *   I81 — `features` / `uiEvents` / `uiElements` sont les sources de vérité
- *   I82 — Handler manquant → erreur compile via `implements TViewCallbacks`
- *   I83 — Pattern modulaire `T{Component}Contract` réutilisable
- *   I84 — `events: [E, ...]` non-vide impose les handlers DOM correspondants
- *   I85 — `ui<TEl>()(events)` est l'unique helper pour TUIEntry (forme curryfiée)
- *   I86 — `events` toujours présent dans TUIEntry (pas d'optionnel) ; ReadonlyArray<TEventsFor<TEl>> sans doublons
- *   I87 — clé d'objet ≡ namespace de la Feature référencée
- *   I88 — symétrie Contract/Callbacks
- *   I89 — tout nom d'event déclaré appartient à TEventsFor<TEl> ⊆ keyof HTMLElementEventMap (ADR-0044/0045)
- *   I90 — pas de doublons dans TUIEntry["events"] — double-binding interdit (ADR-0044)
- *   I91 — TEventsFor<TEl> est le mapping sémantique officiel Bonsai élément→events (ADR-0045)
+ * Invariants:
+ *   I4  — A View NEVER has emit() — absent from the type
+ *   I31 — rootElement is a CSS selector string injected at mount
+ *   I36 — A View never composes other Views directly
+ *   I39 — DOM access only through getUI(key)
+ *   I40 — DOM scope: resolution inside rootElement only
+ *   I48 — Handlers are auto-discovered by naming convention
+ *   I75 — No `any` in the public surface; internal casts are documented
+ *   I80 — No TChannelToken in the consumer public surface
+ *   I81 — `features` / `uiEvents` / `uiElements` are the sources of truth
+ *   I82 — Missing handler → compile error through `implements TViewCallbacks`
+ *   I83 — Reusable modular `T{Component}Contract` pattern
+ *   I84 — A non-empty `events: [E, ...]` requires the matching DOM handlers
+ *   I85 — `ui<TEl>()(events)` is the only TUIEntry helper (curried form)
+ *   I86 — `events` is always present in TUIEntry (never optional); ReadonlyArray<TEventsFor<TEl>> without duplicates
+ *   I87 — object key ≡ namespace of the referenced Feature
+ *   I88 — Contract/Callbacks symmetry
+ *   I89 — every declared event name belongs to TEventsFor<TEl> ⊆ keyof HTMLElementEventMap (ADR-15)
+ *   I90 — no duplicate in TUIEntry["events"] — double binding forbidden (ADR-15)
+ *   I91 — TEventsFor<TEl> is Bonsai's official element → events mapping (ADR-15)
  *
  * @packageDocumentation
  */
 
 /**
- * Events de pointeur : souris, touch, pointer API, molette.
- * Universels — disponibles sur tout HTMLElement interactif.
+ * Pointer events: mouse, touch, pointer API, wheel.
+ * Universal — available on every interactive HTMLElement.
  */
 type TUIPointerEvents = "auxclick" | "click" | "contextmenu" | "dblclick" | "mousedown" | "mouseenter" | "mouseleave" | "mousemove" | "mouseout" | "mouseover" | "mouseup" | "gotpointercapture" | "lostpointercapture" | "pointercancel" | "pointerdown" | "pointerenter" | "pointerleave" | "pointermove" | "pointerout" | "pointerover" | "pointerup" | "touchcancel" | "touchend" | "touchmove" | "touchstart" | "wheel";
-/** Events focus : éléments focusables (boutons, inputs, liens, tabindex). */
+/** Focus events: focusable elements (buttons, inputs, links, tabindex). */
 type TUIFocusEvents = "blur" | "focus" | "focusin" | "focusout";
-/** Events clavier : éléments recevant du texte ou des raccourcis. */
+/** Keyboard events: elements receiving text or shortcuts. */
 type TUIKeyboardEvents = "beforeinput" | "compositionend" | "compositionstart" | "compositionupdate" | "keydown" | "keypress" | "keyup";
-/** Events presse-papiers. */
+/** Clipboard events. */
 type TUIClipboardEvents = "copy" | "cut" | "paste";
 /** Events drag & drop. */
 type TUIDragEvents = "drag" | "dragend" | "dragenter" | "dragleave" | "dragover" | "dragstart" | "drop";
-/** Events animation CSS et transition CSS. */
+/** CSS animation and CSS transition events. */
 type TUIAnimationEvents = "animationcancel" | "animationend" | "animationiteration" | "animationstart" | "transitioncancel" | "transitionend" | "transitionrun" | "transitionstart";
 /**
- * Base universelle : events disponibles sur TOUT HTMLElement.
- * Composition de toutes les catégories non-spécialisées.
+ * Universal base: events available on EVERY HTMLElement.
+ * Union of all non-specialised categories.
  */
 type TUIBaseEvents = TUIPointerEvents | TUIFocusEvents | TUIKeyboardEvents | TUIClipboardEvents | TUIDragEvents | TUIAnimationEvents;
 /**
- * Events de valeur : éléments portant une valeur éditable.
- * Spécifiques à HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement.
+ * Value events: elements carrying an editable value.
+ * Specific to HTMLInputElement, HTMLTextAreaElement, HTMLSelectElement.
  */
 type TUIFormValueEvents = "change" | "input" | "invalid" | "select" | "selectionchange" | "selectstart";
-/** Events de formulaire-conteneur : HTMLFormElement uniquement. */
+/** Form-container events: HTMLFormElement only. */
 type TUIFormContainerEvents = "formdata" | "reset" | "submit";
 /**
- * Events de défilement : éléments avec overflow scroll.
- * NON inclus dans TUIBaseEvents — un bouton ne défile pas.
+ * Scroll events: elements with overflow scrolling.
+ * NOT part of TUIBaseEvents — a button does not scroll.
  */
 type TUIScrollEvents = "scroll" | "scrollend";
-/** Events media : audio et vidéo. */
+/** Media events: audio and video. */
 type TUIMediaEvents = "abort" | "canplay" | "canplaythrough" | "cuechange" | "durationchange" | "emptied" | "ended" | "error" | "loadeddata" | "loadedmetadata" | "loadstart" | "pause" | "play" | "playing" | "progress" | "ratechange" | "seeked" | "seeking" | "stalled" | "suspend" | "timeupdate" | "volumechange" | "waiting";
-/** Events de bascule : details, dialog. */
+/** Toggle events: details, dialog. */
 type TUIToggleEvents = "beforetoggle" | "cancel" | "close" | "toggle";
 /**
- * Mapping sémantique : sous-type HTMLElement → events DOM autorisés. (ADR-0045)
+ * Semantic mapping: HTMLElement subtype → allowed DOM events. (ADR-15)
  *
- * - Éléments connus : liste positive d'events sémantiquement cohérents.
- * - Fallback HTMLElement générique : union large (toutes catégories — non-régressif).
+ * - Known elements: positive list of semantically consistent events.
+ * - Generic HTMLElement fallback: broad union (all categories).
  *
- * Intentionnellement plus strict que lib.dom.d.ts pour les éléments connus.
- * `TEventsFor<TEl>` est un sous-type de `keyof HTMLElementEventMap` (I89).
+ * Known gap (ADR-15): the "scrollable containers" branch includes
+ * `HTMLElement`, so every unlisted element (HTMLElement itself included)
+ * gets base + scroll events and the broad fallback is never reached.
  *
- * @see ADR-0045
+ * Deliberately stricter than lib.dom.d.ts for known elements.
+ * `TEventsFor<TEl>` is a subtype of `keyof HTMLElementEventMap` (I89).
+ *
+ * @see ADR-15
  */
 type TEventsFor<TEl extends HTMLElement> = TEl extends HTMLInputElement | HTMLTextAreaElement ? TUIBaseEvents | TUIFormValueEvents : TEl extends HTMLSelectElement ? TUIBaseEvents | "change" | "input" | "invalid" : TEl extends HTMLFormElement ? TUIBaseEvents | TUIFormValueEvents | TUIFormContainerEvents : TEl extends HTMLButtonElement | HTMLAnchorElement ? TUIBaseEvents : TEl extends HTMLVideoElement ? TUIBaseEvents | TUIMediaEvents | TUIScrollEvents | "enterpictureinpicture" | "leavepictureinpicture" : TEl extends HTMLAudioElement ? TUIBaseEvents | TUIMediaEvents : TEl extends HTMLDetailsElement ? TUIBaseEvents | "toggle" | "beforetoggle" : TEl extends HTMLDialogElement ? TUIBaseEvents | TUIToggleEvents : TEl extends HTMLDivElement | HTMLElement | HTMLUListElement | HTMLOListElement | HTMLTableElement ? TUIBaseEvents | TUIScrollEvents : TUIBaseEvents | TUIFormValueEvents | TUIFormContainerEvents | TUIScrollEvents | TUIMediaEvents | TUIToggleEvents;
 /**
- * Interdit les doublons dans un tuple readonly. (ADR-0044)
+ * Forbids duplicates in a readonly tuple. (ADR-15)
  *
- * Un doublon dans `events` entraînerait un double `addEventListener` au mount.
- * Si `T` contient un doublon → retourne `false` → `ui()()` attend `never`.
+ * A duplicate in `events` would add the same listener twice at mount.
+ * If `T` contains a duplicate → returns `false` → `ui()()` expects `never`.
  */
 type HasNoDuplicates<T extends readonly unknown[], Seen extends readonly unknown[] = readonly []> = T extends readonly [infer H, ...infer R extends readonly unknown[]] ? H extends Seen[number] ? false : HasNoDuplicates<R, readonly [H, ...Seen]> : true;
 /**
- * Entrée UI typée.
+ * Typed UI entry.
  *
- * - `events` : événements DOM déclarés (OBLIGATOIRE — C5 / I86)
- *              `[]` = élément non-interactif explicite (projection seule).
- *              Contraint à `TEventsFor<TEl>` — noms valides + cohérence sémantique (I89 / I91).
- * - `_el?`   : phantom TEl (compile-time only, jamais alloué au runtime).
- *              Permet à `getUI(k).element()` de retourner `TEl` au lieu de
- *              `HTMLElement` générique.
+ * - `events`: declared DOM events (REQUIRED — I86)
+ *             `[]` = explicitly non-interactive element (projection only).
+ *             Constrained to `TEventsFor<TEl>` — valid names + semantic consistency (I89 / I91).
+ * - `_el?`  : phantom TEl (compile time only, never allocated at runtime).
+ *             Lets `getUI(k).element()` return `TEl` instead of a generic
+ *             `HTMLElement`.
  *
- * AUCUN sélecteur CSS ici — il vit dans `get uiElements()` (overridable D34).
+ * NO CSS selector here — it lives in `get uiElements()` (overridable, ADR-21).
  */
 type TUIEntry<TEl extends HTMLElement = HTMLElement, TEvts extends ReadonlyArray<TEventsFor<TEl>> = ReadonlyArray<TEventsFor<TEl>>> = {
     readonly events: TEvts;
     readonly _el?: TEl;
 };
 /**
- * Helper de construction d'une entrée UI (I85 — unique mécanisme).
+ * Builder of a UI entry (I85 — the only mechanism).
  *
- * Encode le sous-type TEl via le phantom `_el?` et capture les events runtime.
- * Forme curryfiée nécessaire pour préserver l'inférence littérale de `events`
- * tout en spécifiant `TEl` explicitement (limitation TypeScript : `const T`
- * sur un paramètre ne préserve pas le littéral si un autre paramètre est
- * passé explicitement avec un défaut).
+ * Encodes the TEl subtype through the `_el?` phantom and captures the runtime
+ * events. The curried form keeps literal inference of `events` while `TEl` is
+ * given explicitly (TypeScript limitation: `const T` on a parameter loses the
+ * literal when another type parameter is passed explicitly with a default).
  *
- * Contraintes (ADR-0044 + ADR-0045) :
- *  - `TEvts` ⊆ `TEventsFor<TEl>` — noms valides + sémantique cohérente
- *  - `HasNoDuplicates<TEvts>` — interdit le double-binding addEventListener
+ * Constraints (ADR-15):
+ *  - `TEvts` ⊆ `TEventsFor<TEl>` — valid names + consistent semantics
+ *  - `HasNoDuplicates<TEvts>` — forbids double addEventListener binding
  *
- * @example ui<HTMLButtonElement>()(["click"])           // interactif
- * @example ui<HTMLSpanElement>()([])                    // non-interactif explicite
- * @example ui<HTMLInputElement>()(["input", "change"])  // 2 handlers requis
+ * @example ui<HTMLButtonElement>()(["click"])           // interactive
+ * @example ui<HTMLSpanElement>()([])                    // explicitly non-interactive
+ * @example ui<HTMLInputElement>()(["input", "change"])  // 2 required handlers
  */
 declare function ui<TEl extends HTMLElement = HTMLElement>(): <const TEvts extends ReadonlyArray<TEventsFor<TEl>>>(events: HasNoDuplicates<TEvts> extends true ? TEvts : never) => TUIEntry<TEl, TEvts>;
 /**
- * Module contractuel UI — clés → entrées typées (ADR-0042).
- * Une View ou Behavior compose ce module avec un `TFeatureContract`.
+ * UI contract module — keys → typed entries (ADR-14).
+ * A View or Behavior composes it with a `TFeatureContract`.
  */
 type TUIContract = Readonly<Record<string, TUIEntry>>;
 /**
- * Module sélecteurs CSS — overridable par Composer (D34).
+ * CSS selector module — overridable by the Composer (ADR-21).
  *
- * Contraint les clés à matcher `TUI` : aucune clé orpheline possible.
- * Le développeur doit fournir un sélecteur pour chaque entrée déclarée
- * dans `uiEvents` — manquant → erreur compile.
+ * Keys must match `TUI`: no orphan key is possible. A selector must be
+ * provided for every entry declared in `uiEvents` — missing → compile error.
  */
 type TUIElements<TUI extends TUIContract> = {
     readonly [K in keyof TUI]: string;
 };
-/** Extrait le sous-type HTMLElement d'une TUIEntry via le phantom. */
+/** Extracts the HTMLElement subtype of a TUIEntry through the phantom. */
 type ExtractEl<TEntry extends TUIEntry> = TEntry extends TUIEntry<infer TEl, infer _TEvts> ? TEl : HTMLElement;
 /**
- * Projection Node N1 — mutations DOM chirurgicales typées au sous-type TEl.
- * `element()` retourne le vrai HTMLElement déclaré (HTMLButtonElement, ...).
+ * N1 projection node — targeted DOM mutations typed to the TEl subtype.
+ * `element()` returns the actual declared HTMLElement (HTMLButtonElement, ...).
+ * Known gap (ADR-16): exposing the raw element weakens I39.
  */
 type TProjectionNode<TEl extends HTMLElement = HTMLElement> = {
     /** Sets textContent */
@@ -25489,64 +25490,63 @@ type TProjectionNode<TEl extends HTMLElement = HTMLElement> = {
     element(): TEl;
 };
 /**
- * Mappe un nom d'événement DOM vers son type natif dans HTMLElementEventMap.
+ * Maps a DOM event name to its native type in HTMLElementEventMap.
  *
- * La branche `: Event` couvre les événements de sous-maps spécifiques non
- * présents dans `HTMLElementEventMap` base (ex: `"enterpictureinpicture"` de
- * `HTMLVideoElementEventMap`). Elle reste nécessaire même avec ADR-0044/0045.
+ * The `: Event` branch covers events of specific sub-maps missing from the
+ * base `HTMLElementEventMap` (e.g. `"enterpictureinpicture"` from
+ * `HTMLVideoElementEventMap`). It is still needed with ADR-15.
  */
 type TDOMEventFor<S extends string> = S extends keyof HTMLElementEventMap ? HTMLElementEventMap[S] : Event;
 /**
- * Handlers DOM REQUIS pour une entrée UI : un par event déclaré.
- * Convention D48 UI : `on{UIKey}{DomEvent}` (sans suffixe — ADR-0042 C14).
+ * DOM handlers REQUIRED for a UI entry: one per declared event.
+ * I48 UI convention: `on{UIKey}{DomEvent}` (no suffix — ADR-15).
  */
 type TUIEntryHandlers<TKey extends string, TEntry extends TUIEntry> = TEntry extends TUIEntry<infer _TEl, infer TEvts> ? {
     [E in TEvts[number] as `on${Capitalize<TKey>}${Capitalize<E & string>}`]: (e: TDOMEventFor<E & string>) => void;
 } : never;
 /**
- * Intersection de tous les handlers DOM requis pour un `TUIContract`.
+ * Intersection of every DOM handler required by a `TUIContract`.
  *
- * Symétrie Contract/Callbacks (ADR-0042 C15, I88) : déclarer
- * `events: ["click"]` impose la présence de `on{Key}Click`.
- * Une entrée `events: []` ne génère aucun handler requis.
+ * Contract/Callbacks symmetry (ADR-14, I88): declaring `events: ["click"]`
+ * requires `on{Key}Click`. An `events: []` entry requires no handler.
  */
 type TUICallbacks<U extends TUIContract> = UnionToIntersection<{
     [K in keyof U]: TUIEntryHandlers<K & string, U[K]>;
 }[keyof U]>;
 /**
- * Contrat View composé — `features` (channel) + `ui` (DOM).
- * Un seul générique sur la classe : `View<TViewContract<F, U>>`.
+ * Composite View contract — `features` (channel) + `ui` (DOM).
+ * A single generic on the class: `View<TViewContract<F, U>>`.
  */
 type TViewContract<F extends TFeatureContract = TFeatureContract, U extends TUIContract = TUIContract> = {
     readonly features: F;
     readonly ui: U;
 };
 /**
- * Clause `implements` unique pour une View (ADR-0042 C3, C15, I88).
+ * Single `implements` clause of a View (ADR-14, I88).
  *
- * Fusionne :
- *  - `TChannelCallbacks<F>` : handlers channel (D48 channel — `on{NS}{Event}Event`)
- *  - `TUICallbacks<U>`      : handlers DOM     (D48 UI      — `on{UIKey}{DomEvent}`)
+ * Merges:
+ *  - `TChannelCallbacks<F>`: channel handlers (I48 channel — `on{NS}{Event}Event`)
+ *  - `TUICallbacks<U>`     : DOM handlers     (I48 UI      — `on{UIKey}{DomEvent}`)
  *
- * Symétrie Contract/Callbacks : pour tout `TViewContract`, le développeur écrit
- * `extends View<TVC>` ET `implements TViewCallbacks<TVC>`.
+ * Contract/Callbacks symmetry: for every `TViewContract`, the developer writes
+ * `extends View<TVC>` AND `implements TViewCallbacks<TVC>`.
  */
 type TViewCallbacks<TVC extends TViewContract> = TChannelCallbacks<TVC["features"]> & TUICallbacks<TVC["ui"]>;
 /**
- * Type structurel d'une classe View concrète, indépendant de son contrat.
- * Utilisé par les composants orchestrateurs (Composer) qui ne dépendent que
- * de la surface publique de mount, pas du contrat spécifique.
+ * Structural type of a concrete View class, independent of its contract.
+ * Used by orchestrating components (Composer) that only depend on the public
+ * mount surface, not on the specific contract.
  *
- * Un seul `any` (vs `<any, any>` avant ADR-0042) — un seul générique sur View<>.
- * `...args: any[]` autorise tout constructeur ; les Vues concrètes peuvent
- * avoir ou non un constructeur explicite — la surface utilisée par le Composer
- * est `mount(rootSelector)`, indépendante du constructeur.
+ * A single `any`, since View<> has a single generic.
+ * `...args: any[]` accepts any constructor; concrete Views may or may not
+ * declare one — the surface the Composer uses is `mount(rootSelector)`,
+ * independent of the constructor.
  */
 type TViewClass = abstract new (...args: any[]) => View<any>;
 /**
- * View — couche présentation paramétrée par un seul générique : `TViewContract`.
+ * View — presentation layer parameterised by a single generic: `TViewContract`.
  *
- * Pattern d'usage :
+ * Usage pattern:
  *
  * ```ts
  * import { CartFeature } from "../Cart/cart.feature";
@@ -25590,7 +25590,7 @@ type TViewClass = abstract new (...args: any[]) => View<any>;
  *     this.getUI("total").text(`${p.qty} items`);  // → TProjectionNode<HTMLSpanElement>
  *   }
  *   onAddBtnClick(e: MouseEvent): void {
- *     this.trigger("cart:addItem", { id: "p1", qty: 1 });  // ✅ payload inféré
+ *     this.trigger("cart:addItem", { id: "p1", qty: 1 });  // ✅ inferred payload
  *   }
  * }
  * ```
@@ -25598,89 +25598,92 @@ type TViewClass = abstract new (...args: any[]) => View<any>;
 declare abstract class View<TVC extends TViewContract = TViewContract> {
     #private;
     /**
-     * Module Feature : Feature refs par lane (Feature-groupé).
-     * Évalué une seule fois au mount (ADR-0024). Structurel — non-overridable.
+     * Feature module: Feature refs by lane (Feature-grouped).
+     * Read once at mount (ADR-14). Structural — not overridable.
      */
     abstract get features(): TVC["features"];
     /**
-     * Module UI events : nœuds DOM + types HTML + events déclarés.
-     * Structurel — non-overridable. Lu au mount pour D48 (`addEventListener`).
+     * UI events module: DOM nodes + HTML types + declared events.
+     * Structural — not overridable. Read at mount to add listeners (ADR-15).
      */
     abstract get uiEvents(): TVC["ui"];
     /**
-     * Module sélecteurs CSS — overridable par Composer (D34).
-     * Le Composer peut injecter des overrides via `resolve() → options.uiElements`.
+     * CSS selector module — overridable by the Composer (ADR-21).
+     * Planned: the Composer will inject overrides through `resolve() → options`
+     * (stratum 2, not delivered).
      */
     abstract get uiElements(): TUIElements<TVC["ui"]>;
-    /** Le sélecteur rootElement injecté au mount (I31). */
+    /** The rootElement selector injected at mount (I31). */
     get rootElement(): string | null;
     /**
-     * L'élément DOM racine après mount. Disponible dans onAttach() et les
-     * handlers — permet aux sous-classes de lire les data-* attributes (I34).
+     * Root DOM element after mount. Available in onAttach() and in handlers —
+     * lets subclasses read data-* attributes (I34).
      */
     protected get el(): HTMLElement | null;
     /**
-     * Monte la View sur un rootElement. Appelé par le Composer.
-     * - Lit `get features()` / `get uiEvents()` / `get uiElements()` une seule fois (ADR-0024)
-     * - Résout le rootElement dans le DOM
-     * - Auto-discover les UI handlers (D48 UI — pilotés par uiEvents[k].events)
-     * - Auto-discover les Channel listeners (D48 channel — pilotés par features[NS].listens)
-     * - Appelle onAttach()
+     * Mounts the View on a rootElement. Called by the Composer.
+     * - Reads `get features()` / `get uiEvents()` / `get uiElements()` once (ADR-14)
+     * - Resolves the rootElement in the DOM (whole document today, not the
+     *   Composer's slot — ADR-19 gap)
+     * - Auto-discovers the UI handlers (I48 UI — driven by uiEvents[k].events)
+     * - Auto-discovers the Channel listeners (I48 channel — driven by features[NS].listens)
+     * - Calls onAttach()
      */
     mount(rootSelector: string): void;
     /**
-     * I39 — Accès DOM typé via `getUI(key)`. Résout dans le scope du rootElement (I40).
-     * Le retour est `TProjectionNode<TEl>` où `TEl` est extrait du phantom `_el?`
-     * de l'entrée UI déclarée — `element()` retourne le vrai sous-type HTML.
+     * I39 — typed DOM access through `getUI(key)`. Resolves inside the
+     * rootElement scope (I40; slot exclusion not delivered yet).
+     * Returns `TProjectionNode<TEl>`, where `TEl` comes from the `_el?` phantom
+     * of the declared UI entry — `element()` returns the actual HTML subtype.
      */
     getUI<K extends keyof TVC["ui"] & string>(key: K): TProjectionNode<ExtractEl<TVC["ui"][K]>>;
     /**
-     * Envoie un Command typé via Channel (I4 — View ne peut qu'envoyer).
+     * Sends a typed Command through the Channel (I4 — a View can only send).
      *
-     * `key` est une clé namespacée `"ns:cmd"` ; doit appartenir à
-     * `TFlatTriggers<TVC["features"]>`, sinon erreur compile.
-     * Exposé en `protected` — les sous-classes l'appellent depuis les handlers UI.
+     * `key` is a namespaced `"ns:cmd"` key; it must belong to
+     * `TFlatTriggers<TVC["features"]>`, otherwise a compile error.
+     * `protected` — subclasses call it from their UI handlers.
      */
     protected trigger<K extends TFlatTriggers<TVC["features"]> & string>(key: K, payload: TCommandPayloadFor<TVC["features"], K>): void;
     /**
-     * Effectue une Request synchrone typée vers un Channel déclaré.
-     * Retourne le résultat typé ou `null` si aucun replier n'est enregistré
-     * côté Feature propriétaire (D44).
+     * Performs a typed synchronous Request to a declared Channel.
+     * Returns the typed result, or `null` when the owning Feature registered
+     * no replier (ADR-02).
      *
-     * `key` est une clé namespacée `"ns:req"` ; doit appartenir à
-     * `TFlatRequests<TVC["features"]>`, sinon erreur compile.
+     * `key` is a namespaced `"ns:req"` key; it must belong to
+     * `TFlatRequests<TVC["features"]>`, otherwise a compile error.
      */
     protected request<K extends TFlatRequests<TVC["features"]> & string>(key: K, params: TRequestParamsFor<TVC["features"], K>): TRequestResultFor<TVC["features"], K> | null;
-    /** Hook appelé après le mount. Override dans les sous-classes. */
+    /** Hook called after mount. Override it in subclasses. */
     onAttach(): void;
 }
 
 /**
  * @bonsai/composer — Composer abstract base class
  *
- * Strate 0 — Capacités :
+ * Delivered capabilities:
  *   - resolve(event | null) → TResolveResult | null (0/1 View)
- *   - Slot DOM immutable fourni par le parent (Foundation ou View)
- *   - Machine à états minimal : idle → active → idle
- *   - Création d'élément DOM si absent (D30)
- *   - Diff de transitions §3.1 (5 cas Same/New/null) sans recréation inutile
+ *   - Immutable DOM slot provided by the parent (Foundation or View)
+ *   - Minimal state machine: idle → active → idle
+ *   - Slot element created when missing (ADR-19)
+ *   - §3.1 transition diff (5 Same/New/null cases), no needless re-creation
  *
- * Invariants :
- *   I20  — Seuls Foundation/Composers créent/détruisent des Views
- *   I35  — Composer n'a aucune écriture DOM (lecture scope autorisée)
- *   I37  — Un seul type de Composer, gère 0/1 Views en strate 0
- *   I40  — Scope DOM d'une View exclut les sous-arbres des slots déclarés
+ * Invariants:
+ *   I20  — Only Foundation/Composers create or destroy Views
+ *   I35  — A Composer never writes to the DOM (reading its scope is allowed)
+ *   I37  — A single Composer type; manages 0/1 View today (N instances: stratum 1d)
+ *   I40  — A View's DOM scope excludes the subtrees of its declared slots
  *
- * ADRs :
- *   ADR-0024 — get params() value-first (strate 0 : pas de listen/request)
- *   ADR-0025 — Pas de lifecycle hooks (ni onMount, ni onUnmount, ni onAttach)
- *   ADR-0026 — rootElement = string CSS selector only
- *   ADR-0027 — resolve(event) unique point d'entrée, pas de state local
+ * ADRs:
+ *   ADR-14 — modular contract (`get features()`): not delivered yet, no listen/request
+ *   ADR-18 — no lifecycle hooks (no onMount, onUnmount or onAttach)
+ *   ADR-19 — rootElement is a CSS selector string only
+ *   ADR-18 — resolve(event) is the single entry point, no local state
  *
- * Diff §3.1 (RFC composer.md) :
- *   | resolve() retourne | View montée         | Action                                    |
+ * §3.1 diff (docs/spec/4-couche-concrete/composer.md):
+ *   | resolve() returns  | Mounted View        | Action                                    |
  *   | ------------------ | ------------------- | ----------------------------------------- |
- *   | SameView+SameRoot  | SameView instance   | **No-op** (instance conservée)            |
+ *   | SameView+SameRoot  | SameView instance   | **No-op** (instance kept)                 |
  *   | NewView (ou root)  | OldView instance    | **Detach** OldView → **Attach** NewView   |
  *   | NewView            | null                | **Attach** NewView                        |
  *   | null               | OldView instance    | **Detach** OldView                        |
@@ -25690,62 +25693,64 @@ declare abstract class View<TVC extends TViewContract = TViewContract> {
  */
 
 /**
- * Résultat de resolve() — décrit la View à instancier.
+ * Result of resolve() — describes the View to instantiate.
  *
- * Strate 0 (ADR-0028) : pas de tableau (N-instances reportées en strate 1),
- * pas d'options (D34 reporté).
+ * No array yet (N instances: stratum 1d) and no `options` (ADR-21, stratum 2).
  *
- * Le champ `view` (et non `viewClass`) est l'identifiant officiel
- * du contrat — alignement RFC composer.md §1.1 + ADR-0020 §6.2 + ADR-0026.
+ * The field is named `view` (not `viewClass`), as in the spec
+ * (composer.md §1.1, ADR-18, ADR-19).
  *
- * `TViewClass` est volontairement structurel (variance permissive) — le
- * Composer ne dépend pas des `TDeps`/`TContract` spécifiques de la View
- * concrète, seulement de sa surface de mount (cf. ADR-0041 + bonsai-view.ts).
+ * `TViewClass` is deliberately structural (permissive variance): the
+ * Composer does not depend on the concrete View's contract, only on its
+ * mount surface (see ADR-14 and bonsai-view.ts).
  */
 type TResolveResult = {
-    /** La classe View concrète à instancier */
+    /** Concrete View class to instantiate */
     readonly view: TViewClass;
-    /** Sélecteur CSS de l'élément root de la View — dans le scope du Composer (ADR-0026) */
+    /**
+     * CSS selector of the View's root element (ADR-19). Meant to be resolved in
+     * the Composer's slot; today View.mount() queries the whole document.
+     */
     readonly rootElement: string;
 };
 /**
- * Options de construction du Composer — fournies par le framework.
+ * Composer construction options — provided by the framework.
  */
 type TComposerOptions = {
-    /** Sélecteur CSS du slot DOM du Composer — fourni par Foundation ou View parent */
+    /** CSS selector of the Composer's DOM slot — provided by the Foundation or parent View */
     readonly rootElement: string;
 };
 declare abstract class Composer {
     #private;
     constructor(options: TComposerOptions);
     /**
-     * Le sélecteur rootElement (ADR-0026).
+     * The rootElement selector (ADR-19).
      */
     get rootElement(): string;
     /**
-     * Référence au slot DOM résolu. Null avant attach().
+     * Resolved DOM slot. Null before attach().
      */
     get slot(): HTMLElement | null;
     /**
-     * La View actuellement montée, ou null.
+     * Currently mounted View, or null.
      */
     get currentView(): View | null;
     /**
-     * Attache le Composer à son slot DOM.
-     * Appelé par le framework (Foundation ou Composer parent).
-     * Résout le slot dans le DOM, puis appelle initialResolve().
+     * Attaches the Composer to its DOM slot.
+     * Called by the framework (Foundation or parent Composer).
+     * Resolves the slot in the DOM, then runs the initial resolve.
      */
     attach(parentElement: HTMLElement): void;
     /**
-     * Appelé par le framework quand un Event est dispatché sur un Channel écouté.
-     * En strate 0, pas de listen déclaré — cette méthode est un point d'extension.
+     * Called by the framework when an Event is dispatched on a listened Channel.
+     * No listen declaration exists yet, so only tests call it today (ADR-18).
      */
     performResolve(event: unknown | null): void;
     /**
-     * Unique point d'entrée — décide quelle View instancier (ADR-0027).
+     * Single entry point — decides which View to instantiate (ADR-18).
      *
-     * @param event — l'Event déclencheur (null au premier montage / bootstrap)
-     * @returns TResolveResult pour monter une View, null pour vider le scope
+     * @param event — the triggering Event (null on first mount / bootstrap)
+     * @returns a TResolveResult to mount a View, null to empty the slot
      */
     abstract resolve(event: unknown | null): TResolveResult | null;
 }
@@ -25753,26 +25758,26 @@ declare abstract class Composer {
 /**
  * @bonsai/foundation — Foundation abstract base class
  *
- * Strate 0 — Capacités :
- *   - body  = document.body            (toujours en strate 0, I33)
- *   - html  = document.documentElement (droit d'altération N1, D27)
- *   - Déclare les Composers racines via abstract get composers()
- *     (Readonly<Record<string, typeof Composer>> — ADR-0038)
- *   - Crée et attache les Composers au bootstrap dans l'ordre d'insertion
- *     (ES2015+ Object.entries garantit l'ordre des clés string)
- *   - Hooks onAttach() / onDetach()
+ * Delivered capabilities:
+ *   - body = document.body            (I33)
+ *   - html = document.documentElement (N1 alteration right, ADR-20)
+ *   - Declares the root Composers through abstract get composers()
+ *     (Readonly<Record<string, typeof Composer>> — ADR-20)
+ *   - Creates and attaches the Composers at bootstrap in insertion order
+ *     (ES2015+ Object.entries guarantees string-key order)
+ *   - onAttach() / onDetach() hooks
  *
- * Invariants :
- *   I33  — Foundation unique par application — cible <body>
- *   I20  — Seuls Foundation/Composers créent/détruisent des Views
- *   I34  — rootElement d'une View = enfant de <body>, jamais <body>
- *   I67  — Stabilité structurelle de Foundation (ADR-0038)
- *   D27  — Foundation peut altérer html/body en N1 uniquement
+ * Invariants:
+ *   I33  — A single Foundation per application — targets <body>
+ *   I20  — Only Foundation/Composers create or destroy Views
+ *   I34  — A View's rootElement is a descendant of <body>, never <body>
+ *   I67  — Structural stability of the Foundation (ADR-20)
+ *   ADR-20 — the Foundation may alter html/body at N1 only
  *
- * Strate 0 simplifications (ADR-0028) :
- *   - Pas de TUIMap (ADR-0018 Suspended)
- *   - Pas d'event delegation globale (strate 1)
- *   - Pas de params() Channel capabilities (strate 1)
+ * Not delivered yet:
+ *   - Declared global events (post-v1 track, docs/ROADMAP.md)
+ *   - Global event delegation
+ *   - Channel capabilities (form not decided)
  *
  * @packageDocumentation
  */
@@ -25781,53 +25786,52 @@ declare abstract class Foundation {
     #private;
     constructor();
     /**
-     * Référence à <body> — alignement RFC foundation.md §1.
-     * Le développeur peut altérer en N1 (classes, attributs) — D27.
+     * <body> (foundation.md §1).
+     * Developers may alter it at N1 only (classes, attributes) — ADR-20.
      */
     protected get body(): HTMLElement;
     /**
-     * Référence à <html> — alignement RFC foundation.md §1.
-     * Le développeur peut altérer en N1 (classes, attributs) — D27.
+     * <html> (foundation.md §1).
+     * Developers may alter it at N1 only (classes, attributes) — ADR-20.
      */
     protected get html(): HTMLElement;
     /**
-     * Les Composer instances créées.
+     * The created Composer instances.
      */
     get composerInstances(): readonly Composer[];
     /**
-     * Attache la Foundation : résout et crée les Composers racines.
-     * Appelé une seule fois par Application.start().
+     * Attaches the Foundation: resolves and creates the root Composers.
+     * Called once by Application.start().
      *
-     * Itère sur Object.entries(this.composers) — l'ordre d'insertion des
-     * clés string non numériques est garanti par ES2015+ (§9.1.12).
+     * Iterates over Object.entries(this.composers) — insertion order of
+     * non-numeric string keys is guaranteed by ES2015+ (§9.1.12).
      */
     attach(): void;
     /**
-     * Déclare les Composers racines de Foundation — ADR-0038.
+     * Declares the Foundation's root Composers — ADR-20.
      *
-     * Clés = sélecteurs CSS dans <body> (string libre, validé runtime).
-     * Valeurs = classes Composer concrètes.
+     * Keys = CSS selectors in <body> (free string, checked at runtime).
+     * Values = concrete Composer classes.
      *
-     * Layout stable et persistant — typiquement 3-5 entrées
-     * (#header, #main, #footer, #aside...). Évalué une seule fois au bootstrap (I67).
+     * Stable, persistent layout — typically 3 to 5 entries
+     * (#header, #main, #footer, #aside...). Evaluated once at bootstrap (I67).
      *
-     * Pour la composition dynamique : déléguer à une View dédiée via View.composers + PDR
-     * (cf. ADR-0038 §6.3 — Pattern délégation).
+     * For dynamic composition, delegate to a dedicated View through
+     * View.composers + PDR (ADR-20, delegation pattern).
      */
     abstract get composers(): Readonly<Record<string, typeof Composer>>;
     /**
-     * Hook appelé après résolution des Composers racines.
-     * Surcharger pour brancher des écouteurs DOM globaux (resize, scroll, etc.).
+     * Hook called once the root Composers are resolved.
+     * Override it to add global DOM listeners (resize, scroll, etc.).
      * Default no-op.
      */
     onAttach(): void;
     /**
-     * Hook appelé au shutdown — symétrique de onAttach().
-     * Surcharger pour débrancher les écouteurs DOM globaux installés dans onAttach().
+     * Hook called at shutdown — counterpart of onAttach().
+     * Override it to remove the global DOM listeners added in onAttach().
      * Default no-op.
      *
-     * NB : non invoqué automatiquement en strate 0 (pas de shutdown formalisé) ;
-     * point d'extension pour la strate 1.
+     * NB: not called yet — Application.stop() does not exist (stratum 1).
      */
     onDetach(): void;
 }
@@ -25835,62 +25839,61 @@ declare abstract class Foundation {
 /**
  * @bonsai/application — Application class
  *
- * Strate 0 (refondu ADR-0039) — Capacités :
- *   - constructor({ foundation, features }) — déclare le manifest applicatif
- *   - start() — bootstrap en phases réordonnées (ADR-0046) :
- *       Phase 0a: Validation format namespace (assertValidNamespace)
- *       Phase 0b: Instanciation pure des Features (ctor inerte — I94) + sentinel
- *       Phase 0c: Lecture instance.listens/queries — validation références croisées (I70)
- *       Phase 1: Channels (crée les channels de chaque Feature)
- *       Phase 2: Entities (instanciées par les Features)
- *       Phase 3: Features (bootstrap() + onInit() sur les instances Phase 0b)
+ * Capabilities (ADR-07, ADR-08, ADR-09):
+ *   - constructor({ foundation, features }) — declares the application manifest
+ *   - start() — phased bootstrap:
+ *       Phase 0a: namespace format validation (assertValidNamespace)
+ *       Phase 0b: pure instantiation of the Features (inert ctor — I94) + sentinel
+ *       Phase 0c: read instance.listens/queries — cross-reference validation (I70)
+ *       Phase 1: Channels (one channel per Feature)
+ *       Phase 3: Features (bootstrap() — Entity, handlers, onInit() — on the Phase 0b instances)
  *       Phase 4: Foundation (composers → views, attach)
  *
- * Invariants :
- *   I23  — Application est dormante au runtime (pas de handle/emit/listen/request)
- *   I24  — Le manifest garantit l'unicité au compile-time ; Application valide
- *          format + réservés + cohérence des `channels` au bootstrap (amendé ADR-0039)
- *   I33  — Application sans Foundation ne peut rien afficher
- *   I56  — onInit() de chaque Feature appelé avant la création de la Foundation
- *   I68  — Le namespace est porté par le manifest, pas par un static (ADR-0039)
- *   I69  — Le manifest est l'unique source de vérité de l'identité (ADR-0039)
- *   I70  — Toute référence à un namespace externe DOIT être validée contre
- *          le manifest — lue depuis instance.listens/queries (amendé ADR-0046)
- *   I71  — `RESERVED_NAMESPACES` est une constante framework (ADR-0039)
- *   I94  — Le constructeur de Feature est inerte : sentinel Phase 0b détecte
- *          tout side-effect Radio inattendu (ADR-0046)
+ * Invariants:
+ *   I23  — Application is dormant at runtime (no handle/emit/listen/request)
+ *   I24  — The manifest guarantees uniqueness at compile time; Application
+ *          validates format, reserved names and `channel` consistency at bootstrap
+ *   I33  — An Application without a Foundation cannot render anything
+ *   I56  — Every Feature's onInit() runs before the Foundation is created
+ *   I68  — The namespace is carried by the manifest, not by a static (ADR-08)
+ *   I69  — The manifest is the single source of truth for identity (ADR-08)
+ *   I70  — Every reference to an external namespace MUST be validated against
+ *          the manifest — read from instance.listens/queries (ADR-09)
+ *   I71  — `RESERVED_NAMESPACES` is a framework constant (ADR-08)
+ *   I94  — The Feature constructor is inert: the Phase 0b sentinel detects
+ *          any unexpected Radio side effect (ADR-09)
  *
- * Strate 0 simplifications :
- *   - Pas de stop()
- *   - Pas de SSR (serverState)
- *   - Pas de DevTools
- *   - Pas de BonsaiRegistry ESM
+ * Not delivered yet:
+ *   - stop()
+ *   - SSR (serverState)
+ *   - DevTools
+ *   - ESM BonsaiRegistry
  *
  * @packageDocumentation
  */
 
 /**
- * Manifest de Features applicatives — type structurel laxe accepté au runtime
- * par `Application`. La cohérence stricte (camelCase, mots réservés, accord
- * `TSelfNS ↔ clé`) est portée côté appelant par `StrictManifest<M>` au
- * `satisfies` (cf. ADR-0039 §Décision et `@bonsai/feature/types`).
+ * Application Features manifest — loose structural type accepted at runtime
+ * by `Application`. Strict consistency (camelCase, reserved words,
+ * `TSelfNS ↔ key` agreement) is enforced on the caller side by
+ * `StrictManifest<M>` through `satisfies` (see ADR-08 and `@bonsai/feature/types`).
  *
- * Application n'a besoin ici que de :
- *   - clés `string` (les namespaces)
- *   - valeurs = constructeurs `(namespace) => Feature`
+ * Application only needs here:
+ *   - `string` keys (the namespaces)
+ *   - values = `(namespace) => Feature` constructors
  *
- * Le typage strict côté manifest applicatif vit dans `@bonsai/feature`.
+ * Strict typing of the application manifest lives in `@bonsai/feature`.
  */
 type TFeaturesManifest = Readonly<Record<string, new (namespace: string) => Feature<any, any, any>>>;
 /**
- * Options du constructeur Application — strate 0 minimal.
+ * Application constructor options.
  *
- * - `foundation` : classe Foundation concrète (obligatoire pour `start()` —
- *   I33 lève sinon).
- * - `features` : manifest applicatif (clé = namespace, valeur = classe Feature).
- *   La validation compile-time se fait côté appelant via
- *   `satisfies StrictManifest<AppManifest>` ; Application n'effectue qu'un
- *   filet runtime au `start()`.
+ * - `foundation`: concrete Foundation class (required by `start()` — throws
+ *   otherwise, I33).
+ * - `features`: application manifest (key = namespace, value = Feature class).
+ *   Compile-time validation happens on the caller side through
+ *   `satisfies StrictManifest<AppManifest>`; Application only runs a runtime
+ *   safety net in `start()`.
  */
 type TApplicationOptions<M extends TFeaturesManifest = TFeaturesManifest> = {
     readonly foundation?: typeof Foundation;
@@ -25900,27 +25903,26 @@ declare class Application<M extends TFeaturesManifest = TFeaturesManifest> {
     #private;
     constructor(options?: TApplicationOptions<M>);
     /**
-     * Bootstrap en phases réordonnées (ADR-0046 — M1).
-     * Ne peut être appelé qu'une seule fois.
+     * Phased bootstrap (ADR-07, ADR-09). Can only be called once.
      *
-     * Phases :
-     *   Phase 0a — Validation format namespace (assertValidNamespace + I73/I22)
-     *   Phase 0b — Instanciation pure (ctor inerte I94) + sentinel Radio
-     *   Phase 0c — Lecture instance.listens/queries — validation références (I70)
-     *   Phase 1  — Channels  : `Radio.channel(namespace)` pour chaque Feature
-     *   Phase 3  — Features  : `bootstrap()` sur les instances de Phase 0b (I56)
+     * Phases:
+     *   Phase 0a — namespace format validation (assertValidNamespace + I73/I22)
+     *   Phase 0b — pure instantiation (inert ctor, I94) + Radio sentinel
+     *   Phase 0c — read instance.listens/queries — reference validation (I70)
+     *   Phase 1  — Channels  : `Radio.channel(namespace)` for each Feature
+     *   Phase 3  — Features  : `bootstrap()` on the Phase 0b instances (I56)
      *   Phase 4  — Foundation: `Foundation.attach()` (Composers → Views)
      *
-     * @throws si appelée deux fois (strate 0 : pas de re-bootstrap)
-     * @throws `BonsaiNamespaceError` si le manifest viole les invariants (filet
-     *   runtime — le compile-time est censé l'avoir déjà attrapé via
-     *   `StrictManifest<M>`).
-     * @throws si aucune Foundation n'a été fournie au constructeur (I33).
+     * @throws when called twice (no re-bootstrap)
+     * @throws `BonsaiNamespaceError` when the manifest breaks the invariants
+     *   (runtime safety net — compile time should already have caught it
+     *   through `StrictManifest<M>`).
+     * @throws when no Foundation was given to the constructor (I33).
      */
     start(): void;
-    /** La Foundation instanciée (après start). */
+    /** The instantiated Foundation (after start). */
     get foundation(): Foundation | null;
-    /** Indique si l'application a démarré. */
+    /** Whether the application has started. */
     get started(): boolean;
 }
 

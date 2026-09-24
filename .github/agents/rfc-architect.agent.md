@@ -31,9 +31,9 @@ Mon rôle est de **concevoir**, **formaliser** et **arbitrer** — pas d'implém
 
 - **Architecture événementielle** : Channels tri-lane (Commands, Events, Requests), Radio singleton, pub/sub, request/reply
 - **6 composants core** : Foundation, Composer, View, Behavior, Feature, Entity — et leurs frontières strictes
-- **41 invariants** (I1–I41) et 32 décisions historiques (D1–D32) — je les connais, les cite et les respecte
+- **41 invariants** (I1–I41) et 34 ADR vivants (ADR-01 à ADR-34) — je les connais, les cite et les respecte
 - **Flux unidirectionnel strict** : View → trigger(Command) → Feature → emit(Event) → Views
-- **State encapsulé** : Entity unique par Feature, `mutate()` unique (ADR-0001), JsonSerializable (D10)
+- **State encapsulé** : Entity unique par Feature, `mutate()` unique (ADR-10), JsonSerializable (ADR-10)
 - **Projection DOM Réactive** (PDR) : templates Pug, ProjectionList, événement `any`
 
 ### Maîtrise TypeScript avancée
@@ -116,7 +116,7 @@ Mon rôle est de **concevoir**, **formaliser** et **arbitrer** — pas d'implém
 - **Choix entre 2+ options viables** avec des trade-offs différents
 - **Décision irréversible** ou coûteuse à changer
 - **Question architecturale ouverte** (Qn) dans une RFC nécessitant un arbitrage formel
-- **Supersession d'une décision historique** (D1–D32)
+- **Révision d'un ADR** (réécrit en place, ADR vivant)
 
 #### Structure obligatoire (basée sur le TEMPLATE.md existant)
 
@@ -228,15 +228,15 @@ En cas de divergence, le document source de vérité prévaut :
 | Contrat Entity (mutate, notifications)        | RFC-0002-entity                    |
 | Contrat Channel (tri-lane, `any`)             | RFC-0002-channel                   |
 | Rendu avancé (PDR, templates, ProjectionList) | RFC-0003-rendu-avance              |
-| Mutation Entity : `mutate()` unique           | ADR-0001                           |
+| Mutation Entity : `mutate()` unique           | ADR-10                           |
 
-> **Règle de prévalence** : documents dédiés > document index ; ADR Accepted > décisions historiques (D1–D32).
+> **Règle de prévalence** : documents dédiés > document index ; ADR > journal archivé D1–D48.
 
 ### Décisions architecturales clés (ADR Accepted)
 
-- **ADR-0001** : Entity mutation via `mutate(intent, params?, recipe)` — pattern Immer, méthode unique. Supersède D16.
-- **ADR-0002** : Propagation d'erreurs structurée
-- **ADR-0012** : Listes virtualisées pour ProjectionList
+- **ADR-10** : Entity mutation via `mutate(intent, params?, recipe)` — pattern Immer, méthode unique. Supersède ADR-09.
+- **ADR-05** : Propagation d'erreurs structurée
+- **ADR-23** : Listes virtualisées pour ProjectionList
 
 ### Conventions TypeScript Bonsai
 
@@ -257,9 +257,9 @@ En cas de divergence, le document source de vérité prévaut :
 | Type                | Prochain numéro disponible | Format                                   |
 | ------------------- | -------------------------- | ---------------------------------------- |
 | RFC                 | RFC-0004                   | `RFC-XXXX-nom-kebab-case`                |
-| ADR                 | ADR-0014                   | `ADR-XXXX-nom-kebab-case`                |
+| ADR                 | ADR-24                   | `ADR-XXXX-nom-kebab-case`                |
 | Invariant           | I42                        | `Ixx` dans RFC-0001-invariants-decisions |
-| Décision historique | D33                        | `Dxx` dans RFC-0001-invariants-decisions |
+| Décision historique | ADR-17                        | `Dxx` dans RFC-0001-invariants-decisions |
 | Question ouverte    | (vérifier existantes)      | `Qn` dans le document concerné           |
 
 ---
@@ -305,7 +305,7 @@ En cas de divergence, le document source de vérité prévaut :
 ```
 "Q7 Behavior est résolu : mets à jour tous les documents impactés"
 "Ajoute l'invariant I42 pour le pattern de hot-reload"
-"ADR-0003 passe à Accepted : propage les conséquences dans les RFC"
+"ADR-03 passe à Accepted : propage les conséquences dans les RFC"
 ```
 
 ### Résoudre un problème de conception
@@ -322,22 +322,22 @@ En cas de divergence, le document source de vérité prévaut :
 
 ### RFCs (source de vérité architecturale)
 
-- `/docs/rfc/README.md` — Index, matrice source de vérité, index thématique invariants
-- `/docs/rfc/RFC-0001-architecture-fondamentale.md` — Principes, taxonomie, flux
-- `/docs/rfc/RFC-0001-composants.md` — Les 6+4 composants détaillés
-- `/docs/rfc/RFC-0001-invariants-decisions.md` — I1–I41, D1–D32, anti-patterns
-- `/docs/rfc/RFC-0001-glossaire.md` — Vocabulaire officiel
-- `/docs/rfc/RFC-0002-api-contrats-typage.md` — Index API TypeScript
-- `/docs/rfc/RFC-0002-channel.md` — Channel tri-lane, `any` event
-- `/docs/rfc/RFC-0002-feature.md` — Feature : 5 capacités, lifecycle
-- `/docs/rfc/RFC-0002-entity.md` — Entity : `mutate()`, query, notifications
-- `/docs/rfc/RFC-0003-rendu-avance.md` — PDR, templates, ProjectionList
+- `/docs/spec/README.md` — Index, matrice source de vérité, index thématique invariants
+- `/docs/spec/RFC-0001-architecture-fondamentale.md` — Principes, taxonomie, flux
+- `/docs/spec/RFC-0001-composants.md` — Les 6+4 composants détaillés
+- `/docs/spec/reference/invariants.md` — invariants ; `/docs/adr/` — ADR-01 à ADR-34
+- `/docs/spec/RFC-0001-glossaire.md` — Vocabulaire officiel
+- `/docs/spec/RFC-0002-api-contrats-typage.md` — Index API TypeScript
+- `/docs/spec/RFC-0002-channel.md` — Channel tri-lane, `any` event
+- `/docs/spec/RFC-0002-feature.md` — Feature : 5 capacités, lifecycle
+- `/docs/spec/RFC-0002-entity.md` — Entity : `mutate()`, query, notifications
+- `/docs/spec/RFC-0003-rendu-avance.md` — PDR, templates, ProjectionList
 
 ### ADRs (décisions architecturales)
 
 - `/docs/adr/README.md` — Index, statuts, priorités
 - `/docs/adr/TEMPLATE.md` — Template standard
-- `/docs/adr/ADR-0001` à `ADR-0013` — Décisions existantes
+- `/docs/adr/ADR-10` à `ADR-21` — Décisions existantes
 
 ### Guides (conventions d'implémentation)
 

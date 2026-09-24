@@ -1,4 +1,4 @@
-// Classe de gestion du cache pour les composants de type `library`
+// Cache management class for `library` components
 import { join } from "node:path";
 import fileSystem from "fs-extra";
 import { load as loadYaml } from "js-yaml";
@@ -27,7 +27,7 @@ export class LibraryCache implements ICacheStrategy<{ libName: string }> {
       ".bonsai-cache",
       "library-cache.json"
     );
-    // Forcer la lecture asynchrone au démarrage et la rendre accessible
+    // Force the asynchronous read at startup and make it awaitable
     this._loadPromise = this.loadCacheFromDisk();
   }
 
@@ -93,7 +93,7 @@ export class LibraryCache implements ICacheStrategy<{ libName: string }> {
   }
 
   /**
-   * Récupère la version d'une librairie (robuste, pnpm list --json prioritaire)
+   * Reads a library's version (robust, `pnpm list --json` first)
    */
   public async getLibraryVersion(libName: string): Promise<string | null> {
     const organized = this.componentsRegistry.organizedComponents;
@@ -106,7 +106,7 @@ export class LibraryCache implements ICacheStrategy<{ libName: string }> {
       return null;
     }
     const depName = pkg.upstreamDependency || libName;
-    // 1. Méthode principale : pnpm list --json
+    // 1. Main method: pnpm list --json
     try {
       const { stdout } = await execa("pnpm", ["list", depName, "--json"]);
       const list = JSON.parse(stdout);
@@ -134,7 +134,7 @@ export class LibraryCache implements ICacheStrategy<{ libName: string }> {
   }
 
   /**
-   * Vérifie si la version de la librairie a changé depuis le dernier build
+   * Checks whether the library version changed since the last build
    */
   public async shouldRebuild(
     libName: string,
@@ -146,21 +146,21 @@ export class LibraryCache implements ICacheStrategy<{ libName: string }> {
   }
 
   /**
-   * Met à jour la version de la librairie dans le cache
+   * Updates the library version in the cache
    */
   public updateCache(libName: string, version: string) {
     this.cacheStore.set(libName, version);
   }
 
   /**
-   * Récupère la version stockée dans le cache
+   * Reads the version stored in the cache
    */
   public getCachedVersion(libName: string): string | undefined {
     return this.cacheStore.get(libName);
   }
 
   /**
-   * Vérifie si le cache est valide pour la librairie (version inchangée)
+   * Checks whether the cache is valid for the library (version unchanged)
    */
   public async isValid(target: { libName: string }): Promise<boolean> {
     const lastVersion = this.getCachedVersion(target.libName);
@@ -170,15 +170,15 @@ export class LibraryCache implements ICacheStrategy<{ libName: string }> {
   }
 
   /**
-   * Récupère les artefacts du cache (ici, rien à faire, car le cache ne stocke que la version)
+   * Restores the artifacts from the cache (nothing to do here: the cache only stores the version)
    */
   public async read(target: { libName: string }): Promise<boolean> {
-    // Pour une lib, le cache ne stocke que la version, pas d'artefact à restaurer
+    // For a library the cache only stores the version, there is no artifact to restore
     return this.isValid(target);
   }
 
   /**
-   * Écrit la version courante dans le cache et log le contenu de la Map
+   * Writes the current version to the cache and logs the content of the Map
    */
   public async write(target: { libName: string }): Promise<boolean> {
     const currentVersion = await this.getLibraryVersion(target.libName);
@@ -197,7 +197,7 @@ export class LibraryCache implements ICacheStrategy<{ libName: string }> {
   }
 
   /**
-   * Vide le cache pour la librairie donnée
+   * Clears the cache for the given library
    */
   public async clear(target: { libName: string }): Promise<void> {
     this.cacheStore.delete(target.libName);
@@ -205,10 +205,10 @@ export class LibraryCache implements ICacheStrategy<{ libName: string }> {
   }
 
   /**
-   * Permet d'attendre explicitement que le cache soit prêt (lecture terminée)
+   * Lets callers explicitly wait until the cache is ready (read finished)
    */
   public async waitReady(): Promise<void> {
-    // On attend que la promesse de chargement soit terminée
+    // Wait for the loading promise to settle
     if (this._loadPromise) {
       await this._loadPromise;
     }

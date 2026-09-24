@@ -9,19 +9,19 @@
  *   I12  — Aucune Feature ne peut emit sur le Channel d'une autre
  *   I17  — Feature peut request en lecture seule
  *   I21  — Chaque Feature DOIT être enregistrée dans le manifest sous une
- *          clé namespace unique camelCase plat (amendé ADR-0039)
+ *          clé namespace unique camelCase plat (amendé ADR-08)
  *   I22  — Relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte
  *   I48  — Handlers = méthodes on<Name><Command|Event|Request> auto-découvertes
- *   I68  — Le namespace est porté par le manifest, pas par un static (ADR-0039)
- *   I72  — TSelfNS doit correspondre à la clé du manifest (ADR-0039)
+ *   I68  — Le namespace est porté par le manifest, pas par un static (ADR-08)
+ *   I72  — TSelfNS doit correspondre à la clé du manifest (ADR-08)
  *   I73  — Chaque Feature concrète DOIT exposer `static readonly channel:
  *          TChannelToken<TDef, TSelfNS>` — exercé par CartFeature / PricingFeature /
- *          CartListenerFeature ci-dessous (ADR-0040)
+ *          CartListenerFeature ci-dessous (ADR-14)
  *   I74  — TChannelDef co-localisé dans le fichier `.feature.ts` du domaine —
  *          ici, toutes les Features inline cohabitent avec leurs TChannelDef
- *          dans ce seul fichier de test (équivalent fixture) (ADR-0040)
+ *          dans ce seul fichier de test (équivalent fixture) (ADR-14)
  *   I79  — Feature.request accepte uniquement un TChannelToken typé
- *          (ADR-0040 — cf. PRICING_TOKEN ligne 68 + requestPrice ligne 99)
+ *          (ADR-14 — cf. PRICING_TOKEN ligne 68 + requestPrice ligne 99)
  *
  * Capacités strate 0 :
  *   C2 — handle(command) via auto-discovery
@@ -82,7 +82,7 @@ class PricingEntity extends Entity<TPricingState> {
   }
 }
 
-// Token pour l'accès typé au Channel externe "pricing" (ADR-0040 — I79)
+// Token pour l'accès typé au Channel externe "pricing" (ADR-14 — I79)
 
 type TCartChannelDef = {
   commands: { addItem: { productId: string; qty: number; price: number } };
@@ -132,7 +132,7 @@ class CartFeature
     return [PRICING_TOKEN] as const;
   }
 
-  /** Liaison Feature → Entity concrète (D17 amendé par ADR-0037) */
+  /** Liaison Feature → Entity concrète (ADR-09) */
   protected get Entity() {
     return CartEntity;
   }
@@ -184,7 +184,7 @@ class PricingFeature
     return PricingEntity;
   }
 
-  // C4 — reply (plus aucun cast grâce à ADR-0037)
+  // C4 — reply (plus aucun cast grâce à ADR-09)
   onGetItemPriceRequest(params: { productId: string }): number | null {
     return this.entity.query.getItemPrice(params.productId);
   }
@@ -213,7 +213,7 @@ class CartListenerFeature
   > = {
     namespace: "cartListener"
   };
-  // I79 amendé (ADR-0046 — I93) — abstract get instance au lieu de static readonly
+  // I79 amendé (ADR-09 — I93) — abstract get instance au lieu de static readonly
   get listens() {
     return cartListenerListens;
   }
@@ -242,7 +242,7 @@ describe("Feature core — Strate 0", () => {
 
   // ─── Namespace et identité ─────────────────────────────────────
 
-  describe("I21 / I68 — Namespace injected via constructor (ADR-0039)", () => {
+  describe("I21 / I68 — Namespace injected via constructor (ADR-08)", () => {
     it("Feature instance exposes the namespace passed to the constructor", () => {
       const feature = new CartFeature("cart");
       feature.bootstrap();
@@ -250,7 +250,7 @@ describe("Feature core — Strate 0", () => {
     });
 
     it("Feature class no longer exposes a static namespace (I68)", () => {
-      // Le `static namespace` est supprimé par ADR-0039 — le namespace vit
+      // Le `static namespace` est supprimé par ADR-08 — le namespace vit
       // désormais dans le manifest applicatif (clé) et l'instance (constructeur).
       expect(
         (CartFeature as unknown as { namespace?: unknown }).namespace
@@ -396,7 +396,7 @@ describe("Feature core — Strate 0", () => {
     });
   });
 
-  describe("isCamelCaseNamespace / isReservedNamespace runtime helpers (ADR-0039)", () => {
+  describe("isCamelCaseNamespace / isReservedNamespace runtime helpers (ADR-08)", () => {
     it("isCamelCaseNamespace returns true for valid camelCase namespaces", () => {
       expect(isCamelCaseNamespace("cart")).toBe(true);
       expect(isCamelCaseNamespace("userProfile")).toBe(true);

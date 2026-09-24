@@ -4,29 +4,29 @@
 
 ---
 
-| Champ             | Valeur                                                                                                  |
-| ----------------- | ------------------------------------------------------------------------------------------------------- |
-| **Périmètre**     | Code applicatif framework (Views, Features, Entities, Channels, DOM)                                    |
-| **Ne couvre pas** | La pipeline de build (voir [BUILD-CODING-STYLE](BUILD-CODING-STYLE.md))                                 |
-| **Statut**        | 🟢 Active — exemples antérieurs à ADR-0039/0040/0042 marqués comme historiques (cf. encadré ci-dessous) |
-| **Créé le**       | 2026-03-17                                                                                              |
-| **Mis à jour**    | 2026-09-17 (audit doc)                                                                                  |
-| **Dépend de**     | RFC-0001, RFC-0002, ADR-0001, ADR-0005, **ADR-0039**, **ADR-0040**, **ADR-0042**                        |
+| Champ | Valeur |
+| --- | --- |
+| **Périmètre** | Code applicatif framework (Views, Features, Entities, Channels, DOM) |
+| **Ne couvre pas** | La pipeline de build (voir [BUILD-CODING-STYLE](BUILD-CODING-STYLE.md)) |
+| **Statut** | 🟢 Active — exemples antérieurs à ADR-08/ADR-14 marqués comme historiques (cf. encadré ci-dessous) |
+| **Créé le** | 2026-03-17 |
+| **Mis à jour** | 2026-09-25 (alignement doc ↔ code) |
+| **Dépend de** | [spec](../spec/README.md), [ADR-04](../adr/ADR-04-metas-explicites.md), [ADR-08](../adr/ADR-08-namespace-manifest.md), [ADR-09](../adr/ADR-09-feature-contract.md), [ADR-10](../adr/ADR-10-entity-mutation.md), [ADR-14](../adr/ADR-14-contrats-types.md) |
 
 > **⚠ État du guide (2026-09-16, audit doc)** — Plusieurs exemples utilisent
-> encore `TUIMap` (pré-ADR-0042) et `BonsaiRegistry.registerFeature(...)`
+> encore `TUIMap` (pré-ADR-14) et `BonsaiRegistry.registerFeature(...)`
 > (Mode ESM Modulaire — Strate 2), marqués historiques. Les patterns courants
 > à utiliser :
 >
-> - **Feature** : `class extends Feature<E, TDef, "ns">` avec `static readonly channel: TChannelToken<TDef, "ns">` (ADR-0040), `get listens()`/`get queries()` d'instance pour les Channels externes (ADR-0046, I93). Plus de `static namespace` (I68 / ADR-0039) ni `static readonly listens/queries`.
+> - **Feature** : `class extends Feature<E, TDef, "ns">` avec `static readonly channel: TChannelToken<TDef, "ns">` (ADR-14), `get listens()`/`get queries()` d'instance pour les Channels externes (ADR-09, I93). Plus de `static namespace` (I68 / ADR-08) ni `static readonly listens/queries`.
 > - **Manifest applicatif** : `new Application({ foundation, features }).start()` où `features satisfies StrictManifest<AppManifest>`.
-> - **View** : `extends View<TViewContract<F, U>>` + `implements TViewCallbacks<TVC>` (ADR-0042 — I88). Trois getters : `features` / `uiEvents` / `uiElements`. Plus de `params` / `TUIMap` / `TViewParams` / `TViewCapabilities`.
+> - **View** : `extends View<TViewContract<F, U>>` + `implements TViewCallbacks<TVC>` (ADR-14 — I88). Trois getters : `features` / `uiEvents` / `uiElements`. Plus de `params` / `TUIMap` / `TViewParams` / `TViewCapabilities`.
 > - **Helper UI** : `ui<TEl>()(events)` curryfié (I85).
-> - **`this.request()` côté Feature** : `this.request(OtherFeature.channel, 'reqName', params)` — **token typé explicite** (ADR-0040), inchangé — asymétrie volontaire avec View (cf. [feature.md §4 C5](../rfc/3-couche-abstraite/feature.md#c5--request--interroger-une-feature-externe)).
-> - **`this.request()` côté View/Behavior** : `this.request("ns:req", params)` — **clé flat namespacée**, jamais de token explicite (ADR-0042, I80).
-> - **Les deux formes de `request()` sont synchrones** — `T | null`, jamais une `Promise`, jamais d'`await` (ADR-0023, I29).
-
-> ### Périmètre
+> - **`this.request()` côté Feature** : `this.request(OtherFeature.channel, 'reqName', params)` — **token typé explicite** (ADR-14), inchangé — asymétrie volontaire avec View (cf. [feature.md §4 C5](../spec/3-couche-abstraite/feature.md#c5--request--interroger-une-feature-externe)).
+> - **`this.request()` côté View/Behavior** : `this.request("ns:req", params)` — **clé flat namespacée**, jamais de token explicite (ADR-14, I80).
+> - **Les deux formes de `request()` sont synchrones** — `T | null`, jamais une `Promise`, jamais d'`await` (ADR-02, I29).
+>
+> ## Périmètre
 >
 > Ce guide s'applique au **code applicatif** écrit avec le framework Bonsai :
 > Views, Features, Entities, Behaviors, Channels, conventions DOM/HTML/CSS,
@@ -43,7 +43,7 @@
 2. [Conventions API TypeScript](#2-conventions-api-typescript)
 3. [Conventions de nommage](#3-conventions-de-nommage)
    - [3.4 Architecture de dossiers — par domaine, pas par type](#34-architecture-de-dossiers--par-domaine-pas-par-type)
-   - [3.5 Modules ESM Bonsai (ADR-0019)](#35-modules-esm-bonsai--convention-de-déclaration-adr-0019)
+   - [3.5 Modules ESM Bonsai (ADR-27)](#35-modules-esm-bonsai--convention-de-déclaration-adr-27)
 4. [Conventions de sélecteurs DOM](#4-conventions-de-sélecteurs-dom)
 
 ---
@@ -52,18 +52,18 @@
 
 Bonsai repose sur un pattern universel, applicable à **chaque composant** du framework :
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────────┐
 │  1. DÉCLARER LES MODULES CONTRACTUELS (header du fichier)       │
 │                                                                  │
 │     Feature / Entity                                            │
 │       → TChannelDefinition : Commands, Events, Requests typés   │
-│       → TEntityStructure   : état jsonifiable (D10)             │
+│       → Entity<TStructure> : état jsonifiable (ADR-10)             │
 │                                                                  │
-│     View / Behavior / Composer (consommateurs — ADR-0042)       │
+│     View / Behavior / Composer (consommateurs — ADR-14)       │
 │       → TFeatureContract : Features consommées (Feature-groupé) │
 │       → TUIContract      : nœuds DOM + events (View/Behavior)   │
-│       → TUIElements<TUI> : sélecteurs CSS (overridable D34)     │
+│       → TUIElements<TUI> : sélecteurs CSS (overridable ADR-21)     │
 │                                                                  │
 │  2. COMPOSER LE CONTRAT DU COMPOSANT (un alias type)            │
 │     View      → type TXxxContract = TViewContract<F, U>         │
@@ -89,7 +89,7 @@ Bonsai repose sur un pattern universel, applicable à **chaque composant** du fr
 > on le **gagne** dans l'implémentation — autocomplétion IDE, handlers requis
 > par `implements`, payloads et retours typés, refactoring sûr à l'échelle.
 
-### Règle universelle : symétrie `Contract` / `Callbacks` (ADR-0042 C15, I88)
+### Règle universelle : symétrie `Contract` / `Callbacks` (ADR-14, I88)
 
 > **Règle absolue** : pour chaque composant Bonsai, le package qui l'expose
 > DOIT fournir **deux types publics** :
@@ -103,12 +103,12 @@ Bonsai repose sur un pattern universel, applicable à **chaque composant** du fr
 > son contrat d'implémentation est interdite — elle exposerait des capacités
 > non-honorées.
 
-| Composant      | Contract                       | Callbacks                   |
-| -------------- | ------------------------------ | --------------------------- |
-| **View**       | `TViewContract<F, U>`          | `TViewCallbacks<TVC>`       |
-| **Behavior**   | `TBehaviorContract<F, U, ...>` | `TBehaviorCallbacks<TBC>`   |
-| **Composer**   | `TComposerContract<F>`         | `TComposerCallbacks<TCC>`   |
-| **Foundation** | `TFoundationContract`          | `TFoundationCallbacks<TFC>` |
+| Composant | Contract | Callbacks |
+| --- | --- | --- |
+| **View** | `TViewContract<F, U>` | `TViewCallbacks<TVC>` |
+| **Behavior** | `TBehaviorContract<F, U, ...>` | `TBehaviorCallbacks<TBC>` |
+| **Composer** | `TComposerContract<F>` | `TComposerCallbacks<TCC>` |
+| **Foundation** | `TFoundationContract` | `TFoundationCallbacks<TFC>` |
 
 Le développeur applicatif écrit toujours la paire dans la signature de classe :
 
@@ -135,9 +135,9 @@ puis les conventions de nommage (la cohérence), et enfin les conventions
 DOM/CSS/HTML (le détail d'implémentation).
 
 Les **sélecteurs CSS**, les `id`, les `data-*` sont des **détails d'implémentation**
-qui vivent dans `get uiElements()` — overridables par le Composer (D34, ADR-0042 C7).
+qui vivent dans `get uiElements()` — overridables par le Composer (ADR-21, ADR-14).
 Les modules contractuels (`TFeatureContract`, `TUIContract`, `TChannelDefinition`,
-`TEntityStructure`) sont le contrat immuable.
+`TStructure` d'`Entity<TStructure>`) sont le contrat immuable.
 
 ---
 
@@ -174,18 +174,18 @@ method("DISCRIMINANT", param1, param2, param3);
 
 #### Pourquoi ce pattern ?
 
-| Critère            | Discriminant 1er                    | Tout dans objet      | Args positionnels     |
-| ------------------ | ----------------------------------- | -------------------- | --------------------- |
-| **Lisibilité**     | ⭐⭐⭐ Intention immédiate          | ⭐⭐ Chercher la clé | ⭐⭐ Compter les args |
-| **IDE completion** | ⭐⭐⭐ Suggestions par discriminant | ⭐⭐ Union type      | ⭐ Aucune aide        |
-| **Évolutivité**    | ⭐⭐⭐ Ajouter params sans casser   | ⭐⭐⭐ Idem          | ⭐ Ordre figé         |
-| **Destructuring**  | ⭐⭐⭐ `{ payload, metas }`         | ⭐⭐⭐ Idem          | ❌ Impossible         |
+| Critère | Discriminant 1er | Tout dans objet | Args positionnels |
+| --- | --- | --- | --- |
+| **Lisibilité** | ⭐⭐⭐ Intention immédiate | ⭐⭐ Chercher la clé | ⭐⭐ Compter les args |
+| **IDE completion** | ⭐⭐⭐ Suggestions par discriminant | ⭐⭐ Union type | ⭐ Aucune aide |
+| **Évolutivité** | ⭐⭐⭐ Ajouter params sans casser | ⭐⭐⭐ Idem | ⭐ Ordre figé |
+| **Destructuring** | ⭐⭐⭐ `{ payload, metas }` | ⭐⭐⭐ Idem | ❌ Impossible |
 
 #### Applications
 
 ```typescript
 // ══════════════════════════════════════════════════════════════
-// Entity.mutate() — ADR-0001
+// Entity.mutate() — ADR-10
 // L'intent est un string libre namespace:verbNoun
 // ══════════════════════════════════════════════════════════════
 
@@ -206,25 +206,25 @@ this.entity.mutate("cart:clear", draft => {
 
 // emit() — émet un Event sur le Channel propre de la Feature
 // Signature LIVRÉE (strate 0) : emit(eventName, payload) — SANS metas.
-// { metas } en 3e argument est une cible strate 1b (ADR-0028), pas livrée.
+// { metas } en 3e argument est une cible strate 1b (ADR-31), pas livrée.
 this.emit('itemAdded', { productId: payload.productId, qty: payload.qty });
 
-// request() — interroge un Channel externe déclaré via `get queries()` (ADR-0046, I93)
-// Signature SYNCHRONE (ADR-0023, I29) : request(token, requestName, params) → T | null
-// Pas de `metas` (strate 0 — ADR-0040 §615, reporté à un ADR dédié en strate 1), pas d'await.
+// request() — interroge un Channel externe déclaré via `get queries()` (ADR-09, I93)
+// Signature SYNCHRONE (ADR-02, I29) : request(token, requestName, params) → T | null
+// Pas de `metas` (strate 0 — ADR-14, reporté à un ADR dédié en strate 1), pas d'await.
 // Convention nominale pour requestName (pas getNoun) — cf. §3.1.
-const total = this.request(Pricing.channel, 'total', { productId });
+const total = this.request(PricingFeature.channel, 'total', { productId });
 
 // ══════════════════════════════════════════════════════════════
 // View / Behavior — trigger() sortant
-// Les metas seraient créées automatiquement (corrélation racine, ADR-0016,
+// Les metas seraient créées automatiquement (corrélation racine, ADR-04,
 // I54) — cible strate 1b, non livrée (pas de metas du tout aujourd'hui).
 // ══════════════════════════════════════════════════════════════
 
-// trigger() — envoie un Command via clé namespacée flat (ADR-0042, I80)
+// trigger() — envoie un Command via clé namespacée flat (ADR-14, I80)
 // Signature : trigger("ns:cmd", payload) — clé validée compile-time contre
 // TFlatTriggers<F> dérivé de get features() (pas de "contract.triggers"/"TDeps",
-// terminologie supersédée par ADR-0042).
+// terminologie supersédée par ADR-14).
 this.trigger("cart:addItem", { productId, qty });
 
 // ══════════════════════════════════════════════════════════════
@@ -241,7 +241,7 @@ onAddItemCommand(payload: AddItemPayload) {
 // propre Channel, ce qu'aucune Feature ne fait jamais (une Feature ne
 // s'écoute pas elle-même — cf. get listens()).
 onCartItemAddedEvent(payload: ItemAddedPayload) {
-  // Feature (listen) ou View (listen, ADR-0042 features[ns].listens)
+  // Feature (listen) ou View (listen, ADR-14 features[ns].listens)
 }
 ```
 
@@ -253,15 +253,15 @@ onCartItemAddedEvent(payload: ItemAddedPayload) {
 ```typescript
 // ✅ BON : signature strate 0 réelle — sans metas (cible strate 1b, cf. §2.2)
 onAddItemCommand(payload: AddItemPayload) {
-  // Propager aux mutations — intent "namespace:verbNoun" (ADR-0001)
+  // Propager aux mutations — intent "namespace:verbNoun" (ADR-10)
   this.entity.mutate("cart:addItem", { payload }, draft => {
     draft.items.push(payload.item);
   });
 
-  // request() est SYNCHRONE (ADR-0023, I29) et ne prend pas de `metas`
-  // (strate 0 — ADR-0040 §615, reporté à un ADR dédié en strate 1) :
+  // request() est SYNCHRONE (ADR-02, I29) et ne prend pas de `metas`
+  // (strate 0 — ADR-14, reporté à un ADR dédié en strate 1) :
   // pas d'await, pas de 4e argument. Convention nominale (pas getNoun).
-  const total = this.request(Pricing.channel, 'total', { id: payload.id });
+  const total = this.request(PricingFeature.channel, 'total', { id: payload.id });
 
   // Propager aux émissions — clé nue (keyof TChannel['events']) + payload
   this.emit('itemAdded', { item: payload.item, total });
@@ -312,7 +312,9 @@ function createFeature(namespace, entity, channels, handlers) { }
 // (packages/entity/src/bonsai-entity.ts) ; `metas` est déjà accepté par
 // mutate() (strate 1a) mais typé Record<string, unknown>, pas encore
 // TMessageMetas (cible strate 1b, ce type n'est pas encore exporté).
-type TEntityEvent<TStructure = unknown> = {
+type TEntityEvent<
+  TStructure extends TJsonSerializable = TJsonSerializable
+> = {
   readonly intent: string;
   readonly payload?: unknown;
   readonly metas?: Record<string, unknown>;
@@ -346,8 +348,8 @@ const changedKeys = [...new Set(patches.map(p => String(p.path[0])))];
 
 ```typescript
 // ✅ BON : hard private ES natif — Feature<TEntityClass, TChannelDef, TSelfNS>
-// (3 génériques, ADR-0037/ADR-0040 — pas Feature<TCartState>, un seul
-// générique appartient au pattern pré-ADR-0037, supersédé)
+// (3 génériques, ADR-09/ADR-14 — pas Feature<TCartState>, un seul
+// générique appartient à l'ancien pattern, abandonné)
 export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
   #lastComputedTotal = 0;
 
@@ -368,11 +370,11 @@ export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
 }
 ```
 
-| Contexte                                | Utiliser                                                           |
-| --------------------------------------- | ------------------------------------------------------------------ |
-| Champ/méthode interne à la classe       | `#field`                                                           |
-| Propriété accessible aux sous-classes   | `protected`                                                        |
-| API publique du composant               | `public` (implicite)                                               |
+| Contexte | Utiliser |
+| --- | --- |
+| Champ/méthode interne à la classe | `#field` |
+| Propriété accessible aux sous-classes | `protected` |
+| API publique du composant | `public` (implicite) |
 | Constructeur singleton (empêcher `new`) | `private constructor()` (exception — ES n'a pas de `#constructor`) |
 
 > **Exception unique** : le `private constructor()` reste en `private` TS car
@@ -384,12 +386,12 @@ export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
 
 ### 3.1 Intents et noms de messages
 
-| Pattern                        | Format                 | Exemples                                 | Contexte                            |
-| ------------------------------ | ---------------------- | ---------------------------------------- | ----------------------------------- |
-| **Intent mutation**            | `namespace:verbNoun`   | `"cart:addItem"`, `"user:updateProfile"` | String libre dans `entity.mutate()` |
-| **Command name** (clé Channel) | `verbNoun`             | `'addItem'`, `'submit'`                  | `keyof TChannel['commands']`        |
-| **Event name** (clé Channel)   | `nounVerbed`           | `'itemAdded'`, `'submitted'`             | `keyof TChannel['events']`          |
-| **Request name** (clé Channel) | nominal, pas `getNoun` | `'total'`, `'profile'`                   | `keyof TChannel['requests']`        |
+| Pattern | Format | Exemples | Contexte |
+| --- | --- | --- | --- |
+| **Intent mutation** | `namespace:verbNoun` | `"cart:addItem"`, `"user:updateProfile"` | String libre dans `entity.mutate()` |
+| **Command name** (clé Channel) | `verbNoun` | `'addItem'`, `'submit'` | `keyof TChannel['commands']` |
+| **Event name** (clé Channel) | `nounVerbed` | `'itemAdded'`, `'submitted'` | `keyof TChannel['events']` |
+| **Request name** (clé Channel) | nominal, pas `getNoun` | `'total'`, `'profile'` | `keyof TChannel['requests']` |
 
 > **Attention** : les intents de mutation sont des strings libres `namespace:verbNoun`
 > (utilisés dans `entity.mutate()` pour la traçabilité). Les noms de Commands/Events/Requests
@@ -398,31 +400,31 @@ export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
 
 ### 3.2 Conventions TypeScript
 
-| Élément                                                                                                                                                                                 | Convention                     | Exemples                                                                           |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------- |
-| **Classe**                                                                                                                                                                              | PascalCase                     | `CartFeature`, `ProductView`                                                       |
-| **Type de la surface développeur** (écrit explicitement dans le code applicatif — structurel ou mapped/conditional : `implements TFeatureCallbacks<…>`, `TChannelDefinition`, payloads) | PascalCase, préfixe `T`        | `TEntityStructure`, `TChannelDefinition`, `TFeatureCallbacks`, `TCommandCallbacks` |
-| **Type de plomberie interne** (jamais écrit directement par le développeur, uniquement composé par d'autres types exportés)                                                             | PascalCase, **sans** préfixe   | `StrictManifest`, `CamelCase`, `UnionToIntersection`, `HasNoDuplicates`            |
-| **Interface** (si utilisée exceptionnellement)                                                                                                                                          | PascalCase, préfixe `I`        | `IProject`, `IConfig`                                                              |
-| **Méthode**                                                                                                                                                                             | camelCase                      | `mutate()`, `emit()`, `onAddItem()`                                                |
-| **Handler**                                                                                                                                                                             | `on` + EventName en PascalCase | `onAddItemCommand`, `onItemAddedEvent`                                             |
-| **Constante**                                                                                                                                                                           | SCREAMING_SNAKE                | `MAX_HOPS`, `DEFAULT_TIMEOUT`                                                      |
-| **Namespace**                                                                                                                                                                           | camelCase                      | `cart`, `userProfile`, `pricing`                                                   |
+| Élément | Convention | Exemples |
+| --- | --- | --- |
+| **Classe** | PascalCase | `CartFeature`, `ProductView` |
+| **Type de la surface développeur** (écrit explicitement dans le code applicatif — structurel ou mapped/conditional : `implements TFeatureCallbacks<…>`, `TChannelDefinition`, payloads) | PascalCase, préfixe `T` | `TEntityEvent`, `TChannelDefinition`, `TFeatureCallbacks`, `TCommandCallbacks` |
+| **Type de plomberie interne** (jamais écrit directement par le développeur, uniquement composé par d'autres types exportés) | PascalCase, **sans** préfixe | `StrictManifest`, `CamelCase`, `UnionToIntersection`, `HasNoDuplicates` |
+| **Interface** (si utilisée exceptionnellement) | PascalCase, préfixe `I` | `IProject`, `IConfig` |
+| **Méthode** | camelCase | `mutate()`, `emit()`, `onAddItem()` |
+| **Handler** | `on` + EventName en PascalCase | `onAddItemCommand`, `onItemAddedEvent` |
+| **Constante** | SCREAMING_SNAKE | `MAX_HOPS`, `DEFAULT_TIMEOUT` |
+| **Namespace** | camelCase | `cart`, `userProfile`, `pricing` |
 
 ### 3.3 Fichiers et dossiers
 
-| Type         | Convention                                                                                                                        | Exemples               |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| **Feature**  | `namespace.feature.ts`                                                                                                            | `cart.feature.ts`      |
-| **Entity**   | `namespace.entity.ts`                                                                                                             | `cart.entity.ts`       |
-| **View**     | `namespace.view.ts` (aligné sur `namespace.feature.ts`/`namespace.entity.ts` du même domaine — décision M9, audit doc 2026-09-17) | `cart.view.ts`         |
-| **Behavior** | `namespace.behavior.ts`                                                                                                           | `cart.behavior.ts`     |
-| **Tests**    | `*.test.ts`                                                                                                                       | `cart.feature.test.ts` |
+| Type | Convention | Exemples |
+| --- | --- | --- |
+| **Feature** | `namespace.feature.ts` | `cart.feature.ts` |
+| **Entity** | `namespace.entity.ts` | `cart.entity.ts` |
+| **View** | `namespace.view.ts` (aligné sur `namespace.feature.ts`/`namespace.entity.ts` du même domaine — décision M9, audit doc 2026-09-17) | `cart.view.ts` |
+| **Behavior** | `namespace.behavior.ts` | `cart.behavior.ts` |
+| **Tests** | `*.test.ts` | `cart.feature.test.ts` |
 
 > **Note** : il n'y a **pas** de fichier `.channel.ts` séparé.
 > Le Channel (`TChannelDefinition`) et le State sont **co-localisés**
-> dans le fichier `.feature.ts` (décisions D13/D14).
-> Voir [RFC-0001 Glossaire §3](../rfc/reference/glossaire.md#structure-des-fichiers-et-dossiers-angular-style-guide).
+> dans le fichier `.feature.ts` (ADR-09, ADR-14).
+> Voir [RFC-0001 Glossaire §3](../spec/reference/glossaire.md#structure-des-fichiers-et-dossiers-angular-style-guide).
 
 ### 3.4 Architecture de dossiers — par domaine, pas par type
 
@@ -443,10 +445,10 @@ export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
 
 #### ✅ Organisation par domaine (recommandée)
 
-```
+```text
 src/
   Cart/
-    cart.feature.ts         # Feature + Channel + State (D13/D14)
+    cart.feature.ts         # Feature + Channel + State (ADR-09, ADR-14)
     cart.entity.ts          # Entity
     cart.view.ts            # View
     cart.behavior.ts        # Behavior(s) optionnel(s)
@@ -469,7 +471,7 @@ src/
 
 ```typescript
 // Imports par alias de domaine (recommandé) — classes nommées, pas de
-// wrapper `namespace Cart { … }` (D14 supersédé par ADR-0040)
+// wrapper `namespace Cart { … }` (abandonné, ADR-14)
 import { CartFeature } from '@cart/cart.feature';
 import { ProductFeature } from '@product/product.feature';
 
@@ -479,7 +481,7 @@ import { CartFeature } from '../Cart/cart.feature';
 
 #### ❌ Organisation par type de composant (anti-pattern)
 
-```
+```text
 src/
   features/
     cart.feature.ts
@@ -503,10 +505,10 @@ src/
 - Les imports croisés deviennent illisibles (`../../features/` vs `../../views/`)
 
 > **Référence** : la convention de structure est définie dans
-> [RFC-0001 Glossaire §3](../rfc/reference/glossaire.md#structure-des-fichiers-et-dossiers-angular-style-guide)
-> et s'inspire de l'[Angular Style Guide](https://angular.dev/style-guide) (D5).
+> [RFC-0001 Glossaire §3](../spec/reference/glossaire.md#structure-des-fichiers-et-dossiers-angular-style-guide)
+> et s'inspire de l'[Angular Style Guide](https://angular.dev/style-guide) (ADR-08).
 
-### 3.5 Modules ESM Bonsai — convention de déclaration (ADR-0019)
+### 3.5 Modules ESM Bonsai — convention de déclaration (ADR-27)
 
 En **Mode ESM Modulaire**, chaque composant Bonsai est distribué sous forme
 d'un module ES natif (`*.esm.js` + `*.d.ts`). Le module déclare ses composants
@@ -524,7 +526,7 @@ BonsaiRegistry.registerFeature(CartFeature);
 ```
 
 ```typescript
-// ❌ Anti-pattern — side-effect métier à l'import (interdit, ADR-0019 C3, D9)
+// ❌ Anti-pattern — side-effect métier à l'import (interdit, ADR-27, ADR-02)
 import { BonsaiRegistry } from '/bonsai/bonsai.esm.js';
 import { CartFeature } from './cart.feature.js';
 
@@ -535,17 +537,17 @@ cart.init();                    // ❌ Logique exécutée à l'import
 
 #### Convention de nommage des artefacts
 
-| Type                                                                                                             | Convention             | Exemple                   |
-| ---------------------------------------------------------------------------------------------------------------- | ---------------------- | ------------------------- |
-| Module ESM navigateur                                                                                            | `{nom}.esm.js`         | `cart.feature.esm.js`     |
-| Déclaration TypeScript                                                                                           | `{nom}.d.ts`           | `cart.feature.d.ts`       |
-| Source map JS                                                                                                    | `{nom}.esm.js.map`     | `cart.feature.esm.js.map` |
-| Runtime Bonsai ESM                                                                                               | `bonsai.esm.js`        | —                         |
-| ⏳ Runtime Bonsai IIFE (cible, non produit — `lib/build/building/builder.class.ts` ne génère que `format: "es"`) | `bonsai.iife.js`       | —                         |
-| ⏳ Bundle IIFE applicatif (cible, non produit)                                                                   | `{app}.bundle.iife.js` | `app.bundle.iife.js`      |
+| Type | Convention | Exemple |
+| --- | --- | --- |
+| Module ESM navigateur | `{nom}.esm.js` | `cart.feature.esm.js` |
+| Déclaration TypeScript | `{nom}.d.ts` | `cart.feature.d.ts` |
+| Source map JS | `{nom}.esm.js.map` | `cart.feature.esm.js.map` |
+| Runtime Bonsai ESM | `bonsai.esm.js` | — |
+| ⏳ Runtime Bonsai IIFE (cible, non produit — `lib/build/building/builder.class.ts` ne génère que `format: "es"`) | `bonsai.iife.js` | — |
+| ⏳ Bundle IIFE applicatif (cible, non produit) | `{app}.bundle.iife.js` | `app.bundle.iife.js` |
 
 > **Règle** : distribuer un `*.esm.js` sans son `*.d.ts` est **interdit**
-> (ADR-0019 C7 — le type EST la documentation).
+> (ADR-27 — le type EST la documentation).
 
 ---
 
@@ -555,11 +557,11 @@ cart.init();                    // ❌ Logique exécutée à l'import
 
 Chaque mécanisme HTML a un rôle **unique et non interchangeable** :
 
-| Mécanisme      | Rôle                                                               | Propriétaire                                            | Mutable à l'exécution ?                  |
-| -------------- | ------------------------------------------------------------------ | ------------------------------------------------------- | ---------------------------------------- |
-| **Classe CSS** | Exprime le **rôle/contexte sémantique** de l'élément               | CSS (style) · JS (lecture seule)                        | **Non** — ne change jamais à l'exécution |
-| **`id`**       | **Ciblage JavaScript** — point d'ancrage unique, intention marquée | JS (exclusif)                                           | **Non** — identifiant stable             |
-| **`data-*`**   | **États/paramètres dynamiques** — zone de communication CSS↔JS     | JS (écriture) · CSS (lecture via sélecteurs d'attribut) | **Oui** — valeur modifiée par JS         |
+| Mécanisme | Rôle | Propriétaire | Mutable à l'exécution ? |
+| --- | --- | --- | --- |
+| **Classe CSS** | Exprime le **rôle/contexte sémantique** de l'élément | CSS (style) · JS (lecture seule) | **Non** — ne change jamais à l'exécution |
+| **`id`** | **Ciblage JavaScript** — point d'ancrage unique, intention marquée | JS (exclusif) | **Non** — identifiant stable |
+| **`data-*`** | **États/paramètres dynamiques** — zone de communication CSS↔JS | JS (écriture) · CSS (lecture via sélecteurs d'attribut) | **Oui** — valeur modifiée par JS |
 
 > **Principe** : les classes disent _ce que c'est_ (rôle), les `id` disent _où
 > accrocher le JS_ (ancrage), les `data-*` disent _dans quel état c'est_
@@ -591,8 +593,8 @@ get uiElements() {
   une exception contrôlée par le framework).
   > 🧭 **Tension non tranchée** : `TProjectionNode.toggleClass(className, force)`
   > est pourtant une primitive **livrée** (`packages/view/src/bonsai-view.ts`),
-  > utilisée dans les exemples de [view.md](../rfc/4-couche-concrete/view.md),
-  > [foundation.md](../rfc/4-couche-concrete/foundation.md) et
+  > utilisée dans les exemples de [view.md](../spec/4-couche-concrete/view.md),
+  > [foundation.md](../spec/4-couche-concrete/foundation.md) et
   > [FORMS-GUIDE.md](FORMS-GUIDE.md) pour piloter des états (`is-invalid`,
   > `has-items`...). Soit `toggleClass()` doit être encadrée (réservée aux
   > rôles sémantiques statiques, jamais aux états — auquel cas ces exemples
@@ -674,7 +676,7 @@ JS d'une View spécifique_.
 
 ```typescript
 // Le sélecteur est fourni par le Composer via resolve(), PAS déclaré par
-// la View elle-même (I31, ADR-0026) :
+// la View elle-même (I31, ADR-19) :
 class HeaderComposer extends Composer {
   resolve(_event: unknown | null) {
     return { view: HeaderView, rootElement: '#header-view' };
@@ -696,10 +698,10 @@ class HeaderView extends View<THeaderViewContract> {
 
 #### 4.3.3 Récapitulatif `id`
 
-| Suffixe | Usage                         | Exemple        | Résolu par                              |
-| ------- | ----------------------------- | -------------- | --------------------------------------- |
+| Suffixe | Usage | Exemple | Résolu par |
+| --- | --- | --- | --- |
 | `-slot` | Point d'ancrage d'un Composer | `#header-slot` | `querySelector()` (Foundation ou `@ui`) |
-| `-view` | rootElement d'une View        | `#header-view` | `slotElement.querySelector()`           |
+| `-view` | rootElement d'une View | `#header-view` | ⚠️ cible : `slotElement.querySelector()` ; livré : `document.querySelector()` global (ADR-19) |
 
 ### 4.4 Attributs `data-*` — états dynamiques
 
@@ -728,14 +730,14 @@ pilotés par JavaScript (projections PDR, Behaviors).
 
 ### 4.5 Synthèse par composant Bonsai
 
-| Composant           | Élément DOM              | Sélecteur                  | Mécanisme  | Justification                                    |
-| ------------------- | ------------------------ | -------------------------- | ---------- | ------------------------------------------------ |
-| **Foundation**      | Slot racine              | `#header-slot`             | `id`       | Ciblage JS pur — point d'ancrage Composer        |
-| **View**            | rootElement              | `#header-view`             | `id`       | Ciblage JS — ancrage de la View dans le slot     |
-| **View**            | uiElements (interaction) | `.ProductCard-addToBasket` | classe CSS | Rôle sémantique dans le contexte du Bloc         |
-| **View**            | uiElements (slot enfant) | `#sidebar-slot`            | `id`       | Ciblage JS pur — point d'ancrage Composer enfant |
-| **View / Behavior** | États dynamiques         | `data-state="open"`        | `data-*`   | Piloté par JS, mutable à l'exécution             |
-| **Foundation**      | Altération N1            | `data-theme="dark"`        | `data-*`   | État global piloté par JS                        |
+| Composant | Élément DOM | Sélecteur | Mécanisme | Justification |
+| --- | --- | --- | --- | --- |
+| **Foundation** | Slot racine | `#header-slot` | `id` | Ciblage JS pur — point d'ancrage Composer |
+| **View** | rootElement | `#header-view` | `id` | Ciblage JS — ancrage de la View dans le slot |
+| **View** | uiElements (interaction) | `.ProductCard-addToBasket` | classe CSS | Rôle sémantique dans le contexte du Bloc |
+| **View** | uiElements (slot enfant) | `#sidebar-slot` | `id` | Ciblage JS pur — point d'ancrage Composer enfant |
+| **View / Behavior** | États dynamiques | `data-state="open"` | `data-*` | Piloté par JS, mutable à l'exécution |
+| **Foundation** | Altération N1 | `data-theme="dark"` | `data-*` | État global piloté par JS |
 
 ### 4.6 Exemple complet HTML
 
@@ -775,7 +777,7 @@ pilotés par JavaScript (projections PDR, Behaviors).
 </html>
 ```
 
-```
+```text
 Foundation(<body>)
   ├─ '#header-slot'  → HeaderComposer    → HeaderView (#header-view)
   ├─ '#main-slot'    → MainContentComposer → ProductListView (#main-view)
@@ -785,9 +787,14 @@ Foundation(<body>)
 
 ### 4.7 Pattern — Composition hétérogène typée par attribut
 
+> ⏳ **Cible strate 1d, non livré** : `View.composers` et l'instanciation de N Composers par
+> `querySelectorAll` n'existent pas (voir l'encadré plus bas). Par ailleurs, l'exemple
+> déclare `ui<HTMLInputElement>()(["input"])` : ce contrat est aujourd'hui rejeté par
+> `satisfies TUIContract` (ADR-15, `TUIContract` n'accepte que les événements de base et de défilement).
+
 Quand un conteneur accueille **N slots de types différents encodés dans un attribut DOM**,
 utilisez des sélecteurs d'attribut dans `uiElements` combinés à `get composers()`.
-Le framework résout chaque sélecteur par `querySelectorAll` : **un Composer est instancié
+Le framework résoudrait chaque sélecteur par `querySelectorAll` : **un Composer serait instancié
 pour chaque élément matché**.
 
 **Cas typiques** : formulaires CMS (champs selon le bundle), éditeurs de blocs,
@@ -807,7 +814,7 @@ dashboards configurables, configurateurs produit.
 
 #### TypeScript — déclaratif, compile-time
 
-Pattern modulaire ADR-0042 : trois modules (`TFeatureContract`, `TUIContract`,
+Pattern modulaire ADR-14 : trois modules (`TFeatureContract`, `TUIContract`,
 `TUIElements`) composés en un `TViewContract` puis injecté comme **unique
 générique** sur `View<TVC>` avec `implements TViewCallbacks<TVC>` (I88).
 
@@ -862,7 +869,7 @@ class NodeEditFormView
   get uiEvents()   { return nodeEditFormViewUiEvents;   }
   get uiElements() { return nodeEditFormViewUiElements; }
 
-  // Composition N-instances (ADR-0020) — clés ⊆ keyof uiEvents.
+  // Composition N-instances (ADR-18) — clés ⊆ keyof uiEvents.
   get composers() {
     return {
       editorJsSlot:   EditorJsComposer,    // 1 instance par [data-field-type="editorjs"]
@@ -870,13 +877,13 @@ class NodeEditFormView
     };
   }
 
-  // D48 UI — handler imposé par events: ["click"] sur submitButton.
+  // I48 UI — handler imposé par events: ["click"] sur submitButton.
   onSubmitButtonClick(_e: MouseEvent): void {
     // Clé namespacée vérifiée contre TFlatTriggers<typeof nodeEditFormViewFeatures>.
     this.trigger("nodeEdit:submit", {});
   }
 
-  // D48 UI — handler imposé par events: ["input"] sur titleField.
+  // I48 UI — handler imposé par events: ["input"] sur titleField.
   onTitleFieldInput(e: InputEvent & { currentTarget: HTMLInputElement }): void {
     this.trigger("nodeEdit:titleChanged", { value: e.currentTarget.value });
   }
@@ -894,11 +901,11 @@ class NodeEditFormView
 > Rien n'est aujourd'hui "vérifié compile-time" pour ce mécanisme puisqu'il
 > n'existe pas ; le tableau ci-dessous décrit une garantie visée, pas un fait.
 
-| Élément           | Visible           | Vérifié (cible)                                                                     |
-| ----------------- | ----------------- | ----------------------------------------------------------------------------------- |
-| Types de slots    | `TUIContract`     | compile-time — TypeScript (livré pour `uiEvents`, cible pour la composition enfant) |
-| Sélecteurs CSS    | `uiElements`      | bootstrap — erreur si sélecteur invalide                                            |
-| Composer par type | `get composers()` | ⏳ cible : compile-time — clé devrait exister dans `keyof TVC["ui"]`                |
+| Élément | Visible | Vérifié (cible) |
+| --- | --- | --- |
+| Types de slots | `TUIContract` | compile-time — TypeScript (livré pour `uiEvents`, cible pour la composition enfant) |
+| Sélecteurs CSS | `uiElements` | bootstrap — erreur si sélecteur invalide |
+| Composer par type | `get composers()` | ⏳ cible : compile-time — clé devrait exister dans `keyof TVC["ui"]` |
 
 La View sait **quels types** elle accepte (statique), pas **combien** d'instances
 (déterminé par le DOM au runtime). C'est la séparation correcte des responsabilités.

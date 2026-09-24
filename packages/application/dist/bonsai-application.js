@@ -1,7 +1,7 @@
 /**
  * @bonsai/application - Version 0.0.1
  * Bundled by Bonsai Build System
- * Date: 2026-09-16T10:43:27.802Z
+ * Date: 2026-09-24T20:07:54.144Z
  */
 import { Radio } from '@bonsai/event';
 import { BonsaiNamespaceError, assertValidNamespace } from '@bonsai/feature';
@@ -44,36 +44,35 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 /**
  * @bonsai/application — Application class
  *
- * Strate 0 (refondu ADR-0039) — Capacités :
- *   - constructor({ foundation, features }) — déclare le manifest applicatif
- *   - start() — bootstrap en phases réordonnées (ADR-0046) :
- *       Phase 0a: Validation format namespace (assertValidNamespace)
- *       Phase 0b: Instanciation pure des Features (ctor inerte — I94) + sentinel
- *       Phase 0c: Lecture instance.listens/queries — validation références croisées (I70)
- *       Phase 1: Channels (crée les channels de chaque Feature)
- *       Phase 2: Entities (instanciées par les Features)
- *       Phase 3: Features (bootstrap() + onInit() sur les instances Phase 0b)
+ * Capabilities (ADR-07, ADR-08, ADR-09):
+ *   - constructor({ foundation, features }) — declares the application manifest
+ *   - start() — phased bootstrap:
+ *       Phase 0a: namespace format validation (assertValidNamespace)
+ *       Phase 0b: pure instantiation of the Features (inert ctor — I94) + sentinel
+ *       Phase 0c: read instance.listens/queries — cross-reference validation (I70)
+ *       Phase 1: Channels (one channel per Feature)
+ *       Phase 3: Features (bootstrap() — Entity, handlers, onInit() — on the Phase 0b instances)
  *       Phase 4: Foundation (composers → views, attach)
  *
- * Invariants :
- *   I23  — Application est dormante au runtime (pas de handle/emit/listen/request)
- *   I24  — Le manifest garantit l'unicité au compile-time ; Application valide
- *          format + réservés + cohérence des `channels` au bootstrap (amendé ADR-0039)
- *   I33  — Application sans Foundation ne peut rien afficher
- *   I56  — onInit() de chaque Feature appelé avant la création de la Foundation
- *   I68  — Le namespace est porté par le manifest, pas par un static (ADR-0039)
- *   I69  — Le manifest est l'unique source de vérité de l'identité (ADR-0039)
- *   I70  — Toute référence à un namespace externe DOIT être validée contre
- *          le manifest — lue depuis instance.listens/queries (amendé ADR-0046)
- *   I71  — `RESERVED_NAMESPACES` est une constante framework (ADR-0039)
- *   I94  — Le constructeur de Feature est inerte : sentinel Phase 0b détecte
- *          tout side-effect Radio inattendu (ADR-0046)
+ * Invariants:
+ *   I23  — Application is dormant at runtime (no handle/emit/listen/request)
+ *   I24  — The manifest guarantees uniqueness at compile time; Application
+ *          validates format, reserved names and `channel` consistency at bootstrap
+ *   I33  — An Application without a Foundation cannot render anything
+ *   I56  — Every Feature's onInit() runs before the Foundation is created
+ *   I68  — The namespace is carried by the manifest, not by a static (ADR-08)
+ *   I69  — The manifest is the single source of truth for identity (ADR-08)
+ *   I70  — Every reference to an external namespace MUST be validated against
+ *          the manifest — read from instance.listens/queries (ADR-09)
+ *   I71  — `RESERVED_NAMESPACES` is a framework constant (ADR-08)
+ *   I94  — The Feature constructor is inert: the Phase 0b sentinel detects
+ *          any unexpected Radio side effect (ADR-09)
  *
- * Strate 0 simplifications :
- *   - Pas de stop()
- *   - Pas de SSR (serverState)
- *   - Pas de DevTools
- *   - Pas de BonsaiRegistry ESM
+ * Not delivered yet:
+ *   - stop()
+ *   - SSR (serverState)
+ *   - DevTools
+ *   - ESM BonsaiRegistry
  *
  * @packageDocumentation
  */
@@ -92,22 +91,21 @@ class Application {
     }
     // ─── Public API ────────────────────────────────────────────────────────
     /**
-     * Bootstrap en phases réordonnées (ADR-0046 — M1).
-     * Ne peut être appelé qu'une seule fois.
+     * Phased bootstrap (ADR-07, ADR-09). Can only be called once.
      *
-     * Phases :
-     *   Phase 0a — Validation format namespace (assertValidNamespace + I73/I22)
-     *   Phase 0b — Instanciation pure (ctor inerte I94) + sentinel Radio
-     *   Phase 0c — Lecture instance.listens/queries — validation références (I70)
-     *   Phase 1  — Channels  : `Radio.channel(namespace)` pour chaque Feature
-     *   Phase 3  — Features  : `bootstrap()` sur les instances de Phase 0b (I56)
+     * Phases:
+     *   Phase 0a — namespace format validation (assertValidNamespace + I73/I22)
+     *   Phase 0b — pure instantiation (inert ctor, I94) + Radio sentinel
+     *   Phase 0c — read instance.listens/queries — reference validation (I70)
+     *   Phase 1  — Channels  : `Radio.channel(namespace)` for each Feature
+     *   Phase 3  — Features  : `bootstrap()` on the Phase 0b instances (I56)
      *   Phase 4  — Foundation: `Foundation.attach()` (Composers → Views)
      *
-     * @throws si appelée deux fois (strate 0 : pas de re-bootstrap)
-     * @throws `BonsaiNamespaceError` si le manifest viole les invariants (filet
-     *   runtime — le compile-time est censé l'avoir déjà attrapé via
-     *   `StrictManifest<M>`).
-     * @throws si aucune Foundation n'a été fournie au constructeur (I33).
+     * @throws when called twice (no re-bootstrap)
+     * @throws `BonsaiNamespaceError` when the manifest breaks the invariants
+     *   (runtime safety net — compile time should already have caught it
+     *   through `StrictManifest<M>`).
+     * @throws when no Foundation was given to the constructor (I33).
      */
     start() {
         if (__classPrivateFieldGet(this, _Application_started, "f")) {
@@ -117,13 +115,13 @@ class Application {
             throw new Error("[Bonsai Application] Cannot start() — no Foundation provided. " +
                 "Pass { foundation: MyFoundation } to the Application constructor (I33).");
         }
-        // ── Phase 0a — Validation format + channel (ADR-0039 — I70/I71/I73) ───
+        // ── Phase 0a — format + channel validation (ADR-08 — I70/I71/I73) ───
         __classPrivateFieldGet(this, _Application_instances, "m", _Application_validateManifest).call(this);
         __classPrivateFieldSet(this, _Application_started, true, "f");
         const entries = Object.entries(__classPrivateFieldGet(this, _Application_manifest, "f"));
-        // ── Phase 0b — Instanciation pure + sentinel I94 ─────────────────────────
-        // Le ctor de Feature est inerte (I94) : assertValidNamespace + #namespace.
-        // Sentinel : aucun Channel ne doit être créé/supprimé dans Radio pendant le new.
+        // ── Phase 0b — pure instantiation + I94 sentinel ─────────────────────────
+        // The Feature ctor is inert (I94): assertValidNamespace + #namespace.
+        // Sentinel: no Channel may be created/removed in Radio during `new`.
         for (const [namespace, FeatureClass] of entries) {
             const nssBefore = Radio.me().getChannelNames();
             const instance = new FeatureClass(namespace);
@@ -131,13 +129,13 @@ class Application {
             if (nssBefore.length !== nssAfter.length) {
                 throw new Error(`[Bonsai Application] Feature "${namespace}" constructor is not inert —` +
                     ` Radio was mutated during new ${FeatureClass.name}("${namespace}").` +
-                    ` Move all Radio/Entity calls out of the constructor (I94 — ADR-0046).`);
+                    ` Move all Radio/Entity calls out of the constructor (I94 — ADR-09).`);
             }
             __classPrivateFieldGet(this, _Application_featureInstances, "f").push(instance);
         }
-        // ── Phase 0c — Validation références croisées via instance (I70 amendé) ───
-        // listens + queries lus depuis les instances (abstract get — I93).
-        // Exécuté AVANT Phase 1 (création des Channels) — aucun side-effect Radio.
+        // ── Phase 0c — cross-reference validation from the instances (I70) ───
+        // listens + queries read from the instances (abstract get — I93).
+        // Runs BEFORE Phase 1 (Channel creation) — no Radio side effect.
         const known = new Set(entries.map(([ns]) => ns));
         for (let i = 0; i < entries.length; i++) {
             const [ownNs] = entries[i];
@@ -150,11 +148,11 @@ class Application {
                 }
             }
         }
-        // Phase 1: Channels — crée le channel de chaque Feature dans Radio
+        // Phase 1: Channels — creates each Feature's channel in Radio
         for (const [namespace] of entries) {
             Radio.me().channel(namespace);
         }
-        // Phase 3: Features — bootstrap sur les instances de Phase 0b
+        // Phase 3: Features — bootstrap the Phase 0b instances
         // (auto-discovery handlers I48, entity, onInit I56)
         for (const instance of __classPrivateFieldGet(this, _Application_featureInstances, "f")) {
             instance.bootstrap();
@@ -164,18 +162,18 @@ class Application {
         __classPrivateFieldSet(this, _Application_foundationInstance, new FoundationClass(), "f");
         __classPrivateFieldGet(this, _Application_foundationInstance, "f").attach();
     }
-    /** La Foundation instanciée (après start). */
+    /** The instantiated Foundation (after start). */
     get foundation() {
         return __classPrivateFieldGet(this, _Application_foundationInstance, "f");
     }
-    /** Indique si l'application a démarré. */
+    /** Whether the application has started. */
     get started() {
         return __classPrivateFieldGet(this, _Application_started, "f");
     }
 }
 _Application_manifest = new WeakMap(), _Application_started = new WeakMap(), _Application_foundationClass = new WeakMap(), _Application_foundationInstance = new WeakMap(), _Application_featureInstances = new WeakMap(), _Application_instances = new WeakSet(), _Application_validateManifest = function _Application_validateManifest() {
     const namespaces = Object.keys(__classPrivateFieldGet(this, _Application_manifest, "f"));
-    // I21/I57/I71 — délègue à assertValidNamespace
+    // I21/I57/I71 — delegates to assertValidNamespace
     for (const ns of namespaces) {
         assertValidNamespace(ns);
     }
@@ -187,7 +185,7 @@ _Application_manifest = new WeakMap(), _Application_started = new WeakMap(), _Ap
             typeof token !== "object" ||
             typeof token.namespace !== "string") {
             throw new BonsaiNamespaceError("FEATURE_MISSING_CHANNEL", `Feature "${ownNs}" does not declare \`static readonly channel: ` +
-                `TChannelToken<TDef, "${ownNs}">\` (I73 — ADR-0040). Add ` +
+                `TChannelToken<TDef, "${ownNs}">\` (I73 — ADR-14). Add ` +
                 `\`static readonly channel = { namespace: "${ownNs}" }\` ` +
                 `to the class.`);
         }

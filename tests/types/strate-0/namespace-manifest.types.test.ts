@@ -1,5 +1,5 @@
 /**
- * Tests de type — Compile-time enforcement du manifest applicatif (ADR-0039)
+ * Tests de type — Compile-time enforcement du manifest applicatif (ADR-08)
  *
  * Ces tests ne s'exécutent **pas** au runtime — ils vérifient que TypeScript
  * rejette correctement les manifestes mal formés via `@ts-expect-error`.
@@ -8,7 +8,7 @@
  * a été relâché), le compilateur lève « Unused '@ts-expect-error' directive »
  * → la régression est détectée immédiatement.
  *
- * Couvre les invariants ADR-0039 :
+ * Couvre les invariants ADR-08 :
  *   I21 — Format camelCase compile-time
  *   I28 / I57 / I71 — Mots réservés (`local`, `router`)
  *   I68 — Pas de static namespace
@@ -37,9 +37,9 @@ class NoopEntity extends Entity<TNoopState> {
   }
 }
 
-// Ces fixtures ne prouvent que les invariants namespace d'ADR-0039 — `TChannelDef`
+// Ces fixtures ne prouvent que les invariants namespace d'ADR-08 — `TChannelDef`
 // reste générique. `static channel` est désormais requis au compile-time par
-// `StrictManifest` (ADR-0046 — M3 dégradé, I95) ; `listens`/`queries` sont des
+// `StrictManifest` (ADR-09, I95) ; `listens`/`queries` sont des
 // getters instance (M1 — I93). Couverture des handlers : hors scope de ce test
 // (cf. feature-callbacks.types.test.ts pour I92).
 class CartFeature extends Feature<NoopEntity, TChannelDefinition, "cart"> {
@@ -72,9 +72,9 @@ class UserFeature extends Feature<NoopEntity, TChannelDefinition, "user"> {
   }
 }
 
-// ─── Type-level assertions (ADR-0039 §Annexe) ───────────────────────────────
+// ─── Type-level assertions (ADR-08) ───────────────────────────────
 
-describe("ADR-0039 — Compile-time type enforcement", () => {
+describe("ADR-08 — Compile-time type enforcement", () => {
   it("CamelCaseNamespace<S> accepts camelCase strings", () => {
     type T1 = CamelCaseNamespace<"cart">;
     type T2 = CamelCaseNamespace<"userProfile">;
@@ -151,7 +151,7 @@ describe("ADR-0039 — Compile-time type enforcement", () => {
     void _features;
   });
 
-  it("StrictManifest<M> — Feature sans `static channel` → erreur (I95, M3 ADR-0046)", () => {
+  it("StrictManifest<M> — Feature sans `static channel` → erreur (I95, ADR-09)", () => {
     type AppManifest = {
       cart: unknown;
     };

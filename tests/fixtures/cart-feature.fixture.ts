@@ -2,7 +2,7 @@
  * Fixture — CartFeature, CartEntity, CartView, MainComposer, AppFoundation
  *
  * Mini-domaine "panier" conforme au contrat strate 0 (post-audit 2026-04-21,
- * ADR-0037, ADR-0038, ADR-0040, ADR-0041). Sert de gate E2E
+ * ADR-09, ADR-20, ADR-14). Sert de gate E2E
  * (cf. strate-0.cart-round-trip.test.ts).
  *
  * Flux complet illustré :
@@ -65,7 +65,7 @@ export class CartEntity extends Entity<TCartState> {
   }
 }
 
-// ─── Channel definition (ADR-0040 — I74 : co-localisé dans le fichier feature) ─
+// ─── Channel definition (ADR-14 — I74 : co-localisé dans le fichier feature) ─
 
 export type TCartChannelDef = {
   commands: {
@@ -85,7 +85,7 @@ const cartListens = [] as const;
 
 /**
  * CartFeature — `TSelfNS = "cart"` ancre la classe à la clé du manifest
- * applicatif (ADR-0039 — I72). Plus de `static namespace`.
+ * applicatif (ADR-08 — I72). Plus de `static namespace`.
  */
 export class CartFeature
   extends Feature<CartEntity, TCartChannelDef, "cart">
@@ -121,7 +121,7 @@ export class CartFeature
   }
 }
 
-// ─── View (ADR-0042 — pattern modulaire) ────────────────────────────────────
+// ─── View (ADR-14 — pattern modulaire) ────────────────────────────────────
 
 // Étape 1 — Feature contract (Feature-groupé)
 const cartViewFeatures = {
@@ -141,7 +141,7 @@ const cartViewUiEvents = {
   emptyMessage: ui<HTMLElement>()([])
 } satisfies TUIContract;
 
-// Étape 3 — sélecteurs CSS (overridable D34)
+// Étape 3 — sélecteurs CSS (overridable ADR-21)
 const cartViewUiElements = {
   itemCount: "[data-ui='itemCount']",
   total: "[data-ui='total']",
@@ -174,7 +174,7 @@ export class CartView
     return cartViewUiElements;
   }
 
-  // D48 UI — handler requis par TViewCallbacks (events: ["click"] sur addButton)
+  // I48 UI — handler requis par TViewCallbacks (events: ["click"] sur addButton)
   onAddButtonClick(_event: MouseEvent): void {
     this.trigger("cart:addItem", {
       productId: `prod-${this.#itemCount + 1}`,
@@ -183,7 +183,7 @@ export class CartView
     });
   }
 
-  // D48 channel — handler requis par TViewCallbacks (cart.listens: ["itemAdded"])
+  // I48 channel — handler requis par TViewCallbacks (cart.listens: ["itemAdded"])
   onCartItemAddedEvent(_payload: { item: TCartItem }): void {
     this.#itemCount += 1;
     this.getUI("itemCount").text(String(this.#itemCount));
@@ -210,7 +210,7 @@ export class MainComposer extends Composer {
 // ─── Foundation ─────────────────────────────────────────────────────────────
 
 export class AppFoundation extends Foundation {
-  // ADR-0038 — Record<string, typeof Composer> ; clés = sélecteurs CSS dans <body>.
+  // ADR-20 — Record<string, typeof Composer> ; clés = sélecteurs CSS dans <body>.
   // Layout stable : un seul slot principal en strate 0.
   get composers() {
     return {

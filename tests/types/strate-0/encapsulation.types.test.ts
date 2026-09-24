@@ -9,7 +9,7 @@
  *            privé derrière sa Feature.
  *
  * `Radio` et `Channel` restent exportés par `@bonsai/event` pour l'usage
- * inter-packages du framework (ADR-0031) ; le développeur applicatif importe
+ * inter-packages du framework (ADR-28) ; le développeur applicatif importe
  * exclusivement depuis `@bonsai/core`.
  *
  * @jest-environment node

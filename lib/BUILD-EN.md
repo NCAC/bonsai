@@ -13,17 +13,22 @@ The Bonsai build system is designed to automatically and intelligently handle tw
 
 ```
 lib/build/
-├── core/                    # Core system classes
+├── core/                    # Core classes
 │   ├── path-manager.class.ts    # Path management
-│   └── main.ts                  # Main entry point
+│   └── build-cache.class.ts
 ├── initializing/            # Initialization phase
+│   ├── build-options.class.ts
 │   └── components-registry.ts   # Package analysis and detection
 ├── building/                # Compilation phase
-│   └── builder.class.ts         # Per-package build logic
-├── bundling/                # Bundling phase
-│   └── generate-flat-framework-dts.ts  # Framework types bundle generation
-└── monitoring/              # Monitoring tools
-    └── logger.class.ts          # Logging system
+│   ├── build-orchestrator.class.ts  # Scheduling (topological sort, parallelism)
+│   ├── builder.class.ts         # Per-package build: JS pass then DTS pass
+│   └── dts-config.ts            # rollup-plugin-dts config + post-processing
+├── cache/                   # PackageCache, LibraryCache
+├── plugins/                 # rollup-plugin-postprocess
+├── utils/
+├── monitoring/              # Monitoring tools
+│   └── logger.class.ts          # Logging system
+└── __poc__/                 # ADR-29 PoC (historical, no longer passes)
 ```
 
 ## Configuration
@@ -127,9 +132,9 @@ async buildPackage(package: TPackage): Promise<void> {
 
 Generation of the final framework bundle (`core/dist/bonsai.d.ts`) with:
 
-- **AST extraction**: Using `ts-morph` to analyze types
-- **Deduplication**: Avoids type name conflicts
-- **Flat export**: All types available at framework level
+- **`tsc --emitDeclarationOnly`**: one `.d.ts` per source file, in `.dts-temp/`
+- **`rollup` + `rollup-plugin-dts`**: a single flat `bonsai.d.ts`, `external: []` — everything inlined, no transitive dependency (ADR-29)
+- **Post-processing**: triple-slash directives removed, third-party namespaces renamed (`Valibot`…)
 
 ```typescript
 // Instead of:

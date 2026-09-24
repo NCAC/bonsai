@@ -1,49 +1,49 @@
 /**
  * @bonsai/feature — Feature base class
  *
- * Strate 0 — Les 5 capacités :
- *   C1 — emit(event, payload) sur son propre Channel (typé TChannelDef, ADR-0040)
- *   C2 — handle(command) via auto-discovery des méthodes on{Name}Command
- *   C3 — listen(event) sur Channels externes déclarés via on{Channel}{EventName}Event
- *   C4 — reply(request) via auto-discovery des méthodes on{Name}Request
- *   C5 — request(token, name, params) vers Channels déclarés (typé via token, ADR-0040)
+ * The 5 capabilities (ADR-01):
+ *   C1 — emit(event, payload) on its own Channel (typed by TChannelDef, ADR-14)
+ *   C2 — handle(command) through auto-discovered on{Name}Command methods
+ *   C3 — listen(event) on declared external Channels through on{Channel}{EventName}Event
+ *   C4 — reply(request) through auto-discovered on{Name}Request methods
+ *   C5 — request(token, name, params) to declared Channels (typed by the token, ADR-14)
  *
- * Invariants :
- *   I1  — Feature ne peut emit() que sur son propre Channel
- *   I2  — Feature peut listen les Events des Channels externes déclarés
- *   I3  — Feature ne peut reply que sur son propre Channel
- *   I5  — Entity n'est accessible que par sa Feature propriétaire
- *   I12 — Aucune Feature ne peut emit sur le Channel d'une autre
- *   I21 — Chaque Feature DOIT être enregistrée dans le manifest applicatif
- *         sous une clé namespace unique camelCase plat (amendé ADR-0039)
- *   I22 — Relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte
- *   I48 — Handlers auto-découverts par convention de nommage
- *   I68 — Le namespace est porté par le manifest applicatif, pas par
- *         un `static` sur la classe Feature (ADR-0039)
- *   I72 — `TSelfNS` doit correspondre exactement à la clé sous laquelle
- *         la Feature est enregistrée dans le manifest (ADR-0039)
- *   I73 — Chaque Feature concrète DOIT exposer `static readonly channel:
- *         TChannelToken<TChannelDef, TSelfNS>` — pont entre la classe et son
- *         Channel typé (ADR-0040)
- *   I74 — `TChannelDef` co-localisé dans le fichier `.feature.ts` du domaine
- *         (pas de `.channel.ts` séparé) (ADR-0040)
- *   I75 — Aucun `any`/`unknown` dans la surface publique de Channel/Feature/
- *         View ; casts internes documentés et délimités (ADR-0040)
- *   I76 — `Channel.{trigger,emit,request,handle,listen,reply}` strictement
- *         typés par `TDef` — clé = `keyof TDef[lane]`, jamais `string` libre
- *         (ADR-0040)
- *   I79 — `Feature.request()` accepte uniquement un `TChannelToken` typé ;
- *         `abstract get listens()`/`abstract get queries()` portent ces tokens
- *         comme déclarations instance (ADR-0040, amendé ADR-0046 — I93)
- *   I93 — `listens` et `queries` sont des `abstract get` instance sur Feature
- *         (ADR-0046 — TS2515 si absent sur une classe concrète)
- *   I94 — Le constructeur de Feature est inerte : assertValidNamespace + #namespace
- *         uniquement. Aucun side-effect Radio/Entity.
- *   I96 — Handlers Entity `on<Key>EntityUpdated`/`onAnyEntityUpdated` auto-
- *         découverts sur la Feature (même mécanisme que I48), dispatchés par
- *         ordre alphabétique des `changedKeys` puis catch-all. Clé inconnue
- *         → erreur bootstrap. Handler qui throw → isolé (BroadcastError,
- *         ADR-0002), notification suivante non interrompue (ADR-0028 strate 1a)
+ * Invariants:
+ *   I1  — A Feature can only emit() on its own Channel
+ *   I2  — A Feature can listen to Events of declared external Channels
+ *   I3  — A Feature can only reply on its own Channel
+ *   I5  — An Entity is only accessible to its owning Feature
+ *   I12 — No Feature can emit on another Feature's Channel
+ *   I21 — Every Feature MUST be registered in the application manifest under
+ *         a unique, flat camelCase namespace key (ADR-08)
+ *   I22 — namespace ↔ Feature ↔ Entity is a strict 1:1:1 relation
+ *   I48 — Handlers are auto-discovered by naming convention
+ *   I68 — The namespace is carried by the application manifest, not by a
+ *         `static` on the Feature class (ADR-08)
+ *   I72 — `TSelfNS` must match exactly the key the Feature is registered
+ *         under in the manifest (ADR-08)
+ *   I73 — Every concrete Feature MUST expose `static readonly channel:
+ *         TChannelToken<TChannelDef, TSelfNS>` — the bridge between the class
+ *         and its typed Channel (ADR-14)
+ *   I74 — `TChannelDef` is co-located in the domain's `.feature.ts` file
+ *         (no separate `.channel.ts`) (ADR-14)
+ *   I75 — No `any`/`unknown` in the public surface of Channel/Feature/View;
+ *         internal casts are documented and contained (ADR-14)
+ *   I76 — `Channel.{trigger,emit,request,handle,listen,reply}` are strictly
+ *         typed by `TDef` — key = `keyof TDef[lane]`, never a free `string`
+ *         (ADR-14)
+ *   I79 — `Feature.request()` only accepts a typed `TChannelToken`;
+ *         `abstract get listens()`/`abstract get queries()` carry these tokens
+ *         as instance declarations (ADR-14, ADR-09 — I93)
+ *   I93 — `listens` and `queries` are instance `abstract get` on Feature
+ *         (ADR-09 — TS2515 when missing on a concrete class)
+ *   I94 — The Feature constructor is inert: assertValidNamespace + #namespace
+ *         only. No Radio/Entity side effect.
+ *   I96 — Entity handlers `on<Key>EntityUpdated`/`onAnyEntityUpdated` are
+ *         auto-discovered on the Feature (same mechanism as I48), dispatched
+ *         in alphabetical order of `changedKeys`, then the catch-all. Unknown
+ *         key → bootstrap error. A throwing handler is isolated (BroadcastError,
+ *         ADR-05) and the next notification still runs (stratum 1a)
  *
  * @packageDocumentation
  */
@@ -62,7 +62,7 @@ import {
 import { BroadcastError, hardInvariant } from "@bonsai/error";
 import { assertValidNamespace } from "./types";
 
-// ─── Re-exports — surface publique du package ───────────────────────────────
+// ─── Re-exports — public surface of the package ─────────────────────────────
 
 export {
   RESERVED_NAMESPACES,
@@ -77,45 +77,44 @@ export type {
   ValidatedManifest,
   StrictManifest,
   TBonsaiNamespaceErrorCode,
-  // ── Modules contractuels (ADR-0042) ──────────────────────────────────────
+  // ── Contract modules (ADR-14) ──────────────────────────────────────────
   TFeatureRef,
   TFeatureRefForNS,
   TFeatureContract,
-  // Helpers d'aplatissement
+  // Flattening helpers
   TFlatListens,
   TFlatTriggers,
   TFlatRequests,
-  // Extracteurs de payload
+  // Payload extractors
   TEventPayloadFor,
   TCommandPayloadFor,
   TRequestParamsFor,
   TRequestResultFor,
-  // Channel callbacks (symétrie Contract/Callbacks — I88)
+  // Channel callbacks (Contract/Callbacks symmetry — I88)
   TChannelHandlerName,
   TChannelCallbacks,
-  // Feature callbacks (ADR-0046 — M2 — symétrie I88 portée à Feature)
+  // Feature callbacks (ADR-09 — I88 symmetry extended to Feature)
   TCommandCallbacks,
   TRequestCallbacks,
   TListenCallbacks,
   TFeatureCallbacks,
-  // Feature class constraint (ADR-0046 — M3 — I95)
+  // Feature class constraint (ADR-09 — I95)
   TStrictFeatureClass
 } from "./types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 /**
- * Constructeur concret d'une sous-classe de Feature.
+ * Concrete constructor of a Feature subclass.
  *
- * Depuis ADR-0039, le constructeur prend obligatoirement `namespace: TSelfNS`
- * en paramètre — ce qui permet à `StrictManifest<M>` de vérifier au
- * compile-time que la classe est compatible avec sa clé d'enregistrement (I72).
+ * The constructor always takes `namespace: TSelfNS` (ADR-08), which lets
+ * `StrictManifest<M>` check at compile time that the class matches its
+ * registration key (I72).
  *
- * Ce type n'encode que la signature du constructeur. Les membres `static`
- * (`channel`, `listens`, `queries` — ADR-0040) font partie du contrat de classe
- * mais ne peuvent pas être exprimés dans un type constructeur sans intersection
- * explicite. Leur présence est garantie par convention et par le filet runtime
- * de `Application.start()` — cf. limitation `abstract static` ci-dessous.
+ * This type only encodes the constructor signature. The static `channel`
+ * member (ADR-14) is checked by `TStrictFeatureClass` at the manifest and by
+ * the runtime safety net of `Application.start()`; `listens`/`queries` are
+ * instance getters (ADR-09).
  */
 export type TFeatureClass<
   TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>,
@@ -126,25 +125,25 @@ export type TFeatureClass<
 // ─── Feature abstract class ──────────────────────────────────────────────────
 
 /**
- * Feature — unité métier paramétrée par sa classe Entity, son contrat Channel
- * et son namespace.
+ * Feature — business unit parameterised by its Entity class, its Channel
+ * contract and its namespace.
  *
- * Paramètres de type :
- *   - `TEntity`     : la classe Entity (ADR-0037 — encode I22 au type-level)
- *   - `TChannelDef` : le contrat du Channel propre — types de commandes, events,
- *                     requests (ADR-0040 — I74, I76). Par défaut `TChannelDefinition`
- *                     (toutes lanes `Record<string, unknown>`) pour une utilisation
- *                     non paramétrée rétrocompatible.
- *   - `TSelfNS`     : le namespace sous lequel cette Feature s'attend à être
- *                     enregistrée dans le manifest applicatif (ADR-0039 — I72).
- *                     Par défaut `string` pour les sous-classes non paramétrées.
+ * Type parameters:
+ *   - `TEntity`     : the Entity class (ADR-09 — encodes I22 at type level)
+ *   - `TChannelDef` : the contract of its own Channel — command, event and
+ *                     request types (ADR-14 — I74, I76). Defaults to
+ *                     `TChannelDefinition` (all lanes `Record<string, unknown>`)
+ *                     for untyped use.
+ *   - `TSelfNS`     : the namespace this Feature expects to be registered
+ *                     under in the application manifest (ADR-08 — I72).
+ *                     Defaults to `string` for unparameterised subclasses.
  *
- * **Le namespace n'est plus déclaré sur la classe** (`static namespace`
- * supprimé, ADR-0039 — I68). Il est :
- *   - injecté par le constructeur (immuabilité dès construction)
- *   - dérivé de la clé du manifest applicatif (source de vérité — I69)
- *   - validé au compile-time par `StrictManifest<M>` au `satisfies`
- *   - validé au runtime par `assertValidNamespace()` (filet — I71)
+ * **The namespace is not declared on the class** (no `static namespace`,
+ * ADR-08 — I68). It is:
+ *   - injected by the constructor (immutable from construction)
+ *   - derived from the application manifest key (source of truth — I69)
+ *   - checked at compile time by `StrictManifest<M>` through `satisfies`
+ *   - checked at runtime by `assertValidNamespace()` (safety net — I71)
  */
 export abstract class Feature<
   TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>,
@@ -152,42 +151,43 @@ export abstract class Feature<
   TSelfNS extends string = string
 > {
   /**
-   * Tokens des Channels externes écoutés par cette Feature (C3 — I2, ADR-0040,
-   * amendé ADR-0046 — I93).
+   * Tokens of the external Channels this Feature listens to (C3 — I2, ADR-14,
+   * ADR-09 — I93).
    *
-   * Déclaration **instance** (`abstract get`) depuis ADR-0046 — symétrie avec
-   * les `abstract get` de View (ADR-0042). Chaque Feature concrète DOIT
-   * implémenter ce getter (TS2515 sinon).
+   * **Instance** declaration (`abstract get`, ADR-09), like View's
+   * `abstract get` (ADR-14). Every concrete Feature MUST implement this
+   * getter (TS2515 otherwise).
    *
-   * Les tokens retournés sont lus par `Application.start()` en Phase 0c,
-   * APRÈS instanciation pure (ctor inerte — I94) et AVANT tout side-effect
-   * Radio/Entity, pour valider les dépendances croisées (I70 amendé).
+   * `Application.start()` reads the returned tokens in Phase 0c, AFTER pure
+   * instantiation (inert ctor — I94) and BEFORE any Radio/Entity side effect,
+   * to validate cross-dependencies (I70).
    */
   abstract get listens(): readonly TChannelToken<TChannelDefinition, string>[];
 
   /**
-   * Tokens des Channels externes interrogés par cette Feature (C5 — I17,
-   * ADR-0040, amendé ADR-0046 — I93).
+   * Tokens of the external Channels this Feature queries (C5 — I17,
+   * ADR-14, ADR-09 — I93).
    *
-   * Déclaration **instance** (`abstract get`) depuis ADR-0046 — voir `listens`.
+   * **Instance** declaration (`abstract get`, ADR-09) — see `listens`.
+   * Not enforced yet: `request()` accepts any token (ADR-01).
    */
   abstract get queries(): readonly TChannelToken<TChannelDefinition, string>[];
 
   readonly #namespace: TSelfNS;
   #entity!: TEntity;
-  // Canal propre — assigné au bootstrap, cast sûr par I22 (1 namespace = 1 TDef).
+  // Own channel — assigned at bootstrap; the cast is safe by I22 (1 namespace = 1 TDef).
   #channel!: Channel<TChannelDef>;
   #bootstrapped = false;
 
   // ─── Constructor ───────────────────────────────────────────────────────
 
   /**
-   * Crée une Feature attachée au namespace passé en paramètre.
+   * Creates a Feature bound to the given namespace.
    *
-   * Appelé exclusivement par `Application.start()` qui transmet la clé du
-   * manifest. L'instanciation manuelle (tests) doit aussi passer le namespace.
+   * Called only by `Application.start()`, which passes the manifest key.
+   * Manual instantiation (tests) must pass the namespace too.
    *
-   * @throws `BonsaiNamespaceError` si le namespace est invalide ou réservé.
+   * @throws `BonsaiNamespaceError` when the namespace is invalid or reserved.
    */
   constructor(namespace: TSelfNS) {
     assertValidNamespace(namespace);
@@ -197,51 +197,51 @@ export abstract class Feature<
   // ─── Abstract ──────────────────────────────────────────────────────────
 
   /**
-   * Liaison Feature → Entity concrète (D17 amendé par ADR-0037).
+   * Feature → concrete Entity binding (ADR-09).
    *
-   * Chaque Feature concrète DOIT fournir ce getter retournant le constructeur
-   * de son Entity. Le retour est typé par TEntity (la classe concrète), ce qui
-   * permet à `this.entity` d'être typé sans cast.
+   * Every concrete Feature MUST provide this getter returning its Entity
+   * constructor. The return type is TEntity (the concrete class), so
+   * `this.entity` is typed without a cast.
    */
   protected abstract get Entity(): new () => TEntity;
 
   // ─── Public API ────────────────────────────────────────────────────────
 
   /**
-   * Le namespace de cette instance — immuable, défini au constructeur.
-   * Typé `TSelfNS` (string littéral si la Feature est paramétrée).
+   * Namespace of this instance — immutable, set by the constructor.
+   * Typed `TSelfNS` (a string literal when the Feature is parameterised).
    */
   get namespace(): TSelfNS {
     return this.#namespace;
   }
 
   /**
-   * Accès à l'Entity (I5, I6 — propriétaire exclusif).
-   * `protected` : seules la Feature et ses sous-classes y accèdent.
-   * Typée par la classe concrète (TEntity) grâce à ADR-0037.
+   * Access to the Entity (I5, I6 — exclusive owner).
+   * `protected`: only the Feature and its subclasses reach it.
+   * Typed by the concrete class (TEntity) thanks to ADR-09.
    */
   protected get entity(): TEntity {
     return this.#entity;
   }
 
   /**
-   * Bootstrap : crée l'Entity, enregistre les handlers sur le Channel,
-   * et appelle onInit(). Appelé par Application ou manuellement en test.
+   * Bootstrap: creates the Entity, registers the handlers on the Channel and
+   * calls onInit(). Called by Application, or manually in tests.
    */
   bootstrap(): void {
     if (this.#bootstrapped) return;
     this.#bootstrapped = true;
 
-    // Cast sûr par I22 : 1 namespace = 1 Feature = 1 TDef (I75).
+    // Safe cast by I22: 1 namespace = 1 Feature = 1 TDef (I75).
     this.#channel = Radio.me().channel(
       this.#namespace
     ) as unknown as Channel<TChannelDef>;
 
-    // I22 — Création de l'Entity 1:1 via le getter Entity (D17 amendé par ADR-0037)
+    // I22 — 1:1 Entity creation through the Entity getter (ADR-09)
     const EntityCtor = this.Entity;
     this.#entity = new EntityCtor();
 
-    // Auto-discovery des handlers (I48)
+    // Handler auto-discovery (I48)
     this.#registerCommandHandlers();
     this.#registerRequestRepliers();
     this.#registerEventListeners();
@@ -251,10 +251,10 @@ export abstract class Feature<
     this.onInit();
   }
 
-  // ─── Capacités (C1–C5) ─────────────────────────────────────────────────
+  // ─── Capabilities (C1–C5) ──────────────────────────────────────────────
 
   /**
-   * C1 — Émet un Event typé sur le propre Channel de cette Feature (I1, I12, ADR-0040).
+   * C1 — Emits a typed Event on this Feature's own Channel (I1, I12, ADR-14).
    */
   protected emit<K extends keyof TChannelDef["events"] & string>(
     eventName: K,
@@ -264,8 +264,8 @@ export abstract class Feature<
   }
 
   /**
-   * C5 — Effectue une Request typée vers un Channel déclaré (I17, ADR-0040).
-   * Retourne le résultat typé ou null (ADR-0023).
+   * C5 — Performs a typed Request to a declared Channel (I17, ADR-14).
+   * Returns the typed result or null (ADR-02).
    */
   protected request<
     TDef extends TChannelDefinition,
@@ -282,7 +282,7 @@ export abstract class Feature<
   // ─── Lifecycle hooks ───────────────────────────────────────────────────
 
   /**
-   * Hook appelé après le bootstrap. Override dans les sous-classes.
+   * Hook called after bootstrap. Override it in subclasses.
    */
   onInit(): void {
     // Default no-op — subclasses override
@@ -291,13 +291,13 @@ export abstract class Feature<
   // ─── Private : Auto-discovery (I48) ────────────────────────────────────
 
   /**
-   * Découvre les méthodes `on{Name}Command` et les enregistre comme handlers
-   * sur le Channel propre de cette Feature (C2).
+   * Discovers the `on{Name}Command` methods and registers them as handlers
+   * on this Feature's own Channel (C2).
    *
-   * Convention : `onAddItemCommand` → commande "addItem"
+   * Convention: `onAddItemCommand` → command "addItem"
    */
   #registerCommandHandlers(): void {
-    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    // Cast to the untyped Channel to register by string (I75).
     const ch = this.#channel as unknown as Channel;
     const proto = Object.getPrototypeOf(this);
     const methods = Object.getOwnPropertyNames(proto) as string[];
@@ -316,13 +316,13 @@ export abstract class Feature<
   }
 
   /**
-   * Découvre les méthodes `on{Name}Request` et les enregistre comme repliers
-   * sur le Channel propre de cette Feature (C4, I3).
+   * Discovers the `on{Name}Request` methods and registers them as repliers
+   * on this Feature's own Channel (C4, I3).
    *
-   * Convention : `onGetTotalRequest` → request "getTotal"
+   * Convention: `onGetTotalRequest` → request "getTotal"
    */
   #registerRequestRepliers(): void {
-    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    // Cast to the untyped Channel to register by string (I75).
     const ch = this.#channel as unknown as Channel;
     const proto = Object.getPrototypeOf(this);
     const methods = Object.getOwnPropertyNames(proto) as string[];
@@ -341,14 +341,14 @@ export abstract class Feature<
   }
 
   /**
-   * Découvre les méthodes `on{Channel}{EventName}Event` et les enregistre
-   * comme listeners sur les Channels déclarés via `get listens()` (C3, I2,
-   * I48, ADR-0040, amendé ADR-0046 — I93).
+   * Discovers the `on{Channel}{EventName}Event` methods and registers them as
+   * listeners on the Channels declared by `get listens()` (C3, I2, I48,
+   * ADR-14, ADR-09 — I93).
    *
-   * Convention : `onCartItemAddedEvent` avec `get listens() { return [CartFeature.channel]; }`
-   * → écoute "itemAdded" sur le Channel "cart"
+   * Convention: `onCartItemAddedEvent` with `get listens() { return [CartFeature.channel]; }`
+   * → listens to "itemAdded" on the "cart" Channel
    *
-   * Le pattern est : on + ChannelName(PascalCase) + EventName(PascalCase) + Event
+   * Pattern: on + ChannelName(PascalCase) + EventName(PascalCase) + Event
    */
   #registerEventListeners(): void {
     const listenTokens = this.listens;
@@ -363,7 +363,7 @@ export abstract class Feature<
       const prefix = `on${channelPascal}`;
       const suffix = "Event";
 
-      // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+      // Cast to the untyped Channel to register by string (I75).
       const ch = Radio.me().channel(channelName) as unknown as Channel;
 
       for (const method of methods) {
@@ -384,15 +384,15 @@ export abstract class Feature<
   }
 
   /**
-   * Découvre les méthodes `on{Key}EntityUpdated` et s'abonne une fois à
-   * `entity.onAnyEntityUpdated()` pour les dispatcher (I96, ADR-0028 strate 1a).
+   * Discovers the `on{Key}EntityUpdated` methods and subscribes once to
+   * `entity.onAnyEntityUpdated()` to dispatch them (I96, stratum 1a).
    *
-   * Convention : `onItemsEntityUpdated` avec une clé `items` sur le state
-   * de l'Entity → appelé à chaque mutation qui change `items`.
-   * `onAnyEntityUpdated` (catch-all) est câblé sans vérification de clé.
+   * Convention: `onItemsEntityUpdated` with an `items` key in the Entity
+   * state → called on every mutation that changes `items`.
+   * `onAnyEntityUpdated` (catch-all) is wired without key checking.
    *
-   * Filet runtime : une méthode `on<Key>EntityUpdated` dont `<Key>` ne
-   * correspond à aucune clé du state de l'Entity → erreur bootstrap.
+   * Runtime safety net: an `on<Key>EntityUpdated` method whose `<Key>`
+   * matches no key of the Entity state → bootstrap error.
    */
   #registerEntityHandlers(): void {
     const proto = Object.getPrototypeOf(this);
@@ -418,10 +418,10 @@ export abstract class Feature<
   }
 
   /**
-   * Route un `TEntityEvent` vers les handlers per-key (ordre alphabétique
-   * des `changedKeys`) puis le catch-all, s'ils existent. Chaque appel est
-   * isolé : un throw devient une `BroadcastError` loggée, la notification
-   * continue (ADR-0002, I96).
+   * Routes a `TEntityEvent` to the per-key handlers (alphabetical order of
+   * `changedKeys`), then to the catch-all, when present. Each call is
+   * isolated: a throw becomes a logged `BroadcastError` and the
+   * notification continues (ADR-05, I96).
    */
   #dispatchEntityEvent(event: TEntityEvent): void {
     const self = this as unknown as Record<
@@ -445,7 +445,7 @@ export abstract class Feature<
         console.error(
           new BroadcastError(
             `Entity handler "${handlerName}" threw for intent "${event.intent}"`,
-            "ADR-0002",
+            "ADR-05",
             this.#namespace
           ),
           error
@@ -460,7 +460,7 @@ export abstract class Feature<
         console.error(
           new BroadcastError(
             `Entity handler "onAnyEntityUpdated" threw for intent "${event.intent}"`,
-            "ADR-0002",
+            "ADR-05",
             this.#namespace
           ),
           error

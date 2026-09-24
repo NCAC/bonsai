@@ -1,619 +1,172 @@
 # 🤝 Guide de Contribution - Framework Bonsai
 
-## Bienvenue
+Bonsai est développé par un mainteneur unique, sans registre npm ni consommateur externe
+([ADR-33](docs/adr/ADR-33-workflow-git-ci.md)). Ce guide décrit le processus **réellement en place** ;
+les décisions sont dans les [ADR](docs/adr/README.md), les contrats dans la [spec](docs/spec/README.md).
 
-Merci de votre intérêt pour contribuer au Framework Bonsai ! Ce guide vous explique comment participer efficacement au développement.
+## Table des matières
 
-## 📋 Table des Matières
-
-1. [Code de Conduite](#code-de-conduite)
-2. [Types de Contributions](#types-de-contributions)
-3. [Workflow de Développement](#workflow-de-développement)
-4. [Standards de Code](#standards-de-code)
-5. [Tests et Qualité](#tests-et-qualité)
+1. [Types de contributions](#types-de-contributions)
+2. [Workflow git](#workflow-git)
+3. [Commits](#commits)
+4. [Standards de code](#standards-de-code)
+5. [Tests et qualité](#tests-et-qualité)
 6. [Documentation](#documentation)
-7. [Review Process](#review-process)
+7. [Revue](#revue)
 
 ---
 
-## Code de Conduite
+## Types de contributions
 
-- **Respectueux** : Traiter tous les contributeurs avec respect
-- **Constructif** : Fournir des critiques constructives
-- **Collaboratif** : Favoriser la collaboration et l'entraide
-- **Inclusif** : Accueillir tous les niveaux d'expérience
-
----
-
-## Types de Contributions
-
-### 🐛 Bug Reports
-
-- Utiliser les templates d'issue GitHub
-- Fournir des étapes de reproduction claires
-- Inclure la version de Node.js/TypeScript/navigateur
-- Joindre les logs d'erreur complets
-
-### ✨ Feature Requests
-
-- Expliquer le cas d'usage et la motivation
-- Proposer une API ou interface
-- Vérifier que cela s'aligne avec la philosophie Bonsai
-- Discuter dans une issue avant l'implémentation
-
-### 📖 Documentation
-
-- Améliorer la clarté et les exemples
-- Corriger les erreurs et typos
-- Ajouter des cas d'usage pratiques
-- Traduire en différentes langues
-
-### 🔧 Code Contributions
-
-- Nouvelles features
-- Bug fixes
-- Optimisations performance
-- Refactoring et amélioration de l'architecture
+- 🐛 **Bug reports** : étapes de reproduction, version de Node/TypeScript, logs complets.
+- ✨ **Feature requests** : cas d'usage, cohérence avec la philosophie (« le type EST le contrat »), discussion dans une issue avant toute implémentation. Le périmètre v1 est **gelé** ([ADR-31](docs/adr/ADR-31-strates-perimetre-v1.md)) : ajouter un élément à la v1 passe par une révision de cet ADR ; les pistes post-v1 vivent dans la [roadmap](docs/ROADMAP.md).
+- 📖 **Documentation** : voir [Documentation](#documentation).
+- 🔧 **Code** : voir les sections suivantes.
 
 ---
 
-## Workflow de Développement
+## Workflow git
 
-### 1. Setup Initial
+Git Flow adapté, sans `release/*` ni `hotfix/*` avant la v1 (ADR-33) :
+
+`feature/*` (ou `fix/*`) → PR vers **`develop`** → merge vers **`main`** aux jalons seulement. `main` ne porte que des états validés et tagués.
 
 ```bash
-# Fork et clone
-git clone https://github.com/VOTRE-USERNAME/bonsai.git
-cd bonsai
+git checkout develop
+git pull
+git checkout -b feature/ma-nouvelle-fonctionnalite   # ou fix/correction-bug-123
 
-# Configuration upstream
-git remote add upstream https://github.com/NCAC/bonsai.git
-
-# Installation
 pnpm install
-
-# Vérification de l'environnement
 pnpm test
-pnpm run build
 ```
 
-### 2. Créer une Branche
+| Type | Format | Exemple |
+| --- | --- | --- |
+| Feature | `feature/description-courte` | `feature/entity-validation` |
+| Correction | `fix/description-courte` | `fix/channel-memory-leak` |
+| Documentation | `docs/description-courte` | `docs/api-reference-update` |
+| Refactoring | `refactor/description-courte` | `refactor/build-system-optimization` |
 
-```bash
-# Synchroniser avec upstream
-git checkout main
-git pull upstream main
-
-# Créer une branche feature
-git checkout -b feature/ma-nouvelle-fonctionnalite
-
-# Ou pour un bug fix
-git checkout -b fix/correction-bug-123
-```
-
-### 3. Conventions de Nommage des Branches
-
-| Type          | Format                        | Exemple                              |
-| ------------- | ----------------------------- | ------------------------------------ |
-| Feature       | `feature/description-courte`  | `feature/entity-validation`          |
-| Bug Fix       | `fix/description-courte`      | `fix/channel-memory-leak`            |
-| Documentation | `docs/description-courte`     | `docs/api-reference-update`          |
-| Refactoring   | `refactor/description-courte` | `refactor/build-system-optimization` |
-| Tests         | `test/description-courte`     | `test/feature-integration-tests`     |
-
-### 4. Développement TDD
-
-**Suivre strictement l'approche Test-Driven Development** :
-
-```bash
-# 1. Écrire le test (qui échoue)
-vim tests/unit/ma-feature.test.ts
-
-# 2. Lancer les tests
-pnpm run test:watch
-
-# 3. Écrire le code minimum pour passer le test
-vim packages/mon-package/src/ma-feature.ts
-
-# 4. Refactoriser tout en gardant les tests verts
-```
-
-### 5. Commit Guidelines
-
-#### Format des Commits (Convention Conventional Commits)
-
-```
-<type>(<scope>): <description>
-
-<body optionnel>
-
-<footer optionnel>
-```
-
-**Types autorisés** :
-
-- `feat`: nouvelle fonctionnalité
-- `fix`: correction de bug
-- `docs`: documentation uniquement
-- `style`: formatage, point-virgules manquants, etc.
-- `refactor`: refactoring sans changement de comportement
-- `test`: ajout ou modification de tests
-- `chore`: maintenance, dépendances, build
-- `perf`: amélioration de performance
-- `ci`: configuration CI/CD
-
-**Exemples** :
-
-```bash
-feat(event): add request timeout handling to Channel class
-
-fix(build): resolve TypeScript compilation errors in framework bundling
-
-docs(api): update Feature class documentation with examples
-
-test(radio): add comprehensive tests for channel lifecycle management
-```
-
-### 6. Pull Request Process
-
-#### Avant de Soumettre
-
-```bash
-# Vérifier que tout fonctionne
-pnpm run build
-pnpm run test
-pnpm run test:coverage
-
-# Linter et formatage
-pnpm run lint:fix
-pnpm run format
-
-# Mise à jour avec upstream
-git fetch upstream
-git rebase upstream/main
-```
-
-#### Template de Pull Request
-
-```markdown
-## Description
-
-Brève description des changements apportés.
-
-## Type de changement
-
-- [ ] Bug fix (changement non-breaking qui corrige un problème)
-- [ ] Nouvelle fonctionnalité (changement non-breaking qui ajoute une fonctionnalité)
-- [ ] Breaking change (correction ou fonctionnalité qui casserait la compatibilité)
-- [ ] Documentation uniquement
-
-## Tests
-
-- [ ] Tests unitaires ajoutés/modifiés
-- [ ] Tests d'intégration ajoutés/modifiés
-- [ ] Couverture de code maintenue/améliorée
-- [ ] Tous les tests passent
-- [ ] Tests ajoutés au fichier de régression cumulatif (ADR-0034)
-
-## Checklist
-
-- [ ] Code suit les standards du projet
-- [ ] Documentation mise à jour si nécessaire
-- [ ] Changements testés localement
-- [ ] Pas de conflits avec main
-- [ ] Commits suivent les conventions
-```
+**SemVer `0.x.y`** avant la v1 : MINOR = fin de strate, PATCH = correction intra-strate. Historique dans [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
-## Standards de Code
+## Commits
 
-### TypeScript Configuration
+Conventional Commits, **type et portée en anglais, description en français** (ADR-33, [ADR-34](docs/adr/ADR-34-documentation-francais.md)) :
 
-**Utiliser la configuration stricte** définie dans `tsconfig.json` :
+```text
+<type>(<portée>): <description en français>
+```
 
-```json
+Types acceptés par le hook `commit-msg` : `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, `ci`, `build` (pas de `style`). Un `!` après la portée marque un changement cassant.
+
+```text
+refactor(entity): messages d'erreur en anglais
+refactor(i18n): JSDoc en anglais — @bonsai/view
+docs(adr): ADR-34 — JSDoc en anglais, commits en français
+docs(spec): S5 — référence et devtools alignés sur les ADR
+```
+
+### Hooks Husky
+
+| Hook | Vérifie | Bloquant |
+| --- | --- | --- |
+| `commit-msg` | format Conventional Commits | local |
+| `pre-commit` | `tsc --noEmit` (⚠️ `lib/` seulement), `pnpm test:regression`, puis `lib/check-adr-tested-status.ts` (informatif) | local (`--no-verify` possible) |
+| `pre-push` | suite complète `pnpm test` | local |
+
+### CI
+
+Workflow `.github/workflows/regression.yml` : sur push `feature/**` et `fix/**` et sur PR vers `develop`, `pnpm tsc --noEmit` (⚠️ `lib/` seulement) puis `pnpm test:ci` (couverture). Un échec bloque le merge via la protection de branche.
+
+---
+
+## Standards de code
+
+Conventions complètes : [FRAMEWORK-STYLE-GUIDE](docs/guides/FRAMEWORK-STYLE-GUIDE.md) (`packages/`, `core/`) et [BUILD-CODING-STYLE](docs/guides/BUILD-CODING-STYLE.md) (`lib/`, `tools/`). Points clés du code framework :
+
+- **Nommage des types** : `T` + PascalCase pour la surface développeur (`TChannelDefinition`), PascalCase sans préfixe pour la plomberie type-level (`StrictManifest`), `type` plutôt qu'`interface`.
+- **Encapsulation** : `#field` (hard private ES2022) ; `private` TypeScript seulement pour `private constructor()`.
+- **Signatures** : discriminant en premier argument, puis objet de paramètres (`mutate("cart:addItem", { payload }, recipe)`).
+- **Langues** : code, JSDoc et commentaires en **anglais** ; documentation et commits en **français** (ADR-34).
+- **Artefacts versionnés** : toute modification de source dans `packages/` ou `core/` s'accompagne de `pnpm run build:no-watch` ([ADR-30](docs/adr/ADR-30-artefacts-versionnes.md)).
+
+> ⚠️ **Configuration TypeScript** : aucun `tsconfig` du dépôt n'active `strict`, et le contrat `Feature<TEntity, …>` ne compile pas sous `strictFunctionTypes` ([ADR-14](docs/adr/ADR-14-contrats-types.md)). Ne pas activer `strict` sans traiter ce point. Il n'y a ni ESLint ni script `lint` : le formatage repose sur Prettier côté éditeur.
+
+Exemple minimal conforme (extrait de [`tests/fixtures/cart-feature.fixture.ts`](tests/fixtures/cart-feature.fixture.ts)) :
+
+```ts
+class CartFeature
+  extends Feature<CartEntity, TCartChannelDef, "cart">
+  implements TFeatureCallbacks<TCartChannelDef, typeof cartListens>
 {
-  "compilerOptions": {
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
+  static readonly channel: TChannelToken<TCartChannelDef, "cart"> = { namespace: "cart" };
+  get listens() { return cartListens; }
+  get queries() { return [] as const; }
+  protected get Entity() { return CartEntity; }
+
+  onAddItemCommand(payload: TCartItem): void {
+    this.entity.mutate("addItem", (draft) => { draft.items.push(payload); });
+    this.emit("itemAdded", { item: payload });
   }
 }
 ```
-
-### Style de Code
-
-#### Classes et Interfaces
-
-```typescript
-// ✅ Bon
-abstract class UserFeature extends Feature<UserEntity> {
-  private readonly users = new Map<string, UserEntity>();
-  
-  constructor() {
-    super('user');
-  }
-  
-  protected setupEventHandlers(): void {
-    this.channel.on('user:create', this.handleUserCreate.bind(this));
-  }
-  
-  private handleUserCreate(data: CreateUserData): void {
-    // Implementation
-  }
-}
-
-// ❌ Mauvais
-class userfeature {
-  users: any;
-  
-  constructor() {
-    // pas de typage, pas de structure claire
-  }
-}
-```
-
-#### Nommage
-
-```typescript
-// Classes : PascalCase
-class UserEntity extends Entity { }
-class TaskFeature extends Feature { }
-
-// Interfaces : PascalCase avec 'I' optionnel
-interface UserEvents { }
-interface IEventHandler { } // acceptable aussi
-
-// Variables et fonctions : camelCase
-const userChannel = Radio.channel('user');
-function handleUserLogin() { }
-
-// Constants : SCREAMING_SNAKE_CASE
-const MAX_RETRY_ATTEMPTS = 3;
-const DEFAULT_TIMEOUT = 5000;
-
-// Types : PascalCase
-type EventHandler<T> = (data: T) => void;
-```
-
-#### Imports/Exports
-
-```typescript
-// ✅ Imports organisés
-// 1. Node modules
-import { Observable } from 'rxjs';
-import * as v from 'valibot';
-
-// 2. Framework internal
-import { Feature } from '@bonsai/core';
-import { Channel, Radio } from '@bonsai/event';
-
-// 3. Relatifs
-import { UserEntity } from './user.entity';
-import { UserEvents } from '../types';
-
-// ✅ Exports explicites
-export { UserFeature } from './user.feature';
-export type { UserEvents, CreateUserData } from './types';
-
-// ❌ Export default évité (sauf cas spéciaux)
-export default UserFeature; // Éviter
-```
-
-### Documentation du Code
-
-#### JSDoc pour l'API Publique
-
-````typescript
-/**
- * Feature responsible for user management and authentication.
- * 
- * Handles user lifecycle, authentication, and profile management
- * through a centralized event system.
- * 
- * @example
- * ```typescript
- * const userFeature = new UserFeature();
- * await userFeature.initialize();
- * 
- * // Create user through channel
- * const userChannel = Radio.channel<UserEvents>('user');
- * userChannel.trigger('user:create', {
- *   name: 'John Doe',
- *   email: 'john@example.com'
- * });
- * ```
- */
-class UserFeature extends Feature<UserEntity> {
-  /**
-   * Creates a new user entity and manages its lifecycle.
-   * 
-   * @param userData - User creation data
-   * @returns Promise resolving to the created user entity
-   * @throws {ValidationError} When user data is invalid
-   */
-  async createUser(userData: CreateUserData): Promise<UserEntity> {
-    // Implementation
-  }
-}
-````
 
 ---
 
-## Tests et Qualité
+## Tests et qualité
 
-### Structure des Tests
-
-```
-/tests/
-├── unit/                  # Tests unitaires (composants isolés)
-│   ├── channel.test.ts
-│   └── user.feature.test.ts
-├── integration/           # Tests d'intégration (plusieurs composants)
-│   ├── feature-channel.test.ts
-│   └── application-flow.test.ts
-├── e2e/                   # Tests end-to-end (workflow complet)
-│   └── user-journey.test.ts
-├── fixtures/              # Données de test réutilisables
-│   └── user-data.ts
-└── helpers/               # Utilitaires de test
-    └── test-utils.ts
-```
-
-### Standards de Tests
-
-#### Tests Unitaires
-
-```typescript
-describe('UserFeature', () => {
-  let userFeature: UserFeature;
-  let mockChannel: jest.Mocked<Channel<UserEvents>>;
-  
-  beforeEach(() => {
-    // Setup propre pour chaque test
-    Radio.destroy();
-    userFeature = new UserFeature();
-    mockChannel = Radio.channel('user') as jest.Mocked<Channel<UserEvents>>;
-  });
-  
-  afterEach(() => {
-    // Nettoyage après chaque test
-    userFeature.destroy();
-  });
-  
-  describe('createUser', () => {
-    it('should create user with valid data', async () => {
-      // Arrange
-      const userData = {
-        name: 'John Doe',
-        email: 'john@example.com'
-      };
-      
-      // Act
-      const result = await userFeature.createUser(userData);
-      
-      // Assert
-      expect(result).toBeInstanceOf(UserEntity);
-      expect(result.name).toBe(userData.name);
-      expect(result.email).toBe(userData.email);
-      expect(mockChannel.trigger).toHaveBeenCalledWith(
-        'user:created', 
-        expect.any(UserEntity)
-      );
-    });
-    
-    it('should reject invalid email format', async () => {
-      // Arrange
-      const invalidData = {
-        name: 'John Doe',
-        email: 'invalid-email'
-      };
-      
-      // Act & Assert
-      await expect(userFeature.createUser(invalidData))
-        .rejects
-        .toThrow('Invalid email format');
-    });
-  });
-});
-```
-
-### Couverture de Code
-
-**Objectifs de couverture** :
-
-- **Components Core** : 100%
-- **Features** : 95%+
-- **Utilities** : 90%+
-- **Global** : 90%+
+Guide détaillé : [TESTING.md](docs/guides/TESTING.md) ([ADR-32](docs/adr/ADR-32-tests-preuve-architecture.md) : les tests sont une preuve d'architecture).
 
 ```bash
-# Vérifier la couverture
-pnpm run test:coverage
-
-# Générer un rapport détaillé
-pnpm run test:coverage -- --verbose
+pnpm test                                  # suite complète (Jest, ts-jest en isolatedModules)
+pnpm test:unit | test:integration | test:e2e
+pnpm test:strate-0:regression              # gate de régression strate 0
+pnpm test:coverage                         # couverture ; seuils dans jest.config.ts
+npx tsc --noEmit -p tsconfig.test.json     # type-check de packages/ + tests/ — À LANCER À LA MAIN
 ```
 
-### Performance Testing
+- **TDD** : écrire le test d'abord, dans `tests/unit/strate-N/<composant>.<sujet>.test.ts`.
+- **Citer l'invariant prouvé** (`I<N>`) dans l'en-tête du fichier et dans les `describe`/`it` (ADR-32) ; `lib/check-adr-tested-status.ts` liste les ADR promouvables.
+- **Jest ne type-check pas** : les tests de `tests/types/` (`@ts-expect-error`) ne sont vérifiés que par la commande `tsc` ci-dessus. Avant de merger un changement touchant les types publics, la lancer.
+- **Gate de non-régression cumulative** (ADR-33) : chaque PR ajoute ses fichiers de test à `tests/unit/strate-N/strate-N.regression.test.ts`, avec le numéro de PR :
 
-> ### 🛡️ Gate de Non-Régression Cumulative (ADR-0034)
->
-> Chaque PR mergée doit ajouter ses fichiers de test au **fichier de régression cumulatif**
-> de la strate correspondante. Ce fichier est exécuté en CI sur chaque push et chaque PR.
->
-> **Pourquoi ?** S'assurer qu'aucun test précédemment validé ne casse lors d'un nouvel incrément.
+  ```ts
+  // ── PR #N — Description courte ──────────────────────────
+  import "./mon-nouveau.test";
+  ```
 
-#### Protocole
-
-1. **Identifiez la strate** de votre PR (ex: `strate-0`)
-2. **Ouvrez le fichier** `tests/unit/strate-0/strate-0.regression.test.ts`
-3. **Ajoutez vos imports** avec le commentaire normalisé :
-
-```typescript
-// ── PR #N — Description courte ──────────────────────────
-import "./mon-nouveau.test";
-import "./mon-autre.test";
-```
-
-1. **Vérifiez localement** :
-
-```bash
-pnpm test:regression
-```
-
-#### Scripts disponibles
-
-| Script                          | Cible                                                     |
-| ------------------------------- | --------------------------------------------------------- |
-| `pnpm test:regression`          | Tous les fichiers `*.regression.test.ts` (toutes strates) |
-| `pnpm test:strate-0:regression` | Strate 0 uniquement                                       |
-
-#### CI
-
-Le workflow GitHub Actions `regression.yml` exécute `pnpm test:regression` automatiquement.
-Un échec **bloque le merge** de la PR.
-
----
-
-### Performance Testing
-
-```typescript
-describe('Channel Performance', () => {
-  it('should handle 1000 events under 100ms', async () => {
-    const channel = Radio.channel('perf-test');
-    const events: any[] = [];
-    
-    channel.on('test-event', (data) => events.push(data));
-    
-    const start = performance.now();
-    
-    for (let i = 0; i < 1000; i++) {
-      channel.trigger('test-event', { id: i });
-    }
-    
-    const duration = performance.now() - start;
-    
-    expect(duration).toBeLessThan(100);
-    expect(events).toHaveLength(1000);
-  });
-});
-```
+  ⚠️ Aujourd'hui la gate strate 0 n'importe que Channel, Radio, Entity, Feature et View.
+- **Seuils de couverture** figés dans `jest.config.ts` : toute régression fait échouer la CI.
+- **Ne pas casser** la gate E2E `tests/e2e/strate-0.cart-round-trip.test.ts`.
 
 ---
 
 ## Documentation
 
-### Types de Documentation
+Point d'entrée : [docs/README.md](docs/README.md). Toute la documentation est en **français** (ADR-34).
 
-1. **API Reference** (`/docs/API-REFERENCE.md`)
-2. **Architecture Guide** (`/docs/SUMMARY.md`)
-3. **Developer Guide** (`/lib/DEVELOPER-GUIDE.md`)
-4. **Quick Start** (`/QUICK-START.md`)
-5. **Exemples pratiques** (`/examples/`)
-
-### Standards de Documentation
-
-#### Structure Markdown
-
-````markdown
-# Titre Principal (H1)
-
-## Section Principale (H2)
-
-### Sous-section (H3)
-
-#### Détail (H4)
-
-## Code Examples
-
-```typescript
-// Exemple avec commentaires explicatifs
-const channel = Radio.channel<UserEvents>('user');
-
-// S'abonner aux événements
-channel.on('user:login', (data) => {
-  console.log('User logged in:', data);
-});
-```
-````
-
-## Notes et Warnings
-
-> ⚠️ **Important**: Cette API est expérimentale
-
-> 💡 **Tip**: Utilisez les types pour une meilleure DX
-
-> 📝 **Note**: Voir la documentation API pour plus de détails
-
-```
----
-
-## Review Process
-
-### Critères de Review
-
-#### Code Quality
-- [ ] Code suit les standards TypeScript
-- [ ] Nommage cohérent et expressif
-- [ ] Pas de code dupliqué
-- [ ] Architecture respectée (patterns Bonsai)
-- [ ] Performance acceptable
-
-#### Tests
-- [ ] Tests TDD écrits en premier
-- [ ] Couverture de code satisfaisante
-- [ ] Tests unitaires ET d'intégration
-- [ ] Edge cases couverts
-- [ ] Tests de régression si bug fix
-- [ ] **Tests ajoutés au fichier de régression cumulatif** (voir ci-dessous)
-
-#### Documentation
-- [ ] JSDoc pour API publique
-- [ ] README mis à jour si nécessaire
-- [ ] Exemples pratiques inclus
-- [ ] Breaking changes documentés
-
-#### Compatibility
-- [ ] Pas de breaking changes non documentés
-- [ ] Rétro-compatibilité préservée
-- [ ] Migration guide si nécessaire
-
-### Timeline de Review
-
-- **Response initiale** : 24-48h
-- **Review détaillée** : 3-5 jours ouvrés
-- **Iterations** : 1-2 jours par round
-- **Merge** : Après approbation de 2 reviewers
+- **Spec** (`docs/spec/`) : le *quoi*, contrat cible ; chaque section non livrée porte un encadré ⏳ qui renvoie à l'ADR.
+- **ADR** (`docs/adr/`) : le *pourquoi*, 30 à 80 lignes, **vivants** (réécrits en place), modèle [TEMPLATE.md](docs/adr/TEMPLATE.md), ligne **Livré** (✅/⚠️/⏳) écrite depuis le code livré.
+- **Le code fait foi** : en cas d'écart doc ↔ code, corriger la documentation (ou consigner l'écart dans la ligne **Livré**), jamais l'inverse sans décision.
+- Vérifier les liens et ancres après tout renommage de titre.
 
 ---
 
-## Ressources Utiles
+## Revue
 
-### Documentation
-- 📖 [Architecture du Framework](/docs/SUMMARY.md)
-- 🔧 [Guide du Build System](/lib/DEVELOPER-GUIDE.md)
-- 🤖 [Agent de Développement](/.github/agents/dev-framework.agent.md)
+Mainteneur unique : la revue vérifie les points suivants.
 
-### Outils
-- **IDE**: VS Code avec Dev Container recommandé
-- **Testing**: Jest avec couverture de code
-- **Linting**: ESLint + Prettier
-- **CI/CD**: GitHub Actions
-
-### Communication
-- **Issues**: Pour bugs et feature requests
-- **Discussions**: Pour questions générales
-- **PR Reviews**: Pour feedback sur le code
+- [ ] Code conforme aux conventions ci-dessus ; architecture respectée (flux `View → Command → Feature → Event → View`)
+- [ ] Tests ajoutés (TDD), invariants cités, gate de régression mise à jour
+- [ ] `pnpm test` vert ; `npx tsc --noEmit -p tsconfig.test.json` vert
+- [ ] `pnpm run build:no-watch` relancé si `packages/` ou `core/` ont changé
+- [ ] Documentation alignée (ADR/spec/guides) ; changement cassant noté dans le CHANGELOG
 
 ---
 
-## Remerciements
+## Ressources
 
-Merci à tous les contributeurs qui font évoluer le Framework Bonsai ! Votre travail aide à créer un framework plus robuste et plus utile pour la communauté.
-
-**Happy coding! 🌱**
-```
+- 📖 [Documentation](docs/README.md) · 🔧 [Build system](lib/DEVELOPER-GUIDE.md) · 🤖 [Agent de développement](.github/agents/dev-framework.agent.md)
+- **Outils** : VS Code + Dev Container, Jest (framework), Husky, GitHub Actions.

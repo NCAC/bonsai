@@ -1,112 +1,78 @@
 # 📖 Documentation Bonsai
 
-> Point d'entrée de toute la documentation technique du framework Bonsai.
-
----
+> Point d'entrée de la documentation technique du framework Bonsai.
 
 ## 📁 Structure
 
 ```text
 docs/
-├── rfc/                    ← Spécifications (le QUOI)
-├── adr/                    ← Décisions architecturales (le POURQUOI)
-├── guides/                 ← Conventions et mode d'emploi (le COMMENT)
-├── pugx/                   ← Sous-projet PugX (WIP)
-└── archive/                ← Documents passés (mémoire)
-    ├── analyses/           ← Audits et analyses ponctuelles
-    └── explorations/       ← Notes de réflexion brutes
+├── spec/          ← Spécification : le QUOI (contrats, signatures, invariants)
+├── adr/          ← Décisions : le POURQUOI (ADR-01 à ADR-34)
+├── guides/       ← Conventions et mode d'emploi : le COMMENT
+├── ROADMAP.md    ← Pistes post-v1 (ce qui n'est pas décidé ou pas dans la v1)
+├── GENESIS.md    ← L'histoire du projet
+├── pugx/         ← Sous-projet PugX (WIP)
+└── archive/      ← Mémoire, non normative
+    ├── adr-v0/        ← anciens ADR-0001…0047 et journal D1–D48, table de correspondance
+    ├── analyses/      ← audits et analyses ponctuelles
+    └── explorations/  ← notes de réflexion brutes
 ```
 
----
+## 📐 Spécification — [spec/](spec/README.md)
 
-## 📐 Documents de référence
+Source de vérité des contrats. Organisée par chapitres :
 
-### [RFCs — Spécifications](rfc/README.md)
-
-Les RFCs définissent l'architecture et les contrats techniques. C'est la **source de vérité**.
-
-> **Nomenclature** : les identifiants `RFC-0001`–`RFC-0004` ci-dessous sont
-> l'ancienne numérotation (encore utilisée dans les renvois `RFC-000X §Y` des
-> ADR et RFC). Le corpus vit désormais dans une **arborescence par chapitres**
-> — les liens pointent directement sur les fichiers actuels. Table de
-> correspondance complète : [rfc/README.md §Correspondance](rfc/README.md#correspondance-avec-les-anciens-noms-de-fichiers).
-
-| RFC | Sujet | Chapitres actuels | Statut |
-| --- | --- | --- | --- |
-| RFC-0001 | Architecture fondamentale (composants, invariants, flux) | [1. Philosophie](rfc/1-philosophie.md) · [2. Architecture](rfc/2-architecture/README.md) · [3. Couche abstraite](rfc/3-couche-abstraite/README.md) · [4. Couche concrète](rfc/4-couche-concrete/README.md) · [Invariants](rfc/reference/invariants.md) · [Décisions](rfc/reference/decisions.md) · [Glossaire](rfc/reference/glossaire.md) | 🟢 Stable |
-| RFC-0002 | API, contrats TypeScript (Channel, Feature, Entity) | [6. Transversal — Conventions de typage](rfc/6-transversal/conventions-typage.md) · [Index des types](rfc/reference/types-index.md) | 🟢 Stable |
-| RFC-0003 | Rendu avancé (PDR, templates, ProjectionList) | [5. Rendu avancé](rfc/5-rendu.md) | 🟢 Stable |
-| RFC-0004 | DevTools et observabilité (Event Ledger, hooks, perf) | [DevTools](rfc/devtools.md) | 🟡 Draft |
-
-### [ADRs — Décisions](adr/README.md)
-
-Les ADRs documentent les choix architecturaux non triviaux : contexte, options évaluées, décision finale.
-
-- **47 ADRs** (ADR-0001 à ADR-0047)
-- **22 Accepted**, 17 Tested, 3 Superseded, 3 Proposed, 2 Suspended
-- _(recalculé par le script [annexe A.2](AUDIT-DOCS-2026-09-16.md#a2--statuts-adr-pour-recalculer-les-compteurs) — à revérifier périodiquement plutôt qu'à la main)_
-- [Voir l'index complet →](adr/README.md)
-
-### [Guides — Conventions](guides/)
-
-| Guide | Périmètre | Description |
-| --- | --- | --- |
-| [BUILD-CODING-STYLE.md](guides/BUILD-CODING-STYLE.md) | `lib/`, `tools/` | Conventions pour la pipeline de build (TypeScript, imports, nommage, singleton) |
-| [FRAMEWORK-STYLE-GUIDE.md](guides/FRAMEWORK-STYLE-GUIDE.md) | Code applicatif | Conventions du framework (DOM, HTML, CSS, API TypeScript, patterns) |
-| [FORMS-GUIDE.md](guides/FORMS-GUIDE.md) | Formulaires | 3 patterns pratiques (B localState, C FormBehavior, D Entity+localState) + validation différée — recommandation ADR-0009 Option D |
-| [NAMESPACE-MENTAL-MODEL.md](guides/NAMESPACE-MENTAL-MODEL.md) | Namespaces Feature | Les quatre lieux où vit le namespace d'une Feature — ADR-0039, ADR-0040, ADR-0046 |
-| [TESTING.md](guides/TESTING.md) | Tests | Stratégie de test (unit, intégration, e2e) — ADR-0006 |
-
----
-
-## 🔍 Errata et audits
-
-| Document | Date | Statut |
-| --- | --- | --- |
-| [ERRATA-2026-03-23](ERRATA-2026-03-23.md) | 2026-03-23 | 🟢 Clos — 36 constats, tous corrigés |
-| [Audit sévère (v1)](audit-2026-04-01.md) | 2026-04-01 | 🟡 Actif — 19 recommandations, 11 résolues |
-| [ERRATA-2026-04-08](ERRATA-2026-04-08.md) | 2026-04-08 | 🟡 À vérifier |
-
----
-
-## 📦 Archive
-
-Documents ayant servi à alimenter les RFC/ADR. Conservés comme **mémoire de raisonnement**,
-mais ne sont plus des documents de référence actifs.
-
-| Dossier | Contenu |
+| Chapitre | Contenu |
 | --- | --- |
-| [archive/analyses/](archive/analyses/) | Audits et analyses RFC (mars 2026) |
-| [archive/explorations/](archive/explorations/) | Notes de réflexion, conversations, comparatifs |
-| [archive/ROADMAP-CONSOLIDATION.md](archive/ROADMAP-CONSOLIDATION.md) | Plan de travail consolidation RFC |
+| [1. Philosophie](spec/1-philosophie.md) | Principes, frontières |
+| [2. Architecture](spec/2-architecture/README.md) | Communication, state, metas, erreurs, lifecycle, distribution |
+| [3. Couche abstraite](spec/3-couche-abstraite/README.md) | Application, Feature, Entity, Router |
+| [4. Couche concrète](spec/4-couche-concrete/README.md) | Foundation, Composer, View, Behavior |
+| [5. Rendu](spec/5-rendu.md) | PDR, templates, ProjectionList, hydratation |
+| [6. Transversal](spec/6-transversal/conventions-typage.md) | Conventions de typage, validation, formulaires |
+| [DevTools](spec/devtools.md) | Observabilité (🟡 brouillon) |
+| [Référence](spec/reference/invariants.md) | [Invariants](spec/reference/invariants.md) · [Glossaire](spec/reference/glossaire.md) · [Anti-patterns](spec/reference/anti-patterns.md) · [Index des types](spec/reference/types-index.md) |
 
----
+Les anciens identifiants `RFC-0001`…`RFC-0004` restent cités çà et là :
+correspondance dans [spec/README.md](spec/README.md#anciens-identifiants-rfc-000x).
 
-## 🧭 Comment naviguer
+## 🧭 Décisions — [adr/](adr/README.md)
 
-| Je veux… | Je lis… |
+34 ADR **vivants** (30–80 lignes), groupés en 7 chapitres : communication et
+runtime, couche abstraite, contrats typés, couche concrète, rendu,
+distribution et build, processus. Chaque ADR porte une ligne **Livré**
+(✅ / ⚠️ / ⏳) qui dit ce que le code implémente réellement.
+
+## 📚 Guides — [guides/](guides/)
+
+| Guide | Périmètre |
 | --- | --- |
-| Comprendre l'architecture Bonsai | [Philosophie](rfc/1-philosophie.md) + [Architecture](rfc/2-architecture/README.md) |
-| Connaître les règles non-négociables | [Invariants I1–I98](rfc/reference/invariants.md) |
-| Savoir pourquoi tel choix a été fait | [ADRs](adr/README.md) |
-| Écrire du code framework (build) | [BUILD-CODING-STYLE](guides/BUILD-CODING-STYLE.md) |
-| Écrire du code applicatif Bonsai | [FRAMEWORK-STYLE-GUIDE](guides/FRAMEWORK-STYLE-GUIDE.md) |
-| Implémenter un formulaire | [FORMS-GUIDE](guides/FORMS-GUIDE.md) |
-| Retrouver une ancienne réflexion | [Archive](archive/) |
+| [FRAMEWORK-STYLE-GUIDE.md](guides/FRAMEWORK-STYLE-GUIDE.md) | Code applicatif et framework : DOM, HTML, CSS, API TypeScript |
+| [BUILD-CODING-STYLE.md](guides/BUILD-CODING-STYLE.md) | Pipeline de build (`lib/`, `tools/`) |
+| [NAMESPACE-MENTAL-MODEL.md](guides/NAMESPACE-MENTAL-MODEL.md) | Les quatre lieux où vit le namespace d'une Feature (ADR-08) |
+| [TESTING.md](guides/TESTING.md) | Organisation et écriture des tests (ADR-32) |
+| [FORMS-GUIDE.md](guides/FORMS-GUIDE.md) | Formulaires : patterns B, C, D (ADR-25) |
 
----
+## 🔎 Je veux…
 
-## 🌱 Genèse
+| … | Je lis |
+| --- | --- |
+| comprendre l'architecture | [Philosophie](spec/1-philosophie.md), puis [Architecture](spec/2-architecture/README.md) |
+| connaître les règles non négociables | [Invariants](spec/reference/invariants.md) |
+| savoir pourquoi un choix a été fait | [ADR](adr/README.md) |
+| savoir ce qui est réellement livré | la ligne **Livré** de chaque ADR · [ADR-31](adr/ADR-31-strates-perimetre-v1.md) (strates) |
+| savoir ce qui viendra après la v1 | [ROADMAP](ROADMAP.md) |
+| écrire une Feature ou une View | [FRAMEWORK-STYLE-GUIDE](guides/FRAMEWORK-STYLE-GUIDE.md) |
+| retrouver un ancien ADR ou une décision `Dn` | [archive/adr-v0](archive/adr-v0/README.md) |
 
-[**GENESIS.md**](GENESIS.md) — L'histoire de Bonsai : de Backbone.Marionette à marionext, du TypeScript révélateur à la naissance d'un framework.
+## 📏 Types de documents
 
----
+| Type | Rôle | Évolution |
+| --- | --- | --- |
+| **Spec** (`spec/`) | Le quoi : contrats normatifs | Vivante |
+| **ADR** | Le pourquoi : une décision, ses alternatives rejetées | **Vivant** : réécrit en place, git garde l'historique ([ADR-32](adr/ADR-32-tests-preuve-architecture.md), [ADR-34](adr/ADR-34-documentation-francais.md)) |
+| **Guide** | Le comment : mode d'emploi | Vivant |
+| **Roadmap** | Pistes non décidées ou hors v1 | Une piste devient un ADR quand on la travaille |
+| **Archive** | Mémoire | Figée, non normative |
 
-## 📏 Conventions de documentation
-
-| Type de document | Rôle | Durée de vie | Modifiable ? |
-| --- | --- | --- | --- |
-| **RFC** | Spécification (quoi + comment) | Vivant → se stabilise | Oui, jusqu'à stabilisation |
-| **ADR** | Décision (pourquoi) | Immutable une fois accepté | Non — on crée un nouvel ADR |
-| **Guide** | Mode d'emploi | Vivant | Oui |
-| **Analyse/Audit** | Input temporaire | Éphémère | Archivé une fois intégré |
+Le français est la langue source ; les traductions sont suffixées `-EN.md` (ADR-34).

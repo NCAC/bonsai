@@ -1,12 +1,12 @@
 /**
- * @bonsai/valibot — Wrapper Valibot pour le framework Bonsai
+ * @bonsai/valibot — Valibot wrapper for the Bonsai framework
  *
- * Tier 1 — Dépendance intégrée (ADR-0022 + ADR-0032 §3) :
- *   Le développeur utilise directement l'API Valibot pour définir
- *   les schémas Entity. Valibot est ré-exporté sous un namespace
- *   `Valibot` (PascalCase) pour éviter la pollution du top-level.
+ * Tier 1 — integrated dependency (ADR-11, ADR-29):
+ *   Developers use the Valibot API directly to define Entity schemas.
+ *   Valibot is re-exported under a `Valibot` namespace (PascalCase)
+ *   to keep the top level clean.
  *
- * Usage développeur :
+ * Developer usage:
  *   import { Valibot } from "@bonsai/core";
  *   const schema = Valibot.object({ name: Valibot.string() });
  */

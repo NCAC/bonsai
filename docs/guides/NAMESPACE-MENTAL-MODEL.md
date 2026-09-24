@@ -1,9 +1,9 @@
 # Mental Model — Les quatre lieux où vit le namespace
 
 > **Guide concis** pour comprendre où, pourquoi et comment un namespace de Feature
-> existe dans Bonsai depuis [ADR-0039](../adr/ADR-0039-namespace-authority-and-uniqueness.md)
-> et [ADR-0040](../adr/ADR-0040-typescript-first-api-channel-definition-typed.md)
-> (amendés par [ADR-0046](../adr/ADR-0046-feature-contract-refonte.md)).
+> existe dans Bonsai depuis [ADR-08](../adr/ADR-08-namespace-manifest.md)
+> et [ADR-14](../adr/ADR-14-contrats-types.md)
+> (amendés par [ADR-09](../adr/ADR-09-feature-contract.md)).
 > Lecture : 3 minutes.
 
 ---
@@ -12,8 +12,8 @@
 | ----- | ------ |
 | **Audience** | Développeur applicatif écrivant une Feature Bonsai |
 | **Statut** | 🟢 Stable |
-| **Date** | 2026-09-17 (réécrit — audit doc, régression : le mécanisme `static readonly channels: ExternalOf<…>[]` décrit précédemment est supersédé depuis ADR-0040/ADR-0046) |
-| **Sources** | [ADR-0039](../adr/ADR-0039-namespace-authority-and-uniqueness.md), [ADR-0040](../adr/ADR-0040-typescript-first-api-channel-definition-typed.md), [ADR-0046](../adr/ADR-0046-feature-contract-refonte.md), [RFC feature.md](../rfc/3-couche-abstraite/feature.md), invariants I21, I24, I68–I73, I93, I95 |
+| **Date** | 2026-09-17 (réécrit — audit doc, régression : le mécanisme `static readonly channels: ExternalOf<…>[]` décrit précédemment est supersédé depuis ADR-14/ADR-09) |
+| **Sources** | [ADR-08](../adr/ADR-08-namespace-manifest.md), [ADR-14](../adr/ADR-14-contrats-types.md), [ADR-09](../adr/ADR-09-feature-contract.md), [RFC feature.md](../spec/3-couche-abstraite/feature.md), invariants I21, I24, I68–I73, I93, I95 |
 
 ---
 
@@ -21,7 +21,7 @@
 
 Un namespace de Feature vit **simultanément** dans **quatre lieux** qui se vérifient mutuellement :
 
-1. **Le type-manifest** (interface `AppManifest`) — _la carte officielle_
+1. **Le type-manifest** (`type AppManifest`) — _la carte officielle_
 2. **La signature de la Feature** (paramètre `TSelfNS`) — _la déclaration d'attente_
 3. **Le token `static readonly channel`** (littéral `{ namespace: "cart" }`) — _le badge que la classe porte sur elle_
 4. **Le value-manifest** (objet `satisfies StrictManifest<…>`) — _le point de rencontre vérifié_
@@ -37,7 +37,7 @@ références croisées `listens`/`queries`, Phase 0c du bootstrap).
 
 **Où** : `app/manifest.ts` (un seul fichier par application, zéro classe importée)
 
-**Quoi** : un type TypeScript qui **énumère tous les namespaces** de l'application — `type`, pas `interface` (conventions-typage.md §3 : ADR-0039 lui-même utilise `type AppManifest`, pas d'exception pour le manifest).
+**Quoi** : un type TypeScript qui **énumère tous les namespaces** de l'application — `type`, pas `interface` (conventions-typage.md §3 : ADR-08 lui-même utilise `type AppManifest`, pas d'exception pour le manifest).
 
 ```typescript
 // app/manifest.ts
@@ -84,7 +84,7 @@ elle doit atterrir.
 
 ## 3. Le token `static readonly channel` — le badge
 
-**Où** : dans la classe Feature, en membre statique (ADR-0040, I73).
+**Où** : dans la classe Feature, en membre statique (ADR-14, I73).
 
 **Quoi** : un littéral runtime qui porte le namespace **en valeur**, cette
 fois — c'est le pont entre la classe et son `Channel` typé, consommé par les
@@ -97,7 +97,7 @@ export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
     namespace: "cart"
   };
 
-  // Channels externes ÉCOUTÉS — abstract get d'INSTANCE depuis ADR-0046 (I93),
+  // Channels externes ÉCOUTÉS — abstract get d'INSTANCE depuis ADR-09 (I93),
   // PAS un `static readonly channels: ExternalOf<…>[]` (pattern supersédé).
   get listens() { return [UserFeature.channel] as const; }
   get queries() { return [] as const; }
@@ -160,17 +160,17 @@ signale **immédiatement** (`TStrictFeatureClass<NS>`, I95).
 
 ## Les garanties du quadruple accord
 
-| Erreur                                                     | Qui la détecte                                 | Quand                         |
-| ---------------------------------------------------------- | ---------------------------------------------- | ----------------------------- |
-| Deux Features avec même namespace                          | TS1117                                         | Compile-time                  |
-| Clé non camelCase (`Cart`, `my-cart`)                      | `CamelCaseNamespace`                           | Compile-time                  |
-| Clé réservée (`local`, `router`)                           | `StrictManifest<M>` → `never`                  | Compile-time                  |
-| Feature enregistrée sous la mauvaise clé (`TSelfNS` ≠ clé) | `TStrictFeatureClass<NS>` (I95)                | Compile-time                  |
-| `static readonly channel` absent ou mal typé               | `TStrictFeatureClass<NS>` (I95)                | Compile-time                  |
-| Handler `on{NS}{Event}Event` manquant après un rename      | `implements TFeatureCallbacks` (I92) — TS2515  | Compile-time                  |
-| `listens`/`queries` référence un namespace inconnu         | `Application.start()` (I70)                    | Runtime (bootstrap, Phase 0c) |
-| Feature s'écoute elle-même via `listens`                   | ⚠️ **non détecté** — ni compile-time ni runtime | —                             |
-| Cast `as any` + faute de frappe sur le namespace           | `assertValidNamespace`                         | Runtime (bootstrap)           |
+| Erreur | Qui la détecte | Quand |
+| --- | --- | --- |
+| Deux Features avec même namespace | TS1117 | Compile-time |
+| Clé non camelCase (`Cart`, `my-cart`) | `CamelCaseNamespace` | Compile-time |
+| Clé réservée (`local`, `router`) | `StrictManifest<M>` → `never` | Compile-time |
+| Feature enregistrée sous la mauvaise clé (`TSelfNS` ≠ clé) | `TStrictFeatureClass<NS>` (I95) | Compile-time |
+| `static readonly channel` absent ou mal typé | `TStrictFeatureClass<NS>` (I95) | Compile-time |
+| Handler `on{NS}{Event}Event` manquant après un rename | `implements TFeatureCallbacks` (I92) — TS2515 | Compile-time |
+| `listens`/`queries` référence un namespace inconnu | `Application.start()` (I70) | Runtime (bootstrap, Phase 0c) |
+| Feature s'écoute elle-même via `listens` | ⚠️ **non détecté** — ni compile-time ni runtime | — |
+| Cast `as any` + faute de frappe sur le namespace | `assertValidNamespace` | Runtime (bootstrap) |
 
 ---
 
@@ -221,12 +221,12 @@ Parce que plusieurs contraintes s'opposent :
 
 - On veut le **manifest comme source de vérité unique** (un seul endroit à lire pour voir toute l'application) — §1.
 - On veut que chaque Feature soit **anonyme en valeur** dans sa propre déclaration de type (§2), pour éviter un cycle `typeof` avec le value-manifest.
-- On veut qu'un **consommateur externe** (une autre Feature, une View) puisse référencer le Channel d'une Feature **sans importer le manifest** — d'où le badge runtime autoporté (§3, ADR-0040).
+- On veut qu'un **consommateur externe** (une autre Feature, une View) puisse référencer le Channel d'une Feature **sans importer le manifest** — d'où le badge runtime autoporté (§3, ADR-14).
 
 La seule solution robuste combine le **pattern A bis** (type-manifest séparé
 du value-manifest, reliés par `satisfies`) et le **token statique** porté par
-chaque classe. Cf. [ADR-0039 §Le piège du typeof cyclique](../adr/ADR-0039-namespace-authority-and-uniqueness.md#le-piège-du-typeof-cyclique)
-et [ADR-0040](../adr/ADR-0040-typescript-first-api-channel-definition-typed.md).
+chaque classe. Cf. [ADR-08 piège du typeof cyclique](../adr/ADR-08-namespace-manifest.md)
+et [ADR-14](../adr/ADR-14-contrats-types.md).
 
 ### Pourquoi `TSelfNS` en plus du token `channel` ?
 
@@ -235,13 +235,13 @@ Parce que le token `channel` (§3) est lu par les **consommateurs externes**
 le **manifest applicatif** au `satisfies` (il n'a besoin que d'un type). Les
 deux doivent rester synchronisés — c'est exactement ce que vérifie
 `TStrictFeatureClass<NS>` (I95) : `TSelfNS === NS` **et**
-`channel.namespace === NS`. Cf. [ADR-0039 §Le paradoxe de l'auto-référence](../adr/ADR-0039-namespace-authority-and-uniqueness.md#le-paradoxe-de-lauto-référence-et-sa-résolution).
+`channel.namespace === NS`. Cf. [ADR-08 paradoxe de l'auto-référence](../adr/ADR-08-namespace-manifest.md).
 
 ---
 
 ## Résumé visuel
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │  1. TYPE-MANIFEST                                           │
 │     app/manifest.ts                                         │
@@ -278,7 +278,7 @@ deux doivent rester synchronisés — c'est exactement ce que vérifie
 │       get listens() { return [...]; }       │                │
 │     }                                       │                │
 │                                              ↑                │
-│               ADR-0039 I72, ADR-0046 I95 : "cart" ici DOIT   │
+│               ADR-08 I72, ADR-09 I95 : "cart" ici DOIT   │
 │                        matcher la clé du value-manifest      │
 │                        ET le namespace du token              │
 └─────────────────────────────────────────────────────────────┘
@@ -288,11 +288,11 @@ deux doivent rester synchronisés — c'est exactement ce que vérifie
 
 ## Pour aller plus loin
 
-- [ADR-0039 — Autorité, unicité et conformité des namespaces de Feature](../adr/ADR-0039-namespace-authority-and-uniqueness.md) — spécification complète
-- [ADR-0040 — API TypeScript-first, définition de Channel typée](../adr/ADR-0040-typescript-first-api-channel-definition-typed.md) — le token `static readonly channel`
-- [ADR-0046 — Refonte du contrat Feature](../adr/ADR-0046-feature-contract-refonte.md) — `listens`/`queries` en `abstract get` d'instance, `TStrictFeatureClass`
-- [RFC feature.md](../rfc/3-couche-abstraite/feature.md) — contrat `Feature<TEntityClass, TChannelDef, TSelfNS>`
-- [Invariants I68–I73, I93, I95](../rfc/reference/invariants.md) — règles non-négociables
+- [ADR-08 — Autorité, unicité et conformité des namespaces de Feature](../adr/ADR-08-namespace-manifest.md) — spécification complète
+- [ADR-14 — API TypeScript-first, définition de Channel typée](../adr/ADR-14-contrats-types.md) — le token `static readonly channel`
+- [ADR-09 — Refonte du contrat Feature](../adr/ADR-09-feature-contract.md) — `listens`/`queries` en `abstract get` d'instance, `TStrictFeatureClass`
+- [RFC feature.md](../spec/3-couche-abstraite/feature.md) — contrat `Feature<TEntityClass, TChannelDef, TSelfNS>`
+- [Invariants I68–I73, I93, I95](../spec/reference/invariants.md) — règles non-négociables
 
 ---
 

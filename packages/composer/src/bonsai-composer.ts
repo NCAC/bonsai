@@ -1,29 +1,29 @@
 /**
  * @bonsai/composer — Composer abstract base class
  *
- * Strate 0 — Capacités :
+ * Delivered capabilities:
  *   - resolve(event | null) → TResolveResult | null (0/1 View)
- *   - Slot DOM immutable fourni par le parent (Foundation ou View)
- *   - Machine à états minimal : idle → active → idle
- *   - Création d'élément DOM si absent (D30)
- *   - Diff de transitions §3.1 (5 cas Same/New/null) sans recréation inutile
+ *   - Immutable DOM slot provided by the parent (Foundation or View)
+ *   - Minimal state machine: idle → active → idle
+ *   - Slot element created when missing (ADR-19)
+ *   - §3.1 transition diff (5 Same/New/null cases), no needless re-creation
  *
- * Invariants :
- *   I20  — Seuls Foundation/Composers créent/détruisent des Views
- *   I35  — Composer n'a aucune écriture DOM (lecture scope autorisée)
- *   I37  — Un seul type de Composer, gère 0/1 Views en strate 0
- *   I40  — Scope DOM d'une View exclut les sous-arbres des slots déclarés
+ * Invariants:
+ *   I20  — Only Foundation/Composers create or destroy Views
+ *   I35  — A Composer never writes to the DOM (reading its scope is allowed)
+ *   I37  — A single Composer type; manages 0/1 View today (N instances: stratum 1d)
+ *   I40  — A View's DOM scope excludes the subtrees of its declared slots
  *
- * ADRs :
- *   ADR-0024 — get params() value-first (strate 0 : pas de listen/request)
- *   ADR-0025 — Pas de lifecycle hooks (ni onMount, ni onUnmount, ni onAttach)
- *   ADR-0026 — rootElement = string CSS selector only
- *   ADR-0027 — resolve(event) unique point d'entrée, pas de state local
+ * ADRs:
+ *   ADR-14 — modular contract (`get features()`): not delivered yet, no listen/request
+ *   ADR-18 — no lifecycle hooks (no onMount, onUnmount or onAttach)
+ *   ADR-19 — rootElement is a CSS selector string only
+ *   ADR-18 — resolve(event) is the single entry point, no local state
  *
- * Diff §3.1 (RFC composer.md) :
- *   | resolve() retourne | View montée         | Action                                    |
+ * §3.1 diff (docs/spec/4-couche-concrete/composer.md):
+ *   | resolve() returns  | Mounted View        | Action                                    |
  *   | ------------------ | ------------------- | ----------------------------------------- |
- *   | SameView+SameRoot  | SameView instance   | **No-op** (instance conservée)            |
+ *   | SameView+SameRoot  | SameView instance   | **No-op** (instance kept)                 |
  *   | NewView (ou root)  | OldView instance    | **Detach** OldView → **Attach** NewView   |
  *   | NewView            | null                | **Attach** NewView                        |
  *   | null               | OldView instance    | **Detach** OldView                        |
@@ -37,52 +37,54 @@ import { View, type TViewClass } from "@bonsai/view";
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 /**
- * Résultat de resolve() — décrit la View à instancier.
+ * Result of resolve() — describes the View to instantiate.
  *
- * Strate 0 (ADR-0028) : pas de tableau (N-instances reportées en strate 1),
- * pas d'options (D34 reporté).
+ * No array yet (N instances: stratum 1d) and no `options` (ADR-21, stratum 2).
  *
- * Le champ `view` (et non `viewClass`) est l'identifiant officiel
- * du contrat — alignement RFC composer.md §1.1 + ADR-0020 §6.2 + ADR-0026.
+ * The field is named `view` (not `viewClass`), as in the spec
+ * (composer.md §1.1, ADR-18, ADR-19).
  *
- * `TViewClass` est volontairement structurel (variance permissive) — le
- * Composer ne dépend pas des `TDeps`/`TContract` spécifiques de la View
- * concrète, seulement de sa surface de mount (cf. ADR-0041 + bonsai-view.ts).
+ * `TViewClass` is deliberately structural (permissive variance): the
+ * Composer does not depend on the concrete View's contract, only on its
+ * mount surface (see ADR-14 and bonsai-view.ts).
  */
 export type TResolveResult = {
-  /** La classe View concrète à instancier */
+  /** Concrete View class to instantiate */
   readonly view: TViewClass;
-  /** Sélecteur CSS de l'élément root de la View — dans le scope du Composer (ADR-0026) */
+  /**
+   * CSS selector of the View's root element (ADR-19). Meant to be resolved in
+   * the Composer's slot; today View.mount() queries the whole document.
+   */
   readonly rootElement: string;
 };
 
 /**
- * Options de construction du Composer — fournies par le framework.
+ * Composer construction options — provided by the framework.
  */
 export type TComposerOptions = {
-  /** Sélecteur CSS du slot DOM du Composer — fourni par Foundation ou View parent */
+  /** CSS selector of the Composer's DOM slot — provided by the Foundation or parent View */
   readonly rootElement: string;
 };
 
 // ─── Composer abstract class ─────────────────────────────────────────────────
 
 export abstract class Composer {
-  /** Sélecteur CSS du slot DOM — immutable (ADR-0020) */
+  /** CSS selector of the DOM slot — immutable (ADR-18) */
   #rootElement: string;
 
-  /** Référence au slot DOM résolu */
+  /** Resolved DOM slot */
   #slot: HTMLElement | null = null;
 
-  /** La View actuellement montée (null si resolve() a retourné null) */
+  /** Currently mounted View (null when resolve() returned null) */
   #currentView: View | null = null;
 
   /**
-   * Dernier résultat retourné par resolve() — sert de référence pour le diff §3.1.
-   * Null si la dernière sortie était null (ou avant le premier resolve).
+   * Last result returned by resolve() — reference for the §3.1 diff.
+   * Null when the last output was null (or before the first resolve).
    */
   #currentResult: TResolveResult | null = null;
 
-  /** Machine à états minimal : idle → active → idle */
+  /** Minimal state machine: idle → active → idle */
   #state: "idle" | "active" = "idle";
 
   constructor(options: TComposerOptions) {
@@ -92,30 +94,30 @@ export abstract class Composer {
   // ─── Public API (framework only) ────────────────────────────────────
 
   /**
-   * Le sélecteur rootElement (ADR-0026).
+   * The rootElement selector (ADR-19).
    */
   get rootElement(): string {
     return this.#rootElement;
   }
 
   /**
-   * Référence au slot DOM résolu. Null avant attach().
+   * Resolved DOM slot. Null before attach().
    */
   get slot(): HTMLElement | null {
     return this.#slot;
   }
 
   /**
-   * La View actuellement montée, ou null.
+   * Currently mounted View, or null.
    */
   get currentView(): View | null {
     return this.#currentView;
   }
 
   /**
-   * Attache le Composer à son slot DOM.
-   * Appelé par le framework (Foundation ou Composer parent).
-   * Résout le slot dans le DOM, puis appelle initialResolve().
+   * Attaches the Composer to its DOM slot.
+   * Called by the framework (Foundation or parent Composer).
+   * Resolves the slot in the DOM, then runs the initial resolve.
    */
   attach(parentElement: HTMLElement): void {
     const el = parentElement.querySelector(
@@ -123,7 +125,7 @@ export abstract class Composer {
     ) as HTMLElement | null;
 
     if (!el) {
-      // D30 — Créer l'élément si absent
+      // ADR-19 — create the element when missing
       const created = this.#createElementFromSelector(this.#rootElement);
       parentElement.appendChild(created);
       this.#slot = created;
@@ -136,8 +138,8 @@ export abstract class Composer {
   }
 
   /**
-   * Appelé par le framework quand un Event est dispatché sur un Channel écouté.
-   * En strate 0, pas de listen déclaré — cette méthode est un point d'extension.
+   * Called by the framework when an Event is dispatched on a listened Channel.
+   * No listen declaration exists yet, so only tests call it today (ADR-18).
    */
   performResolve(event: unknown | null): void {
     this.#performResolve(event);
@@ -146,39 +148,39 @@ export abstract class Composer {
   // ─── Abstract ──────────────────────────────────────────────────────────
 
   /**
-   * Unique point d'entrée — décide quelle View instancier (ADR-0027).
+   * Single entry point — decides which View to instantiate (ADR-18).
    *
-   * @param event — l'Event déclencheur (null au premier montage / bootstrap)
-   * @returns TResolveResult pour monter une View, null pour vider le scope
+   * @param event — the triggering Event (null on first mount / bootstrap)
+   * @returns a TResolveResult to mount a View, null to empty the slot
    */
   abstract resolve(event: unknown | null): TResolveResult | null;
 
   // ─── Private ───────────────────────────────────────────────────────────
 
   /**
-   * Diff §3.1 (RFC composer.md) — applique la transition entre l'état précédent
-   * (`#currentView` + `#currentResult`) et la nouvelle décision retournée par
-   * `resolve(event)`. 5 transitions possibles, aucune recréation inutile.
+   * §3.1 diff (composer.md) — applies the transition between the previous
+   * state (`#currentView` + `#currentResult`) and the new decision returned
+   * by `resolve(event)`. 5 possible transitions, no needless re-creation.
    */
   #performResolve(event: unknown | null): void {
     const next = this.resolve(event);
     const prev = this.#currentResult;
 
-    // Transition 5 : null + null → no-op
+    // Transition 5: null + null → no-op
     if (next === null && prev === null) {
       return;
     }
 
-    // Transition 4 : null + instance → detach
+    // Transition 4: null + instance → detach
     if (next === null) {
       this.#detachCurrent();
       return;
     }
 
-    // À ce stade, next !== null
+    // From here on, next !== null
 
-    // Transition 1 : SameView + SameRoot + currentView → no-op
-    // (instance conservée, aucun remount)
+    // Transition 1: SameView + SameRoot + currentView → no-op
+    // (instance kept, no remount)
     if (
       prev !== null &&
       this.#currentView !== null &&
@@ -188,21 +190,21 @@ export abstract class Composer {
       return;
     }
 
-    // Transition 3 : NewView + null → attach simple
+    // Transition 3: NewView + null → plain attach
     if (this.#currentView === null) {
       this.#attachNew(next);
       return;
     }
 
-    // Transition 2 : NewView (ou même viewClass mais rootElement différent)
-    //                + instance existante → detach + attach
+    // Transition 2: NewView (or same view class with a different rootElement)
+    //               + existing instance → detach + attach
     this.#detachCurrent();
     this.#attachNew(next);
   }
 
   /**
-   * Instancie la View décrite par `result`, la monte sur son rootElement,
-   * et met à jour l'état interne. Appelée par `#performResolve()` uniquement.
+   * Instantiates the View described by `result`, mounts it on its
+   * rootElement and updates the internal state. Only called by `#performResolve()`.
    */
   #attachNew(result: TResolveResult): void {
     const ViewClass = result.view;
@@ -214,12 +216,15 @@ export abstract class Composer {
   }
 
   /**
-   * Détache la View courante. En strate 0, le Composer n'a pas de subscription
-   * propre à libérer (ADR-0025) — il libère simplement la référence. La RFC §4.2
-   * prévoit `view.onDetach()` en strates ultérieures.
+   * Detaches the current View. The Composer has no subscription of its own to
+   * release (ADR-18); it only drops the reference.
    *
-   * Note : l'élément DOM créé par D30 (slot du Composer) reste en place — c'est
-   * le slot, pas le rootElement de la View. Seule la View mountée est libérée.
+   * Known gap (ADR-03): the View is not unmounted — its Channel and DOM
+   * listeners stay active. `view.onDetach()` and systematic unsubscription
+   * are planned for stratum 1d (composer.md §4.2).
+   *
+   * The slot element created under ADR-19 stays in place: it is the slot,
+   * not the View's rootElement.
    */
   #detachCurrent(): void {
     this.#currentView = null;
@@ -228,8 +233,9 @@ export abstract class Composer {
   }
 
   /**
-   * D30 — Parse un sélecteur CSS et crée un élément DOM correspondant.
-   * Simplifié en strate 0 : supporte [attr], [attr='value'], .class, #id, tag.
+   * ADR-19 — parses a CSS selector and creates a matching DOM element.
+   * Simplified: supports [attr], [attr='value'], the first .class and #id;
+   * the tag is ignored (always a <div>, see ADR-19).
    */
   #createElementFromSelector(selector: string): HTMLElement {
     let tag = "div";

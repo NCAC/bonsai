@@ -1,7 +1,7 @@
 /**
  * Configuration utilitaire pour la passe DTS via rollup-plugin-dts.
  *
- * Extrait du PoC ADR-0032 §11 — encapsule la configuration Rollup
+ * Extrait du PoC ADR-29 — encapsule la configuration Rollup
  * nécessaire pour produire un .d.ts flat à partir des déclarations
  * individuelles générées par tsc.
  *

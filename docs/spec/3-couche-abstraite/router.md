@@ -1,0 +1,154 @@
+# Router
+
+> **Spécialisation Feature pour la navigation — namespace réservé `router`**
+
+[← Retour à la couche abstraite](README.md)
+
+---
+
+> Décision : [ADR-13](../../adr/ADR-13-router.md). Namespace `router` réservé (I28, I71).
+>
+> ## ⏳ Périmètre d'implémentation
+>
+> Seule la réservation du namespace `router` est livrée (`RESERVED_NAMESPACES`).
+> `RouterFeature`, `RouteEntity` et le Channel `router` sont une cible strate 2.
+
+## 1. Classe RouterFeature
+
+Le Router est une Feature **instanciée par le framework**, pas par le développeur.
+Il encapsule l'accès exclusif à l'History API du navigateur.
+
+```typescript
+// TRouterDef est le SEUL nom utilisé dans ce document — cf. §4 pour le
+// contenu complet (commands/events/requests). Pas de champ `namespace` sur
+// ce type : le namespace vit sur le token (ADR-14), jamais sur la
+// définition du Channel elle-même.
+type TRouterDef = TChannelDefinition & {
+  // ... commands/events/requests de navigation, cf. §4
+};
+
+class RouterFeature extends Feature<RouteEntity, TRouterDef, "router"> {
+  // Namespace "router" réservé (I28) — porté par le token typé (ADR-14), pas par `static namespace` (I68)
+  static readonly channel: TChannelToken<TRouterDef, "router"> = { namespace: "router" };
+}
+```
+
+| Aspect | Détail |
+| --- | --- |
+| **Instanciation** | Par Application au bootstrap, hors manifest applicatif |
+| **Namespace** | `router` — réservé (`RESERVED_NAMESPACES`, I71) |
+| **History API** | Accès exclusif — aucun autre composant ne touche `window.history` |
+| **Entity** | `RouteEntity` — contient l'URL courante, les params, la query |
+
+> 🧭 **Question ouverte** (ADR-13) : `router` étant
+> réservé, `StrictManifest<M>` résout toute clé `router` du value-manifest en
+> `never` (I71) — un développeur ne peut donc **pas** écrire `router:
+> RouterFeature` dans son manifest applicatif comme pour une Feature
+> ordinaire. Le mécanisme par lequel `Application` instancie et enregistre
+> `RouterFeature` (probablement une injection hors manifest, similaire à
+> `Foundation`) reste à spécifier au moment de l'implémentation — ne pas
+> présumer qu'il réutilise le chemin `satisfies StrictManifest<AppManifest>`.
+
+---
+
+## 2. API de navigation
+
+> **Périmètre v1** : l'API ci-dessous est **stable mais minimale**. Les patterns avancés
+> (guards, lazy-loading de routes, nested routing) seront formalisés dans une annexe
+> dédiée si le besoin se confirme à l'usage.
+
+### Commands (trigger par les Views/Behaviors)
+
+| Command | Payload | Description |
+| --- | --- | --- |
+| `router:navigate` | `{ path: string, params?: Record<string, string> }` | Navigation programmatique |
+| `router:back` | `void` | Historique arrière |
+| `router:forward` | `void` | Historique avant |
+
+### Events (emit par le Router)
+
+| Event | Payload | Description |
+| --- | --- | --- |
+| `router:routeChanged` | `TRouteState` | Émis après chaque changement de route |
+
+> Les Features qui réagissent à la navigation écoutent `router:routeChanged`.
+> C'est le mécanisme standard pour le chargement de données par route.
+
+### Requests
+
+| Request | Params | Result | Description |
+| --- | --- | --- | --- |
+| `router:currentRoute` | `void` | `TRouteState` | Lecture de la route courante |
+
+---
+
+## 3. Entity Route
+
+```typescript
+type TRouteState = TJsonSerializable & {
+  /** URL courante (pathname) */
+  path: string;
+  /** Paramètres de route (ex: { id: '42' }) */
+  params: Record<string, string>;
+  /** Query string parsée */
+  query: Record<string, string>;
+  /** Fragment (hash) */
+  hash: string;
+};
+
+class RouteEntity extends Entity<TRouteState> {
+  // Entity est abstraite — defineInitialState() est obligatoire (ADR-10).
+  protected defineInitialState(): TRouteState {
+    return { path: "/", params: {}, query: {}, hash: "" };
+  }
+}
+```
+
+---
+
+## 4. Messages standards — TRouterDef
+
+```typescript
+// Même type que celui esquissé en §1 — défini en entier ici (co-localisation, I74).
+// Pas de champ `namespace` (ADR-14) : il vit sur TChannelToken<TRouterDef, "router">.
+type TRouterDef = TChannelDefinition & {
+  readonly commands: {
+    navigate: { path: string; params?: Record<string, string> };
+    back: void;
+    forward: void;
+  };
+
+  readonly events: {
+    routeChanged: TRouteState;
+  };
+
+  readonly requests: {
+    currentRoute: { params: void; result: TRouteState };
+  };
+};
+```
+
+---
+
+## 5. Flux de navigation canonique
+
+```text
+1. View → trigger(router:navigate, { path: '/products/42' })
+2. RouterFeature ← handle(router:navigate)
+3. RouterFeature → window.history.pushState(...)
+4. RouterFeature → entity.mutate("router:navigate", draft => { draft.path = '/products/42'; draft.params = { id: '42' }; })
+5. RouterFeature → emit(routeChanged, { path, params, query, hash })
+6. ProductFeature ← listen(router:routeChanged) → fetch('/api/products/42') → entity.mutate("product:load", draft => { ... })
+7. ProductFeature → emit(loaded, {...})
+8. ProductView ← listen(product:loaded) → re-projection
+```
+
+> Le Router **ne connaît pas** les Features qui écoutent ses Events.
+> C'est de la chorégraphie pure (ADR-01) : chaque Feature réagit de manière autonome
+> au changement de route.
+
+---
+
+## Lecture suivante
+
+→ [Couche concrète](../4-couche-concrete/README.md) — Foundation, Composer, View, Behavior

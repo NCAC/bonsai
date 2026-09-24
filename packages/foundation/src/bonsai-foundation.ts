@@ -1,26 +1,26 @@
 /**
  * @bonsai/foundation — Foundation abstract base class
  *
- * Strate 0 — Capacités :
- *   - body  = document.body            (toujours en strate 0, I33)
- *   - html  = document.documentElement (droit d'altération N1, D27)
- *   - Déclare les Composers racines via abstract get composers()
- *     (Readonly<Record<string, typeof Composer>> — ADR-0038)
- *   - Crée et attache les Composers au bootstrap dans l'ordre d'insertion
- *     (ES2015+ Object.entries garantit l'ordre des clés string)
- *   - Hooks onAttach() / onDetach()
+ * Delivered capabilities:
+ *   - body = document.body            (I33)
+ *   - html = document.documentElement (N1 alteration right, ADR-20)
+ *   - Declares the root Composers through abstract get composers()
+ *     (Readonly<Record<string, typeof Composer>> — ADR-20)
+ *   - Creates and attaches the Composers at bootstrap in insertion order
+ *     (ES2015+ Object.entries guarantees string-key order)
+ *   - onAttach() / onDetach() hooks
  *
- * Invariants :
- *   I33  — Foundation unique par application — cible <body>
- *   I20  — Seuls Foundation/Composers créent/détruisent des Views
- *   I34  — rootElement d'une View = enfant de <body>, jamais <body>
- *   I67  — Stabilité structurelle de Foundation (ADR-0038)
- *   D27  — Foundation peut altérer html/body en N1 uniquement
+ * Invariants:
+ *   I33  — A single Foundation per application — targets <body>
+ *   I20  — Only Foundation/Composers create or destroy Views
+ *   I34  — A View's rootElement is a descendant of <body>, never <body>
+ *   I67  — Structural stability of the Foundation (ADR-20)
+ *   ADR-20 — the Foundation may alter html/body at N1 only
  *
- * Strate 0 simplifications (ADR-0028) :
- *   - Pas de TUIMap (ADR-0018 Suspended)
- *   - Pas d'event delegation globale (strate 1)
- *   - Pas de params() Channel capabilities (strate 1)
+ * Not delivered yet:
+ *   - Declared global events (post-v1 track, docs/ROADMAP.md)
+ *   - Global event delegation
+ *   - Channel capabilities (form not decided)
  *
  * @packageDocumentation
  */
@@ -30,16 +30,16 @@ import { Composer, type TComposerOptions } from "@bonsai/composer";
 // ─── Foundation abstract class ───────────────────────────────────────────────
 
 export abstract class Foundation {
-  /** Référence à <body> — toujours document.body en strate 0 (I33) */
+  /** <body> — always document.body (I33) */
   #body: HTMLElement;
 
-  /** Référence à <html> — droit d'altération N1 (D27, RFC foundation.md §2) */
+  /** <html> — N1 alteration right (ADR-20, foundation.md §2) */
   #html: HTMLElement;
 
-  /** Les instances de Composers racines créées au bootstrap */
+  /** Root Composer instances created at bootstrap */
   #composerInstances: Composer[] = [];
 
-  /** Flag : Foundation déjà attachée */
+  /** Flag: Foundation already attached */
   #attached = false;
 
   constructor() {
@@ -50,34 +50,34 @@ export abstract class Foundation {
   // ─── Public API ────────────────────────────────────────────────────────
 
   /**
-   * Référence à <body> — alignement RFC foundation.md §1.
-   * Le développeur peut altérer en N1 (classes, attributs) — D27.
+   * <body> (foundation.md §1).
+   * Developers may alter it at N1 only (classes, attributes) — ADR-20.
    */
   protected get body(): HTMLElement {
     return this.#body;
   }
 
   /**
-   * Référence à <html> — alignement RFC foundation.md §1.
-   * Le développeur peut altérer en N1 (classes, attributs) — D27.
+   * <html> (foundation.md §1).
+   * Developers may alter it at N1 only (classes, attributes) — ADR-20.
    */
   protected get html(): HTMLElement {
     return this.#html;
   }
 
   /**
-   * Les Composer instances créées.
+   * The created Composer instances.
    */
   get composerInstances(): readonly Composer[] {
     return this.#composerInstances;
   }
 
   /**
-   * Attache la Foundation : résout et crée les Composers racines.
-   * Appelé une seule fois par Application.start().
+   * Attaches the Foundation: resolves and creates the root Composers.
+   * Called once by Application.start().
    *
-   * Itère sur Object.entries(this.composers) — l'ordre d'insertion des
-   * clés string non numériques est garanti par ES2015+ (§9.1.12).
+   * Iterates over Object.entries(this.composers) — insertion order of
+   * non-numeric string keys is guaranteed by ES2015+ (§9.1.12).
    */
   attach(): void {
     if (this.#attached) {
@@ -104,24 +104,24 @@ export abstract class Foundation {
   // ─── Abstract ──────────────────────────────────────────────────────────
 
   /**
-   * Déclare les Composers racines de Foundation — ADR-0038.
+   * Declares the Foundation's root Composers — ADR-20.
    *
-   * Clés = sélecteurs CSS dans <body> (string libre, validé runtime).
-   * Valeurs = classes Composer concrètes.
+   * Keys = CSS selectors in <body> (free string, checked at runtime).
+   * Values = concrete Composer classes.
    *
-   * Layout stable et persistant — typiquement 3-5 entrées
-   * (#header, #main, #footer, #aside...). Évalué une seule fois au bootstrap (I67).
+   * Stable, persistent layout — typically 3 to 5 entries
+   * (#header, #main, #footer, #aside...). Evaluated once at bootstrap (I67).
    *
-   * Pour la composition dynamique : déléguer à une View dédiée via View.composers + PDR
-   * (cf. ADR-0038 §6.3 — Pattern délégation).
+   * For dynamic composition, delegate to a dedicated View through
+   * View.composers + PDR (ADR-20, delegation pattern).
    */
   abstract get composers(): Readonly<Record<string, typeof Composer>>;
 
   // ─── Lifecycle hooks ───────────────────────────────────────────────────
 
   /**
-   * Hook appelé après résolution des Composers racines.
-   * Surcharger pour brancher des écouteurs DOM globaux (resize, scroll, etc.).
+   * Hook called once the root Composers are resolved.
+   * Override it to add global DOM listeners (resize, scroll, etc.).
    * Default no-op.
    */
   onAttach(): void {
@@ -129,12 +129,11 @@ export abstract class Foundation {
   }
 
   /**
-   * Hook appelé au shutdown — symétrique de onAttach().
-   * Surcharger pour débrancher les écouteurs DOM globaux installés dans onAttach().
+   * Hook called at shutdown — counterpart of onAttach().
+   * Override it to remove the global DOM listeners added in onAttach().
    * Default no-op.
    *
-   * NB : non invoqué automatiquement en strate 0 (pas de shutdown formalisé) ;
-   * point d'extension pour la strate 1.
+   * NB: not called yet — Application.stop() does not exist (stratum 1).
    */
   onDetach(): void {
     // Default no-op

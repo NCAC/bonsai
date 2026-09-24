@@ -6,7 +6,7 @@
 > - **§1–§8 remaniés : la pratique réellement livrée**, normative — Jest,
 >   `tests/unit/strate-N`, `tests/types`, la gate E2E, la traçabilité
 >   ADR/invariants. C'est ce qu'un contributeur doit suivre aujourd'hui.
-> - **§9 (ancien §2/§7) : `@bonsai/testing`, un package qui n'existe pas** et
+> - **§10 (ancien §2/§7) : `@bonsai/testing`, un package qui n'existe pas** et
 >   qui ne correspond à **aucune** décision actée (aucun ADR ne le spécifie).
 >   Les exemples qui suivent y sont **cible/spéculatif**, marqués ⏳, et ne
 >   doivent pas être copiés dans du code réel.
@@ -16,15 +16,15 @@
 > (`createTestFeature`, `feature.handle()`, `entity.query(fn)`,
 > `MockChannel.mockReply(...).response`) qui ne correspondent à aucune API
 > livrée — corrigé ci-dessous.
-> **Absorbé depuis** : [ADR-0006](../adr/ADR-0006-testing-strategy.md) (Accepted).
+> **Helpers publics `@bonsai/testing`** : piste post-v1, voir la [roadmap](../ROADMAP.md).
 
 ---
 
 | Champ | Valeur |
 | ----- | ------ |
-| **Statut** | 🟢 Normatif pour §1–§8 (pratique Jest livrée) ; §9 explicitement ⏳ cible |
-| **Mis à jour** | 2026-09-17 |
-| **ADR source** | [ADR-0006](../adr/ADR-0006-testing-strategy.md), [ADR-0030](../adr/ADR-0030-testing-as-architecture-proof.md) (tests = preuve d'invariant), [ADR-0043](../adr/ADR-0043-adr-tested-status-as-proof-gate.md) (statut `🔵 Tested`) |
+| **Statut** | 🟢 Normatif pour §1–§9 (pratique Jest livrée) ; §10 explicitement ⏳ cible |
+| **Mis à jour** | 2026-09-25 |
+| **ADR source** | [ADR-32](../adr/ADR-32-tests-preuve-architecture.md) (tests = preuve d'invariant, statut `🔵 Tested`) |
 
 ---
 
@@ -49,14 +49,14 @@
 
 Chaque composant Bonsai est **testable en isolation** grâce à l'architecture déclarative :
 
-| Composant                        | Dépendances               | Comment on le teste aujourd'hui                                                                                     |
-| -------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **Entity**                       | Aucune (Immer interne)    | Instanciation directe (`new CartEntity()`), `mutate()`, `get query()`                                               |
-| **Feature**                      | Entity, `Radio` (Channel) | `Radio.reset()` + `new FeatureClass(namespace)` + `.bootstrap()` ; assertions via `Radio.me().channel(ns)`          |
-| **Channel**                      | `Radio` (interne)         | `tests/unit/channel.class.test.ts`, `tests/unit/radio.singleton.test.ts` — rarement testé depuis le code applicatif |
-| **View**                         | DOM (jsdom), `Radio`      | `@jest-environment jsdom` en tête de fichier, DOM construit via `document.body.innerHTML`, `view.mount(selector)`   |
-| **Composer / Foundation**        | DOM, Channels, Views      | Même approche jsdom, `tests/unit/strate-0/composer.basic.test.ts` / `foundation.basic.test.ts`                      |
-| **Intégration multi-composants** | Tout                      | `tests/integration/`, gate E2E `tests/e2e/strate-0.cart-round-trip.test.ts`                                         |
+| Composant | Dépendances | Comment on le teste aujourd'hui |
+| --- | --- | --- |
+| **Entity** | Aucune (Immer interne) | Instanciation directe (`new CartEntity()`), `mutate()`, `get query()` |
+| **Feature** | Entity, `Radio` (Channel) | `Radio.reset()` + `new FeatureClass(namespace)` + `.bootstrap()` ; assertions via `Radio.me().channel(ns)` |
+| **Channel** | `Radio` (interne) | `tests/unit/channel.class.test.ts`, `tests/unit/radio.singleton.test.ts` — rarement testé depuis le code applicatif |
+| **View** | DOM (jsdom), `Radio` | `@jest-environment jsdom` en tête de fichier, DOM construit via `document.body.innerHTML`, `view.mount(selector)` |
+| **Composer / Foundation** | DOM, Channels, Views | Même approche jsdom, `tests/unit/strate-0/composer.basic.test.ts` / `foundation.basic.test.ts` |
+| **Intégration multi-composants** | Tout | `tests/integration/`, gate E2E `tests/e2e/strate-0.cart-round-trip.test.ts` |
 
 ### Écosystème réel
 
@@ -108,7 +108,7 @@ tests/
 └── setup.ts
 ```
 
-> Cette arborescence — pas `unit/entities|features|views`, pas de package `bonsai-testing` — est la seule qui existe. Voir [ADR-0031](../adr/ADR-0031-monorepo-package-topology.md) pour la topologie des packages (`packages/<composant>`, `core/` — pas de `packages/bonsai/`).
+> Cette arborescence — pas `unit/entities|features|views`, pas de package `bonsai-testing` — est la seule qui existe. Voir [ADR-28](../adr/ADR-28-monorepo-packages.md) pour la topologie des packages (`packages/<composant>`, `core/` — pas de `packages/bonsai/`).
 
 ### Commandes
 
@@ -126,7 +126,7 @@ npx tsc --noEmit -p tsconfig.test.json             # type-check des tests (@ts-e
 
 ## 3. Test d'une Entity
 
-Les Entities sont testées **directement**, sans passer par une Feature — `tests/unit/strate-0/entity.basic.test.ts` le fait explicitement (I5/I6 protègent `Feature#entity` de l'accès applicatif, pas l'Entity elle-même en dehors de ce contexte). On teste `mutate()` (ADR-0001, seule API de mutation) et les méthodes du `get query()` (I52) :
+Les Entities sont testées **directement**, sans passer par une Feature — `tests/unit/strate-0/entity.basic.test.ts` le fait explicitement (I5/I6 protègent `Feature#entity` de l'accès applicatif, pas l'Entity elle-même en dehors de ce contexte). On teste `mutate()` (ADR-10, seule API de mutation) et les méthodes du `get query()` (I52) :
 
 ```typescript
 import { describe, it, expect, beforeEach } from "@jest/globals";
@@ -177,7 +177,7 @@ describe("CartEntity", () => {
 
 > **Anti-pattern** : appeler des méthodes de mutation nommées directement sur
 > l'Entity (`entity.addItem()`). Seule `mutate(intent, params?, recipe)` est
-> autorisée (ADR-0001). `mutate()` retourne `TEntityEvent<TStructure> | null` —
+> autorisée (ADR-10). `mutate()` retourne `TEntityEvent<TStructure> | null` —
 > `null` si la recipe ne produit aucun patch (no-op) **ou** si l'appel est mis
 > en file par la garde de ré-entrance (I98, strate 1a) — ne jamais présumer
 > qu'un retour non-`null` signifie "appliqué immédiatement".
@@ -351,44 +351,45 @@ npx tsc --noEmit -p tsconfig.test.json
 
 ### Patterns à suivre
 
-| Pattern                                                                                          | Raison                                                           |
-| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
-| ✅ Un `describe` par composant/invariant, citant l'invariant prouvé en commentaire d'en-tête     | ADR-0030 — un test documente l'invariant qu'il prouve            |
-| ✅ `Radio.reset()` dans `beforeEach` pour les tests Feature/View/Composer                        | Isole chaque test (Radio est un singleton)                       |
-| ✅ `entityOf(feature)` pour lire l'Entity depuis un test (jamais `feature.entity` — `protected`) | I5, I6                                                           |
-| ✅ `@jest-environment jsdom` uniquement sur les fichiers qui en ont besoin                       | `testEnvironment: "node"` par défaut — coût jsdom évité ailleurs |
-| ✅ Fixtures partagées (`tests/fixtures/`) pour les mini-domaines réutilisés (Cart)               | DRY, cohérence avec la gate E2E                                  |
+| Pattern | Raison |
+| --- | --- |
+| ✅ Un `describe` par composant/invariant, citant l'invariant prouvé en commentaire d'en-tête | ADR-32 — un test documente l'invariant qu'il prouve |
+| ✅ `Radio.reset()` dans `beforeEach` pour les tests Feature/View/Composer | Isole chaque test (Radio est un singleton) |
+| ✅ `entityOf(feature)` pour lire l'Entity depuis un test (jamais `feature.entity` — `protected`) | I5, I6 |
+| ✅ `@jest-environment jsdom` uniquement sur les fichiers qui en ont besoin | `testEnvironment: "node"` par défaut — coût jsdom évité ailleurs |
+| ✅ Fixtures partagées (`tests/fixtures/`) pour les mini-domaines réutilisés (Cart) | DRY, cohérence avec la gate E2E |
 
 ### Anti-patterns
 
-| Anti-pattern                                                                       | Pourquoi                                                       | Alternative                                        |
-| ---------------------------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------- |
-| ❌ Croire que `pnpm test` type-check `tests/types/`                                | `ts-jest` tourne en `isolatedModules: true` — aucun type-check | `npx tsc --noEmit -p tsconfig.test.json` (§7)      |
-| ❌ Mocker `Radio` avec un objet fait main                                          | Radio est un singleton simple à réinitialiser                  | `Radio.reset()` + `Radio.me()` réels               |
-| ❌ Accéder à `feature.entity` depuis un test                                       | `protected` (I5, I6) — ne compile pas                          | `entityOf(feature)` (`tests/helpers/entity-of.ts`) |
-| ❌ Référencer `createTestFeature`/`createTestView`/`MockChannel`/`@bonsai/testing` | N'existe pas dans le code livré                                | Instanciation directe + `Radio.reset()` (§3–§5)    |
-| ❌ Tests de View sans `@jest-environment jsdom`                                    | `document` est `undefined` en environnement `node`             | Ajouter le docblock en tête de fichier             |
+| Anti-pattern | Pourquoi | Alternative |
+| --- | --- | --- |
+| ❌ Croire que `pnpm test` type-check `tests/types/` | `ts-jest` tourne en `isolatedModules: true` — aucun type-check | `npx tsc --noEmit -p tsconfig.test.json` (§7) |
+| ❌ Mocker `Radio` avec un objet fait main | Radio est un singleton simple à réinitialiser | `Radio.reset()` + `Radio.me()` réels |
+| ❌ Accéder à `feature.entity` depuis un test | `protected` (I5, I6) — ne compile pas | `entityOf(feature)` (`tests/helpers/entity-of.ts`) |
+| ❌ Référencer `createTestFeature`/`createTestView`/`MockChannel`/`@bonsai/testing` | N'existe pas dans le code livré | Instanciation directe + `Radio.reset()` (§3–§5) |
+| ❌ Tests de View sans `@jest-environment jsdom` | `document` est `undefined` en environnement `node` | Ajouter le docblock en tête de fichier |
 
 ---
 
 ## 9. Traçabilité C-Sem — ADR Tested sans invariants
 
-> **ADR-0043** admet une voie **C-Sem** : un ADR peut être promu `🔵 Tested`
+> **ADR-32** admet une voie **C-Sem** : un ADR peut être promu `🔵 Tested`
 > sans ligne « Invariants impactés » quand sa décision est de nature
 > sémantique (comportement d'exécution) plutôt que structurelle (pas
-> d'invariant `I<n>` numéroté à citer dans les tests). C'est le cas pour
-> ADR-0001, ADR-0003, ADR-0010, ADR-0023 et ADR-0024. Cette table trace
-> explicitement quels fichiers de test couvrent leur sémantique, en
-> l'absence du garde-fou automatique (script annexe A.3 de l'audit doc)
-> qui ne peut vérifier que les invariants numérotés.
+> d'invariant `I<n>` numéroté à citer dans les tests). **Aucun ADR n'emprunte
+> cette voie aujourd'hui** : les cinq ADR `🔵 Tested` (ADR-02, 07, 08, 09, 10)
+> portent tous une ligne d'invariants, vérifiée par
+> `lib/check-adr-tested-status.ts`. La table ci-dessous trace néanmoins la
+> couverture **sémantique** complémentaire de trois d'entre eux et de
+> l'ADR-03 (🟢 Accepted, ⚠️ partiel — donc non promouvable), que le script ne
+> peut pas vérifier.
 
-| ADR                                                                    | Décision testée                                                                                          | Fichier(s) de test                                                                                                                                                                                                                                                              |
-| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md)       | `mutate()` unique via Immer, détection no-op, notification diff                                          | `tests/unit/strate-0/entity.basic.test.ts` (`describe("mutate() — Immer produce")`, `describe("No-op detection")`)                                                                                                                                                              |
-| [ADR-0003](../adr/ADR-0003-channel-runtime-semantics.md)               | Tri-lane Channel (commands/events/requests), garde-fous d'enregistrement                                 | `tests/unit/strate-0/channel.basic.test.ts`                                                                                                                                                                                                                                     |
-| [ADR-0010](../adr/ADR-0010-bootstrap-order.md)                         | Ordre de bootstrap et dépendances entre phases                                                           | `tests/unit/strate-0/application.basic.test.ts` (`describe("start() — 4-phase bootstrap")`, `describe("Bootstrap guards [I33, I56, ADR-0010]")`)                                                                                                                                |
-| [ADR-0023](../adr/ADR-0023-request-reply-sync-vs-async.md)             | `request()`/`reply()` **synchrones** — pas de `Promise`, `null` si pas de replier ou si le replier throw | `tests/unit/strate-0/channel.basic.test.ts` (`describe("Lane 3 — Requests (request → reply) [I29, I55]")`)                                                                                                                                                                      |
-| [ADR-0024](../adr/ADR-0024-component-capabilities-manifest-pattern.md) | Pattern manifeste value-first (`as const satisfies` + `abstract get`), lu une seule fois au mount        | `tests/unit/strate-0/view.basic.test.ts` (`describe("View — strate-0 core (ADR-0024 value-first + ADR-0042 modulaire)")`, `describe("ADR-0024 — manifeste modulaire lu une seule fois au mount")`, `describe("ADR-0024 — contextual contract read from root element dataset")`) |
+| ADR | Décision testée | Fichier(s) de test |
+| --- | --- | --- |
+| [ADR-10](../adr/ADR-10-entity-mutation.md) | `mutate()` unique via Immer, détection no-op, notification diff | `tests/unit/strate-0/entity.basic.test.ts` (`describe("mutate() — Immer produce")`, `describe("No-op detection")`) |
+| [ADR-03](../adr/ADR-03-channel-runtime.md) | Tri-lane Channel (commands/events/requests), garde-fous d'enregistrement | `tests/unit/strate-0/channel.basic.test.ts` |
+| [ADR-07](../adr/ADR-07-application-bootstrap.md) | Ordre de bootstrap et dépendances entre phases | `tests/unit/strate-0/application.basic.test.ts` (`describe("start() — 4-phase bootstrap")`, `describe("Bootstrap guards [I33, I56, ADR-07]")`) |
+| [ADR-02](../adr/ADR-02-request-synchrone.md) | `request()`/`reply()` **synchrones** — pas de `Promise`, `null` si pas de replier ou si le replier throw | `tests/unit/strate-0/channel.basic.test.ts` (`describe("Lane 3 — Requests (request → reply) [I29, I55]")`) |
 
 > À maintenir manuellement — contrairement à l'annexe A.3 (invariants numérotés),
 > rien ne vérifie automatiquement que ces citations restent à jour si les
@@ -435,9 +436,8 @@ l'objet d'un ADR dédié — pas d'une extension silencieuse de ce guide.
 
 ## Références
 
-- [ADR-0006 — Testing Strategy](../adr/ADR-0006-testing-strategy.md) (décision architecturale source)
-- [ADR-0030 — Tests as Architecture Proof](../adr/ADR-0030-testing-as-architecture-proof.md)
-- [ADR-0031 — Monorepo Topology](../adr/ADR-0031-monorepo-package-topology.md)
-- [ADR-0043 — ADR Tested Status Lifecycle](../adr/ADR-0043-adr-tested-status-as-proof-gate.md)
+- [Roadmap — helpers de test publics](../ROADMAP.md)
+- [ADR-32 — Tests = preuve d'architecture, statut Tested](../adr/ADR-32-tests-preuve-architecture.md)
+- [ADR-28 — Monorepo Topology](../adr/ADR-28-monorepo-packages.md)
 - [Jest](https://jestjs.io/)
-- [RFC feature.md §8](../rfc/3-couche-abstraite/feature.md) (modèle d'erreurs pour les tests)
+- [RFC feature.md §8](../spec/3-couche-abstraite/feature.md) (modèle d'erreurs pour les tests)

@@ -1,17 +1,17 @@
 /**
  * @bonsai/error - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-09-14T16:47:57.355Z
+ * Date: 2026-09-24T20:04:50.168Z
  */
 /**
- * BonsaiError — Classe de base pour toutes les erreurs structurées du framework.
+ * BonsaiError — base class for all structured framework errors.
  *
- * Chaque erreur Bonsai fournit :
- * - `invariantId` : identifiant de l'invariant ou ADR violé (ex: "I10", "ADR-0002")
- * - `component` : namespace ou nom du composant concerné
- * - `suggestion` : message actionnable pour le développeur
+ * Every Bonsai error provides:
+ * - `invariantId`: id of the violated invariant or ADR (e.g. "I10", "ADR-05")
+ * - `component`: namespace or name of the component involved
+ * - `suggestion`: actionable message for the developer
  *
- * @see ADR-0002 — Error Propagation Strategy (taxonomie complète)
+ * @see ADR-05 — error propagation (full taxonomy)
  */
 class BonsaiError extends Error {
     constructor(message, invariantId, component = "", suggestion = "") {
@@ -26,7 +26,7 @@ class BonsaiError extends Error {
 // Entity Layer (State)
 // ═══════════════════════════════════════════════════════════════
 /**
- * Recipe `mutate()` a throw → Immer rollback automatique, state intact.
+ * The `mutate()` recipe threw → automatic Immer rollback, state intact.
  */
 class MutationError extends BonsaiError {
     constructor() {
@@ -35,8 +35,8 @@ class MutationError extends BonsaiError {
     }
 }
 /**
- * `mutate()` appelé pendant un cycle de notification alors que la profondeur
- * de ré-entrance dépasse `maxEntityNotificationDepth` (ADR-0028 strate 1a).
+ * `mutate()` called during a notification cycle while the re-entrance depth
+ * exceeds `maxEntityNotificationDepth` (stratum 1a).
  */
 class EntityReentrancyError extends BonsaiError {
     constructor() {
@@ -48,7 +48,7 @@ class EntityReentrancyError extends BonsaiError {
 // Feature Layer (Logic)
 // ═══════════════════════════════════════════════════════════════
 /**
- * `onXxxCommand()` handler a throw.
+ * An `onXxxCommand()` handler threw (defined, not raised yet — ADR-05).
  */
 class CommandError extends BonsaiError {
     constructor() {
@@ -57,7 +57,7 @@ class CommandError extends BonsaiError {
     }
 }
 /**
- * `onXxxRequest()` handler a throw ou reject.
+ * An `onXxxRequest()` handler threw (defined, not raised yet — ADR-05).
  */
 class RequestError extends BonsaiError {
     constructor() {
@@ -66,7 +66,7 @@ class RequestError extends BonsaiError {
     }
 }
 /**
- * `onXxxEntityUpdated()` handler a throw — state conservé, notification continue.
+ * An `onXxxEntityUpdated()` handler threw — state kept, notification continues.
  */
 class BroadcastError extends BonsaiError {
     constructor() {
@@ -78,7 +78,7 @@ class BroadcastError extends BonsaiError {
 // Channel Layer (Communication)
 // ═══════════════════════════════════════════════════════════════
 /**
- * Event listener a throw — erreur isolée, les autres listeners continuent.
+ * An Event listener threw — error isolated, other listeners still run.
  */
 class ListenerError extends BonsaiError {
     constructor() {
@@ -87,7 +87,7 @@ class ListenerError extends BonsaiError {
     }
 }
 /**
- * `trigger()` sans `handle()` enregistré, ou `request()` sans `reply()`.
+ * `trigger()` with no registered `handle()` (`request()` without a replier returns `null` instead).
  */
 class NoHandlerError extends BonsaiError {
     constructor() {
@@ -96,7 +96,7 @@ class NoHandlerError extends BonsaiError {
     }
 }
 /**
- * `handle()` ou `reply()` appelé deux fois pour le même message (I10).
+ * `handle()` or `reply()` called twice for the same message (I10).
  */
 class DuplicateHandlerError extends BonsaiError {
     constructor() {
@@ -108,7 +108,7 @@ class DuplicateHandlerError extends BonsaiError {
 // View Layer (UI)
 // ═══════════════════════════════════════════════════════════════
 /**
- * Projection ou template a throw.
+ * A projection or template threw.
  */
 class RenderError extends BonsaiError {
     constructor() {
@@ -117,7 +117,7 @@ class RenderError extends BonsaiError {
     }
 }
 /**
- * Behavior a throw.
+ * A Behavior threw.
  */
 class BehaviorError extends BonsaiError {
     constructor() {
@@ -127,18 +127,18 @@ class BehaviorError extends BonsaiError {
 }
 
 /**
- * Fonctions de validation du framework Bonsai.
+ * Validation functions of the Bonsai framework.
  *
- * - `invariant()` : assertion runtime, strippable en prod via `__DEV__`
- * - `hardInvariant()` : assertion NON-strippable — erreurs structurelles fatales
- * - `warning()` : log conditionnel `__DEV__` only, ne throw jamais
+ * - `invariant()`: runtime assertion, strippable in production via `__DEV__`
+ * - `hardInvariant()`: NON-strippable assertion — fatal structural errors
+ * - `warning()`: `__DEV__`-only conditional log, never throws
  *
- * @see ADR-0004 — Validation Modes
+ * @see ADR-06 — validation modes
  */
 /**
- * Retourne `true` si on est en mode développement.
- * Fallback : `true` si `__DEV__` n'est pas défini (sécurité — on préfère
- * montrer les erreurs plutôt que les masquer).
+ * Returns `true` in development mode.
+ * Fallback: `true` when `__DEV__` is undefined (safe default — better to
+ * surface errors than to hide them).
  */
 function isDev() {
     try {
@@ -149,18 +149,18 @@ function isDev() {
     }
 }
 /**
- * Assertion runtime — throw `BonsaiError` si la condition est fausse.
+ * Runtime assertion — throws a `BonsaiError` when the condition is false.
  *
- * **Strippable en production** : les appels `invariant()` sont éliminés
- * par le bundler quand `__DEV__ === false`. Utiliser pour les validations
- * de développement (vérifications de type, gardes-fous DX).
+ * **Strippable in production**: `invariant()` calls are removed by the
+ * bundler when `__DEV__ === false`. Use it for development checks (type
+ * checks, DX guards).
  *
- * Pour les violations structurelles qui doivent rester en prod → `hardInvariant()`.
+ * For structural violations that must stay in production → `hardInvariant()`.
  *
- * @param condition - Si `false`, throw une `BonsaiError`
- * @param message - Message d'erreur descriptif
- * @param invariantId - Identifiant de l'invariant violé (ex: "I10")
- * @param component - Namespace ou nom du composant concerné (optionnel)
+ * @param condition - When `false`, throws a `BonsaiError`
+ * @param message - Descriptive error message
+ * @param invariantId - Id of the violated invariant (e.g. "I10")
+ * @param component - Namespace or name of the component involved (optional)
  *
  * @example
  * ```typescript
@@ -175,17 +175,17 @@ function invariant(condition, message, invariantId = "", component = "") {
     }
 }
 /**
- * Assertion NON-strippable — reste en production.
+ * NON-strippable assertion — kept in production.
  *
- * Utiliser pour les erreurs structurelles fatales détectées au bootstrap
- * (namespace dupliqué I21, handler Command dupliqué I10, etc.).
- * Un `hardInvariant` qui échoue signifie que le framework est dans un
- * état incohérent — il DOIT throw, même en production.
+ * Use it for fatal structural errors detected at bootstrap (duplicate
+ * namespace I21, duplicate Command handler I10, etc.). A failing
+ * `hardInvariant` means the framework is in an inconsistent state — it
+ * MUST throw, even in production.
  *
- * @param condition - Si `false`, throw une `BonsaiError`
- * @param message - Message d'erreur descriptif
- * @param invariantId - Identifiant de l'invariant violé
- * @param component - Namespace ou nom du composant concerné (optionnel)
+ * @param condition - When `false`, throws a `BonsaiError`
+ * @param message - Descriptive error message
+ * @param invariantId - Id of the violated invariant
+ * @param component - Namespace or name of the component involved (optional)
  */
 function hardInvariant(condition, message, invariantId = "", component = "") {
     if (!condition) {
@@ -193,13 +193,13 @@ function hardInvariant(condition, message, invariantId = "", component = "") {
     }
 }
 /**
- * Log conditionnel en développement — ne throw jamais.
+ * Development-only conditional log — never throws.
  *
- * Strippé en production (`__DEV__ === false`).
- * Utiliser pour les avertissements non-bloquants (ex: `request()` sans replier en prod).
+ * Stripped in production (`__DEV__ === false`).
+ * Use it for non-blocking warnings.
  *
- * @param condition - Si `false`, log un warning
- * @param message - Message d'avertissement
+ * @param condition - When `false`, logs a warning
+ * @param message - Warning message
  */
 function warning(condition, message) {
     if (isDev()) {

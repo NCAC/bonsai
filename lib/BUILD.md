@@ -13,17 +13,22 @@ Le système de build Bonsai est conçu pour gérer de manière automatique et in
 
 ```
 lib/build/
-├── core/                    # Classes centrales du système
+├── core/                    # Classes centrales
 │   ├── path-manager.class.ts    # Gestion des chemins
-│   └── main.ts                  # Point d'entrée principal
+│   └── build-cache.class.ts
 ├── initializing/            # Phase d'initialisation
+│   ├── build-options.class.ts
 │   └── components-registry.ts   # Analyse et détection des packages
 ├── building/                # Phase de compilation
-│   └── builder.class.ts         # Logique de build par package
-├── bundling/                # Phase de bundling
-│   └── generate-flat-framework-dts.ts  # Génération du bundle de types
-└── monitoring/              # Outils de monitoring
-    └── logger.class.ts          # Système de logs
+│   ├── build-orchestrator.class.ts  # Ordonnancement (tri topologique, parallélisme)
+│   ├── builder.class.ts         # Build par package : passe JS puis passe DTS
+│   └── dts-config.ts            # Configuration rollup-plugin-dts + post-traitement
+├── cache/                   # PackageCache, LibraryCache
+├── plugins/                 # rollup-plugin-postprocess
+├── utils/
+├── monitoring/              # Outils de monitoring
+│   └── logger.class.ts          # Système de logs
+└── __poc__/                 # PoC ADR-29 (historique, ne passe plus)
 ```
 
 ## Configuration
@@ -127,9 +132,9 @@ async buildPackage(package: TPackage): Promise<void> {
 
 Génération du bundle framework final (`core/dist/bonsai.d.ts`) avec :
 
-- **Extraction AST** : Utilisation de `ts-morph` pour analyser les types
-- **Déduplication** : Évite les conflits de noms de types
-- **Export plat** : Tous les types disponibles au niveau framework
+- **`tsc --emitDeclarationOnly`** : un `.d.ts` par fichier source, dans `.dts-temp/`
+- **`rollup` + `rollup-plugin-dts`** : un seul `bonsai.d.ts` plat, `external: []` — tout inliné, aucune dépendance transitive (ADR-29)
+- **Post-traitement** : suppression des directives triple-slash, renommage des namespaces tiers (`Valibot`…)
 
 ```typescript
 // Au lieu de :

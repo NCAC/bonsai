@@ -14,7 +14,7 @@ pnpm test:regression || {
   exit 1
 }
 
-# ── Informatif : statut Tested des ADRs (ADR-0043) ────────
+# ── Informatif : statut Tested des ADRs (ADR-32) ────────
 # Non-bloquant — purement indicatif.
 npx tsx lib/check-adr-tested-status.ts || true
 

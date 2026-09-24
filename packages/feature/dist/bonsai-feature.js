@@ -1,7 +1,7 @@
 /**
  * @bonsai/feature - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-09-17T13:17:47.481Z
+ * Date: 2026-09-24T20:11:03.268Z
  */
 import { Radio } from '@bonsai/event';
 import { hardInvariant, BroadcastError } from '@bonsai/error';
@@ -44,57 +44,56 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 /**
  * @bonsai/feature — Types & runtime helpers
  *
- * Implémente :
- *   - ADR-0039 : autorité, unicité et conformité des namespaces de Feature.
- *   - ADR-0042 : pattern modulaire de contrat consommateur — `TFeatureContract`
- *     Feature-groupé + helpers d'aplatissement (`TFlatListens`, `TFlatTriggers`,
- *     `TFlatRequests`) + extracteurs de payload (`TEventPayloadFor`,
- *     `TCommandPayloadFor`, `TRequestParamsFor`, `TRequestResultFor`) +
- *     `TChannelCallbacks` (handlers requis dérivés du contrat).
+ * Implements:
+ *   - ADR-08: authority, uniqueness and conformity of Feature namespaces.
+ *   - ADR-14: modular consumer contract — Feature-grouped `TFeatureContract`
+ *     + flattening helpers (`TFlatListens`, `TFlatTriggers`, `TFlatRequests`)
+ *     + payload extractors (`TEventPayloadFor`, `TCommandPayloadFor`,
+ *     `TRequestParamsFor`, `TRequestResultFor`) + `TChannelCallbacks`
+ *     (required handlers derived from the contract).
  *
- * Trois rôles assumés par ce module :
- *   1. Types compile-time (`CamelCaseNamespace<S>`, `StrictManifest<M>`,
- *      `ValidatedManifest<M>`) qui encodent les invariants I68–I72.
- *   2. Constante framework `RESERVED_NAMESPACES` (I71) — non configurable
- *      par l'application.
- *   3. Filet de sécurité runtime (`assertValidNamespace`,
- *      `BonsaiNamespaceError`) pour les cas où le compile-time est contourné
- *      (cast `as any`, code JS, manifest dynamique).
+ * This module has three roles:
+ *   1. Compile-time types (`CamelCaseNamespace<S>`, `StrictManifest<M>`,
+ *      `ValidatedManifest<M>`) encoding invariants I68–I72.
+ *   2. The framework constant `RESERVED_NAMESPACES` (I71) — not configurable
+ *      by the application.
+ *   3. A runtime safety net (`assertValidNamespace`, `BonsaiNamespaceError`)
+ *      for when compile-time checks are bypassed (`as any` cast, plain JS,
+ *      dynamic manifest).
  *
- * Invariants couverts :
- *   I21 (amendé) — namespace unique camelCase plat
- *   I24 (amendé) — Application valide format + réservés au bootstrap
- *   I57          — `local` réservé (ADR-0015)
- *   I68          — namespace porté par le manifest, pas par un `static`
- *   I69          — manifest = unique source de vérité de l'identité
- *   I70          — toute référence à un namespace externe DOIT être validée
- *   I71          — `RESERVED_NAMESPACES` est une constante framework
- *   I72          — `TSelfNS` doit correspondre à la clé du manifest
- *   I81 (ADR-0042) — `get features()` est la source de vérité runtime
- *   I82 (ADR-0042) — `implements TViewCallbacks<TVC>` impose les handlers
- *   I83 (ADR-0042) — pattern modulaire `T{Component}Contract` réutilisable
- *   I87 (ADR-0042) — clé d'objet ≡ namespace de la Feature référencée
- *   I88 (ADR-0042) — symétrie Contract/Callbacks
+ * Invariants covered:
+ *   I21          — unique, flat camelCase namespace
+ *   I24          — Application validates format + reserved names at bootstrap
+ *   I57          — `local` is reserved (ADR-17)
+ *   I68          — the namespace is carried by the manifest, not by a `static`
+ *   I69          — the manifest is the single source of truth for identity
+ *   I70          — every reference to an external namespace MUST be validated
+ *   I71          — `RESERVED_NAMESPACES` is a framework constant
+ *   I72          — `TSelfNS` must match the manifest key
+ *   I81 (ADR-14) — `get features()` is the runtime source of truth
+ *   I82 (ADR-14) — `implements TViewCallbacks<TVC>` enforces the handlers
+ *   I83 (ADR-14) — reusable modular `T{Component}Contract` pattern
+ *   I87 (ADR-14) — object key ≡ namespace of the referenced Feature
+ *   I88 (ADR-14) — Contract/Callbacks symmetry
  *
  * @packageDocumentation
  */
-// ─── Mots réservés (I71, ADR-0015) ──────────────────────────────────────────
+// ─── Reserved words (I71, ADR-17) ─────────────────────────────────────────
 /**
- * Namespaces réservés par le framework — interdits à toute Feature applicative.
+ * Namespaces reserved by the framework — forbidden to application Features.
  *
- *   - `local`  : clé du localState dans les données namespacées (I57, ADR-0015)
- *   - `router` : Feature framework de navigation, instanciée par Application (I28, D8)
+ *   - `local`  : localState key in namespaced data (I57, ADR-17)
+ *   - `router` : framework navigation Feature, instantiated by Application (I28, ADR-13)
  *
- * Constante framework non configurable. Toute extension future se fera par
- * modification de cette constante, propagée par le typage dérivé (I71).
+ * Non-configurable framework constant. Any future extension changes this
+ * constant and propagates through the derived types (I71).
  */
 const RESERVED_NAMESPACES = ["local", "router"];
 /**
- * Erreur typée pour toute violation détectée au runtime.
+ * Typed error for any violation detected at runtime.
  *
- * Étend la hiérarchie d'erreurs framework évoquée par ADR-0003
- * (`BonsaiRegistryError`). Les codes sont stables et destinés à être
- * matchables par les consommateurs.
+ * Belongs to the framework error family (ADR-05). Codes are stable and
+ * meant to be matched by consumers.
  */
 class BonsaiNamespaceError extends Error {
     constructor(code, message) {
@@ -103,23 +102,23 @@ class BonsaiNamespaceError extends Error {
         this.code = code;
     }
 }
-// ─── Filet runtime ──────────────────────────────────────────────────────────
+// ─── Runtime safety net ─────────────────────────────────────────────────────
 const CAMEL_CASE_REGEX = /^[a-z][a-zA-Z]*$/;
-// ─── Filet runtime ──────────────────────────────────────────────────────────
-/** Test runtime du format camelCase. */
+// ─── Runtime safety net ─────────────────────────────────────────────────────
+/** Runtime camelCase format check. */
 function isCamelCaseNamespace(ns) {
     return CAMEL_CASE_REGEX.test(ns);
 }
-/** Test runtime de réservation. */
+/** Runtime reserved-name check. */
 function isReservedNamespace(ns) {
     return RESERVED_NAMESPACES.includes(ns);
 }
 /**
- * Filet de sécurité — vérifie format + réservation au runtime.
+ * Safety net — checks format + reservation at runtime.
  *
- * Appelé par le constructeur de `Feature` (immuabilité dès construction) et
- * par `Application.start()` (validation du manifest entier). Lève
- * `BonsaiNamespaceError` avec un code stable.
+ * Called by the `Feature` constructor (immutable from construction) and by
+ * `Application.start()` (whole-manifest validation). Throws
+ * `BonsaiNamespaceError` with a stable code.
  */
 function assertValidNamespace(ns) {
     if (typeof ns !== "string" || ns.length === 0) {
@@ -136,90 +135,90 @@ function assertValidNamespace(ns) {
 /**
  * @bonsai/feature — Feature base class
  *
- * Strate 0 — Les 5 capacités :
- *   C1 — emit(event, payload) sur son propre Channel (typé TChannelDef, ADR-0040)
- *   C2 — handle(command) via auto-discovery des méthodes on{Name}Command
- *   C3 — listen(event) sur Channels externes déclarés via on{Channel}{EventName}Event
- *   C4 — reply(request) via auto-discovery des méthodes on{Name}Request
- *   C5 — request(token, name, params) vers Channels déclarés (typé via token, ADR-0040)
+ * The 5 capabilities (ADR-01):
+ *   C1 — emit(event, payload) on its own Channel (typed by TChannelDef, ADR-14)
+ *   C2 — handle(command) through auto-discovered on{Name}Command methods
+ *   C3 — listen(event) on declared external Channels through on{Channel}{EventName}Event
+ *   C4 — reply(request) through auto-discovered on{Name}Request methods
+ *   C5 — request(token, name, params) to declared Channels (typed by the token, ADR-14)
  *
- * Invariants :
- *   I1  — Feature ne peut emit() que sur son propre Channel
- *   I2  — Feature peut listen les Events des Channels externes déclarés
- *   I3  — Feature ne peut reply que sur son propre Channel
- *   I5  — Entity n'est accessible que par sa Feature propriétaire
- *   I12 — Aucune Feature ne peut emit sur le Channel d'une autre
- *   I21 — Chaque Feature DOIT être enregistrée dans le manifest applicatif
- *         sous une clé namespace unique camelCase plat (amendé ADR-0039)
- *   I22 — Relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte
- *   I48 — Handlers auto-découverts par convention de nommage
- *   I68 — Le namespace est porté par le manifest applicatif, pas par
- *         un `static` sur la classe Feature (ADR-0039)
- *   I72 — `TSelfNS` doit correspondre exactement à la clé sous laquelle
- *         la Feature est enregistrée dans le manifest (ADR-0039)
- *   I73 — Chaque Feature concrète DOIT exposer `static readonly channel:
- *         TChannelToken<TChannelDef, TSelfNS>` — pont entre la classe et son
- *         Channel typé (ADR-0040)
- *   I74 — `TChannelDef` co-localisé dans le fichier `.feature.ts` du domaine
- *         (pas de `.channel.ts` séparé) (ADR-0040)
- *   I75 — Aucun `any`/`unknown` dans la surface publique de Channel/Feature/
- *         View ; casts internes documentés et délimités (ADR-0040)
- *   I76 — `Channel.{trigger,emit,request,handle,listen,reply}` strictement
- *         typés par `TDef` — clé = `keyof TDef[lane]`, jamais `string` libre
- *         (ADR-0040)
- *   I79 — `Feature.request()` accepte uniquement un `TChannelToken` typé ;
- *         `abstract get listens()`/`abstract get queries()` portent ces tokens
- *         comme déclarations instance (ADR-0040, amendé ADR-0046 — I93)
- *   I93 — `listens` et `queries` sont des `abstract get` instance sur Feature
- *         (ADR-0046 — TS2515 si absent sur une classe concrète)
- *   I94 — Le constructeur de Feature est inerte : assertValidNamespace + #namespace
- *         uniquement. Aucun side-effect Radio/Entity.
- *   I96 — Handlers Entity `on<Key>EntityUpdated`/`onAnyEntityUpdated` auto-
- *         découverts sur la Feature (même mécanisme que I48), dispatchés par
- *         ordre alphabétique des `changedKeys` puis catch-all. Clé inconnue
- *         → erreur bootstrap. Handler qui throw → isolé (BroadcastError,
- *         ADR-0002), notification suivante non interrompue (ADR-0028 strate 1a)
+ * Invariants:
+ *   I1  — A Feature can only emit() on its own Channel
+ *   I2  — A Feature can listen to Events of declared external Channels
+ *   I3  — A Feature can only reply on its own Channel
+ *   I5  — An Entity is only accessible to its owning Feature
+ *   I12 — No Feature can emit on another Feature's Channel
+ *   I21 — Every Feature MUST be registered in the application manifest under
+ *         a unique, flat camelCase namespace key (ADR-08)
+ *   I22 — namespace ↔ Feature ↔ Entity is a strict 1:1:1 relation
+ *   I48 — Handlers are auto-discovered by naming convention
+ *   I68 — The namespace is carried by the application manifest, not by a
+ *         `static` on the Feature class (ADR-08)
+ *   I72 — `TSelfNS` must match exactly the key the Feature is registered
+ *         under in the manifest (ADR-08)
+ *   I73 — Every concrete Feature MUST expose `static readonly channel:
+ *         TChannelToken<TChannelDef, TSelfNS>` — the bridge between the class
+ *         and its typed Channel (ADR-14)
+ *   I74 — `TChannelDef` is co-located in the domain's `.feature.ts` file
+ *         (no separate `.channel.ts`) (ADR-14)
+ *   I75 — No `any`/`unknown` in the public surface of Channel/Feature/View;
+ *         internal casts are documented and contained (ADR-14)
+ *   I76 — `Channel.{trigger,emit,request,handle,listen,reply}` are strictly
+ *         typed by `TDef` — key = `keyof TDef[lane]`, never a free `string`
+ *         (ADR-14)
+ *   I79 — `Feature.request()` only accepts a typed `TChannelToken`;
+ *         `abstract get listens()`/`abstract get queries()` carry these tokens
+ *         as instance declarations (ADR-14, ADR-09 — I93)
+ *   I93 — `listens` and `queries` are instance `abstract get` on Feature
+ *         (ADR-09 — TS2515 when missing on a concrete class)
+ *   I94 — The Feature constructor is inert: assertValidNamespace + #namespace
+ *         only. No Radio/Entity side effect.
+ *   I96 — Entity handlers `on<Key>EntityUpdated`/`onAnyEntityUpdated` are
+ *         auto-discovered on the Feature (same mechanism as I48), dispatched
+ *         in alphabetical order of `changedKeys`, then the catch-all. Unknown
+ *         key → bootstrap error. A throwing handler is isolated (BroadcastError,
+ *         ADR-05) and the next notification still runs (stratum 1a)
  *
  * @packageDocumentation
  */
 var _Feature_instances, _Feature_namespace, _Feature_entity, _Feature_channel, _Feature_bootstrapped, _Feature_registerCommandHandlers, _Feature_registerRequestRepliers, _Feature_registerEventListeners, _Feature_registerEntityHandlers, _Feature_dispatchEntityEvent;
 // ─── Feature abstract class ──────────────────────────────────────────────────
 /**
- * Feature — unité métier paramétrée par sa classe Entity, son contrat Channel
- * et son namespace.
+ * Feature — business unit parameterised by its Entity class, its Channel
+ * contract and its namespace.
  *
- * Paramètres de type :
- *   - `TEntity`     : la classe Entity (ADR-0037 — encode I22 au type-level)
- *   - `TChannelDef` : le contrat du Channel propre — types de commandes, events,
- *                     requests (ADR-0040 — I74, I76). Par défaut `TChannelDefinition`
- *                     (toutes lanes `Record<string, unknown>`) pour une utilisation
- *                     non paramétrée rétrocompatible.
- *   - `TSelfNS`     : le namespace sous lequel cette Feature s'attend à être
- *                     enregistrée dans le manifest applicatif (ADR-0039 — I72).
- *                     Par défaut `string` pour les sous-classes non paramétrées.
+ * Type parameters:
+ *   - `TEntity`     : the Entity class (ADR-09 — encodes I22 at type level)
+ *   - `TChannelDef` : the contract of its own Channel — command, event and
+ *                     request types (ADR-14 — I74, I76). Defaults to
+ *                     `TChannelDefinition` (all lanes `Record<string, unknown>`)
+ *                     for untyped use.
+ *   - `TSelfNS`     : the namespace this Feature expects to be registered
+ *                     under in the application manifest (ADR-08 — I72).
+ *                     Defaults to `string` for unparameterised subclasses.
  *
- * **Le namespace n'est plus déclaré sur la classe** (`static namespace`
- * supprimé, ADR-0039 — I68). Il est :
- *   - injecté par le constructeur (immuabilité dès construction)
- *   - dérivé de la clé du manifest applicatif (source de vérité — I69)
- *   - validé au compile-time par `StrictManifest<M>` au `satisfies`
- *   - validé au runtime par `assertValidNamespace()` (filet — I71)
+ * **The namespace is not declared on the class** (no `static namespace`,
+ * ADR-08 — I68). It is:
+ *   - injected by the constructor (immutable from construction)
+ *   - derived from the application manifest key (source of truth — I69)
+ *   - checked at compile time by `StrictManifest<M>` through `satisfies`
+ *   - checked at runtime by `assertValidNamespace()` (safety net — I71)
  */
 class Feature {
     // ─── Constructor ───────────────────────────────────────────────────────
     /**
-     * Crée une Feature attachée au namespace passé en paramètre.
+     * Creates a Feature bound to the given namespace.
      *
-     * Appelé exclusivement par `Application.start()` qui transmet la clé du
-     * manifest. L'instanciation manuelle (tests) doit aussi passer le namespace.
+     * Called only by `Application.start()`, which passes the manifest key.
+     * Manual instantiation (tests) must pass the namespace too.
      *
-     * @throws `BonsaiNamespaceError` si le namespace est invalide ou réservé.
+     * @throws `BonsaiNamespaceError` when the namespace is invalid or reserved.
      */
     constructor(namespace) {
         _Feature_instances.add(this);
         _Feature_namespace.set(this, void 0);
         _Feature_entity.set(this, void 0);
-        // Canal propre — assigné au bootstrap, cast sûr par I22 (1 namespace = 1 TDef).
+        // Own channel — assigned at bootstrap; the cast is safe by I22 (1 namespace = 1 TDef).
         _Feature_channel.set(this, void 0);
         _Feature_bootstrapped.set(this, false);
         assertValidNamespace(namespace);
@@ -227,34 +226,34 @@ class Feature {
     }
     // ─── Public API ────────────────────────────────────────────────────────
     /**
-     * Le namespace de cette instance — immuable, défini au constructeur.
-     * Typé `TSelfNS` (string littéral si la Feature est paramétrée).
+     * Namespace of this instance — immutable, set by the constructor.
+     * Typed `TSelfNS` (a string literal when the Feature is parameterised).
      */
     get namespace() {
         return __classPrivateFieldGet(this, _Feature_namespace, "f");
     }
     /**
-     * Accès à l'Entity (I5, I6 — propriétaire exclusif).
-     * `protected` : seules la Feature et ses sous-classes y accèdent.
-     * Typée par la classe concrète (TEntity) grâce à ADR-0037.
+     * Access to the Entity (I5, I6 — exclusive owner).
+     * `protected`: only the Feature and its subclasses reach it.
+     * Typed by the concrete class (TEntity) thanks to ADR-09.
      */
     get entity() {
         return __classPrivateFieldGet(this, _Feature_entity, "f");
     }
     /**
-     * Bootstrap : crée l'Entity, enregistre les handlers sur le Channel,
-     * et appelle onInit(). Appelé par Application ou manuellement en test.
+     * Bootstrap: creates the Entity, registers the handlers on the Channel and
+     * calls onInit(). Called by Application, or manually in tests.
      */
     bootstrap() {
         if (__classPrivateFieldGet(this, _Feature_bootstrapped, "f"))
             return;
         __classPrivateFieldSet(this, _Feature_bootstrapped, true, "f");
-        // Cast sûr par I22 : 1 namespace = 1 Feature = 1 TDef (I75).
+        // Safe cast by I22: 1 namespace = 1 Feature = 1 TDef (I75).
         __classPrivateFieldSet(this, _Feature_channel, Radio.me().channel(__classPrivateFieldGet(this, _Feature_namespace, "f")), "f");
-        // I22 — Création de l'Entity 1:1 via le getter Entity (D17 amendé par ADR-0037)
+        // I22 — 1:1 Entity creation through the Entity getter (ADR-09)
         const EntityCtor = this.Entity;
         __classPrivateFieldSet(this, _Feature_entity, new EntityCtor(), "f");
-        // Auto-discovery des handlers (I48)
+        // Handler auto-discovery (I48)
         __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerCommandHandlers).call(this);
         __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerRequestRepliers).call(this);
         __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerEventListeners).call(this);
@@ -262,30 +261,30 @@ class Feature {
         // Lifecycle
         this.onInit();
     }
-    // ─── Capacités (C1–C5) ─────────────────────────────────────────────────
+    // ─── Capabilities (C1–C5) ──────────────────────────────────────────────
     /**
-     * C1 — Émet un Event typé sur le propre Channel de cette Feature (I1, I12, ADR-0040).
+     * C1 — Emits a typed Event on this Feature's own Channel (I1, I12, ADR-14).
      */
     emit(eventName, payload) {
         __classPrivateFieldGet(this, _Feature_channel, "f").emit(eventName, payload);
     }
     /**
-     * C5 — Effectue une Request typée vers un Channel déclaré (I17, ADR-0040).
-     * Retourne le résultat typé ou null (ADR-0023).
+     * C5 — Performs a typed Request to a declared Channel (I17, ADR-14).
+     * Returns the typed result or null (ADR-02).
      */
     request(token, requestName, params) {
         return Radio.me().channelFor(token).request(requestName, params);
     }
     // ─── Lifecycle hooks ───────────────────────────────────────────────────
     /**
-     * Hook appelé après le bootstrap. Override dans les sous-classes.
+     * Hook called after bootstrap. Override it in subclasses.
      */
     onInit() {
         // Default no-op — subclasses override
     }
 }
 _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_channel = new WeakMap(), _Feature_bootstrapped = new WeakMap(), _Feature_instances = new WeakSet(), _Feature_registerCommandHandlers = function _Feature_registerCommandHandlers() {
-    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    // Cast to the untyped Channel to register by string (I75).
     const ch = __classPrivateFieldGet(this, _Feature_channel, "f");
     const proto = Object.getPrototypeOf(this);
     const methods = Object.getOwnPropertyNames(proto);
@@ -299,7 +298,7 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
         }
     }
 }, _Feature_registerRequestRepliers = function _Feature_registerRequestRepliers() {
-    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    // Cast to the untyped Channel to register by string (I75).
     const ch = __classPrivateFieldGet(this, _Feature_channel, "f");
     const proto = Object.getPrototypeOf(this);
     const methods = Object.getOwnPropertyNames(proto);
@@ -323,7 +322,7 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
         const channelPascal = channelName[0].toUpperCase() + channelName.slice(1);
         const prefix = `on${channelPascal}`;
         const suffix = "Event";
-        // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+        // Cast to the untyped Channel to register by string (I75).
         const ch = Radio.me().channel(channelName);
         for (const method of methods) {
             if (method.startsWith(prefix) && method.endsWith(suffix)) {
@@ -364,7 +363,7 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
             self[handlerName](prev, next, keyPatches);
         }
         catch (error) {
-            console.error(new BroadcastError(`Entity handler "${handlerName}" threw for intent "${event.intent}"`, "ADR-0002", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
+            console.error(new BroadcastError(`Entity handler "${handlerName}" threw for intent "${event.intent}"`, "ADR-05", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
         }
     }
     if (typeof self["onAnyEntityUpdated"] === "function") {
@@ -372,7 +371,7 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
             self["onAnyEntityUpdated"](event);
         }
         catch (error) {
-            console.error(new BroadcastError(`Entity handler "onAnyEntityUpdated" threw for intent "${event.intent}"`, "ADR-0002", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
+            console.error(new BroadcastError(`Entity handler "onAnyEntityUpdated" threw for intent "${event.intent}"`, "ADR-05", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
         }
     }
 };

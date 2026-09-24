@@ -14382,14 +14382,14 @@ var immer$1 = /*#__PURE__*/Object.freeze({
 });
 
 /**
- * BonsaiError — Classe de base pour toutes les erreurs structurées du framework.
+ * BonsaiError — base class for all structured framework errors.
  *
- * Chaque erreur Bonsai fournit :
- * - `invariantId` : identifiant de l'invariant ou ADR violé (ex: "I10", "ADR-0002")
- * - `component` : namespace ou nom du composant concerné
- * - `suggestion` : message actionnable pour le développeur
+ * Every Bonsai error provides:
+ * - `invariantId`: id of the violated invariant or ADR (e.g. "I10", "ADR-05")
+ * - `component`: namespace or name of the component involved
+ * - `suggestion`: actionable message for the developer
  *
- * @see ADR-0002 — Error Propagation Strategy (taxonomie complète)
+ * @see ADR-05 — error propagation (full taxonomy)
  */
 class BonsaiError extends Error {
     constructor(message, invariantId, component = "", suggestion = "") {
@@ -14401,7 +14401,7 @@ class BonsaiError extends Error {
     }
 }
 /**
- * `onXxxEntityUpdated()` handler a throw — state conservé, notification continue.
+ * An `onXxxEntityUpdated()` handler threw — state kept, notification continues.
  */
 class BroadcastError extends BonsaiError {
     constructor() {
@@ -14413,7 +14413,7 @@ class BroadcastError extends BonsaiError {
 // Channel Layer (Communication)
 // ═══════════════════════════════════════════════════════════════
 /**
- * Event listener a throw — erreur isolée, les autres listeners continuent.
+ * An Event listener threw — error isolated, other listeners still run.
  */
 class ListenerError extends BonsaiError {
     constructor() {
@@ -14422,7 +14422,7 @@ class ListenerError extends BonsaiError {
     }
 }
 /**
- * `trigger()` sans `handle()` enregistré, ou `request()` sans `reply()`.
+ * `trigger()` with no registered `handle()` (`request()` without a replier returns `null` instead).
  */
 class NoHandlerError extends BonsaiError {
     constructor() {
@@ -14431,7 +14431,7 @@ class NoHandlerError extends BonsaiError {
     }
 }
 /**
- * `handle()` ou `reply()` appelé deux fois pour le même message (I10).
+ * `handle()` or `reply()` called twice for the same message (I10).
  */
 class DuplicateHandlerError extends BonsaiError {
     constructor() {
@@ -14441,26 +14441,26 @@ class DuplicateHandlerError extends BonsaiError {
 }
 
 /**
- * Fonctions de validation du framework Bonsai.
+ * Validation functions of the Bonsai framework.
  *
- * - `invariant()` : assertion runtime, strippable en prod via `__DEV__`
- * - `hardInvariant()` : assertion NON-strippable — erreurs structurelles fatales
- * - `warning()` : log conditionnel `__DEV__` only, ne throw jamais
+ * - `invariant()`: runtime assertion, strippable in production via `__DEV__`
+ * - `hardInvariant()`: NON-strippable assertion — fatal structural errors
+ * - `warning()`: `__DEV__`-only conditional log, never throws
  *
- * @see ADR-0004 — Validation Modes
+ * @see ADR-06 — validation modes
  */
 /**
- * Assertion NON-strippable — reste en production.
+ * NON-strippable assertion — kept in production.
  *
- * Utiliser pour les erreurs structurelles fatales détectées au bootstrap
- * (namespace dupliqué I21, handler Command dupliqué I10, etc.).
- * Un `hardInvariant` qui échoue signifie que le framework est dans un
- * état incohérent — il DOIT throw, même en production.
+ * Use it for fatal structural errors detected at bootstrap (duplicate
+ * namespace I21, duplicate Command handler I10, etc.). A failing
+ * `hardInvariant` means the framework is in an inconsistent state — it
+ * MUST throw, even in production.
  *
- * @param condition - Si `false`, throw une `BonsaiError`
- * @param message - Message d'erreur descriptif
- * @param invariantId - Identifiant de l'invariant violé
- * @param component - Namespace ou nom du composant concerné (optionnel)
+ * @param condition - When `false`, throws a `BonsaiError`
+ * @param message - Descriptive error message
+ * @param invariantId - Id of the violated invariant
+ * @param component - Namespace or name of the component involved (optional)
  */
 function hardInvariant(condition, message, invariantId = "", component = "") {
     if (!condition) {
@@ -14469,23 +14469,23 @@ function hardInvariant(condition, message, invariantId = "", component = "") {
 }
 
 /**
- * Channel tri-lane — infrastructure de communication interne Bonsai.
+ * Tri-lane Channel — Bonsai's internal communication infrastructure.
  *
- * Un Channel est un contrat de communication à 3 lanes :
- * - **Command Lane** : `handle()` / `trigger()` — 1:1 (un seul handler)
- * - **Event Lane** : `listen()` / `unlisten()` / `emit()` — 1:N (broadcast)
- * - **Request Lane** : `reply()` / `unreply()` / `request()` — 1:1 synchrone, T | null
+ * A Channel is a communication contract with 3 lanes:
+ * - **Command lane**: `handle()` / `trigger()` — 1:1 (a single handler)
+ * - **Event lane**: `listen()` / `unlisten()` / `emit()` — 1:N (broadcast)
+ * - **Request lane**: `reply()` / `unreply()` / `request()` — 1:1 synchronous, T | null
  *
- * Le Channel émet automatiquement un événement `any` après chaque `emit()`.
+ * The Channel automatically emits an `any` event after each `emit()`.
  *
- * `Channel` est générique sur `TDef extends TChannelDefinition` (ADR-0040).
- * La valeur par défaut `TChannelDefinition` (toutes lanes `Record<string, unknown>`)
- * assure une rétrocompatibilité totale avec le code non-paramétré.
+ * `Channel` is generic over `TDef extends TChannelDefinition` (ADR-14).
+ * The default `TChannelDefinition` (all lanes `Record<string, unknown>`)
+ * keeps untyped code fully compatible.
  *
- * @see RFC 2-architecture/communication.md
- * @see ADR-0003 — Sémantiques runtime Channel
- * @see ADR-0023 — request() synchrone
- * @see ADR-0040 — API TypeScript-First : TChannelDefinition, TChannelToken
+ * @see docs/spec/2-architecture/communication.md
+ * @see ADR-03 — Channel runtime semantics
+ * @see ADR-02 — synchronous request()
+ * @see ADR-14 — typed contracts: TChannelDefinition, TChannelToken
  */
 var _Channel_commandHandlers, _Channel_eventSubjects, _Channel_eventSubscriptions, _Channel_requestRepliers, _Channel_anySubject, _Channel_anySubscriptions;
 // ── Channel ──────────────────────────────────────────────────────────────────
@@ -14499,7 +14499,7 @@ class Channel {
         _Channel_eventSubscriptions.set(this, new Map());
         // ── Lane 3 — Requests (1:1 sync) ─────────────────────────────────────────
         _Channel_requestRepliers.set(this, new Map());
-        // ── Événement technique `any` ─────────────────────────────────────────────
+        // ── Technical `any` event ─────────────────────────────────────────────────
         _Channel_anySubject.set(this, new Subject());
         _Channel_anySubscriptions.set(this, new Map());
     }
@@ -14507,8 +14507,8 @@ class Channel {
     // Lane 1 — Commands
     // ═══════════════════════════════════════════════════════════════════════════
     /**
-     * Enregistre le handler unique pour un Command (I10 — un seul handler).
-     * @throws DuplicateHandlerError si un handler est déjà enregistré.
+     * Registers the single handler of a Command (I10 — one handler only).
+     * @throws DuplicateHandlerError if a handler is already registered.
      */
     handle(commandName, handler) {
         if (__classPrivateFieldGet(this, _Channel_commandHandlers, "f").has(commandName)) {
@@ -14517,8 +14517,8 @@ class Channel {
         __classPrivateFieldGet(this, _Channel_commandHandlers, "f").set(commandName, handler);
     }
     /**
-     * Émet un Command vers son handler unique.
-     * @throws NoHandlerError si aucun handler n'est enregistré.
+     * Sends a Command to its single handler.
+     * @throws NoHandlerError if no handler is registered.
      */
     trigger(commandName, payload) {
         const handler = __classPrivateFieldGet(this, _Channel_commandHandlers, "f").get(commandName);
@@ -14531,7 +14531,7 @@ class Channel {
     // Lane 2 — Events
     // ═══════════════════════════════════════════════════════════════════════════
     /**
-     * Enregistre un listener pour un Event (I11 — N listeners autorisés).
+     * Registers a listener for an Event (I11 — N listeners allowed).
      */
     listen(eventName, listener) {
         if (!__classPrivateFieldGet(this, _Channel_eventSubjects, "f").has(eventName)) {
@@ -14545,14 +14545,14 @@ class Channel {
                     listener(payload);
                 }
                 catch (error) {
-                    console.error(new ListenerError(`Listener error on "${this.name}:${eventName}"`, "ADR-0002", this.name), error);
+                    console.error(new ListenerError(`Listener error on "${this.name}:${eventName}"`, "ADR-05", this.name), error);
                 }
             }
         });
         __classPrivateFieldGet(this, _Channel_eventSubscriptions, "f").get(eventName).set(listener, subscription);
     }
     /**
-     * Supprime un listener spécifique pour un Event.
+     * Removes a specific listener of an Event.
      */
     unlisten(eventName, listener) {
         const subsMap = __classPrivateFieldGet(this, _Channel_eventSubscriptions, "f").get(eventName);
@@ -14565,8 +14565,8 @@ class Channel {
         }
     }
     /**
-     * Émet un Event vers tous les listeners (1:N).
-     * Silencieux si aucun listener. Émet `any` automatiquement après.
+     * Emits an Event to every listener (1:N).
+     * Silent when there is no listener. Emits `any` automatically afterwards.
      */
     emit(eventName, payload) {
         const subject = __classPrivateFieldGet(this, _Channel_eventSubjects, "f").get(eventName);
@@ -14581,7 +14581,7 @@ class Channel {
         });
     }
     /**
-     * Enregistre un listener pour l'événement technique `any`.
+     * Registers a listener for the technical `any` event.
      */
     listenAny(listener) {
         const subscription = __classPrivateFieldGet(this, _Channel_anySubject, "f").subscribe({
@@ -14590,14 +14590,14 @@ class Channel {
                     listener(payload);
                 }
                 catch (error) {
-                    console.error(new ListenerError(`Listener error on "${this.name}:any"`, "ADR-0002", this.name), error);
+                    console.error(new ListenerError(`Listener error on "${this.name}:any"`, "ADR-05", this.name), error);
                 }
             }
         });
         __classPrivateFieldGet(this, _Channel_anySubscriptions, "f").set(listener, subscription);
     }
     /**
-     * Supprime un listener `any`.
+     * Removes an `any` listener.
      */
     unlistenAny(listener) {
         const subscription = __classPrivateFieldGet(this, _Channel_anySubscriptions, "f").get(listener);
@@ -14607,11 +14607,11 @@ class Channel {
         }
     }
     // ═══════════════════════════════════════════════════════════════════════════
-    // Lane 3 — Requests (synchrone, T | null)
+    // Lane 3 — Requests (synchronous, T | null)
     // ═══════════════════════════════════════════════════════════════════════════
     /**
-     * Enregistre le replier unique pour un type de Request.
-     * @throws DuplicateHandlerError si un replier est déjà enregistré.
+     * Registers the single replier of a Request.
+     * @throws DuplicateHandlerError if a replier is already registered.
      */
     reply(requestName, replier) {
         if (__classPrivateFieldGet(this, _Channel_requestRepliers, "f").has(requestName)) {
@@ -14620,15 +14620,15 @@ class Channel {
         __classPrivateFieldGet(this, _Channel_requestRepliers, "f").set(requestName, replier);
     }
     /**
-     * Supprime un replier.
+     * Removes a replier.
      */
     unreply(requestName) {
         __classPrivateFieldGet(this, _Channel_requestRepliers, "f").delete(requestName);
     }
     /**
-     * Effectue une Request synchrone. Retourne `TDef['requests'][K]['result'] | null`.
-     * - Pas de replier → null (ADR-0023, D44)
-     * - Replier qui throw → null, erreur loguée (I55)
+     * Performs a synchronous Request. Returns `TDef['requests'][K]['result'] | null`.
+     * - No replier → null (ADR-02)
+     * - Replier throws → null, error logged (I55)
      */
     request(requestName, params) {
         const replier = __classPrivateFieldGet(this, _Channel_requestRepliers, "f").get(requestName);
@@ -14647,8 +14647,8 @@ class Channel {
     // Lifecycle
     // ═══════════════════════════════════════════════════════════════════════════
     /**
-     * Supprime tous les handlers, listeners et repliers.
-     * Complète les Subjects RxJS.
+     * Removes every handler, listener and replier.
+     * Completes the RxJS Subjects.
      */
     clear() {
         __classPrivateFieldGet(this, _Channel_commandHandlers, "f").clear();
@@ -14673,25 +14673,25 @@ class Channel {
 _Channel_commandHandlers = new WeakMap(), _Channel_eventSubjects = new WeakMap(), _Channel_eventSubscriptions = new WeakMap(), _Channel_requestRepliers = new WeakMap(), _Channel_anySubject = new WeakMap(), _Channel_anySubscriptions = new WeakMap();
 
 /**
- * Radio — Singleton registre des Channels.
+ * Radio — singleton registry of Channels.
  *
- * Radio est le point central de câblage des communications Bonsai.
- * Il gère les instances Channel par namespace (get-or-create).
+ * Radio is the central wiring point of Bonsai communication. It manages
+ * Channel instances by namespace (get-or-create).
  *
- * I15 — Radio n'est jamais exposé au développeur d'application.
+ * I15 — Radio is never exposed to application developers.
  *
- * @see RFC 2-architecture/communication.md §8
+ * @see docs/spec/2-architecture/communication.md §8
  */
 var _a, _Radio_instance, _Radio_constructing, _Radio_channels;
 class Radio {
-    /** Constructeur privé — force le pattern singleton via `me()`. */
+    /** Private constructor — enforces the singleton through `me()`. */
     constructor() {
         _Radio_channels.set(this, new Map());
         if (!__classPrivateFieldGet(_a, _a, "f", _Radio_constructing)) {
             throw new Error("Radio is a singleton — use Radio.me() to get the instance.");
         }
     }
-    /** Retourne l'instance unique du Radio. */
+    /** Returns the single Radio instance. */
     static me() {
         if (!__classPrivateFieldGet(_a, _a, "f", _Radio_instance)) {
             __classPrivateFieldSet(_a, _a, true, "f", _Radio_constructing);
@@ -14701,9 +14701,9 @@ class Radio {
         return __classPrivateFieldGet(_a, _a, "f", _Radio_instance);
     }
     /**
-     * Obtient ou crée un Channel par namespace (API interne).
-     * Retourne `Channel<TChannelDefinition>` — toutes lanes `Record<string, unknown>`.
-     * Pour un accès typé depuis l'extérieur, utiliser `channelFor(token)`.
+     * Gets or creates a Channel by namespace (internal API).
+     * Returns `Channel<TChannelDefinition>` — all lanes `Record<string, unknown>`.
+     * For typed access from outside, use `channelFor(token)`.
      */
     channel(name) {
         if (!__classPrivateFieldGet(this, _Radio_channels, "f").has(name)) {
@@ -14712,25 +14712,25 @@ class Radio {
         return __classPrivateFieldGet(this, _Radio_channels, "f").get(name);
     }
     /**
-     * Obtient ou crée un Channel typé via son token (ADR-0040, I77, I79).
+     * Gets or creates a typed Channel from its token (ADR-14, I77, I79).
      *
-     * Le cast `as Channel<TDef>` est sûr par I22 : un namespace ne peut être
-     * associé qu'à une seule Feature et donc à un seul `TDef`.
+     * The `as Channel<TDef>` cast is safe by I22: a namespace belongs to a
+     * single Feature, hence to a single `TDef`.
      */
     channelFor(token) {
         return this.channel(token.namespace);
     }
-    /** Vérifie si un Channel existe pour ce namespace. */
+    /** Checks whether a Channel exists for this namespace. */
     hasChannel(name) {
         return __classPrivateFieldGet(this, _Radio_channels, "f").has(name);
     }
-    /** Liste tous les namespaces enregistrés. */
+    /** Lists all registered namespaces. */
     getChannelNames() {
         return Array.from(__classPrivateFieldGet(this, _Radio_channels, "f").keys());
     }
     /**
-     * Supprime un Channel. Appelle `clear()` sur le Channel avant suppression.
-     * @returns `true` si le Channel existait, `false` sinon
+     * Removes a Channel, calling `clear()` on it first.
+     * @returns `true` if the Channel existed, `false` otherwise
      */
     removeChannel(name) {
         const channel = __classPrivateFieldGet(this, _Radio_channels, "f").get(name);
@@ -14740,7 +14740,7 @@ class Radio {
         }
         return false;
     }
-    /** Reset complet — détruit le singleton. Usage : tests uniquement. */
+    /** Full reset — destroys the singleton. Tests only. */
     static reset() {
         if (__classPrivateFieldGet(_a, _a, "f", _Radio_instance)) {
             for (const [, channel] of __classPrivateFieldGet(__classPrivateFieldGet(_a, _a, "f", _Radio_instance), _Radio_channels, "f")) {
@@ -14758,57 +14758,56 @@ _Radio_constructing = { value: false };
 /**
  * @bonsai/feature — Types & runtime helpers
  *
- * Implémente :
- *   - ADR-0039 : autorité, unicité et conformité des namespaces de Feature.
- *   - ADR-0042 : pattern modulaire de contrat consommateur — `TFeatureContract`
- *     Feature-groupé + helpers d'aplatissement (`TFlatListens`, `TFlatTriggers`,
- *     `TFlatRequests`) + extracteurs de payload (`TEventPayloadFor`,
- *     `TCommandPayloadFor`, `TRequestParamsFor`, `TRequestResultFor`) +
- *     `TChannelCallbacks` (handlers requis dérivés du contrat).
+ * Implements:
+ *   - ADR-08: authority, uniqueness and conformity of Feature namespaces.
+ *   - ADR-14: modular consumer contract — Feature-grouped `TFeatureContract`
+ *     + flattening helpers (`TFlatListens`, `TFlatTriggers`, `TFlatRequests`)
+ *     + payload extractors (`TEventPayloadFor`, `TCommandPayloadFor`,
+ *     `TRequestParamsFor`, `TRequestResultFor`) + `TChannelCallbacks`
+ *     (required handlers derived from the contract).
  *
- * Trois rôles assumés par ce module :
- *   1. Types compile-time (`CamelCaseNamespace<S>`, `StrictManifest<M>`,
- *      `ValidatedManifest<M>`) qui encodent les invariants I68–I72.
- *   2. Constante framework `RESERVED_NAMESPACES` (I71) — non configurable
- *      par l'application.
- *   3. Filet de sécurité runtime (`assertValidNamespace`,
- *      `BonsaiNamespaceError`) pour les cas où le compile-time est contourné
- *      (cast `as any`, code JS, manifest dynamique).
+ * This module has three roles:
+ *   1. Compile-time types (`CamelCaseNamespace<S>`, `StrictManifest<M>`,
+ *      `ValidatedManifest<M>`) encoding invariants I68–I72.
+ *   2. The framework constant `RESERVED_NAMESPACES` (I71) — not configurable
+ *      by the application.
+ *   3. A runtime safety net (`assertValidNamespace`, `BonsaiNamespaceError`)
+ *      for when compile-time checks are bypassed (`as any` cast, plain JS,
+ *      dynamic manifest).
  *
- * Invariants couverts :
- *   I21 (amendé) — namespace unique camelCase plat
- *   I24 (amendé) — Application valide format + réservés au bootstrap
- *   I57          — `local` réservé (ADR-0015)
- *   I68          — namespace porté par le manifest, pas par un `static`
- *   I69          — manifest = unique source de vérité de l'identité
- *   I70          — toute référence à un namespace externe DOIT être validée
- *   I71          — `RESERVED_NAMESPACES` est une constante framework
- *   I72          — `TSelfNS` doit correspondre à la clé du manifest
- *   I81 (ADR-0042) — `get features()` est la source de vérité runtime
- *   I82 (ADR-0042) — `implements TViewCallbacks<TVC>` impose les handlers
- *   I83 (ADR-0042) — pattern modulaire `T{Component}Contract` réutilisable
- *   I87 (ADR-0042) — clé d'objet ≡ namespace de la Feature référencée
- *   I88 (ADR-0042) — symétrie Contract/Callbacks
+ * Invariants covered:
+ *   I21          — unique, flat camelCase namespace
+ *   I24          — Application validates format + reserved names at bootstrap
+ *   I57          — `local` is reserved (ADR-17)
+ *   I68          — the namespace is carried by the manifest, not by a `static`
+ *   I69          — the manifest is the single source of truth for identity
+ *   I70          — every reference to an external namespace MUST be validated
+ *   I71          — `RESERVED_NAMESPACES` is a framework constant
+ *   I72          — `TSelfNS` must match the manifest key
+ *   I81 (ADR-14) — `get features()` is the runtime source of truth
+ *   I82 (ADR-14) — `implements TViewCallbacks<TVC>` enforces the handlers
+ *   I83 (ADR-14) — reusable modular `T{Component}Contract` pattern
+ *   I87 (ADR-14) — object key ≡ namespace of the referenced Feature
+ *   I88 (ADR-14) — Contract/Callbacks symmetry
  *
  * @packageDocumentation
  */
-// ─── Mots réservés (I71, ADR-0015) ──────────────────────────────────────────
+// ─── Reserved words (I71, ADR-17) ─────────────────────────────────────────
 /**
- * Namespaces réservés par le framework — interdits à toute Feature applicative.
+ * Namespaces reserved by the framework — forbidden to application Features.
  *
- *   - `local`  : clé du localState dans les données namespacées (I57, ADR-0015)
- *   - `router` : Feature framework de navigation, instanciée par Application (I28, D8)
+ *   - `local`  : localState key in namespaced data (I57, ADR-17)
+ *   - `router` : framework navigation Feature, instantiated by Application (I28, ADR-13)
  *
- * Constante framework non configurable. Toute extension future se fera par
- * modification de cette constante, propagée par le typage dérivé (I71).
+ * Non-configurable framework constant. Any future extension changes this
+ * constant and propagates through the derived types (I71).
  */
 const RESERVED_NAMESPACES = ["local", "router"];
 /**
- * Erreur typée pour toute violation détectée au runtime.
+ * Typed error for any violation detected at runtime.
  *
- * Étend la hiérarchie d'erreurs framework évoquée par ADR-0003
- * (`BonsaiRegistryError`). Les codes sont stables et destinés à être
- * matchables par les consommateurs.
+ * Belongs to the framework error family (ADR-05). Codes are stable and
+ * meant to be matched by consumers.
  */
 class BonsaiNamespaceError extends Error {
     constructor(code, message) {
@@ -14817,23 +14816,23 @@ class BonsaiNamespaceError extends Error {
         this.code = code;
     }
 }
-// ─── Filet runtime ──────────────────────────────────────────────────────────
+// ─── Runtime safety net ─────────────────────────────────────────────────────
 const CAMEL_CASE_REGEX = /^[a-z][a-zA-Z]*$/;
-// ─── Filet runtime ──────────────────────────────────────────────────────────
-/** Test runtime du format camelCase. */
+// ─── Runtime safety net ─────────────────────────────────────────────────────
+/** Runtime camelCase format check. */
 function isCamelCaseNamespace(ns) {
     return CAMEL_CASE_REGEX.test(ns);
 }
-/** Test runtime de réservation. */
+/** Runtime reserved-name check. */
 function isReservedNamespace(ns) {
     return RESERVED_NAMESPACES.includes(ns);
 }
 /**
- * Filet de sécurité — vérifie format + réservation au runtime.
+ * Safety net — checks format + reservation at runtime.
  *
- * Appelé par le constructeur de `Feature` (immuabilité dès construction) et
- * par `Application.start()` (validation du manifest entier). Lève
- * `BonsaiNamespaceError` avec un code stable.
+ * Called by the `Feature` constructor (immutable from construction) and by
+ * `Application.start()` (whole-manifest validation). Throws
+ * `BonsaiNamespaceError` with a stable code.
  */
 function assertValidNamespace(ns) {
     if (typeof ns !== "string" || ns.length === 0) {
@@ -14850,90 +14849,90 @@ function assertValidNamespace(ns) {
 /**
  * @bonsai/feature — Feature base class
  *
- * Strate 0 — Les 5 capacités :
- *   C1 — emit(event, payload) sur son propre Channel (typé TChannelDef, ADR-0040)
- *   C2 — handle(command) via auto-discovery des méthodes on{Name}Command
- *   C3 — listen(event) sur Channels externes déclarés via on{Channel}{EventName}Event
- *   C4 — reply(request) via auto-discovery des méthodes on{Name}Request
- *   C5 — request(token, name, params) vers Channels déclarés (typé via token, ADR-0040)
+ * The 5 capabilities (ADR-01):
+ *   C1 — emit(event, payload) on its own Channel (typed by TChannelDef, ADR-14)
+ *   C2 — handle(command) through auto-discovered on{Name}Command methods
+ *   C3 — listen(event) on declared external Channels through on{Channel}{EventName}Event
+ *   C4 — reply(request) through auto-discovered on{Name}Request methods
+ *   C5 — request(token, name, params) to declared Channels (typed by the token, ADR-14)
  *
- * Invariants :
- *   I1  — Feature ne peut emit() que sur son propre Channel
- *   I2  — Feature peut listen les Events des Channels externes déclarés
- *   I3  — Feature ne peut reply que sur son propre Channel
- *   I5  — Entity n'est accessible que par sa Feature propriétaire
- *   I12 — Aucune Feature ne peut emit sur le Channel d'une autre
- *   I21 — Chaque Feature DOIT être enregistrée dans le manifest applicatif
- *         sous une clé namespace unique camelCase plat (amendé ADR-0039)
- *   I22 — Relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte
- *   I48 — Handlers auto-découverts par convention de nommage
- *   I68 — Le namespace est porté par le manifest applicatif, pas par
- *         un `static` sur la classe Feature (ADR-0039)
- *   I72 — `TSelfNS` doit correspondre exactement à la clé sous laquelle
- *         la Feature est enregistrée dans le manifest (ADR-0039)
- *   I73 — Chaque Feature concrète DOIT exposer `static readonly channel:
- *         TChannelToken<TChannelDef, TSelfNS>` — pont entre la classe et son
- *         Channel typé (ADR-0040)
- *   I74 — `TChannelDef` co-localisé dans le fichier `.feature.ts` du domaine
- *         (pas de `.channel.ts` séparé) (ADR-0040)
- *   I75 — Aucun `any`/`unknown` dans la surface publique de Channel/Feature/
- *         View ; casts internes documentés et délimités (ADR-0040)
- *   I76 — `Channel.{trigger,emit,request,handle,listen,reply}` strictement
- *         typés par `TDef` — clé = `keyof TDef[lane]`, jamais `string` libre
- *         (ADR-0040)
- *   I79 — `Feature.request()` accepte uniquement un `TChannelToken` typé ;
- *         `abstract get listens()`/`abstract get queries()` portent ces tokens
- *         comme déclarations instance (ADR-0040, amendé ADR-0046 — I93)
- *   I93 — `listens` et `queries` sont des `abstract get` instance sur Feature
- *         (ADR-0046 — TS2515 si absent sur une classe concrète)
- *   I94 — Le constructeur de Feature est inerte : assertValidNamespace + #namespace
- *         uniquement. Aucun side-effect Radio/Entity.
- *   I96 — Handlers Entity `on<Key>EntityUpdated`/`onAnyEntityUpdated` auto-
- *         découverts sur la Feature (même mécanisme que I48), dispatchés par
- *         ordre alphabétique des `changedKeys` puis catch-all. Clé inconnue
- *         → erreur bootstrap. Handler qui throw → isolé (BroadcastError,
- *         ADR-0002), notification suivante non interrompue (ADR-0028 strate 1a)
+ * Invariants:
+ *   I1  — A Feature can only emit() on its own Channel
+ *   I2  — A Feature can listen to Events of declared external Channels
+ *   I3  — A Feature can only reply on its own Channel
+ *   I5  — An Entity is only accessible to its owning Feature
+ *   I12 — No Feature can emit on another Feature's Channel
+ *   I21 — Every Feature MUST be registered in the application manifest under
+ *         a unique, flat camelCase namespace key (ADR-08)
+ *   I22 — namespace ↔ Feature ↔ Entity is a strict 1:1:1 relation
+ *   I48 — Handlers are auto-discovered by naming convention
+ *   I68 — The namespace is carried by the application manifest, not by a
+ *         `static` on the Feature class (ADR-08)
+ *   I72 — `TSelfNS` must match exactly the key the Feature is registered
+ *         under in the manifest (ADR-08)
+ *   I73 — Every concrete Feature MUST expose `static readonly channel:
+ *         TChannelToken<TChannelDef, TSelfNS>` — the bridge between the class
+ *         and its typed Channel (ADR-14)
+ *   I74 — `TChannelDef` is co-located in the domain's `.feature.ts` file
+ *         (no separate `.channel.ts`) (ADR-14)
+ *   I75 — No `any`/`unknown` in the public surface of Channel/Feature/View;
+ *         internal casts are documented and contained (ADR-14)
+ *   I76 — `Channel.{trigger,emit,request,handle,listen,reply}` are strictly
+ *         typed by `TDef` — key = `keyof TDef[lane]`, never a free `string`
+ *         (ADR-14)
+ *   I79 — `Feature.request()` only accepts a typed `TChannelToken`;
+ *         `abstract get listens()`/`abstract get queries()` carry these tokens
+ *         as instance declarations (ADR-14, ADR-09 — I93)
+ *   I93 — `listens` and `queries` are instance `abstract get` on Feature
+ *         (ADR-09 — TS2515 when missing on a concrete class)
+ *   I94 — The Feature constructor is inert: assertValidNamespace + #namespace
+ *         only. No Radio/Entity side effect.
+ *   I96 — Entity handlers `on<Key>EntityUpdated`/`onAnyEntityUpdated` are
+ *         auto-discovered on the Feature (same mechanism as I48), dispatched
+ *         in alphabetical order of `changedKeys`, then the catch-all. Unknown
+ *         key → bootstrap error. A throwing handler is isolated (BroadcastError,
+ *         ADR-05) and the next notification still runs (stratum 1a)
  *
  * @packageDocumentation
  */
 var _Feature_instances, _Feature_namespace, _Feature_entity, _Feature_channel, _Feature_bootstrapped, _Feature_registerCommandHandlers, _Feature_registerRequestRepliers, _Feature_registerEventListeners, _Feature_registerEntityHandlers, _Feature_dispatchEntityEvent;
 // ─── Feature abstract class ──────────────────────────────────────────────────
 /**
- * Feature — unité métier paramétrée par sa classe Entity, son contrat Channel
- * et son namespace.
+ * Feature — business unit parameterised by its Entity class, its Channel
+ * contract and its namespace.
  *
- * Paramètres de type :
- *   - `TEntity`     : la classe Entity (ADR-0037 — encode I22 au type-level)
- *   - `TChannelDef` : le contrat du Channel propre — types de commandes, events,
- *                     requests (ADR-0040 — I74, I76). Par défaut `TChannelDefinition`
- *                     (toutes lanes `Record<string, unknown>`) pour une utilisation
- *                     non paramétrée rétrocompatible.
- *   - `TSelfNS`     : le namespace sous lequel cette Feature s'attend à être
- *                     enregistrée dans le manifest applicatif (ADR-0039 — I72).
- *                     Par défaut `string` pour les sous-classes non paramétrées.
+ * Type parameters:
+ *   - `TEntity`     : the Entity class (ADR-09 — encodes I22 at type level)
+ *   - `TChannelDef` : the contract of its own Channel — command, event and
+ *                     request types (ADR-14 — I74, I76). Defaults to
+ *                     `TChannelDefinition` (all lanes `Record<string, unknown>`)
+ *                     for untyped use.
+ *   - `TSelfNS`     : the namespace this Feature expects to be registered
+ *                     under in the application manifest (ADR-08 — I72).
+ *                     Defaults to `string` for unparameterised subclasses.
  *
- * **Le namespace n'est plus déclaré sur la classe** (`static namespace`
- * supprimé, ADR-0039 — I68). Il est :
- *   - injecté par le constructeur (immuabilité dès construction)
- *   - dérivé de la clé du manifest applicatif (source de vérité — I69)
- *   - validé au compile-time par `StrictManifest<M>` au `satisfies`
- *   - validé au runtime par `assertValidNamespace()` (filet — I71)
+ * **The namespace is not declared on the class** (no `static namespace`,
+ * ADR-08 — I68). It is:
+ *   - injected by the constructor (immutable from construction)
+ *   - derived from the application manifest key (source of truth — I69)
+ *   - checked at compile time by `StrictManifest<M>` through `satisfies`
+ *   - checked at runtime by `assertValidNamespace()` (safety net — I71)
  */
 class Feature {
     // ─── Constructor ───────────────────────────────────────────────────────
     /**
-     * Crée une Feature attachée au namespace passé en paramètre.
+     * Creates a Feature bound to the given namespace.
      *
-     * Appelé exclusivement par `Application.start()` qui transmet la clé du
-     * manifest. L'instanciation manuelle (tests) doit aussi passer le namespace.
+     * Called only by `Application.start()`, which passes the manifest key.
+     * Manual instantiation (tests) must pass the namespace too.
      *
-     * @throws `BonsaiNamespaceError` si le namespace est invalide ou réservé.
+     * @throws `BonsaiNamespaceError` when the namespace is invalid or reserved.
      */
     constructor(namespace) {
         _Feature_instances.add(this);
         _Feature_namespace.set(this, void 0);
         _Feature_entity.set(this, void 0);
-        // Canal propre — assigné au bootstrap, cast sûr par I22 (1 namespace = 1 TDef).
+        // Own channel — assigned at bootstrap; the cast is safe by I22 (1 namespace = 1 TDef).
         _Feature_channel.set(this, void 0);
         _Feature_bootstrapped.set(this, false);
         assertValidNamespace(namespace);
@@ -14941,34 +14940,34 @@ class Feature {
     }
     // ─── Public API ────────────────────────────────────────────────────────
     /**
-     * Le namespace de cette instance — immuable, défini au constructeur.
-     * Typé `TSelfNS` (string littéral si la Feature est paramétrée).
+     * Namespace of this instance — immutable, set by the constructor.
+     * Typed `TSelfNS` (a string literal when the Feature is parameterised).
      */
     get namespace() {
         return __classPrivateFieldGet(this, _Feature_namespace, "f");
     }
     /**
-     * Accès à l'Entity (I5, I6 — propriétaire exclusif).
-     * `protected` : seules la Feature et ses sous-classes y accèdent.
-     * Typée par la classe concrète (TEntity) grâce à ADR-0037.
+     * Access to the Entity (I5, I6 — exclusive owner).
+     * `protected`: only the Feature and its subclasses reach it.
+     * Typed by the concrete class (TEntity) thanks to ADR-09.
      */
     get entity() {
         return __classPrivateFieldGet(this, _Feature_entity, "f");
     }
     /**
-     * Bootstrap : crée l'Entity, enregistre les handlers sur le Channel,
-     * et appelle onInit(). Appelé par Application ou manuellement en test.
+     * Bootstrap: creates the Entity, registers the handlers on the Channel and
+     * calls onInit(). Called by Application, or manually in tests.
      */
     bootstrap() {
         if (__classPrivateFieldGet(this, _Feature_bootstrapped, "f"))
             return;
         __classPrivateFieldSet(this, _Feature_bootstrapped, true, "f");
-        // Cast sûr par I22 : 1 namespace = 1 Feature = 1 TDef (I75).
+        // Safe cast by I22: 1 namespace = 1 Feature = 1 TDef (I75).
         __classPrivateFieldSet(this, _Feature_channel, Radio.me().channel(__classPrivateFieldGet(this, _Feature_namespace, "f")), "f");
-        // I22 — Création de l'Entity 1:1 via le getter Entity (D17 amendé par ADR-0037)
+        // I22 — 1:1 Entity creation through the Entity getter (ADR-09)
         const EntityCtor = this.Entity;
         __classPrivateFieldSet(this, _Feature_entity, new EntityCtor(), "f");
-        // Auto-discovery des handlers (I48)
+        // Handler auto-discovery (I48)
         __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerCommandHandlers).call(this);
         __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerRequestRepliers).call(this);
         __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerEventListeners).call(this);
@@ -14976,30 +14975,30 @@ class Feature {
         // Lifecycle
         this.onInit();
     }
-    // ─── Capacités (C1–C5) ─────────────────────────────────────────────────
+    // ─── Capabilities (C1–C5) ──────────────────────────────────────────────
     /**
-     * C1 — Émet un Event typé sur le propre Channel de cette Feature (I1, I12, ADR-0040).
+     * C1 — Emits a typed Event on this Feature's own Channel (I1, I12, ADR-14).
      */
     emit(eventName, payload) {
         __classPrivateFieldGet(this, _Feature_channel, "f").emit(eventName, payload);
     }
     /**
-     * C5 — Effectue une Request typée vers un Channel déclaré (I17, ADR-0040).
-     * Retourne le résultat typé ou null (ADR-0023).
+     * C5 — Performs a typed Request to a declared Channel (I17, ADR-14).
+     * Returns the typed result or null (ADR-02).
      */
     request(token, requestName, params) {
         return Radio.me().channelFor(token).request(requestName, params);
     }
     // ─── Lifecycle hooks ───────────────────────────────────────────────────
     /**
-     * Hook appelé après le bootstrap. Override dans les sous-classes.
+     * Hook called after bootstrap. Override it in subclasses.
      */
     onInit() {
         // Default no-op — subclasses override
     }
 }
 _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_channel = new WeakMap(), _Feature_bootstrapped = new WeakMap(), _Feature_instances = new WeakSet(), _Feature_registerCommandHandlers = function _Feature_registerCommandHandlers() {
-    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    // Cast to the untyped Channel to register by string (I75).
     const ch = __classPrivateFieldGet(this, _Feature_channel, "f");
     const proto = Object.getPrototypeOf(this);
     const methods = Object.getOwnPropertyNames(proto);
@@ -15013,7 +15012,7 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
         }
     }
 }, _Feature_registerRequestRepliers = function _Feature_registerRequestRepliers() {
-    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+    // Cast to the untyped Channel to register by string (I75).
     const ch = __classPrivateFieldGet(this, _Feature_channel, "f");
     const proto = Object.getPrototypeOf(this);
     const methods = Object.getOwnPropertyNames(proto);
@@ -15037,7 +15036,7 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
         const channelPascal = channelName[0].toUpperCase() + channelName.slice(1);
         const prefix = `on${channelPascal}`;
         const suffix = "Event";
-        // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+        // Cast to the untyped Channel to register by string (I75).
         const ch = Radio.me().channel(channelName);
         for (const method of methods) {
             if (method.startsWith(prefix) && method.endsWith(suffix)) {
@@ -15078,7 +15077,7 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
             self[handlerName](prev, next, keyPatches);
         }
         catch (error) {
-            console.error(new BroadcastError(`Entity handler "${handlerName}" threw for intent "${event.intent}"`, "ADR-0002", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
+            console.error(new BroadcastError(`Entity handler "${handlerName}" threw for intent "${event.intent}"`, "ADR-05", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
         }
     }
     if (typeof self["onAnyEntityUpdated"] === "function") {
@@ -15086,77 +15085,76 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
             self["onAnyEntityUpdated"](event);
         }
         catch (error) {
-            console.error(new BroadcastError(`Entity handler "onAnyEntityUpdated" threw for intent "${event.intent}"`, "ADR-0002", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
+            console.error(new BroadcastError(`Entity handler "onAnyEntityUpdated" threw for intent "${event.intent}"`, "ADR-05", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
         }
     }
 };
 
 /**
- * @bonsai/view — View base class (ADR-0042)
+ * @bonsai/view — View base class (ADR-14)
  *
- * Strate 1 — Capacités :
- *   - trigger("ns:cmd", payload) → envoie un Command typé via Channel
- *   - request("ns:req", params)  → interroge un Channel typé
- *   - getUI(key) → TProjectionNode<TEl> typé au sous-type HTMLElement (phantom)
- *   - Auto-discovery D48 channel : on{NS}{Event}Event → channel.listen
- *   - Auto-discovery D48 UI      : on{UIKey}{DomEvent} → addEventListener
+ * Capabilities:
+ *   - trigger("ns:cmd", payload) → sends a typed Command through the Channel
+ *   - request("ns:req", params)  → queries a typed Channel
+ *   - getUI(key) → TProjectionNode<TEl>, typed to the HTMLElement subtype (phantom)
+ *   - I48 channel auto-discovery: on{NS}{Event}Event → channel.listen
+ *   - I48 UI auto-discovery     : on{UIKey}{DomEvent} → addEventListener
  *   - onAttach() lifecycle hook
  *
- * Pattern modulaire ADR-0042 :
- *   1. `const features satisfies TFeatureContract` — Feature-groupé
- *   2. `const uiEvents satisfies TUIContract`      — events DOM + phantom TEl
- *   3. `const uiElements satisfies TUIElements<typeof uiEvents>` — sélecteurs
+ * ADR-14 modular pattern:
+ *   1. `const features satisfies TFeatureContract` — Feature-grouped
+ *   2. `const uiEvents satisfies TUIContract`      — DOM events + phantom TEl
+ *   3. `const uiElements satisfies TUIElements<typeof uiEvents>` — selectors
  *   4. `type TVC = TViewContract<typeof features, typeof uiEvents>`
  *   5. `class XxxView extends View<TVC> implements TViewCallbacks<TVC>`
  *
- * Trois getters abstraits :
- *   - `get features()`   → Feature refs + lanes (structurel, non-overridable)
- *   - `get uiEvents()`   → events DOM + phantom TEl (structurel)
- *   - `get uiElements()` → sélecteurs CSS (overridable par Composer D34)
+ * Three abstract getters:
+ *   - `get features()`   → Feature refs + lanes (structural, not overridable)
+ *   - `get uiEvents()`   → DOM events + phantom TEl (structural)
+ *   - `get uiElements()` → CSS selectors (overridable by the Composer, ADR-21 — not delivered)
  *
- * Channel reste privé derrière sa Feature (I80) — aucun `TChannelToken` dans
- * la surface publique.
+ * The Channel stays private behind its Feature (I80) — no `TChannelToken` in
+ * the public surface.
  *
- * Invariants :
- *   I4  — View n'a JAMAIS emit() — absent du type
- *   I31 — rootElement est un sélecteur CSS string injecté au mount
- *   I36 — View ne compose jamais d'autres Views directement
- *   I39 — Accès DOM exclusivement via getUI(key)
- *   I40 — Scope DOM : résolution dans rootElement uniquement
- *   I48 — Handlers auto-découverts par convention de nommage
- *   I75 — Aucun `any` dans la surface publique ; casts internes documentés
- *   I80 — Aucun TChannelToken dans la surface publique consommateur
- *   I81 — `features` / `uiEvents` / `uiElements` sont les sources de vérité
- *   I82 — Handler manquant → erreur compile via `implements TViewCallbacks`
- *   I83 — Pattern modulaire `T{Component}Contract` réutilisable
- *   I84 — `events: [E, ...]` non-vide impose les handlers DOM correspondants
- *   I85 — `ui<TEl>()(events)` est l'unique helper pour TUIEntry (forme curryfiée)
- *   I86 — `events` toujours présent dans TUIEntry (pas d'optionnel) ; ReadonlyArray<TEventsFor<TEl>> sans doublons
- *   I87 — clé d'objet ≡ namespace de la Feature référencée
- *   I88 — symétrie Contract/Callbacks
- *   I89 — tout nom d'event déclaré appartient à TEventsFor<TEl> ⊆ keyof HTMLElementEventMap (ADR-0044/0045)
- *   I90 — pas de doublons dans TUIEntry["events"] — double-binding interdit (ADR-0044)
- *   I91 — TEventsFor<TEl> est le mapping sémantique officiel Bonsai élément→events (ADR-0045)
+ * Invariants:
+ *   I4  — A View NEVER has emit() — absent from the type
+ *   I31 — rootElement is a CSS selector string injected at mount
+ *   I36 — A View never composes other Views directly
+ *   I39 — DOM access only through getUI(key)
+ *   I40 — DOM scope: resolution inside rootElement only
+ *   I48 — Handlers are auto-discovered by naming convention
+ *   I75 — No `any` in the public surface; internal casts are documented
+ *   I80 — No TChannelToken in the consumer public surface
+ *   I81 — `features` / `uiEvents` / `uiElements` are the sources of truth
+ *   I82 — Missing handler → compile error through `implements TViewCallbacks`
+ *   I83 — Reusable modular `T{Component}Contract` pattern
+ *   I84 — A non-empty `events: [E, ...]` requires the matching DOM handlers
+ *   I85 — `ui<TEl>()(events)` is the only TUIEntry helper (curried form)
+ *   I86 — `events` is always present in TUIEntry (never optional); ReadonlyArray<TEventsFor<TEl>> without duplicates
+ *   I87 — object key ≡ namespace of the referenced Feature
+ *   I88 — Contract/Callbacks symmetry
+ *   I89 — every declared event name belongs to TEventsFor<TEl> ⊆ keyof HTMLElementEventMap (ADR-15)
+ *   I90 — no duplicate in TUIEntry["events"] — double binding forbidden (ADR-15)
+ *   I91 — TEventsFor<TEl> is Bonsai's official element → events mapping (ADR-15)
  *
  * @packageDocumentation
  */
 var _View_instances, _View_rootElement, _View_rootEl, _View_mounted, _View_uiSelectors, _View_uiDomEvents, _View_features, _View_registerUIHandlers, _View_registerChannelListeners;
 /**
- * Helper de construction d'une entrée UI (I85 — unique mécanisme).
+ * Builder of a UI entry (I85 — the only mechanism).
  *
- * Encode le sous-type TEl via le phantom `_el?` et capture les events runtime.
- * Forme curryfiée nécessaire pour préserver l'inférence littérale de `events`
- * tout en spécifiant `TEl` explicitement (limitation TypeScript : `const T`
- * sur un paramètre ne préserve pas le littéral si un autre paramètre est
- * passé explicitement avec un défaut).
+ * Encodes the TEl subtype through the `_el?` phantom and captures the runtime
+ * events. The curried form keeps literal inference of `events` while `TEl` is
+ * given explicitly (TypeScript limitation: `const T` on a parameter loses the
+ * literal when another type parameter is passed explicitly with a default).
  *
- * Contraintes (ADR-0044 + ADR-0045) :
- *  - `TEvts` ⊆ `TEventsFor<TEl>` — noms valides + sémantique cohérente
- *  - `HasNoDuplicates<TEvts>` — interdit le double-binding addEventListener
+ * Constraints (ADR-15):
+ *  - `TEvts` ⊆ `TEventsFor<TEl>` — valid names + consistent semantics
+ *  - `HasNoDuplicates<TEvts>` — forbids double addEventListener binding
  *
- * @example ui<HTMLButtonElement>()(["click"])           // interactif
- * @example ui<HTMLSpanElement>()([])                    // non-interactif explicite
- * @example ui<HTMLInputElement>()(["input", "change"])  // 2 handlers requis
+ * @example ui<HTMLButtonElement>()(["click"])           // interactive
+ * @example ui<HTMLSpanElement>()([])                    // explicitly non-interactive
+ * @example ui<HTMLInputElement>()(["input", "change"])  // 2 required handlers
  */
 function ui() {
     return (events) => ({ events });
@@ -15184,7 +15182,7 @@ function createProjectionNode(el) {
         }
     };
 }
-// ─── Helpers internes ────────────────────────────────────────────────────────
+// ─── Internal helpers ────────────────────────────────────────────────────────
 function capitalize(s) {
     return s.length === 0 ? s : s[0].toUpperCase() + s.slice(1);
 }
@@ -15195,11 +15193,11 @@ function parseNSKey(key) {
     }
     return { namespace: key.slice(0, idx), name: key.slice(idx + 1) };
 }
-// ─── View abstract class (ADR-0042) ─────────────────────────────────────────
+// ─── View abstract class (ADR-14) ─────────────────────────────────────────
 /**
- * View — couche présentation paramétrée par un seul générique : `TViewContract`.
+ * View — presentation layer parameterised by a single generic: `TViewContract`.
  *
- * Pattern d'usage :
+ * Usage pattern:
  *
  * ```ts
  * import { CartFeature } from "../Cart/cart.feature";
@@ -15243,7 +15241,7 @@ function parseNSKey(key) {
  *     this.getUI("total").text(`${p.qty} items`);  // → TProjectionNode<HTMLSpanElement>
  *   }
  *   onAddBtnClick(e: MouseEvent): void {
- *     this.trigger("cart:addItem", { id: "p1", qty: 1 });  // ✅ payload inféré
+ *     this.trigger("cart:addItem", { id: "p1", qty: 1 });  // ✅ inferred payload
  *   }
  * }
  * ```
@@ -15259,33 +15257,34 @@ class View {
         _View_features.set(this, {});
     }
     // ─── Public API ────────────────────────────────────────────────────────
-    /** Le sélecteur rootElement injecté au mount (I31). */
+    /** The rootElement selector injected at mount (I31). */
     get rootElement() {
         return __classPrivateFieldGet(this, _View_rootElement, "f");
     }
     /**
-     * L'élément DOM racine après mount. Disponible dans onAttach() et les
-     * handlers — permet aux sous-classes de lire les data-* attributes (I34).
+     * Root DOM element after mount. Available in onAttach() and in handlers —
+     * lets subclasses read data-* attributes (I34).
      */
     get el() {
         return __classPrivateFieldGet(this, _View_rootEl, "f");
     }
     /**
-     * Monte la View sur un rootElement. Appelé par le Composer.
-     * - Lit `get features()` / `get uiEvents()` / `get uiElements()` une seule fois (ADR-0024)
-     * - Résout le rootElement dans le DOM
-     * - Auto-discover les UI handlers (D48 UI — pilotés par uiEvents[k].events)
-     * - Auto-discover les Channel listeners (D48 channel — pilotés par features[NS].listens)
-     * - Appelle onAttach()
+     * Mounts the View on a rootElement. Called by the Composer.
+     * - Reads `get features()` / `get uiEvents()` / `get uiElements()` once (ADR-14)
+     * - Resolves the rootElement in the DOM (whole document today, not the
+     *   Composer's slot — ADR-19 gap)
+     * - Auto-discovers the UI handlers (I48 UI — driven by uiEvents[k].events)
+     * - Auto-discovers the Channel listeners (I48 channel — driven by features[NS].listens)
+     * - Calls onAttach()
      */
     mount(rootSelector) {
         if (__classPrivateFieldGet(this, _View_mounted, "f"))
             return;
         __classPrivateFieldSet(this, _View_mounted, true, "f");
-        // ADR-0024 : lecture unique des modules contractuels
+        // ADR-14: contract modules are read once
         __classPrivateFieldSet(this, _View_features, this.features, "f");
         __classPrivateFieldSet(this, _View_uiSelectors, this.uiElements, "f");
-        // Extraction des events DOM par clé UI (runtime D48)
+        // Extract DOM events per UI key (runtime, ADR-15)
         const uiEvents = this.uiEvents;
         const domEventsMap = {};
         for (const key of Object.keys(uiEvents)) {
@@ -15305,9 +15304,10 @@ class View {
         this.onAttach();
     }
     /**
-     * I39 — Accès DOM typé via `getUI(key)`. Résout dans le scope du rootElement (I40).
-     * Le retour est `TProjectionNode<TEl>` où `TEl` est extrait du phantom `_el?`
-     * de l'entrée UI déclarée — `element()` retourne le vrai sous-type HTML.
+     * I39 — typed DOM access through `getUI(key)`. Resolves inside the
+     * rootElement scope (I40; slot exclusion not delivered yet).
+     * Returns `TProjectionNode<TEl>`, where `TEl` comes from the `_el?` phantom
+     * of the declared UI entry — `element()` returns the actual HTML subtype.
      */
     getUI(key) {
         const selector = __classPrivateFieldGet(this, _View_uiSelectors, "f")[key];
@@ -15321,34 +15321,34 @@ class View {
         return createProjectionNode(el);
     }
     /**
-     * Envoie un Command typé via Channel (I4 — View ne peut qu'envoyer).
+     * Sends a typed Command through the Channel (I4 — a View can only send).
      *
-     * `key` est une clé namespacée `"ns:cmd"` ; doit appartenir à
-     * `TFlatTriggers<TVC["features"]>`, sinon erreur compile.
-     * Exposé en `protected` — les sous-classes l'appellent depuis les handlers UI.
+     * `key` is a namespaced `"ns:cmd"` key; it must belong to
+     * `TFlatTriggers<TVC["features"]>`, otherwise a compile error.
+     * `protected` — subclasses call it from their UI handlers.
      */
     trigger(key, payload) {
         const { namespace, name } = parseNSKey(key);
-        // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+        // Cast to the untyped Channel to register by string (I75).
         const ch = Radio.me().channel(namespace);
         ch.trigger(name, payload);
     }
     /**
-     * Effectue une Request synchrone typée vers un Channel déclaré.
-     * Retourne le résultat typé ou `null` si aucun replier n'est enregistré
-     * côté Feature propriétaire (D44).
+     * Performs a typed synchronous Request to a declared Channel.
+     * Returns the typed result, or `null` when the owning Feature registered
+     * no replier (ADR-02).
      *
-     * `key` est une clé namespacée `"ns:req"` ; doit appartenir à
-     * `TFlatRequests<TVC["features"]>`, sinon erreur compile.
+     * `key` is a namespaced `"ns:req"` key; it must belong to
+     * `TFlatRequests<TVC["features"]>`, otherwise a compile error.
      */
     request(key, params) {
         const { namespace, name } = parseNSKey(key);
-        // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+        // Cast to the untyped Channel to register by string (I75).
         const ch = Radio.me().channel(namespace);
         return ch.request(name, params);
     }
     // ─── Lifecycle hooks ───────────────────────────────────────────────────
-    /** Hook appelé après le mount. Override dans les sous-classes. */
+    /** Hook called after mount. Override it in subclasses. */
     onAttach() {
         // Default no-op
     }
@@ -15359,7 +15359,7 @@ _View_rootElement = new WeakMap(), _View_rootEl = new WeakMap(), _View_mounted =
     for (const uiKey of Object.keys(__classPrivateFieldGet(this, _View_uiDomEvents, "f"))) {
         const events = __classPrivateFieldGet(this, _View_uiDomEvents, "f")[uiKey];
         if (events.length === 0)
-            continue; // C9 — non-interactif
+            continue; // non-interactive
         const uiKeyPascal = capitalize(uiKey);
         const selector = __classPrivateFieldGet(this, _View_uiSelectors, "f")[uiKey];
         if (!selector) {
@@ -15367,7 +15367,7 @@ _View_rootElement = new WeakMap(), _View_rootEl = new WeakMap(), _View_mounted =
         }
         const el = __classPrivateFieldGet(this, _View_rootEl, "f").querySelector(selector);
         if (!el)
-            continue; // pas d'élément = pas de listener (silencieux)
+            continue; // no element = no listener (silent)
         for (const domEvent of events) {
             const handlerName = `on${uiKeyPascal}${capitalize(domEvent)}`;
             if (!methods.includes(handlerName)) {
@@ -15403,29 +15403,29 @@ _View_rootElement = new WeakMap(), _View_rootEl = new WeakMap(), _View_mounted =
 /**
  * @bonsai/composer — Composer abstract base class
  *
- * Strate 0 — Capacités :
+ * Delivered capabilities:
  *   - resolve(event | null) → TResolveResult | null (0/1 View)
- *   - Slot DOM immutable fourni par le parent (Foundation ou View)
- *   - Machine à états minimal : idle → active → idle
- *   - Création d'élément DOM si absent (D30)
- *   - Diff de transitions §3.1 (5 cas Same/New/null) sans recréation inutile
+ *   - Immutable DOM slot provided by the parent (Foundation or View)
+ *   - Minimal state machine: idle → active → idle
+ *   - Slot element created when missing (ADR-19)
+ *   - §3.1 transition diff (5 Same/New/null cases), no needless re-creation
  *
- * Invariants :
- *   I20  — Seuls Foundation/Composers créent/détruisent des Views
- *   I35  — Composer n'a aucune écriture DOM (lecture scope autorisée)
- *   I37  — Un seul type de Composer, gère 0/1 Views en strate 0
- *   I40  — Scope DOM d'une View exclut les sous-arbres des slots déclarés
+ * Invariants:
+ *   I20  — Only Foundation/Composers create or destroy Views
+ *   I35  — A Composer never writes to the DOM (reading its scope is allowed)
+ *   I37  — A single Composer type; manages 0/1 View today (N instances: stratum 1d)
+ *   I40  — A View's DOM scope excludes the subtrees of its declared slots
  *
- * ADRs :
- *   ADR-0024 — get params() value-first (strate 0 : pas de listen/request)
- *   ADR-0025 — Pas de lifecycle hooks (ni onMount, ni onUnmount, ni onAttach)
- *   ADR-0026 — rootElement = string CSS selector only
- *   ADR-0027 — resolve(event) unique point d'entrée, pas de state local
+ * ADRs:
+ *   ADR-14 — modular contract (`get features()`): not delivered yet, no listen/request
+ *   ADR-18 — no lifecycle hooks (no onMount, onUnmount or onAttach)
+ *   ADR-19 — rootElement is a CSS selector string only
+ *   ADR-18 — resolve(event) is the single entry point, no local state
  *
- * Diff §3.1 (RFC composer.md) :
- *   | resolve() retourne | View montée         | Action                                    |
+ * §3.1 diff (docs/spec/4-couche-concrete/composer.md):
+ *   | resolve() returns  | Mounted View        | Action                                    |
  *   | ------------------ | ------------------- | ----------------------------------------- |
- *   | SameView+SameRoot  | SameView instance   | **No-op** (instance conservée)            |
+ *   | SameView+SameRoot  | SameView instance   | **No-op** (instance kept)                 |
  *   | NewView (ou root)  | OldView instance    | **Detach** OldView → **Attach** NewView   |
  *   | NewView            | null                | **Attach** NewView                        |
  *   | null               | OldView instance    | **Detach** OldView                        |
@@ -15438,49 +15438,49 @@ var _Composer_instances, _Composer_rootElement, _Composer_slot, _Composer_curren
 class Composer {
     constructor(options) {
         _Composer_instances.add(this);
-        /** Sélecteur CSS du slot DOM — immutable (ADR-0020) */
+        /** CSS selector of the DOM slot — immutable (ADR-18) */
         _Composer_rootElement.set(this, void 0);
-        /** Référence au slot DOM résolu */
+        /** Resolved DOM slot */
         _Composer_slot.set(this, null);
-        /** La View actuellement montée (null si resolve() a retourné null) */
+        /** Currently mounted View (null when resolve() returned null) */
         _Composer_currentView.set(this, null);
         /**
-         * Dernier résultat retourné par resolve() — sert de référence pour le diff §3.1.
-         * Null si la dernière sortie était null (ou avant le premier resolve).
+         * Last result returned by resolve() — reference for the §3.1 diff.
+         * Null when the last output was null (or before the first resolve).
          */
         _Composer_currentResult.set(this, null);
-        /** Machine à états minimal : idle → active → idle */
+        /** Minimal state machine: idle → active → idle */
         _Composer_state.set(this, "idle");
         __classPrivateFieldSet(this, _Composer_rootElement, options.rootElement, "f");
     }
     // ─── Public API (framework only) ────────────────────────────────────
     /**
-     * Le sélecteur rootElement (ADR-0026).
+     * The rootElement selector (ADR-19).
      */
     get rootElement() {
         return __classPrivateFieldGet(this, _Composer_rootElement, "f");
     }
     /**
-     * Référence au slot DOM résolu. Null avant attach().
+     * Resolved DOM slot. Null before attach().
      */
     get slot() {
         return __classPrivateFieldGet(this, _Composer_slot, "f");
     }
     /**
-     * La View actuellement montée, ou null.
+     * Currently mounted View, or null.
      */
     get currentView() {
         return __classPrivateFieldGet(this, _Composer_currentView, "f");
     }
     /**
-     * Attache le Composer à son slot DOM.
-     * Appelé par le framework (Foundation ou Composer parent).
-     * Résout le slot dans le DOM, puis appelle initialResolve().
+     * Attaches the Composer to its DOM slot.
+     * Called by the framework (Foundation or parent Composer).
+     * Resolves the slot in the DOM, then runs the initial resolve.
      */
     attach(parentElement) {
         const el = parentElement.querySelector(__classPrivateFieldGet(this, _Composer_rootElement, "f"));
         if (!el) {
-            // D30 — Créer l'élément si absent
+            // ADR-19 — create the element when missing
             const created = __classPrivateFieldGet(this, _Composer_instances, "m", _Composer_createElementFromSelector).call(this, __classPrivateFieldGet(this, _Composer_rootElement, "f"));
             parentElement.appendChild(created);
             __classPrivateFieldSet(this, _Composer_slot, created, "f");
@@ -15492,8 +15492,8 @@ class Composer {
         __classPrivateFieldGet(this, _Composer_instances, "m", _Composer_performResolve).call(this, null);
     }
     /**
-     * Appelé par le framework quand un Event est dispatché sur un Channel écouté.
-     * En strate 0, pas de listen déclaré — cette méthode est un point d'extension.
+     * Called by the framework when an Event is dispatched on a listened Channel.
+     * No listen declaration exists yet, so only tests call it today (ADR-18).
      */
     performResolve(event) {
         __classPrivateFieldGet(this, _Composer_instances, "m", _Composer_performResolve).call(this, event);
@@ -15502,31 +15502,31 @@ class Composer {
 _Composer_rootElement = new WeakMap(), _Composer_slot = new WeakMap(), _Composer_currentView = new WeakMap(), _Composer_currentResult = new WeakMap(), _Composer_state = new WeakMap(), _Composer_instances = new WeakSet(), _Composer_performResolve = function _Composer_performResolve(event) {
     const next = this.resolve(event);
     const prev = __classPrivateFieldGet(this, _Composer_currentResult, "f");
-    // Transition 5 : null + null → no-op
+    // Transition 5: null + null → no-op
     if (next === null && prev === null) {
         return;
     }
-    // Transition 4 : null + instance → detach
+    // Transition 4: null + instance → detach
     if (next === null) {
         __classPrivateFieldGet(this, _Composer_instances, "m", _Composer_detachCurrent).call(this);
         return;
     }
-    // À ce stade, next !== null
-    // Transition 1 : SameView + SameRoot + currentView → no-op
-    // (instance conservée, aucun remount)
+    // From here on, next !== null
+    // Transition 1: SameView + SameRoot + currentView → no-op
+    // (instance kept, no remount)
     if (prev !== null &&
         __classPrivateFieldGet(this, _Composer_currentView, "f") !== null &&
         prev.view === next.view &&
         prev.rootElement === next.rootElement) {
         return;
     }
-    // Transition 3 : NewView + null → attach simple
+    // Transition 3: NewView + null → plain attach
     if (__classPrivateFieldGet(this, _Composer_currentView, "f") === null) {
         __classPrivateFieldGet(this, _Composer_instances, "m", _Composer_attachNew).call(this, next);
         return;
     }
-    // Transition 2 : NewView (ou même viewClass mais rootElement différent)
-    //                + instance existante → detach + attach
+    // Transition 2: NewView (or same view class with a different rootElement)
+    //               + existing instance → detach + attach
     __classPrivateFieldGet(this, _Composer_instances, "m", _Composer_detachCurrent).call(this);
     __classPrivateFieldGet(this, _Composer_instances, "m", _Composer_attachNew).call(this, next);
 }, _Composer_attachNew = function _Composer_attachNew(result) {
@@ -15564,26 +15564,26 @@ _Composer_rootElement = new WeakMap(), _Composer_slot = new WeakMap(), _Composer
 /**
  * @bonsai/foundation — Foundation abstract base class
  *
- * Strate 0 — Capacités :
- *   - body  = document.body            (toujours en strate 0, I33)
- *   - html  = document.documentElement (droit d'altération N1, D27)
- *   - Déclare les Composers racines via abstract get composers()
- *     (Readonly<Record<string, typeof Composer>> — ADR-0038)
- *   - Crée et attache les Composers au bootstrap dans l'ordre d'insertion
- *     (ES2015+ Object.entries garantit l'ordre des clés string)
- *   - Hooks onAttach() / onDetach()
+ * Delivered capabilities:
+ *   - body = document.body            (I33)
+ *   - html = document.documentElement (N1 alteration right, ADR-20)
+ *   - Declares the root Composers through abstract get composers()
+ *     (Readonly<Record<string, typeof Composer>> — ADR-20)
+ *   - Creates and attaches the Composers at bootstrap in insertion order
+ *     (ES2015+ Object.entries guarantees string-key order)
+ *   - onAttach() / onDetach() hooks
  *
- * Invariants :
- *   I33  — Foundation unique par application — cible <body>
- *   I20  — Seuls Foundation/Composers créent/détruisent des Views
- *   I34  — rootElement d'une View = enfant de <body>, jamais <body>
- *   I67  — Stabilité structurelle de Foundation (ADR-0038)
- *   D27  — Foundation peut altérer html/body en N1 uniquement
+ * Invariants:
+ *   I33  — A single Foundation per application — targets <body>
+ *   I20  — Only Foundation/Composers create or destroy Views
+ *   I34  — A View's rootElement is a descendant of <body>, never <body>
+ *   I67  — Structural stability of the Foundation (ADR-20)
+ *   ADR-20 — the Foundation may alter html/body at N1 only
  *
- * Strate 0 simplifications (ADR-0028) :
- *   - Pas de TUIMap (ADR-0018 Suspended)
- *   - Pas d'event delegation globale (strate 1)
- *   - Pas de params() Channel capabilities (strate 1)
+ * Not delivered yet:
+ *   - Declared global events (post-v1 track, docs/ROADMAP.md)
+ *   - Global event delegation
+ *   - Channel capabilities (form not decided)
  *
  * @packageDocumentation
  */
@@ -15591,44 +15591,44 @@ var _Foundation_body, _Foundation_html, _Foundation_composerInstances, _Foundati
 // ─── Foundation abstract class ───────────────────────────────────────────────
 class Foundation {
     constructor() {
-        /** Référence à <body> — toujours document.body en strate 0 (I33) */
+        /** <body> — always document.body (I33) */
         _Foundation_body.set(this, void 0);
-        /** Référence à <html> — droit d'altération N1 (D27, RFC foundation.md §2) */
+        /** <html> — N1 alteration right (ADR-20, foundation.md §2) */
         _Foundation_html.set(this, void 0);
-        /** Les instances de Composers racines créées au bootstrap */
+        /** Root Composer instances created at bootstrap */
         _Foundation_composerInstances.set(this, []);
-        /** Flag : Foundation déjà attachée */
+        /** Flag: Foundation already attached */
         _Foundation_attached.set(this, false);
         __classPrivateFieldSet(this, _Foundation_body, document.body, "f");
         __classPrivateFieldSet(this, _Foundation_html, document.documentElement, "f");
     }
     // ─── Public API ────────────────────────────────────────────────────────
     /**
-     * Référence à <body> — alignement RFC foundation.md §1.
-     * Le développeur peut altérer en N1 (classes, attributs) — D27.
+     * <body> (foundation.md §1).
+     * Developers may alter it at N1 only (classes, attributes) — ADR-20.
      */
     get body() {
         return __classPrivateFieldGet(this, _Foundation_body, "f");
     }
     /**
-     * Référence à <html> — alignement RFC foundation.md §1.
-     * Le développeur peut altérer en N1 (classes, attributs) — D27.
+     * <html> (foundation.md §1).
+     * Developers may alter it at N1 only (classes, attributes) — ADR-20.
      */
     get html() {
         return __classPrivateFieldGet(this, _Foundation_html, "f");
     }
     /**
-     * Les Composer instances créées.
+     * The created Composer instances.
      */
     get composerInstances() {
         return __classPrivateFieldGet(this, _Foundation_composerInstances, "f");
     }
     /**
-     * Attache la Foundation : résout et crée les Composers racines.
-     * Appelé une seule fois par Application.start().
+     * Attaches the Foundation: resolves and creates the root Composers.
+     * Called once by Application.start().
      *
-     * Itère sur Object.entries(this.composers) — l'ordre d'insertion des
-     * clés string non numériques est garanti par ES2015+ (§9.1.12).
+     * Iterates over Object.entries(this.composers) — insertion order of
+     * non-numeric string keys is guaranteed by ES2015+ (§9.1.12).
      */
     attach() {
         if (__classPrivateFieldGet(this, _Foundation_attached, "f")) {
@@ -15646,20 +15646,19 @@ class Foundation {
     }
     // ─── Lifecycle hooks ───────────────────────────────────────────────────
     /**
-     * Hook appelé après résolution des Composers racines.
-     * Surcharger pour brancher des écouteurs DOM globaux (resize, scroll, etc.).
+     * Hook called once the root Composers are resolved.
+     * Override it to add global DOM listeners (resize, scroll, etc.).
      * Default no-op.
      */
     onAttach() {
         // Default no-op
     }
     /**
-     * Hook appelé au shutdown — symétrique de onAttach().
-     * Surcharger pour débrancher les écouteurs DOM globaux installés dans onAttach().
+     * Hook called at shutdown — counterpart of onAttach().
+     * Override it to remove the global DOM listeners added in onAttach().
      * Default no-op.
      *
-     * NB : non invoqué automatiquement en strate 0 (pas de shutdown formalisé) ;
-     * point d'extension pour la strate 1.
+     * NB: not called yet — Application.stop() does not exist (stratum 1).
      */
     onDetach() {
         // Default no-op
@@ -15670,36 +15669,35 @@ _Foundation_body = new WeakMap(), _Foundation_html = new WeakMap(), _Foundation_
 /**
  * @bonsai/application — Application class
  *
- * Strate 0 (refondu ADR-0039) — Capacités :
- *   - constructor({ foundation, features }) — déclare le manifest applicatif
- *   - start() — bootstrap en phases réordonnées (ADR-0046) :
- *       Phase 0a: Validation format namespace (assertValidNamespace)
- *       Phase 0b: Instanciation pure des Features (ctor inerte — I94) + sentinel
- *       Phase 0c: Lecture instance.listens/queries — validation références croisées (I70)
- *       Phase 1: Channels (crée les channels de chaque Feature)
- *       Phase 2: Entities (instanciées par les Features)
- *       Phase 3: Features (bootstrap() + onInit() sur les instances Phase 0b)
+ * Capabilities (ADR-07, ADR-08, ADR-09):
+ *   - constructor({ foundation, features }) — declares the application manifest
+ *   - start() — phased bootstrap:
+ *       Phase 0a: namespace format validation (assertValidNamespace)
+ *       Phase 0b: pure instantiation of the Features (inert ctor — I94) + sentinel
+ *       Phase 0c: read instance.listens/queries — cross-reference validation (I70)
+ *       Phase 1: Channels (one channel per Feature)
+ *       Phase 3: Features (bootstrap() — Entity, handlers, onInit() — on the Phase 0b instances)
  *       Phase 4: Foundation (composers → views, attach)
  *
- * Invariants :
- *   I23  — Application est dormante au runtime (pas de handle/emit/listen/request)
- *   I24  — Le manifest garantit l'unicité au compile-time ; Application valide
- *          format + réservés + cohérence des `channels` au bootstrap (amendé ADR-0039)
- *   I33  — Application sans Foundation ne peut rien afficher
- *   I56  — onInit() de chaque Feature appelé avant la création de la Foundation
- *   I68  — Le namespace est porté par le manifest, pas par un static (ADR-0039)
- *   I69  — Le manifest est l'unique source de vérité de l'identité (ADR-0039)
- *   I70  — Toute référence à un namespace externe DOIT être validée contre
- *          le manifest — lue depuis instance.listens/queries (amendé ADR-0046)
- *   I71  — `RESERVED_NAMESPACES` est une constante framework (ADR-0039)
- *   I94  — Le constructeur de Feature est inerte : sentinel Phase 0b détecte
- *          tout side-effect Radio inattendu (ADR-0046)
+ * Invariants:
+ *   I23  — Application is dormant at runtime (no handle/emit/listen/request)
+ *   I24  — The manifest guarantees uniqueness at compile time; Application
+ *          validates format, reserved names and `channel` consistency at bootstrap
+ *   I33  — An Application without a Foundation cannot render anything
+ *   I56  — Every Feature's onInit() runs before the Foundation is created
+ *   I68  — The namespace is carried by the manifest, not by a static (ADR-08)
+ *   I69  — The manifest is the single source of truth for identity (ADR-08)
+ *   I70  — Every reference to an external namespace MUST be validated against
+ *          the manifest — read from instance.listens/queries (ADR-09)
+ *   I71  — `RESERVED_NAMESPACES` is a framework constant (ADR-08)
+ *   I94  — The Feature constructor is inert: the Phase 0b sentinel detects
+ *          any unexpected Radio side effect (ADR-09)
  *
- * Strate 0 simplifications :
- *   - Pas de stop()
- *   - Pas de SSR (serverState)
- *   - Pas de DevTools
- *   - Pas de BonsaiRegistry ESM
+ * Not delivered yet:
+ *   - stop()
+ *   - SSR (serverState)
+ *   - DevTools
+ *   - ESM BonsaiRegistry
  *
  * @packageDocumentation
  */
@@ -15718,22 +15716,21 @@ class Application {
     }
     // ─── Public API ────────────────────────────────────────────────────────
     /**
-     * Bootstrap en phases réordonnées (ADR-0046 — M1).
-     * Ne peut être appelé qu'une seule fois.
+     * Phased bootstrap (ADR-07, ADR-09). Can only be called once.
      *
-     * Phases :
-     *   Phase 0a — Validation format namespace (assertValidNamespace + I73/I22)
-     *   Phase 0b — Instanciation pure (ctor inerte I94) + sentinel Radio
-     *   Phase 0c — Lecture instance.listens/queries — validation références (I70)
-     *   Phase 1  — Channels  : `Radio.channel(namespace)` pour chaque Feature
-     *   Phase 3  — Features  : `bootstrap()` sur les instances de Phase 0b (I56)
+     * Phases:
+     *   Phase 0a — namespace format validation (assertValidNamespace + I73/I22)
+     *   Phase 0b — pure instantiation (inert ctor, I94) + Radio sentinel
+     *   Phase 0c — read instance.listens/queries — reference validation (I70)
+     *   Phase 1  — Channels  : `Radio.channel(namespace)` for each Feature
+     *   Phase 3  — Features  : `bootstrap()` on the Phase 0b instances (I56)
      *   Phase 4  — Foundation: `Foundation.attach()` (Composers → Views)
      *
-     * @throws si appelée deux fois (strate 0 : pas de re-bootstrap)
-     * @throws `BonsaiNamespaceError` si le manifest viole les invariants (filet
-     *   runtime — le compile-time est censé l'avoir déjà attrapé via
-     *   `StrictManifest<M>`).
-     * @throws si aucune Foundation n'a été fournie au constructeur (I33).
+     * @throws when called twice (no re-bootstrap)
+     * @throws `BonsaiNamespaceError` when the manifest breaks the invariants
+     *   (runtime safety net — compile time should already have caught it
+     *   through `StrictManifest<M>`).
+     * @throws when no Foundation was given to the constructor (I33).
      */
     start() {
         if (__classPrivateFieldGet(this, _Application_started, "f")) {
@@ -15743,13 +15740,13 @@ class Application {
             throw new Error("[Bonsai Application] Cannot start() — no Foundation provided. " +
                 "Pass { foundation: MyFoundation } to the Application constructor (I33).");
         }
-        // ── Phase 0a — Validation format + channel (ADR-0039 — I70/I71/I73) ───
+        // ── Phase 0a — format + channel validation (ADR-08 — I70/I71/I73) ───
         __classPrivateFieldGet(this, _Application_instances, "m", _Application_validateManifest).call(this);
         __classPrivateFieldSet(this, _Application_started, true, "f");
         const entries = Object.entries(__classPrivateFieldGet(this, _Application_manifest, "f"));
-        // ── Phase 0b — Instanciation pure + sentinel I94 ─────────────────────────
-        // Le ctor de Feature est inerte (I94) : assertValidNamespace + #namespace.
-        // Sentinel : aucun Channel ne doit être créé/supprimé dans Radio pendant le new.
+        // ── Phase 0b — pure instantiation + I94 sentinel ─────────────────────────
+        // The Feature ctor is inert (I94): assertValidNamespace + #namespace.
+        // Sentinel: no Channel may be created/removed in Radio during `new`.
         for (const [namespace, FeatureClass] of entries) {
             const nssBefore = Radio.me().getChannelNames();
             const instance = new FeatureClass(namespace);
@@ -15757,13 +15754,13 @@ class Application {
             if (nssBefore.length !== nssAfter.length) {
                 throw new Error(`[Bonsai Application] Feature "${namespace}" constructor is not inert —` +
                     ` Radio was mutated during new ${FeatureClass.name}("${namespace}").` +
-                    ` Move all Radio/Entity calls out of the constructor (I94 — ADR-0046).`);
+                    ` Move all Radio/Entity calls out of the constructor (I94 — ADR-09).`);
             }
             __classPrivateFieldGet(this, _Application_featureInstances, "f").push(instance);
         }
-        // ── Phase 0c — Validation références croisées via instance (I70 amendé) ───
-        // listens + queries lus depuis les instances (abstract get — I93).
-        // Exécuté AVANT Phase 1 (création des Channels) — aucun side-effect Radio.
+        // ── Phase 0c — cross-reference validation from the instances (I70) ───
+        // listens + queries read from the instances (abstract get — I93).
+        // Runs BEFORE Phase 1 (Channel creation) — no Radio side effect.
         const known = new Set(entries.map(([ns]) => ns));
         for (let i = 0; i < entries.length; i++) {
             const [ownNs] = entries[i];
@@ -15776,11 +15773,11 @@ class Application {
                 }
             }
         }
-        // Phase 1: Channels — crée le channel de chaque Feature dans Radio
+        // Phase 1: Channels — creates each Feature's channel in Radio
         for (const [namespace] of entries) {
             Radio.me().channel(namespace);
         }
-        // Phase 3: Features — bootstrap sur les instances de Phase 0b
+        // Phase 3: Features — bootstrap the Phase 0b instances
         // (auto-discovery handlers I48, entity, onInit I56)
         for (const instance of __classPrivateFieldGet(this, _Application_featureInstances, "f")) {
             instance.bootstrap();
@@ -15790,18 +15787,18 @@ class Application {
         __classPrivateFieldSet(this, _Application_foundationInstance, new FoundationClass(), "f");
         __classPrivateFieldGet(this, _Application_foundationInstance, "f").attach();
     }
-    /** La Foundation instanciée (après start). */
+    /** The instantiated Foundation (after start). */
     get foundation() {
         return __classPrivateFieldGet(this, _Application_foundationInstance, "f");
     }
-    /** Indique si l'application a démarré. */
+    /** Whether the application has started. */
     get started() {
         return __classPrivateFieldGet(this, _Application_started, "f");
     }
 }
 _Application_manifest = new WeakMap(), _Application_started = new WeakMap(), _Application_foundationClass = new WeakMap(), _Application_foundationInstance = new WeakMap(), _Application_featureInstances = new WeakMap(), _Application_instances = new WeakSet(), _Application_validateManifest = function _Application_validateManifest() {
     const namespaces = Object.keys(__classPrivateFieldGet(this, _Application_manifest, "f"));
-    // I21/I57/I71 — délègue à assertValidNamespace
+    // I21/I57/I71 — delegates to assertValidNamespace
     for (const ns of namespaces) {
         assertValidNamespace(ns);
     }
@@ -15813,7 +15810,7 @@ _Application_manifest = new WeakMap(), _Application_started = new WeakMap(), _Ap
             typeof token !== "object" ||
             typeof token.namespace !== "string") {
             throw new BonsaiNamespaceError("FEATURE_MISSING_CHANNEL", `Feature "${ownNs}" does not declare \`static readonly channel: ` +
-                `TChannelToken<TDef, "${ownNs}">\` (I73 — ADR-0040). Add ` +
+                `TChannelToken<TDef, "${ownNs}">\` (I73 — ADR-14). Add ` +
                 `\`static readonly channel = { namespace: "${ownNs}" }\` ` +
                 `to the class.`);
         }

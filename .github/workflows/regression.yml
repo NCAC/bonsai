@@ -1,11 +1,11 @@
 # ═══════════════════════════════════════════════════════════════════════════
-# Vérification continue — ADR-0034
+# Vérification continue — ADR-33
 # ═══════════════════════════════════════════════════════════════════════════
 #
 # Type-check + suite de tests complète.
 # Doit rester vert pour merger une PR vers develop.
 #
-# Voir : docs/adr/ADR-0034-continuous-verification-strategy.md
+# Voir : docs/adr/ADR-33-continuous-verification-strategy.md
 
 name: "🛡️ Continuous Verification"
 
