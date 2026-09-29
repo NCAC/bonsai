@@ -120,7 +120,8 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
    test de type ne le cite nommément (ses enfants I68/I72/I87 le sont).
 2. ✅ I24 arbitré : fusionné dans I21 (`alias: [I24]`, cf. `P8.yaml`). Reste à faire
    rédiger les `pourquoi` de I21/I71 par le mainteneur.
-3. Brancher `invariants:check` + Jest en CI.
+3. ✅ `invariants:check` branché en CI (`.github/workflows/regression.yml`, étape
+   « Invariants registry », après la suite Jest complète).
 4. Si le pilote convient : migrer P1 → P7 puis P9, en fusionnant les redondances au passage
    et en traitant chaque ligne ∅ (prouver, déclasser en convention, ou supprimer).
 5. Écrire l'énoncé manquant de P6 ; arbitrer P9.

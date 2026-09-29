@@ -49,3 +49,6 @@ jobs:
 
       - name: Full test suite
         run: pnpm test:ci
+
+      - name: Invariants registry
+        run: pnpm invariants:check
