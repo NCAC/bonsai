@@ -1,0 +1,65 @@
+# Branche P8 — Identité par le manifest (pilote).
+#
+# Champs :
+#   id        identifiant stable (I<n>), conservé pendant la transition
+#   nature    E énoncé · C conséquence · D décision · V vérification
+#   parents   principe(s) ou ligne(s) parente(s) ; le premier est le parent principal
+#   enonce    la règle, en une phrase
+#   pourquoi  obligatoire pour une décision (D) : remplace l'ADR
+#   mode      type · boot · type+boot · run · revue
+#   etat      livre · partiel · cible · convention
+#   preuves   facultatif : les citations dans les tests sont détectées automatiquement
+
+- id: I69
+  nature: E
+  parents: [P8]
+  enonce: Le manifest est l'unique source de vérité de l'identité d'une Feature.
+  mode: type
+  etat: livre
+
+- id: I68
+  nature: C
+  parents: [I69]
+  enonce: Aucune classe Feature ne déclare de `static namespace`.
+  mode: type
+  etat: livre
+
+- id: I72
+  nature: C
+  parents: [I69]
+  enonce: "`TSelfNS` est la clé de la Feature dans le manifest."
+  mode: type
+  etat: livre
+
+- id: I87
+  nature: C
+  parents: [I69]
+  enonce: La clé d'un `TFeatureContract` est le namespace de la Feature référencée.
+  mode: type
+  etat: partiel
+
+# I24 fusionné ici : même garantie (unicité/format des clés, type+boot), aucune
+# distinction retenue. Alias conservé pour ne pas casser une citation existante.
+- id: I21
+  nature: D
+  parents: [P8]
+  alias: [I24]
+  enonce: Toute Feature est enregistrée dans le manifest sous une clé `camelCase` sans chiffre.
+  pourquoi: 'À compléter : justification du format de clé (lisibilité des tokens "ns:cmd", absence d''ambiguïté).'
+  mode: type+boot
+  etat: livre
+
+- id: I71
+  nature: D
+  parents: [P8]
+  enonce: "Les namespaces `local` et `router` sont réservés (`RESERVED_NAMESPACES`)."
+  pourquoi: "À compléter : `local` porte le state de présentation des Views (I57), `router` la Feature interne (I28)."
+  mode: type+boot
+  etat: livre
+
+- id: I95
+  nature: V
+  parents: [I69]
+  enonce: "Chaque entrée du manifest est contrainte par `TStrictFeatureClass<NS>`."
+  mode: type
+  etat: livre

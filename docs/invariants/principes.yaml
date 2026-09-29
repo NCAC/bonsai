@@ -1,0 +1,33 @@
+# Principes du modèle Bonsai — source de vérité.
+# Changer un principe = changer de modèle : modification rare, explicite, datée.
+# Statut : pilote (seul P8 est migré ; les autres principes sont listés pour référence).
+
+- id: P1
+  titre: Souveraineté du domaine
+  enonce: Le domain state n'existe que dans une Entity ; seule la Feature propriétaire y accède et le modifie.
+- id: P2
+  titre: Dépendances déclarées
+  enonce: Un composant n'interagit qu'avec ce qu'il a déclaré statiquement ; il n'existe aucun canal implicite.
+- id: P3
+  titre: Sémantique des trois voies
+  enonce: Une intention (Command) va à un seul propriétaire, qui peut la refuser ; un fait (Event) est publié par son seul propriétaire vers N abonnés ; une lecture (Request) est sans effet.
+- id: P4
+  titre: Causalité traçable et bornée
+  enonce: Toute chaîne de messages est reconstituable jusqu'à l'action d'origine, et sa longueur est bornée.
+- id: P5
+  titre: La View projette, elle ne décide pas
+  enonce: Le rendu est une projection du domaine ; seule la View produit du DOM, et elle ne porte aucun état métier.
+- id: P6
+  titre: Propriété exclusive du DOM
+  enonce: Chaque nœud DOM a au plus un composant qui peut le muter, et ce partage est fixé au bootstrap.
+- id: P7
+  titre: Cycle de vie hétéronome
+  enonce: Aucun composant ne décide de sa propre existence ; création et destruction viennent d'un niveau supérieur.
+- id: P8
+  titre: Identité par le manifest
+  enonce: Une Feature n'a d'identité que par sa clé dans un manifest unique.
+- id: P9
+  titre: Garantie au plus tôt
+  meta: true
+  enonce: Toute règle est garantie par construction au compile-time ; à défaut, vérifiée au bootstrap, frontière de confiance. Rien n'est laissé au runtime courant.
+  question-ouverte: Arbitrer la tension avec les invariants vérifiés en mode run (I8, I9, I20, I37, I65, I97, I98).

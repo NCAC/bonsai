@@ -47,10 +47,13 @@
 !/docs
 /docs/*
 !/docs/README.md
-!/docs/specs
+
+!/docs/spec
 !/docs/TODO.md
 !/docs/CACHE_WORK_IN_PROGRESS.md
 !/docs/adr
 !/docs/guides
 !/docs/archive
 !/docs/pugx
+!/docs/invariants
+!/docs/reorganisation-sept-2026
