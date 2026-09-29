@@ -44,15 +44,7 @@
   mode: run
   etat: partiel
 
-- id: I58
-  nature: D
-  parents: [I20]
-  enonce: "Le scope DOM d'un Composer est fixé au bootstrap et ne migre jamais : vivant → suspendu → détruit."
-  pourquoi: >
-    Un Composer « déplacé » est traité comme une destruction suivie d'une re-création : on évite ainsi
-    un état intermédiaire ambigu où le scope aurait changé sous le Composer (ADR-18).
-  mode: boot
-  etat: cible
+# I58 (scope du Composer fixé) : déclaré dans P6.yaml sous I99, second parent I20.
 
 - id: I67
   nature: D

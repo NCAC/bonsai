@@ -71,20 +71,22 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 
 ## P6 — Propriété exclusive du DOM
 
-**Chaque nœud DOM a au plus un composant qui peut le muter, et ce partage est fixé au bootstrap.**
+**Chaque nœud du DOM a au plus un propriétaire, seul composant autorisé à le muter. La propriété découle de scopes attribués et disjoints, fixés au montage du composant et stables jusqu'à son démontage.**
 
-- `D` I38 — Les niveaux d'altération DOM contraignent chaque composant : Foundation N1 sur `<html>`/`<body>`, View N1 à N3 selon le template, Composer aucune écriture. ⟨type · ⚠️ · ·⟩
-- `D` I33 — La Foundation est unique par application ; elle seule peut altérer `<html>` et `<body>` (N1). ⟨boot · ⚠️ · R⟩
+- `E` I99 — Tout composant de la couche concrète opère dans un scope DOM explicite, attribué par le niveau supérieur, qu'il ne peut ni étendre ni déplacer. ↔ P7 ⟨boot · ⚠️ · ·⟩
+  - `C` I40 — Le scope DOM d'une View est son `rootElement` moins les sous-arbres des slots qu'elle déclare. ⟨boot · ⚠️ · R⟩
   - `C` I34 — Le `rootElement` d'une View est un descendant strict de `<body>`, jamais `<body>` lui-même. ⟨boot · ✅ · R⟩
-- `C` I40 — Le scope DOM d'une View est son `rootElement` moins les sous-arbres des slots qu'elle déclare. ⟨boot · ⚠️ · R⟩
+  - `D` I31 — Le `rootElement` d'une View est un sélecteur CSS fourni exclusivement par le Composer. ⟨boot · ⚠️ · R⟩
+  - `D` I58 — Le scope DOM d'un Composer est fixé au bootstrap et ne migre jamais : vivant → suspendu → détruit. ↔ I20 ⟨boot · ⏳ · ·⟩
 - `C` I41 — Chaque clé `@ui` a une source de mutation unique — son template ou `getUI()`, jamais les deux. ⟨type · ⏳ · ·⟩
 - `C` I43 — Les clés `uiEvents` d'un Behavior sont disjointes de celles de sa View hôte. ⟨boot · ⏳ · ·⟩
-- `D` I39 — La View accède au DOM exclusivement via `getUI(key)` ; aucun `querySelector` ni accès DOM brut ne lui est exposé. ⟨type · ⚠️ · R⟩
-- `D` I32 — La View peut altérer son `rootElement` en N1, mais ne le détruit ni ne le remplace jamais. ⟨revue · 📐 · ·⟩
-- `D` I31 — Le `rootElement` d'une View est un sélecteur CSS fourni exclusivement par le Composer. ⟨boot · ⚠️ · R⟩
-- `D` I35 — Un Composer n'écrit jamais dans le DOM ; il ne lit son scope que pour résoudre le `rootElement` d'une View enfant. ⟨revue · ✅ · R⟩
 - `D` I44 — Un Behavior n'a aucun accès aux propriétés de sa View hôte (`this.view`, `el`, `getUI`). ⟨type · ⏳ · ·⟩
-- `D` I45 — Un Behavior altère en N1 et N2 uniquement ses propres clés ui déclarées, jamais en N3. ⟨type · ⏳ · ·⟩
+- `D` I38 — Chaque rôle a des droits d'altération bornés : View N1 à N3 sur son scope, Behavior N1 et N2 sur ses propres nœuds, Foundation N1 sur `<html>`/`<body>`, Composer aucune écriture. ⟨type · ⚠️ · ·⟩
+  - `D` I35 — Un Composer n'écrit jamais dans le DOM ; il ne lit son scope que pour résoudre le `rootElement` d'une View enfant. ⟨revue · ✅ · R⟩
+  - `D` I33 — La Foundation est unique par application ; elle seule altère `<html>` et `<body>`, en N1 seulement — attributs et classes, sans ajouter ni retirer de nœud. ⟨boot · ⚠️ · R⟩
+  - `D` I32 — La View peut altérer son `rootElement` en N1, mais ne le détruit ni ne le remplace jamais. ⟨revue · 📐 · ·⟩
+  - `D` I39 — La View accède au DOM exclusivement via `getUI(key)` ; aucun `querySelector` ni accès DOM brut ne lui est exposé. ⟨type · ⚠️ · R⟩
+  - `D` I45 — Un Behavior altère en N1 et N2 uniquement ses propres nœuds (clés ui déclarées), jamais en N3. ⟨type · ⏳ · ·⟩
 
 ## P7 — Cycle de vie hétéronome
 
@@ -94,7 +96,6 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `D` I20 — Seuls la Foundation et les Composers créent, détruisent ou remplacent des Views. ⟨run · ⚠️ · R⟩
   - `D` I36 — La View ne compose jamais d'autres Views — elle déclare des slots, le Composer décide de l'instanciation. ⟨type · ⚠️ · R⟩
   - `D` I37 — Il n'existe qu'un seul type de Composer, qui gère 0..N Views hétérogènes dans un scope DOM fixe. ⟨run · ⚠️ · R⟩
-  - `D` I58 — Le scope DOM d'un Composer est fixé au bootstrap et ne migre jamais : vivant → suspendu → détruit. ⟨boot · ⏳ · ·⟩
 - `D` I67 — La structure de la Foundation est stable — `get composers()` est lu une seule fois au bootstrap et n'est jamais modifié. ⟨type+boot · ⚠️ · ·⟩
 - `D` I23 — Application est dormante au runtime — aucune logique métier ni rôle actif entre le bootstrap et le shutdown. ⟨type · ✅ · R⟩
 - `D` I28 — Le Router est une Feature interne, de namespace réservé `router`, instanciée par Application et non par le développeur. ↔ P8 ⟨type+boot · ⚠️ · T⟩

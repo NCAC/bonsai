@@ -144,7 +144,10 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
      9 branches, tous les invariants I1–I98 présents (ligne ou alias) sauf I59–I62, réservés
      sans attribution. 7 avertissements « mode type sans test de type » (I1, I4, I23, I25, I46,
      I69, I79).
-5. Écrire l'énoncé manquant de P6 ; arbitrer P9.
+5. ✅ P6 réécrit : exclusivité de propriété par scopes disjoints, fixés au montage (et non au
+   bootstrap). Nouvel énoncé I99 (scope explicite attribué d'en haut) ; les droits par rôle sont
+   rangés sous I38 ; I58 déplacé de P7 vers P6 (second parent I20). Le Behavior garde N2 sur ses
+   propres nœuds. Reste : arbitrer P9.
 6. Ensuite seulement : générer les vues par composant, puis orienter la réécriture du code
    sur les écarts ⚠️/⏳ révélés.
 

@@ -19,7 +19,7 @@
   enonce: Le rendu est une projection du domaine ; seule la View produit du DOM, et elle ne porte aucun état métier.
 - id: P6
   titre: Propriété exclusive du DOM
-  enonce: Chaque nœud DOM a au plus un composant qui peut le muter, et ce partage est fixé au bootstrap.
+  enonce: Chaque nœud du DOM a au plus un propriétaire, seul composant autorisé à le muter. La propriété découle de scopes attribués et disjoints, fixés au montage du composant et stables jusqu'à son démontage.
 - id: P7
   titre: Cycle de vie hétéronome
   enonce: Aucun composant ne décide de sa propre existence ; création et destruction viennent d'un niveau supérieur.

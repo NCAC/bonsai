@@ -10,7 +10,8 @@
 >
 > Numérotation séquentielle stricte, identifiants **stables** : un invariant dont
 > la règle évolue est réécrit en place, jamais renuméroté. Prochain numéro libre :
-> **I99**. I46–I56 sont définis dans [conventions-typage.md](../6-transversal/conventions-typage.md#6-invariants-de-contrats-typescript-i46i56).
+> **I100** (I99 — scope DOM explicite de chaque composant concret — est défini dans le
+> registre `docs/invariants/P6.yaml`). I46–I56 sont définis dans [conventions-typage.md](../6-transversal/conventions-typage.md#6-invariants-de-contrats-typescript-i46i56).
 > I59–I62 sont réservés à titre provisoire aux extensions de la Foundation
 > ([roadmap](../../ROADMAP.md)) ; seul un ADR accepté attribue définitivement un numéro.
 > L'ADR qui fonde chaque invariant est cité dans sa ligne.

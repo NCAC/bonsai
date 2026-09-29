@@ -1,44 +1,52 @@
 # Branche P6 — Propriété exclusive du DOM.
 #
-# Migration depuis docs/reorganisation-sept-2026/arbre-invariants-precision.md.
 # Champs : voir P8.yaml pour la légende complète.
-# ⚠️ Aucun énoncé (E) : aucun invariant existant ne formule le principe. I38 en est le plus
-# proche mais mêle la règle (exclusivité) et une décision (niveaux N1/N2/N3). À écrire.
+# Structure : le scope (I99) rend l'exclusivité vérifiable ; les droits de chaque rôle
+# (I38 et ses déclinaisons) sont des décisions révisables sans toucher au principe.
+# Lire ≠ posséder : le principe ne contraint que la mutation (le Composer lit son scope).
 
-- id: I38
-  nature: D
-  parents: [P6]
-  enonce: "Les niveaux d'altération DOM contraignent chaque composant : Foundation N1 sur `<html>`/`<body>`, View N1 à N3 selon le template, Composer aucune écriture."
-  pourquoi: >
-    Rendre explicite jusqu'où chaque rôle peut muter le DOM, pour que deux composants ne
-    revendiquent jamais le même nœud à des degrés différents (ADR-16).
-  # N1 (getUI) et « Composer sans écriture » (I35) livrés ; N2/N3 (templates) non livrés, strate 1c.
-  mode: type
+- id: I99
+  nature: E
+  parents: [P6, P7]
+  enonce: Tout composant de la couche concrète opère dans un scope DOM explicite, attribué par le niveau supérieur, qu'il ne peut ni étendre ni déplacer.
+  # Livré : Foundation sur `<body>`, rootElement de la View fourni par le Composer (I31).
+  # Non livré : exclusion des slots (I40), scope du Composer figé (I58).
+  mode: boot
   etat: partiel
 
-- id: I33
-  nature: D
-  parents: [P6]
-  enonce: La Foundation est unique par application ; elle seule peut altérer `<html>` et `<body>` (N1).
-  pourquoi: >
-    Sans propriétaire unique de `<html>`/`<body>`, deux Views indépendantes pourraient s'y disputer
-    une classe ou un attribut global (ADR-20).
+- id: I40
+  nature: C
+  parents: [I99]
+  enonce: Le scope DOM d'une View est son `rootElement` moins les sous-arbres des slots qu'elle déclare.
   mode: boot
   etat: partiel
 
 - id: I34
   nature: C
-  parents: [I33]
+  parents: [I99]
   enonce: Le `rootElement` d'une View est un descendant strict de `<body>`, jamais `<body>` lui-même.
   mode: boot
   etat: livre
 
-- id: I40
-  nature: C
-  parents: [P6]
-  enonce: Le scope DOM d'une View est son `rootElement` moins les sous-arbres des slots qu'elle déclare.
+- id: I31
+  nature: D
+  parents: [I99]
+  enonce: Le `rootElement` d'une View est un sélecteur CSS fourni exclusivement par le Composer.
+  pourquoi: >
+    Le Composer reste seul décideur du placement ; la View ne fait qu'exploiter le résultat, sans
+    paramètre de montage propre (ADR-19).
   mode: boot
   etat: partiel
+
+- id: I58
+  nature: D
+  parents: [I99, I20]
+  enonce: "Le scope DOM d'un Composer est fixé au bootstrap et ne migre jamais : vivant → suspendu → détruit."
+  pourquoi: >
+    Un Composer « déplacé » est traité comme une destruction suivie d'une re-création : on évite ainsi
+    un état intermédiaire ambigu où le scope aurait changé sous le Composer (ADR-18).
+  mode: boot
+  etat: cible
 
 - id: I41
   nature: C
@@ -54,47 +62,6 @@
   mode: boot
   etat: cible
 
-- id: I39
-  nature: D
-  parents: [P6]
-  enonce: La View accède au DOM exclusivement via `getUI(key)` ; aucun `querySelector` ni accès DOM brut ne lui est exposé.
-  pourquoi: >
-    Un point d'accès unique empêche la View d'accumuler des sélecteurs ad hoc qui échapperaient au
-    scope calculé (I40) et à la source de mutation unique (I41) (ADR-16).
-  mode: type
-  etat: partiel
-
-- id: I32
-  nature: D
-  parents: [P6]
-  enonce: La View peut altérer son `rootElement` en N1, mais ne le détruit ni ne le remplace jamais.
-  pourquoi: >
-    Le `rootElement` appartient au cycle de vie géré par le Composer : si la View pouvait le détruire
-    ou le remplacer, elle violerait à la fois P6 et P7 (ADR-22).
-  # Aucun mécanisme : `protected get el()` expose le nœud brut, la View peut le retirer du DOM.
-  mode: revue
-  etat: convention
-
-- id: I31
-  nature: D
-  parents: [P6]
-  enonce: Le `rootElement` d'une View est un sélecteur CSS fourni exclusivement par le Composer.
-  pourquoi: >
-    Le Composer reste seul décideur du placement ; la View ne fait qu'exploiter le résultat, sans
-    paramètre de montage propre (ADR-19).
-  mode: boot
-  etat: partiel
-
-- id: I35
-  nature: D
-  parents: [P6]
-  enonce: Un Composer n'écrit jamais dans le DOM ; il ne lit son scope que pour résoudre le `rootElement` d'une View enfant.
-  pourquoi: >
-    Un Composer qui écrirait dans le DOM cumulerait décider et rendre : I35 laisse le rendu à la
-    seule View (P5) et fait du Composer un décideur pur (ADR-18).
-  mode: revue
-  etat: livre
-
 - id: I44
   nature: D
   parents: [P6]
@@ -106,13 +73,66 @@
   mode: type
   etat: cible
 
-- id: I45
+- id: I38
   nature: D
   parents: [P6]
-  enonce: Un Behavior altère en N1 et N2 uniquement ses propres clés ui déclarées, jamais en N3.
+  enonce: "Chaque rôle a des droits d'altération bornés : View N1 à N3 sur son scope, Behavior N1 et N2 sur ses propres nœuds, Foundation N1 sur `<html>`/`<body>`, Composer aucune écriture."
   pourquoi: >
-    Le Behavior n'a pas de `rootElement` : il enrichit des nœuds existants sans pouvoir se substituer
-    à la View qui les possède (ADR-21).
+    L'exclusivité dit qui peut muter un nœud ; les niveaux disent jusqu'où. Les rendre explicites par
+    rôle évite qu'un composant étende ses droits sans que cela se voie (ADR-16).
+  # N1 (getUI) et « Composer sans écriture » (I35) livrés ; N2/N3 (templates) non livrés, strate 1c.
+  mode: type
+  etat: partiel
+
+- id: I35
+  nature: D
+  parents: [I38]
+  enonce: Un Composer n'écrit jamais dans le DOM ; il ne lit son scope que pour résoudre le `rootElement` d'une View enfant.
+  pourquoi: >
+    Un Composer qui écrirait dans le DOM cumulerait décider et rendre : I35 laisse le rendu à la
+    seule View (P5) et fait du Composer un décideur pur (ADR-18).
+  mode: revue
+  etat: livre
+
+- id: I33
+  nature: D
+  parents: [I38]
+  enonce: La Foundation est unique par application ; elle seule altère `<html>` et `<body>`, en N1 seulement — attributs et classes, sans ajouter ni retirer de nœud.
+  pourquoi: >
+    Sans propriétaire unique de `<html>`/`<body>`, deux Views indépendantes pourraient s'y disputer
+    une classe ou un attribut global ; limitée au N1, la Foundation ne peut pas empiéter sur les
+    scopes qu'elle délègue (ADR-20).
+  mode: boot
+  etat: partiel
+
+- id: I32
+  nature: D
+  parents: [I38]
+  enonce: La View peut altérer son `rootElement` en N1, mais ne le détruit ni ne le remplace jamais.
+  pourquoi: >
+    Le `rootElement` appartient au cycle de vie géré par le Composer : si la View pouvait le détruire
+    ou le remplacer, elle violerait à la fois P6 et P7 (ADR-22).
+  # Aucun mécanisme : `protected get el()` expose le nœud brut, la View peut le retirer du DOM.
+  mode: revue
+  etat: convention
+
+- id: I39
+  nature: D
+  parents: [I38]
+  enonce: La View accède au DOM exclusivement via `getUI(key)` ; aucun `querySelector` ni accès DOM brut ne lui est exposé.
+  pourquoi: >
+    Un point d'accès unique empêche la View d'accumuler des sélecteurs ad hoc qui échapperaient au
+    scope calculé (I40) et à la source de mutation unique (I41) (ADR-16).
+  mode: type
+  etat: partiel
+
+- id: I45
+  nature: D
+  parents: [I38]
+  enonce: Un Behavior altère en N1 et N2 uniquement ses propres nœuds (clés ui déclarées), jamais en N3.
+  pourquoi: >
+    Le Behavior possède ses propres nœuds mais n'a pas de `rootElement` : il peut les enrichir et y
+    insérer ou retirer des enfants, sans jamais remplacer le scope de sa View hôte (ADR-21).
   # Aucun package Behavior n'existe (strate 2b).
   mode: type
   etat: cible
