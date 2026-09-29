@@ -21,8 +21,9 @@
   nature: C
   parents: [P2]
   enonce: Une Feature écoute (`listen`) uniquement les Events des Channels externes qu'elle a déclarés.
-  mode: null
-  etat: null
+  # Seuls les tokens de `listens` sont câblés au bootstrap ; le test couvre le cas positif.
+  mode: boot
+  etat: livre
 
 # I50 fusionné ici : même règle (le bus de messages n'est pas exposé au code applicatif).
 - id: I15

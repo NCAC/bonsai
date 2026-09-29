@@ -33,7 +33,7 @@
   parents: [P4]
   enonce: Les metas sont créées par le framework et propagées explicitement, jamais construites à la main.
   pourquoi: >
-    À compléter par le mainteneur — voir conventions-typage.md (I46–I56) et la règle « metas
+    À compléter par le mainteneur — voir ADR-04 et la règle « metas
     toujours passées explicitement en paramètre » (FRAMEWORK-STYLE-GUIDE).
-  mode: null
-  etat: null
+  mode: run
+  etat: cible

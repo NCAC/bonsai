@@ -47,22 +47,24 @@
   parents: [P1]
   enonce: "`TStructure` (state d'une Entity) est contraint à `TJsonSerializable`."
   pourquoi: >
-    À compléter par le mainteneur — voir conventions-typage.md (I46–I56). Hypothèse : garantir
+    À compléter par le mainteneur — voir ADR-10. Hypothèse : garantir
     que le domain state reste sérialisable (devtools, SSR futur) sans reposer sur des classes
     ou fonctions non clonables.
-  mode: null
-  etat: null
+  # Contrainte `Entity<TStructure extends TJsonSerializable>` ; le test runtime ne vérifie pas le rejet.
+  mode: type
+  etat: livre
 
 - id: I52
   nature: D
   parents: [P1]
   enonce: L'Entity expose des méthodes query pures (lecture seule).
   pourquoi: >
-    À compléter par le mainteneur — voir conventions-typage.md (I46–I56). Hypothèse : séparer
+    À compléter par le mainteneur — voir ADR-10. Hypothèse : séparer
     lecture et écriture au niveau du type pour qu'une query ne puisse jamais devenir un chemin
     de mutation détourné.
-  mode: null
-  etat: null
+  # Le getter `query` est écrit par l'application (fixture du test), le framework n'impose rien.
+  mode: revue
+  etat: convention
 
 - id: I97
   nature: D
@@ -82,8 +84,8 @@
   pourquoi: >
     Évite l'enregistrement manuel de listeners internes ; la Feature réagit aux mutations de sa
     propre Entity par la même convention de nommage que les handlers Command/Event (I48).
-  mode: null
-  etat: null
+  mode: boot
+  etat: livre
 
 - id: I96
   nature: D
@@ -99,8 +101,9 @@
   nature: V
   parents: [I96]
   enonce: Une clé de handler `on<Key>EntityUpdated` inconnue du state de l'Entity est rejetée au bootstrap.
-  mode: null
-  etat: null
+  mode: boot
+  etat: livre
+  preuves: [tests/unit/strate-1/feature.entity-handlers.test.ts]
 
 - id: I98
   nature: D

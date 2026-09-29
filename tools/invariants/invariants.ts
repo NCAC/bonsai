@@ -139,19 +139,26 @@ for (const l of lignes) {
     citations.set(l.id, c);
   }
 }
+// une preuve explicite (test qui prouve sans citer l'ID) compte comme une citation
+for (const l of lignes) {
+  for (const p of l.preuves ?? []) {
+    if (!existsSync(join(ROOT, p))) {
+      errors.push(`${l.id} : preuve introuvable ${p}`);
+      continue;
+    }
+    const c = citations.get(l.id) ?? { T: new Set(), R: new Set() };
+    c[isTypeTest(p) ? "T" : "R"].add(p);
+    citations.set(l.id, c);
+  }
+}
 
 // ---------- cohérence état / preuves ----------
 for (const l of lignes) {
   const c = citations.get(l.id);
-  const n = (c?.T.size ?? 0) + (c?.R.size ?? 0) + (l.preuves?.length ?? 0);
+  const n = (c?.T.size ?? 0) + (c?.R.size ?? 0);
   if (l.etat === "livre" && l.mode !== "revue" && n === 0)
     errors.push(`${l.id} : déclaré livré sans aucun test qui le cite`);
-  if (
-    l.etat === "livre" &&
-    l.mode === "type" &&
-    !c?.T.size &&
-    !l.preuves?.length
-  )
+  if (l.etat === "livre" && l.mode === "type" && !c?.T.size)
     warnings.push(`${l.id} : mode "type" sans test de type`);
   if (
     (l.mode === "boot" || l.mode === "run") &&

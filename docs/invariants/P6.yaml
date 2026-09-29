@@ -12,8 +12,9 @@
   pourquoi: >
     Rendre explicite jusqu'où chaque rôle peut muter le DOM, pour que deux composants ne
     revendiquent jamais le même nœud à des degrés différents (ADR-16).
-  mode: null
-  etat: null
+  # N1 (getUI) et « Composer sans écriture » (I35) livrés ; N2/N3 (templates) non livrés, strate 1c.
+  mode: type
+  etat: partiel
 
 - id: I33
   nature: D
@@ -29,8 +30,8 @@
   nature: C
   parents: [I33]
   enonce: Le `rootElement` d'une View est un descendant strict de `<body>`, jamais `<body>` lui-même.
-  mode: null
-  etat: null
+  mode: boot
+  etat: livre
 
 - id: I40
   nature: C
@@ -70,8 +71,9 @@
   pourquoi: >
     Le `rootElement` appartient au cycle de vie géré par le Composer : si la View pouvait le détruire
     ou le remplacer, elle violerait à la fois P6 et P7 (ADR-22).
-  mode: null
-  etat: null
+  # Aucun mécanisme : `protected get el()` expose le nœud brut, la View peut le retirer du DOM.
+  mode: revue
+  etat: convention
 
 - id: I31
   nature: D
@@ -100,8 +102,9 @@
   pourquoi: >
     Sans cette barrière, un Behavior pourrait contourner ses propres clés déclarées et muter les
     nœuds de la View, rendant la source de mutation unique (I41) invérifiable (ADR-21).
-  mode: null
-  etat: null
+  # Aucun package Behavior n'existe (strate 2b).
+  mode: type
+  etat: cible
 
 - id: I45
   nature: D
@@ -110,5 +113,6 @@
   pourquoi: >
     Le Behavior n'a pas de `rootElement` : il enrichit des nœuds existants sans pouvoir se substituer
     à la View qui les possède (ADR-21).
-  mode: null
-  etat: null
+  # Aucun package Behavior n'existe (strate 2b).
+  mode: type
+  etat: cible

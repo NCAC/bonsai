@@ -15,8 +15,9 @@
   nature: C
   parents: [P5]
   enonce: La couche abstraite (Features, Entities) est active avant la couche concrète (Views).
-  mode: null
-  etat: null
+  # Testé : onInit() de chaque Feature précède l'attachement de la Foundation.
+  mode: boot
+  etat: livre
 
 - id: I42
   nature: D

@@ -69,8 +69,8 @@ Règles clés : *cible ≠ livré* ; *être cité dans un test ≠ être prouvé
 
 ### Redondances identifiées (à fusionner, un ID conservé + alias)
 
-Fusionnées : I1 = I12 = I26 (`P3.yaml`) · I15 = I50 (`P2.yaml`) · I21 = I24 (`P8.yaml`).
-À fusionner avec P9 : I47 = I73 · I49 = I74. Conservées distinctes (inclusion) : I51 ⊂ I96 · I53 ⊂ I96.
+Toutes traitées. Fusionnées : I1 = I12 = I26 (`P3.yaml`) · I15 = I50 (`P2.yaml`) · I21 = I24
+(`P8.yaml`) · I73 = I47 · I74 = I49 (`P9.yaml`). Conservées distinctes (inclusion) : I51 ⊂ I96 · I53 ⊂ I96.
 
 ---
 
@@ -130,10 +130,20 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
    « Invariants registry », après la suite Jest complète).
 4. ✅ P1 → P7 migrés (0 erreur). **Reste : traiter les 24 lignes ∅** (prouver, déclasser en
    convention, ou supprimer) :
-   - citées par un test, à qualifier en lisant ce que le test prouve : I2, I3, I11, I17, I23,
-     I25, I27, I28, I29, I34, I36, I46, I51, I52, I55, I56 ;
-   - jamais citées : I13, I19, I32, I38, I44, I45, I53, I54.
-   Puis migrer P9 (y fusionner I47 → I73, I49 → I74).
+   - ✅ les 16 lignes citées par un test sont qualifiées d'après le code et le contenu des tests
+     (commentaire YAML sur chaque cas non évident). Partiels : I17 (request non contrôlé contre
+     `queries`), I27 (refus d'un Command non testé), I28 (aucun Router, seule la réservation
+     existe), I36 (slots non livrés, citation d'en-tête seulement). I52 déclassé en convention.
+   - ✅ les 8 lignes jamais citées sont qualifiées : I53 livré (prouvé sans citation, champ
+     `preuves`) ; I13, I32 déclassés en convention (aucun mécanisme) ; I19, I38 partiels ;
+     I44, I45 (pas de package Behavior), I54 (metas, strate 1b) en cible. Plus aucune ligne ∅.
+   - Le script compte désormais `preuves` comme une citation et vérifie que le fichier existe.
+   - 6 lignes en mode `type` sans test de type (I1, I4, I23, I25, I46, I69) : preuve runtime
+     ou structurelle seulement.
+   - ✅ P9 migré (`P9.yaml`), I47 fusionné dans I73, I49 dans I74. Registre complet : 88 lignes,
+     9 branches, tous les invariants I1–I98 présents (ligne ou alias) sauf I59–I62, réservés
+     sans attribution. 7 avertissements « mode type sans test de type » (I1, I4, I23, I25, I46,
+     I69, I79).
 5. Écrire l'énoncé manquant de P6 ; arbitrer P9.
 6. Ensuite seulement : générer les vues par composant, puis orienter la réécriture du code
    sur les écarts ⚠️/⏳ révélés.

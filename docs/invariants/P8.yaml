@@ -8,7 +8,9 @@
 #   pourquoi  obligatoire pour une décision (D) : remplace l'ADR
 #   mode      type · boot · type+boot · run · revue
 #   etat      livre · partiel · cible · convention
-#   preuves   facultatif : les citations dans les tests sont détectées automatiquement
+#   alias     facultatif : anciens IDs fusionnés dans cette ligne (leurs citations comptent ici)
+#   preuves   facultatif : chemins de tests qui prouvent la ligne sans citer son ID
+#             (les citations `I<n>` dans les tests sont détectées automatiquement)
 
 - id: I69
   nature: E

@@ -14,15 +14,17 @@
   nature: E
   parents: [P3]
   enonce: Un Event peut avoir N abonnés.
-  mode: null
-  etat: null
+  mode: run
+  etat: livre
 
 - id: I27
   nature: E
   parents: [P3]
   enonce: Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé.
-  mode: null
-  etat: null
+  # Les tests prouvent seulement : Command sans handler → throw, Event sans abonné → ignoré.
+  # Aucun mécanisme de refus d'un Command par son handler n'est testé.
+  mode: run
+  etat: partiel
 
 # I12 et I26 fusionnés ici : même règle vue sous trois angles (émettre sur son Channel,
 # ne pas émettre sur un Channel étranger, seule la Feature propriétaire appelle emit()).
@@ -38,8 +40,9 @@
   nature: C
   parents: [P3, P5]
   enonce: Seuls les Views et Behaviors utilisent `trigger()` pour envoyer un Command.
-  mode: null
-  etat: null
+  # Feature n'a pas de méthode `trigger` ; les tests exercent Channel.trigger, pas la restriction.
+  mode: type
+  etat: livre
 
 - id: I4
   nature: C
@@ -52,22 +55,25 @@
   nature: C
   parents: [P3, P5]
   enonce: La View est un point d'entrée (Command) et de projection (Event) — la causalité métier n'y transite jamais.
-  mode: null
-  etat: null
+  # Règle de conception : rien n'empêche un handler d'Event de View de déclencher un trigger.
+  mode: revue
+  etat: convention
 
 - id: I3
   nature: C
   parents: [P3]
   enonce: Une Feature ne répond (`reply`) que sur son propre Channel.
-  mode: null
-  etat: null
+  # Les repliers `on<Name>Request` sont enregistrés sur le Channel propre au bootstrap.
+  mode: boot
+  etat: livre
 
 - id: I17
   nature: C
   parents: [P3, P2]
   enonce: Une Feature ne `request` que sur les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect.
-  mode: null
-  etat: null
+  # `Feature.request()` accepte tout token typé, sans contrôle contre `queries` (même écart que I14).
+  mode: type
+  etat: partiel
 
 - id: I29
   nature: D
@@ -77,8 +83,8 @@
     Un replier ne fait que lire l'Entity déjà en mémoire : le rendre synchrone empêche une Request
     de devenir un chemin d'effet asynchrone caché. Tout chargement async passe par un Command ou
     un Event, donc reste traçable (P4). Voir ADR-02.
-  mode: null
-  etat: null
+  mode: run
+  etat: livre
 
 - id: I64
   nature: C
@@ -92,11 +98,11 @@
   parents: [I29]
   enonce: Un replier qui throw ne propage jamais l'erreur — `request()` retourne `null`.
   pourquoi: >
-    À compléter par le mainteneur — voir conventions-typage.md (I46–I56). Hypothèse : uniformiser
+    À compléter par le mainteneur — voir ADR-02. Hypothèse : uniformiser
     le contrat d'échec d'une Request pour que l'appelant n'ait jamais à entourer une lecture d'un
     try/catch.
-  mode: null
-  etat: null
+  mode: run
+  etat: livre
 
 - id: I65
   nature: D
