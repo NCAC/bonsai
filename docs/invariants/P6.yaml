@@ -64,7 +64,7 @@
 
 - id: I44
   nature: D
-  parents: [P6]
+  parents: [P6, P10]
   enonce: Un Behavior n'a aucun accès aux propriétés de sa View hôte (`this.view`, `el`, `getUI`).
   pourquoi: >
     Sans cette barrière, un Behavior pourrait contourner ses propres clés déclarées et muter les
@@ -86,7 +86,7 @@
 
 - id: I35
   nature: D
-  parents: [I38]
+  parents: [I38, P10]
   enonce: Un Composer n'écrit jamais dans le DOM ; il ne lit son scope que pour résoudre le `rootElement` d'une View enfant.
   pourquoi: >
     Un Composer qui écrirait dans le DOM cumulerait décider et rendre : I35 laisse le rendu à la
@@ -128,7 +128,7 @@
 
 - id: I45
   nature: D
-  parents: [I38]
+  parents: [I38, P10]
   enonce: Un Behavior altère en N1 et N2 uniquement ses propres nœuds (clés ui déclarées), jamais en N3.
   pourquoi: >
     Le Behavior possède ses propres nœuds mais n'a pas de `rootElement` : il peut les enrichir et y

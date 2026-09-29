@@ -24,7 +24,7 @@ n'a pas révélé les écarts réels.
 | `docs/reorganisation-sept-2026/arbre-invariants.md` | Classement des invariants I1–I98 sous 9 principes. Esquisse non actée. |
 | `docs/reorganisation-sept-2026/arbre-invariants-precision.md` | Même arbre + ⟨mode · état · tests⟩ par invariant, et matrice nature × vérification. |
 | `docs/reorganisation-sept-2026/reorganisation-documentation-workflow.md` | RFC antérieure (architecture vivante, contrats ENT-001…, workbench, snapshots). **Jugée insuffisante** par le mainteneur ; en conserver les bonnes idées seulement. |
-| `docs/invariants/principes.yaml` | **Nouveau.** Les 9 principes, source de vérité. |
+| `docs/invariants/principes.yaml` | **Nouveau.** Les 10 principes, source de vérité. |
 | `docs/invariants/P8.yaml` | **Nouveau.** Branche pilote P8, un enregistrement par invariant. |
 | `tools/invariants/invariants.ts` | **Nouveau.** Script de validation + génération. |
 
@@ -46,7 +46,7 @@ les deux arbres sont le point de départ retenu.
 
 Le graphe est un DAG : `parents[0]` = parent principal, les suivants = seconds parents (`↔ Pn`).
 
-### Les 9 principes
+### Les 10 principes
 
 1. **P1** Souveraineté du domaine — le domain state n'existe que dans une Entity ; seule sa Feature y accède.
 2. **P2** Dépendances déclarées — aucun canal implicite.
@@ -58,6 +58,9 @@ Le graphe est un DAG : `parents[0]` = parent principal, les suivants = seconds p
 8. **P8** Identité par le manifest.
 9. **P9** Garantie au plus tôt (méta-principe) — ❓ tension non arbitrée avec les invariants
    en mode `run` (I8, I9, I20, I37, I65, I97, I98).
+10. **P10** Une responsabilité, un rôle (méta-principe) — explique pourquoi les rôles sont
+    distincts ; énoncé I100 (table rôle → responsabilité), second parent des décisions qu'il
+    justifie (I22, I23, I35, I36, I44, I45, I63, I67).
 
 ### Vérification : trois axes distincts, à ne jamais confondre
 
@@ -91,7 +94,9 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
 
 ### Fait
 
-- `principes.yaml` : les 9 principes (+ `meta`, `question-ouverte` pour P9).
+- `principes.yaml` : les 10 principes (+ `meta` pour P9 et P10, `question-ouverte` pour P9).
+- `P10.yaml` : I100 (E). Écart relevé : aucun invariant n'énonce qu'une Entity ne porte aucune
+  logique métier. L'arbre généré liste sous chaque principe ses rattachements en second parent.
 - `P1.yaml` à `P7.yaml` : migrés depuis `arbre-invariants-precision.md` (67 lignes avec P8).
   - Fusions : I12 et I26 dans I1 (P3), I50 dans I15 (P2). I51/I53 restent distincts de I96
     (relation d'inclusion ⊂, pas de doublon).

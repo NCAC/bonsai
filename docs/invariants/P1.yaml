@@ -26,14 +26,14 @@
 
 - id: I63
   nature: C
-  parents: [P1]
+  parents: [P1, P10]
   enonce: Un schema Entity ne contient ni `v.transform()` ni coercion — c'est un garde-fou en lecture, la transformation reste dans le command handler (déduit de I6).
   mode: revue
   etat: cible
 
 - id: I22
   nature: D
-  parents: [P1, P8]
+  parents: [P1, P8, P10]
   enonce: La relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte ; l'Entity est obligatoire, même vide.
   pourquoi: >
     Empêche qu'une Feature accède au state d'une autre ou qu'un namespace reste sans state

@@ -24,7 +24,7 @@
 
 - id: I36
   nature: D
-  parents: [I20]
+  parents: [I20, P10]
   enonce: La View ne compose jamais d'autres Views — elle déclare des slots, le Composer décide de l'instanciation.
   pourquoi: >
     Si la View composait, elle recouvrirait le rôle du Composer et brouillerait la frontière entre
@@ -48,7 +48,7 @@
 
 - id: I67
   nature: D
-  parents: [P7]
+  parents: [P7, P10]
   enonce: La structure de la Foundation est stable — `get composers()` est lu une seule fois au bootstrap et n'est jamais modifié.
   pourquoi: >
     Toute composition dynamique est déléguée à une View dédiée : la Foundation reste une racine
@@ -58,7 +58,7 @@
 
 - id: I23
   nature: D
-  parents: [P7]
+  parents: [P7, P10]
   enonce: Application est dormante au runtime — aucune logique métier ni rôle actif entre le bootstrap et le shutdown.
   pourquoi: >
     Garder Application hors du flux Command/Event/Request l'empêche de devenir un point de causalité

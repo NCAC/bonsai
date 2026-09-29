@@ -12,8 +12,8 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `E` I5 — Les Views et les Behaviors n'accèdent jamais aux Entities. ⟨type · ✅ · R T⟩
 - `E` I6 — Seule une Feature peut modifier son Entity. ⟨type+boot · ✅ · R T⟩
 - `C` I30 — Une View et un Behavior ne portent aucun domain state — seul un state local de présentation borné (I42) est toléré. ↔ P5 ⟨type · ⚠️ · ·⟩
-- `C` I63 — Un schema Entity ne contient ni `v.transform()` ni coercion — c'est un garde-fou en lecture, la transformation reste dans le command handler (déduit de I6). ⟨revue · ⏳ · ·⟩
-- `D` I22 — La relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte ; l'Entity est obligatoire, même vide. ↔ P8 ⟨type+boot · ✅ · R⟩
+- `C` I63 — Un schema Entity ne contient ni `v.transform()` ni coercion — c'est un garde-fou en lecture, la transformation reste dans le command handler (déduit de I6). ↔ P10 ⟨revue · ⏳ · ·⟩
+- `D` I22 — La relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte ; l'Entity est obligatoire, même vide. ↔ P8 ↔ P10 ⟨type+boot · ✅ · R⟩
 - `D` I46 — `TStructure` (state d'une Entity) est contraint à `TJsonSerializable`. ⟨type · ✅ · R⟩
 - `D` I52 — L'Entity expose des méthodes query pures (lecture seule). ⟨revue · 📐 · R⟩
 - `D` I97 — `Entity.mutate()` utilise `Immer.produceWithPatches`. ⟨run · ✅ · R⟩
@@ -33,6 +33,8 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `D` I80 — Les composants consommateurs déclarent leurs dépendances via des classes Feature dans `TFeatureContract`, jamais via un `TChannelToken` direct. ⟨type · ✅ · R T⟩
 - `V` I70 — Toute référence à un namespace externe (`listens`, `queries`, `request`) est validée contre le manifest au bootstrap. ↔ P8 ⟨boot · ✅ · R⟩
 
+*Rattachés en second parent :* I4, I17, I77, I79, I89
+
 ## P3 — Sémantique des trois voies
 
 **Une intention (Command) va à un seul propriétaire, qui peut la refuser ; un fait (Event) est publié par son seul propriétaire vers N abonnés ; une lecture (Request) est sans effet.**
@@ -51,6 +53,8 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
   - `D` I55 — Un replier qui throw ne propage jamais l'erreur — `request()` retourne `null`. ⟨run · ✅ · R⟩
     - `D` I65 — L'erreur d'un replier est reportée via l'`ErrorReporter` avant que `null` ne soit retourné. ⟨run · ⚠️ · ·⟩
 
+*Rattachés en second parent :* I76
+
 ## P4 — Causalité traçable et bornée
 
 **Toute chaîne de messages est reconstituable jusqu'à l'action d'origine, et sa longueur est bornée.**
@@ -60,6 +64,8 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `D` I9 — Le `hop` est incrémenté à chaque réaction ; un message au-delà de `MAX_HOPS` est rejeté. ⟨run · ⏳ · ·⟩
 - `D` I54 — Les metas sont créées par le framework et propagées explicitement, jamais construites à la main. ⟨run · ⏳ · ·⟩
 
+*Rattachés en second parent :* I98
+
 ## P5 — La View projette, elle ne décide pas
 
 **Le rendu est une projection du domaine ; seule la View produit du DOM, et elle ne porte aucun état métier.**
@@ -68,6 +74,8 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `C` I56 — La couche abstraite (Features, Entities) est active avant la couche concrète (Views). ⟨boot · ✅ · R⟩
 - `D` I42 — Une View peut déclarer un state local de présentation — typé, réactif, encapsulé, non diffusable, détruit avec elle. ⟨type+boot · ⏳ · ·⟩
   - `D` I57 — Le namespace `local` est réservé au mécanisme de state local ; aucun Channel, Feature ou Entity ne peut le déclarer. ↔ P8 ⟨type+boot · ✅ · T⟩
+
+*Rattachés en second parent :* I30, I25, I13
 
 ## P6 — Propriété exclusive du DOM
 
@@ -80,13 +88,15 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
   - `D` I58 — Le scope DOM d'un Composer est fixé au bootstrap et ne migre jamais : vivant → suspendu → détruit. ↔ I20 ⟨boot · ⏳ · ·⟩
 - `C` I41 — Chaque clé `@ui` a une source de mutation unique — son template ou `getUI()`, jamais les deux. ⟨type · ⏳ · ·⟩
 - `C` I43 — Les clés `uiEvents` d'un Behavior sont disjointes de celles de sa View hôte. ⟨boot · ⏳ · ·⟩
-- `D` I44 — Un Behavior n'a aucun accès aux propriétés de sa View hôte (`this.view`, `el`, `getUI`). ⟨type · ⏳ · ·⟩
+- `D` I44 — Un Behavior n'a aucun accès aux propriétés de sa View hôte (`this.view`, `el`, `getUI`). ↔ P10 ⟨type · ⏳ · ·⟩
 - `D` I38 — Chaque rôle a des droits d'altération bornés : View N1 à N3 sur son scope, Behavior N1 et N2 sur ses propres nœuds, Foundation N1 sur `<html>`/`<body>`, Composer aucune écriture. ⟨type · ⚠️ · ·⟩
-  - `D` I35 — Un Composer n'écrit jamais dans le DOM ; il ne lit son scope que pour résoudre le `rootElement` d'une View enfant. ⟨revue · ✅ · R⟩
+  - `D` I35 — Un Composer n'écrit jamais dans le DOM ; il ne lit son scope que pour résoudre le `rootElement` d'une View enfant. ↔ P10 ⟨revue · ✅ · R⟩
   - `D` I33 — La Foundation est unique par application ; elle seule altère `<html>` et `<body>`, en N1 seulement — attributs et classes, sans ajouter ni retirer de nœud. ⟨boot · ⚠️ · R⟩
   - `D` I32 — La View peut altérer son `rootElement` en N1, mais ne le détruit ni ne le remplace jamais. ⟨revue · 📐 · ·⟩
   - `D` I39 — La View accède au DOM exclusivement via `getUI(key)` ; aucun `querySelector` ni accès DOM brut ne lui est exposé. ⟨type · ⚠️ · R⟩
-  - `D` I45 — Un Behavior altère en N1 et N2 uniquement ses propres nœuds (clés ui déclarées), jamais en N3. ⟨type · ⏳ · ·⟩
+  - `D` I45 — Un Behavior altère en N1 et N2 uniquement ses propres nœuds (clés ui déclarées), jamais en N3. ↔ P10 ⟨type · ⏳ · ·⟩
+
+*Rattachés en second parent :* I78
 
 ## P7 — Cycle de vie hétéronome
 
@@ -94,12 +104,14 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 
 - `E` I19 — La View n'a aucune responsabilité sur son propre cycle de vie — ni création, ni destruction, ni remplacement. ⟨type · ⚠️ · ·⟩
 - `D` I20 — Seuls la Foundation et les Composers créent, détruisent ou remplacent des Views. ⟨run · ⚠️ · R⟩
-  - `D` I36 — La View ne compose jamais d'autres Views — elle déclare des slots, le Composer décide de l'instanciation. ⟨type · ⚠️ · R⟩
+  - `D` I36 — La View ne compose jamais d'autres Views — elle déclare des slots, le Composer décide de l'instanciation. ↔ P10 ⟨type · ⚠️ · R⟩
   - `D` I37 — Il n'existe qu'un seul type de Composer, qui gère 0..N Views hétérogènes dans un scope DOM fixe. ⟨run · ⚠️ · R⟩
-- `D` I67 — La structure de la Foundation est stable — `get composers()` est lu une seule fois au bootstrap et n'est jamais modifié. ⟨type+boot · ⚠️ · ·⟩
-- `D` I23 — Application est dormante au runtime — aucune logique métier ni rôle actif entre le bootstrap et le shutdown. ⟨type · ✅ · R⟩
+- `D` I67 — La structure de la Foundation est stable — `get composers()` est lu une seule fois au bootstrap et n'est jamais modifié. ↔ P10 ⟨type+boot · ⚠️ · ·⟩
+- `D` I23 — Application est dormante au runtime — aucune logique métier ni rôle actif entre le bootstrap et le shutdown. ↔ P10 ⟨type · ✅ · R⟩
 - `D` I28 — Le Router est une Feature interne, de namespace réservé `router`, instanciée par Application et non par le développeur. ↔ P8 ⟨type+boot · ⚠️ · T⟩
 - `D` I94 — Le constructeur d'une Feature est inerte — aucun side-effect au-delà de la validation et de l'assignation du namespace. ↔ P9 ⟨boot · ✅ · R⟩
+
+*Rattachés en second parent :* I99
 
 ## P8 — Identité par le manifest
 
@@ -112,6 +124,8 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
   - `V` I95 — Chaque entrée du manifest est contrainte par `TStrictFeatureClass<NS>`. ⟨type · ✅ · T⟩
 - `D` I21 = I24 — Toute Feature est enregistrée dans le manifest sous une clé `camelCase` sans chiffre. ⟨type+boot · ✅ · R T⟩
 - `D` I71 — Les namespaces `local` et `router` sont réservés (`RESERVED_NAMESPACES`). ⟨type+boot · ✅ · R T⟩
+
+*Rattachés en second parent :* I22, I70, I57, I28
 
 ## P9 — Garantie au plus tôt *(méta-principe)*
 
@@ -140,3 +154,13 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
   - `D` I89 — Tout événement déclaré dans `events` appartient à `TEventsFor<TEl>` ; les `CustomEvent` arbitraires sont exclus. ↔ P2 ⟨type · ⚠️ · T⟩
   - `C` I90 — Un nom d'événement apparaît au plus une fois dans `events`. ⟨type · ✅ · T⟩
   - `D` I91 — `TEventsFor<TEl>` est la table officielle entre sous-types d'éléments HTML et événements DOM cohérents. ⟨type · ⚠️ · T⟩
+
+*Rattachés en second parent :* I94
+
+## P10 — Une responsabilité, un rôle *(méta-principe)*
+
+**Chaque responsabilité du framework est portée par un seul rôle, et chaque rôle n'en porte qu'une ; aucun rôle n'empiète sur celle d'un autre.**
+
+- `E` I100 — Chaque rôle porte une seule responsabilité : Entity garde et mute l'état, Feature décide du métier, View projette, Composer décide du placement, Behavior enrichit le comportement, Foundation porte le layout racine, Application amorce. ⟨revue · 📐 · ·⟩
+
+*Rattachés en second parent :* I63, I22, I44, I35, I45, I36, I67, I23

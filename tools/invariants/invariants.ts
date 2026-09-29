@@ -188,6 +188,9 @@ const render = (id: string, depth: number): string[] =>
     ...render(l.id, depth + 1)
   ]);
 
+const secondary = (id: string) =>
+  lignes.filter((l) => l.parents.slice(1).includes(id)).map((l) => l.id);
+
 const migrated = new Set(branches.map((f) => f.replace(".yaml", "")));
 const md = [
   "<!-- Fichier généré par tools/invariants/invariants.ts — ne pas modifier à la main. -->",
@@ -206,6 +209,9 @@ const md = [
     ...(migrated.has(p.id)
       ? render(p.id, 0)
       : ["*Branche non encore migrée.*"]),
+    ...(secondary(p.id).length
+      ? ["", `*Rattachés en second parent :* ${secondary(p.id).join(", ")}`]
+      : []),
     ""
   ])
 ].join("\n");

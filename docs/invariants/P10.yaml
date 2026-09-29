@@ -1,0 +1,14 @@
+# Branche P10 — Une responsabilité, un rôle (méta-principe).
+#
+# Champs : voir P8.yaml pour la légende complète.
+# P10 dit pourquoi les rôles sont distincts. Les décisions qu'il justifie restent dans leur
+# branche d'origine et portent P10 en second parent (listées sous P10 dans l'arbre généré).
+# Écart : aucun invariant n'énonce qu'une Entity ne porte aucune logique métier (I63 en est
+# seulement une trace) — c'est pourtant la raison d'être de la séparation Entity / Feature.
+
+- id: I100
+  nature: E
+  parents: [P10]
+  enonce: "Chaque rôle porte une seule responsabilité : Entity garde et mute l'état, Feature décide du métier, View projette, Composer décide du placement, Behavior enrichit le comportement, Foundation porte le layout racine, Application amorce."
+  mode: revue
+  etat: convention

@@ -31,3 +31,7 @@
   meta: true
   enonce: Toute règle est garantie par construction au compile-time ; à défaut, vérifiée au bootstrap, frontière de confiance. Rien n'est laissé au runtime courant.
   question-ouverte: Arbitrer la tension avec les invariants vérifiés en mode run (I8, I9, I20, I37, I65, I97, I98).
+- id: P10
+  titre: Une responsabilité, un rôle
+  meta: true
+  enonce: Chaque responsabilité du framework est portée par un seul rôle, et chaque rôle n'en porte qu'une ; aucun rôle n'empiète sur celle d'un autre.
