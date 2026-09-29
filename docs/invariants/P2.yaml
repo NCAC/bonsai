@@ -1,0 +1,52 @@
+# Branche P2 — Dépendances déclarées.
+#
+# Migration depuis docs/reorganisation-sept-2026/arbre-invariants-precision.md.
+# Champs : voir P8.yaml pour la légende complète.
+
+- id: I14
+  nature: E
+  parents: [P2]
+  enonce: Tout composant déclare statiquement les Channels avec lesquels il interagit.
+  mode: type+boot
+  etat: partiel
+
+- id: I16
+  nature: V
+  parents: [I14]
+  enonce: Un accès à un Channel non déclaré est une erreur (compilation ou bootstrap).
+  mode: type+boot
+  etat: partiel
+
+- id: I2
+  nature: C
+  parents: [P2]
+  enonce: Une Feature écoute (`listen`) uniquement les Events des Channels externes qu'elle a déclarés.
+  mode: null
+  etat: null
+
+# I50 fusionné ici : même règle (le bus de messages n'est pas exposé au code applicatif).
+- id: I15
+  nature: C
+  parents: [P2]
+  alias: [I50]
+  enonce: Radio est une infrastructure interne, non exposée par `@bonsai/core` — un bus ambiant serait un canal non déclaré.
+  mode: type
+  etat: livre
+
+- id: I80
+  nature: D
+  parents: [P2]
+  enonce: Les composants consommateurs déclarent leurs dépendances via des classes Feature dans `TFeatureContract`, jamais via un `TChannelToken` direct.
+  pourquoi: >
+    Garder le Channel privé derrière sa Feature empêche un consommateur de contourner ses
+    déclarations (`listens`/`queries`, `TFeatureContract`) pour parler directement à un Channel
+    non déclaré (ADR-14).
+  mode: type
+  etat: livre
+
+- id: I70
+  nature: V
+  parents: [P2, P8]
+  enonce: Toute référence à un namespace externe (`listens`, `queries`, `request`) est validée contre le manifest au bootstrap.
+  mode: boot
+  etat: livre

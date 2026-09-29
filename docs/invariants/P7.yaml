@@ -1,0 +1,91 @@
+# Branche P7 — Cycle de vie hétéronome.
+#
+# Migration depuis docs/reorganisation-sept-2026/arbre-invariants-precision.md.
+# Champs : voir P8.yaml pour la légende complète.
+
+- id: I19
+  nature: E
+  parents: [P7]
+  enonce: La View n'a aucune responsabilité sur son propre cycle de vie — ni création, ni destruction, ni remplacement.
+  mode: null
+  etat: null
+
+- id: I20
+  nature: D
+  parents: [P7]
+  enonce: Seuls la Foundation et les Composers créent, détruisent ou remplacent des Views.
+  pourquoi: >
+    Concentrer la création et la destruction à deux niveaux garantit qu'aucune View ne se recrée ni
+    ne se substitue elle-même (ADR-16, ADR-18, ADR-20).
+  mode: run
+  etat: partiel
+
+- id: I36
+  nature: D
+  parents: [I20]
+  enonce: La View ne compose jamais d'autres Views — elle déclare des slots, le Composer décide de l'instanciation.
+  pourquoi: >
+    Si la View composait, elle recouvrirait le rôle du Composer et brouillerait la frontière entre
+    décider et rendre (ADR-18).
+  mode: null
+  etat: null
+
+- id: I37
+  nature: D
+  parents: [I20]
+  enonce: Il n'existe qu'un seul type de Composer, qui gère 0..N Views hétérogènes dans un scope DOM fixe.
+  pourquoi: >
+    Un type unique évite une famille de règles de cycle de vie différentes selon la variante ; la
+    multiplicité est portée par `resolve()`, pas par le typage du Composer (ADR-18).
+  mode: run
+  etat: partiel
+
+- id: I58
+  nature: D
+  parents: [I20]
+  enonce: "Le scope DOM d'un Composer est fixé au bootstrap et ne migre jamais : vivant → suspendu → détruit."
+  pourquoi: >
+    Un Composer « déplacé » est traité comme une destruction suivie d'une re-création : on évite ainsi
+    un état intermédiaire ambigu où le scope aurait changé sous le Composer (ADR-18).
+  mode: boot
+  etat: cible
+
+- id: I67
+  nature: D
+  parents: [P7]
+  enonce: La structure de la Foundation est stable — `get composers()` est lu une seule fois au bootstrap et n'est jamais modifié.
+  pourquoi: >
+    Toute composition dynamique est déléguée à une View dédiée : la Foundation reste une racine
+    figée dont le cycle de vie n'est pas remis en cause en cours d'exécution (ADR-20).
+  mode: type+boot
+  etat: partiel
+
+- id: I23
+  nature: D
+  parents: [P7]
+  enonce: Application est dormante au runtime — aucune logique métier ni rôle actif entre le bootstrap et le shutdown.
+  pourquoi: >
+    Garder Application hors du flux Command/Event/Request l'empêche de devenir un point de causalité
+    caché une fois le bootstrap terminé (ADR-07).
+  mode: null
+  etat: null
+
+- id: I28
+  nature: D
+  parents: [P7, P8]
+  enonce: Le Router est une Feature interne, de namespace réservé `router`, instanciée par Application et non par le développeur.
+  pourquoi: >
+    Le Router a besoin d'un accès exclusif à l'History API : en faire une Feature interne réutilise le
+    cycle de vie existant plutôt qu'un mécanisme de bootstrap à part (ADR-13).
+  mode: null
+  etat: null
+
+- id: I94
+  nature: D
+  parents: [P7, P9]
+  enonce: Le constructeur d'une Feature est inerte — aucun side-effect au-delà de la validation et de l'assignation du namespace.
+  pourquoi: >
+    Un constructeur à effets rendrait l'ordre d'instanciation significatif ; inerte, il garantit que
+    créer une Feature n'a aucun effet tant que le framework ne l'a pas explicitement activée (ADR-09).
+  mode: boot
+  etat: livre

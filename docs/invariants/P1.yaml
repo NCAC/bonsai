@@ -1,0 +1,114 @@
+# Branche P1 — Souveraineté du domaine.
+#
+# Migration depuis docs/reorganisation-sept-2026/arbre-invariants-precision.md.
+# Champs : voir P8.yaml pour la légende complète.
+
+- id: I5
+  nature: E
+  parents: [P1]
+  enonce: Les Views et les Behaviors n'accèdent jamais aux Entities.
+  mode: type
+  etat: livre
+
+- id: I6
+  nature: E
+  parents: [P1]
+  enonce: Seule une Feature peut modifier son Entity.
+  mode: type+boot
+  etat: livre
+
+- id: I30
+  nature: C
+  parents: [P1, P5]
+  enonce: Une View et un Behavior ne portent aucun domain state — seul un state local de présentation borné (I42) est toléré.
+  mode: type
+  etat: partiel
+
+- id: I63
+  nature: C
+  parents: [P1]
+  enonce: Un schema Entity ne contient ni `v.transform()` ni coercion — c'est un garde-fou en lecture, la transformation reste dans le command handler (déduit de I6).
+  mode: revue
+  etat: cible
+
+- id: I22
+  nature: D
+  parents: [P1, P8]
+  enonce: La relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte ; l'Entity est obligatoire, même vide.
+  pourquoi: >
+    Empêche qu'une Feature accède au state d'une autre ou qu'un namespace reste sans state
+    propre implicite — la relation 1:1:1 rend la propriété du domaine vérifiable mécaniquement
+    (`abstract get Entity()`, ADR-08, ADR-09).
+  mode: type+boot
+  etat: livre
+
+- id: I46
+  nature: D
+  parents: [P1]
+  enonce: "`TStructure` (state d'une Entity) est contraint à `TJsonSerializable`."
+  pourquoi: >
+    À compléter par le mainteneur — voir conventions-typage.md (I46–I56). Hypothèse : garantir
+    que le domain state reste sérialisable (devtools, SSR futur) sans reposer sur des classes
+    ou fonctions non clonables.
+  mode: null
+  etat: null
+
+- id: I52
+  nature: D
+  parents: [P1]
+  enonce: L'Entity expose des méthodes query pures (lecture seule).
+  pourquoi: >
+    À compléter par le mainteneur — voir conventions-typage.md (I46–I56). Hypothèse : séparer
+    lecture et écriture au niveau du type pour qu'une query ne puisse jamais devenir un chemin
+    de mutation détourné.
+  mode: null
+  etat: null
+
+- id: I97
+  nature: D
+  parents: [P1]
+  enonce: "`Entity.mutate()` utilise `Immer.produceWithPatches`."
+  pourquoi: >
+    Immer donne l'immutabilité sans code de copie manuel ; `produceWithPatches` fournit les
+    `patches`/`changedKeys` nécessaires à la détection de no-op (I51/I96) et au rollback
+    automatique si la recipe throw (ADR-05, ADR-10).
+  mode: run
+  etat: livre
+
+- id: I51
+  nature: D
+  parents: [P1]
+  enonce: Les notifications de mutation d'une Entity sont auto-découvertes sur sa Feature (`on<Key>EntityUpdated` / `onAnyEntityUpdated`) — résumé de I96.
+  pourquoi: >
+    Évite l'enregistrement manuel de listeners internes ; la Feature réagit aux mutations de sa
+    propre Entity par la même convention de nommage que les handlers Command/Event (I48).
+  mode: null
+  etat: null
+
+- id: I96
+  nature: D
+  parents: [I51]
+  enonce: Le dispatch des notifications suit un ordre déterministe (clés changées par ordre alphabétique, puis catch-all) via une souscription unique, avec isolation des erreurs par handler.
+  pourquoi: >
+    Un ordre déterministe et l'isolation des erreurs évitent qu'un handler défaillant bloque les
+    autres ou que l'ordre de notification rende les tests fragiles (ADR-05, ADR-10, ADR-31 strate 1a).
+  mode: boot
+  etat: livre
+
+- id: I53
+  nature: V
+  parents: [I96]
+  enonce: Une clé de handler `on<Key>EntityUpdated` inconnue du state de l'Entity est rejetée au bootstrap.
+  mode: null
+  etat: null
+
+- id: I98
+  nature: D
+  parents: [I51, P4]
+  enonce: Une mutation déclenchée pendant un cycle de notification est mise en file FIFO plutôt qu'exécutée immédiatement, avec une profondeur de ré-entrance bornée.
+  pourquoi: >
+    Empêche qu'une mutation lancée depuis un handler de notification ne provoque une récursion
+    incontrôlée ou un ordre de notification imprévisible ; la borne transforme une boucle
+    infinie potentielle en erreur explicite (`EntityReentrancyError`, ADR-31 strate 1a).
+  mode: run
+  etat: livre

@@ -1,0 +1,109 @@
+# Branche P3 — Sémantique des trois voies.
+#
+# Migration depuis docs/reorganisation-sept-2026/arbre-invariants-precision.md.
+# Champs : voir P8.yaml pour la légende complète.
+
+- id: I10
+  nature: E
+  parents: [P3]
+  enonce: Un Command a un seul handler — la Feature propriétaire du Channel.
+  mode: boot
+  etat: livre
+
+- id: I11
+  nature: E
+  parents: [P3]
+  enonce: Un Event peut avoir N abonnés.
+  mode: null
+  etat: null
+
+- id: I27
+  nature: E
+  parents: [P3]
+  enonce: Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé.
+  mode: null
+  etat: null
+
+# I12 et I26 fusionnés ici : même règle vue sous trois angles (émettre sur son Channel,
+# ne pas émettre sur un Channel étranger, seule la Feature propriétaire appelle emit()).
+- id: I1
+  nature: C
+  parents: [P3]
+  alias: [I12, I26]
+  enonce: Une Feature n'émet (`emit`) que sur son propre Channel — aucune émission cross-domain, et seule la Feature propriétaire utilise `emit()`.
+  mode: type
+  etat: livre
+
+- id: I25
+  nature: C
+  parents: [P3, P5]
+  enonce: Seuls les Views et Behaviors utilisent `trigger()` pour envoyer un Command.
+  mode: null
+  etat: null
+
+- id: I4
+  nature: C
+  parents: [P3, P2]
+  enonce: Une View ou un Behavior peut `trigger`, `listen` et `request` uniquement sur les Channels déclarés — jamais `emit()`.
+  mode: type
+  etat: livre
+
+- id: I13
+  nature: C
+  parents: [P3, P5]
+  enonce: La View est un point d'entrée (Command) et de projection (Event) — la causalité métier n'y transite jamais.
+  mode: null
+  etat: null
+
+- id: I3
+  nature: C
+  parents: [P3]
+  enonce: Une Feature ne répond (`reply`) que sur son propre Channel.
+  mode: null
+  etat: null
+
+- id: I17
+  nature: C
+  parents: [P3, P2]
+  enonce: Une Feature ne `request` que sur les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect.
+  mode: null
+  etat: null
+
+- id: I29
+  nature: D
+  parents: [P3]
+  enonce: "`reply()` retourne toujours `T` de façon synchrone ; `request()` retourne `T | null`."
+  pourquoi: >
+    Un replier ne fait que lire l'Entity déjà en mémoire : le rendre synchrone empêche une Request
+    de devenir un chemin d'effet asynchrone caché. Tout chargement async passe par un Command ou
+    un Event, donc reste traçable (P4). Voir ADR-02.
+  mode: null
+  etat: null
+
+- id: I64
+  nature: C
+  parents: [I29]
+  enonce: Aucun I/O (`fetch`, `Promise`, `setTimeout`, `async/await`) dans un replier.
+  mode: revue
+  etat: convention
+
+- id: I55
+  nature: D
+  parents: [I29]
+  enonce: Un replier qui throw ne propage jamais l'erreur — `request()` retourne `null`.
+  pourquoi: >
+    À compléter par le mainteneur — voir conventions-typage.md (I46–I56). Hypothèse : uniformiser
+    le contrat d'échec d'une Request pour que l'appelant n'ait jamais à entourer une lecture d'un
+    try/catch.
+  mode: null
+  etat: null
+
+- id: I65
+  nature: D
+  parents: [I55]
+  enonce: L'erreur d'un replier est reportée via l'`ErrorReporter` avant que `null` ne soit retourné.
+  pourquoi: >
+    `null` seul rendrait l'échec silencieux : le reporting garantit qu'une erreur de replier n'est
+    jamais perdue, même si l'appelant ignore le `null` (ADR-03).
+  mode: run
+  etat: partiel

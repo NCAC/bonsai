@@ -69,7 +69,8 @@ Règles clés : *cible ≠ livré* ; *être cité dans un test ≠ être prouvé
 
 ### Redondances identifiées (à fusionner, un ID conservé + alias)
 
-I1 ≈ I12 ≈ I26 · I15 ≈ I50 · I21 = I24 (fusionné, cf. `P8.yaml`) · I47 = I73 · I49 = I74 · I51 ⊂ I96 · I53 ⊂ I96.
+Fusionnées : I1 = I12 = I26 (`P3.yaml`) · I15 = I50 (`P2.yaml`) · I21 = I24 (`P8.yaml`).
+À fusionner avec P9 : I47 = I73 · I49 = I74. Conservées distinctes (inclusion) : I51 ⊂ I96 · I53 ⊂ I96.
 
 ---
 
@@ -91,6 +92,15 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
 ### Fait
 
 - `principes.yaml` : les 9 principes (+ `meta`, `question-ouverte` pour P9).
+- `P1.yaml` à `P7.yaml` : migrés depuis `arbre-invariants-precision.md` (67 lignes avec P8).
+  - Fusions : I12 et I26 dans I1 (P3), I50 dans I15 (P2). I51/I53 restent distincts de I96
+    (relation d'inclusion ⊂, pas de doublon).
+  - Écarts esquisse ↔ matrice `invariants.md` tranchés en faveur de la matrice : I31 et I37
+    passent de ✅ à ⚠️ partiel.
+  - `pourquoi` des décisions : rédigés à partir des ADR cités dans `invariants.md`, **à relire
+    par le mainteneur** ; I9, I46, I52, I54, I55 restent « À compléter » (justification introuvable
+    dans les sources lues — I46–I56 sont définis dans `conventions-typage.md`).
+  - P6 n'a toujours aucun énoncé (E).
 - `P8.yaml` : I69 (E), I68/I72/I87 (C), I21/I71 (D), I95 (V).
   - I24 fusionné dans I21 (`alias: [I24]`) — même garantie (unicité/format des clés, `type+boot`), aucune distinction retenue. Le script compte désormais les citations d'un alias pour la ligne canonique.
   - `pourquoi` de I21 et I71 = brouillons « À compléter », **à rédiger par le mainteneur**.
@@ -104,12 +114,8 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
 
 ### Pas encore fait / non vérifié
 
-- **Le script n'a jamais été exécuté** (pas d'accès terminal lors de sa création).
-- Heuristiques à ajuster sur les conventions réelles du dépôt :
-  classification test de type vs runtime (actuellement : `*.test-d.ts` ou dossier contenant « type ») ;
-  faux positifs possibles de la regex `\bI\d+\b`.
-- `invariants:check` n'est pas branché en CI.
-- Le script vérifie les citations, **pas** que les tests passent.
+- Le script vérifie les citations, **pas** que les tests passent (la CI lance Jest avant lui).
+- Faux positifs possibles de la regex `\bI\d+\b` (aucun constaté à ce jour).
 
 ---
 
@@ -122,8 +128,12 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
    rédiger les `pourquoi` de I21/I71 par le mainteneur.
 3. ✅ `invariants:check` branché en CI (`.github/workflows/regression.yml`, étape
    « Invariants registry », après la suite Jest complète).
-4. Si le pilote convient : migrer P1 → P7 puis P9, en fusionnant les redondances au passage
-   et en traitant chaque ligne ∅ (prouver, déclasser en convention, ou supprimer).
+4. ✅ P1 → P7 migrés (0 erreur). **Reste : traiter les 24 lignes ∅** (prouver, déclasser en
+   convention, ou supprimer) :
+   - citées par un test, à qualifier en lisant ce que le test prouve : I2, I3, I11, I17, I23,
+     I25, I27, I28, I29, I34, I36, I46, I51, I52, I55, I56 ;
+   - jamais citées : I13, I19, I32, I38, I44, I45, I53, I54.
+   Puis migrer P9 (y fusionner I47 → I73, I49 → I74).
 5. Écrire l'énoncé manquant de P6 ; arbitrer P9.
 6. Ensuite seulement : générer les vues par composant, puis orienter la réécriture du code
    sur les écarts ⚠️/⏳ révélés.
