@@ -24,12 +24,8 @@
   mode: type
   etat: partiel
 
-- id: I63
-  nature: C
-  parents: [P1, P10]
-  enonce: Un schema Entity ne contient ni `v.transform()` ni coercion — c'est un garde-fou en lecture, la transformation reste dans le command handler (déduit de I6).
-  mode: revue
-  etat: cible
+# I63 (schema sans transformation) et I52 (queries pures) : déclarés dans P10.yaml sous I101,
+# second parent P1.
 
 - id: I22
   nature: D
@@ -53,18 +49,6 @@
   # Contrainte `Entity<TStructure extends TJsonSerializable>` ; le test runtime ne vérifie pas le rejet.
   mode: type
   etat: livre
-
-- id: I52
-  nature: D
-  parents: [P1]
-  enonce: L'Entity expose des méthodes query pures (lecture seule).
-  pourquoi: >
-    À compléter par le mainteneur — voir ADR-10. Hypothèse : séparer
-    lecture et écriture au niveau du type pour qu'une query ne puisse jamais devenir un chemin
-    de mutation détourné.
-  # Le getter `query` est écrit par l'application (fixture du test), le framework n'impose rien.
-  mode: revue
-  etat: convention
 
 - id: I97
   nature: D

@@ -12,15 +12,15 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `E` I5 — Les Views et les Behaviors n'accèdent jamais aux Entities. ⟨type · ✅ · R T⟩
 - `E` I6 — Seule une Feature peut modifier son Entity. ⟨type+boot · ✅ · R T⟩
 - `C` I30 — Une View et un Behavior ne portent aucun domain state — seul un state local de présentation borné (I42) est toléré. ↔ P5 ⟨type · ⚠️ · ·⟩
-- `C` I63 — Un schema Entity ne contient ni `v.transform()` ni coercion — c'est un garde-fou en lecture, la transformation reste dans le command handler (déduit de I6). ↔ P10 ⟨revue · ⏳ · ·⟩
 - `D` I22 — La relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte ; l'Entity est obligatoire, même vide. ↔ P8 ↔ P10 ⟨type+boot · ✅ · R⟩
 - `D` I46 — `TStructure` (state d'une Entity) est contraint à `TJsonSerializable`. ⟨type · ✅ · R⟩
-- `D` I52 — L'Entity expose des méthodes query pures (lecture seule). ⟨revue · 📐 · R⟩
 - `D` I97 — `Entity.mutate()` utilise `Immer.produceWithPatches`. ⟨run · ✅ · R⟩
 - `D` I51 — Les notifications de mutation d'une Entity sont auto-découvertes sur sa Feature (`on<Key>EntityUpdated` / `onAnyEntityUpdated`) — résumé de I96. ⟨boot · ✅ · R⟩
   - `D` I96 — Le dispatch des notifications suit un ordre déterministe (clés changées par ordre alphabétique, puis catch-all) via une souscription unique, avec isolation des erreurs par handler. ⟨boot · ✅ · R⟩
     - `V` I53 — Une clé de handler `on<Key>EntityUpdated` inconnue du state de l'Entity est rejetée au bootstrap. ⟨boot · ✅ · R⟩
   - `D` I98 — Une mutation déclenchée pendant un cycle de notification est mise en file FIFO plutôt qu'exécutée immédiatement, avec une profondeur de ré-entrance bornée. ↔ P4 ⟨run · ✅ · R⟩
+
+*Rattachés en second parent :* I101, I63, I52
 
 ## P2 — Dépendances déclarées
 
@@ -162,5 +162,8 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 **Chaque responsabilité du framework est portée par un seul rôle, et chaque rôle n'en porte qu'une ; aucun rôle n'empiète sur celle d'un autre.**
 
 - `E` I100 — Chaque rôle porte une seule responsabilité : Entity garde et mute l'état, Feature décide du métier, View projette, Composer décide du placement, Behavior enrichit le comportement, Foundation porte le layout racine, Application amorce. ⟨revue · 📐 · ·⟩
+  - `C` I101 — Une Entity ne porte aucune logique métier : elle garde l'état, applique les mutations que sa Feature lui fournit et expose des lectures pures ; toute décision (validation métier, transformation, refus d'une intention) appartient à la Feature. ↔ P1 ⟨revue · 📐 · ·⟩
+    - `C` I63 — Un schema Entity ne contient ni `v.transform()` ni coercion — c'est un garde-fou en lecture, la transformation reste dans le command handler. ↔ P1 ⟨revue · ⏳ · ·⟩
+    - `D` I52 — L'Entity expose des méthodes query pures (lecture seule). ↔ P1 ⟨revue · 📐 · R⟩
 
-*Rattachés en second parent :* I63, I22, I44, I35, I45, I36, I67, I23
+*Rattachés en second parent :* I22, I44, I35, I45, I36, I67, I23

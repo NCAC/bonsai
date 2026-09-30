@@ -3,12 +3,38 @@
 # Champs : voir P8.yaml pour la légende complète.
 # P10 dit pourquoi les rôles sont distincts. Les décisions qu'il justifie restent dans leur
 # branche d'origine et portent P10 en second parent (listées sous P10 dans l'arbre généré).
-# Écart : aucun invariant n'énonce qu'une Entity ne porte aucune logique métier (I63 en est
-# seulement une trace) — c'est pourtant la raison d'être de la séparation Entity / Feature.
 
 - id: I100
   nature: E
   parents: [P10]
   enonce: "Chaque rôle porte une seule responsabilité : Entity garde et mute l'état, Feature décide du métier, View projette, Composer décide du placement, Behavior enrichit le comportement, Foundation porte le layout racine, Application amorce."
+  mode: revue
+  etat: convention
+
+- id: I101
+  nature: C
+  parents: [I100, P1]
+  enonce: "Une Entity ne porte aucune logique métier : elle garde l'état, applique les mutations que sa Feature lui fournit et expose des lectures pures ; toute décision (validation métier, transformation, refus d'une intention) appartient à la Feature."
+  # L'API framework ne décide rien (`mutate` exécute une recette fournie par l'appelant), mais
+  # rien n'empêche une sous-classe d'Entity d'ajouter une méthode qui décide.
+  mode: revue
+  etat: convention
+
+- id: I63
+  nature: C
+  parents: [I101, P1]
+  enonce: Un schema Entity ne contient ni `v.transform()` ni coercion — c'est un garde-fou en lecture, la transformation reste dans le command handler.
+  mode: revue
+  etat: cible
+
+- id: I52
+  nature: D
+  parents: [I101, P1]
+  enonce: L'Entity expose des méthodes query pures (lecture seule).
+  pourquoi: >
+    À compléter par le mainteneur — voir ADR-10. Hypothèse : séparer
+    lecture et écriture au niveau du type pour qu'une query ne puisse jamais devenir un chemin
+    de mutation détourné.
+  # Le getter `query` est écrit par l'application (fixture du test), le framework n'impose rien.
   mode: revue
   etat: convention
