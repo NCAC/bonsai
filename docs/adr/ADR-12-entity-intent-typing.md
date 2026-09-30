@@ -14,7 +14,7 @@ sont typées par `keyof TDef` (I76). Une faute de frappe (`"cart:addItm"`)
 compile. Seul garde-fou : la convention de review « intent `namespace:verbNoun`,
 métier, jamais générique ».
 
-Contraintes : l'Entity ignore son namespace (I5, I6, I22), son constructeur
+Contraintes : l'Entity ignore son namespace (I6, I22), son constructeur
 reste sans argument (ADR-09), les Entities existantes ne doivent pas casser.
 L'intent ne sert pas au dispatch (I96 route sur `changedKeys`) : c'est un
 identifiant de traçabilité, DevTools et event sourcing.

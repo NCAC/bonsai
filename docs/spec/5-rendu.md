@@ -1122,7 +1122,7 @@ ul.Cart-items
 > [communication.md §7](2-architecture/communication.md), corrigé). Par
 > ailleurs, `Channel<TDef>` (`packages/event/src/channel.class.ts`) n'a ni
 > `.namespace` (le champ s'appelle `.name`) ni `.state` — **le Channel ne
-> connaît pas l'Entity** (I5, I80). `NamespacedData` telle qu'esquissée
+> connaît pas l'Entity** (I6, I80). `NamespacedData` telle qu'esquissée
 > ci-dessous n'est donc pas seulement non livrée : sa lecture `C['state']`
 > est **structurellement impossible** avec l'encapsulation actuelle sans
 > changer où vit la référence au state (cf. la question ouverte
@@ -1355,7 +1355,7 @@ function attachView(view: View): void {
   // n'a pas de propriété `listen` (le contrat réel est `get features()`,
   // ADR-14) ; `Channel` n'a pas de méthode `.on()` (l'API réelle est
   // `listenAny(listener)`) ni de champ `.namespace` (`.name`) ; `channel.entity`
-  // n'existe pas — le Channel ne connaît pas l'Entity (I5, I80), cf. la note
+  // n'existe pas — le Channel ne connaît pas l'Entity (I6, I80), cf. la note
   // de §7.4 sur la faisabilité structurelle de cette lecture.
 
   // UN SEUL abonnement par Channel — événement 'any'

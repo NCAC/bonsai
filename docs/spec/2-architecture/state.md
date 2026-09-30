@@ -6,7 +6,7 @@
 
 ---
 
-## 1. Encapsulation de l'Entity (I5, I6, I17)
+## 1. Encapsulation de l'Entity (I6, I17)
 
 L'Entity est le **seul conteneur de state** dans Bonsai. Chaque Feature possède exactement une Entity (I22). Aucun autre composant ne peut posséder ou modifier directement du state.
 
@@ -16,7 +16,7 @@ L'Entity est le **seul conteneur de state** dans Bonsai. Chaque Feature possède
 | --- | --- | --- | --- |
 | 1 | **JsonSerializable** | I46, ADR-10 | Le state peut être sérialisé, snapshotté, transmis SSR. Pas de `Date`, `Map`, `Set`, `class` dans le state |
 | 2 | **Immuable en surface** | I97, ADR-10 | Toute modification passe par `mutate()` (ADR-10). Pas d'affectation directe |
-| 3 | **Propriété exclusive de la Feature** | I5, I6 | Seule la Feature propriétaire accède à son Entity. Views/Behaviors n'y touchent jamais ; les autres Features ne font que `request()` en lecture seule (I17) |
+| 3 | **Propriété exclusive de la Feature** | I6 | Seule la Feature propriétaire accède à son Entity. Views/Behaviors n'y touchent jamais ; les autres Features ne font que `request()` en lecture seule (I17) |
 | 4 | **Notificante** | I96, I97 | Chaque `mutate()` produit des patches et des `changedKeys` qui alimentent le cycle réactif |
 | 5 | **Typée statiquement** | I46 | La structure est le générique `TStructure extends TJsonSerializable` de `Entity<TStructure>` — le type EST le contrat |
 

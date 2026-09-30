@@ -36,7 +36,7 @@
 > | `onDestroy()`, états `destroying`/`destroyed`, `onInit()` asynchrone attendu | Strate 1 | §7, §8 |
 > | Hook `onError()` et `ErrorReporter` | Strate 1 | §8 (modèle d'erreurs) |
 >
-> **Périmètre effectif livré (strate 0 + ADR-09)** : `Feature<TEntity, TChannelDef, TSelfNS>` ; `static readonly channel` ; `abstract get listens()`/`get queries()` ; `implements TFeatureCallbacks` (compile-time) ; constructeur inerte (I94) ; `bootstrap()` (Channel, Entity, auto-découverte des handlers Command/Request/Event/Entity sur le **prototype direct** de la classe, puis `onInit()`) ; `emit(eventName, payload)` et `request(token, name, params)` **sans metas** ; getter public `namespace`, getter `protected` `entity` (I5, I6) ; `onInit()` synchrone, public, sans support async.
+> **Périmètre effectif livré (strate 0 + ADR-09)** : `Feature<TEntity, TChannelDef, TSelfNS>` ; `static readonly channel` ; `abstract get listens()`/`get queries()` ; `implements TFeatureCallbacks` (compile-time) ; constructeur inerte (I94) ; `bootstrap()` (Channel, Entity, auto-découverte des handlers Command/Request/Event/Entity sur le **prototype direct** de la classe, puis `onInit()`) ; `emit(eventName, payload)` et `request(token, name, params)` **sans metas** ; getter public `namespace`, getter `protected` `entity` (I6) ; `onInit()` synchrone, public, sans support async.
 >
 > **I92 — portée exacte** : la couverture des handlers de listen est garantie **uniquement au compile-time** (`implements TFeatureCallbacks`, TS2515/TS2416). Il n'existe **pas** de filet runtime symétrique à celui de View (I82) et il n'est **pas prévu d'en construire un** : `get listens()` ne porte que des tokens de Channel (pas les noms d'événements attendus), donc l'auto-discovery runtime (`#registerEventListeners`, I48) n'a aucune liste indépendante à laquelle comparer les méthodes présentes — elle peut enregistrer un handler mal nommé qui ne matche rien, jamais détecter une omission. Un contournement du typage (`as any`, JS pur) omettant un handler passe donc inaperçu au runtime. Voir §3bis.
 
@@ -121,7 +121,7 @@ abstract class Feature<
 
   /**
    * L'Entity de cette Feature — typée par la classe concrète (I22, ADR-09).
-   * `protected` : inaccessible hors de la Feature et de ses sous-classes (I5, I6).
+   * `protected` : inaccessible hors de la Feature et de ses sous-classes (I6).
    * Instanciée par `bootstrap()` (Phase 3) — jamais dans le constructeur (I94).
    */
   protected get entity(): TEntity;
@@ -405,7 +405,7 @@ import { CartFeature } from "@cart/cart.feature.js";
 const features = {
   user: UserFeature,
   cart: CartFeature
-  // cart: AnotherFeature,  ← TS1117 : clé dupliquée → I21, I24
+  // cart: AnotherFeature,  ← TS1117 : clé dupliquée → I21
   // Cart: CartFeature,     ← clé non camelCase → never → I21
   // local: SomethingFeature ← réservé → never → I57, I71
   // user: CartFeature,     ← TSelfNS "cart" ≠ clé "user" → erreur satisfies → I72
@@ -557,7 +557,7 @@ disponibles via `this` dans le contexte d'une Feature :
 
 ```typescript
 /**
- * Émet un Event sur le Channel propre de la Feature (I1, I12).
+ * Émet un Event sur le Channel propre de la Feature (I1).
  *
  * - eventName : doit correspondre à une clé de TChannel['events']
  * - payload : typé depuis TChannel['events'][eventName]
@@ -572,7 +572,7 @@ protected emit<K extends keyof TChannel['events'] & string>(
 ): void;
 ```
 
-> Seule la Feature propriétaire peut `emit()` sur son Channel (I1, I12).
+> Seule la Feature propriétaire peut `emit()` sur son Channel (I1).
 > Les Views/Behaviors n'ont **jamais** accès à `emit()` (I4, ADR-01).
 
 ### C2 — `handle` : implicite via convention `onXXX` (§5)
@@ -882,7 +882,7 @@ abstract class Feature<
    */
   protected abstract get Entity(): new () => TEntity;
 
-  /** Accès direct à l'Entity — Feature est le seul propriétaire (I5, I6, I22). */
+  /** Accès direct à l'Entity — Feature est le seul propriétaire (I6, I22). */
   protected get entity(): TEntity { /* ... */ }
 
   /**

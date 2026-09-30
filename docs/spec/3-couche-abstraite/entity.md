@@ -132,7 +132,7 @@ abstract class Entity<TStructure extends TJsonSerializable> {
    * Getter public en **lecture seule** : la Feature propriétaire le lit
    * directement (`this.entity.state`). Toute écriture passe exclusivement
    * par `mutate()` (ADR-10, I6). L'Entity elle-même n'est accessible
-   * qu'à sa Feature (`Feature.entity` est `protected` — I5).
+   * qu'à sa Feature (`Feature.entity` est `protected` — I6).
    */
   get state(): TStructure;
 
@@ -275,7 +275,7 @@ L'Entity expose son état via un getter unique `state` en **lecture seule** ; se
 | Aspect | Règle |
 | --- | --- |
 | **Source unique** | `this.state` est la seule source de vérité du state de la Feature |
-| **Lecture seule** | Getter public `state` — lisible par la Feature propriétaire ; l'Entity elle-même n'est accessible qu'à sa Feature (I5) |
+| **Lecture seule** | Getter public `state` — lisible par la Feature propriétaire ; l'Entity elle-même n'est accessible qu'à sa Feature (I6) |
 | **Initialisé** | Via `protected abstract defineInitialState()` (ADR-10) — assigné dans le constructeur de la base class. Pas de state `undefined` possible |
 | **Jsonifiable** | Toujours un plain object conforme à `TJsonSerializable` (ADR-10) |
 | **Écriture contrôlée** | Seul `mutate()` produit un nouveau state (Immer) — aucune affectation directe |

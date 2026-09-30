@@ -88,7 +88,7 @@ que le type system ne peut pas attraper :
 | Handler manquant | Command sans handler | `NoHandlerError` levee par `Channel.trigger()` — **livre** |
 | Replier manquant | Request sans replier | `Channel.request()` retourne `null`, **sans erreur** (ADR-02) — **livre** |
 | Double handler | Deux handlers/repliers pour le même Command/Request | `DuplicateHandlerError` levee par `Channel.handle()`/`reply()` (I10) — **livre** |
-| Mutation externe | Tentative de modifier une Entity hors Feature | ⏳ Aucun garde-fou runtime — `Feature.entity` est `protected` (I5, I6), donc **impossible a compiler** depuis l'exterieur ; aucun Proxy/`Object.freeze` n'existe pour intercepter un contournement (`as any`) |
+| Mutation externe | Tentative de modifier une Entity hors Feature | ⏳ Aucun garde-fou runtime — `Feature.entity` est `protected` (I6), donc **impossible a compiler** depuis l'exterieur ; aucun Proxy/`Object.freeze` n'existe pour intercepter un contournement (`as any`) |
 
 ### 2.2 Messages d'erreur et diagnostics
 
@@ -252,7 +252,7 @@ hardInvariant(
 );
 ```
 
-> Un cas comme « une Feature emet sur le Channel d'une autre » (I1, I12)
+> Un cas comme « une Feature emet sur le Channel d'une autre » (I1)
 > n'a **pas besoin** d'un `invariant()` runtime : `emit()` n'accepte que les
 > clés de `TChannelDef['events']` propre a la Feature — la violation est
 > **structurellement impossible** a exprimer, donc rejetee au compile-time,

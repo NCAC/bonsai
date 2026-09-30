@@ -1,7 +1,7 @@
 /**
  * @bonsai/application - Version 0.0.1
  * Bundled by Bonsai Build System
- * Date: 2026-09-24T20:07:54.144Z
+ * Date: 2026-09-30T06:19:09.235Z
  */
 import { Radio } from '@bonsai/event';
 import { BonsaiNamespaceError, assertValidNamespace } from '@bonsai/feature';
@@ -56,7 +56,7 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
  *
  * Invariants:
  *   I23  — Application is dormant at runtime (no handle/emit/listen/request)
- *   I24  — The manifest guarantees uniqueness at compile time; Application
+ *   I21  — The manifest guarantees uniqueness at compile time; Application
  *          validates format, reserved names and `channel` consistency at bootstrap
  *   I33  — An Application without a Foundation cannot render anything
  *   I56  — Every Feature's onInit() runs before the Foundation is created

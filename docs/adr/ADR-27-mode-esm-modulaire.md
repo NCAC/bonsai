@@ -38,5 +38,5 @@ imports source ; la différence est un paramètre de build.
 ## Conséquences
 
 - Le build doit savoir produire les deux modes (ADR-29, « Build 2 »).
-- **Point ouvert** : un manifest partiellement alimenté au runtime ne bénéficie plus de `satisfies StrictManifest` pour les modules chargés tardivement ; seul le filet runtime de `start()` s'applique (I24). À trancher avec le registry.
+- **Point ouvert** : un manifest partiellement alimenté au runtime ne bénéficie plus de `satisfies StrictManifest` pour les modules chargés tardivement ; seul le filet runtime de `start()` s'applique (I21). À trancher avec le registry.
 - Contributions tardives et plugins tiers : hors v1 ([roadmap](../ROADMAP.md)).

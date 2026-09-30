@@ -3,7 +3,7 @@
  *
  * Invariants prouvés :
  *   I23  — Application est dormante au runtime
- *   I24  — Manifest garantit l'unicité au compile-time ; Application valide
+ *   I21  — Manifest garantit l'unicité au compile-time ; Application valide
  *          format + réservés + cohérence des `channels` au bootstrap (amendé ADR-08)
  *   I33  — Application sans Foundation ne peut rien afficher
  *   I56  — onInit() de chaque Feature appelé avant la création de la Foundation
@@ -98,7 +98,7 @@ class EmptyFoundation extends Foundation {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-describe("Application bootstrap — Strate 0 [I23, I24, I56, ADR-08]", () => {
+describe("Application bootstrap — Strate 0 [I21, I23, I56, ADR-08]", () => {
   beforeEach(() => {
     resetDOM();
     Radio.reset();

@@ -1,7 +1,7 @@
 /**
  * @bonsai/entity - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-09-24T20:32:46.185Z
+ * Date: 2026-09-30T06:19:04.880Z
  */
 import { Immer } from '@bonsai/immer';
 import { EntityReentrancyError, MutationError } from '@bonsai/error';
@@ -59,7 +59,7 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
  * NOTE: per-key `on<Key>EntityUpdated` handlers are NOT dispatched here —
  * that is the job of `Feature#registerEntityHandlers` (I96), which
  * subscribes to `onAnyEntityUpdated` and routes internally. An Entity never
- * knows its Feature (I5, I6).
+ * knows its Feature (I6).
  */
 var _Entity_instances, _Entity_state, _Entity_initialState, _Entity_listeners, _Entity_initialized, _Entity_draining, _Entity_cycleDepth, _Entity_queue, _Entity_ensureInitialized, _Entity_runCycle;
 Immer.enablePatches();

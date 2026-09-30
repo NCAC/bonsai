@@ -75,6 +75,12 @@ Règles clés : *cible ≠ livré* ; *être cité dans un test ≠ être prouvé
 Toutes traitées. Fusionnées : I6 = I5 (`P1.yaml`, 30/09) · I1 = I12 = I26 (`P3.yaml`) · I15 = I50 (`P2.yaml`) · I21 = I24
 (`P8.yaml`) · I73 = I47 · I74 = I49 (`P9.yaml`). Conservées distinctes (inclusion) : I51 ⊂ I96 · I53 ⊂ I96.
 
+**Alias retirés des références (30/09, option 2)** : plus aucun test, code source, ADR ni doc
+active ne cite un alias ; seules les archives et les esquisses de ce dossier les gardent. Dans la
+spec, la ligne d'un alias est un renvoi « *Fusionné dans …* ». Le champ `alias` reste dans le
+registre comme trace des numéros retirés (jamais réutilisés : le script refuse une collision) et
+le script avertit si un test recite un alias. Pas de renumérotation : les trous sont assumés.
+
 ---
 
 ## Processus de développement cible
@@ -164,6 +170,8 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
 ## À éviter
 
 - Réécrire le code avant que le registre n'ait révélé les écarts.
-- Renuméroter en ENT-001/FEA-001… pendant la transition (cosmétique, coûteux).
+- Renuméroter (ENT-001/FEA-001…, ou numérotation continue) pendant la transition : ~3 800
+  références `I<n>`, une erreur fausse la détection des preuves en silence. À envisager au plus
+  en une passe, registre stabilisé, avec une table de correspondance.
 - Maintenir des vues à la main : tout ce qui est dérivé doit être généré.
 - Organiser la documentation normative par composant plutôt que par principe.

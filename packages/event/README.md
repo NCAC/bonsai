@@ -139,6 +139,6 @@ src/
 
 Les tests de spécification sont dans `tests/unit/` :
 
-- `strate-0/channel.basic.test.ts` — invariants I10, I11, I25, I26, I27, I29, I55
+- `strate-0/channel.basic.test.ts` — invariants I10, I11, I25, I27, I29, I55
 - `strate-0/radio.singleton.test.ts` — comportement runtime de Radio (I15 est prouvé côté types par `tests/types/strate-0/encapsulation.types.test.ts`)
 - `channel.class.test.ts`, `radio.singleton.test.ts` — tests historiques hors strate

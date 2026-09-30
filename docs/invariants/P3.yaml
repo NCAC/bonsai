@@ -28,6 +28,8 @@
 
 # I12 et I26 fusionnés ici : même règle vue sous trois angles (émettre sur son Channel,
 # ne pas émettre sur un Channel étranger, seule la Feature propriétaire appelle emit()).
+# L'autre moitié d'I26 (« un Event est diffusé à N abonnés ») relève d'I11 : les tests qui
+# citaient I26 pour la diffusion 1:N citent désormais I11.
 - id: I1
   nature: C
   parents: [P3]

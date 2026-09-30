@@ -3,7 +3,7 @@
 | Champ | Valeur |
 | --- | --- |
 | **Statut** | 🔵 Tested |
-| **Invariants impactés** | I21, I22, I24, I57, I68, I69, I70, I71, I72 |
+| **Invariants impactés** | I21, I22, I57, I68, I69, I70, I71, I72 |
 | **Livré** | ✅ |
 | **Spec** | [application.md](../spec/3-couche-abstraite/application.md) · [NAMESPACE-MENTAL-MODEL.md](../guides/NAMESPACE-MENTAL-MODEL.md) |
 
@@ -32,7 +32,7 @@ const features = {
 
 Garanties **compile-time** via `StrictManifest<M>` :
 
-- **Unicité** : une clé dupliquée est rejetée par TS1117 (I21, I24).
+- **Unicité** : une clé dupliquée est rejetée par TS1117 (I21).
 - **Format** : `camelCase` plat, lettres uniquement (`CamelCaseNamespace<S>`).
 - **Noms réservés** : `RESERVED_NAMESPACES = ["local", "router"]` résolus en `never` (I57, I71).
 - **Cohérence classe ↔ clé** : le 3ᵉ générique `TSelfNS` de la Feature et `static channel.namespace` doivent égaler la clé (I72, I95 — ADR-09).

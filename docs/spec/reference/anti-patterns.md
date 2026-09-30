@@ -76,11 +76,11 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 **Pourquoi c'est interdit** :
 
-- Viole I1 et I12 (emit uniquement sur son propre Channel)
+- Viole I1 (emit uniquement sur son propre Channel)
 - Usurpe l'identité d'une autre Feature
 - Rend le graphe causal incohérent
 
-**Viole** : I1, I12
+**Viole** : I1
 
 **Détection** : `[Compile]` — `emit()` est typé par `TChannel` (le Channel propre). Tenter d'émettre un événement non déclaré dans `TChannel['events']` produit une erreur TypeScript.
 
@@ -112,7 +112,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 - Permet des mutations non contrôlées
 - Rend impossible la traçabilité des changements
 
-**Viole** : I5, I6
+**Viole** : I6
 
 **Détection** : `[Compile]` — `entity` est un getter `protected` de la Feature : tout accès externe produit `TS2445` (« Property 'entity' is protected and only accessible within class 'Feature' and its subclasses »). Les types `View`, `Behavior`, `Composer` n'ont pas de propriété `entity`. Preuve : `tests/types/strate-0/encapsulation.types.test.ts`.
 
@@ -202,7 +202,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 - Un autre composant _pourrait_ avoir besoin de cette donnée (analytics, persistance, dépendances inter-composants)
 - Détruit le flux unidirectionnel si le state est du domain state
 
-**Viole** : I5, I6, I30
+**Viole** : I6, I30
 
 **Alternative** :
 

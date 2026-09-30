@@ -76,7 +76,7 @@ Contraintes du registry :
 
 > **Point ouvert** (ADR-27) : un manifest alimenté au runtime ne bénéficie plus
 > de `satisfies StrictManifest` pour les modules chargés tard ; seul le filet
-> runtime de `start()` (I24) s'applique. La forme exacte de l'API de
+> runtime de `start()` (I21) s'applique. La forme exacte de l'API de
 > déclaration sera fixée avec ce point.
 
 ---

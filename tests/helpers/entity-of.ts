@@ -1,7 +1,7 @@
 /**
  * Accès de test à l'Entity d'une Feature.
  *
- * `Feature.entity` est `protected` (I5, I6) : aucun code applicatif ne peut y
+ * `Feature.entity` est `protected` (I6) : aucun code applicatif ne peut y
  * accéder. Les tests unitaires qui observent l'état après un Command passent
  * par ce helper — cast structurel explicite, réservé à `tests/`.
  */

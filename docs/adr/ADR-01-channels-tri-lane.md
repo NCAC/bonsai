@@ -3,7 +3,7 @@
 | Champ | Valeur |
 | --- | --- |
 | **Statut** | 🟢 Accepted |
-| **Invariants impactés** | I1, I2, I3, I4, I10, I11, I12, I13, I14, I15, I16, I17, I25, I26, I27 |
+| **Invariants impactés** | I1, I2, I3, I4, I10, I11, I13, I14, I15, I16, I17, I25, I27 |
 | **Livré** | ⚠️ partiel — `Feature.request()` accepte tout token, sans contrôle contre `queries` (I14, I16) |
 | **Spec** | [communication.md](../spec/2-architecture/communication.md) |
 
@@ -26,7 +26,7 @@ de sémantique distincte :
 
 **Les 5 capacités d'une Feature**, et seulement elles :
 
-1. **emit** sur son propre Channel (I1, I12) ;
+1. **emit** sur son propre Channel (I1) ;
 2. **handle** les Commands de son propre Channel ;
 3. **listen** les Events des Channels **déclarés** (I2) ;
 4. **reply** sur son propre Channel (I3) ;

@@ -13,7 +13,7 @@
 | **Audience** | Développeur applicatif écrivant une Feature Bonsai |
 | **Statut** | 🟢 Stable |
 | **Date** | 2026-09-17 (réécrit — audit doc, régression : le mécanisme `static readonly channels: ExternalOf<…>[]` décrit précédemment est supersédé depuis ADR-14/ADR-09) |
-| **Sources** | [ADR-08](../adr/ADR-08-namespace-manifest.md), [ADR-14](../adr/ADR-14-contrats-types.md), [ADR-09](../adr/ADR-09-feature-contract.md), [RFC feature.md](../spec/3-couche-abstraite/feature.md), invariants I21, I24, I68–I73, I93, I95 |
+| **Sources** | [ADR-08](../adr/ADR-08-namespace-manifest.md), [ADR-14](../adr/ADR-14-contrats-types.md), [ADR-09](../adr/ADR-09-feature-contract.md), [RFC feature.md](../spec/3-couche-abstraite/feature.md), invariants I21, I68–I73, I93, I95 |
 
 ---
 

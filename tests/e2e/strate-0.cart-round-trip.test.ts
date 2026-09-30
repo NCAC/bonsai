@@ -22,7 +22,7 @@
  *   6. Assertion DOM : le compteur d'items est mis à jour
  *
  * Invariants prouvés (par transitivité) :
- *   I1, I10, I11, I22, I25, I26, I31, I39, I48, I51
+ *   I1, I10, I11, I22, I25, I31, I39, I48, I51
  *   I73 — CartFeature déclare `static readonly channel: TChannelToken<TDef, "cart">`
  *         (cf. tests/fixtures/cart-feature.fixture.ts — sans cette déclaration,
  *         Application.start() ne peut pas câbler le Channel propre).

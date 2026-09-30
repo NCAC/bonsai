@@ -43,7 +43,7 @@ export class CartFeature
 5. **Notifications Entity** auto-découvertes : `on{Key}EntityUpdated(prev, next, patches)` par clé racine, `onAnyEntityUpdated(event)` catch-all (I51, I96). Dispatch côté Feature ; un handler qui throw devient une `BroadcastError` isolée.
 6. **Constructeur inerte** (I94) : seulement `assertValidNamespace` + assignation. Sentinel en phase 0b : un side-effect Radio dans le ctor fait échouer `start()`.
 7. **`TStrictFeatureClass<NS>`** (I95) : `static channel` présent et `channel.namespace === NS`, vérifié au `satisfies StrictManifest` (ADR-08).
-8. **Capacités** : `emit()` (propre Channel) et `request()` (tokens déclarés) sont `protected` ; handle, listen et reply sont implicites. `entity` est `protected` (I5, I6).
+8. **Capacités** : `emit()` (propre Channel) et `request()` (tokens déclarés) sont `protected` ; handle, listen et reply sont implicites. `entity` est `protected` (I6).
 
 ## Alternatives rejetées
 

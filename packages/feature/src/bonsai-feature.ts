@@ -9,11 +9,10 @@
  *   C5 — request(token, name, params) to declared Channels (typed by the token, ADR-14)
  *
  * Invariants:
- *   I1  — A Feature can only emit() on its own Channel
+ *   I1  — A Feature can only emit() on its own Channel, never on another Feature's
  *   I2  — A Feature can listen to Events of declared external Channels
  *   I3  — A Feature can only reply on its own Channel
- *   I5  — An Entity is only accessible to its owning Feature
- *   I12 — No Feature can emit on another Feature's Channel
+ *   I6  — An Entity is only accessible to its owning Feature
  *   I21 — Every Feature MUST be registered in the application manifest under
  *         a unique, flat camelCase namespace key (ADR-08)
  *   I22 — namespace ↔ Feature ↔ Entity is a strict 1:1:1 relation
@@ -216,7 +215,7 @@ export abstract class Feature<
   }
 
   /**
-   * Access to the Entity (I5, I6 — exclusive owner).
+   * Access to the Entity (I6 — exclusive owner).
    * `protected`: only the Feature and its subclasses reach it.
    * Typed by the concrete class (TEntity) thanks to ADR-09.
    */
@@ -254,7 +253,7 @@ export abstract class Feature<
   // ─── Capabilities (C1–C5) ──────────────────────────────────────────────
 
   /**
-   * C1 — Emits a typed Event on this Feature's own Channel (I1, I12, ADR-14).
+   * C1 — Emits a typed Event on this Feature's own Channel (I1, ADR-14).
    */
   protected emit<K extends keyof TChannelDef["events"] & string>(
     eventName: K,

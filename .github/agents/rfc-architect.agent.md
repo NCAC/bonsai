@@ -189,9 +189,9 @@ Mon rôle est de **concevoir**, **formaliser** et **arbitrer** — pas d'implém
    - Les noms de types respectent les conventions (préfixe `T` pour types, `I` pour interfaces)
 
 3. **Cohérence architecturale**
-   - Aucun composant ne dépasse ses frontières (I4, I5, I6, I12, I35, I36)
+   - Aucun composant ne dépasse ses frontières (I1, I4, I6, I35, I36)
    - Le flux reste unidirectionnel (I1, I10, I11, I13)
-   - L'encapsulation du state est respectée (I5, I6, I17, I22, I30)
+   - L'encapsulation du state est respectée (I6, I17, I22, I30)
    - Les niveaux DOM sont respectés (I38, I39, I40, I41)
 
 4. **Qualité rédactionnelle**

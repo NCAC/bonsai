@@ -68,7 +68,7 @@ class Application<M extends TFeaturesManifest = TFeaturesManifest> {
 
 - Le **manifest** est l'autorité unique des namespaces (I68, I69) : la classe Feature reçoit le sien par son constructeur, `new FeatureClass(namespace)`. Il n'y a ni `register()` ni `static namespace`.
 - `satisfies StrictManifest<AppManifest>` vérifie au compile-time : clé camelCase plate (I21), non réservée — `local` (I57), `router` (I28) — (I71), `TSelfNS` de la classe aligné sur la clé (I72), présence et cohérence de `static channel` (I73, I95).
-- Une clé dupliquée est une erreur de compilation (TS1117) : l'unicité (I24) ne dépend pas du runtime.
+- Une clé dupliquée est une erreur de compilation (TS1117) : l'unicité (I21) ne dépend pas du runtime.
 
 ## 3. `start()` — séquence de bootstrap
 

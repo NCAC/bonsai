@@ -133,6 +133,9 @@ for (const l of lignes) {
   for (const a of l.alias ?? []) {
     const ac = citations.get(a);
     if (!ac) continue;
+    warnings.push(
+      `${a} : alias de ${l.id} encore cité (${[...ac.T, ...ac.R].join(", ")}) — citer ${l.id}`
+    );
     const c = citations.get(l.id) ?? { T: new Set(), R: new Set() };
     ac.T.forEach((f) => c.T.add(f));
     ac.R.forEach((f) => c.R.add(f));

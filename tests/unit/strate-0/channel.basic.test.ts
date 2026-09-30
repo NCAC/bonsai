@@ -3,9 +3,8 @@
  *
  * Invariants prouvés :
  *   I10  — Un Command a un seul handler (la Feature propriétaire)
- *   I11  — Un Event peut avoir N subscribers
+ *   I11  — Un Event peut avoir N subscribers (emit() = Event 1:N)
  *   I25  — trigger() = Command (1:1)
- *   I26  — emit() = Event (1:N)
  *   I27  — Un Command peut être refusé ; un Event est un fait irrévocable
  *   I29  — reply() retourne T synchrone — request() → T | null
  *   I55  — reply() ne throw jamais — retourne T ou null
@@ -32,7 +31,7 @@ import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 // ============================================================================
 import { Channel } from "@bonsai/event";
 
-describe("Channel tri-lane basic — Strate 0 [I10, I11, I25, I26, I27, I29, I55]", () => {
+describe("Channel tri-lane basic — Strate 0 [I10, I11, I25, I27, I29, I55]", () => {
   let channel: Channel;
 
   beforeEach(() => {
@@ -88,7 +87,7 @@ describe("Channel tri-lane basic — Strate 0 [I10, I11, I25, I26, I27, I29, I55
   // Lane 2 — Events (emit → listen, 1:N)
   // ═══════════════════════════════════════════════════════════════════
 
-  describe("Lane 2 — Events (emit → listen) [I11, I26]", () => {
+  describe("Lane 2 — Events (emit → listen) [I11]", () => {
     it("I11 — emit() notifies all registered listeners", () => {
       const listener1 = jest.fn();
       const listener2 = jest.fn();
@@ -104,7 +103,7 @@ describe("Channel tri-lane basic — Strate 0 [I10, I11, I25, I26, I27, I29, I55
       expect(listener3).toHaveBeenCalledTimes(1);
     });
 
-    it("I26 — emit() passes payload to all listeners", () => {
+    it("I11 — emit() passes payload to all listeners", () => {
       const listener = jest.fn();
       const payload = { item: { productId: "123", name: "Widget" } };
 

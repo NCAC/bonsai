@@ -2,11 +2,10 @@
  * Tests Strate 0 — Feature core
  *
  * Invariants prouvés :
- *   I1   — Feature ne peut emit() que sur son propre Channel
+ *   I1   — Feature ne peut emit() que sur son propre Channel, jamais sur celui d'une autre
  *   I2   — Feature peut listen les Events des Channels externes déclarés
  *   I3   — Feature ne peut reply que sur son propre Channel
- *   I5   — Entity n'est accessible que par sa Feature propriétaire
- *   I12  — Aucune Feature ne peut emit sur le Channel d'une autre
+ *   I6   — Entity n'est accessible que par sa Feature propriétaire
  *   I17  — Feature peut request en lecture seule
  *   I21  — Chaque Feature DOIT être enregistrée dans le manifest sous une
  *          clé namespace unique camelCase plat (amendé ADR-08)
@@ -298,7 +297,7 @@ describe("Feature core — Strate 0", () => {
 
   // ─── C1 — emit(event) ─────────────────────────────────────────
 
-  describe("I1, I12 / C1 — emit() only on own Channel", () => {
+  describe("I1 / C1 — emit() only on own Channel", () => {
     it("Feature can emit events on its own Channel", () => {
       const feature = new CartFeature("cart");
       feature.bootstrap();

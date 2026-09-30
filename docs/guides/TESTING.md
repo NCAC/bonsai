@@ -102,7 +102,7 @@ tests/
 ├── fixtures/
 │   └── cart-feature.fixture.ts      # CartEntity/CartFeature/CartView/Composer/Foundation partagés
 ├── helpers/
-│   ├── entity-of.ts                 # accès de test à Feature#entity (protected, I5/I6)
+│   ├── entity-of.ts                 # accès de test à Feature#entity (protected, I6)
 │   ├── create-test-app.ts
 │   └── dom-setup.ts
 └── setup.ts
@@ -126,7 +126,7 @@ npx tsc --noEmit -p tsconfig.test.json             # type-check des tests (@ts-e
 
 ## 3. Test d'une Entity
 
-Les Entities sont testées **directement**, sans passer par une Feature — `tests/unit/strate-0/entity.basic.test.ts` le fait explicitement (I5/I6 protègent `Feature#entity` de l'accès applicatif, pas l'Entity elle-même en dehors de ce contexte). On teste `mutate()` (ADR-10, seule API de mutation) et les méthodes du `get query()` (I52) :
+Les Entities sont testées **directement**, sans passer par une Feature — `tests/unit/strate-0/entity.basic.test.ts` le fait explicitement (I6 protègent `Feature#entity` de l'accès applicatif, pas l'Entity elle-même en dehors de ce contexte). On teste `mutate()` (ADR-10, seule API de mutation) et les méthodes du `get query()` (I52) :
 
 ```typescript
 import { describe, it, expect, beforeEach } from "@jest/globals";
@@ -194,7 +194,7 @@ import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { Feature, type TFeatureCallbacks } from "@bonsai/feature";
 import { Entity } from "@bonsai/entity";
 import { Radio, type TChannelToken } from "@bonsai/event";
-import { entityOf } from "../../helpers/entity-of"; // Feature#entity est protected (I5, I6)
+import { entityOf } from "../../helpers/entity-of"; // Feature#entity est protected (I6)
 
 class CartEntity extends Entity<{ items: unknown[]; total: number }> {
   protected defineInitialState() {
@@ -250,7 +250,7 @@ describe("CartFeature", () => {
 });
 ```
 
-> `Feature#entity` est `protected` (I5, I6) — un test qui doit observer l'état
+> `Feature#entity` est `protected` (I6) — un test qui doit observer l'état
 > après un Command passe par `entityOf(feature)` (`tests/helpers/entity-of.ts`),
 > un cast structurel explicite réservé à `tests/`, jamais utilisé en dehors.
 
@@ -355,7 +355,7 @@ npx tsc --noEmit -p tsconfig.test.json
 | --- | --- |
 | ✅ Un `describe` par composant/invariant, citant l'invariant prouvé en commentaire d'en-tête | ADR-32 — un test documente l'invariant qu'il prouve |
 | ✅ `Radio.reset()` dans `beforeEach` pour les tests Feature/View/Composer | Isole chaque test (Radio est un singleton) |
-| ✅ `entityOf(feature)` pour lire l'Entity depuis un test (jamais `feature.entity` — `protected`) | I5, I6 |
+| ✅ `entityOf(feature)` pour lire l'Entity depuis un test (jamais `feature.entity` — `protected`) | I6 |
 | ✅ `@jest-environment jsdom` uniquement sur les fichiers qui en ont besoin | `testEnvironment: "node"` par défaut — coût jsdom évité ailleurs |
 | ✅ Fixtures partagées (`tests/fixtures/`) pour les mini-domaines réutilisés (Cart) | DRY, cohérence avec la gate E2E |
 
@@ -365,7 +365,7 @@ npx tsc --noEmit -p tsconfig.test.json
 | --- | --- | --- |
 | ❌ Croire que `pnpm test` type-check `tests/types/` | `ts-jest` tourne en `isolatedModules: true` — aucun type-check | `npx tsc --noEmit -p tsconfig.test.json` (§7) |
 | ❌ Mocker `Radio` avec un objet fait main | Radio est un singleton simple à réinitialiser | `Radio.reset()` + `Radio.me()` réels |
-| ❌ Accéder à `feature.entity` depuis un test | `protected` (I5, I6) — ne compile pas | `entityOf(feature)` (`tests/helpers/entity-of.ts`) |
+| ❌ Accéder à `feature.entity` depuis un test | `protected` (I6) — ne compile pas | `entityOf(feature)` (`tests/helpers/entity-of.ts`) |
 | ❌ Référencer `createTestFeature`/`createTestView`/`MockChannel`/`@bonsai/testing` | N'existe pas dans le code livré | Instanciation directe + `Radio.reset()` (§3–§5) |
 | ❌ Tests de View sans `@jest-environment jsdom` | `document` est `undefined` en environnement `node` | Ajouter le docblock en tête de fichier |
 

@@ -19,8 +19,8 @@
  *      dynamic manifest).
  *
  * Invariants covered:
- *   I21          — unique, flat camelCase namespace
- *   I24          — Application validates format + reserved names at bootstrap
+ *   I21          — unique, flat camelCase namespace; Application re-validates
+ *                  format + reserved names at bootstrap
  *   I57          — `local` is reserved (ADR-17)
  *   I68          — the namespace is carried by the manifest, not by a `static`
  *   I69          — the manifest is the single source of truth for identity

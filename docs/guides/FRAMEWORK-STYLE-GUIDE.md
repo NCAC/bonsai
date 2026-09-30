@@ -341,7 +341,7 @@ const changedKeys = [...new Set(patches.map(p => String(p.path[0])))];
 
 - Le `private` TypeScript est un mensonge runtime — contournable via `(instance as any)._field`
 - Le `#` ES natif est **enforcement runtime réel** — `TypeError` si accès externe
-- Cohérent avec I5 (Entity n'est accessible que par sa Feature) et I6 (state encapsulé)
+- Cohérent avec I6 (Entity accessible uniquement par sa Feature, state encapsulé)
 - Pas de faux sentiment de sécurité : si c'est privé, c'est _vraiment_ privé
 
 **Prérequis** : `"target": "ES2022"` minimum dans `tsconfig.base.json`.
@@ -431,7 +431,7 @@ export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
 > **DEVRAIT** : le code applicatif **DEVRAIT** être organisé en **un dossier
 > par domaine/fonctionnalité**, regroupant tous les fichiers du domaine
 > (Feature, Entity, View, Behavior, Composer, styles, templates).
-
+>
 > **NE DEVRAIT PAS** : le code applicatif **NE DEVRAIT PAS** être organisé
 > par type de composant (un dossier `views/`, un dossier `features/`, etc.).
 

@@ -144,7 +144,7 @@ Le flux canonique d'une interaction utilisateur suit un chemin **strictement uni
 >
 > - Le Command a un **seul** handler (I10)
 > - L'Event peut avoir **N** subscribers (I11)
-> - Seule la Feature propriétaire peut `emit()` sur son Channel (I1, I12)
+> - Seule la Feature propriétaire peut `emit()` sur son Channel (I1)
 > - La View ne peut jamais `emit()` (I4)
 > - Le flux ne remonte jamais : pas de Event → Command automatique
 
@@ -212,7 +212,7 @@ Chaque Feature déclare un **namespace unique** (I21), `camelCase` plat, qui ser
 
 | Règle | Invariant |
 | --- | --- |
-| Unicité stricte | I21, I24 — collision de clés = erreur **compile-time** (TS1117, clé d'objet dupliquée dans le manifest, ADR-08) ; un cast `as any`/manifest construit dynamiquement reste un filet runtime |
+| Unicité stricte | I21 — collision de clés = erreur **compile-time** (TS1117, clé d'objet dupliquée dans le manifest, ADR-08) ; un cast `as any`/manifest construit dynamiquement reste un filet runtime |
 | Relation 1:1:1 | I22 — un namespace = une Feature = une Entity |
 | Réservés | `router` (I28), `local` (I57) |
 | Format | `camelCase` plat — première lettre minuscule, puis lettres uniquement (`a`–`z`, `A`–`Z`) : pas de `.`, `/`, `-`, `_`, ni de chiffre |
@@ -252,7 +252,7 @@ type TAnyEventPayload = {
 };
 ```
 
-> ⚠️ **`any` ↔ mutations Entity — pas de lien direct livré** : le Channel ne connaît pas l'Entity (I5, I80) et ne calcule aucun `changedKeys`. `any.changes` est simplement le payload que la Feature a passé à `emit()` — qui _peut_ contenir des données dérivées de `changedKeys` si la Feature les y met explicitement, mais rien ne l'impose. Le modèle « state complet par référence live » de [5-rendu.md §7](../5-rendu.md#7-intégration-avec-la-view) (ADR-26) décrit une consommation **cible strate 1c**, dont l'articulation avec les handlers granulaires livrés (ADR-14) n'est pas tranchée — voir la question ouverte [ADR-26](../../adr/ADR-26-souscription-view.md).
+> ⚠️ **`any` ↔ mutations Entity — pas de lien direct livré** : le Channel ne connaît pas l'Entity (I6, I80) et ne calcule aucun `changedKeys`. `any.changes` est simplement le payload que la Feature a passé à `emit()` — qui _peut_ contenir des données dérivées de `changedKeys` si la Feature les y met explicitement, mais rien ne l'impose. Le modèle « state complet par référence live » de [5-rendu.md §7](../5-rendu.md#7-intégration-avec-la-view) (ADR-26) décrit une consommation **cible strate 1c**, dont l'articulation avec les handlers granulaires livrés (ADR-14) n'est pas tranchée — voir la question ouverte [ADR-26](../../adr/ADR-26-souscription-view.md).
 
 ---
 
@@ -319,9 +319,9 @@ bootstrap** à partir des clés du manifest applicatif (ADR-08 — ADR-14).
 
 | Type | Invariants vérifiés | Mecanisme réel |
 | --- | --- | --- |
-| **Compile-time** | I4 (View n'a pas de méthode `emit()`), I21 (namespace non camelCase/reserve -> `never` via `StrictManifest<M>`), I21/I24 (unicité : TS1117), ADR-02/ADR-10 (types) | TypeScript, absence structurelle de méthode |
+| **Compile-time** | I4 (View n'a pas de méthode `emit()`), I21 (namespace non camelCase/reserve -> `never` via `StrictManifest<M>`), I21 (unicité : TS1117), ADR-02/ADR-10 (types) | TypeScript, absence structurelle de méthode |
 | **Bootstrap** | I21/I57/I71 (namespace non camelCase ou réservé -> `BonsaiNamespaceError` `NAMESPACE_INVALID_FORMAT`/`NAMESPACE_RESERVED`), I73/I22 (`static channel` absent ou d'un autre namespace -> `FEATURE_MISSING_CHANNEL`/`FEATURE_CHANNEL_NAMESPACE_MISMATCH`, Phase 0a), I94 (constructeur non inerte -> `Error`, Phase 0b), I70 (reference `listens`/`queries` inconnue -> `NAMESPACE_UNKNOWN_REFERENCE`, Phase 0c), I10 (handler Command/Request duplique -> `DuplicateHandlerError`), I96 (handler Entity pour une clé inconnue -> `BonsaiError` via `hardInvariant`) | `assertValidNamespace()` et `Application.start()` phases 0a–0c, `Channel.handle()`/`reply()` (I10), `Feature#registerEntityHandlers` (I96) |
-| **Runtime** | I1/I12 (`emit` cross-domain) : **absence structurelle** — `emit()` n'accepte que les clés du Channel propre, aucune vérification a faire | Contrainte de type sur `emit<K extends keyof TChannelDef['events']>` — pas de garde runtime nécessaire |
+| **Runtime** | I1 (`emit` cross-domain) : **absence structurelle** — `emit()` n'accepte que les clés du Channel propre, aucune vérification a faire | Contrainte de type sur `emit<K extends keyof TChannelDef['events']>` — pas de garde runtime nécessaire |
 
 > ⏳ **I9** (`hop > maxHops`, anti-boucle causale) n'est pas implemente — aucune
 > notion de `hop` n'existe dans le code livre (cible strate 1b, cf. bandeau

@@ -121,7 +121,7 @@ class CartFeature
       draft.items.push(payload.item);
     });
 
-    // Propagation explicite aux emissions — clé nue sur le Channel propre (I1, I12)
+    // Propagation explicite aux emissions — clé nue sur le Channel propre (I1)
     this.emit("itemAdded", { item: payload.item }, { metas });
   }
 

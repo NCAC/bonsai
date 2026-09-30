@@ -9,7 +9,7 @@
 ## Contexte
 
 Avec une dizaine de composants dans un seul `src/`, rien n'empêche une View
-d'importer l'Entity : les règles d'architecture (I5, I6, I30) reposent alors
+d'importer l'Entity : les règles d'architecture (I6, I30) reposent alors
 sur la discipline. On veut que la frontière soit un fait de compilation, sans
 compliquer l'import côté application.
 

@@ -16,7 +16,7 @@
  * NOTE: per-key `on<Key>EntityUpdated` handlers are NOT dispatched here —
  * that is the job of `Feature#registerEntityHandlers` (I96), which
  * subscribes to `onAnyEntityUpdated` and routes internally. An Entity never
- * knows its Feature (I5, I6).
+ * knows its Feature (I6).
  */
 
 import { Immer } from "@bonsai/immer";

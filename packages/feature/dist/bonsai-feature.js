@@ -1,7 +1,7 @@
 /**
  * @bonsai/feature - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-09-24T20:11:03.268Z
+ * Date: 2026-09-30T06:19:06.075Z
  */
 import { Radio } from '@bonsai/event';
 import { hardInvariant, BroadcastError } from '@bonsai/error';
@@ -62,8 +62,8 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
  *      dynamic manifest).
  *
  * Invariants covered:
- *   I21          — unique, flat camelCase namespace
- *   I24          — Application validates format + reserved names at bootstrap
+ *   I21          — unique, flat camelCase namespace; Application re-validates
+ *                  format + reserved names at bootstrap
  *   I57          — `local` is reserved (ADR-17)
  *   I68          — the namespace is carried by the manifest, not by a `static`
  *   I69          — the manifest is the single source of truth for identity
@@ -143,11 +143,10 @@ function assertValidNamespace(ns) {
  *   C5 — request(token, name, params) to declared Channels (typed by the token, ADR-14)
  *
  * Invariants:
- *   I1  — A Feature can only emit() on its own Channel
+ *   I1  — A Feature can only emit() on its own Channel, never on another Feature's
  *   I2  — A Feature can listen to Events of declared external Channels
  *   I3  — A Feature can only reply on its own Channel
- *   I5  — An Entity is only accessible to its owning Feature
- *   I12 — No Feature can emit on another Feature's Channel
+ *   I6  — An Entity is only accessible to its owning Feature
  *   I21 — Every Feature MUST be registered in the application manifest under
  *         a unique, flat camelCase namespace key (ADR-08)
  *   I22 — namespace ↔ Feature ↔ Entity is a strict 1:1:1 relation
@@ -233,7 +232,7 @@ class Feature {
         return __classPrivateFieldGet(this, _Feature_namespace, "f");
     }
     /**
-     * Access to the Entity (I5, I6 — exclusive owner).
+     * Access to the Entity (I6 — exclusive owner).
      * `protected`: only the Feature and its subclasses reach it.
      * Typed by the concrete class (TEntity) thanks to ADR-09.
      */
@@ -263,7 +262,7 @@ class Feature {
     }
     // ─── Capabilities (C1–C5) ──────────────────────────────────────────────
     /**
-     * C1 — Emits a typed Event on this Feature's own Channel (I1, I12, ADR-14).
+     * C1 — Emits a typed Event on this Feature's own Channel (I1, ADR-14).
      */
     emit(eventName, payload) {
         __classPrivateFieldGet(this, _Feature_channel, "f").emit(eventName, payload);

@@ -21,7 +21,7 @@ sans qu'aucun ADR n'ait tranché leur articulation :
 La cible pose deux problèmes non résolus :
 
 1. Un même Event va-t-il au handler granulaire **et** aux selectors ? Dans quel ordre ? L'un peut-il désactiver l'autre ?
-2. Le selector reçoit le state de l'Entity, alors que le Channel l'ignore par construction et que la View n'a pas d'accès Entity (I5, I80). Par quel chemin passe-t-il ?
+2. Le selector reçoit le state de l'Entity, alors que le Channel l'ignore par construction et que la View n'a pas d'accès Entity (I6, I80). Par quel chemin passe-t-il ?
 
 ## Options en présence
 
