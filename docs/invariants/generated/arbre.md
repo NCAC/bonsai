@@ -12,7 +12,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `E` I6 = I5 — L'Entity n'est accessible qu'à sa Feature propriétaire : aucun autre composant (View, Behavior, autre Feature, Composer, Foundation) ne peut la lire ni la modifier. ⟨type · ✅ · R T⟩
 - `C` I30 — Une View et un Behavior ne portent aucun domain state — seul un state local de présentation borné (I42) est toléré. ↔ P5 ⟨type · ⚠️ · ·⟩
 - `D` I22 — La relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte ; l'Entity est obligatoire, même vide. ↔ P8 ↔ P10 ⟨type+boot · ✅ · R⟩
-- `D` I46 — `TStructure` (state d'une Entity) est contraint à `TJsonSerializable`. ⟨type · ✅ · R⟩
+- `D` I46 — `TStructure` (state d'une Entity) est contraint à `TJsonSerializable`. ⟨type · ✅ · R T⟩
 - `D` I97 — `Entity.mutate()` utilise `Immer.produceWithPatches`. ⟨run · ✅ · R⟩
 - `D` I51 — Les notifications de mutation d'une Entity sont auto-découvertes sur sa Feature (`on<Key>EntityUpdated` / `onAnyEntityUpdated`) — résumé de I96. ⟨boot · ✅ · R⟩
   - `D` I96 — Le dispatch des notifications suit un ordre déterministe (clés changées par ordre alphabétique, puis catch-all) via une souscription unique, avec isolation des erreurs par handler. ⟨boot · ✅ · R⟩
@@ -41,9 +41,9 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `E` I10 — Un Command a un seul handler — la Feature propriétaire du Channel. ⟨boot · ✅ · R⟩
 - `E` I11 — Un Event peut avoir N abonnés. ⟨run · ✅ · R⟩
 - `E` I27 — Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé. ⟨run · ⚠️ · R⟩
-- `C` I1 = I12 = I26 — Une Feature n'émet (`emit`) que sur son propre Channel — aucune émission cross-domain, et seule la Feature propriétaire utilise `emit()`. ⟨type · ✅ · R⟩
-- `C` I25 — Seuls les Views et Behaviors utilisent `trigger()` pour envoyer un Command. ↔ P5 ⟨type · ✅ · R⟩
-- `C` I4 — Une View ou un Behavior peut `trigger`, `listen` et `request` uniquement sur les Channels déclarés — jamais `emit()`. ↔ P2 ⟨type · ✅ · R⟩
+- `C` I1 = I12 = I26 — Une Feature n'émet (`emit`) que sur son propre Channel — aucune émission cross-domain, et seule la Feature propriétaire utilise `emit()`. ⟨type · ✅ · R T⟩
+- `C` I25 — Seuls les Views et Behaviors utilisent `trigger()` pour envoyer un Command. ↔ P5 ⟨type · ⚠️ · R T⟩
+- `C` I4 — Une View ou un Behavior peut `trigger`, `listen` et `request` uniquement sur les Channels déclarés — jamais `emit()`. ↔ P2 ⟨type · ⚠️ · R T⟩
 - `C` I13 — La View est un point d'entrée (Command) et de projection (Event) — la causalité métier n'y transite jamais. ↔ P5 ⟨revue · 📐 · ·⟩
 - `C` I3 — Une Feature ne répond (`reply`) que sur son propre Channel. ⟨boot · ✅ · R⟩
 - `C` I17 — Une Feature ne `request` que sur les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect. ↔ P2 ⟨type · ⚠️ · R⟩
@@ -105,7 +105,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
   - `D` I36 — La View ne compose jamais d'autres Views — elle déclare des slots, le Composer décide de l'instanciation. ↔ P10 ⟨type · ⚠️ · R⟩
   - `D` I37 — Il n'existe qu'un seul type de Composer, qui gère 0..N Views hétérogènes dans un scope DOM fixe. ⟨type · ⚠️ · R⟩
 - `D` I67 — La structure de la Foundation est stable — `get composers()` est lu une seule fois au bootstrap et n'est jamais modifié. ↔ P10 ⟨type+boot · ⚠️ · ·⟩
-- `D` I23 — Application est dormante au runtime — aucune logique métier ni rôle actif entre le bootstrap et le shutdown. ↔ P10 ⟨type · ✅ · R⟩
+- `D` I23 — Application est dormante au runtime — aucune logique métier ni rôle actif entre le bootstrap et le shutdown. ↔ P10 ⟨type · ✅ · R T⟩
 - `D` I28 — Le Router est une Feature interne, de namespace réservé `router`, instanciée par Application et non par le développeur. ↔ P8 ⟨type+boot · ⚠️ · T⟩
 - `D` I94 — Le constructeur d'une Feature est inerte — aucun side-effect au-delà de la validation et de l'assignation du namespace. ↔ P9 ⟨boot · ✅ · R⟩
 
@@ -115,7 +115,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 
 **Une Feature n'a d'identité que par sa clé dans un manifest unique.**
 
-- `E` I69 — Le manifest est l'unique source de vérité de l'identité d'une Feature. ⟨type · ✅ · R⟩
+- `E` I69 — Le manifest est l'unique source de vérité de l'identité d'une Feature. ⟨type · ✅ · R T⟩
   - `C` I68 — Aucune classe Feature ne déclare de `static namespace`. ⟨type · ✅ · R T⟩
   - `C` I72 — `TSelfNS` est la clé de la Feature dans le manifest. ⟨type · ✅ · R T⟩
   - `C` I87 — La clé d'un `TFeatureContract` est le namespace de la Feature référencée. ⟨type · ⚠️ · R T⟩
@@ -136,7 +136,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
   - `D` I103 — Les clés de Commands, d'Events et de Requests d'un `TChannelDefinition` sont en `camelCase` plat, lettres uniquement. ↔ I21 ⟨type · ⏳ · ·⟩
 - `C` I77 — `View.trigger()` n'accepte qu'une clé `"ns:cmd"` validée contre le contrat de la View. ↔ P2 ⟨type · ✅ · T⟩
 - `C` I78 — `View.getUI(key)` n'accepte qu'une clé déclarée dans le `TUIContract` de la View. ↔ P6 ⟨type · ✅ · T⟩
-- `C` I79 — `Feature.request()` n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre. ↔ P2 ⟨type · ✅ · R⟩
+- `C` I79 — `Feature.request()` n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre. ↔ P2 ⟨type · ✅ · R T⟩
 - `D` I48 — Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Request`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework. ⟨boot · ✅ · R⟩
   - `D` I88 — Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis. ⟨revue · 📐 · T⟩
     - `D` I92 — Toute Feature concrète `implements TFeatureCallbacks<TDef, TListens>` ; un handler absent ou mal signé est une erreur de compilation. ⟨type · ✅ · T⟩

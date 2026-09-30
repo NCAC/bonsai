@@ -42,16 +42,18 @@
   nature: C
   parents: [P3, P5]
   enonce: Seuls les Views et Behaviors utilisent `trigger()` pour envoyer un Command.
-  # Feature n'a pas de méthode `trigger` ; les tests exercent Channel.trigger, pas la restriction.
+  # Feature, Composer et Foundation n'ont pas de `trigger` (capabilities.types) ; la View l'a.
+  # Le Behavior n'existe pas encore (strate 2b).
   mode: type
-  etat: livre
+  etat: partiel
 
 - id: I4
   nature: C
   parents: [P3, P2]
   enonce: Une View ou un Behavior peut `trigger`, `listen` et `request` uniquement sur les Channels déclarés — jamais `emit()`.
+  # Livré pour la View (capabilities.types, I77) ; le Behavior n'existe pas encore (strate 2b).
   mode: type
-  etat: livre
+  etat: partiel
 
 - id: I13
   nature: C

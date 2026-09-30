@@ -13,6 +13,8 @@
  *   I28 / I57 / I71 — Mots réservés (`local`, `router`)
  *   I68 — Pas de static namespace
  *   I72 — `TSelfNS` ↔ clé du manifest
+ *   I69 — the manifest is the single source of a Feature's identity: proved
+ *         together by I68 (no static namespace) and I72 (TSelfNS = key)
  *
  * @jest-environment node
  */
