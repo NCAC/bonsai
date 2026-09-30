@@ -19,6 +19,9 @@
   pourquoi: >
     Concentrer la création et la destruction à deux niveaux garantit qu'aucune View ne se recrée ni
     ne se substitue elle-même (ADR-16, ADR-18, ADR-20).
+  # Écart à P9 : règle structurelle non garantie avant l'exécution. `View` est exportée avec un
+  # constructeur public et un `mount()` public : le code applicatif peut instancier et monter une
+  # View lui-même. À remonter au compile-time (création réservée au Composer).
   mode: run
   etat: partiel
 
@@ -41,7 +44,9 @@
   pourquoi: >
     Un type unique évite une famille de règles de cycle de vie différentes selon la variante ; la
     multiplicité est portée par `resolve()`, pas par le typage du Composer (ADR-18).
-  mode: run
+  # Garanti par construction : une seule classe `Composer`, `resolve()` typé
+  # `TResolveResult | null`. Partiel : 0/1 View seulement, N Views en strate 1d.
+  mode: type
   etat: partiel
 
 # I58 (scope du Composer fixé) : déclaré dans P6.yaml sous I99, second parent I20.

@@ -29,8 +29,7 @@
 - id: P9
   titre: Garantie au plus tôt
   meta: true
-  enonce: Toute règle est garantie par construction au compile-time ; à défaut, vérifiée au bootstrap, frontière de confiance. Rien n'est laissé au runtime courant.
-  question-ouverte: Arbitrer la tension avec les invariants vérifiés en mode run (I8, I9, I20, I37, I65, I97, I98).
+  enonce: Toute règle imposée au code applicatif est garantie par construction au compile-time ; à défaut, vérifiée au bootstrap, frontière de confiance. Seule une règle qui dépend de données connues à l'exécution est vérifiée au runtime, et alors par une garde qui échoue explicitement dès la première violation.
 - id: P10
   titre: Une responsabilité, un rôle
   meta: true

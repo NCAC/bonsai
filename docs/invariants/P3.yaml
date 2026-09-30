@@ -106,7 +106,7 @@
 
 - id: I65
   nature: D
-  parents: [I55]
+  parents: [I55, I102]
   enonce: L'erreur d'un replier est reportée via l'`ErrorReporter` avant que `null` ne soit retourné.
   pourquoi: >
     `null` seul rendrait l'échec silencieux : le reporting garantit qu'une erreur de replier n'est

@@ -3,6 +3,14 @@
 # Migration depuis docs/reorganisation-sept-2026/arbre-invariants-precision.md.
 # Champs : voir P8.yaml pour la légende complète.
 # P9 porte sur la manière de garantir P1–P8 : la plupart des lignes ont un second parent.
+#
+# Arbitrage des lignes en mode `run` (30/09/2026, validé par le mainteneur) — trois catégories :
+#   - garde dynamique (violation détectable seulement avec des données d'exécution) :
+#     I8, I9, I98, I65 → légitimes, régies par I102 (échec explicite dès la première violation) ;
+#   - sémantique d'exécution (comportement du framework, pas une garde contre le code applicatif) :
+#     I11, I27, I29, I54, I55, I97 → hors du champ de P9, prouvées par les tests ;
+#   - règle structurelle vérifiée trop tard : I20 → écart à P9, à remonter au compile-time.
+#   I37 était mal qualifié (garanti par construction) : requalifié en mode `type`.
 
 - id: I66
   nature: E
@@ -10,6 +18,19 @@
   enonce: Le bootstrap est la frontière de confiance — après `app.start()` les garanties sont vérifiées, avant, aucun `trigger`/`emit`/`request` n'est accepté.
   mode: boot
   etat: cible
+
+- id: I102
+  nature: D
+  parents: [P9]
+  enonce: "Une règle qui ne peut être vérifiée qu'à l'exécution l'est par une garde fail-fast : erreur explicite dès la première violation, avec son contexte, jamais de dégradation silencieuse."
+  pourquoi: >
+    À l'exécution, on ne peut plus empêcher la violation, seulement la détecter : échouer tout de
+    suite, avec le contexte (intent, correlationId, profondeur), réduit au minimum la distance entre
+    la faute et son diagnostic. Une dégradation silencieuse repousserait le symptôme loin de sa cause.
+  # Livré : I98 (EntityReentrancyError). Partiel : I65 (console.error, ErrorReporter ⏳).
+  # Cible : I8, I9 (metas, strate 1b).
+  mode: run
+  etat: partiel
 
 - id: I75
   nature: C

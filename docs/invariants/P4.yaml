@@ -13,14 +13,14 @@
 
 - id: I8
   nature: C
-  parents: [P4]
+  parents: [P4, I102]
   enonce: Le `correlationId` est créé par l'UI et n'est jamais modifié ensuite.
   mode: run
   etat: cible
 
 - id: I9
   nature: D
-  parents: [P4]
+  parents: [P4, I102]
   enonce: Le `hop` est incrémenté à chaque réaction ; un message au-delà de `MAX_HOPS` est rejeté.
   pourquoi: >
     À compléter par le mainteneur. Hypothèse : une borne explicite transforme une boucle de

@@ -56,8 +56,8 @@ Le graphe est un DAG : `parents[0]` = parent principal, les suivants = seconds p
 6. **P6** Propriété exclusive du DOM — ⚠️ aucun invariant existant ne l'énonce (I38 mêle règle et décision N1/N2/N3).
 7. **P7** Cycle de vie hétéronome.
 8. **P8** Identité par le manifest.
-9. **P9** Garantie au plus tôt (méta-principe) — ❓ tension non arbitrée avec les invariants
-   en mode `run` (I8, I9, I20, I37, I65, I97, I98).
+9. **P9** Garantie au plus tôt (méta-principe) — restreint aux règles imposées au code
+   applicatif ; le runtime n'est admis que pour les gardes dynamiques, fail-fast (I102).
 10. **P10** Une responsabilité, un rôle (méta-principe) — explique pourquoi les rôles sont
     distincts ; énoncé I100 (table rôle → responsabilité), second parent des décisions qu'il
     justifie (I22, I23, I35, I36, I44, I45, I67) ; I101 porte I52 et I63.
@@ -72,7 +72,7 @@ Règles clés : *cible ≠ livré* ; *être cité dans un test ≠ être prouvé
 
 ### Redondances identifiées (à fusionner, un ID conservé + alias)
 
-Toutes traitées. Fusionnées : I1 = I12 = I26 (`P3.yaml`) · I15 = I50 (`P2.yaml`) · I21 = I24
+Toutes traitées. Fusionnées : I6 = I5 (`P1.yaml`, 30/09) · I1 = I12 = I26 (`P3.yaml`) · I15 = I50 (`P2.yaml`) · I21 = I24
 (`P8.yaml`) · I73 = I47 · I74 = I49 (`P9.yaml`). Conservées distinctes (inclusion) : I51 ⊂ I96 · I53 ⊂ I96.
 
 ---
@@ -97,7 +97,7 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
 - `principes.yaml` : les 10 principes (+ `meta` pour P9 et P10, `question-ouverte` pour P9).
 - `P10.yaml` : I100 (E), I101 (C, second parent P1 — Entity sans logique métier, convention), et sous I101 : I52, I63 (déplacés de P1, second parent P1).
   L'arbre généré liste sous chaque principe ses rattachements en second parent.
-  Prochain numéro libre : I102.
+  Prochain numéro libre : I103.
 - `P1.yaml` à `P7.yaml` : migrés depuis `arbre-invariants-precision.md` (67 lignes avec P8).
   - Fusions : I12 et I26 dans I1 (P3), I50 dans I15 (P2). I51/I53 restent distincts de I96
     (relation d'inclusion ⊂, pas de doublon).
@@ -153,7 +153,11 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
 5. ✅ P6 réécrit : exclusivité de propriété par scopes disjoints, fixés au montage (et non au
    bootstrap). Nouvel énoncé I99 (scope explicite attribué d'en haut) ; les droits par rôle sont
    rangés sous I38 ; I58 déplacé de P7 vers P6 (second parent I20). Le Behavior garde N2 sur ses
-   propres nœuds. Reste : arbitrer P9.
+   propres nœuds.
+   ✅ P9 arbitré et validé par le mainteneur (30/09) : les 12 lignes en mode `run` se répartissent en gardes dynamiques
+   (I8, I9, I65, I98 — régies par la nouvelle décision I102, fail-fast), sémantique d'exécution
+   hors du champ de P9 (I11, I27, I29, I54, I55, I97) et un écart structurel à résorber (I20 :
+   `View` instanciable et montable par le code applicatif). I37 requalifié en mode `type`.
 6. Ensuite seulement : générer les vues par composant, puis orienter la réécriture du code
    sur les écarts ⚠️/⏳ révélés.
 

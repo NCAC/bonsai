@@ -9,8 +9,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 
 **Le domain state n'existe que dans une Entity ; seule la Feature propriétaire y accède et le modifie.**
 
-- `E` I5 — Les Views et les Behaviors n'accèdent jamais aux Entities. ⟨type · ✅ · R T⟩
-- `E` I6 — Seule une Feature peut modifier son Entity. ⟨type+boot · ✅ · R T⟩
+- `E` I6 = I5 — L'Entity n'est accessible qu'à sa Feature propriétaire : aucun autre composant (View, Behavior, autre Feature, Composer, Foundation) ne peut la lire ni la modifier. ⟨type · ✅ · R T⟩
 - `C` I30 — Une View et un Behavior ne portent aucun domain state — seul un state local de présentation borné (I42) est toléré. ↔ P5 ⟨type · ⚠️ · ·⟩
 - `D` I22 — La relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte ; l'Entity est obligatoire, même vide. ↔ P8 ↔ P10 ⟨type+boot · ✅ · R⟩
 - `D` I46 — `TStructure` (state d'une Entity) est contraint à `TJsonSerializable`. ⟨type · ✅ · R⟩
@@ -18,7 +17,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `D` I51 — Les notifications de mutation d'une Entity sont auto-découvertes sur sa Feature (`on<Key>EntityUpdated` / `onAnyEntityUpdated`) — résumé de I96. ⟨boot · ✅ · R⟩
   - `D` I96 — Le dispatch des notifications suit un ordre déterministe (clés changées par ordre alphabétique, puis catch-all) via une souscription unique, avec isolation des erreurs par handler. ⟨boot · ✅ · R⟩
     - `V` I53 — Une clé de handler `on<Key>EntityUpdated` inconnue du state de l'Entity est rejetée au bootstrap. ⟨boot · ✅ · R⟩
-  - `D` I98 — Une mutation déclenchée pendant un cycle de notification est mise en file FIFO plutôt qu'exécutée immédiatement, avec une profondeur de ré-entrance bornée. ↔ P4 ⟨run · ✅ · R⟩
+  - `D` I98 — Une mutation déclenchée pendant un cycle de notification est mise en file FIFO plutôt qu'exécutée immédiatement, avec une profondeur de ré-entrance bornée. ↔ P4 ↔ I102 ⟨run · ✅ · R⟩
 
 *Rattachés en second parent :* I101, I63, I52
 
@@ -51,7 +50,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `D` I29 — `reply()` retourne toujours `T` de façon synchrone ; `request()` retourne `T | null`. ⟨run · ✅ · R⟩
   - `C` I64 — Aucun I/O (`fetch`, `Promise`, `setTimeout`, `async/await`) dans un replier. ⟨revue · 📐 · ·⟩
   - `D` I55 — Un replier qui throw ne propage jamais l'erreur — `request()` retourne `null`. ⟨run · ✅ · R⟩
-    - `D` I65 — L'erreur d'un replier est reportée via l'`ErrorReporter` avant que `null` ne soit retourné. ⟨run · ⚠️ · ·⟩
+    - `D` I65 — L'erreur d'un replier est reportée via l'`ErrorReporter` avant que `null` ne soit retourné. ↔ I102 ⟨run · ⚠️ · ·⟩
 
 *Rattachés en second parent :* I76
 
@@ -60,8 +59,8 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 **Toute chaîne de messages est reconstituable jusqu'à l'action d'origine, et sa longueur est bornée.**
 
 - `E` I7 — Tout message (Command, Event, Request) porte des métadonnées causales complètes (correlationId, causationId, hop, origin, timestamp). ⟨boot · ⏳ · ·⟩
-- `C` I8 — Le `correlationId` est créé par l'UI et n'est jamais modifié ensuite. ⟨run · ⏳ · ·⟩
-- `D` I9 — Le `hop` est incrémenté à chaque réaction ; un message au-delà de `MAX_HOPS` est rejeté. ⟨run · ⏳ · ·⟩
+- `C` I8 — Le `correlationId` est créé par l'UI et n'est jamais modifié ensuite. ↔ I102 ⟨run · ⏳ · ·⟩
+- `D` I9 — Le `hop` est incrémenté à chaque réaction ; un message au-delà de `MAX_HOPS` est rejeté. ↔ I102 ⟨run · ⏳ · ·⟩
 - `D` I54 — Les metas sont créées par le framework et propagées explicitement, jamais construites à la main. ⟨run · ⏳ · ·⟩
 
 *Rattachés en second parent :* I98
@@ -105,7 +104,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `E` I19 — La View n'a aucune responsabilité sur son propre cycle de vie — ni création, ni destruction, ni remplacement. ⟨type · ⚠️ · ·⟩
 - `D` I20 — Seuls la Foundation et les Composers créent, détruisent ou remplacent des Views. ⟨run · ⚠️ · R⟩
   - `D` I36 — La View ne compose jamais d'autres Views — elle déclare des slots, le Composer décide de l'instanciation. ↔ P10 ⟨type · ⚠️ · R⟩
-  - `D` I37 — Il n'existe qu'un seul type de Composer, qui gère 0..N Views hétérogènes dans un scope DOM fixe. ⟨run · ⚠️ · R⟩
+  - `D` I37 — Il n'existe qu'un seul type de Composer, qui gère 0..N Views hétérogènes dans un scope DOM fixe. ⟨type · ⚠️ · R⟩
 - `D` I67 — La structure de la Foundation est stable — `get composers()` est lu une seule fois au bootstrap et n'est jamais modifié. ↔ P10 ⟨type+boot · ⚠️ · ·⟩
 - `D` I23 — Application est dormante au runtime — aucune logique métier ni rôle actif entre le bootstrap et le shutdown. ↔ P10 ⟨type · ✅ · R⟩
 - `D` I28 — Le Router est une Feature interne, de namespace réservé `router`, instanciée par Application et non par le développeur. ↔ P8 ⟨type+boot · ⚠️ · T⟩
@@ -129,11 +128,10 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 
 ## P9 — Garantie au plus tôt *(méta-principe)*
 
-**Toute règle est garantie par construction au compile-time ; à défaut, vérifiée au bootstrap, frontière de confiance. Rien n'est laissé au runtime courant.**
-
-> ❓ Arbitrer la tension avec les invariants vérifiés en mode run (I8, I9, I20, I37, I65, I97, I98).
+**Toute règle imposée au code applicatif est garantie par construction au compile-time ; à défaut, vérifiée au bootstrap, frontière de confiance. Seule une règle qui dépend de données connues à l'exécution est vérifiée au runtime, et alors par une garde qui échoue explicitement dès la première violation.**
 
 - `E` I66 — Le bootstrap est la frontière de confiance — après `app.start()` les garanties sont vérifiées, avant, aucun `trigger`/`emit`/`request` n'est accepté. ⟨boot · ⏳ · ·⟩
+- `D` I102 — Une règle qui ne peut être vérifiée qu'à l'exécution l'est par une garde fail-fast : erreur explicite dès la première violation, avec son contexte, jamais de dégradation silencieuse. ⟨run · ⚠️ · ·⟩
 - `C` I75 — Aucun `any` ni `unknown` dans les signatures publiques de `Channel`, `Feature` ou `View`. ⟨revue · ⚠️ · T⟩
 - `C` I76 — Les méthodes de `Channel` sont typées par `TDef` — un nom de message est une clé de la voie, jamais une `string` libre. ↔ P3 ⟨type · ✅ · T⟩
 - `C` I77 — `View.trigger()` n'accepte qu'une clé `"ns:cmd"` validée contre le contrat de la View. ↔ P2 ⟨type · ✅ · T⟩

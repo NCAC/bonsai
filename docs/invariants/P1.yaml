@@ -3,18 +3,17 @@
 # Migration depuis docs/reorganisation-sept-2026/arbre-invariants-precision.md.
 # Champs : voir P8.yaml pour la légende complète.
 
-- id: I5
-  nature: E
-  parents: [P1]
-  enonce: Les Views et les Behaviors n'accèdent jamais aux Entities.
-  mode: type
-  etat: livre
-
+# I5 fusionné ici : même mécanisme (`protected get entity()`) et même test que I6 ; I5 ne
+# couvrait que les Views et Behaviors, I6 que la modification.
 - id: I6
   nature: E
   parents: [P1]
-  enonce: Seule une Feature peut modifier son Entity.
-  mode: type+boot
+  alias: [I5]
+  enonce: "L'Entity n'est accessible qu'à sa Feature propriétaire : aucun autre composant (View, Behavior, autre Feature, Composer, Foundation) ne peut la lire ni la modifier."
+  # Garantie compile-time seule : l'Entity est créée dans `bootstrap()`, stockée en `#entity` et
+  # exposée par `protected get entity()`. Aucune assertion d'ownership au bootstrap (la matrice
+  # d'invariants.md en annonçait une).
+  mode: type
   etat: livre
 
 - id: I30
@@ -91,7 +90,7 @@
 
 - id: I98
   nature: D
-  parents: [I51, P4]
+  parents: [I51, P4, I102]
   enonce: Une mutation déclenchée pendant un cycle de notification est mise en file FIFO plutôt qu'exécutée immédiatement, avec une profondeur de ré-entrance bornée.
   pourquoi: >
     Empêche qu'une mutation lancée depuis un handler de notification ne provoque une récursion
