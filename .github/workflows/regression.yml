@@ -47,6 +47,9 @@ jobs:
       - name: Type-check
         run: pnpm tsc --noEmit
 
+      - name: Type-check (packages + tests)
+        run: pnpm tsc:check:tests
+
       - name: Full test suite
         run: pnpm test:ci
 

@@ -31,6 +31,7 @@
     "test:regression": "npx jest --testPathPattern='regression\\.test\\.ts$' --no-coverage",
     "test:strate-0:regression": "npx jest tests/unit/strate-0/strate-0.regression.test.ts --no-coverage",
     "tsc:check": "tsc --noEmit",
+    "tsc:check:tests": "tsc --noEmit -p tsconfig.test.json",
     "invariants": "tsx tools/invariants/invariants.ts",
     "invariants:check": "tsx tools/invariants/invariants.ts --check"
   },

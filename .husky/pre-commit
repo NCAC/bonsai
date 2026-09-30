@@ -7,6 +7,12 @@ pnpm tsc --noEmit || {
   exit 1
 }
 
+echo "🔍 Type-checking packages/ + tests/ (tsconfig.test.json)..."
+pnpm tsc:check:tests || {
+  echo "❌ Erreurs de typage dans packages/ ou tests/. Commit annulé."
+  exit 1
+}
+
 # ── Gate de non-régression ────────────────────────────────
 echo "🧪 Running regression tests..."
 pnpm test:regression || {
