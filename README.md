@@ -23,16 +23,16 @@ La plupart des frameworks frontend te _laissent_ structurer une app. Bonsai te *
 
 ## Statut — Strate 0 ✅
 
-| Composant                       | Statut             | Coverage |
-| ------------------------------- | ------------------ | -------- |
-| `@bonsai/entity`                | 🟢 Stable          | 100 %    |
-| `@bonsai/feature`               | 🟢 Stable          | 99 %     |
-| `@bonsai/view`                  | 🟢 Stable          | 99 %     |
-| `@bonsai/composer`              | 🟢 Stable          | 96 %     |
-| `@bonsai/foundation`            | 🟢 Stable          | 89 %     |
-| `@bonsai/application`           | 🟢 Stable          | 100 %    |
-| `@bonsai/event` (Channel/Radio) | 🟢 Stable          | 94 %     |
-| `@bonsai/behavior`              | ⏳ Absent (strate 2) | —      |
+| Composant | Statut | Coverage |
+| --- | --- | --- |
+| `@bonsai/entity` | 🟢 Stable | 100 % |
+| `@bonsai/feature` | 🟢 Stable | 99 % |
+| `@bonsai/view` | 🟢 Stable | 99 % |
+| `@bonsai/composer` | 🟢 Stable | 96 % |
+| `@bonsai/foundation` | 🟢 Stable | 89 % |
+| `@bonsai/application` | 🟢 Stable | 100 % |
+| `@bonsai/event` (Channel/Radio) | 🟢 Stable | 94 % |
+| `@bonsai/behavior` | ⏳ Absent (strate 2) | — |
 
 **Gate E2E** vert : un cart round-trip complet (click → trigger → handle → mutate → emit → DOM) traverse les six composants sans aucun mock. Voir [`tests/e2e/strate-0.cart-round-trip.test.ts`](tests/e2e/strate-0.cart-round-trip.test.ts).
 
@@ -107,7 +107,7 @@ new Application({
 
 ## Architecture en 30 secondes
 
-```
+```text
 ┌─────────────────────────────────────┐
 │             Application              │  ← bootstrap, namespaces
 └─────────────────────────────────────┘
@@ -141,7 +141,7 @@ new Application({
 
 ## Structure du dépôt
 
-```
+```text
 bonsai/
 ├── core/              # méta-package @bonsai/core (re-exports)
 ├── packages/          # 12 packages (9 composants/infra + 3 wrappers)
@@ -192,14 +192,14 @@ pnpm run build:no-watch               # build one-shot
 
 La documentation architecturale (spec, ADR) est rédigée en **français** — la langue de conception du projet (cf. [ADR-34](docs/adr/ADR-34-documentation-francais.md)). Des traductions anglaises sont prévues pour les documents stables.
 
-|                |                                                                                                              |
-| -------------- | ------------------------------------------------------------------------------------------------------------ |
-| 📐 **Spec**    | [Source de vérité](docs/spec/README.md) — architecture, contrats, invariants                                  |
-| 📋 **ADR**     | [34 décisions](docs/adr/README.md) — chaque arbitrage architectural                                          |
-| 📖 **Guides**  | [Conventions de code](docs/guides/) — style TypeScript, style framework                                      |
-| 🚪 **Strates** | [ADR-31](docs/adr/ADR-31-strates-perimetre-v1.md) — roadmap de livraison & gates              |
-| 🛠️ **Build**    | [lib/BUILD.md](lib/BUILD.md), [lib/DEVELOPER-GUIDE.md](lib/DEVELOPER-GUIDE.md)                               |
-| 🇬🇧             | [English version](README-EN.md) — non maintenue en priorité tant que le projet n'est pas exposé publiquement |
+| | |
+| --- | --- |
+| 📐 **Spec** | [Source de vérité](docs/spec/README.md) — architecture, contrats, invariants |
+| 📋 **ADR** | [34 décisions](docs/adr/README.md) — chaque arbitrage architectural |
+| 📖 **Guides** | [Conventions de code](docs/guides/) — style TypeScript, style framework |
+| 🚪 **Strates** | [ADR-31](docs/adr/ADR-31-strates-perimetre-v1.md) — roadmap de livraison & gates |
+| 🛠️ **Build** | [lib/BUILD.md](lib/BUILD.md), [lib/DEVELOPER-GUIDE.md](lib/DEVELOPER-GUIDE.md) |
+| 🇬🇧 | [English version](README-EN.md) — non maintenue en priorité tant que le projet n'est pas exposé publiquement |
 
 ## Licence
 

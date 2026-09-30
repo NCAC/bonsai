@@ -997,7 +997,7 @@ onCellClick(event: Event): void {
 ## 7. Intégration avec la View
 
 > ⚠️ **Question ouverte — [ADR-26](../adr/ADR-26-souscription-view.md) (🟡 Proposed).** Le contrat **livré** pour la couche View (ADR-31 strate 0/1a) est celui d'[ADR-14](../adr/ADR-14-contrats-types.md) : des handlers **granulaires** `on{NS}{Event}Event` par Event déclaré dans `features[ns].listens` — l'exact opposé de l'abonnement unique `any` + selector décrit ci-dessous. Aucune View ne s'abonne à `any` aujourd'hui. Ce §7 documente une proposition **cible strate 1c** dont l'articulation avec ADR-14 reste à trancher par un ADR dédié.
-
+>
 > **Cible, non actée (ADR-26)** : Les Views s'abonnent aux Channels via l'événement `any`
 > (auto-émis par le Channel après chaque Event). Les Events granulaires sont destinés
 > à la communication inter-Feature. Les selectors des templates filtrent les clés
@@ -1190,7 +1190,7 @@ type TViewTemplates<TUI extends TUIContract> =
 
 > **Note** : Le développeur écrit simplement `select: (data) => ({ total: data.cart?.total })`.
 > Le framework gère automatiquement le skip quand toutes les valeurs sont `undefined`.
-
+>
 > **localState et selectors** (I57, ADR-17) : Le même pipeline de selectors est utilisé pour le
 > localState. Après un `updateLocal()`, le framework injecte `{ local: changedPartial }` dans le
 > `namespacedData` et dispatch aux templates via leurs selectors. Le développeur écrit

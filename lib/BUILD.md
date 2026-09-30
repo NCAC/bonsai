@@ -11,7 +11,7 @@ Le système de build Bonsai est conçu pour gérer de manière automatique et in
 
 ### Architecture
 
-```
+```text
 lib/build/
 ├── core/                    # Classes centrales
 │   ├── path-manager.class.ts    # Gestion des chemins
@@ -168,7 +168,7 @@ import { MyType } from "bonsai";
 
 Le système fournit des logs détaillés :
 
-```
+```text
 📝 Package @bonsai/types detected as types-only
 🔨 Building types-only package: @bonsai/types
 ✅ Types-only package @bonsai/types built successfully

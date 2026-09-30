@@ -7,7 +7,7 @@
 # Bonsai Framework
 
 > 🇫🇷→🇬🇧 **Secondary language while the project is unreleased** — [README.md](README.md) (French) is the actively maintained source per the project's current stage; this file may lag behind. Full English documentation is planned once the project is mature enough for public exposure (ADR-34).
-
+>
 > ⚠️ **Work in Progress** — strate 0 delivered (April 2026). Public API is stable for the core components; strates 1+ will add Behavior, forms, routing and SSR.
 
 Modern TypeScript framework for opinionated frontend applications — event-driven architecture, strict unidirectional data flow, compile-time safety, and a documented "type-as-contract" philosophy.
@@ -25,16 +25,16 @@ Most frontend frameworks let you _structure_ an app. Bonsai **forces** you to st
 
 ## Status — Strate 0 ✅
 
-| Component                       | Status             | Coverage |
-| ------------------------------- | ------------------ | -------- |
-| `@bonsai/entity`                | 🟢 Stable          | 100 %    |
-| `@bonsai/feature`               | 🟢 Stable          | 99 %     |
-| `@bonsai/view`                  | 🟢 Stable          | 99 %     |
-| `@bonsai/composer`              | 🟢 Stable          | 96 %     |
-| `@bonsai/foundation`            | 🟢 Stable          | 89 %     |
-| `@bonsai/application`           | 🟢 Stable          | 100 %    |
-| `@bonsai/event` (Channel/Radio) | 🟢 Stable          | 94 %     |
-| `@bonsai/behavior`              | ⏳ Absent (strate 2) | —      |
+| Component | Status | Coverage |
+| --- | --- | --- |
+| `@bonsai/entity` | 🟢 Stable | 100 % |
+| `@bonsai/feature` | 🟢 Stable | 99 % |
+| `@bonsai/view` | 🟢 Stable | 99 % |
+| `@bonsai/composer` | 🟢 Stable | 96 % |
+| `@bonsai/foundation` | 🟢 Stable | 89 % |
+| `@bonsai/application` | 🟢 Stable | 100 % |
+| `@bonsai/event` (Channel/Radio) | 🟢 Stable | 94 % |
+| `@bonsai/behavior` | ⏳ Absent (strate 2) | — |
 
 **E2E gate** is green: a full cart round-trip (click → trigger → handle → mutate → emit → DOM) traverses the six components without a single mock. See [`tests/e2e/strate-0.cart-round-trip.test.ts`](tests/e2e/strate-0.cart-round-trip.test.ts).
 
@@ -109,7 +109,7 @@ new Application({
 
 ## Architecture in 30 seconds
 
-```
+```text
 ┌─────────────────────────────────────┐
 │             Application              │  ← bootstrap, namespaces
 └─────────────────────────────────────┘
@@ -143,7 +143,7 @@ new Application({
 
 ## Repo layout
 
-```
+```text
 bonsai/
 ├── core/              # @bonsai/core meta-package (re-exports)
 ├── packages/          # 12 packages (9 components/infra + 3 wrappers)
@@ -194,14 +194,14 @@ pnpm run build:no-watch               # one-shot build
 
 Architectural documentation (spec, ADRs) is written in **French** — the design language of the project (see [ADR-34](docs/adr/ADR-34-documentation-francais.md)). English translations are planned for stable documents.
 
-|                |                                                                                              |
+| | |
 | -------------- | -------------------------------------------------------------------------------------------- |
-| 📐 **Spec**    | [Source of truth](docs/spec/README.md) — architecture, contracts, invariants                  |
-| 📋 **ADRs**    | [34 decisions](docs/adr/README.md) — every architectural trade-off                           |
-| 📖 **Guides**  | [Coding conventions](docs/guides/) — TypeScript style, framework style                       |
-| 🚪 **Strates** | [ADR-31](docs/adr/ADR-31-strates-perimetre-v1.md) — delivery roadmap & gates  |
-| 🛠️ **Build**    | [lib/BUILD-EN.md](lib/BUILD-EN.md), [lib/DEVELOPER-GUIDE-EN.md](lib/DEVELOPER-GUIDE-EN.md)   |
-| 🇫🇷             | [French version](README.md) — primary language while the project is not yet publicly exposed |
+| 📐 **Spec** | [Source of truth](docs/spec/README.md) — architecture, contracts, invariants |
+| 📋 **ADRs** | [34 decisions](docs/adr/README.md) — every architectural trade-off |
+| 📖 **Guides** | [Coding conventions](docs/guides/) — TypeScript style, framework style |
+| 🚪 **Strates** | [ADR-31](docs/adr/ADR-31-strates-perimetre-v1.md) — delivery roadmap & gates |
+| 🛠️ **Build** | [lib/BUILD-EN.md](lib/BUILD-EN.md), [lib/DEVELOPER-GUIDE-EN.md](lib/DEVELOPER-GUIDE-EN.md) |
+| 🇫🇷 | [French version](README.md) — primary language while the project is not yet publicly exposed |
 
 ## License
 
