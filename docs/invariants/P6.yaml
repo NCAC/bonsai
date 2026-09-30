@@ -8,6 +8,7 @@
 - id: I99
   nature: E
   parents: [P6, P7]
+  roles: [View, Behavior, Composer, Foundation]
   enonce: Tout composant de la couche concrète opère dans un scope DOM explicite, attribué par le niveau supérieur, qu'il ne peut ni étendre ni déplacer.
   # Livré : Foundation sur `<body>`, rootElement de la View fourni par le Composer (I31).
   # Non livré : exclusion des slots (I40), scope du Composer figé (I58).
@@ -17,6 +18,7 @@
 - id: I40
   nature: C
   parents: [I99]
+  roles: [View]
   enonce: Le scope DOM d'une View est son `rootElement` moins les sous-arbres des slots qu'elle déclare.
   mode: boot
   etat: partiel
@@ -24,6 +26,7 @@
 - id: I34
   nature: C
   parents: [I99]
+  roles: [View]
   enonce: Le `rootElement` d'une View est un descendant strict de `<body>`, jamais `<body>` lui-même.
   mode: boot
   etat: livre
@@ -31,6 +34,7 @@
 - id: I31
   nature: D
   parents: [I99]
+  roles: [View, Composer]
   enonce: Le `rootElement` d'une View est un sélecteur CSS fourni exclusivement par le Composer.
   pourquoi: >
     Le Composer reste seul décideur du placement ; la View ne fait qu'exploiter le résultat, sans
@@ -41,6 +45,7 @@
 - id: I58
   nature: D
   parents: [I99, I20]
+  roles: [Composer]
   enonce: "Le scope DOM d'un Composer est fixé au bootstrap et ne migre jamais : vivant → suspendu → détruit."
   pourquoi: >
     Un Composer « déplacé » est traité comme une destruction suivie d'une re-création : on évite ainsi
@@ -51,6 +56,7 @@
 - id: I41
   nature: C
   parents: [P6]
+  roles: [View]
   enonce: Chaque clé `@ui` a une source de mutation unique — son template ou `getUI()`, jamais les deux.
   mode: type
   etat: cible
@@ -58,6 +64,7 @@
 - id: I43
   nature: C
   parents: [P6]
+  roles: [Behavior]
   enonce: Les clés `uiEvents` d'un Behavior sont disjointes de celles de sa View hôte.
   mode: boot
   etat: cible
@@ -65,6 +72,7 @@
 - id: I44
   nature: D
   parents: [P6, P10]
+  roles: [Behavior]
   enonce: Un Behavior n'a aucun accès aux propriétés de sa View hôte (`this.view`, `el`, `getUI`).
   pourquoi: >
     Sans cette barrière, un Behavior pourrait contourner ses propres clés déclarées et muter les
@@ -78,6 +86,7 @@
 - id: I38
   nature: D
   parents: [P6]
+  roles: [View, Behavior, Composer, Foundation]
   alias: [I18]
   enonce: "Chaque rôle a des droits d'altération bornés : View N1 à N3 sur son scope, Behavior N1 et N2 sur ses propres nœuds, Foundation N1 sur `<html>`/`<body>`, Composer aucune écriture."
   pourquoi: >
@@ -90,6 +99,7 @@
 - id: I35
   nature: D
   parents: [I38, P10]
+  roles: [Composer]
   enonce: Un Composer n'écrit jamais dans le DOM ; il ne lit son scope que pour résoudre le `rootElement` d'une View enfant.
   pourquoi: >
     Un Composer qui écrirait dans le DOM cumulerait décider et rendre : I35 laisse le rendu à la
@@ -100,6 +110,7 @@
 - id: I33
   nature: D
   parents: [I38]
+  roles: [Foundation]
   enonce: La Foundation est unique par application ; elle seule altère `<html>` et `<body>`, en N1 seulement — attributs et classes, sans ajouter ni retirer de nœud.
   pourquoi: >
     Sans propriétaire unique de `<html>`/`<body>`, deux Views indépendantes pourraient s'y disputer
@@ -111,6 +122,7 @@
 - id: I32
   nature: D
   parents: [I38]
+  roles: [View]
   enonce: La View peut altérer son `rootElement` en N1, mais ne le détruit ni ne le remplace jamais.
   pourquoi: >
     Le `rootElement` appartient au cycle de vie géré par le Composer : si la View pouvait le détruire
@@ -122,6 +134,7 @@
 - id: I39
   nature: D
   parents: [I38]
+  roles: [View]
   enonce: La View accède au DOM exclusivement via `getUI(key)` ; aucun `querySelector` ni accès DOM brut ne lui est exposé.
   pourquoi: >
     Un point d'accès unique empêche la View d'accumuler des sélecteurs ad hoc qui échapperaient au
@@ -132,6 +145,7 @@
 - id: I45
   nature: D
   parents: [I38, P10]
+  roles: [Behavior]
   enonce: Un Behavior altère en N1 et N2 uniquement ses propres nœuds (clés ui déclarées), jamais en N3.
   pourquoi: >
     Le Behavior possède ses propres nœuds mais n'a pas de `rootElement` : il peut les enrichir et y

@@ -16,6 +16,7 @@
 - id: I66
   nature: E
   parents: [P9]
+  roles: [Application]
   enonce: Le bootstrap est la frontière de confiance — après `app.start()` les garanties sont vérifiées, avant, aucun `trigger`/`emit`/`request` n'est accepté.
   mode: boot
   etat: cible
@@ -23,6 +24,7 @@
 - id: I102
   nature: D
   parents: [P9]
+  roles: ["*"]
   enonce: "Une règle qui ne peut être vérifiée qu'à l'exécution l'est par une garde fail-fast : erreur explicite dès la première violation, avec son contexte, jamais de dégradation silencieuse."
   pourquoi: >
     À l'exécution, on ne peut plus empêcher la violation, seulement la détecter : échouer tout de
@@ -36,6 +38,7 @@
 - id: I75
   nature: C
   parents: [P9]
+  roles: [Channel, Feature, View]
   enonce: Aucun `any` ni `unknown` dans les signatures publiques de `Channel`, `Feature` ou `View`.
   # Tests de type seulement ; aucune configuration ESLint dans le dépôt.
   mode: revue
@@ -44,6 +47,7 @@
 - id: I76
   nature: C
   parents: [P9, P3]
+  roles: [Channel]
   enonce: Les méthodes de `Channel` sont typées par `TDef` — un nom de message est une clé de la voie, jamais une `string` libre.
   mode: type
   etat: livre
@@ -51,6 +55,7 @@
 - id: I103
   nature: D
   parents: [I76, I21]
+  roles: [Channel]
   enonce: "Les clés de Commands, d'Events et de Requests d'un `TChannelDefinition` sont en `camelCase` plat, lettres uniquement."
   pourquoi: >
     Même règle que le namespace (I21), pour les mêmes raisons : une clé de message est réemployée
@@ -68,6 +73,7 @@
 - id: I77
   nature: C
   parents: [P9, P2]
+  roles: [View]
   enonce: "`View.trigger()` n'accepte qu'une clé `\"ns:cmd\"` validée contre le contrat de la View."
   mode: type
   etat: livre
@@ -75,6 +81,7 @@
 - id: I78
   nature: C
   parents: [P9, P6]
+  roles: [View]
   enonce: "`View.getUI(key)` n'accepte qu'une clé déclarée dans le `TUIContract` de la View."
   mode: type
   etat: livre
@@ -82,6 +89,7 @@
 - id: I79
   nature: C
   parents: [P9, P2]
+  roles: [Feature]
   enonce: "`Feature.request()` n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre."
   mode: type
   etat: livre
@@ -89,6 +97,7 @@
 - id: I48
   nature: D
   parents: [P9]
+  roles: [Feature, View]
   enonce: Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Request`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework.
   pourquoi: >
     Pas de décorateurs ni d'enregistrement manuel : le nom de la méthode est la déclaration, ce qui
@@ -99,6 +108,7 @@
 - id: I88
   nature: D
   parents: [I48]
+  roles: [Feature, View]
   enonce: Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis.
   pourquoi: >
     Symétrie contrat/callbacks : la déclaration d'un contrat devient un engagement vérifié par le
@@ -109,6 +119,7 @@
 - id: I92
   nature: D
   parents: [I88]
+  roles: [Feature]
   enonce: Toute Feature concrète `implements TFeatureCallbacks<TDef, TListens>` ; un handler absent ou mal signé est une erreur de compilation.
   pourquoi: >
     `listens` ne porte que des tokens de Channel : aucun filet runtime ne peut détecter un handler
@@ -119,6 +130,7 @@
 - id: I82
   nature: D
   parents: [I88]
+  roles: [View]
   enonce: "`implements TViewCallbacks<TVC>` rend obligatoires les handlers d'Event et les handlers DOM déclarés ; un filet au `mount()` couvre les contournements."
   pourquoi: >
     La déclaration est l'engagement : un Event ou un événement DOM déclaré sans handler est refusé
@@ -129,6 +141,7 @@
 - id: I84
   nature: C
   parents: [I82]
+  roles: [View]
   enonce: Un élément UI déclaré avec `events` non vide exige ses handlers DOM ; `events` vide déclare un élément non interactif.
   mode: type+boot
   etat: livre
@@ -137,6 +150,7 @@
 - id: I73
   nature: D
   parents: [P9]
+  roles: [Feature]
   alias: [I47]
   enonce: Chaque Feature déclare `static readonly channel` — son contrat de communication typé, unique pont entre la classe et son Channel.
   pourquoi: >
@@ -149,6 +163,7 @@
 - id: I74
   nature: D
   parents: [P9]
+  roles: [Feature]
   alias: [I49]
   enonce: La définition du Channel, le type d'état et la classe Feature sont co-localisés dans le fichier `*.feature.ts` du domaine.
   pourquoi: >
@@ -160,6 +175,7 @@
 - id: I93
   nature: D
   parents: [P9]
+  roles: [Feature]
   enonce: "`listens` et `queries` sont des `abstract get` d'instance que toute Feature concrète implémente."
   pourquoi: >
     Des getters d'instance, lus après un constructeur inerte (I94), permettent de valider les
@@ -170,16 +186,19 @@
 - id: I81
   nature: D
   parents: [P9]
+  roles: [View, Behavior]
   enonce: Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, au `mount()`.
   pourquoi: >
     Une lecture unique fige les dépendances déclarées au moment du montage : un composant ne peut
     pas élargir ses canaux en cours d'exécution (ADR-14).
+  # Livré pour la View (`mount()`) ; le Behavior n'existe pas encore (strate 2b).
   mode: boot
-  etat: livre
+  etat: partiel
 
 - id: I83
   nature: D
   parents: [P9]
+  roles: [View, Behavior]
   enonce: Tous les composants consommateurs composent leur contrat selon le même pattern modulaire (`TFeatureContract`, `TUIContract`, `TUIElements`).
   pourquoi: >
     Un pattern unique évite une règle différente par composant ; la cohérence du pattern est
@@ -190,6 +209,7 @@
 - id: I85
   nature: D
   parents: [P9]
+  roles: [View]
   enonce: "`ui<TEl>()(events)` est le helper officiel pour construire une `TUIEntry`."
   pourquoi: >
     La forme curryfiée préserve l'inférence littérale de `events` et le sous-type d'élément `TEl`,
@@ -200,6 +220,7 @@
 - id: I86
   nature: D
   parents: [I85]
+  roles: [View]
   enonce: Le champ `events` d'une `TUIEntry` est toujours présent, tableau (éventuellement vide) sans doublons.
   pourquoi: >
     Rendre le champ obligatoire force à déclarer explicitement un élément non interactif (`[]`)
@@ -210,6 +231,7 @@
 - id: I89
   nature: D
   parents: [I85, P2]
+  roles: [View]
   enonce: Tout événement déclaré dans `events` appartient à `TEventsFor<TEl>` ; les `CustomEvent` arbitraires sont exclus.
   pourquoi: >
     La communication entre composants passe par les Channels : autoriser des `CustomEvent` DOM
@@ -220,6 +242,7 @@
 - id: I90
   nature: C
   parents: [I85]
+  roles: [View]
   enonce: Un nom d'événement apparaît au plus une fois dans `events`.
   mode: type
   etat: livre
@@ -227,6 +250,7 @@
 - id: I91
   nature: D
   parents: [I85]
+  roles: [View]
   enonce: "`TEventsFor<TEl>` est la table officielle entre sous-types d'éléments HTML et événements DOM cohérents."
   pourquoi: >
     Une table maintenue par le framework rend les événements autorisés dépendants du type d'élément,

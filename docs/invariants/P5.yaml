@@ -10,6 +10,7 @@
 - id: I56
   nature: C
   parents: [P5]
+  roles: [Application]
   enonce: La couche abstraite (Features, Entities) est active avant la couche concrète (Views).
   # Testé : onInit() de chaque Feature précède l'attachement de la Foundation.
   mode: boot
@@ -18,6 +19,7 @@
 - id: I42
   nature: D
   parents: [P5]
+  roles: [View, Behavior]
   enonce: Une View peut déclarer un state local de présentation — typé, réactif, encapsulé, non diffusable, détruit avec elle.
   pourquoi: >
     Sans exception encadrée, tout état purement visuel (menu ouvert, onglet actif) finirait dans une
@@ -29,6 +31,7 @@
 - id: I57
   nature: D
   parents: [I42, P8]
+  roles: [Application, View]
   enonce: Le namespace `local` est réservé au mécanisme de state local ; aucun Channel, Feature ou Entity ne peut le déclarer.
   pourquoi: >
     Le framework injecte les données du state local sous la clé `local` : une Feature applicative

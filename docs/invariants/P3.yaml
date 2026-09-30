@@ -6,6 +6,7 @@
 - id: I10
   nature: E
   parents: [P3]
+  roles: [Channel, Feature]
   enonce: Un Command a un seul handler — la Feature propriétaire du Channel.
   mode: boot
   etat: livre
@@ -13,6 +14,7 @@
 - id: I11
   nature: E
   parents: [P3]
+  roles: [Channel]
   enonce: Un Event peut avoir N abonnés.
   mode: run
   etat: livre
@@ -20,6 +22,7 @@
 - id: I27
   nature: E
   parents: [P3]
+  roles: [Channel, Feature]
   enonce: Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé.
   # Les tests prouvent seulement : Command sans handler → throw, Event sans abonné → ignoré.
   # Aucun mécanisme de refus d'un Command par son handler n'est testé.
@@ -33,6 +36,7 @@
 - id: I1
   nature: C
   parents: [P3]
+  roles: [Feature]
   alias: [I12, I26]
   enonce: Une Feature n'émet (`emit`) que sur son propre Channel — aucune émission cross-domain, et seule la Feature propriétaire utilise `emit()`.
   mode: type
@@ -41,6 +45,7 @@
 - id: I25
   nature: C
   parents: [P3, P5]
+  roles: [View, Behavior]
   enonce: Seuls les Views et Behaviors utilisent `trigger()` pour envoyer un Command.
   # Feature, Composer et Foundation n'ont pas de `trigger` (capabilities.types) ; la View l'a.
   # Le Behavior n'existe pas encore (strate 2b).
@@ -50,6 +55,7 @@
 - id: I4
   nature: C
   parents: [P3, P2]
+  roles: [View, Behavior]
   enonce: Une View ou un Behavior peut `trigger`, `listen` et `request` uniquement sur les Channels déclarés — jamais `emit()`.
   # Livré pour la View (capabilities.types, I77) ; le Behavior n'existe pas encore (strate 2b).
   mode: type
@@ -58,6 +64,7 @@
 - id: I13
   nature: C
   parents: [P3, P5]
+  roles: [View]
   enonce: La View est un point d'entrée (Command) et de projection (Event) — la causalité métier n'y transite jamais.
   # Règle de conception : rien n'empêche un handler d'Event de View de déclencher un trigger.
   mode: revue
@@ -66,6 +73,7 @@
 - id: I3
   nature: C
   parents: [P3]
+  roles: [Feature]
   enonce: Une Feature ne répond (`reply`) que sur son propre Channel.
   # Les repliers `on<Name>Request` sont enregistrés sur le Channel propre au bootstrap.
   mode: boot
@@ -74,6 +82,7 @@
 - id: I17
   nature: C
   parents: [P3, P2]
+  roles: [Feature]
   enonce: Une Feature ne `request` que sur les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect.
   # `Feature.request()` accepte tout token typé, sans contrôle contre `queries` (même écart que I14).
   mode: type
@@ -82,6 +91,7 @@
 - id: I29
   nature: D
   parents: [P3]
+  roles: [Channel]
   enonce: "`reply()` retourne toujours `T` de façon synchrone ; `request()` retourne `T | null`."
   pourquoi: >
     Un replier ne fait que lire l'Entity déjà en mémoire : le rendre synchrone empêche une Request
@@ -93,6 +103,7 @@
 - id: I64
   nature: C
   parents: [I29]
+  roles: [Feature]
   enonce: Aucun I/O (`fetch`, `Promise`, `setTimeout`, `async/await`) dans un replier.
   mode: revue
   etat: convention
@@ -100,6 +111,7 @@
 - id: I55
   nature: D
   parents: [I29]
+  roles: [Channel]
   enonce: Un replier qui throw ne propage jamais l'erreur — `request()` retourne `null`.
   pourquoi: >
     Une Request lit l'état d'un autre domaine : si son replier échoue, la faute appartient à la
@@ -121,6 +133,7 @@
 - id: I65
   nature: D
   parents: [I55, I102]
+  roles: [Channel]
   enonce: L'erreur d'un replier est reportée via l'`ErrorReporter` avant que `null` ne soit retourné.
   pourquoi: >
     `null` seul rendrait l'échec silencieux : le reporting garantit qu'une erreur de replier n'est

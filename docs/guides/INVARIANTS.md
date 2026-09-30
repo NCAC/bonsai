@@ -8,13 +8,14 @@
 
 ## 1. Où vit un invariant
 
-Un invariant apparaît à cinq endroits. **Le registre fait foi** ; les autres
+Un invariant apparaît à six endroits. **Le registre fait foi** ; les autres
 doivent être alignés à la main tant qu'ils ne sont pas générés.
 
 | Lieu | Contenu | Vérifié par | Statut |
 | --- | --- | --- | --- |
-| `docs/invariants/P*.yaml` | énoncé, nature, parents, mode, état, `pourquoi`, alias, preuves | `pnpm invariants:check` (CI, bloquant) | **source de vérité** |
+| `docs/invariants/P*.yaml` | énoncé, nature, parents, rôles, mode, état, `pourquoi`, alias, preuves | `pnpm invariants:check` (CI, bloquant) | **source de vérité** |
 | `docs/invariants/generated/arbre.md` | vue arborescente du registre | `pnpm invariants:check` | généré — ne jamais éditer |
+| `docs/invariants/generated/roles/*.md` | une vue par rôle : bilan, écarts (avec les commentaires YAML), invariants par principe | `pnpm invariants:check` | généré — ne jamais éditer |
 | `docs/spec/reference/invariants.md` | liste, matrice (mécanisme, message d'erreur), **prochain numéro libre** | rien | copie manuelle |
 | `docs/spec/6-transversal/conventions-typage.md` §6 | I46–I56 | rien | copie manuelle |
 | ligne **Invariants impactés** d'un ADR | lien décision → invariants | `npx tsx lib/check-adr-tested-status.ts` (informatif) | manuel |
@@ -32,8 +33,8 @@ doivent être alignés à la main tant qu'ils ne sont pas générés.
 
 | Commande | Rôle | Quand |
 | --- | --- | --- |
-| `pnpm invariants` | valide le registre et régénère `arbre.md` | après toute modification du registre ou d'une citation dans un test |
-| `pnpm invariants:check` | idem sans écrire ; échoue si `arbre.md` n'est pas à jour | avant commit (la CI le lance) |
+| `pnpm invariants` | valide le registre et régénère `generated/` (`arbre.md`, `roles/*.md`) | après toute modification du registre ou d'une citation dans un test |
+| `pnpm invariants:check` | idem sans écrire ; échoue si un fichier de `generated/` n'est pas à jour ou n'est plus généré | avant commit (la CI le lance) |
 | `pnpm test` | suite Jest complète | après toute modification d'un test |
 | `pnpm tsc:check:tests` | type-check de `packages/` et `tests/` (`tsconfig.test.json`) — seul moyen de vérifier les tests de type ; lancé par le pre-commit et la CI | après toute modification d'un test de type ou de `packages/` |
 | `npx tsx lib/check-adr-tested-status.ts` | liste les ADR dont chaque invariant impacté est cité en test | après modification d'une ligne **Invariants impactés** |
@@ -66,10 +67,11 @@ grep -n "Prochain numéro libre" -A1 docs/spec/reference/invariants.md
 | identifiant invalide, doublon, alias en collision | `pourquoi` commençant par « À compléter » |
 | nature, mode ou état hors des valeurs admises | mode ou état non qualifié (`~`) |
 | aucun parent, parent inconnu, énoncé manquant | alias encore cité dans un test |
+| aucun rôle, rôle inconnu, `*` combiné à un autre rôle | |
 | décision (`D`) sans `pourquoi` | mode `type` livré sans test de type |
 | chemin de `preuves` introuvable | mode `boot`/`run` livré sans test runtime |
 | `etat: livre` (hors mode `revue`) sans aucun test qui cite l'ID | |
-| `arbre.md` pas à jour (`--check`) | |
+| fichier de `generated/` pas à jour ou orphelin (`--check`) | |
 
 **Détection des citations** : toute occurrence de `I<n>` dans un fichier
 `*.test.ts(x)` / `*.test-d.ts(x)` sous `tests/`, `packages/`, `core/` compte,
@@ -97,6 +99,7 @@ asserte réellement la règle.
 - id: I104                 # I<n>, jamais réutilisé
   nature: D                # E · C · D · V
   parents: [I38, P10]      # le premier = parent principal (position dans l'arbre)
+  roles: [View, Behavior]  # Application · Feature · Entity · Channel · View · Behavior · Composer · Foundation, ou ["*"]
   alias: [I47]             # facultatif : anciens IDs fusionnés ici
   enonce: Une phrase, la règle.
   pourquoi: >              # obligatoire si nature D (remplace l'ADR)
@@ -163,6 +166,7 @@ Chaque procédure se termine par la [vérification finale](#5-vérification-fina
    ```
 
 2. **Écrire la ligne** dans le bon `docs/invariants/P<n>.yaml` (§3), avec
+   ses `roles` (les composants dont le code ou le contrat porte la règle) et
    `pourquoi` si c'est une décision. État honnête : `cible` si rien n'est livré.
 3. **Prouver** (si le mécanisme existe) : citer l'ID dans le test qui le vérifie,
    de préférence dans le titre — `it("I104 — …", …)` ou `describe("… [I104]", …)`.
@@ -290,7 +294,7 @@ git status --short                           # n'indexer que les fichiers de l'o
 
 Checklist :
 
-- [ ] le registre et `arbre.md` sont à jour (`invariants:check` vert) ;
+- [ ] le registre et `generated/` sont à jour (`invariants:check` vert) ;
 - [ ] `invariants.md` (liste, matrice, prochain numéro libre) reflète le registre ;
 - [ ] aucune citation d'un ID retiré hors archives ;
 - [ ] les ADR concernés (**Invariants impactés**, **Livré**) sont alignés ;
@@ -301,8 +305,11 @@ Checklist :
 
 ## 6. Pièges connus
 
-- **`arbre.md` pas régénéré** → la CI échoue. Toujours `pnpm invariants` après
+- **`generated/` pas régénéré** → la CI échoue. Toujours `pnpm invariants` après
   avoir touché un YAML *ou* un test qui cite un ID.
+- **L'état est porté par l'invariant, pas par le rôle** : une ligne partagée par
+  la View et le Behavior n'est `livre` que si elle l'est pour les deux ; sinon
+  `partiel`, avec un commentaire qui dit pour qui (précédents : I4, I25, I80, I81).
 - **Citation ≠ preuve** : un ID dans l'en-tête d'un test compte pour le script
   même si aucun `it` ne vérifie la règle (précédent : I36).
 - **Une citation de moins peut casser `livre`** : retirer un ID d'un test peut

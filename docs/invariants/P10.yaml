@@ -7,6 +7,7 @@
 - id: I100
   nature: E
   parents: [P10]
+  roles: ["*"]
   enonce: "Chaque rôle porte une seule responsabilité : Entity garde et mute l'état, Feature décide du métier, View projette, Composer décide du placement, Behavior enrichit le comportement, Foundation porte le layout racine, Application amorce."
   mode: revue
   etat: convention
@@ -14,6 +15,7 @@
 - id: I101
   nature: C
   parents: [I100, P1]
+  roles: [Entity]
   enonce: "Une Entity ne porte aucune logique métier : elle garde l'état, applique les mutations que sa Feature lui fournit et expose des lectures pures ; toute décision (validation métier, transformation, refus d'une intention) appartient à la Feature."
   # L'API framework ne décide rien (`mutate` exécute une recette fournie par l'appelant), mais
   # rien n'empêche une sous-classe d'Entity d'ajouter une méthode qui décide.
@@ -23,6 +25,7 @@
 - id: I63
   nature: C
   parents: [I101, P1]
+  roles: [Entity]
   enonce: Un schema Entity ne contient ni `v.transform()` ni coercion — c'est un garde-fou en lecture, la transformation reste dans le command handler.
   mode: revue
   etat: cible
@@ -30,6 +33,7 @@
 - id: I52
   nature: D
   parents: [I101, P1]
+  roles: [Entity]
   enonce: L'Entity expose des méthodes query pures (lecture seule).
   pourquoi: >
     Séparation commande/requête (CQS) au niveau de l'Entity : une méthode lit ou écrit, jamais

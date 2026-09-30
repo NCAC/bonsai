@@ -4,6 +4,8 @@
 #   id        identifiant stable (I<n>), conservé pendant la transition
 #   nature    E énoncé · C conséquence · D décision · V vérification
 #   parents   principe(s) ou ligne(s) parente(s) ; le premier est le parent principal
+#   roles     composant(s) concerné(s), un par package (ADR-28) : Application, Feature, Entity,
+#             Channel, View, Behavior, Composer, Foundation — ou ["*"] pour une règle transversale
 #   enonce    la règle, en une phrase
 #   pourquoi  obligatoire pour une décision (D) : remplace l'ADR
 #   mode      type · boot · type+boot · run · revue
@@ -15,6 +17,7 @@
 - id: I69
   nature: E
   parents: [P8]
+  roles: [Application]
   enonce: Le manifest est l'unique source de vérité de l'identité d'une Feature.
   mode: type
   etat: livre
@@ -22,6 +25,7 @@
 - id: I68
   nature: C
   parents: [I69]
+  roles: [Feature]
   enonce: Aucune classe Feature ne déclare de `static namespace`.
   mode: type
   etat: livre
@@ -29,6 +33,7 @@
 - id: I72
   nature: C
   parents: [I69]
+  roles: [Feature, Application]
   enonce: "`TSelfNS` est la clé de la Feature dans le manifest."
   mode: type
   etat: livre
@@ -36,6 +41,7 @@
 - id: I87
   nature: C
   parents: [I69]
+  roles: [View, Behavior]
   enonce: La clé d'un `TFeatureContract` est le namespace de la Feature référencée.
   mode: type
   etat: partiel
@@ -45,6 +51,7 @@
 - id: I21
   nature: D
   parents: [P8]
+  roles: [Application]
   alias: [I24]
   enonce: Toute Feature est enregistrée dans le manifest sous une clé `camelCase` sans chiffre.
   pourquoi: >
@@ -66,6 +73,7 @@
 - id: I71
   nature: D
   parents: [P8]
+  roles: [Application]
   enonce: "Les namespaces `local` et `router` sont réservés (`RESERVED_NAMESPACES`)."
   pourquoi: >
     Chaque réservation a sa raison propre (I57 pour `local`, I28 pour `router`) ; I71 en fixe la
@@ -83,6 +91,7 @@
 - id: I95
   nature: V
   parents: [I69]
+  roles: [Application, Feature]
   enonce: "Chaque entrée du manifest est contrainte par `TStrictFeatureClass<NS>`."
   mode: type
   etat: livre

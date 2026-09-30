@@ -166,8 +166,11 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
    (I8, I9, I65, I98 — régies par la nouvelle décision I102, fail-fast), sémantique d'exécution
    hors du champ de P9 (I11, I27, I29, I55, I97 ; I54 requalifié en `type` le 30/09 — metas requises, type opaque) et un écart structurel à résorber (I20 :
    `View` instanciable et montable par le code applicatif). I37 requalifié en mode `type`.
-6. Ensuite seulement : générer les vues par composant, puis orienter la réécriture du code
-   sur les écarts ⚠️/⏳ révélés.
+6. ✅ Vues par composant générées (30/09) : champ `roles` dans le registre (un rôle par
+   package, ADR-28, ou `*` transversal), `generated/roles/<role>.md` (bilan, écarts avec
+   commentaires YAML, invariants par principe), contrôlées par `--check`. L'index thématique
+   manuel de `spec/README.md` est remplacé par un lien. **Suite** : orienter la réécriture du
+   code sur les écarts ⚠️/⏳ révélés.
 
 ## À éviter
 

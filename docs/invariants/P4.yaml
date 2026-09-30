@@ -7,6 +7,7 @@
 - id: I7
   nature: E
   parents: [P4]
+  roles: [Channel]
   enonce: Tout message (Command, Event, Request) porte des métadonnées causales complètes (correlationId, causationId, hop, origin, timestamp).
   mode: boot
   etat: cible
@@ -14,6 +15,7 @@
 - id: I8
   nature: C
   parents: [P4, I102]
+  roles: [Channel]
   enonce: Le `correlationId` est créé par l'UI et n'est jamais modifié ensuite.
   mode: run
   etat: cible
@@ -21,6 +23,7 @@
 - id: I9
   nature: D
   parents: [P4, I102]
+  roles: [Channel]
   enonce: Le `hop` est incrémenté à chaque réaction ; un message au-delà de `MAX_HOPS` est rejeté.
   pourquoi: >
     En chorégraphie (ADR-01), aucune Feature ne voit la chaîne entière : une boucle A → B → A
@@ -43,6 +46,7 @@
 - id: I54
   nature: D
   parents: [P4]
+  roles: [Feature, Channel]
   enonce: Les metas sont créées par le framework et propagées explicitement, jamais construites à la main.
   pourquoi: >
     Les metas sont la preuve de la causalité (P4) ; elles ne valent que si elles ne sont pas

@@ -8,6 +8,7 @@
 - id: I6
   nature: E
   parents: [P1]
+  roles: [Feature, Entity]
   alias: [I5]
   enonce: "L'Entity n'est accessible qu'à sa Feature propriétaire : aucun autre composant (View, Behavior, autre Feature, Composer, Foundation) ne peut la lire ni la modifier."
   # Garantie compile-time seule : l'Entity est créée dans `bootstrap()`, stockée en `#entity` et
@@ -19,6 +20,7 @@
 - id: I30
   nature: C
   parents: [P1, P5]
+  roles: [View, Behavior]
   enonce: Une View et un Behavior ne portent aucun domain state — seul un state local de présentation borné (I42) est toléré.
   mode: type
   etat: partiel
@@ -29,6 +31,7 @@
 - id: I22
   nature: D
   parents: [P1, P8, P10]
+  roles: [Feature, Entity]
   enonce: La relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte ; l'Entity est obligatoire, même vide.
   pourquoi: >
     Empêche qu'une Feature accède au state d'une autre ou qu'un namespace reste sans state
@@ -40,6 +43,7 @@
 - id: I46
   nature: D
   parents: [P1]
+  roles: [Entity]
   enonce: "`TStructure` (state d'une Entity) est contraint à `TJsonSerializable`."
   pourquoi: >
     Le domain state doit pouvoir franchir une frontière sans perte : patches et `TEntityEvent`
@@ -60,6 +64,7 @@
 - id: I97
   nature: D
   parents: [P1]
+  roles: [Entity]
   enonce: "`Entity.mutate()` utilise `Immer.produceWithPatches`."
   pourquoi: >
     Immer donne l'immutabilité sans code de copie manuel ; `produceWithPatches` fournit les
@@ -71,6 +76,7 @@
 - id: I51
   nature: D
   parents: [P1]
+  roles: [Entity, Feature]
   enonce: Les notifications de mutation d'une Entity sont auto-découvertes sur sa Feature (`on<Key>EntityUpdated` / `onAnyEntityUpdated`) — résumé de I96.
   pourquoi: >
     Évite l'enregistrement manuel de listeners internes ; la Feature réagit aux mutations de sa
@@ -81,6 +87,7 @@
 - id: I96
   nature: D
   parents: [I51]
+  roles: [Feature, Entity]
   enonce: Le dispatch des notifications suit un ordre déterministe (clés changées par ordre alphabétique, puis catch-all) via une souscription unique, avec isolation des erreurs par handler.
   pourquoi: >
     Un ordre déterministe et l'isolation des erreurs évitent qu'un handler défaillant bloque les
@@ -91,6 +98,7 @@
 - id: I53
   nature: V
   parents: [I96]
+  roles: [Feature, Entity]
   enonce: Une clé de handler `on<Key>EntityUpdated` inconnue du state de l'Entity est rejetée au bootstrap.
   mode: boot
   etat: livre
@@ -99,6 +107,7 @@
 - id: I98
   nature: D
   parents: [I51, P4, I102]
+  roles: [Entity]
   enonce: Une mutation déclenchée pendant un cycle de notification est mise en file FIFO plutôt qu'exécutée immédiatement, avec une profondeur de ré-entrance bornée.
   pourquoi: >
     Empêche qu'une mutation lancée depuis un handler de notification ne provoque une récursion

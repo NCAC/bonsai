@@ -6,6 +6,7 @@
 - id: I19
   nature: E
   parents: [P7]
+  roles: [View]
   enonce: La View n'a aucune responsabilité sur son propre cycle de vie — ni création, ni destruction, ni remplacement.
   # View n'expose que `mount()`, appelé par le Composer ; aucune destruction n'existe encore
   # (une View remplacée n'est pas détruite, cf. I20). Aucun test ne cite I19.
@@ -15,6 +16,7 @@
 - id: I20
   nature: D
   parents: [P7]
+  roles: [Foundation, Composer, View]
   enonce: Seuls la Foundation et les Composers créent, détruisent ou remplacent des Views.
   pourquoi: >
     Concentrer la création et la destruction à deux niveaux garantit qu'aucune View ne se recrée ni
@@ -28,6 +30,7 @@
 - id: I36
   nature: D
   parents: [I20, P10]
+  roles: [View, Composer]
   enonce: La View ne compose jamais d'autres Views — elle déclare des slots, le Composer décide de l'instanciation.
   pourquoi: >
     Si la View composait, elle recouvrirait le rôle du Composer et brouillerait la frontière entre
@@ -40,6 +43,7 @@
 - id: I37
   nature: D
   parents: [I20]
+  roles: [Composer]
   enonce: Il n'existe qu'un seul type de Composer, qui gère 0..N Views hétérogènes dans un scope DOM fixe.
   pourquoi: >
     Un type unique évite une famille de règles de cycle de vie différentes selon la variante ; la
@@ -54,6 +58,7 @@
 - id: I67
   nature: D
   parents: [P7, P10]
+  roles: [Foundation]
   enonce: La structure de la Foundation est stable — `get composers()` est lu une seule fois au bootstrap et n'est jamais modifié.
   pourquoi: >
     Toute composition dynamique est déléguée à une View dédiée : la Foundation reste une racine
@@ -64,6 +69,7 @@
 - id: I23
   nature: D
   parents: [P7, P10]
+  roles: [Application]
   enonce: Application est dormante au runtime — aucune logique métier ni rôle actif entre le bootstrap et le shutdown.
   pourquoi: >
     Garder Application hors du flux Command/Event/Request l'empêche de devenir un point de causalité
@@ -75,6 +81,7 @@
 - id: I28
   nature: D
   parents: [P7, P8]
+  roles: [Application, Feature]
   enonce: Le Router est une Feature interne, de namespace réservé `router`, instanciée par Application et non par le développeur.
   pourquoi: >
     Le Router a besoin d'un accès exclusif à l'History API : en faire une Feature interne réutilise le
@@ -86,6 +93,7 @@
 - id: I94
   nature: D
   parents: [P7, P9]
+  roles: [Feature]
   enonce: Le constructeur d'une Feature est inerte — aucun side-effect au-delà de la validation et de l'assignation du namespace.
   pourquoi: >
     Un constructeur à effets rendrait l'ordre d'instanciation significatif ; inerte, il garantit que

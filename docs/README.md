@@ -61,6 +61,7 @@ distribution et build, processus. Chaque ADR porte une ligne **Livré**
 | --- | --- |
 | comprendre l'architecture | [Philosophie](spec/1-philosophie.md), puis [Architecture](spec/2-architecture/README.md) |
 | connaître les règles non négociables | [Arbre des invariants](invariants/generated/arbre.md) (registre) · [Invariants](spec/reference/invariants.md) (matrice détaillée) |
+| connaître les règles et les écarts d'un composant | [Invariants par rôle](invariants/generated/roles/README.md) (vues générées) |
 | ajouter ou modifier un invariant | [Guide des invariants](guides/INVARIANTS.md) |
 | savoir pourquoi un choix a été fait | [ADR](adr/README.md) |
 | savoir ce qui est réellement livré | la ligne **Livré** de chaque ADR · [ADR-31](adr/ADR-31-strates-perimetre-v1.md) (strates) |

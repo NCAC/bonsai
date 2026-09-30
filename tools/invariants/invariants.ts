@@ -1,7 +1,7 @@
 /**
  * Registre des invariants — génération et contrôle.
  *
- *   pnpm invariants         régénère docs/invariants/generated/arbre.md
+ *   pnpm invariants         régénère docs/invariants/generated/ (arbre.md et roles/*.md)
  *   pnpm invariants:check   échoue si le registre est incohérent ou si le fichier généré n'est pas à jour
  *
  * Sources : docs/invariants/principes.yaml et docs/invariants/P*.yaml.
@@ -21,12 +21,24 @@ import yaml from "js-yaml";
 const ROOT = process.cwd();
 const DIR = join(ROOT, "docs/invariants");
 const OUT = join(DIR, "generated/arbre.md");
+const ROLES_DIR = join(DIR, "generated/roles");
 const TEST_ROOTS = ["tests", "packages", "core"];
 const IGNORED = new Set(["node_modules", "dist", ".git", "build"]);
 
 const NATURES = ["E", "C", "D", "V"] as const;
 const MODES = ["type", "boot", "type+boot", "run", "revue"] as const;
 const ETATS = ["livre", "partiel", "cible", "convention"] as const;
+/** One role per package (ADR-28); "*" marks a cross-cutting rule. */
+const ROLES = [
+  "Application",
+  "Feature",
+  "Entity",
+  "Channel",
+  "View",
+  "Behavior",
+  "Composer",
+  "Foundation"
+] as const;
 const ETAT_ICON: Record<string, string> = {
   livre: "✅",
   partiel: "⚠️",
@@ -45,6 +57,7 @@ type Ligne = {
   id: string;
   nature: (typeof NATURES)[number];
   parents: string[];
+  roles?: string[];
   alias?: string[];
   enonce: string;
   pourquoi?: string;
@@ -66,6 +79,19 @@ const branches = readdirSync(DIR)
 const lignes: Ligne[] = branches.flatMap(
   (f) => (yaml.load(readFileSync(join(DIR, f), "utf8")) as Ligne[]) ?? []
 );
+
+/** YAML comments attached to each line (indented `#` lines inside its entry). */
+const remarks = new Map<string, string[]>();
+for (const f of branches) {
+  let id: string | null = null;
+  for (const raw of readFileSync(join(DIR, f), "utf8").split("\n")) {
+    const m = /^- id: (I\d+)$/.exec(raw);
+    if (m) id = m[1];
+    else if (/^\S/.test(raw)) id = null;
+    else if (id && /^\s+# ?/.test(raw))
+      remarks.set(id, [...(remarks.get(id) ?? []), raw.replace(/^\s+# ?/, "")]);
+  }
+}
 
 // ---------- validation du schéma ----------
 const ids = new Set<string>(principes.map((p) => p.id));
@@ -90,6 +116,12 @@ for (const l of lignes) {
   for (const p of l.parents ?? [])
     if (!ids.has(p)) errors.push(`${at} parent inconnu ${p}`);
   if (!l.enonce) errors.push(`${at} énoncé manquant`);
+  if (!l.roles?.length) errors.push(`${at} aucun rôle`);
+  else if (l.roles.includes("*") && l.roles.length > 1)
+    errors.push(`${at} "*" ne se combine pas avec d'autres rôles`);
+  for (const r of l.roles ?? [])
+    if (r !== "*" && !(ROLES as readonly string[]).includes(r))
+      errors.push(`${at} rôle inconnu "${r}"`);
   if (l.nature === "D" && !l.pourquoi)
     errors.push(`${at} décision sans "pourquoi"`);
   if (l.pourquoi?.startsWith("À compléter"))
@@ -219,16 +251,122 @@ const md = [
   ])
 ].join("\n");
 
-if (process.argv.includes("--check")) {
-  if (!existsSync(OUT) || readFileSync(OUT, "utf8") !== md)
-    errors.push(
-      `${relative(ROOT, OUT)} n'est pas à jour : lancer "pnpm invariants"`
+// ---------- vues par rôle ----------
+const GENERATED =
+  "<!-- Fichier généré par tools/invariants/invariants.ts — ne pas modifier à la main. -->";
+const byId = new Map(lignes.map((l) => [l.id, l]));
+/** Principle reached by following the principal parent. */
+const principeOf = (l: Ligne): string => {
+  let p = l.parents[0];
+  while (byId.has(p)) p = byId.get(p)!.parents[0];
+  return p;
+};
+const num = (id: string) => parseInt(id.slice(1));
+const item = (l: Ligne) =>
+  `- \`${l.nature}\` ${l.id} — ${l.enonce} ${tag(l)}`;
+const count = (ls: Ligne[]) =>
+  Object.fromEntries(
+    ETATS.map((e) => [e, ls.filter((l) => l.etat === e).length])
+  ) as Record<(typeof ETATS)[number], number>;
+const transversal = lignes.filter((l) => l.roles?.includes("*"));
+const fileOf = (r: string) => `${r.toLowerCase()}.md`;
+
+const views = new Map<string, string>();
+for (const r of ROLES) {
+  const own = lignes.filter((l) => l.roles?.includes(r));
+  const c = count(own);
+  const ecarts = own
+    .filter((l) => l.etat === "partiel" || l.etat === "cible")
+    .sort(
+      (a, b) =>
+        ETATS.indexOf(a.etat!) - ETATS.indexOf(b.etat!) || num(a.id) - num(b.id)
     );
+  views.set(
+    fileOf(r),
+    [
+      GENERATED,
+      "",
+      `# ${r} — invariants`,
+      "",
+      "[← Tous les rôles](README.md) · [Arbre des invariants](../arbre.md)",
+      "",
+      "⟨mode · état · tests⟩ — état : ✅ livré · ⚠️ partiel · ⏳ cible · 📐 convention ;",
+      "tests : `R` runtime · `T` type · `·` aucun.",
+      "",
+      "| Invariants | ✅ livré | ⚠️ partiel | ⏳ cible | 📐 convention |",
+      "| --- | --- | --- | --- | --- |",
+      `| ${own.length} | ${c.livre} | ${c.partiel} | ${c.cible} | ${c.convention} |`,
+      "",
+      "## Écarts",
+      "",
+      ...(ecarts.length
+        ? ecarts.flatMap((l) => [
+            item(l),
+            ...(remarks.get(l.id) ?? []).map((m) => `  > ${m}`)
+          ])
+        : ["*Aucun écart.*"]),
+      "",
+      "## Invariants par principe",
+      "",
+      ...principes.flatMap((p) => {
+        const ls = own.filter((l) => principeOf(l) === p.id);
+        return ls.length
+          ? [`### ${p.id} — ${p.titre}`, "", ...ls.map(item), ""]
+          : [];
+      }),
+      "## Règles transversales",
+      "",
+      ...transversal.map(item),
+      ""
+    ].join("\n")
+  );
+}
+views.set(
+  "README.md",
+  [
+    GENERATED,
+    "",
+    "# Invariants par rôle",
+    "",
+    "Vues générées depuis le registre (`docs/invariants/P*.yaml`, champ `roles`) —",
+    "[arbre complet](../arbre.md). Un invariant peut concerner plusieurs rôles.",
+    "",
+    "| Rôle | Invariants | ✅ livré | ⚠️ partiel | ⏳ cible | 📐 convention |",
+    "| --- | --- | --- | --- | --- | --- |",
+    ...ROLES.map((r) => {
+      const own = lignes.filter((l) => l.roles?.includes(r));
+      const c = count(own);
+      return `| [${r}](${fileOf(r)}) | ${own.length} | ${c.livre} | ${c.partiel} | ${c.cible} | ${c.convention} |`;
+    }),
+    "",
+    `Règles transversales (\`*\`, reprises dans chaque vue) : ${transversal.map((l) => l.id).join(", ")}.`,
+    ""
+  ].join("\n")
+);
+
+// ---------- écriture / contrôle ----------
+const outputs = new Map<string, string>([[OUT, md]]);
+for (const [f, content] of views) outputs.set(join(ROLES_DIR, f), content);
+
+if (process.argv.includes("--check")) {
+  for (const [path, content] of outputs)
+    if (!existsSync(path) || readFileSync(path, "utf8") !== content)
+      errors.push(
+        `${relative(ROOT, path)} n'est pas à jour : lancer "pnpm invariants"`
+      );
+  if (existsSync(ROLES_DIR))
+    for (const f of readdirSync(ROLES_DIR))
+      if (!views.has(f))
+        errors.push(
+          `${relative(ROOT, join(ROLES_DIR, f))} n'est plus généré : le supprimer`
+        );
 } else {
-  mkdirSync(dirname(OUT), { recursive: true });
-  writeFileSync(OUT, md);
+  for (const [path, content] of outputs) {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, content);
+  }
   console.log(
-    `✔ ${relative(ROOT, OUT)} (${lignes.length} lignes, ${branches.length} branche(s))`
+    `✔ ${relative(ROOT, OUT)} + ${views.size} vue(s) par rôle (${lignes.length} lignes, ${branches.length} branche(s))`
   );
 }
 
