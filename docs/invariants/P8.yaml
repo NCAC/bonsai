@@ -67,7 +67,16 @@
   nature: D
   parents: [P8]
   enonce: "Les namespaces `local` et `router` sont réservés (`RESERVED_NAMESPACES`)."
-  pourquoi: "À compléter : `local` porte le state de présentation des Views (I57), `router` la Feature interne (I28)."
+  pourquoi: >
+    Chaque réservation a sa raison propre (I57 pour `local`, I28 pour `router`) ; I71 en fixe la
+    forme : une seule constante du framework, dont dérivent le type du manifest et le filet
+    runtime — une liste, deux vérifications, aucune dérive entre elles. Elle n'est pas
+    configurable : un nom réservé est une garantie du framework, pas une politique de
+    l'application, qui ne peut donc pas libérer un nom dont le framework dépend. Réserver avant
+    de livrer (aucun Router n'existe encore) évite qu'une application prenne le nom et casse le
+    jour où la Feature du framework arrive.
+  # Toute nouvelle réservation (ex. `ContributionRegistry`, ROADMAP) s'ajoute à la constante ;
+  # c'est un breaking change pour une application qui utiliserait déjà ce nom.
   mode: type+boot
   etat: livre
 

@@ -111,12 +111,13 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
   - Écarts esquisse ↔ matrice `invariants.md` tranchés en faveur de la matrice : I31 et I37
     passent de ✅ à ⚠️ partiel.
   - `pourquoi` des décisions : rédigés à partir des ADR cités dans `invariants.md`, **à relire
-    par le mainteneur** ; I9, I46, I52, I54, I55 restent « À compléter » (justification introuvable
-    dans les sources lues — I46–I56 sont définis dans `conventions-typage.md`).
+    par le mainteneur** ; I9, I21, I46, I52, I54, I55, I71 rédigés avec lui le 30/09 — plus
+    aucun `pourquoi` « À compléter ». Décisions prises en route : I103 (clés de message en
+    `camelCase` sans chiffre, cible) ; metas requises partout, I54 passé en mode `type`.
   - P6 n'a toujours aucun énoncé (E).
 - `P8.yaml` : I69 (E), I68/I72/I87 (C), I21/I71 (D), I95 (V).
   - I24 fusionné dans I21 (`alias: [I24]`) — même garantie (unicité/format des clés, `type+boot`), aucune distinction retenue. Le script compte désormais les citations d'un alias pour la ligne canonique.
-  - `pourquoi` de I21 et I71 = brouillons « À compléter », **à rédiger par le mainteneur**.
+  - `pourquoi` de I21 et I71 rédigés le 30/09.
 - `tools/invariants/invariants.ts` :
   - valide le schéma (IDs, doublons, parents existants, `pourquoi` obligatoire sur `D`, enums) ;
   - détecte les citations `I<n>` dans `*.test.ts` / `*.test-d.ts` sous `tests/`, `packages/`, `core/` ;
@@ -137,8 +138,8 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
 1. ✅ `pnpm invariants` lancé — script propre (0 erreur), 4 avertissements attendus.
    Seul écart notable : I69 (`mode: type`) n'est cité que par un test runtime, aucun
    test de type ne le cite nommément (ses enfants I68/I72/I87 le sont).
-2. ✅ I24 arbitré : fusionné dans I21 (`alias: [I24]`, cf. `P8.yaml`). Reste à faire
-   rédiger les `pourquoi` de I21/I71 par le mainteneur.
+2. ✅ I24 arbitré : fusionné dans I21 (`alias: [I24]`, cf. `P8.yaml`). `pourquoi` de I21/I71
+   rédigés le 30/09.
 3. ✅ `invariants:check` branché en CI (`.github/workflows/regression.yml`, étape
    « Invariants registry », après la suite Jest complète).
 4. ✅ P1 → P7 migrés (0 erreur). **Reste : traiter les 24 lignes ∅** (prouver, déclasser en
@@ -163,7 +164,7 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
    propres nœuds.
    ✅ P9 arbitré et validé par le mainteneur (30/09) : les 12 lignes en mode `run` se répartissent en gardes dynamiques
    (I8, I9, I65, I98 — régies par la nouvelle décision I102, fail-fast), sémantique d'exécution
-   hors du champ de P9 (I11, I27, I29, I54, I55, I97) et un écart structurel à résorber (I20 :
+   hors du champ de P9 (I11, I27, I29, I55, I97 ; I54 requalifié en `type` le 30/09 — metas requises, type opaque) et un écart structurel à résorber (I20 :
    `View` instanciable et montable par le code applicatif). I37 requalifié en mode `type`.
 6. Ensuite seulement : générer les vues par composant, puis orienter la réécriture du code
    sur les écarts ⚠️/⏳ révélés.

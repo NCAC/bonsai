@@ -61,7 +61,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `E` I7 — Tout message (Command, Event, Request) porte des métadonnées causales complètes (correlationId, causationId, hop, origin, timestamp). ⟨boot · ⏳ · ·⟩
 - `C` I8 — Le `correlationId` est créé par l'UI et n'est jamais modifié ensuite. ↔ I102 ⟨run · ⏳ · ·⟩
 - `D` I9 — Le `hop` est incrémenté à chaque réaction ; un message au-delà de `MAX_HOPS` est rejeté. ↔ I102 ⟨run · ⏳ · ·⟩
-- `D` I54 — Les metas sont créées par le framework et propagées explicitement, jamais construites à la main. ⟨run · ⏳ · ·⟩
+- `D` I54 — Les metas sont créées par le framework et propagées explicitement, jamais construites à la main. ⟨type · ⏳ · ·⟩
 
 *Rattachés en second parent :* I98
 

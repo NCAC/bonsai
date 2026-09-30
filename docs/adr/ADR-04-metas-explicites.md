@@ -30,7 +30,8 @@ type TMessageMetas = {
 };
 ```
 
-- **Le framework crée** les metas au point d'entrée : `trigger()` d'une View, timer ou `onInit()` d'une Feature. Le développeur n'en forge **jamais**.
+- **Le framework crée** les metas au point d'entrée : `trigger()` d'une View, timer ou `onInit()` d'une Feature. Le développeur n'en forge **jamais**. Un point d'entrée système **reçoit** ses metas racine `sys-` en paramètre (`onInit(metas)`), comme un handler.
+- **`metas` est requis partout** (`emit`, `request`, `mutate`) : aucune émission sans metas n'ouvre implicitement de corrélation, sinon un oubli de propagation couperait la chaîne sans erreur.
 - **Les handlers les reçoivent** en paramètre : `onAddItemCommand(payload, metas)`, `on{NS}{Event}Event(payload, metas)`, `on{X}Request(params, metas)`.
 - **Le développeur les propage explicitement** (I54) :
 
@@ -55,3 +56,4 @@ onAddItemCommand(payload: TAddItem, metas: TMessageMetas): void {
 - Un paramètre de plus sur `emit`, `request` et `mutate` ; `options: { metas }` étant requis, le compilateur signale l'oubli de propagation.
 - Les erreurs framework (ADR-05) porteront les metas du message fautif.
 - Livraison : ajout du 2ᵉ paramètre à tous les handlers (Feature et View), génération ULID, garde `MAX_HOPS`.
+- `Entity.mutate()` (strate 1a) devra s'aligner : l'overload `mutate(intent, recipe)` et le champ `metas?` optionnel, typé `Record<string, unknown>`, contredisent « requis » et « jamais forgé » (type opaque visé).

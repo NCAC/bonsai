@@ -150,18 +150,24 @@ class CartFeature
 
 ### Création de nouvelle correlation (cas système)
 
+`metas` est **requis** sur `emit()`, `request()` et `mutate()` : aucune émission
+sans metas. Un point d'entrée système (`onInit()`, timer) est un hook du framework
+qui **reçoit** des metas racine `sys-`, comme un handler reçoit celles du message
+qui le déclenche.
+
 ```typescript
+// ⏳ Cible strate 1b — `onInit()` ne reçoit aujourd'hui aucun paramètre.
 class SyncFeature extends Feature<SyncEntity, TSyncDef, "sync"> {
-  // Hook illustratif — pas une convention onXxxCommand/Event/Request réelle ;
-  // représente un timer interne déclenchant une émission côté framework.
-  onTimerTick() {
-    // Pas de metas en entree (event systeme)
-    // Le framework cree une nouvelle correlation sys-
-    this.emit("started", {});
-    // → correlationId = 'sys-01ARZ3...'
+  onInit(metas: TMessageMetas) {
+    // Racine créée par le framework : correlationId 'sys-…', causationId null, hop 0
+    this.emit("started", {}, { metas });
   }
 }
 ```
+
+> Une émission sans metas qui ouvrirait implicitement une corrélation `sys-` est
+> **rejetée** : dans un handler, un oubli de propagation couperait alors la chaîne
+> causale sans aucune erreur (I54). La forme du hook de timer reste à définir.
 
 ---
 
@@ -177,6 +183,9 @@ Les metas suivent un cycle de vie previsible qui assure la traçabilité complè
 | `correlationId` | Nouvelle valeur unique (créée par l'UI) |
 | `causationId` | `null` (pas de message parent) |
 | `hop` | `0` |
+
+Une racine système (`onInit()`, timer) suit la même table, avec un `correlationId`
+préfixé `sys-` au lieu de `usr-`.
 
 ### Reaction d'une Feature (Command handler → emit Event)
 

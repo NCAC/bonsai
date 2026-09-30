@@ -8,9 +8,10 @@
 #   - garde dynamique (violation détectable seulement avec des données d'exécution) :
 #     I8, I9, I98, I65 → légitimes, régies par I102 (échec explicite dès la première violation) ;
 #   - sémantique d'exécution (comportement du framework, pas une garde contre le code applicatif) :
-#     I11, I27, I29, I54, I55, I97 → hors du champ de P9, prouvées par les tests ;
+#     I11, I27, I29, I55, I97 → hors du champ de P9, prouvées par les tests ;
 #   - règle structurelle vérifiée trop tard : I20 → écart à P9, à remonter au compile-time.
 #   I37 était mal qualifié (garanti par construction) : requalifié en mode `type`.
+#   I54 requalifié en mode `type` le 30/09 : metas requises partout + type opaque (brand).
 
 - id: I66
   nature: E

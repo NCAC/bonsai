@@ -45,7 +45,19 @@
   parents: [P4]
   enonce: Les metas sont créées par le framework et propagées explicitement, jamais construites à la main.
   pourquoi: >
-    À compléter par le mainteneur — voir ADR-04 et la règle « metas
-    toujours passées explicitement en paramètre » (FRAMEWORK-STYLE-GUIDE).
-  mode: run
+    Les metas sont la preuve de la causalité (P4) ; elles ne valent que si elles ne sont pas
+    falsifiables. Un `hop` remis à zéro désarme l'anti-boucle (I9), un `correlationId` réinventé
+    coupe la chaîne (I8), un `causationId` inventé la falsifie : seul le framework, au point
+    d'entrée puis à chaque dérivation, peut les calculer juste. Elles circulent ensuite en
+    paramètre plutôt que par un contexte implicite (`this.currentMetas`, `AsyncLocalStorage`),
+    qui se tromperait dès que deux handlers async s'entrelacent : passées explicitement, chaque
+    closure capture les siennes (ADR-04).
+  # Mécanisme visé pour « jamais forgées » : un type opaque (brand) que seul le framework peut
+  # construire. Aujourd'hui `Entity.mutate()` accepte `metas?: Record<string, unknown>` : forgeable.
+  # Arbitré le 30/09 : `metas` est requis partout (`emit`, `request`, `mutate`). Les points
+  # d'entrée système (`onInit()`, timers) reçoivent des metas racine `sys-` en paramètre, comme
+  # un handler ; aucune émission sans metas n'ouvre implicitement de corrélation — sinon un oubli
+  # de propagation couperait la chaîne sans erreur. Écart : l'overload `mutate(intent, recipe)`
+  # (strate 1a) n'a pas de metas.
+  mode: type
   etat: cible

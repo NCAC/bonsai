@@ -100,9 +100,19 @@
   parents: [I29]
   enonce: Un replier qui throw ne propage jamais l'erreur — `request()` retourne `null`.
   pourquoi: >
-    À compléter par le mainteneur — voir ADR-02. Hypothèse : uniformiser
-    le contrat d'échec d'une Request pour que l'appelant n'ait jamais à entourer une lecture d'un
-    try/catch.
+    Une Request lit l'état d'un autre domaine : si son replier échoue, la faute appartient à la
+    Feature qui répond, pas à celle qui demande, qui ne connaît ni son implémentation ni ses
+    erreurs (P1). Propager l'exception ferait franchir la frontière du domaine à une panne
+    étrangère, et obligerait chaque appelant — y compris la couche concrète, synchrone, qui
+    projette — à entourer une lecture d'un try/catch. L'échec se replie donc sur le cas que
+    l'appelant gère déjà : `null`, comme en l'absence de replier (I29). L'erreur n'est pas perdue,
+    elle est journalisée avec son `ns:request` : c'est un confinement, pas une dégradation
+    silencieuse (I102).
+  # `null` confond trois cas : aucun replier, replier en échec, réponse légitimement nulle —
+  # compromis assumé (ADR-02 rejette un `Result<T>`).
+  # Sans `strictNullChecks`, `T | null` se réduit à `T` : le compilateur n'oblige pas l'appelant
+  # à traiter `null`.
+  # Journalisation par `console.error`, sans metas ; ErrorReporter ⏳ (I65).
   mode: run
   etat: livre
 
