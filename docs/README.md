@@ -6,6 +6,7 @@
 
 ```text
 docs/
+├── invariants/   ← Registre des invariants : les RÈGLES, leur état et leur pourquoi (source de vérité)
 ├── spec/          ← Spécification : le QUOI (contrats, signatures, invariants)
 ├── adr/          ← Décisions : le POURQUOI (ADR-01 à ADR-34)
 ├── guides/       ← Conventions et mode d'emploi : le COMMENT
@@ -52,13 +53,15 @@ distribution et build, processus. Chaque ADR porte une ligne **Livré**
 | [NAMESPACE-MENTAL-MODEL.md](guides/NAMESPACE-MENTAL-MODEL.md) | Les quatre lieux où vit le namespace d'une Feature (ADR-08) |
 | [TESTING.md](guides/TESTING.md) | Organisation et écriture des tests (ADR-32) |
 | [FORMS-GUIDE.md](guides/FORMS-GUIDE.md) | Formulaires : patterns B, C, D (ADR-25) |
+| [INVARIANTS.md](guides/INVARIANTS.md) | Ajouter, modifier, fusionner, supprimer ou renuméroter un invariant |
 
 ## 🔎 Je veux…
 
 | … | Je lis |
 | --- | --- |
 | comprendre l'architecture | [Philosophie](spec/1-philosophie.md), puis [Architecture](spec/2-architecture/README.md) |
-| connaître les règles non négociables | [Invariants](spec/reference/invariants.md) |
+| connaître les règles non négociables | [Arbre des invariants](invariants/generated/arbre.md) (registre) · [Invariants](spec/reference/invariants.md) (matrice détaillée) |
+| ajouter ou modifier un invariant | [Guide des invariants](guides/INVARIANTS.md) |
 | savoir pourquoi un choix a été fait | [ADR](adr/README.md) |
 | savoir ce qui est réellement livré | la ligne **Livré** de chaque ADR · [ADR-31](adr/ADR-31-strates-perimetre-v1.md) (strates) |
 | savoir ce qui viendra après la v1 | [ROADMAP](ROADMAP.md) |
