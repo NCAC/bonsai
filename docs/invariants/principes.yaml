@@ -15,8 +15,8 @@
   titre: Causalité traçable et bornée
   enonce: Toute chaîne de messages est reconstituable jusqu'à l'action d'origine, et sa longueur est bornée.
 - id: P5
-  titre: La View projette, elle ne décide pas
-  enonce: Le rendu est une projection du domaine ; seule la View produit du DOM, et elle ne porte aucun état métier.
+  titre: La couche concrète projette, elle ne décide pas
+  enonce: "Le rendu est une projection du domaine : les composants de la couche concrète (View, Behavior, Composer, Foundation) projettent l'état et relaient les intentions de l'utilisateur, sans porter d'état métier ni prendre de décision métier — accepter ou refuser une intention, calculer ou valider un état du domaine, enchaîner une réaction à un Event par un Command. Leurs seules décisions sont de présentation : quoi afficher et comment, où monter une View, quel état local de présentation tenir."
 - id: P6
   titre: Propriété exclusive du DOM
   enonce: Chaque nœud du DOM a au plus un propriétaire, seul composant autorisé à le muter. La propriété découle de scopes attribués et disjoints, fixés au montage du composant et stables jusqu'à son démontage.

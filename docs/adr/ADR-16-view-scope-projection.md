@@ -1,4 +1,4 @@
-# ADR-16 — View : monopole du rendu, scope exclusif, `getUI`, niveaux N1/N2/N3
+# ADR-16 — View : scope de rendu exclusif, `getUI`, niveaux N1/N2/N3
 
 | Champ | Valeur |
 | --- | --- |
@@ -12,13 +12,16 @@
 Sans règle, n'importe quel composant peut écrire dans le DOM, n'importe où :
 deux sources de mutation se contredisent, une View écrase le sous-arbre d'une
 autre, et un `querySelector` global rend le rendu impossible à raisonner.
-Il faut un seul producteur de DOM, un périmètre clos et des droits gradués.
+Il faut un seul propriétaire par nœud, un périmètre clos et des droits gradués.
 
 ## Décision
 
-1. **Monopole du rendu, cycle de vie passif** : la View est le seul composant qui
-   produit du DOM visible. Elle ne décide pas de sa propre existence : la
-   Foundation et les Composers la créent, la remplacent, la détruisent (I20, ADR-18).
+1. **Scope de rendu, cycle de vie passif** : la View est le seul composant qui
+   possède un scope de rendu — un `rootElement` qu'elle structure (N3, slots).
+   Un Behavior projette lui aussi le domaine, mais seulement sur ses propres clés,
+   dans le scope de sa View hôte (I38, ADR-21). La View ne décide pas de sa
+   propre existence : la Foundation et les Composers la créent, la remplacent,
+   la détruisent (I20, ADR-18).
 2. **Aucun domain state** (I30) : ce qui est partagé vit dans une Entity. Seul un
    state *local de présentation* est admis (ADR-17).
 3. **Accès DOM exclusivement par `getUI(key)`** (I39) : la clé est déclarée dans
@@ -38,7 +41,8 @@ Il faut un seul producteur de DOM, un périmètre clos et des droits gradués.
 5. **Niveaux d'altération** (I38) : **N1** attributs, classes, texte ;
    **N2** insertion/suppression de nœuds dans des îlots déclarés ;
    **N3** template complet du `rootElement`. Foundation = N1 sur `<html>`/`<body>`,
-   Composer = aucune écriture, View = N1 à N3 selon son mode de template (ADR-22).
+   Composer = aucune écriture, View = N1 à N3 selon son mode de template (ADR-22),
+   Behavior = N1 et N2 sur ses propres nœuds, jamais N3 (I45, ADR-21).
 6. **Source de mutation unique par clé** (I41) : une clé couverte par un template
    n'est mutée que par le template (`getUI` rend alors une lecture seule).
 

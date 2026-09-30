@@ -1,15 +1,11 @@
-# Branche P5 — La View projette, elle ne décide pas.
+# Branche P5 — La couche concrète projette, elle ne décide pas.
 #
 # Migration depuis docs/reorganisation-sept-2026/arbre-invariants-precision.md.
 # Champs : voir P8.yaml pour la légende complète.
 # I30 (View sans domain state) relève aussi de P5 : déclaré dans P1.yaml, second parent P5.
-
-- id: I18
-  nature: E
-  parents: [P5]
-  enonce: La View a le monopole du rendu — seul composant à produire une représentation visuelle dans le DOM.
-  mode: revue
-  etat: convention
+# I18 (« monopole du rendu ») fusionné dans I38 (P6.yaml) le 30/09 : View et Behavior projettent
+# tous deux le domaine ; ce qui distingue la View (posséder et structurer un scope) relève de P6.
+# P5 n'a donc plus d'énoncé (E) propre.
 
 - id: I56
   nature: C

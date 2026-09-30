@@ -78,7 +78,7 @@ réservés aux extensions de la Foundation ([roadmap](../ROADMAP.md)).
 | --- | --- |
 | Communication / Channels | I1, I2, I3, I4, I7, I8, I9, I10, I11, I14, I15, I16, I65, I70, I73, I76 |
 | State / Encapsulation | I6, I17, I22, I29, I30, I42, I57, I63, I64, I80 |
-| View / DOM | I13, I18, I19, I31, I32, I34, I36, I38, I39, I40, I41, I77, I78, I82, I91 |
+| View / DOM | I13, I19, I31, I32, I34, I36, I38, I39, I40, I41, I77, I78, I82, I91 |
 | Behavior | I43, I44, I45 |
 | Foundation | I20, I33, I38, I67 |
 | Composer | I20, I35, I36, I37, I38, I40, I58 |

@@ -52,7 +52,7 @@ Le graphe est un DAG : `parents[0]` = parent principal, les suivants = seconds p
 2. **P2** Dépendances déclarées — aucun canal implicite.
 3. **P3** Sémantique des trois voies — Command (1 propriétaire, refusable), Event (N abonnés), Request (sans effet).
 4. **P4** Causalité traçable et bornée.
-5. **P5** La View projette, elle ne décide pas.
+5. **P5** La couche concrète projette, elle ne décide pas — aucune décision métier, seulement des décisions de présentation.
 6. **P6** Propriété exclusive du DOM — ⚠️ aucun invariant existant ne l'énonce (I38 mêle règle et décision N1/N2/N3).
 7. **P7** Cycle de vie hétéronome.
 8. **P8** Identité par le manifest.
@@ -72,7 +72,8 @@ Règles clés : *cible ≠ livré* ; *être cité dans un test ≠ être prouvé
 
 ### Redondances identifiées (à fusionner, un ID conservé + alias)
 
-Toutes traitées. Fusionnées : I6 = I5 (`P1.yaml`, 30/09) · I1 = I12 = I26 (`P3.yaml`) · I15 = I50 (`P2.yaml`) · I21 = I24
+Toutes traitées. Fusionnées : I6 = I5 (`P1.yaml`, 30/09) · I38 = I18 (`P6.yaml`, 30/09 —
+« monopole du rendu » était faux : View et Behavior projettent tous deux ; P5 n'a plus d'énoncé E) · I1 = I12 = I26 (`P3.yaml`) · I15 = I50 (`P2.yaml`) · I21 = I24
 (`P8.yaml`) · I73 = I47 · I74 = I49 (`P9.yaml`). Conservées distinctes (inclusion) : I51 ⊂ I96 · I53 ⊂ I96.
 
 **Alias retirés des références (30/09, option 2)** : plus aucun test, code source, ADR ni doc

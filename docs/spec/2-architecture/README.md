@@ -41,7 +41,7 @@ Composants liés à l'interface utilisateur et au cycle de vie visuel.
 | --- | --- | --- |
 | **Foundation** | Point d'ancrage unique sur `<body>`, droits N1 sur `<html>`/`<body>`, capacités Channel | [foundation.md](../4-couche-concrete/foundation.md) |
 | **Composer** | Décideur de composition — `resolve()` → quelle View instancier, capacités Channel, aucun droit DOM | [composer.md](../4-couche-concrete/composer.md) |
-| **View** | Projection pure — monopole du rendu DOM (I18), aucun domain state (localState I42 autorisé) | [view.md](../4-couche-concrete/view.md) |
+| **View** | Projection pure — seul composant à posséder un scope de rendu (I38, I99), aucun domain state (localState I42 autorisé) | [view.md](../4-couche-concrete/view.md) |
 | **Behavior** | Plugin UI réutilisable et aveugle attaché à une View, aucun domain state (ADR-21) | [behavior.md](../4-couche-concrete/behavior.md) |
 
 > Pour le détail complet (responsabilités, limites, ownership, relations) de chaque composant,

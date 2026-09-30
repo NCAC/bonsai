@@ -56,7 +56,7 @@ Modèle : [TEMPLATE.md](TEMPLATE.md). Correspondance avec l'ancienne numérotati
 
 | ADR | Décision | Statut |
 | --- | --- | --- |
-| [ADR-16](ADR-16-view-scope-projection.md) | View : monopole du rendu, scope exclusif, `getUI`, niveaux N1/N2/N3 | 🟢 ⚠️ |
+| [ADR-16](ADR-16-view-scope-projection.md) | View : scope de rendu exclusif, `getUI`, niveaux N1/N2/N3 | 🟢 ⚠️ |
 | [ADR-17](ADR-17-local-state.md) | `localState` de présentation | 🟢 ⏳ |
 | [ADR-18](ADR-18-composer.md) | Composer : décideur pur, `resolve(event)`, N instances | 🟢 ⚠️ |
 | [ADR-19](ADR-19-root-element.md) | `rootElement` : sélecteur CSS fourni par le Composer | 🟢 ⚠️ |

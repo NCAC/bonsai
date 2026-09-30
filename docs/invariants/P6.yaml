@@ -73,9 +73,12 @@
   mode: type
   etat: cible
 
+# I18 fusionné ici : « la View a le monopole du rendu » se réduit, une fois corrigé, à la
+# répartition des droits par rôle (seule la View possède un scope et le structure en N3).
 - id: I38
   nature: D
   parents: [P6]
+  alias: [I18]
   enonce: "Chaque rôle a des droits d'altération bornés : View N1 à N3 sur son scope, Behavior N1 et N2 sur ses propres nœuds, Foundation N1 sur `<html>`/`<body>`, Composer aucune écriture."
   pourquoi: >
     L'exclusivité dit qui peut muter un nœud ; les niveaux disent jusqu'où. Les rendre explicites par

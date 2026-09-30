@@ -65,11 +65,10 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 
 *Rattachés en second parent :* I98
 
-## P5 — La View projette, elle ne décide pas
+## P5 — La couche concrète projette, elle ne décide pas
 
-**Le rendu est une projection du domaine ; seule la View produit du DOM, et elle ne porte aucun état métier.**
+**Le rendu est une projection du domaine : les composants de la couche concrète (View, Behavior, Composer, Foundation) projettent l'état et relaient les intentions de l'utilisateur, sans porter d'état métier ni prendre de décision métier — accepter ou refuser une intention, calculer ou valider un état du domaine, enchaîner une réaction à un Event par un Command. Leurs seules décisions sont de présentation : quoi afficher et comment, où monter une View, quel état local de présentation tenir.**
 
-- `E` I18 — La View a le monopole du rendu — seul composant à produire une représentation visuelle dans le DOM. ⟨revue · 📐 · ·⟩
 - `C` I56 — La couche abstraite (Features, Entities) est active avant la couche concrète (Views). ⟨boot · ✅ · R⟩
 - `D` I42 — Une View peut déclarer un state local de présentation — typé, réactif, encapsulé, non diffusable, détruit avec elle. ⟨type+boot · ⏳ · ·⟩
   - `D` I57 — Le namespace `local` est réservé au mécanisme de state local ; aucun Channel, Feature ou Entity ne peut le déclarer. ↔ P8 ⟨type+boot · ✅ · T⟩
@@ -88,7 +87,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `C` I41 — Chaque clé `@ui` a une source de mutation unique — son template ou `getUI()`, jamais les deux. ⟨type · ⏳ · ·⟩
 - `C` I43 — Les clés `uiEvents` d'un Behavior sont disjointes de celles de sa View hôte. ⟨boot · ⏳ · ·⟩
 - `D` I44 — Un Behavior n'a aucun accès aux propriétés de sa View hôte (`this.view`, `el`, `getUI`). ↔ P10 ⟨type · ⏳ · ·⟩
-- `D` I38 — Chaque rôle a des droits d'altération bornés : View N1 à N3 sur son scope, Behavior N1 et N2 sur ses propres nœuds, Foundation N1 sur `<html>`/`<body>`, Composer aucune écriture. ⟨type · ⚠️ · ·⟩
+- `D` I38 = I18 — Chaque rôle a des droits d'altération bornés : View N1 à N3 sur son scope, Behavior N1 et N2 sur ses propres nœuds, Foundation N1 sur `<html>`/`<body>`, Composer aucune écriture. ⟨type · ⚠️ · ·⟩
   - `D` I35 — Un Composer n'écrit jamais dans le DOM ; il ne lit son scope que pour résoudre le `rootElement` d'une View enfant. ↔ P10 ⟨revue · ✅ · R⟩
   - `D` I33 — La Foundation est unique par application ; elle seule altère `<html>` et `<body>`, en N1 seulement — attributs et classes, sans ajouter ni retirer de nœud. ⟨boot · ⚠️ · R⟩
   - `D` I32 — La View peut altérer son `rootElement` en N1, mais ne le détruit ni ne le remplace jamais. ⟨revue · 📐 · ·⟩
