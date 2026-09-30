@@ -27,7 +27,7 @@ const IGNORED = new Set(["node_modules", "dist", ".git", "build"]);
 
 const NATURES = ["E", "C", "D", "V"] as const;
 const MODES = ["type", "boot", "type+boot", "run", "revue"] as const;
-const ETATS = ["livre", "partiel", "cible", "convention"] as const;
+const STATES = ["livre", "partiel", "cible", "convention"] as const;
 /** One role per package (ADR-28); "*" marks a cross-cutting rule. */
 const ROLES = [
   "Application",
@@ -39,45 +39,45 @@ const ROLES = [
   "Composer",
   "Foundation"
 ] as const;
-const ETAT_ICON: Record<string, string> = {
+const STATE_ICON: Record<string, string> = {
   livre: "✅",
   partiel: "⚠️",
   cible: "⏳",
   convention: "📐"
 };
 
-type Principe = {
+type TPrinciple = {
   id: string;
   titre: string;
   enonce: string;
   meta?: boolean;
   "question-ouverte"?: string;
 };
-type Ligne = {
+type TLine = {
   id: string;
   nature: (typeof NATURES)[number];
   parents: string[];
   roles?: string[];
   alias?: string[];
   enonce: string;
-  pourquoi?: string;
+  why?: string;
   mode: (typeof MODES)[number] | null;
-  etat: (typeof ETATS)[number] | null;
-  preuves?: string[];
+  state: (typeof STATES)[number] | null;
+  proofs?: string[];
 };
 
 const errors: string[] = [];
 const warnings: string[] = [];
 
 // ---------- chargement ----------
-const principes = yaml.load(
+const principles = yaml.load(
   readFileSync(join(DIR, "principes.yaml"), "utf8")
-) as Principe[];
+) as TPrinciple[];
 const branches = readdirSync(DIR)
   .filter((f) => /^P\d+\.yaml$/.test(f))
   .sort((a, b) => parseInt(a.slice(1)) - parseInt(b.slice(1)));
-const lignes: Ligne[] = branches.flatMap(
-  (f) => (yaml.load(readFileSync(join(DIR, f), "utf8")) as Ligne[]) ?? []
+const lines: TLine[] = branches.flatMap(
+  (f) => (yaml.load(readFileSync(join(DIR, f), "utf8")) as TLine[]) ?? []
 );
 
 /** YAML comments attached to each line (indented `#` lines inside its entry). */
@@ -94,21 +94,23 @@ for (const f of branches) {
 }
 
 // ---------- validation du schéma ----------
-const ids = new Set<string>(principes.map((p) => p.id));
-for (const l of lignes) {
+const ids = new Set<string>(principles.map((p) => p.id));
+for (const l of lines) {
   if (!/^I\d+$/.test(l.id)) errors.push(`${l.id} : identifiant invalide`);
   if (ids.has(l.id)) errors.push(`${l.id} : doublon`);
   ids.add(l.id);
 }
-for (const l of lignes) {
+for (const l of lines) {
   for (const a of l.alias ?? []) {
     if (!/^I\d+$/.test(a)) errors.push(`${l.id} : alias invalide "${a}"`);
     if (ids.has(a))
-      errors.push(`${l.id} : alias ${a} entre en collision avec un identifiant existant`);
+      errors.push(
+        `${l.id} : alias ${a} entre en collision avec un identifiant existant`
+      );
     ids.add(a);
   }
 }
-for (const l of lignes) {
+for (const l of lines) {
   const at = `${l.id} :`;
   if (!NATURES.includes(l.nature))
     errors.push(`${at} nature invalide "${l.nature}"`);
@@ -122,15 +124,14 @@ for (const l of lignes) {
   for (const r of l.roles ?? [])
     if (r !== "*" && !(ROLES as readonly string[]).includes(r))
       errors.push(`${at} rôle inconnu "${r}"`);
-  if (l.nature === "D" && !l.pourquoi)
-    errors.push(`${at} décision sans "pourquoi"`);
-  if (l.pourquoi?.startsWith("À compléter"))
-    warnings.push(`${at} "pourquoi" à compléter`);
+  if (l.nature === "D" && !l.why) errors.push(`${at} décision sans "pourquoi"`);
+  if (l.why?.startsWith("À compléter"))
+    warnings.push(`${at} "why" à compléter`);
   if (l.mode !== null && !MODES.includes(l.mode))
     errors.push(`${at} mode invalide "${l.mode}"`);
-  if (l.etat !== null && !ETATS.includes(l.etat))
-    errors.push(`${at} état invalide "${l.etat}"`);
-  if (l.mode === null || l.etat === null)
+  if (l.state !== null && !STATES.includes(l.state))
+    errors.push(`${at} état invalide "${l.state}"`);
+  if (l.mode === null || l.state === null)
     warnings.push(`${at} mode/état non qualifiés`);
 }
 
@@ -161,7 +162,7 @@ for (const f of TEST_ROOTS.flatMap((r) => walk(join(ROOT, r)))) {
   }
 }
 // une citation d'un alias (ancien ID fusionné) compte pour la ligne canonique
-for (const l of lignes) {
+for (const l of lines) {
   for (const a of l.alias ?? []) {
     const ac = citations.get(a);
     if (!ac) continue;
@@ -175,8 +176,8 @@ for (const l of lignes) {
   }
 }
 // une preuve explicite (test qui prouve sans citer l'ID) compte comme une citation
-for (const l of lignes) {
-  for (const p of l.preuves ?? []) {
+for (const l of lines) {
+  for (const p of l.proofs ?? []) {
     if (!existsSync(join(ROOT, p))) {
       errors.push(`${l.id} : preuve introuvable ${p}`);
       continue;
@@ -187,30 +188,30 @@ for (const l of lignes) {
   }
 }
 
-// ---------- cohérence état / preuves ----------
-for (const l of lignes) {
+// ---------- cohérence state / proofs ----------
+for (const l of lines) {
   const c = citations.get(l.id);
   const n = (c?.T.size ?? 0) + (c?.R.size ?? 0);
-  if (l.etat === "livre" && l.mode !== "revue" && n === 0)
+  if (l.state === "livre" && l.mode !== "revue" && n === 0)
     errors.push(`${l.id} : déclaré livré sans aucun test qui le cite`);
-  if (l.etat === "livre" && l.mode === "type" && !c?.T.size)
+  if (l.state === "livre" && l.mode === "type" && !c?.T.size)
     warnings.push(`${l.id} : mode "type" sans test de type`);
   if (
     (l.mode === "boot" || l.mode === "run") &&
-    l.etat === "livre" &&
+    l.state === "livre" &&
     !c?.R.size
   )
     warnings.push(`${l.id} : mode "${l.mode}" sans test runtime`);
 }
 
 // ---------- génération ----------
-const children = (id: string) => lignes.filter((l) => l.parents[0] === id);
-const tag = (l: Ligne) => {
+const children = (id: string) => lines.filter((l) => l.parents[0] === id);
+const tag = (l: TLine) => {
   const c = citations.get(l.id);
   const t =
     [c?.R.size ? "R" : "", c?.T.size ? "T" : ""].filter(Boolean).join(" ") ||
     "·";
-  return `⟨${l.mode ?? "—"} · ${l.etat ? ETAT_ICON[l.etat] : "∅"} · ${t}⟩`;
+  return `⟨${l.mode ?? "—"} · ${l.state ? STATE_ICON[l.state] : "∅"} · ${t}⟩`;
 };
 const render = (id: string, depth: number): string[] =>
   children(id).flatMap((l) => [
@@ -224,7 +225,7 @@ const render = (id: string, depth: number): string[] =>
   ]);
 
 const secondary = (id: string) =>
-  lignes.filter((l) => l.parents.slice(1).includes(id)).map((l) => l.id);
+  lines.filter((l) => l.parents.slice(1).includes(id)).map((l) => l.id);
 
 const migrated = new Set(branches.map((f) => f.replace(".yaml", "")));
 const md = [
@@ -235,7 +236,7 @@ const md = [
   "⟨mode · état · tests⟩ — état : ✅ livré · ⚠️ partiel · ⏳ cible · 📐 convention · ∅ non qualifié ;",
   "tests : `R` runtime · `T` type · `·` aucun (détection automatique des citations).",
   "",
-  ...principes.flatMap((p) => [
+  ...principles.flatMap((p) => [
     `## ${p.id} — ${p.titre}${p.meta ? " *(méta-principe)*" : ""}`,
     "",
     `**${p.enonce}**`,
@@ -254,32 +255,32 @@ const md = [
 // ---------- vues par rôle ----------
 const GENERATED =
   "<!-- Fichier généré par tools/invariants/invariants.ts — ne pas modifier à la main. -->";
-const byId = new Map(lignes.map((l) => [l.id, l]));
+const byId = new Map(lines.map((l) => [l.id, l]));
 /** Principle reached by following the principal parent. */
-const principeOf = (l: Ligne): string => {
+const principeOf = (l: TLine): string => {
   let p = l.parents[0];
   while (byId.has(p)) p = byId.get(p)!.parents[0];
   return p;
 };
 const num = (id: string) => parseInt(id.slice(1));
-const item = (l: Ligne) =>
-  `- \`${l.nature}\` ${l.id} — ${l.enonce} ${tag(l)}`;
-const count = (ls: Ligne[]) =>
+const item = (l: TLine) => `- \`${l.nature}\` ${l.id} — ${l.enonce} ${tag(l)}`;
+const count = (ls: TLine[]) =>
   Object.fromEntries(
-    ETATS.map((e) => [e, ls.filter((l) => l.etat === e).length])
-  ) as Record<(typeof ETATS)[number], number>;
-const transversal = lignes.filter((l) => l.roles?.includes("*"));
+    STATES.map((e) => [e, ls.filter((l) => l.state === e).length])
+  ) as Record<(typeof STATES)[number], number>;
+const transversal = lines.filter((l) => l.roles?.includes("*"));
 const fileOf = (r: string) => `${r.toLowerCase()}.md`;
 
 const views = new Map<string, string>();
 for (const r of ROLES) {
-  const own = lignes.filter((l) => l.roles?.includes(r));
+  const own = lines.filter((l) => l.roles?.includes(r));
   const c = count(own);
   const ecarts = own
-    .filter((l) => l.etat === "partiel" || l.etat === "cible")
+    .filter((l) => l.state === "partiel" || l.state === "cible")
     .sort(
       (a, b) =>
-        ETATS.indexOf(a.etat!) - ETATS.indexOf(b.etat!) || num(a.id) - num(b.id)
+        STATES.indexOf(a.state!) - STATES.indexOf(b.state!) ||
+        num(a.id) - num(b.id)
     );
   views.set(
     fileOf(r),
@@ -308,7 +309,7 @@ for (const r of ROLES) {
       "",
       "## Invariants par principe",
       "",
-      ...principes.flatMap((p) => {
+      ...principles.flatMap((p) => {
         const ls = own.filter((l) => principeOf(l) === p.id);
         return ls.length
           ? [`### ${p.id} — ${p.titre}`, "", ...ls.map(item), ""]
@@ -334,7 +335,7 @@ views.set(
     "| Rôle | Invariants | ✅ livré | ⚠️ partiel | ⏳ cible | 📐 convention |",
     "| --- | --- | --- | --- | --- | --- |",
     ...ROLES.map((r) => {
-      const own = lignes.filter((l) => l.roles?.includes(r));
+      const own = lines.filter((l) => l.roles?.includes(r));
       const c = count(own);
       return `| [${r}](${fileOf(r)}) | ${own.length} | ${c.livre} | ${c.partiel} | ${c.cible} | ${c.convention} |`;
     }),
@@ -366,7 +367,7 @@ if (process.argv.includes("--check")) {
     writeFileSync(path, content);
   }
   console.log(
-    `✔ ${relative(ROOT, OUT)} + ${views.size} vue(s) par rôle (${lignes.length} lignes, ${branches.length} branche(s))`
+    `✔ ${relative(ROOT, OUT)} + ${views.size} vue(s) par rôle (${lines.length} lignes, ${branches.length} branche(s))`
   );
 }
 
