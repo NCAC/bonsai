@@ -35,7 +35,7 @@ doivent être alignés à la main tant qu'ils ne sont pas générés.
 | `pnpm invariants` | valide le registre et régénère `arbre.md` | après toute modification du registre ou d'une citation dans un test |
 | `pnpm invariants:check` | idem sans écrire ; échoue si `arbre.md` n'est pas à jour | avant commit (la CI le lance) |
 | `pnpm test` | suite Jest complète | après toute modification d'un test |
-| `npx tsc --noEmit -p tsconfig.test.json` | type-check de `packages/` et `tests/` (seul moyen de vérifier les tests de type) | après toute modification d'un test de type ou de `packages/` |
+| `pnpm tsc:check:tests` | type-check de `packages/` et `tests/` (`tsconfig.test.json`) — seul moyen de vérifier les tests de type ; lancé par le pre-commit et la CI | après toute modification d'un test de type ou de `packages/` |
 | `npx tsx lib/check-adr-tested-status.ts` | liste les ADR dont chaque invariant impacté est cité en test | après modification d'une ligne **Invariants impactés** |
 | `pnpm run build:no-watch` | régénère `core/dist` et `packages/*/dist` (versionnés, ADR-30) | après **toute** modification de `packages/*/src`, même un commentaire |
 
@@ -83,11 +83,9 @@ asserte réellement la règle.
 | Moment | Ce qui tourne |
 | --- | --- |
 | `commit-msg` | format Conventional Commits : `type(portée)?: message`, types `feat fix docs refactor test chore perf ci build` |
-| `pre-commit` | `pnpm tsc --noEmit` (couvre `lib/` seulement), `pnpm test:regression`, contrôle ADR (informatif) |
+| `pre-commit` | `pnpm tsc --noEmit` (`lib/`), `pnpm tsc:check:tests` (`packages/` + `tests/`), `pnpm test:regression`, contrôle ADR (informatif) |
 | `pre-push` | `pnpm test` |
-| CI (`.github/workflows/regression.yml`) | `pnpm tsc --noEmit`, `pnpm test:ci`, `pnpm invariants:check` |
-
-Ni les hooks ni la CI ne lancent `tsc -p tsconfig.test.json` : le lancer à la main.
+| CI (`.github/workflows/regression.yml`) | `pnpm tsc --noEmit`, `pnpm tsc:check:tests`, `pnpm test:ci`, `pnpm invariants:check` |
 
 ---
 
@@ -283,7 +281,7 @@ avec une table de correspondance.
 ```bash
 pnpm invariants                              # 0 erreur ; lire les avertissements
 pnpm test                                    # suite complète
-npx tsc --noEmit -p tsconfig.test.json       # tests de type (non couverts par hooks ni CI)
+pnpm tsc:check:tests                         # tests de type (packages/ + tests/, aussi en pre-commit et CI)
 npx tsx lib/check-adr-tested-status.ts       # si une ligne Invariants impactés a changé
 pnpm run build:no-watch                      # si packages/*/src a changé
 pnpm invariants:check                        # dernier contrôle, identique à la CI

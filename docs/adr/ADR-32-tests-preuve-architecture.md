@@ -28,7 +28,7 @@ tests/
 ```
 
 - Chaque fichier annonce en en-tête les invariants qu'il prouve ; les `describe`/`it` citent `I<N>`.
-- Les tests compile-time vivent à part : si un `@ts-expect-error` ne déclenche plus d'erreur, le typage s'est relâché et `tsc` échoue (TS2578) — à condition de lancer `npx tsc --noEmit -p tsconfig.test.json` (voir Conséquences).
+- Les tests compile-time vivent à part : si un `@ts-expect-error` ne déclenche plus d'erreur, le typage s'est relâché et `tsc` échoue (TS2578) — vérifié par `pnpm tsc:check:tests` (pre-commit et CI).
 - Les seuils de couverture sont figés dans `jest.config.ts` ; une baisse fait échouer la CI.
 
 **Statut d'un ADR** — `🟡 Proposed → 🟢 Accepted → 🔵 Tested` :
@@ -51,4 +51,4 @@ tests/
 
 - `lib/check-adr-tested-status.ts` liste les ADR promouvables (hook pre-commit, sortie toujours 0).
 - **Limite** : la citation est un simple jeton textuel ; un `I4` écrit dans n'importe quel test compte. La vérification de fond reste la revue.
-- ⚠️ **Tests de type non exécutés en routine** : Jest (`ts-jest`, `isolatedModules`) ne type-check pas `tests/`, et `pnpm tsc:check` (= `tsc --noEmit`, `tsconfig.json`) ne couvre que `lib/`. Seul `npx tsc --noEmit -p tsconfig.test.json` vérifie `tests/` et `packages/` (il passe aujourd'hui, hors mode `strict`). Un `@ts-expect-error` devenu inutile reste invisible tant que cette commande n'est pas lancée à la main.
+- **Tests de type** : Jest (`ts-jest`, `isolatedModules`) ne type-check pas `tests/`, et `pnpm tsc:check` ne couvre que `lib/`. `pnpm tsc:check:tests` (`tsconfig.test.json`, hors mode `strict`) vérifie `tests/` et `packages/` ; il est lancé par le pre-commit et la CI, si bien qu'un `@ts-expect-error` devenu inutile bloque le commit.

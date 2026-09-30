@@ -63,7 +63,7 @@ Chaque composant Bonsai est **testable en isolation** grâce à l'architecture d
 - **Test runner** : **Jest** (`ts-jest`) pour tout `tests/` — le framework applicatif. **Vitest** est réservé à la pipeline de build (`lib/`) : ne pas confondre, ce sont deux runners pour deux périmètres disjoints (cf. `CLAUDE.md`).
 - **DOM** : `jsdom`, activé **par fichier** via le docblock `/** @jest-environment jsdom */` en tête de fichier (`jest.config.ts` a `testEnvironment: "node"` par défaut — jsdom n'est donc pas global, il est opt-in fichier par fichier).
 - **Simulation d'événements DOM** : appels directs (`element.click()`, `element.dispatchEvent(new Event(...))`) — pas de bibliothèque `userEvent`/Testing Library dans les dépendances du projet.
-- **Type-checking des tests** : `ts-jest` tourne avec `isolatedModules: true` — **Jest ne type-check pas les fichiers de test**. Les tests `@ts-expect-error` de `tests/types/` ne sont vérifiés que par `npx tsc --noEmit -p tsconfig.test.json`, une commande **séparée**, non câblée dans `pnpm test` ni dans les hooks Husky/CI actuels — voir §7.
+- **Type-checking des tests** : `ts-jest` tourne avec `isolatedModules: true` — **Jest ne type-check pas les fichiers de test**. Les tests `@ts-expect-error` de `tests/types/` ne sont vérifiés que par `pnpm tsc:check:tests` (`tsc --noEmit -p tsconfig.test.json`), une commande **séparée** de `pnpm test`, lancée par le pre-commit et la CI — voir §7.
 
 ---
 
@@ -119,7 +119,7 @@ pnpm test:integration                              # tests/integration uniquemen
 pnpm test:e2e                                      # gate E2E strate 0
 pnpm test:strate-0:regression                      # tests/unit/strate-0/strate-0.regression.test.ts
 npx jest tests/unit/strate-0/feature.basic.test.ts # un fichier précis
-npx tsc --noEmit -p tsconfig.test.json             # type-check des tests (@ts-expect-error) — SÉPARÉ de `pnpm test`
+pnpm tsc:check:tests                               # type-check des tests (@ts-expect-error) — SÉPARÉ de `pnpm test`
 ```
 
 ---
@@ -334,16 +334,13 @@ type-check pas leur contenu — un `@ts-expect-error` mal formé ou devenu inuti
 La seule vérification réelle est :
 
 ```bash
-npx tsc --noEmit -p tsconfig.test.json
+pnpm tsc:check:tests   # = tsc --noEmit -p tsconfig.test.json
 ```
 
-> ⚠️ **Trou de couverture connu (audit doc 2026-09-17)** : cette commande
-> n'est **pas** câblée dans `pnpm test`, ni dans un hook Husky, ni dans la CI
-> actuelle (à vérifier/corriger — cf. `.husky/`, workflows GitHub Actions). Un
-> test de type cassé ou un `@ts-expect-error` devenu superflu (`TS2578`) peut
-> donc rester silencieusement invalide tant que personne ne lance cette
-> commande manuellement. Avant de merger un changement touchant
-> `tests/types/`, lancez-la explicitement.
+> Cette commande (`pnpm tsc:check:tests`) est **séparée de `pnpm test`** mais
+> câblée dans le hook pre-commit et dans la CI (`.github/workflows/regression.yml`,
+> étape « Type-check (packages + tests) ») : un test de type cassé ou un
+> `@ts-expect-error` devenu superflu (`TS2578`) bloque le commit.
 
 ---
 
@@ -363,7 +360,7 @@ npx tsc --noEmit -p tsconfig.test.json
 
 | Anti-pattern | Pourquoi | Alternative |
 | --- | --- | --- |
-| ❌ Croire que `pnpm test` type-check `tests/types/` | `ts-jest` tourne en `isolatedModules: true` — aucun type-check | `npx tsc --noEmit -p tsconfig.test.json` (§7) |
+| ❌ Croire que `pnpm test` type-check `tests/types/` | `ts-jest` tourne en `isolatedModules: true` — aucun type-check | `pnpm tsc:check:tests` (§7) |
 | ❌ Mocker `Radio` avec un objet fait main | Radio est un singleton simple à réinitialiser | `Radio.reset()` + `Radio.me()` réels |
 | ❌ Accéder à `feature.entity` depuis un test | `protected` (I6) — ne compile pas | `entityOf(feature)` (`tests/helpers/entity-of.ts`) |
 | ❌ Référencer `createTestFeature`/`createTestView`/`MockChannel`/`@bonsai/testing` | N'existe pas dans le code livré | Instanciation directe + `Radio.reset()` (§3–§5) |

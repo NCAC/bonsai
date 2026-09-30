@@ -3,7 +3,7 @@
 | Champ | Valeur |
 | --- | --- |
 | **Statut** | 🟢 Accepted |
-| **Livré** | ✅ branches, hooks, CI · ⚠️ jalon strate 0 tagué `v0.1.0-strate-0` (en plus du tag `v0.1.0` de la baseline) au lieu de `v0.2.0` (le `package.json` est resté en `0.1.0`) ; gate de régression limitée à 5 fichiers unitaires de la strate 0 (Channel, Radio, Entity, Feature, View — ni Composer, Foundation, Application) ; `tsc --noEmit` ne vérifie que `lib/` |
+| **Livré** | ✅ branches, hooks, CI · ⚠️ jalon strate 0 tagué `v0.1.0-strate-0` (en plus du tag `v0.1.0` de la baseline) au lieu de `v0.2.0` (le `package.json` est resté en `0.1.0`) ; gate de régression limitée à 5 fichiers unitaires de la strate 0 (Channel, Radio, Entity, Feature, View — ni Composer, Foundation, Application) |
 | **Spec** | [CONTRIBUTING.md](../../CONTRIBUTING.md) · [CHANGELOG.md](../../CHANGELOG.md) |
 
 ## Contexte
@@ -29,9 +29,9 @@ API publique stable. Historique dans `CHANGELOG.md` (Keep a Changelog).
 
 | Niveau | Quand | Quoi | Bloquant |
 | --- | --- | --- | --- |
-| Hooks Husky | `commit` | `tsc --noEmit` (`lib/` seulement) + `test:regression` (< 30 s) + format du message | local (`--no-verify` possible) |
+| Hooks Husky | `commit` | `tsc --noEmit` (`lib/`) + `tsc:check:tests` (`packages/` + `tests/`) + `test:regression` (< 30 s) + format du message | local (`--no-verify` possible) |
 | | `push` | suite complète | local |
-| CI GitHub Actions | push `feature/**` et `fix/**`, PR vers `develop` | `tsc --noEmit` (`lib/` seulement) + `test:ci` (couverture) | oui, via protection de branche |
+| CI GitHub Actions | push `feature/**` et `fix/**`, PR vers `develop` | `tsc --noEmit` (`lib/`) + `tsc:check:tests` + `test:ci` (couverture) + `invariants:check` | oui, via protection de branche |
 
 **Gate de non-régression cumulative** : un fichier `strate-N.regression.test.ts`
 qui importe explicitement les suites validées ; chaque PR y ajoute les siennes,
