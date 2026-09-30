@@ -23,8 +23,20 @@
   parents: [P4, I102]
   enonce: Le `hop` est incrémenté à chaque réaction ; un message au-delà de `MAX_HOPS` est rejeté.
   pourquoi: >
-    À compléter par le mainteneur. Hypothèse : une borne explicite transforme une boucle de
-    causalité infinie (bug silencieux) en erreur détectée, diagnostiquable par son correlationId.
+    En chorégraphie (ADR-01), aucune Feature ne voit la chaîne entière : une boucle A → B → A
+    n'est visible d'aucun maillon, et les réactions étant conditionnelles, le compilateur ne peut
+    pas l'exclure. Seul le message peut porter sa propre profondeur : un compteur dans les metas
+    borne la chaîne sans registre central ni contexte implicite, reste valable à travers les
+    handlers async (ADR-04) et ne coûte qu'une comparaison. Compter plutôt que détecter les
+    cycles : mémoriser les paires (Feature, message) vues par correlationId exigerait un état à
+    purger en async, signalerait à tort des répétitions légitimes et laisserait passer une chaîne
+    longue sans cycle, alors que P4 exige une chaîne bornée. Rejeter au-delà de `MAX_HOPS` (I102)
+    transforme une boucle infinie, qui gèlerait l'application loin de sa cause, en erreur
+    immédiate rattachée à son correlationId.
+  # Borne la profondeur d'une chaîne, pas sa largeur : un fan-out massif à hop constant passe.
+  # Complémentaire de I98 (ré-entrance synchrone dans une même Entity) : I9 couvre les chaînes
+  # inter-Features, y compris async.
+  # Ouvert : valeur et point d'injection de `MAX_HOPS` non tranchés (metas.md §6).
   mode: run
   etat: cible
 

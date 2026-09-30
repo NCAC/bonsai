@@ -198,14 +198,14 @@ abstract class Entity<TStructure extends TJsonSerializable> {
 
 ## 2. Contrainte jsonifiable
 
-> **Décision ADR-10** : `TStructure` est **jsonifiable obligatoire**.
-> Pas de classes imbriquées, pas de fonctions, pas de cycles, pas de `undefined`.
+> **Décision ADR-10** : `TStructure` est **jsonifiable obligatoire** (I46).
+> Pas de classes imbriquées, pas de fonctions, pas de `Date`, `Map` ni `Set`.
 
 ```typescript
 /**
  * Contrainte de type : valeurs sérialisables en JSON.
  * Permet : string, number, boolean, null, arrays, plain objects.
- * Interdit : classes, fonctions, undefined, symbols, Date, Map, Set, cycles.
+ * Rejette au compile-time : classes, fonctions, symbols, bigint, Date, Map, Set.
  */
 type TJsonSerializable =
   | string
@@ -215,6 +215,15 @@ type TJsonSerializable =
   | TJsonSerializable[]
   | { [key: string]: TJsonSerializable };
 ```
+
+> ⚠️ **Déclarer le state avec `type`, pas `interface`.** Une `interface` n'a pas de
+> signature d'index implicite : elle est rejetée (`TS2344: Type 'ICart' does not satisfy
+> the constraint 'TJsonSerializable'`) même si tous ses champs sont jsonifiables. Un alias
+> `type TCartState = { … }` passe — c'est aussi la convention de nommage (`T` + PascalCase).
+>
+> **Limites du type** : les cycles de valeurs ne sont pas détectables à la compilation, et
+> sans `strict` les champs `undefined` ou optionnels sont acceptés alors que
+> `JSON.stringify` les supprime. Les éviter reste une règle de revue.
 
 <!--
   Avantages de la contrainte jsonifiable :

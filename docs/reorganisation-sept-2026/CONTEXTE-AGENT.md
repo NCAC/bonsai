@@ -104,7 +104,7 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
 - `principes.yaml` : les 10 principes (+ `meta` pour P9 et P10, `question-ouverte` pour P9).
 - `P10.yaml` : I100 (E), I101 (C, second parent P1 — Entity sans logique métier, convention), et sous I101 : I52, I63 (déplacés de P1, second parent P1).
   L'arbre généré liste sous chaque principe ses rattachements en second parent.
-  Prochain numéro libre : I103.
+  Prochain numéro libre : I104 (I103, clés de message en `camelCase` sans chiffre, `P9.yaml`, cible).
 - `P1.yaml` à `P7.yaml` : migrés depuis `arbre-invariants-precision.md` (67 lignes avec P8).
   - Fusions : I12 et I26 dans I1 (P3), I50 dans I15 (P2). I51/I53 restent distincts de I96
     (relation d'inclusion ⊂, pas de doublon).

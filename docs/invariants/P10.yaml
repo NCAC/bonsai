@@ -32,9 +32,14 @@
   parents: [I101, P1]
   enonce: L'Entity expose des méthodes query pures (lecture seule).
   pourquoi: >
-    À compléter par le mainteneur — voir ADR-10. Hypothèse : séparer
-    lecture et écriture au niveau du type pour qu'une query ne puisse jamais devenir un chemin
-    de mutation détourné.
+    Séparation commande/requête (CQS) au niveau de l'Entity : une méthode lit ou écrit, jamais
+    les deux. `mutate()` reste l'unique chemin d'écriture, tracé par son intent ; une query ne
+    peut donc pas porter d'effet caché. C'est ce qui garantit, à la source, qu'une Request est
+    sans effet (I17) : un replier n'appelle que des queries (ADR-02), la voie Request n'est sûre
+    que si ce qu'elle appelle l'est.
   # Le getter `query` est écrit par l'application (fixture du test), le framework n'impose rien.
+  # Réserve : rien n'empêche une méthode de l'Entity d'appeler `this.mutate()` (le gel Immer
+  # de `state` n'empêche que la mutation directe). À prévenir — règle ESLint envisagée, sur le
+  # modèle de `no-async-in-replier` (ADR-02).
   mode: revue
   etat: convention

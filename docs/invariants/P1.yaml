@@ -42,10 +42,18 @@
   parents: [P1]
   enonce: "`TStructure` (state d'une Entity) est contraint à `TJsonSerializable`."
   pourquoi: >
-    À compléter par le mainteneur — voir ADR-10. Hypothèse : garantir
-    que le domain state reste sérialisable (devtools, SSR futur) sans reposer sur des classes
-    ou fonctions non clonables.
+    Le domain state doit pouvoir franchir une frontière sans perte : patches et `TEntityEvent`
+    (I97) pour l'undo, les DevTools et l'event sourcing, snapshots `toJSON`/`fromJSON` et
+    hydratation SSR (ADR-24). Seules des données JSON le garantissent : une `Date`, une `Map` ou
+    une instance de classe ne survivent pas à un aller-retour. C'est aussi le terrain natif
+    d'Immer (ni `enableMapSet` ni `immerable`), et la traduction dans le type de I101 : le state
+    est de la donnée, jamais du comportement — aucune fonction ni classe n'y entre. Une date
+    s'y écrit en chaîne ISO ou en timestamp, explicitement.
   # Contrainte `Entity<TStructure extends TJsonSerializable>` ; le test runtime ne vérifie pas le rejet.
+  # Constaté le 30/09 (sonde tsc) : une `interface` est rejetée même si ses champs sont purs
+  # (pas de signature d'index implicite) → le state se déclare en `type`. Sans `strict`,
+  # `undefined` et les champs optionnels passent alors que JSON les supprime ; les cycles de
+  # valeurs ne sont pas détectables par le type.
   mode: type
   etat: livre
 

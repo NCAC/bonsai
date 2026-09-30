@@ -47,6 +47,23 @@
   mode: type
   etat: livre
 
+- id: I103
+  nature: D
+  parents: [I76, I21]
+  enonce: "Les clés de Commands, d'Events et de Requests d'un `TChannelDefinition` sont en `camelCase` plat, lettres uniquement."
+  pourquoi: >
+    Même règle que le namespace (I21), pour les mêmes raisons : une clé de message est réemployée
+    dans le token `"ns:clé"` et dans le nom du handler découvert par convention
+    (`onAddItemCommand`), où seul le `camelCase` plat donne un identifiant valide et lisible ; et
+    elle appartient au vocabulaire du domaine — une action, un fait, une question —, fait de noms
+    et de verbes où un chiffre n'a pas de sens métier.
+  # Écart relevé le 30/09 : `CamelCase<S>` ne contraint que les clés du manifest ; une clé
+  # `addItem2` ou `add_item` dans un Channel compile aujourd'hui sans erreur. Mécanisme visé :
+  # appliquer `CamelCase<K>` aux clés de `TChannelDefinition`. La grammaire des noms
+  # (verbNoun, nounVerbed, nominal) reste une convention de style, hors de cette ligne.
+  mode: type
+  etat: cible
+
 - id: I77
   nature: C
   parents: [P9, P2]

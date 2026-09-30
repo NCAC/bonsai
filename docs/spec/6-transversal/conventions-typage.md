@@ -300,7 +300,7 @@ type TCartState = TEntityState<CartEntity>;
 
 | # | Invariant | Principe |
 | --- | --- | --- |
-| **I46** | `TStructure` d'une Entity est contraint à `TJsonSerializable` — pas de classes, pas de fonctions, pas de cycles (ADR-10) | → [Entity §2](../3-couche-abstraite/entity.md) |
+| **I46** | `TStructure` d'une Entity est contraint à `TJsonSerializable` — pas de classes, pas de fonctions ; les cycles de valeurs ne sont pas détectables par le type ([registre](../../invariants/P1.yaml), ADR-10) | → [Entity §2](../3-couche-abstraite/entity.md) |
 | **I47** | *Fusionné dans I73* — identifiant conservé comme alias ([registre](../../invariants/P9.yaml)) | → [reference/invariants.md I73](../reference/invariants.md) |
 | **I48** | Les handlers sont des méthodes conventionnelles `on<Name><Command\|Event\|Request>` — le framework les découvre et les câble automatiquement (ADR-09) | → [Feature §4](../3-couche-abstraite/feature.md) |
 | **I49** | *Fusionné dans I74* — identifiant conservé comme alias ; précision conservée : pas de wrapper `namespace` TypeScript ([registre](../../invariants/P9.yaml)) | → [reference/invariants.md I74](../reference/invariants.md) |

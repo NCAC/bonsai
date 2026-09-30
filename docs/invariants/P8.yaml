@@ -47,7 +47,19 @@
   parents: [P8]
   alias: [I24]
   enonce: Toute Feature est enregistrée dans le manifest sous une clé `camelCase` sans chiffre.
-  pourquoi: 'À compléter : justification du format de clé (lisibilité des tokens "ns:cmd", absence d''ambiguïté).'
+  pourquoi: >
+    Le namespace est réemployé tel quel à trois endroits : clé du manifest (identifiant TS),
+    préfixe des messages (`"cart:addItem"`) et nom des handlers découverts par convention
+    (`onCartItemAddedEvent`). Le `camelCase` plat est le seul format valide et lisible dans les
+    trois : `kebab-case`, `snake_case` ou séparateurs `/` `.` produiraient des noms de méthode
+    invalides ou ambigus (ADR-08), et la minuscule initiale fait de la majuscule la frontière du
+    namespace dans le nom du handler. Les chiffres sont exclus parce que ces noms appartiennent
+    au vocabulaire du domaine : un namespace nomme un domaine, comme les intentions, Events et
+    Requests qu'il préfixe nomment des actions, des faits et des questions — des noms et des
+    verbes, où un chiffre n'a pas de sens métier.
+  # Argument des chiffres formulé par le mainteneur le 30/09 : absent des sources (ADR-08,
+  # ex-ADR-0039, D5). Élargissable sans casse via un variant `CamelCaseAlnum<S>`
+  # (cf. packages/types/src/string.d.ts).
   mode: type+boot
   etat: livre
 
