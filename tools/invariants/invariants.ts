@@ -76,8 +76,59 @@ const principles = yaml.load(
 const branches = readdirSync(DIR)
   .filter((f) => /^P\d+\.yaml$/.test(f))
   .sort((a, b) => parseInt(a.slice(1)) - parseInt(b.slice(1)));
-const lines: TLine[] = branches.flatMap(
-  (f) => (yaml.load(readFileSync(join(DIR, f), "utf8")) as TLine[]) ?? []
+/**
+ * Shape of a record as written in `P*.yaml`. The YAML keys stay in French
+ * (they are part of the documented format, see docs/guides/INVARIANTS.md);
+ * the script works on `TLine`. The mapping is explicit so that a rename on
+ * either side cannot silently turn a field into `undefined`.
+ */
+type TRawLine = {
+  id: string;
+  nature: TLine["nature"];
+  parents: string[];
+  roles?: string[];
+  alias?: string[];
+  enonce: string;
+  pourquoi?: string;
+  mode: TLine["mode"];
+  etat: TLine["state"];
+  preuves?: string[];
+};
+const RAW_KEYS: ReadonlyArray<keyof TRawLine> = [
+  "id",
+  "nature",
+  "parents",
+  "roles",
+  "alias",
+  "enonce",
+  "pourquoi",
+  "mode",
+  "etat",
+  "preuves"
+];
+
+const toLine = (raw: TRawLine, file: string): TLine => {
+  for (const key of Object.keys(raw))
+    if (!RAW_KEYS.includes(key as keyof TRawLine))
+      errors.push(`${raw.id ?? "?"} (${file}) : clé inconnue "${key}"`);
+  return {
+    id: raw.id,
+    nature: raw.nature,
+    parents: raw.parents,
+    roles: raw.roles,
+    alias: raw.alias,
+    enonce: raw.enonce,
+    why: raw.pourquoi,
+    mode: raw.mode,
+    state: raw.etat,
+    proofs: raw.preuves
+  };
+};
+
+const lines: TLine[] = branches.flatMap((f) =>
+  ((yaml.load(readFileSync(join(DIR, f), "utf8")) as TRawLine[]) ?? []).map(
+    (raw) => toLine(raw, f)
+  )
 );
 
 /** YAML comments attached to each line (indented `#` lines inside its entry). */
@@ -126,7 +177,7 @@ for (const l of lines) {
       errors.push(`${at} rôle inconnu "${r}"`);
   if (l.nature === "D" && !l.why) errors.push(`${at} décision sans "pourquoi"`);
   if (l.why?.startsWith("À compléter"))
-    warnings.push(`${at} "why" à compléter`);
+    warnings.push(`${at} "pourquoi" à compléter`);
   if (l.mode !== null && !MODES.includes(l.mode))
     errors.push(`${at} mode invalide "${l.mode}"`);
   if (l.state !== null && !STATES.includes(l.state))
