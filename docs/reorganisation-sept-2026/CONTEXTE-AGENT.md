@@ -169,7 +169,7 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
    rangés sous I38 ; I58 déplacé de P7 vers P6 (second parent I20). Le Behavior garde N2 sur ses
    propres nœuds.
    ✅ P9 arbitré et validé par le mainteneur (30/09) : les 12 lignes en mode `run` se répartissent en gardes dynamiques
-   (I8, I9, I65, I98 — régies par la nouvelle décision I102, fail-fast), sémantique d'exécution
+   (I8, I9, I65, I98 — régies par le nouvel énoncé I102, fail-fast), sémantique d'exécution
    hors du champ de P9 (I11, I27, I29, I55, I97 ; I54 requalifié en `type` le 30/09 — metas requises, type opaque) et un écart structurel à résorber (I20 :
    `View` instanciable et montable par le code applicatif). I37 requalifié en mode `type`.
 6. ✅ Vues par composant générées (30/09) : champ `roles` dans le registre (un rôle par
@@ -184,7 +184,7 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
 - Vocabulaire : redéfinir « invariant » ou adopter « contrainte » (les `I<n>` restent des numéros opaques) ?
 - ADR jugés caducs par le mainteneur : archivage avec table de correspondance, sort de la ligne *Invariants impactés*.
 - Copies manuelles `spec/reference/invariants.md` et `conventions-typage.md` §6 : générer ou supprimer ?
-- Petits points : reclasser I102 en `E` ; test de type pour I88 ; matrice de vérification à générer depuis les tests.
+- Petits points : test de type pour I88 ; matrice de vérification à générer depuis les tests.
 
 ## À éviter
 

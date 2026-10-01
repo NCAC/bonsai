@@ -22,7 +22,7 @@
   etat: cible
 
 - id: I102
-  nature: D
+  nature: E
   parents: [P9]
   roles: ["*"]
   enonce: "Une règle qui ne peut être vérifiée qu'à l'exécution l'est par une garde fail-fast : erreur explicite dès la première violation, avec son contexte, jamais de dégradation silencieuse."

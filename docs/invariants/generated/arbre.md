@@ -130,7 +130,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 **Toute règle imposée au code applicatif est garantie par construction au compile-time ; à défaut, vérifiée au bootstrap, frontière de confiance. Seule une règle qui dépend de données connues à l'exécution est vérifiée au runtime, et alors par une garde qui échoue explicitement dès la première violation.**
 
 - `E` I66 — Le bootstrap est la frontière de confiance — après `app.start()` les garanties sont vérifiées, avant, aucun `trigger`/`emit`/`request` n'est accepté. ⟨boot · ⏳ · ·⟩
-- `D` I102 — Une règle qui ne peut être vérifiée qu'à l'exécution l'est par une garde fail-fast : erreur explicite dès la première violation, avec son contexte, jamais de dégradation silencieuse. ⟨run · ⚠️ · ·⟩
+- `E` I102 — Une règle qui ne peut être vérifiée qu'à l'exécution l'est par une garde fail-fast : erreur explicite dès la première violation, avec son contexte, jamais de dégradation silencieuse. ⟨run · ⚠️ · ·⟩
 - `C` I75 — Aucun `any` ni `unknown` dans les signatures publiques de `Channel`, `Feature` ou `View`. ⟨revue · ⚠️ · T⟩
 - `C` I76 — Les méthodes de `Channel` sont typées par `TDef` — un nom de message est une clé de la voie, jamais une `string` libre. ↔ P3 ⟨type · ✅ · T⟩
   - `D` I103 — Les clés de Commands, d'Events et de Requests d'un `TChannelDefinition` sont en `camelCase` plat, lettres uniquement. ↔ I21 ⟨type · ⏳ · ·⟩
