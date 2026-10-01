@@ -47,6 +47,8 @@
 !/docs
 /docs/*
 !/docs/README.md
+!/docs/ROADMAP.md
+!/docs/GENESIS.md
 
 !/docs/spec
 !/docs/TODO.md
