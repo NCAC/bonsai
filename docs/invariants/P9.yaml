@@ -113,8 +113,10 @@
   pourquoi: >
     Symétrie contrat/callbacks : la déclaration d'un contrat devient un engagement vérifié par le
     compilateur (`implements`), pour View comme pour Feature (ADR-14, ADR-09).
-  mode: revue
-  etat: convention
+  # Prouvé par contract-callbacks.types.test.ts : les deux moitiés de chaque paire sont exportées
+  # (import de type) et les handlers requis sont dérivés du contrat. Behavior : package non livré.
+  mode: type
+  etat: livre
 
 - id: I92
   nature: D

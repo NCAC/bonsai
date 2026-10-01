@@ -138,7 +138,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `C` I78 — `View.getUI(key)` n'accepte qu'une clé déclarée dans le `TUIContract` de la View. ↔ P6 ⟨type · ✅ · T⟩
 - `C` I79 — `Feature.request()` n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre. ↔ P2 ⟨type · ✅ · R T⟩
 - `D` I48 — Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Request`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework. ⟨boot · ✅ · R⟩
-  - `D` I88 — Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis. ⟨revue · 📐 · T⟩
+  - `D` I88 — Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis. ⟨type · ✅ · T⟩
     - `D` I92 — Toute Feature concrète `implements TFeatureCallbacks<TDef, TListens>` ; un handler absent ou mal signé est une erreur de compilation. ⟨type · ✅ · T⟩
     - `D` I82 — `implements TViewCallbacks<TVC>` rend obligatoires les handlers d'Event et les handlers DOM déclarés ; un filet au `mount()` couvre les contournements. ⟨type+boot · ✅ · R⟩
       - `C` I84 — Un élément UI déclaré avec `events` non vide exige ses handlers DOM ; `events` vide déclare un élément non interactif. ⟨type+boot · ✅ · R T⟩

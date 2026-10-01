@@ -184,7 +184,7 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
 - Vocabulaire : redéfinir « invariant » ou adopter « contrainte » (les `I<n>` restent des numéros opaques) ?
 - ADR jugés caducs par le mainteneur : archivage avec table de correspondance, sort de la ligne *Invariants impactés*.
 - Copies manuelles `spec/reference/invariants.md` et `conventions-typage.md` §6 : générer ou supprimer ?
-- Petits points : test de type pour I88 ; matrice de vérification à générer depuis les tests.
+- Petit point : matrice de vérification à générer depuis les tests.
 
 ## À éviter
 

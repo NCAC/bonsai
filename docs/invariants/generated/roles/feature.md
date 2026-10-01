@@ -9,7 +9,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 | Invariants | ✅ livré | ⚠️ partiel | ⏳ cible | 📐 convention |
 | --- | --- | --- | --- | --- |
-| 26 | 18 | 4 | 1 | 3 |
+| 26 | 19 | 4 | 1 | 2 |
 
 ## Écarts
 
@@ -74,7 +74,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 - `C` I75 — Aucun `any` ni `unknown` dans les signatures publiques de `Channel`, `Feature` ou `View`. ⟨revue · ⚠️ · T⟩
 - `C` I79 — `Feature.request()` n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre. ⟨type · ✅ · R T⟩
 - `D` I48 — Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Request`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework. ⟨boot · ✅ · R⟩
-- `D` I88 — Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis. ⟨revue · 📐 · T⟩
+- `D` I88 — Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis. ⟨type · ✅ · T⟩
 - `D` I92 — Toute Feature concrète `implements TFeatureCallbacks<TDef, TListens>` ; un handler absent ou mal signé est une erreur de compilation. ⟨type · ✅ · T⟩
 - `D` I73 — Chaque Feature déclare `static readonly channel` — son contrat de communication typé, unique pont entre la classe et son Channel. ⟨type · ✅ · R T⟩
 - `D` I74 — La définition du Channel, le type d'état et la classe Feature sont co-localisés dans le fichier `*.feature.ts` du domaine. ⟨revue · 📐 · R⟩

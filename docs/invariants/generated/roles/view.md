@@ -9,7 +9,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 | Invariants | ✅ livré | ⚠️ partiel | ⏳ cible | 📐 convention |
 | --- | --- | --- | --- | --- |
-| 33 | 9 | 17 | 2 | 5 |
+| 33 | 10 | 17 | 2 | 4 |
 
 ## Écarts
 
@@ -97,7 +97,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 - `C` I77 — `View.trigger()` n'accepte qu'une clé `"ns:cmd"` validée contre le contrat de la View. ⟨type · ✅ · T⟩
 - `C` I78 — `View.getUI(key)` n'accepte qu'une clé déclarée dans le `TUIContract` de la View. ⟨type · ✅ · T⟩
 - `D` I48 — Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Request`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework. ⟨boot · ✅ · R⟩
-- `D` I88 — Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis. ⟨revue · 📐 · T⟩
+- `D` I88 — Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis. ⟨type · ✅ · T⟩
 - `D` I82 — `implements TViewCallbacks<TVC>` rend obligatoires les handlers d'Event et les handlers DOM déclarés ; un filet au `mount()` couvre les contournements. ⟨type+boot · ✅ · R⟩
 - `C` I84 — Un élément UI déclaré avec `events` non vide exige ses handlers DOM ; `events` vide déclare un élément non interactif. ⟨type+boot · ✅ · R T⟩
 - `D` I81 — Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, au `mount()`. ⟨boot · ⚠️ · R⟩
