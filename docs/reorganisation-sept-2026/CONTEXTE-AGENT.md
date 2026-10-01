@@ -1,7 +1,7 @@
 # Prompt de contexte — Réorganisation Bonsai (septembre 2026)
 
 > À transmettre tel quel à un agent LLM qui reprend le chantier.
-> Dernière mise à jour : 29 septembre 2026.
+> Dernière mise à jour : 1er octobre 2026.
 
 ---
 
@@ -24,9 +24,12 @@ n'a pas révélé les écarts réels.
 | `docs/reorganisation-sept-2026/arbre-invariants.md` | Classement des invariants I1–I98 sous 9 principes. Esquisse non actée. |
 | `docs/reorganisation-sept-2026/arbre-invariants-precision.md` | Même arbre + ⟨mode · état · tests⟩ par invariant, et matrice nature × vérification. |
 | `docs/reorganisation-sept-2026/reorganisation-documentation-workflow.md` | RFC antérieure (architecture vivante, contrats ENT-001…, workbench, snapshots). **Jugée insuffisante** par le mainteneur ; en conserver les bonnes idées seulement. |
-| `docs/invariants/principes.yaml` | **Nouveau.** Les 10 principes, source de vérité. |
-| `docs/invariants/P8.yaml` | **Nouveau.** Branche pilote P8, un enregistrement par invariant. |
-| `tools/invariants/invariants.ts` | **Nouveau.** Script de validation + génération. |
+| `docs/invariants/principes.yaml` | Les 10 principes, source de vérité. |
+| `docs/invariants/P1.yaml … P10.yaml` | Une branche par principe, un enregistrement par ligne (91 lignes). |
+| `docs/invariants/generated/` | Vues **générées** : `arbre.md`, `roles/*.md`. Ne jamais éditer à la main. |
+| `tools/invariants/invariants.ts` | Script de validation + génération. |
+| `docs/guides/INVARIANTS.md` | Guide de maintenance du registre. |
+| `analyse-invariants-bonsai.md` (racine) | Synthèse de réflexion du 1er octobre : **document de travail, rien d'acté** (hiérarchie des principes, vocabulaire, sort des ADR). |
 
 Les autres esquisses de `docs/reorganisation-sept-2026/` ne satisfont pas le mainteneur :
 les deux arbres sont le point de départ retenu.
@@ -125,6 +128,9 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
   - génère `docs/invariants/generated/arbre.md` (branches non migrées signalées) ;
   - `--check` échoue si le fichier généré n'est pas à jour.
 - `package.json` : scripts `invariants` et `invariants:check`.
+- Chargement YAML → `TLine` via `TRawLine` / `toLine()` (1er/10) : clés inconnues rejetées. Un cast `as TLine[]` avait masqué un renommage des propriétés internes (149 erreurs, commit `e13c452`).
+- `invariants:check` tourne en **pre-commit** (1er/10) en plus de la CI.
+- `ROADMAP.md` et `GENESIS.md` sont versionnés (`.gitignore` corrigé, 1er/10).
 
 ### Pas encore fait / non vérifié
 
@@ -171,6 +177,14 @@ qu'au stade `D` avec l'état `cible`. La documentation par composant (Feature, V
    commentaires YAML, invariants par principe), contrôlées par `--check`. L'index thématique
    manuel de `spec/README.md` est remplacé par un lien. **Suite** : orienter la réécriture du
    code sur les écarts ⚠️/⏳ révélés.
+
+## Questions ouvertes (non actées — voir `analyse-invariants-bonsai.md` §10–12)
+
+- Les 10 principes sont aujourd'hui des racines indépendantes ; la « propriété unique » (P1, P6, P7, P8, P10) est-elle un principe fondateur ? Distinguer axiomes et principes dérivés (champ `parents` dans `principes.yaml`) ?
+- Vocabulaire : redéfinir « invariant » ou adopter « contrainte » (les `I<n>` restent des numéros opaques) ?
+- ADR jugés caducs par le mainteneur : archivage avec table de correspondance, sort de la ligne *Invariants impactés*.
+- Copies manuelles `spec/reference/invariants.md` et `conventions-typage.md` §6 : générer ou supprimer ?
+- Petits points : reclasser I102 en `E` ; test de type pour I88 ; matrice de vérification à générer depuis les tests.
 
 ## À éviter
 

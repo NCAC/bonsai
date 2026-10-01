@@ -1,6 +1,7 @@
 # Principes du modèle Bonsai — source de vérité.
 # Changer un principe = changer de modèle : modification rare, explicite, datée.
-# Statut : pilote (seul P8 est migré ; les autres principes sont listés pour référence).
+# Statut : registre complet — P1 à P10 migrés (une branche par principe : docs/invariants/P<n>.yaml).
+# Hiérarchie entre principes (axiomes / dérivés) : question ouverte, voir analyse-invariants-bonsai.md §10.
 
 - id: P1
   titre: Souveraineté du domaine
