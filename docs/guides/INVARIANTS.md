@@ -34,7 +34,7 @@ doivent être alignés à la main tant qu'ils ne sont pas générés.
 | Commande | Rôle | Quand |
 | --- | --- | --- |
 | `pnpm invariants` | valide le registre et régénère `generated/` (`arbre.md`, `roles/*.md`) | après toute modification du registre ou d'une citation dans un test |
-| `pnpm invariants:check` | idem sans écrire ; échoue si un fichier de `generated/` n'est pas à jour ou n'est plus généré | avant commit (la CI le lance) |
+| `pnpm invariants:check` | idem sans écrire ; échoue si un fichier de `generated/` n'est pas à jour ou n'est plus généré | avant commit (lancé par le pre-commit et la CI) |
 | `pnpm test` | suite Jest complète | après toute modification d'un test |
 | `pnpm tsc:check:tests` | type-check de `packages/` et `tests/` (`tsconfig.test.json`) — seul moyen de vérifier les tests de type ; lancé par le pre-commit et la CI | après toute modification d'un test de type ou de `packages/` |
 | `npx tsx lib/check-adr-tested-status.ts` | liste les ADR dont chaque invariant impacté est cité en test | après modification d'une ligne **Invariants impactés** |
@@ -85,7 +85,7 @@ asserte réellement la règle.
 | Moment | Ce qui tourne |
 | --- | --- |
 | `commit-msg` | format Conventional Commits : `type(portée)?: message`, types `feat fix docs refactor test chore perf ci build` |
-| `pre-commit` | `pnpm tsc --noEmit` (`lib/`), `pnpm tsc:check:tests` (`packages/` + `tests/`), `pnpm test:regression`, contrôle ADR (informatif) |
+| `pre-commit` | `pnpm tsc --noEmit` (`lib/`), `pnpm tsc:check:tests` (`packages/` + `tests/`), `pnpm invariants:check`, `pnpm test:regression`, contrôle ADR (informatif) |
 | `pre-push` | `pnpm test` |
 | CI (`.github/workflows/regression.yml`) | `pnpm tsc --noEmit`, `pnpm tsc:check:tests`, `pnpm test:ci`, `pnpm invariants:check` |
 
@@ -288,7 +288,7 @@ pnpm test                                    # suite complète
 pnpm tsc:check:tests                         # tests de type (packages/ + tests/, aussi en pre-commit et CI)
 npx tsx lib/check-adr-tested-status.ts       # si une ligne Invariants impactés a changé
 pnpm run build:no-watch                      # si packages/*/src a changé
-pnpm invariants:check                        # dernier contrôle, identique à la CI
+pnpm invariants:check                        # dernier contrôle, identique au pre-commit et à la CI
 git status --short                           # n'indexer que les fichiers de l'opération
 ```
 

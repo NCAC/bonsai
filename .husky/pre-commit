@@ -13,6 +13,13 @@ pnpm tsc:check:tests || {
   exit 1
 }
 
+# ── Registre des invariants ───────────────────────────────
+echo "🔍 Invariants registry (pnpm invariants:check)..."
+pnpm invariants:check || {
+  echo "❌ Registre des invariants incohérent ou vues générées périmées (lancer pnpm invariants). Commit annulé."
+  exit 1
+}
+
 # ── Gate de non-régression ────────────────────────────────
 echo "🧪 Running regression tests..."
 pnpm test:regression || {

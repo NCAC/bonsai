@@ -29,7 +29,7 @@ API publique stable. Historique dans `CHANGELOG.md` (Keep a Changelog).
 
 | Niveau | Quand | Quoi | Bloquant |
 | --- | --- | --- | --- |
-| Hooks Husky | `commit` | `tsc --noEmit` (`lib/`) + `tsc:check:tests` (`packages/` + `tests/`) + `test:regression` (< 30 s) + format du message | local (`--no-verify` possible) |
+| Hooks Husky | `commit` | `tsc --noEmit` (`lib/`) + `tsc:check:tests` (`packages/` + `tests/`) + `invariants:check` + `test:regression` (< 30 s) + format du message | local (`--no-verify` possible) |
 | | `push` | suite complète | local |
 | CI GitHub Actions | push `feature/**` et `fix/**`, PR vers `develop` | `tsc --noEmit` (`lib/`) + `tsc:check:tests` + `test:ci` (couverture) + `invariants:check` | oui, via protection de branche |
 
