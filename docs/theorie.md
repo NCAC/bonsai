@@ -31,9 +31,11 @@ Chaque définition exprime une seule notion ; n'emploie ni le terme défini ni u
 
 ### 2.3 Métalangage admis
 
-Sont admis sans définition : action, changer, commencer, contenir, continuer, délivrer, destinataire, détruire, distinguer, ensemble, exécuter, exécution, fait, information, limite, modifier, opération, partie, produire, règle, relation, suite, transmettre, utiliser, utilisateur.
+Sont admis sans définition : action, changer, commencer, contenir, continuer, délivrer, destinataire, détruire, distinguer, ensemble, exécuter, exécution, fait, information, limite, matérialiser, modifier, opération, partie, produire, règle, relation, suite, transmettre, utiliser, utilisateur.
 
 « Exécution » désigne uniquement l'exécution d'une opération ; la marche du modèle dans le temps est désignée par « vie du modèle ». « Produire » et « transmettre » décrivent un acte matériel ; un énoncé normatif ne les emploie jamais seuls pour désigner qui traite ou qui reçoit un message.
+
+Une information n'est ni un composant, ni une ressource, ni un message ; elle peut être contenue dans une ressource ou portée par un message.
 
 Un mot entre dans le vocabulaire lorsqu'il reçoit un sens propre à Bonsai, modifie la portée d'un axiome, peut recevoir deux sens architecturaux différents, ou intervient dans plusieurs définitions comme notion technique autonome.
 
@@ -47,7 +49,7 @@ Une notion possède un seul terme canonique ; les synonymes sont exclus des éno
 - `Channel`, et non `canal` ;
 - `namespace`, uniquement pour une représentation textuelle d'identité ;
 - `adresser`, `émettre`, `recevoir` et `traiter` désignent quatre actes distincts (§9) ;
-- `création`, `attribution` : deux actes distincts ; il n'existe aucun transfert de propriété.
+- `création`, `attribution` : deux actes distincts ; il n'existe aucun transfert de propriété (A2.c).
 
 « Modèle » désigne uniquement l'univers organisé par Bonsai (3.8). « Contre-exemple » désigne une configuration qui viole un axiome.
 
@@ -56,6 +58,10 @@ Une notion possède un seul terme canonique ; les synonymes sont exclus des éno
 Une définition dit **ce qu'est** une notion. Un axiome dit **ce qui est permis, interdit ou obligatoire** ; chacune de ses clauses doit pouvoir être fausse dans un contre-exemple concevable, qui l'accompagne.
 
 **Règle de lecture.** Les axiomes sont satisfaits à l'issue de chaque opération. Les états intermédiaires au cours d'une opération n'y sont pas soumis.
+
+**Règle d'imputation.** Ce qu'exécute une partie d'un composant qui n'est pas elle-même un composant est exécuté par ce composant.
+
+**Règle de cascade.** La fin des ressources d'un composant, par l'effet de la destruction de son existence, fait partie de cette destruction ; ce n'est pas une opération exclusive exécutée par un autre composant.
 
 ## 3. Termes primitifs
 
@@ -93,13 +99,7 @@ Son sens est fixé par les axiomes : A1 la rend unique et réserve à elle seule
 
 ### 3.8 Modèle
 
-**Terme primitif de frontière.** Explication intuitive : ce que Bonsai organise et dont parlent les axiomes. Le modèle, l'hôte, le médiateur et les systèmes extérieurs forment une partition : tout ce qui intervient relève de l'un des quatre.
-
-Le modèle contient des composants, des ressources et des messages.
-
-**Disjonction des catégories.** Composants, ressources et messages sont trois catégories disjointes : aucun composant n'est une ressource, aucune ressource n'est un message, aucun message n'est un composant. Ce dont un parent est propriétaire n'est pas son enfant, mais l'existence de celui-ci (7.1).
-
-**Prémisse de lecture.** Ce qu'un composant offre à un autre de changer ou de connaître est son existence ou une ressource dont il est propriétaire. Un composant n'a, dans le modèle, rien d'interrogeable ou de modifiable qui ne soit une ressource.
+**Terme primitif de frontière.** Explication intuitive : ce que Bonsai organise et dont parlent les axiomes. Ce que le modèle contient, et ce qui lui reste extérieur, est fixé par A0.
 
 ## 4. Cadre
 
@@ -123,7 +123,7 @@ Opération qui modifie ou détruit une ressource.
 
 **Dépendances :** ressource.
 
-La lecture d'une ressource n'est pas une opération exclusive. La création non plus : au moment où une ressource commence d'exister, elle n'a encore aucun propriétaire.
+La lecture d'une ressource n'est pas une opération exclusive. La création non plus : elle ne modifie ni ne détruit aucune ressource existante.
 
 ### 5.2 Propriétaire
 
@@ -141,7 +141,7 @@ Action par laquelle une ressource commence d'exister.
 
 **Dépendances :** ressource.
 
-Créer un composant consiste à créer son existence (7.1).
+Créer un composant consiste à créer son existence (A0.d).
 
 ### 6.2 Paramètres de création
 
@@ -149,7 +149,7 @@ Information transmise par le composant qui crée une ressource, au cours de cett
 
 **Dépendances :** composant, ressource, création.
 
-Les paramètres sont transmis pendant la création, jamais après : la création d'un composant et la transmission de ses paramètres forment un seul acte. Le composant créé n'existant pas encore au moment de la transmission, celle-ci ne relève d'aucune interaction.
+Une information transmise après la création n'est pas un paramètre de création : c'est une interaction fonctionnelle, soumise à A3.a.
 
 ### 6.3 Part
 
@@ -177,11 +177,9 @@ L'attribution crée une part ; elle ne modifie pas la ressource distribuable et 
 
 ### 7.1 Existence
 
-Ressource associée à un composant déterminé, dont la destruction entraîne celle de ce composant.
+Ressource associée à un composant déterminé, dont la seule opération exclusive est la destruction, et dont la destruction entraîne celle de ce composant.
 
 **Dépendances :** ressource, composant.
-
-La destruction est la seule opération exclusive portant sur l'existence.
 
 ### 7.2 Parent
 
@@ -211,19 +209,19 @@ Relation entre un parent et ses enfants produite par la propriété de leur exis
 
 ## 8. Identité
 
-### 8.1 Identité
+### 8.1 Espace des identités
 
-Ressource permettant de distinguer une ressource ou un composant au sein d'un ensemble.
+Ressource distribuable dont les parts permettent de distinguer une ressource ou un composant au sein d'un ensemble.
 
-**Dépendances :** ressource, composant.
+**Dépendances :** ressource distribuable, part, ressource, composant.
 
-Une identité est une part d'un espace des identités. Elle ne se modifie pas : sa seule opération exclusive est sa destruction. Des identités subordonnées peuvent être attribuées en son sein (6.5).
+### 8.2 Identité
 
-### 8.2 Espace des identités
+Part d'un espace des identités, dont la seule opération exclusive est la destruction.
 
-Ressource distribuable dont les parts sont des identités.
+**Dépendances :** part, espace des identités.
 
-**Dépendances :** ressource distribuable, part, identité.
+Des identités subordonnées peuvent être attribuées en son sein (6.5) ; qu'elles soient des identités suppose qu'une part d'une part soit une part de la ressource englobante (18.12).
 
 ### 8.3 Représentation d'identité
 
@@ -231,7 +229,7 @@ Information utilisée pour exprimer une identité.
 
 **Dépendances :** identité.
 
-Une représentation d'identité n'est pas une ressource.
+Une représentation d'identité n'est pas une ressource (§2.3).
 
 ### 8.4 Namespace
 
@@ -243,19 +241,17 @@ Représentation textuelle d'une identité dans un espace des identités.
 
 ### 9.1 Channel
 
-Ressource relativement à laquelle un message est transmis.
+Ressource relativement à laquelle un message est transmis, dont les opérations exclusives sont la modification des messages qui peuvent être transmis relativement à elle et sa destruction.
 
 **Dépendances :** ressource, message.
 
-Ses opérations exclusives sont la modification des messages qui peuvent lui être adressés ou être émis sur lui, et sa destruction.
-
 ### 9.2 Abonnement
 
-Ressource associant un Channel au composant qui en est propriétaire, et faisant de ce composant un destinataire des messages transmis depuis ce Channel.
+Ressource associant un Channel au composant qui en est propriétaire, et faisant de ce composant un destinataire des messages transmis depuis ce Channel, et dont la seule opération exclusive est la destruction.
 
 **Dépendances :** ressource, Channel, composant, propriétaire.
 
-Sa seule opération exclusive est sa destruction. Créer un abonnement n'est pas une interaction fonctionnelle : aucune information n'est transmise au propriétaire du Channel. Le médiateur matérialise l'abonnement sans en être propriétaire (G4).
+Créer un abonnement n'est pas une interaction fonctionnelle : aucune information n'est transmise au propriétaire du Channel. Le médiateur matérialise l'abonnement sans en être propriétaire (G4).
 
 ### 9.3 Traitement
 
@@ -305,17 +301,9 @@ Référence d'un propriétaire vers une ressource dont il est propriétaire, ou 
 
 **Dépendances :** référence, propriétaire, ressource, parent, enfant.
 
-**Résolution auprès de l'hôte.** Un composant établit une référence structurelle vers une ressource matérialisée par l'hôte en résolvant, auprès de l'hôte, la représentation de l'identité de cette ressource. L'hôte n'étant pas un composant, cette résolution n'est pas une interaction. L'hôte est le support matériel de la ressource ; l'opération est exécutée par le composant.
+**Résolution auprès de l'hôte.** Un composant peut établir une référence structurelle vers une ressource dont il est propriétaire et que l'hôte matérialise, en résolvant auprès de l'hôte la représentation de l'identité de cette ressource. L'hôte n'étant pas un composant, cette résolution n'est pas une interaction fonctionnelle ; l'opération est exécutée par le composant.
 
-### 9.10 Interaction fonctionnelle
-
-Transmission d'une information d'un composant à un autre composant, hors paramètres de création et hors transport.
-
-**Dépendances :** composant, paramètres de création, transport.
-
-Le contexte causal accompagne le message qui réalise l'interaction ; il ne fait pas partie de l'information transmise par celle-ci. Un message qu'un composant s'adresse à lui-même n'est pas une interaction fonctionnelle ; il reste soumis à A3.f.
-
-## 10. Causalité
+## 10. Causalité et interaction
 
 ### 10.1 Cause
 
@@ -323,7 +311,7 @@ Fait auquel un message ou un changement d'état est rattaché.
 
 **Dépendances :** message, état.
 
-Une cause n'est ni un composant, ni une ressource, ni un message : c'est une relation explicative, extérieure au modèle, représentée dans celui-ci par le contexte causal.
+Une cause est un fait : elle n'est ni un composant, ni une ressource, ni un message. Elle est extérieure au modèle, qui la représente par le contexte causal.
 
 ### 10.2 Origine
 
@@ -349,17 +337,25 @@ Information portée par un message permettant de le rattacher à une chaîne cau
 
 **Dépendances :** message, chaîne causale.
 
-Le contexte causal n'est pas une ressource.
+Le contexte causal n'est pas une ressource (§2.3).
+
+### 10.6 Interaction fonctionnelle
+
+Transmission d'une information d'un composant à un autre composant, hors paramètres de création, hors transport et hors contexte causal.
+
+**Dépendances :** composant, paramètres de création, transport, contexte causal.
+
+Un message qu'un composant s'adresse à lui-même n'est pas une interaction fonctionnelle ; il reste soumis à A3.f.
 
 ## 11. Parties du modèle et frontière
 
 ### 11.1 Interface utilisateur
 
-Partie du modèle formée des ressources par lesquelles l'utilisateur perçoit le modèle ou agit sur lui, et des composants qui en sont propriétaires.
+Partie du modèle formée des composants propriétaires d'une ressource par laquelle l'utilisateur perçoit le modèle ou agit sur lui, et de toutes les ressources dont ces composants sont propriétaires.
 
-**Dépendances :** modèle, ressource, composant, propriétaire.
+**Dépendances :** modèle, composant, ressource, propriétaire.
 
-Une ressource appartient à la même partie du modèle que son propriétaire.
+Une ressource appartient donc à la même partie du modèle que son propriétaire.
 
 ### 11.2 Domaine
 
@@ -367,7 +363,7 @@ Partie du modèle qui n'appartient pas à l'interface utilisateur.
 
 **Dépendances :** modèle, interface utilisateur.
 
-Une racine peut appartenir au domaine : créer des composants de l'interface utilisateur est un acte structurel, non une interaction.
+Une racine peut appartenir au domaine : créer un composant de l'interface utilisateur n'est pas une interaction fonctionnelle.
 
 ### 11.3 Invariant métier
 
@@ -375,7 +371,7 @@ Règle portant sur des ressources du domaine et devant demeurer satisfaite au co
 
 **Dépendances :** ressource, domaine.
 
-Les invariants métier sont définis par l'application. Bonsai n'en fixe aucun ; il en contraint la satisfaction (A4.a) et la portée (T5).
+Les invariants métier sont définis par le code applicatif. Bonsai n'en fixe aucun ; il en contraint la satisfaction (A4.a) et la portée (T5).
 
 ### 11.4 Cohérence métier
 
@@ -405,6 +401,20 @@ Limite du modèle à laquelle s'opère l'admission.
 
 Chaque clause est suivie de son contre-exemple.
 
+### A0 — Cadre
+
+> **A0.a** Tout ce qui intervient relève du modèle, de l'hôte, du médiateur ou d'un système extérieur, et d'un seul.
+>
+> **A0.b** Le modèle ne contient que des composants, des ressources et des messages ; ces trois catégories sont disjointes.
+>
+> **A0.c** Tout ce qu'on peut connaître ou changer d'un composant est son existence ou une ressource dont il est propriétaire.
+>
+> **A0.d** À tout composant qui n'est pas une racine est associée une existence, qui n'est une part d'aucune ressource ; créer un composant consiste à créer son existence.
+
+**Contre-exemples :** une variable globale, déclarée hors du modèle pour échapper à A1, est modifiée par plusieurs composants (A0.a) ; un service qui n'est ni composant, ni ressource, ni message est appelé par les composants, ou un parent traite son enfant comme une ressource (A0.b) ; un composant expose un cache interne qui n'est pas une ressource, et un autre l'interroge (A0.c) ; un composant est instancié sans existence : aucun composant ne peut le détruire, et il survit à son créateur (A0.d).
+
+Ce dont un parent est propriétaire n'est pas son enfant, mais l'existence de celui-ci (A0.b, 7.1).
+
 ### A1 — Propriété unique
 
 > **A1.a** Toute ressource du modèle a exactement un propriétaire.
@@ -413,9 +423,7 @@ Chaque clause est suivie de son contre-exemple.
 
 **Contre-exemples :** une ressource du modèle n'a aucun propriétaire (A1.a) ; deux composants modifient le même état (A1.b).
 
-Ce qu'exécute une partie d'un composant qui n'est pas elle-même un composant est exécuté par ce composant. Aucune délégation n'est admise.
-
-La fin des ressources d'un composant, par l'effet de la destruction de son existence, fait partie de cette destruction ; ce n'est pas une opération exclusive exécutée par un autre composant.
+A1.b exclut toute délégation : faire exécuter une opération exclusive par un autre composant que le propriétaire, c'est la faire exécuter par un non-propriétaire. L'imputation et la cascade relèvent des règles de lecture (§2.5).
 
 ### A2 — Origine de la propriété
 
@@ -486,11 +494,11 @@ Chaque conséquence est suivie de sa démonstration. Les catégories `Command`, 
 
 **Démonstration.**
 
-1. Une interaction fonctionnelle transmet une information d'un composant C à un autre composant D (9.10). Le contexte causal n'en fait pas partie (note de 9.10).
-2. Le modèle ne contient que des composants, des ressources et des messages (3.8).
+1. Une interaction fonctionnelle transmet une information d'un composant C à un autre composant D, hors contexte causal (10.6).
+2. Le modèle ne contient que des composants, des ressources et des messages (A0.b).
 3. Elle ne porte pas sur un message pris comme objet : un message n'est ni une ressource ni un composant, et son seul effet dans le modèle est un changement d'état produit par son traitement (A5.a) ; l'interaction porte alors sur cet état, qui est une ressource (4.2).
 4. Un fait de l'hôte ou d'un système extérieur n'est pas dans le modèle avant son admission ; admis, il devient l'origine d'un message (A5.c), et l'on revient au cas 3.
-5. Reste une information sur un composant. Par la prémisse de lecture de 3.8, ce qu'un composant offre de changer ou de connaître est son existence ou une ressource dont il est propriétaire. L'existence est une ressource (7.1).
+5. Reste une information sur un composant. Par A0.c, ce qu'on peut connaître ou changer d'un composant est son existence ou une ressource dont il est propriétaire. L'existence est une ressource (7.1).
 6. Dans tous les cas, l'interaction porte sur une ressource. ∎
 
 ### T1 — Composition par création
@@ -499,8 +507,8 @@ Chaque conséquence est suivie de sa démonstration. Les catégories `Command`, 
 
 **Démonstration.**
 
-1. Créer un composant consiste à créer son existence (note de 6.1).
-2. Cette existence est une ressource du modèle qui n'est pas une part ; son créateur en est le propriétaire initial (A2.a).
+1. Créer un composant consiste à créer son existence (A0.d).
+2. Cette existence est une ressource du modèle qui n'est pas une part (A0.d) ; son créateur en est le propriétaire initial (A2.a).
 3. Le propriétaire de l'existence d'un composant est son parent (7.2). ∎
 
 La racine n'est pas concernée : rien dans le modèle ne la crée (note de 7.4).
@@ -517,7 +525,7 @@ La racine n'est pas concernée : rien dans le modèle ne la crée (note de 7.4).
 4. **Si non**, l'interaction transmet une information sur R. Seul O dispose d'une référence vers R (A3.c, 9.9) : toute connaissance de R provient donc de O.
 5. Si l'information va **vers** C, C la demande à O, qui seul peut y répondre : message adressé au Channel de O, traité par O (A3.e). C'est la voie **Request**. Si C est O, il n'a rien à demander.
 6. Si l'information part **de** C, C la tient de R, donc C est O (point 4). Un composant qui relaie une copie de R informe en réalité sur sa propre copie, qui est une autre ressource dont il est propriétaire. O la transmet depuis son propre Channel, seul Channel sur lequel il peut émettre (A3.e). C'est la voie **Event**.
-7. **Unicité du traitement.** Command et Request sont traitées par le propriétaire du Channel (A3.e), qui est unique (A1.a). Que ce propriétaire organise son traitement en plusieurs fonctions ne compte pas (note d'A1).
+7. **Unicité du traitement.** Command et Request sont traitées par le propriétaire du Channel (A3.e), qui est unique (A1.a). Que ce propriétaire organise son traitement en plusieurs fonctions ne compte pas (règle d'imputation, §2.5).
 8. **Plusieurs destinataires.** Un Event est émis vers les propriétaires des abonnements au Channel de O (9.6). Recevoir n'est pas une opération exclusive (9.7) : plusieurs composants reçoivent sans devenir propriétaires. ∎
 
 | | Vise un changement | Demande une connaissance | Informe |
@@ -534,7 +542,7 @@ La racine n'est pas concernée : rien dans le modèle ne la crée (note de 7.4).
 1. Un parent P détruit l'existence d'un enfant C : opération exclusive de P (7.1, A1.b).
 2. À l'issue de l'opération, toute ressource restante du modèle a un propriétaire (A1.a, règle de lecture du §2.5).
 3. Une ressource dont C était propriétaire ne peut pas recevoir un nouveau propriétaire (A2.c).
-4. Elle ne peut donc pas subsister : sa fin fait partie de la destruction de C (note d'A1).
+4. Elle ne peut donc pas subsister : sa fin fait partie de la destruction de C (règle de cascade, §2.5).
 5. Parmi ces ressources figure l'existence des enfants de C ; leur fin entraîne celle de leurs propres ressources, et ainsi de suite. ∎
 
 **Corollaires.**
@@ -603,7 +611,7 @@ Racine du domaine, propriétaire de l'espace des identités (D5) et parent des F
 
 État du domaine dont le propriétaire est une Feature, avec les opérations exclusives qui le modifient.
 
-L'Entity n'est pas un composant : elle n'a ni existence propre, ni identité, ni Channel. Ce qu'elle exécute est exécuté par sa Feature (note d'A1). Les invariants métier qui la concernent sont définis par l'application et satisfaits à l'issue de chaque traitement (A4.a).
+L'Entity n'est pas un composant : elle n'a ni existence propre, ni identité, ni Channel. Ce qu'elle exécute est exécuté par sa Feature (règle d'imputation, §2.5). Les invariants métier qui la concernent sont définis par le code applicatif et satisfaits à l'issue de chaque traitement (A4.a).
 
 ### 16.3 Feature
 
@@ -656,8 +664,8 @@ Une définition n'emploie aucun terme situé après elle. L'ordre de lecture du 
 20. enfant
 21. racine
 22. composition
-23. identité
-24. espace des identités
+23. espace des identités
+24. identité
 25. représentation d'identité
 26. namespace
 27. Channel
@@ -669,12 +677,12 @@ Une définition n'emploie aucun terme situé après elle. L'ordre de lecture du 
 33. recevoir
 34. référence
 35. référence structurelle
-36. interaction fonctionnelle
-37. cause
-38. origine
-39. continuation
-40. chaîne causale
-41. contexte causal
+36. cause
+37. origine
+38. continuation
+39. chaîne causale
+40. contexte causal
+41. interaction fonctionnelle
 42. interface utilisateur
 43. domaine
 44. invariant métier
@@ -728,3 +736,8 @@ Certaines décisions ne découlent d'aucun axiome mais servent un but : la rejou
 ### 18.11 Rattachement au registre
 
 Les principes P1 à P10 (`docs/invariants/principes.yaml`) et les invariants `I<n>` ne sont rattachés à aucun axiome, conséquence ou décision de la présente théorie. Ce rattachement reste à établir ; il ne devrait l'être qu'après arbitrage de 18.7 à 18.10.
+
+### 18.12 Parts emboîtées
+
+Une part délimitée au sein d'une part est-elle une part de la ressource englobante ? Que reste-t-il au propriétaire d'une part sur la portion qu'il a attribuée à un autre composant ? La réponse fixe le statut des identités subordonnées (8.2) et l'exclusion des slots d'une View (16.5).
+
