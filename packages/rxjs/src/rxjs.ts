@@ -1,15 +1,15 @@
 /**
- * @bonsai/rxjs — Wrapper RxJS pour le framework Bonsai
+ * @bonsai/rxjs — RxJS wrapper for the Bonsai framework
  *
- * Tier 3 — Dépendance opaque (ADR-0032 §3) :
- *   Le framework utilise RxJS en interne pour le système événementiel.
- *   Les types RxJS apparaissent dans le .d.ts sous le namespace `RXJS`
- *   mais ne font pas partie de l'API publique documentée.
+ * Tier 3 — opaque dependency (ADR-29):
+ *   The framework uses RxJS internally for its event system.
+ *   RxJS types appear in the .d.ts under the `RXJS` namespace but
+ *   are not part of the documented public API.
  *
- * Le namespace `RXJS` encapsule tous les types rxjs pour éviter
- * la pollution du top-level (même pattern que `Valibot`).
+ * The `RXJS` namespace wraps all rxjs exports to keep the top level
+ * clean (same pattern as `Valibot`).
  *
- * Usage interne :
+ * Internal usage:
  *   import { RXJS } from "@bonsai/rxjs";
  *   const subject = new RXJS.Subject<T>();
  *   subject.pipe(RXJS.take(1)).subscribe(...);

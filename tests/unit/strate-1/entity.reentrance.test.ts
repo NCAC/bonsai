@@ -1,11 +1,11 @@
 /**
  * Tests Strate 1a — Entity re-entrance FIFO [I98]
  *
- * Prouve : Hotspot A (ADR-0028) — une mutation déclenchée pendant un cycle
+ * Prouve : Hotspot A (ADR-31) — une mutation déclenchée pendant un cycle
  * de notification est mise en file FIFO (pas LIFO, pas immédiate), et
  * `maxEntityNotificationDepth` protège contre la boucle infinie.
  *
- * Spec de test pré-écrite par ADR-0030 §Niveau 2 (ligne 289) — reproduite
+ * Spec de test pré-écrite par l'ex-ADR-0030 (archivé) — reproduite
  * ici avec les fixtures du repo (pas de helper `createTestEntity` générique).
  */
 

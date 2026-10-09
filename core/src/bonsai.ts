@@ -1,4 +1,4 @@
-// @bonsai/types — types utilitaires (ré-exportés au top-level)
+// @bonsai/types — utility types (re-exported at top level)
 export * from "@bonsai/types";
 
 // Export all types from @bonsai/types at top-level (flat)
@@ -66,23 +66,23 @@ export type {
   AlwaysParameters
 } from "@bonsai/types";
 
-// @bonsai/rxjs — Tier 3 opaque (ADR-0032 §3)
-// Les types RxJS sont encapsulés dans le namespace `RXJS` et ne font pas
-// partie de l'API publique documentée. Ils sont ré-exportés car les types
-// @bonsai/event (ThisMapEvents, etc.) référencent RXJS.Subject<T>.
+// @bonsai/rxjs — Tier 3 opaque (ADR-29)
+// RxJS types are wrapped in the `RXJS` namespace and are not part of the
+// documented public API. They are re-exported because @bonsai/event types
+// (ThisMapEvents, etc.) reference RXJS.Subject<T>.
 export * from "@bonsai/rxjs";
 
-// @bonsai/valibot — Tier 1 intégrée (ADR-0022 + ADR-0032 §3)
+// @bonsai/valibot — Tier 1 integrated (ADR-11, ADR-29)
 export * from "@bonsai/valibot";
 
-// @bonsai/immer — Tier 3 opaque (ADR-0001 + ADR-0032 §3)
-// Immer est utilisé en interne pour les mutations immutables d'Entity.
-// Les types (Draft, Patch, etc.) sont encapsulés dans le namespace `Immer`.
+// @bonsai/immer — Tier 3 opaque (ADR-10 + ADR-29)
+// Immer is used internally for immutable Entity mutations.
+// Its types (Draft, Patch, etc.) are wrapped in the `Immer` namespace.
 export * from "@bonsai/immer";
 
-// @bonsai/event — types de contrat uniquement. `Radio` et `Channel` restent
-// internes au framework (I15, I80) : exportés par `@bonsai/event` pour l'usage
-// inter-packages, jamais ré-exportés dans la surface applicative.
+// @bonsai/event — contract types only. `Radio` and `Channel` stay internal to
+// the framework (I15, I80): exported by `@bonsai/event` for cross-package use,
+// never re-exported in the application-facing surface.
 export type {
   TChannelDefinition,
   TChannelToken,

@@ -1,21 +1,21 @@
 /**
- * Channel tri-lane — infrastructure de communication interne Bonsai.
+ * Tri-lane Channel — Bonsai's internal communication infrastructure.
  *
- * Un Channel est un contrat de communication à 3 lanes :
- * - **Command Lane** : `handle()` / `trigger()` — 1:1 (un seul handler)
- * - **Event Lane** : `listen()` / `unlisten()` / `emit()` — 1:N (broadcast)
- * - **Request Lane** : `reply()` / `unreply()` / `request()` — 1:1 synchrone, T | null
+ * A Channel is a communication contract with 3 lanes:
+ * - **Command lane**: `handle()` / `trigger()` — 1:1 (a single handler)
+ * - **Event lane**: `listen()` / `unlisten()` / `emit()` — 1:N (broadcast)
+ * - **Request lane**: `reply()` / `unreply()` / `request()` — 1:1 synchronous, T | null
  *
- * Le Channel émet automatiquement un événement `any` après chaque `emit()`.
+ * The Channel automatically emits an `any` event after each `emit()`.
  *
- * `Channel` est générique sur `TDef extends TChannelDefinition` (ADR-0040).
- * La valeur par défaut `TChannelDefinition` (toutes lanes `Record<string, unknown>`)
- * assure une rétrocompatibilité totale avec le code non-paramétré.
+ * `Channel` is generic over `TDef extends TChannelDefinition` (ADR-14).
+ * The default `TChannelDefinition` (all lanes `Record<string, unknown>`)
+ * keeps untyped code fully compatible.
  *
- * @see RFC 2-architecture/communication.md
- * @see ADR-0003 — Sémantiques runtime Channel
- * @see ADR-0023 — request() synchrone
- * @see ADR-0040 — API TypeScript-First : TChannelDefinition, TChannelToken
+ * @see docs/spec/2-architecture/communication.md
+ * @see ADR-03 — Channel runtime semantics
+ * @see ADR-02 — synchronous request()
+ * @see ADR-14 — typed contracts: TChannelDefinition, TChannelToken
  */
 
 import { RXJS } from "@bonsai/rxjs";
@@ -25,12 +25,12 @@ import {
   ListenerError
 } from "@bonsai/error";
 
-// ── Contrat structurel d'un Channel (ADR-0040) ───────────────────────────────
+// ── Structural contract of a Channel (ADR-14) ──────────────────────────────
 
 /**
- * Déclare le contrat complet d'un Channel : toutes les lanes et leurs types.
- * Chaque Feature déclare son propre `TChannelDefinition` dans son fichier
- * `.feature.ts` (source de vérité unique, co-localisée — I74).
+ * Declares the full contract of a Channel: every lane and its types.
+ * Each Feature declares its own `TChannelDefinition` in its `.feature.ts`
+ * file (single, co-located source of truth — I74).
  */
 export type TChannelDefinition = {
   readonly commands: Record<string, unknown>;
@@ -39,16 +39,16 @@ export type TChannelDefinition = {
 };
 
 /**
- * Token phantom porté en `static readonly channel` sur chaque Feature.
+ * Phantom token carried as `static readonly channel` on every Feature.
  *
- * Encode à la fois le namespace (runtime) et la définition du Channel
- * (compile-time). Permet à tout consommateur (View, Feature externe) d'obtenir
- * un `Channel<TDef>` typé via `Radio.me().channelFor(token)` sans tenir de
- * référence à une instance Feature (ADR-0040 §Décision).
+ * Encodes both the namespace (runtime) and the Channel definition
+ * (compile time). Lets any consumer (View, external Feature) get a typed
+ * `Channel<TDef>` through `Radio.me().channelFor(token)` without holding a
+ * reference to a Feature instance (ADR-14).
  *
- * `_def` est un champ phantom optionnel — jamais assigné en runtime, présent
- * uniquement pour que TypeScript distingue structurellement deux tokens portant
- * des `TDef` différents sur le même namespace.
+ * `_def` is an optional phantom field — never assigned at runtime, present
+ * only so TypeScript structurally distinguishes two tokens carrying
+ * different `TDef` on the same namespace.
  */
 export type TChannelToken<
   TDef extends TChannelDefinition,
@@ -58,24 +58,24 @@ export type TChannelToken<
   readonly _def?: TDef;
 };
 
-/** Extrait le `TDef` d'un `TChannelToken`. */
+/** Extracts the `TDef` of a `TChannelToken`. */
 export type TTokenDef<T> =
   T extends TChannelToken<infer TDef, any> ? TDef : never;
 
-// ── Types internes des Maps (stockage opaque) ─────────────────────────────────
+// ── Internal Map types (opaque storage) ──────────────────────────────────────
 
-// Les Maps internes stockent des handlers avec payload `unknown`.
-// La surface publique est typée via les generics de Channel<TDef>.
-// Les casts à l'insertion sont le prix de cette séparation (I75).
+// Internal Maps store handlers with an `unknown` payload.
+// The public surface is typed through the generics of Channel<TDef>.
+// Casts on insertion are the price of that separation (I75).
 type TCommandHandler = (payload: unknown) => void;
 type TEventListener  = (payload: unknown) => void;
 type TRequestReplier = (params: unknown) => unknown;
 
-// ── Payload de l'événement technique `any` ───────────────────────────────────
+// ── Payload of the technical `any` event ─────────────────────────────────────
 
 /**
- * Payload de l'événement technique `any`, émis automatiquement
- * après chaque `emit()` d'un Event granulaire.
+ * Payload of the technical `any` event, emitted automatically after
+ * each `emit()` of a granular Event.
  */
 export type TAnyEventPayload = {
   readonly event: string;
@@ -98,7 +98,7 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
   // ── Lane 3 — Requests (1:1 sync) ─────────────────────────────────────────
   readonly #requestRepliers = new Map<string, TRequestReplier>();
 
-  // ── Événement technique `any` ─────────────────────────────────────────────
+  // ── Technical `any` event ─────────────────────────────────────────────────
   readonly #anySubject = new RXJS.Subject<TAnyEventPayload>();
   readonly #anySubscriptions = new Map<TEventListener, RXJS.Subscription>();
 
@@ -109,8 +109,8 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Enregistre le handler unique pour un Command (I10 — un seul handler).
-   * @throws DuplicateHandlerError si un handler est déjà enregistré.
+   * Registers the single handler of a Command (I10 — one handler only).
+   * @throws DuplicateHandlerError if a handler is already registered.
    */
   handle<K extends keyof TDef["commands"] & string>(
     commandName: K,
@@ -128,8 +128,8 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
   }
 
   /**
-   * Émet un Command vers son handler unique.
-   * @throws NoHandlerError si aucun handler n'est enregistré.
+   * Sends a Command to its single handler.
+   * @throws NoHandlerError if no handler is registered.
    */
   trigger<K extends keyof TDef["commands"] & string>(
     commandName: K,
@@ -152,7 +152,7 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Enregistre un listener pour un Event (I11 — N listeners autorisés).
+   * Registers a listener for an Event (I11 — N listeners allowed).
    */
   listen<K extends keyof TDef["events"] & string>(
     eventName: K,
@@ -172,7 +172,7 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
           console.error(
             new ListenerError(
               `Listener error on "${this.name}:${eventName}"`,
-              "ADR-0002",
+              "ADR-05",
               this.name
             ),
             error
@@ -188,7 +188,7 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
   }
 
   /**
-   * Supprime un listener spécifique pour un Event.
+   * Removes a specific listener of an Event.
    */
   unlisten<K extends keyof TDef["events"] & string>(
     eventName: K,
@@ -205,8 +205,8 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
   }
 
   /**
-   * Émet un Event vers tous les listeners (1:N).
-   * Silencieux si aucun listener. Émet `any` automatiquement après.
+   * Emits an Event to every listener (1:N).
+   * Silent when there is no listener. Emits `any` automatically afterwards.
    */
   emit<K extends keyof TDef["events"] & string>(
     eventName: K,
@@ -227,7 +227,7 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
   }
 
   /**
-   * Enregistre un listener pour l'événement technique `any`.
+   * Registers a listener for the technical `any` event.
    */
   listenAny(listener: (payload: TAnyEventPayload) => void): void {
     const subscription = this.#anySubject.subscribe({
@@ -238,7 +238,7 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
           console.error(
             new ListenerError(
               `Listener error on "${this.name}:any"`,
-              "ADR-0002",
+              "ADR-05",
               this.name
             ),
             error
@@ -250,7 +250,7 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
   }
 
   /**
-   * Supprime un listener `any`.
+   * Removes an `any` listener.
    */
   unlistenAny(listener: (payload: TAnyEventPayload) => void): void {
     const subscription = this.#anySubscriptions.get(
@@ -263,12 +263,12 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // Lane 3 — Requests (synchrone, T | null)
+  // Lane 3 — Requests (synchronous, T | null)
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Enregistre le replier unique pour un type de Request.
-   * @throws DuplicateHandlerError si un replier est déjà enregistré.
+   * Registers the single replier of a Request.
+   * @throws DuplicateHandlerError if a replier is already registered.
    */
   reply<K extends keyof TDef["requests"] & string>(
     requestName: K,
@@ -288,7 +288,7 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
   }
 
   /**
-   * Supprime un replier.
+   * Removes a replier.
    */
   unreply<K extends keyof TDef["requests"] & string>(
     requestName: K
@@ -297,9 +297,9 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
   }
 
   /**
-   * Effectue une Request synchrone. Retourne `TDef['requests'][K]['result'] | null`.
-   * - Pas de replier → null (ADR-0023, D44)
-   * - Replier qui throw → null, erreur loguée (I55)
+   * Performs a synchronous Request. Returns `TDef['requests'][K]['result'] | null`.
+   * - No replier → null (ADR-02)
+   * - Replier throws → null, error logged (I55)
    */
   request<K extends keyof TDef["requests"] & string>(
     requestName: K,
@@ -325,8 +325,8 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Supprime tous les handlers, listeners et repliers.
-   * Complète les Subjects RxJS.
+   * Removes every handler, listener and replier.
+   * Completes the RxJS Subjects.
    */
   clear(): void {
     this.#commandHandlers.clear();

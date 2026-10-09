@@ -7,11 +7,11 @@
  *   I51  — Notification catch-all onAnyEntityUpdated
  *   I52  — Entity peut exposer des méthodes query (lecture seule, pures)
  *
- * Sémantiques runtime ADR-0001 :
+ * Sémantiques runtime ADR-10 :
  *   - mutate(intent, recipe) via Immer produceWithPatches (I97)
  *   - changedKeys dérivées des patches (1er segment de path)
  *   - Détection no-op : aucun patch produit → aucune notification
- *   - initialState getter (D17)
+ *   - initialState getter (ADR-10)
  *   - onAnyEntityUpdated(event) avec intent, changedKeys
  *
  * NOTE : ce fichier couvre le socle catch-all hérité de la strate 0 — voir
@@ -71,7 +71,7 @@ describe("Entity basic — Strate 0 [I6, I46, I51-catchall, I52]", () => {
       expect(entity.state).toEqual(CART_INITIAL_STATE);
     });
 
-    it("initialState returns the original initial state (D17)", () => {
+    it("initialState returns the original initial state (ADR-10)", () => {
       entity.mutate("addItem", (draft) => {
         draft.items.push({ productId: "1", name: "A", qty: 1, price: 10 });
       });

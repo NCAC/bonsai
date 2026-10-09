@@ -1,7 +1,7 @@
 /**
  * @bonsai/view - Version 0.0.1
  * Bundled by Bonsai Build System
- * Date: 2026-09-16T10:43:19.657Z
+ * Date: 2026-09-24T20:13:10.578Z
  */
 import { Radio } from '@bonsai/event';
 
@@ -41,71 +41,70 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 };
 
 /**
- * @bonsai/view — View base class (ADR-0042)
+ * @bonsai/view — View base class (ADR-14)
  *
- * Strate 1 — Capacités :
- *   - trigger("ns:cmd", payload) → envoie un Command typé via Channel
- *   - request("ns:req", params)  → interroge un Channel typé
- *   - getUI(key) → TProjectionNode<TEl> typé au sous-type HTMLElement (phantom)
- *   - Auto-discovery D48 channel : on{NS}{Event}Event → channel.listen
- *   - Auto-discovery D48 UI      : on{UIKey}{DomEvent} → addEventListener
+ * Capabilities:
+ *   - trigger("ns:cmd", payload) → sends a typed Command through the Channel
+ *   - request("ns:req", params)  → queries a typed Channel
+ *   - getUI(key) → TProjectionNode<TEl>, typed to the HTMLElement subtype (phantom)
+ *   - I48 channel auto-discovery: on{NS}{Event}Event → channel.listen
+ *   - I48 UI auto-discovery     : on{UIKey}{DomEvent} → addEventListener
  *   - onAttach() lifecycle hook
  *
- * Pattern modulaire ADR-0042 :
- *   1. `const features satisfies TFeatureContract` — Feature-groupé
- *   2. `const uiEvents satisfies TUIContract`      — events DOM + phantom TEl
- *   3. `const uiElements satisfies TUIElements<typeof uiEvents>` — sélecteurs
+ * ADR-14 modular pattern:
+ *   1. `const features satisfies TFeatureContract` — Feature-grouped
+ *   2. `const uiEvents satisfies TUIContract`      — DOM events + phantom TEl
+ *   3. `const uiElements satisfies TUIElements<typeof uiEvents>` — selectors
  *   4. `type TVC = TViewContract<typeof features, typeof uiEvents>`
  *   5. `class XxxView extends View<TVC> implements TViewCallbacks<TVC>`
  *
- * Trois getters abstraits :
- *   - `get features()`   → Feature refs + lanes (structurel, non-overridable)
- *   - `get uiEvents()`   → events DOM + phantom TEl (structurel)
- *   - `get uiElements()` → sélecteurs CSS (overridable par Composer D34)
+ * Three abstract getters:
+ *   - `get features()`   → Feature refs + lanes (structural, not overridable)
+ *   - `get uiEvents()`   → DOM events + phantom TEl (structural)
+ *   - `get uiElements()` → CSS selectors (overridable by the Composer, ADR-21 — not delivered)
  *
- * Channel reste privé derrière sa Feature (I80) — aucun `TChannelToken` dans
- * la surface publique.
+ * The Channel stays private behind its Feature (I80) — no `TChannelToken` in
+ * the public surface.
  *
- * Invariants :
- *   I4  — View n'a JAMAIS emit() — absent du type
- *   I31 — rootElement est un sélecteur CSS string injecté au mount
- *   I36 — View ne compose jamais d'autres Views directement
- *   I39 — Accès DOM exclusivement via getUI(key)
- *   I40 — Scope DOM : résolution dans rootElement uniquement
- *   I48 — Handlers auto-découverts par convention de nommage
- *   I75 — Aucun `any` dans la surface publique ; casts internes documentés
- *   I80 — Aucun TChannelToken dans la surface publique consommateur
- *   I81 — `features` / `uiEvents` / `uiElements` sont les sources de vérité
- *   I82 — Handler manquant → erreur compile via `implements TViewCallbacks`
- *   I83 — Pattern modulaire `T{Component}Contract` réutilisable
- *   I84 — `events: [E, ...]` non-vide impose les handlers DOM correspondants
- *   I85 — `ui<TEl>()(events)` est l'unique helper pour TUIEntry (forme curryfiée)
- *   I86 — `events` toujours présent dans TUIEntry (pas d'optionnel) ; ReadonlyArray<TEventsFor<TEl>> sans doublons
- *   I87 — clé d'objet ≡ namespace de la Feature référencée
- *   I88 — symétrie Contract/Callbacks
- *   I89 — tout nom d'event déclaré appartient à TEventsFor<TEl> ⊆ keyof HTMLElementEventMap (ADR-0044/0045)
- *   I90 — pas de doublons dans TUIEntry["events"] — double-binding interdit (ADR-0044)
- *   I91 — TEventsFor<TEl> est le mapping sémantique officiel Bonsai élément→events (ADR-0045)
+ * Invariants:
+ *   I4  — A View NEVER has emit() — absent from the type
+ *   I31 — rootElement is a CSS selector string injected at mount
+ *   I36 — A View never composes other Views directly
+ *   I39 — DOM access only through getUI(key)
+ *   I40 — DOM scope: resolution inside rootElement only
+ *   I48 — Handlers are auto-discovered by naming convention
+ *   I75 — No `any` in the public surface; internal casts are documented
+ *   I80 — No TChannelToken in the consumer public surface
+ *   I81 — `features` / `uiEvents` / `uiElements` are the sources of truth
+ *   I82 — Missing handler → compile error through `implements TViewCallbacks`
+ *   I83 — Reusable modular `T{Component}Contract` pattern
+ *   I84 — A non-empty `events: [E, ...]` requires the matching DOM handlers
+ *   I85 — `ui<TEl>()(events)` is the only TUIEntry helper (curried form)
+ *   I86 — `events` is always present in TUIEntry (never optional); ReadonlyArray<TEventsFor<TEl>> without duplicates
+ *   I87 — object key ≡ namespace of the referenced Feature
+ *   I88 — Contract/Callbacks symmetry
+ *   I89 — every declared event name belongs to TEventsFor<TEl> ⊆ keyof HTMLElementEventMap (ADR-15)
+ *   I90 — no duplicate in TUIEntry["events"] — double binding forbidden (ADR-15)
+ *   I91 — TEventsFor<TEl> is Bonsai's official element → events mapping (ADR-15)
  *
  * @packageDocumentation
  */
 var _View_instances, _View_rootElement, _View_rootEl, _View_mounted, _View_uiSelectors, _View_uiDomEvents, _View_features, _View_registerUIHandlers, _View_registerChannelListeners;
 /**
- * Helper de construction d'une entrée UI (I85 — unique mécanisme).
+ * Builder of a UI entry (I85 — the only mechanism).
  *
- * Encode le sous-type TEl via le phantom `_el?` et capture les events runtime.
- * Forme curryfiée nécessaire pour préserver l'inférence littérale de `events`
- * tout en spécifiant `TEl` explicitement (limitation TypeScript : `const T`
- * sur un paramètre ne préserve pas le littéral si un autre paramètre est
- * passé explicitement avec un défaut).
+ * Encodes the TEl subtype through the `_el?` phantom and captures the runtime
+ * events. The curried form keeps literal inference of `events` while `TEl` is
+ * given explicitly (TypeScript limitation: `const T` on a parameter loses the
+ * literal when another type parameter is passed explicitly with a default).
  *
- * Contraintes (ADR-0044 + ADR-0045) :
- *  - `TEvts` ⊆ `TEventsFor<TEl>` — noms valides + sémantique cohérente
- *  - `HasNoDuplicates<TEvts>` — interdit le double-binding addEventListener
+ * Constraints (ADR-15):
+ *  - `TEvts` ⊆ `TEventsFor<TEl>` — valid names + consistent semantics
+ *  - `HasNoDuplicates<TEvts>` — forbids double addEventListener binding
  *
- * @example ui<HTMLButtonElement>()(["click"])           // interactif
- * @example ui<HTMLSpanElement>()([])                    // non-interactif explicite
- * @example ui<HTMLInputElement>()(["input", "change"])  // 2 handlers requis
+ * @example ui<HTMLButtonElement>()(["click"])           // interactive
+ * @example ui<HTMLSpanElement>()([])                    // explicitly non-interactive
+ * @example ui<HTMLInputElement>()(["input", "change"])  // 2 required handlers
  */
 function ui() {
     return (events) => ({ events });
@@ -133,7 +132,7 @@ function createProjectionNode(el) {
         }
     };
 }
-// ─── Helpers internes ────────────────────────────────────────────────────────
+// ─── Internal helpers ────────────────────────────────────────────────────────
 function capitalize(s) {
     return s.length === 0 ? s : s[0].toUpperCase() + s.slice(1);
 }
@@ -144,11 +143,11 @@ function parseNSKey(key) {
     }
     return { namespace: key.slice(0, idx), name: key.slice(idx + 1) };
 }
-// ─── View abstract class (ADR-0042) ─────────────────────────────────────────
+// ─── View abstract class (ADR-14) ─────────────────────────────────────────
 /**
- * View — couche présentation paramétrée par un seul générique : `TViewContract`.
+ * View — presentation layer parameterised by a single generic: `TViewContract`.
  *
- * Pattern d'usage :
+ * Usage pattern:
  *
  * ```ts
  * import { CartFeature } from "../Cart/cart.feature";
@@ -192,7 +191,7 @@ function parseNSKey(key) {
  *     this.getUI("total").text(`${p.qty} items`);  // → TProjectionNode<HTMLSpanElement>
  *   }
  *   onAddBtnClick(e: MouseEvent): void {
- *     this.trigger("cart:addItem", { id: "p1", qty: 1 });  // ✅ payload inféré
+ *     this.trigger("cart:addItem", { id: "p1", qty: 1 });  // ✅ inferred payload
  *   }
  * }
  * ```
@@ -208,33 +207,34 @@ class View {
         _View_features.set(this, {});
     }
     // ─── Public API ────────────────────────────────────────────────────────
-    /** Le sélecteur rootElement injecté au mount (I31). */
+    /** The rootElement selector injected at mount (I31). */
     get rootElement() {
         return __classPrivateFieldGet(this, _View_rootElement, "f");
     }
     /**
-     * L'élément DOM racine après mount. Disponible dans onAttach() et les
-     * handlers — permet aux sous-classes de lire les data-* attributes (I34).
+     * Root DOM element after mount. Available in onAttach() and in handlers —
+     * lets subclasses read data-* attributes (I34).
      */
     get el() {
         return __classPrivateFieldGet(this, _View_rootEl, "f");
     }
     /**
-     * Monte la View sur un rootElement. Appelé par le Composer.
-     * - Lit `get features()` / `get uiEvents()` / `get uiElements()` une seule fois (ADR-0024)
-     * - Résout le rootElement dans le DOM
-     * - Auto-discover les UI handlers (D48 UI — pilotés par uiEvents[k].events)
-     * - Auto-discover les Channel listeners (D48 channel — pilotés par features[NS].listens)
-     * - Appelle onAttach()
+     * Mounts the View on a rootElement. Called by the Composer.
+     * - Reads `get features()` / `get uiEvents()` / `get uiElements()` once (ADR-14)
+     * - Resolves the rootElement in the DOM (whole document today, not the
+     *   Composer's slot — ADR-19 gap)
+     * - Auto-discovers the UI handlers (I48 UI — driven by uiEvents[k].events)
+     * - Auto-discovers the Channel listeners (I48 channel — driven by features[NS].listens)
+     * - Calls onAttach()
      */
     mount(rootSelector) {
         if (__classPrivateFieldGet(this, _View_mounted, "f"))
             return;
         __classPrivateFieldSet(this, _View_mounted, true, "f");
-        // ADR-0024 : lecture unique des modules contractuels
+        // ADR-14: contract modules are read once
         __classPrivateFieldSet(this, _View_features, this.features, "f");
         __classPrivateFieldSet(this, _View_uiSelectors, this.uiElements, "f");
-        // Extraction des events DOM par clé UI (runtime D48)
+        // Extract DOM events per UI key (runtime, ADR-15)
         const uiEvents = this.uiEvents;
         const domEventsMap = {};
         for (const key of Object.keys(uiEvents)) {
@@ -254,9 +254,10 @@ class View {
         this.onAttach();
     }
     /**
-     * I39 — Accès DOM typé via `getUI(key)`. Résout dans le scope du rootElement (I40).
-     * Le retour est `TProjectionNode<TEl>` où `TEl` est extrait du phantom `_el?`
-     * de l'entrée UI déclarée — `element()` retourne le vrai sous-type HTML.
+     * I39 — typed DOM access through `getUI(key)`. Resolves inside the
+     * rootElement scope (I40; slot exclusion not delivered yet).
+     * Returns `TProjectionNode<TEl>`, where `TEl` comes from the `_el?` phantom
+     * of the declared UI entry — `element()` returns the actual HTML subtype.
      */
     getUI(key) {
         const selector = __classPrivateFieldGet(this, _View_uiSelectors, "f")[key];
@@ -270,34 +271,34 @@ class View {
         return createProjectionNode(el);
     }
     /**
-     * Envoie un Command typé via Channel (I4 — View ne peut qu'envoyer).
+     * Sends a typed Command through the Channel (I4 — a View can only send).
      *
-     * `key` est une clé namespacée `"ns:cmd"` ; doit appartenir à
-     * `TFlatTriggers<TVC["features"]>`, sinon erreur compile.
-     * Exposé en `protected` — les sous-classes l'appellent depuis les handlers UI.
+     * `key` is a namespaced `"ns:cmd"` key; it must belong to
+     * `TFlatTriggers<TVC["features"]>`, otherwise a compile error.
+     * `protected` — subclasses call it from their UI handlers.
      */
     trigger(key, payload) {
         const { namespace, name } = parseNSKey(key);
-        // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+        // Cast to the untyped Channel to register by string (I75).
         const ch = Radio.me().channel(namespace);
         ch.trigger(name, payload);
     }
     /**
-     * Effectue une Request synchrone typée vers un Channel déclaré.
-     * Retourne le résultat typé ou `null` si aucun replier n'est enregistré
-     * côté Feature propriétaire (D44).
+     * Performs a typed synchronous Request to a declared Channel.
+     * Returns the typed result, or `null` when the owning Feature registered
+     * no replier (ADR-02).
      *
-     * `key` est une clé namespacée `"ns:req"` ; doit appartenir à
-     * `TFlatRequests<TVC["features"]>`, sinon erreur compile.
+     * `key` is a namespaced `"ns:req"` key; it must belong to
+     * `TFlatRequests<TVC["features"]>`, otherwise a compile error.
      */
     request(key, params) {
         const { namespace, name } = parseNSKey(key);
-        // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
+        // Cast to the untyped Channel to register by string (I75).
         const ch = Radio.me().channel(namespace);
         return ch.request(name, params);
     }
     // ─── Lifecycle hooks ───────────────────────────────────────────────────
-    /** Hook appelé après le mount. Override dans les sous-classes. */
+    /** Hook called after mount. Override it in subclasses. */
     onAttach() {
         // Default no-op
     }
@@ -308,7 +309,7 @@ _View_rootElement = new WeakMap(), _View_rootEl = new WeakMap(), _View_mounted =
     for (const uiKey of Object.keys(__classPrivateFieldGet(this, _View_uiDomEvents, "f"))) {
         const events = __classPrivateFieldGet(this, _View_uiDomEvents, "f")[uiKey];
         if (events.length === 0)
-            continue; // C9 — non-interactif
+            continue; // non-interactive
         const uiKeyPascal = capitalize(uiKey);
         const selector = __classPrivateFieldGet(this, _View_uiSelectors, "f")[uiKey];
         if (!selector) {
@@ -316,7 +317,7 @@ _View_rootElement = new WeakMap(), _View_rootEl = new WeakMap(), _View_mounted =
         }
         const el = __classPrivateFieldGet(this, _View_rootEl, "f").querySelector(selector);
         if (!el)
-            continue; // pas d'élément = pas de listener (silencieux)
+            continue; // no element = no listener (silent)
         for (const domEvent of events) {
             const handlerName = `on${uiKeyPascal}${capitalize(domEvent)}`;
             if (!methods.includes(handlerName)) {

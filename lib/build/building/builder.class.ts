@@ -98,7 +98,7 @@ export class Builder {
       await this.ensureOutputDirExists(component.outJsFile);
 
       // Créer la configuration Rollup — passe JS uniquement (format ES)
-      // La passe DTS est effectuée globalement dans buildFramework (ADR-0032)
+      // La passe DTS est effectuée globalement dans buildFramework (ADR-29)
       const jsRollupConfig: RollupOptions = {
         input: component.srcFile,
         output: {
@@ -323,7 +323,7 @@ export class Builder {
 
       await this.ensureOutputDirExists(framework.outJsFile);
 
-      // ── Passe 1 : JS — bundle ESM (ADR-0032) ──────────────
+      // ── Passe 1 : JS — bundle ESM (ADR-29) ──────────────
       const jsRollupConfig: RollupOptions = {
         input: framework.srcFile,
         output: {
@@ -351,7 +351,7 @@ export class Builder {
             clean: true
           })
         ],
-        // ADR-0032 §3 : TOUT inliner — zéro dépendance transitive
+        // ADR-29 : TOUT inliner — zéro dépendance transitive
         // valibot (Tier 1), immer (Tier 2), rxjs (Tier 3) + tous les @bonsai/*
         external: [],
         onwarn(warning, defaultHandler) {
@@ -387,7 +387,7 @@ export class Builder {
   /**
    * Passe DTS du framework — génère un bonsai.d.ts flat via rollup-plugin-dts
    *
-   * Flux (reproduit le PoC ADR-0032 §11) :
+   * Flux (reproduit le PoC ADR-29) :
    *   1. tsc --emitDeclarationOnly → .d.ts individuels dans .dts-temp/
    *   2. rollup + rollup-plugin-dts → bonsai.d.ts (bundle unique, tout inliné)
    *   3. Post-processing : suppression des /// <reference path> parasites
@@ -503,7 +503,7 @@ export class Builder {
           baseUrl: rootPath,
           paths: dtsPaths
         },
-        external: [] // ADR-0032 §3 : tout inliner
+        external: [] // ADR-29 : tout inliner
       });
 
       const dtsBundle = await rollup(input);

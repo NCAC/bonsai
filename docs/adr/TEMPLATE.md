@@ -1,143 +1,33 @@
-# ADR-XXXX : [Titre de la décision]
+# ADR-NN — Titre court de la décision
 
-| Champ                   | Valeur                                                                                                              |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **Statut**              | 🟡 Proposed / 🟢 Accepted / 🔵 Tested / 🟠 Suspended / ⚪ Superseded                                                |
-| **Date**                | YYYY-MM-DD                                                                                                          |
-| **Décideurs**           | @auteur                                                                                                             |
-| **RFC liée**            | RFC-XXXX                                                                                                            |
-| **Invariants impactés** | I1, I2, ... _(supprimer la ligne si l'ADR n'a pas d'invariants — voir ADR-0043 pour la trichotomie de testabilité)_ |
-
----
+| Champ | Valeur |
+| --- | --- |
+| **Statut** | 🟡 Proposed · 🟢 Accepted · 🔵 Tested |
+| **Invariants impactés** | I…, I… _(ligne omise si l'ADR n'a pas d'invariant — voir ADR-32)_ |
+| **Livré** | ✅ · ⚠️ partiel (préciser) · ⏳ strate N |
+| **Spec** | lien vers le chapitre normatif |
 
 ## Contexte
 
-[Quel problème devons-nous résoudre ? Pourquoi maintenant ?]
-
-[Décrire le contexte technique et métier qui rend cette décision nécessaire.]
-
----
-
-## Contraintes
-
-[Contraintes techniques, architecturales, ou organisationnelles qui limitent les options]
-
-- Contrainte 1 : ...
-- Contrainte 2 : ...
-- Contrainte 3 : ...
-
----
-
-## Options considérées
-
-### Option A — [Nom descriptif]
-
-**Description** : [Explication de l'approche]
-
-| Avantages | Inconvénients |
-| --------- | ------------- |
-| + ...     | - ...         |
-| + ...     | - ...         |
-
-**Exemples / Code** :
-
-```typescript
-// Exemple illustratif si pertinent
-```
-
----
-
-### Option B — [Nom descriptif]
-
-**Description** : [Explication de l'approche]
-
-| Avantages | Inconvénients |
-| --------- | ------------- |
-| + ...     | - ...         |
-| + ...     | - ...         |
-
-**Exemples / Code** :
-
-```typescript
-// Exemple illustratif si pertinent
-```
-
----
-
-### Option C — [Nom descriptif] _(optionnel)_
-
-**Description** : [Explication de l'approche]
-
-| Avantages | Inconvénients |
-| --------- | ------------- |
-| + ...     | - ...         |
-
----
-
-## Analyse comparative
-
-| Critère        | Option A | Option B | Option C |
-| -------------- | -------- | -------- | -------- |
-| Performance    | ⭐⭐⭐   | ⭐⭐     | ⭐       |
-| Complexité     | ⭐       | ⭐⭐     | ⭐⭐⭐   |
-| DX             | ⭐⭐     | ⭐⭐⭐   | ⭐⭐     |
-| Maintenabilité | ⭐⭐⭐   | ⭐⭐     | ⭐       |
-
----
+3 à 8 lignes : le problème, la contrainte qui force à trancher.
 
 ## Décision
 
-Nous choisissons **Option X** parce que :
+La règle retenue, énoncée sans ambiguïté. Un seul exemple de code minimal si
+la règle est une signature ou une API.
 
-1. [Raison principale]
-2. [Raison secondaire]
-3. [Raison complémentaire]
+## Alternatives rejetées
 
-[Expliquer pourquoi les autres options ont été rejetées, en référençant les inconvénients décisifs.]
-
----
+- **Nom de l'option** — raison du rejet en une ou deux phrases.
 
 ## Conséquences
 
-### Positives
-
-- ✅ [Bénéfice 1]
-- ✅ [Bénéfice 2]
-- ✅ [Bénéfice 3]
-
-### Négatives (acceptées)
-
-- ⚠️ [Compromis 1] — accepté parce que [raison]
-- ⚠️ [Compromis 2] — mitigé par [mesure]
-
-### Risques identifiés
-
-- 🔶 [Risque 1] — mitigation : [...]
-- 🔶 [Risque 2] — mitigation : [...]
+- Ce que la décision impose, interdit ou coûte.
 
 ---
 
-## Actions de suivi
-
-- [ ] [Action 1 — responsable, deadline]
-- [ ] [Action 2 — responsable, deadline]
-- [ ] [Mettre à jour RFC-XXXX §Y]
-- [ ] [Implémenter prototype]
-
----
-
-## Références
-
-- `RFC-XXXX` — remplacer par le fichier de chapitre concerné (ex. `../rfc/3-couche-abstraite/feature.md`), pas par un chemin `RFC-XXXX.md` littéral
-- [Documentation externe pertinente](https://...)
-- [ADR similaire dans autre projet](https://...)
-
----
-
-## Historique
-
-| Date       | Changement                                                       |
-| ---------- | ---------------------------------------------------------------- |
-| YYYY-MM-DD | Création (Proposed)                                              |
-| YYYY-MM-DD | Accepted après review                                            |
-| YYYY-MM-DD | Tested — invariants prouvés par la suite de tests (cf. ADR-0043) |
+> **Règles d'écriture** (ADR-32, ADR-34)
+>
+> - Un ADR est **vivant** : si la décision évolue, on le réécrit en place. L'historique est dans git.
+> - Cible : 30–80 lignes. Le détail normatif (signatures complètes, tableaux d'erreurs) vit dans la spec, pas ici.
+> - Les options écartées tiennent en une ligne chacune ; l'analyse comparative n'est pas conservée.

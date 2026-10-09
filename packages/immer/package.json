@@ -1,7 +1,7 @@
 {
   "name": "@bonsai/immer",
   "version": "0.1.0",
-  "description": "Wrapper Immer pour Bonsai — mutations immutables via draft (ADR-0001)",
+  "description": "Wrapper Immer pour Bonsai — mutations immutables via draft (ADR-10)",
   "type": "module",
   "author": {
     "name": "NCAC",

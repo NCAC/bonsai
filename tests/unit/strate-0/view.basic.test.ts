@@ -1,12 +1,12 @@
 /**
- * TDD — View base class (strate-0, post-ADR-0042)
+ * TDD — View base class (strate-0, ADR-14)
  *
- * Capacités View strate-0 (ADR-0040 + ADR-0041 + ADR-0042) :
+ * Capacités View strate-0 (ADR-14) :
  *   - trigger("ns:cmd", payload) → envoie un Command (I4: pas d'emit)
  *   - getUI(key) → TProjectionNode<TEl> typé au sous-type HTMLElement
  *   - get features() / get uiEvents() / get uiElements() → manifeste modulaire
- *   - D48 channel : on{NS}{Event}Event câblés depuis features[NS].listens
- *   - D48 UI      : on{UIKey}{DomEvent} câblés depuis uiEvents[k].events
+ *   - I48 channel : on{NS}{Event}Event câblés depuis features[NS].listens
+ *   - I48 UI      : on{UIKey}{DomEvent} câblés depuis uiEvents[k].events
  *   - onAttach() lifecycle hook
  *   - rootElement injecté au mount
  *
@@ -20,7 +20,7 @@
  *   I80 — Channel privé : aucun TChannelToken dans la surface consommateur
  *   I81 — features/uiEvents/uiElements sont les sources de vérité runtime
  *   I82 — Handler manquant → erreur (compile via implements, runtime via mount)
- *   I83 — Pattern modulaire ADR-0042 en 5 étapes appliqué à TestView (features
+ *   I83 — Pattern modulaire ADR-14 en 5 étapes appliqué à TestView (features
  *         + uiEvents + uiElements + TViewContract + View<TVC> + implements
  *         TViewCallbacks<TVC>) — utilisé par toutes les fixtures de ce fichier
  *   I84 — events: [E,...] non-vide impose les handlers DOM correspondants
@@ -56,7 +56,7 @@ class CartFeatureFake {
   };
 }
 
-// ─── Fixtures : pattern modulaire (ADR-0042) ────────────────────────────────
+// ─── Fixtures : pattern modulaire (ADR-14) ────────────────────────────────
 
 const testFeatures = {
   cart: {
@@ -96,12 +96,12 @@ class TestView extends View<TTestViewContract> {
     return testUiElements;
   }
 
-  // D48 UI — handler requis (events: ["click"] sur toggleBtn)
+  // I48 UI — handler requis (events: ["click"] sur toggleBtn)
   onToggleBtnClick(_event: MouseEvent): void {
     this.trigger("cart:addItem", { productId: "abc", qty: 1 });
   }
 
-  // D48 channel — handler requis (cart.listens: ["itemAdded"])
+  // I48 channel — handler requis (cart.listens: ["itemAdded"])
   onCartItemAddedEvent(payload: { item: { qty: number } }): void {
     this.getUI("counter").text(String(payload.item.qty));
   }
@@ -125,13 +125,13 @@ function setupDOM(): void {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-describe("View — strate-0 core (ADR-0024 value-first + ADR-0042 modulaire)", () => {
+describe("View — strate-0 core (ADR-14 value-first, modulaire)", () => {
   beforeEach(() => {
     Radio.reset();
     setupDOM();
   });
 
-  describe("ADR-0024 — manifeste modulaire lu une seule fois au mount", () => {
+  describe("ADR-14 — manifeste modulaire lu une seule fois au mount", () => {
     it("features / uiEvents / uiElements sont chacun appelés une seule fois", () => {
       const view = new TestView();
       const featuresSpy = jest.spyOn(view, "features", "get");
@@ -300,7 +300,7 @@ describe("View — strate-0 core (ADR-0024 value-first + ADR-0042 modulaire)", (
     });
   });
 
-  describe("request() — effectue une Request synchrone typée (ADR-0042)", () => {
+  describe("request() — effectue une Request synchrone typée (ADR-14)", () => {
     const requestFeatures = {
       cart: {
         feature: CartFeatureFake,
@@ -356,7 +356,7 @@ describe("View — strate-0 core (ADR-0024 value-first + ADR-0042 modulaire)", (
     });
   });
 
-  describe("D48 UI — handler auto-discovery on{UiKey}{DomEvent}", () => {
+  describe("I48 UI — handler auto-discovery on{UiKey}{DomEvent}", () => {
     it("click on toggleBtn calls onToggleBtnClick and triggers command", () => {
       const view = new TestView();
       view.mount("[data-view='test']");
@@ -374,7 +374,7 @@ describe("View — strate-0 core (ADR-0024 value-first + ADR-0042 modulaire)", (
     });
   });
 
-  describe("D48 channel — handler auto-discovery on{Namespace}{Event}Event", () => {
+  describe("I48 channel — handler auto-discovery on{Namespace}{Event}Event", () => {
     it("View câble les handlers déclarés dans features[NS].listens au mount", () => {
       const view = new TestView();
       view.mount("[data-view='test']");
@@ -571,7 +571,7 @@ describe("I84 — filet runtime des handlers DOM (events non vides)", () => {
 
 // ─── Contextual contract — read data-* from root element ─────────────────────
 
-describe("ADR-0024 — contextual contract read from root element dataset", () => {
+describe("ADR-14 — contextual contract read from root element dataset", () => {
   beforeEach(() => {
     Radio.reset();
   });

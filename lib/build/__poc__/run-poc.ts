@@ -1,5 +1,5 @@
 /**
- * PoC ADR-0032 §11 — Validation de rollup-plugin-dts pour le bundling DTS Bonsai
+ * PoC ADR-29 — Validation de rollup-plugin-dts pour le bundling DTS Bonsai
  *
  * Ce script valide que rollup-plugin-dts peut produire un bonsai.d.ts flat
  * fonctionnel à partir de la topologie monorepo Bonsai.
@@ -11,7 +11,7 @@
  *
  * Usage : npx tsx lib/build/__poc__/run-poc.ts
  *
- * Critères de validation (VC1–VC8) — voir ADR-0032 §11
+ * Critères de validation (VC1–VC8) — voir ADR-29
  */
 
 import { execSync } from "node:child_process";
@@ -72,7 +72,7 @@ async function main() {
   console.log(
     `\n${B}${C}══════════════════════════════════════════════════════════${X}`
   );
-  console.log(`${B}  PoC ADR-0032 §11 — rollup-plugin-dts validation${X}`);
+  console.log(`${B}  PoC ADR-29 — rollup-plugin-dts validation${X}`);
   console.log(
     `${B}${C}══════════════════════════════════════════════════════════${X}\n`
   );
@@ -155,7 +155,7 @@ async function main() {
           respectExternal: true
         })
       ],
-      // TOUTES les dépendances inlinées — zéro external (ADR-0032 §3)
+      // TOUTES les dépendances inlinées — zéro external (ADR-29)
       external: [],
       // Supprimer les warnings de modules circulaires etc.
       onwarn(warning, defaultHandler) {
@@ -494,7 +494,7 @@ async function main() {
     console.log(
       `${B}${G}  🎉 PoC VALIDÉ — rollup-plugin-dts produit un bonsai.d.ts fonctionnel !${X}`
     );
-    console.log(`     ADR-0032 peut passer en 🟢 Accepted.`);
+    console.log(`     ADR-29 peut passer en 🟢 Accepted.`);
     console.log(
       `     Prochain step : Phase 1 — réécriture ciblée du Builder.\n`
     );
@@ -503,7 +503,7 @@ async function main() {
       `${B}${R}  ⚠️  PoC PARTIELLEMENT ÉCHOUÉ — ${failed} critère(s) non validé(s)${X}`
     );
     console.log(
-      `     Analyser les échecs et tenter les fallbacks (ADR-0032 §11).\n`
+      `     Analyser les échecs et tenter les fallbacks (ADR-29).\n`
     );
     for (const r of results.filter((r) => !r.passed)) {
       console.log(`     ${R}${r.id}${X}: ${r.detail.slice(0, 300)}`);

@@ -1,0 +1,67 @@
+# Branche P4 — Causalité traçable et bornée.
+#
+# Migration depuis docs/reorganisation-sept-2026/arbre-invariants-precision.md.
+# Champs : voir P8.yaml pour la légende complète.
+# Branche entièrement ⏳ : les metas causales relèvent de la strate 1b (ADR-31).
+
+- id: I7
+  nature: E
+  parents: [P4]
+  roles: [Channel]
+  enonce: Tout message (Command, Event, Request) porte des métadonnées causales complètes (correlationId, causationId, hop, origin, timestamp).
+  mode: boot
+  etat: cible
+
+- id: I8
+  nature: C
+  parents: [P4, I102]
+  roles: [Channel]
+  enonce: Le `correlationId` est créé par l'UI et n'est jamais modifié ensuite.
+  mode: run
+  etat: cible
+
+- id: I9
+  nature: D
+  parents: [P4, I102]
+  roles: [Channel]
+  enonce: Le `hop` est incrémenté à chaque réaction ; un message au-delà de `MAX_HOPS` est rejeté.
+  pourquoi: >
+    En chorégraphie (ADR-01), aucune Feature ne voit la chaîne entière : une boucle A → B → A
+    n'est visible d'aucun maillon, et les réactions étant conditionnelles, le compilateur ne peut
+    pas l'exclure. Seul le message peut porter sa propre profondeur : un compteur dans les metas
+    borne la chaîne sans registre central ni contexte implicite, reste valable à travers les
+    handlers async (ADR-04) et ne coûte qu'une comparaison. Compter plutôt que détecter les
+    cycles : mémoriser les paires (Feature, message) vues par correlationId exigerait un état à
+    purger en async, signalerait à tort des répétitions légitimes et laisserait passer une chaîne
+    longue sans cycle, alors que P4 exige une chaîne bornée. Rejeter au-delà de `MAX_HOPS` (I102)
+    transforme une boucle infinie, qui gèlerait l'application loin de sa cause, en erreur
+    immédiate rattachée à son correlationId.
+  # Borne la profondeur d'une chaîne, pas sa largeur : un fan-out massif à hop constant passe.
+  # Complémentaire de I98 (ré-entrance synchrone dans une même Entity) : I9 couvre les chaînes
+  # inter-Features, y compris async.
+  # Ouvert : valeur et point d'injection de `MAX_HOPS` non tranchés (metas.md §6).
+  mode: run
+  etat: cible
+
+- id: I54
+  nature: D
+  parents: [P4]
+  roles: [Feature, Channel]
+  enonce: Les metas sont créées par le framework et propagées explicitement, jamais construites à la main.
+  pourquoi: >
+    Les metas sont la preuve de la causalité (P4) ; elles ne valent que si elles ne sont pas
+    falsifiables. Un `hop` remis à zéro désarme l'anti-boucle (I9), un `correlationId` réinventé
+    coupe la chaîne (I8), un `causationId` inventé la falsifie : seul le framework, au point
+    d'entrée puis à chaque dérivation, peut les calculer juste. Elles circulent ensuite en
+    paramètre plutôt que par un contexte implicite (`this.currentMetas`, `AsyncLocalStorage`),
+    qui se tromperait dès que deux handlers async s'entrelacent : passées explicitement, chaque
+    closure capture les siennes (ADR-04).
+  # Mécanisme visé pour « jamais forgées » : un type opaque (brand) que seul le framework peut
+  # construire. Aujourd'hui `Entity.mutate()` accepte `metas?: Record<string, unknown>` : forgeable.
+  # Arbitré le 30/09 : `metas` est requis partout (`emit`, `request`, `mutate`). Les points
+  # d'entrée système (`onInit()`, timers) reçoivent des metas racine `sys-` en paramètre, comme
+  # un handler ; aucune émission sans metas n'ouvre implicitement de corrélation — sinon un oubli
+  # de propagation couperait la chaîne sans erreur. Écart : l'overload `mutate(intent, recipe)`
+  # (strate 1a) n'a pas de metas.
+  mode: type
+  etat: cible

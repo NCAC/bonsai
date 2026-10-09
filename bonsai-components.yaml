@@ -5,7 +5,7 @@ libraries:
   - "@bonsai/rxjs"
   - "@bonsai/immer"
   - "@bonsai/valibot"
-  # @bonsai/remeda supprimé (ADR-0031 C3 — hors API publique Bonsai)
+  # @bonsai/remeda supprimé (ADR-28 — hors API publique Bonsai)
 
 # Packages: Our in-house packages with possible interdependencies
 # Order = topological (dependencies first)

@@ -1,0 +1,49 @@
+# Branche P10 — Une responsabilité, un rôle (méta-principe).
+#
+# Champs : voir P8.yaml pour la légende complète.
+# P10 dit pourquoi les rôles sont distincts. Les décisions qu'il justifie restent dans leur
+# branche d'origine et portent P10 en second parent (listées sous P10 dans l'arbre généré).
+
+- id: I100
+  nature: E
+  parents: [P10]
+  roles: ["*"]
+  enonce: "Chaque rôle porte une seule responsabilité : Entity garde et mute l'état, Feature décide du métier, View projette, Composer décide du placement, Behavior enrichit le comportement, Foundation porte le layout racine, Application amorce."
+  mode: revue
+  etat: convention
+
+- id: I101
+  nature: C
+  parents: [I100, P1]
+  roles: [Entity]
+  enonce: "Une Entity ne porte aucune logique métier : elle garde l'état, applique les mutations que sa Feature lui fournit et expose des lectures pures ; toute décision (validation métier, transformation, refus d'une intention) appartient à la Feature."
+  # L'API framework ne décide rien (`mutate` exécute une recette fournie par l'appelant), mais
+  # rien n'empêche une sous-classe d'Entity d'ajouter une méthode qui décide.
+  mode: revue
+  etat: convention
+
+- id: I63
+  nature: C
+  parents: [I101, P1]
+  roles: [Entity]
+  enonce: Un schema Entity ne contient ni `v.transform()` ni coercion — c'est un garde-fou en lecture, la transformation reste dans le command handler.
+  mode: revue
+  etat: cible
+
+- id: I52
+  nature: D
+  parents: [I101, P1]
+  roles: [Entity]
+  enonce: L'Entity expose des méthodes query pures (lecture seule).
+  pourquoi: >
+    Séparation commande/requête (CQS) au niveau de l'Entity : une méthode lit ou écrit, jamais
+    les deux. `mutate()` reste l'unique chemin d'écriture, tracé par son intent ; une query ne
+    peut donc pas porter d'effet caché. C'est ce qui garantit, à la source, qu'une Request est
+    sans effet (I17) : un replier n'appelle que des queries (ADR-02), la voie Request n'est sûre
+    que si ce qu'elle appelle l'est.
+  # Le getter `query` est écrit par l'application (fixture du test), le framework n'impose rien.
+  # Réserve : rien n'empêche une méthode de l'Entity d'appeler `this.mutate()` (le gel Immer
+  # de `state` n'empêche que la mutation directe). À prévenir — règle ESLint envisagée, sur le
+  # modèle de `no-async-in-replier` (ADR-02).
+  mode: revue
+  etat: convention

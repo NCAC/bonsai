@@ -1,7 +1,7 @@
 /**
  * @bonsai/event - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-05-20T12:01:46.177Z
+ * Date: 2026-09-24T20:04:51.124Z
  */
 import { RXJS } from '@bonsai/rxjs';
 import { DuplicateHandlerError, NoHandlerError, ListenerError } from '@bonsai/error';
@@ -42,23 +42,23 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 };
 
 /**
- * Channel tri-lane — infrastructure de communication interne Bonsai.
+ * Tri-lane Channel — Bonsai's internal communication infrastructure.
  *
- * Un Channel est un contrat de communication à 3 lanes :
- * - **Command Lane** : `handle()` / `trigger()` — 1:1 (un seul handler)
- * - **Event Lane** : `listen()` / `unlisten()` / `emit()` — 1:N (broadcast)
- * - **Request Lane** : `reply()` / `unreply()` / `request()` — 1:1 synchrone, T | null
+ * A Channel is a communication contract with 3 lanes:
+ * - **Command lane**: `handle()` / `trigger()` — 1:1 (a single handler)
+ * - **Event lane**: `listen()` / `unlisten()` / `emit()` — 1:N (broadcast)
+ * - **Request lane**: `reply()` / `unreply()` / `request()` — 1:1 synchronous, T | null
  *
- * Le Channel émet automatiquement un événement `any` après chaque `emit()`.
+ * The Channel automatically emits an `any` event after each `emit()`.
  *
- * `Channel` est générique sur `TDef extends TChannelDefinition` (ADR-0040).
- * La valeur par défaut `TChannelDefinition` (toutes lanes `Record<string, unknown>`)
- * assure une rétrocompatibilité totale avec le code non-paramétré.
+ * `Channel` is generic over `TDef extends TChannelDefinition` (ADR-14).
+ * The default `TChannelDefinition` (all lanes `Record<string, unknown>`)
+ * keeps untyped code fully compatible.
  *
- * @see RFC 2-architecture/communication.md
- * @see ADR-0003 — Sémantiques runtime Channel
- * @see ADR-0023 — request() synchrone
- * @see ADR-0040 — API TypeScript-First : TChannelDefinition, TChannelToken
+ * @see docs/spec/2-architecture/communication.md
+ * @see ADR-03 — Channel runtime semantics
+ * @see ADR-02 — synchronous request()
+ * @see ADR-14 — typed contracts: TChannelDefinition, TChannelToken
  */
 var _Channel_commandHandlers, _Channel_eventSubjects, _Channel_eventSubscriptions, _Channel_requestRepliers, _Channel_anySubject, _Channel_anySubscriptions;
 // ── Channel ──────────────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ class Channel {
         _Channel_eventSubscriptions.set(this, new Map());
         // ── Lane 3 — Requests (1:1 sync) ─────────────────────────────────────────
         _Channel_requestRepliers.set(this, new Map());
-        // ── Événement technique `any` ─────────────────────────────────────────────
+        // ── Technical `any` event ─────────────────────────────────────────────────
         _Channel_anySubject.set(this, new RXJS.Subject());
         _Channel_anySubscriptions.set(this, new Map());
     }
@@ -80,8 +80,8 @@ class Channel {
     // Lane 1 — Commands
     // ═══════════════════════════════════════════════════════════════════════════
     /**
-     * Enregistre le handler unique pour un Command (I10 — un seul handler).
-     * @throws DuplicateHandlerError si un handler est déjà enregistré.
+     * Registers the single handler of a Command (I10 — one handler only).
+     * @throws DuplicateHandlerError if a handler is already registered.
      */
     handle(commandName, handler) {
         if (__classPrivateFieldGet(this, _Channel_commandHandlers, "f").has(commandName)) {
@@ -90,8 +90,8 @@ class Channel {
         __classPrivateFieldGet(this, _Channel_commandHandlers, "f").set(commandName, handler);
     }
     /**
-     * Émet un Command vers son handler unique.
-     * @throws NoHandlerError si aucun handler n'est enregistré.
+     * Sends a Command to its single handler.
+     * @throws NoHandlerError if no handler is registered.
      */
     trigger(commandName, payload) {
         const handler = __classPrivateFieldGet(this, _Channel_commandHandlers, "f").get(commandName);
@@ -104,7 +104,7 @@ class Channel {
     // Lane 2 — Events
     // ═══════════════════════════════════════════════════════════════════════════
     /**
-     * Enregistre un listener pour un Event (I11 — N listeners autorisés).
+     * Registers a listener for an Event (I11 — N listeners allowed).
      */
     listen(eventName, listener) {
         if (!__classPrivateFieldGet(this, _Channel_eventSubjects, "f").has(eventName)) {
@@ -118,14 +118,14 @@ class Channel {
                     listener(payload);
                 }
                 catch (error) {
-                    console.error(new ListenerError(`Listener error on "${this.name}:${eventName}"`, "ADR-0002", this.name), error);
+                    console.error(new ListenerError(`Listener error on "${this.name}:${eventName}"`, "ADR-05", this.name), error);
                 }
             }
         });
         __classPrivateFieldGet(this, _Channel_eventSubscriptions, "f").get(eventName).set(listener, subscription);
     }
     /**
-     * Supprime un listener spécifique pour un Event.
+     * Removes a specific listener of an Event.
      */
     unlisten(eventName, listener) {
         const subsMap = __classPrivateFieldGet(this, _Channel_eventSubscriptions, "f").get(eventName);
@@ -138,8 +138,8 @@ class Channel {
         }
     }
     /**
-     * Émet un Event vers tous les listeners (1:N).
-     * Silencieux si aucun listener. Émet `any` automatiquement après.
+     * Emits an Event to every listener (1:N).
+     * Silent when there is no listener. Emits `any` automatically afterwards.
      */
     emit(eventName, payload) {
         const subject = __classPrivateFieldGet(this, _Channel_eventSubjects, "f").get(eventName);
@@ -154,7 +154,7 @@ class Channel {
         });
     }
     /**
-     * Enregistre un listener pour l'événement technique `any`.
+     * Registers a listener for the technical `any` event.
      */
     listenAny(listener) {
         const subscription = __classPrivateFieldGet(this, _Channel_anySubject, "f").subscribe({
@@ -163,14 +163,14 @@ class Channel {
                     listener(payload);
                 }
                 catch (error) {
-                    console.error(new ListenerError(`Listener error on "${this.name}:any"`, "ADR-0002", this.name), error);
+                    console.error(new ListenerError(`Listener error on "${this.name}:any"`, "ADR-05", this.name), error);
                 }
             }
         });
         __classPrivateFieldGet(this, _Channel_anySubscriptions, "f").set(listener, subscription);
     }
     /**
-     * Supprime un listener `any`.
+     * Removes an `any` listener.
      */
     unlistenAny(listener) {
         const subscription = __classPrivateFieldGet(this, _Channel_anySubscriptions, "f").get(listener);
@@ -180,11 +180,11 @@ class Channel {
         }
     }
     // ═══════════════════════════════════════════════════════════════════════════
-    // Lane 3 — Requests (synchrone, T | null)
+    // Lane 3 — Requests (synchronous, T | null)
     // ═══════════════════════════════════════════════════════════════════════════
     /**
-     * Enregistre le replier unique pour un type de Request.
-     * @throws DuplicateHandlerError si un replier est déjà enregistré.
+     * Registers the single replier of a Request.
+     * @throws DuplicateHandlerError if a replier is already registered.
      */
     reply(requestName, replier) {
         if (__classPrivateFieldGet(this, _Channel_requestRepliers, "f").has(requestName)) {
@@ -193,15 +193,15 @@ class Channel {
         __classPrivateFieldGet(this, _Channel_requestRepliers, "f").set(requestName, replier);
     }
     /**
-     * Supprime un replier.
+     * Removes a replier.
      */
     unreply(requestName) {
         __classPrivateFieldGet(this, _Channel_requestRepliers, "f").delete(requestName);
     }
     /**
-     * Effectue une Request synchrone. Retourne `TDef['requests'][K]['result'] | null`.
-     * - Pas de replier → null (ADR-0023, D44)
-     * - Replier qui throw → null, erreur loguée (I55)
+     * Performs a synchronous Request. Returns `TDef['requests'][K]['result'] | null`.
+     * - No replier → null (ADR-02)
+     * - Replier throws → null, error logged (I55)
      */
     request(requestName, params) {
         const replier = __classPrivateFieldGet(this, _Channel_requestRepliers, "f").get(requestName);
@@ -220,8 +220,8 @@ class Channel {
     // Lifecycle
     // ═══════════════════════════════════════════════════════════════════════════
     /**
-     * Supprime tous les handlers, listeners et repliers.
-     * Complète les Subjects RxJS.
+     * Removes every handler, listener and replier.
+     * Completes the RxJS Subjects.
      */
     clear() {
         __classPrivateFieldGet(this, _Channel_commandHandlers, "f").clear();
@@ -246,25 +246,25 @@ class Channel {
 _Channel_commandHandlers = new WeakMap(), _Channel_eventSubjects = new WeakMap(), _Channel_eventSubscriptions = new WeakMap(), _Channel_requestRepliers = new WeakMap(), _Channel_anySubject = new WeakMap(), _Channel_anySubscriptions = new WeakMap();
 
 /**
- * Radio — Singleton registre des Channels.
+ * Radio — singleton registry of Channels.
  *
- * Radio est le point central de câblage des communications Bonsai.
- * Il gère les instances Channel par namespace (get-or-create).
+ * Radio is the central wiring point of Bonsai communication. It manages
+ * Channel instances by namespace (get-or-create).
  *
- * I15 — Radio n'est jamais exposé au développeur d'application.
+ * I15 — Radio is never exposed to application developers.
  *
- * @see RFC 2-architecture/communication.md §8
+ * @see docs/spec/2-architecture/communication.md §8
  */
 var _a, _Radio_instance, _Radio_constructing, _Radio_channels;
 class Radio {
-    /** Constructeur privé — force le pattern singleton via `me()`. */
+    /** Private constructor — enforces the singleton through `me()`. */
     constructor() {
         _Radio_channels.set(this, new Map());
         if (!__classPrivateFieldGet(_a, _a, "f", _Radio_constructing)) {
             throw new Error("Radio is a singleton — use Radio.me() to get the instance.");
         }
     }
-    /** Retourne l'instance unique du Radio. */
+    /** Returns the single Radio instance. */
     static me() {
         if (!__classPrivateFieldGet(_a, _a, "f", _Radio_instance)) {
             __classPrivateFieldSet(_a, _a, true, "f", _Radio_constructing);
@@ -274,9 +274,9 @@ class Radio {
         return __classPrivateFieldGet(_a, _a, "f", _Radio_instance);
     }
     /**
-     * Obtient ou crée un Channel par namespace (API interne).
-     * Retourne `Channel<TChannelDefinition>` — toutes lanes `Record<string, unknown>`.
-     * Pour un accès typé depuis l'extérieur, utiliser `channelFor(token)`.
+     * Gets or creates a Channel by namespace (internal API).
+     * Returns `Channel<TChannelDefinition>` — all lanes `Record<string, unknown>`.
+     * For typed access from outside, use `channelFor(token)`.
      */
     channel(name) {
         if (!__classPrivateFieldGet(this, _Radio_channels, "f").has(name)) {
@@ -285,25 +285,25 @@ class Radio {
         return __classPrivateFieldGet(this, _Radio_channels, "f").get(name);
     }
     /**
-     * Obtient ou crée un Channel typé via son token (ADR-0040, I77, I79).
+     * Gets or creates a typed Channel from its token (ADR-14, I77, I79).
      *
-     * Le cast `as Channel<TDef>` est sûr par I22 : un namespace ne peut être
-     * associé qu'à une seule Feature et donc à un seul `TDef`.
+     * The `as Channel<TDef>` cast is safe by I22: a namespace belongs to a
+     * single Feature, hence to a single `TDef`.
      */
     channelFor(token) {
         return this.channel(token.namespace);
     }
-    /** Vérifie si un Channel existe pour ce namespace. */
+    /** Checks whether a Channel exists for this namespace. */
     hasChannel(name) {
         return __classPrivateFieldGet(this, _Radio_channels, "f").has(name);
     }
-    /** Liste tous les namespaces enregistrés. */
+    /** Lists all registered namespaces. */
     getChannelNames() {
         return Array.from(__classPrivateFieldGet(this, _Radio_channels, "f").keys());
     }
     /**
-     * Supprime un Channel. Appelle `clear()` sur le Channel avant suppression.
-     * @returns `true` si le Channel existait, `false` sinon
+     * Removes a Channel, calling `clear()` on it first.
+     * @returns `true` if the Channel existed, `false` otherwise
      */
     removeChannel(name) {
         const channel = __classPrivateFieldGet(this, _Radio_channels, "f").get(name);
@@ -313,7 +313,7 @@ class Radio {
         }
         return false;
     }
-    /** Reset complet — détruit le singleton. Usage : tests uniquement. */
+    /** Full reset — destroys the singleton. Tests only. */
     static reset() {
         if (__classPrivateFieldGet(_a, _a, "f", _Radio_instance)) {
             for (const [, channel] of __classPrivateFieldGet(__classPrivateFieldGet(_a, _a, "f", _Radio_instance), _Radio_channels, "f")) {

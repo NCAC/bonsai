@@ -1,5 +1,5 @@
 /**
- * Vérification informative — ADRs candidats au statut `🔵 Tested` (ADR-0043).
+ * Vérification informative — ADRs candidats au statut `🔵 Tested` (ADR-32).
  *
  * Pour chaque ADR `🟢 Accepted` ayant une ligne `Invariants impactés` non vide :
  *   - extrait les ID `I<N>` de cette ligne
@@ -17,7 +17,7 @@
  *
  * Usage : `npx tsx lib/check-adr-tested-status.ts`
  *
- * @see ADR-0043 — Statut `Tested` comme gate de preuve d'architecture
+ * @see ADR-32 — Statut `Tested` comme gate de preuve d'architecture
  */
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -31,10 +31,12 @@ const TESTS_DIR = join(ROOT, "tests");
 
 type AdrInfo = {
   id: string;          // "0042"
-  file: string;        // "ADR-0042-...md"
+  file: string;        // "ADR-14-...md"
   status: "Proposed" | "Accepted" | "Tested" | "Suspended" | "Superseded" | "Unknown";
   invariants: number[];
   hasInvariantsLine: boolean;
+  /** Ligne `Livré` marquée ⏳ ou ⚠️ — l'ADR ne peut pas être promu `Tested`. */
+  notDelivered: boolean;
 };
 
 // ─── Parsing ADR ─────────────────────────────────────────────────────────────
@@ -69,12 +71,12 @@ function expandInvariantList(raw: string): number[] {
 
 function readAllAdrs(): AdrInfo[] {
   const files = readdirSync(ADR_DIR).filter(
-    (f) => /^ADR-\d{4}-.+\.md$/.test(f)
+    (f) => /^ADR-(\d{4}|\d{2})-.+\.md$/.test(f)
   );
 
   return files.map((file) => {
     const content = readFileSync(join(ADR_DIR, file), "utf-8");
-    const id = file.match(/^ADR-(\d{4})/)![1];
+    const id = file.match(/^ADR-(\d{4}|\d{2})/)![1];
 
     const statusLine = content.match(/\*\*Statut\*\*\s*\|\s*([^\n|]+)\|?/);
     const rawStatus = statusLine ? statusLine[1].trim() : "";
@@ -91,7 +93,10 @@ function readAllAdrs(): AdrInfo[] {
     const hasInvariantsLine = rawInv !== "" && rawInv !== "—";
     const invariants = hasInvariantsLine ? expandInvariantList(rawInv) : [];
 
-    return { id, file, status, invariants, hasInvariantsLine };
+    const deliveredLine = content.match(/\*\*Livré\*\*\s*\|\s*([^\n]+)/);
+    const notDelivered = deliveredLine !== null && /⏳|⚠️/.test(deliveredLine[1].split("·")[0]);
+
+    return { id, file, status, invariants, hasInvariantsLine, notDelivered };
   });
 }
 
@@ -119,7 +124,7 @@ function readAllTestContent(): string {
 
 function findCitedInvariants(testContent: string): Set<number> {
   const cited = new Set<number>();
-  // Convention ADR-0043 — bare `I<N>` avec frontière de mot, ou `[I<N>]`
+  // Convention ADR-32 — bare `I<N>` avec frontière de mot, ou `[I<N>]`
   for (const m of testContent.matchAll(/\bI(\d+)\b/g)) {
     cited.add(parseInt(m[1], 10));
   }
@@ -140,6 +145,7 @@ function main(): void {
 
   for (const adr of adrs) {
     if (adr.status !== "Accepted") continue;
+    if (adr.notDelivered) continue; // pas encore livré — promotion sans objet
     if (!adr.hasInvariantsLine || adr.invariants.length === 0) continue; // C-Sem / C-Proc — review manuelle
 
     const missing = adr.invariants.filter((i) => !cited.has(i));
@@ -149,7 +155,7 @@ function main(): void {
   }
 
   const lines: string[] = [];
-  lines.push("📋 ADR Tested status check (ADR-0043)");
+  lines.push("📋 ADR Tested status check (ADR-32)");
   lines.push("");
 
   if (candidates.length > 0) {
@@ -192,7 +198,7 @@ function main(): void {
 
   console.log(lines.join("\n"));
 
-  // Toujours exit 0 — script purement informatif (cf. ADR-0043 §Conséquences).
+  // Toujours exit 0 — script purement informatif (cf. ADR-32).
   process.exit(0);
 }
 

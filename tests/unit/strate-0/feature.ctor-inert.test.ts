@@ -1,8 +1,8 @@
 /**
- * Tests Strate 0 — Constructeur de Feature inerte [I94, ADR-0046]
+ * Tests Strate 0 — Constructeur de Feature inerte [I94, ADR-09]
  *
- * Preuve du gate ADR-0046 (audit docs/AUDIT-DOCS-2026-09-16.md — T5) :
- * I94 est listé en « Invariants impactés » d'ADR-0046 mais n'était cité
+ * Preuve du gate ADR-09 (audit doc 2026-09-16 — T5) :
+ * I94 est listé en « Invariants impactés » d'ADR-09 mais n'était cité
  * dans aucun fichier de `tests/`. Ce fichier comble le vide.
  *
  * I94 — Le constructeur de Feature est inerte : il ne DOIT effectuer aucun
@@ -85,7 +85,7 @@ class NonInertFeature extends Feature<
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-describe("Feature constructor inertness — Strate 0 [I94, ADR-0046]", () => {
+describe("Feature constructor inertness — Strate 0 [I94, ADR-09]", () => {
   beforeEach(() => {
     resetDOM();
     Radio.reset();

@@ -7,6 +7,19 @@ pnpm tsc --noEmit || {
   exit 1
 }
 
+echo "🔍 Type-checking packages/ + tests/ (tsconfig.test.json)..."
+pnpm tsc:check:tests || {
+  echo "❌ Erreurs de typage dans packages/ ou tests/. Commit annulé."
+  exit 1
+}
+
+# ── Registre des invariants ───────────────────────────────
+echo "🔍 Invariants registry (pnpm invariants:check)..."
+pnpm invariants:check || {
+  echo "❌ Registre des invariants incohérent ou vues générées périmées (lancer pnpm invariants). Commit annulé."
+  exit 1
+}
+
 # ── Gate de non-régression ────────────────────────────────
 echo "🧪 Running regression tests..."
 pnpm test:regression || {
@@ -14,7 +27,7 @@ pnpm test:regression || {
   exit 1
 }
 
-# ── Informatif : statut Tested des ADRs (ADR-0043) ────────
+# ── Informatif : statut Tested des ADRs (ADR-32) ────────
 # Non-bloquant — purement indicatif.
 npx tsx lib/check-adr-tested-status.ts || true
 

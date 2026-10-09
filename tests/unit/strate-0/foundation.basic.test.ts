@@ -20,7 +20,7 @@ import {
 } from "@bonsai/view";
 import type { TFeatureContract } from "@bonsai/feature";
 
-// ─── Fixtures (ADR-0042 — pattern modulaire) ─────────────────────────────────
+// ─── Fixtures (ADR-14 — pattern modulaire) ─────────────────────────────────
 
 const emptyFeatures = {} as const satisfies TFeatureContract;
 const emptyUiEvents = {} as const satisfies TUIContract;

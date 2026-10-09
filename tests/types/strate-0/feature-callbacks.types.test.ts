@@ -1,11 +1,11 @@
 /**
- * Tests de type — TListenCallbacks + UnionToIntersection (ADR-0046, I92)
+ * Tests de type — TListenCallbacks + UnionToIntersection (ADR-09, I92)
  *
  * Ces tests vérifient que TypeScript enforce correctement la couverture
  * exhaustive des handlers de listen via `TFeatureCallbacks<TDef, TListens>`.
  *
  * Origine : POC-Q7-tlisten-callbacks.ts (racine) — supprimé après validation
- * empirique de l'hypothèse Q7 (ADR-0046 §Q7 résolu).
+ * empirique de l'hypothèse Q7 (ADR-09 résolu).
  *
  * Hypothèse validée (I92) :
  *   Avec UnionToIntersection dans TListenCallbacks, on obtient l'INTERSECTION
@@ -46,7 +46,7 @@ type AssertTrue<T extends true> = T;
 
 // ─── Tests ────────────────────────────────────────────────────────────────
 
-describe("TFeatureCallbacks — I92 (ADR-0046)", () => {
+describe("TFeatureCallbacks — I92 (ADR-09)", () => {
   it("TListenCallbacks produit une intersection (toutes clés requises)", () => {
     type TFixed = TListenCallbacks<TCartListenerListens>;
     type FixedKeys = keyof TFixed;

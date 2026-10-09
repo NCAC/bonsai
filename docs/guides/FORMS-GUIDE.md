@@ -5,16 +5,15 @@
 
 [← Retour aux guides](../README.md)
 
-> **🔤 Lettrage réaligné sur [ADR-0009](../adr/ADR-0009-forms-pattern.md) (audit doc 2026-09-17, décision M5)** —
-> Ce guide documente les **scénarios pratiques** de l'Option D (recommandée)
-> d'ADR-0009 — chaque scénario porte la lettre de l'**option ADR-0009** dont il
-> découle : **Pattern B** = Option B (localState) appliquée au cas simple,
-> **Pattern C** = Option C (FormBehavior), **Pattern D** = le cas « Entity +
-> localState par étape » du détail de l'Option D. Il n'y a pas de section
+> **🔤 Lettrage réaligné sur [ADR-25](../adr/ADR-25-formulaires.md) (audit doc 2026-09-17, décision M5)** —
+> Ce guide documente les **scénarios pratiques** du modèle hybride d'ADR-25 —
+> chaque scénario porte la lettre du pattern ADR-25 dont il découle :
+> **Pattern B** = localState (cas simple), **Pattern C** = FormBehavior,
+> **Pattern D** = « Entity + localState par étape ». Il n'y a pas de section
 > « Pattern A » ici : l'Option A (formulaire piloté entièrement par Entity) est
-> **rejetée** par ADR-0009 (voir §Rejet des autres options de l'ADR) — ce guide
+> **rejetée** par ADR-25 (voir ses Alternatives rejetées) — ce guide
 > ne documente donc que des usages pratiques recommandés. La **validation
-> différée** (§5) n'est **pas** une option d'ADR-0009 (c'est S2, une capacité
+> différée** (§5) n'est **pas** un pattern d'ADR-25 (c'est une capacité
 > transverse combinable avec B, C ou D) — elle reste volontairement sans lettre.
 >
 > **⚠ État du guide — correction d'une affirmation fausse (régression T6 de l'audit du 16/09)** —
@@ -23,20 +22,24 @@
 > ne compile contre le code livré aujourd'hui**, patterns B/C/D confondus.
 >
 > Ce qui est réellement livré (strate 0/1a) et que les exemples utilisent
-> correctement : le pattern modulaire Feature/Channel/View (ADR-0039 manifest
-> applicatif, ADR-0040 `static readonly channel`, ADR-0042
-> `TFeatureContract`/`TUIContract`/`TUIElements`, ADR-0046 `implements
+> correctement : le pattern modulaire Feature/Channel/View (ADR-08 manifest
+> applicatif, ADR-14 `static readonly channel`, ADR-14
+> `TFeatureContract`/`TUIContract`/`TUIElements`, ADR-09 `implements
 > TFeatureCallbacks`/`TViewCallbacks`).
 >
 > Ce qui **n'existe pas** dans `packages/` et empêche toute compilation :
 >
-> - `localState`, `updateLocal()`, `this.local`, `TLocalUpdate` (ADR-0015) —
+> - `ui<HTMLInputElement>()(["input"])` (et `change`, `submit`…) dans un `TUIContract` :
+>   `TUIContract` n'accepte que les événements de base et de défilement (ADR-15) ;
+>   les entrées de saisie de tous les exemples ci-dessous sont donc rejetées par
+>   `satisfies TUIContract`, même sans `localState`. (`blur`, `focus`, `click`, `keydown` passent.)
+> - `localState`, `updateLocal()`, `this.local`, `TLocalUpdate` (ADR-17) —
 >   **aucune trace dans `packages/view/src`** ; cible strate 2. Tous les
 >   patterns B–D en dépendent pour l'état de saisie transitoire.
 > - `View<TVC, TLocal>` à deux génériques — `View` n'a qu'un seul générique
->   en strate 0/1a (`View<TVC>`, ADR-0042).
+>   en strate 0/1a (`View<TVC>`, ADR-14).
 > - `Behavior` — le package `@bonsai/behavior` n'existe pas du tout (Pattern C
->   entier, cible strate 2 ; voir [behavior.md](../rfc/4-couche-concrete/behavior.md)).
+>   entier, cible strate 2 ; voir [behavior.md](../spec/4-couche-concrete/behavior.md)).
 > - `metas` en second paramètre des handlers Command/Event/Request, `{ metas }`
 >   en option d'`emit()`/`mutate()` — cible strate 1b, non câblé dans
 >   `packages/feature/src/bonsai-feature.ts`. Avec `implements
@@ -51,19 +54,19 @@
 
 | Champ | Valeur |
 | ----- | ------- |
-| **ADR source** | [ADR-0009 — Forms Pattern](../adr/ADR-0009-forms-pattern.md) |
-| **Pré-requis** | [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md) (mutate), [ADR-0015](../adr/ADR-0015-local-state-mechanism.md) (localState), [behavior.md](../rfc/4-couche-concrete/behavior.md) (Behavior — statut anticipé Strate 2), [ADR-0016](../adr/ADR-0016-metas-handler-signature.md) (metas) |
+| **ADR source** | [ADR-25 — Forms Pattern](../adr/ADR-25-formulaires.md) |
+| **Pré-requis** | [ADR-10](../adr/ADR-10-entity-mutation.md) (mutate), [ADR-17](../adr/ADR-17-local-state.md) (localState), [behavior.md](../spec/4-couche-concrete/behavior.md) (Behavior — statut anticipé Strate 2), [ADR-04](../adr/ADR-04-metas-explicites.md) (metas) |
 | **Créé le** | 2026-04-01 |
 
 ---
 
 ## TL;DR
 
-| Situation                                       | Pattern (ADR-0009)                                 | Où vit l'état de saisie                                |
-| ----------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------ |
-| Formulaire simple (contact, login, newsletter)  | **B** — localState dans la View                    | View (`updateLocal`)                                   |
-| Formulaire réutilisable (adresse sur 3 pages)   | **C** — FormBehavior                               | Behavior (`updateLocal`)                               |
-| Wizard multi-step (checkout)                    | **D** — Entity + localState par étape              | View (saisie) + Entity (étapes validées)               |
+| Situation | Pattern (ADR-25) | Où vit l'état de saisie |
+| --- | --- | --- |
+| Formulaire simple (contact, login, newsletter) | **B** — localState dans la View | View (`updateLocal`) |
+| Formulaire réutilisable (adresse sur 3 pages) | **C** — FormBehavior | Behavior (`updateLocal`) |
+| Wizard multi-step (checkout) | **D** — Entity + localState par étape | View (saisie) + Entity (étapes validées) |
 | Validation différée (unicité, référence connue) | _(complément, S2)_ localState + debounce + Request | View (debounce) + Feature (état en mémoire, synchrone) |
 
 > **Règle fondamentale** : l'état de saisie (valeurs, touched, errors, isSubmitting) est
@@ -114,7 +117,7 @@ import { Feature, type TFeatureCallbacks } from "@bonsai/feature";
 import { type TChannelToken } from "@bonsai/event";
 import { Entity } from "@bonsai/entity";
 
-// ─── Contrat Channel (ADR-0040) ──────────────────────────────────────────────
+// ─── Contrat Channel (ADR-14) ──────────────────────────────────────────────
 
 type TNewsletterDef = {
   readonly commands: { subscribe: { email: string } };
@@ -213,7 +216,7 @@ type TNewsletterViewContract = TViewContract<
   typeof newsletterViewUiEvents
 >;
 
-// ─── localState (ADR-0015) ────────────────────────────────────────────────
+// ─── localState (ADR-17) ────────────────────────────────────────────────
 
 type TNewsletterLocal = TJsonSerializable & {
   email: string;
@@ -233,7 +236,7 @@ class NewsletterView
     return { email: "", error: null, isSubmitted: false };
   }
 
-  // ── D48 UI — handlers imposés par uiEvents ────────────────────────────
+  // ── I48 UI — handlers imposés par uiEvents ────────────────────────────
 
   onEmailInputInput(e: Event): void {
     const value = (e.currentTarget as HTMLInputElement).value;
@@ -270,7 +273,7 @@ class NewsletterView
     this.getUI("successMsg").visible(update.actual);
   }
 
-  // ── D12 channel — handler imposé par newsletter.listens: ["subscribed"] ─
+  // ── ADR-09 channel — handler imposé par newsletter.listens: ["subscribed"] ─
 
   onNewsletterSubscribedEvent(payload: { email: string }): void {
     this.updateLocal((draft) => {
@@ -295,7 +298,7 @@ class NewsletterView
 > **Quand** : le même formulaire (adresse, identité, paiement) apparaît sur plusieurs pages.
 >
 > ⚠ **Anticipé — Strate 2** : `Behavior` n'existe pas encore dans `packages/`
-> (cf. [behavior.md](../rfc/4-couche-concrete/behavior.md), statut « RFC
+> (cf. [behavior.md](../spec/4-couche-concrete/behavior.md), statut « RFC
 > anticipée »). Le pattern modulaire ci-dessous suit la cible documentée
 > (identique à View par I83 : `features`/`uiEvents`/`uiElements` + `implements
 > TBehaviorCallbacks<TBC>`) mais **ne compile pas encore** contre une classe
@@ -305,7 +308,7 @@ class NewsletterView
 
 Le Behavior encapsule le module `uiEvents` du formulaire, le localState, la validation et les N1 callbacks. Ce guide délègue la soumission via callback à la View hôte plutôt que de `trigger()` directement depuis le Behavior.
 
-> 🧭 **Citation d'invariant incorrecte, tension non tranchée** : I44 ([invariants.md](../rfc/reference/invariants.md)) interdit au Behavior l'accès à sa View hôte (`this.view`) — il n'interdit **pas** de `trigger()`, et précise explicitement que le Behavior « interagit avec le reste de l'application via **ses propres Channels** ». Rien n'empêche donc architecturalement un `ContactFormBehavior` de déclarer son propre `TFeatureContract` et de `trigger()` directement. Le choix de la délégation par callback ci-dessous est une préférence de ce guide, pas une contrainte imposée par I44 — à trancher (garder la délégation, ou documenter le `trigger()` direct comme alternative valide) avant de considérer ce pattern comme normatif.
+> 🧭 **Citation d'invariant incorrecte, tension non tranchée** : I44 ([invariants.md](../spec/reference/invariants.md)) interdit au Behavior l'accès à sa View hôte (`this.view`) — il n'interdit **pas** de `trigger()`, et précise explicitement que le Behavior « interagit avec le reste de l'application via **ses propres Channels** ». Rien n'empêche donc architecturalement un `ContactFormBehavior` de déclarer son propre `TFeatureContract` et de `trigger()` directement. Le choix de la délégation par callback ci-dessous est une préférence de ce guide, pas une contrainte imposée par I44 — à trancher (garder la délégation, ou documenter le `trigger()` direct comme alternative valide) avant de considérer ce pattern comme normatif.
 
 ```typescript
 import {
@@ -396,7 +399,7 @@ class ContactFormBehavior
     };
   }
 
-  // ── D48 UI — handlers imposés par uiEvents ────────────────────────────
+  // ── I48 UI — handlers imposés par uiEvents ────────────────────────────
 
   onNameFieldInput(e: Event): void {
     const value = (e.currentTarget as HTMLInputElement).value;
@@ -575,7 +578,7 @@ class ContactPageView
 
 Chaque **étape** utilise le localState pour la saisie en cours. La **validation de l'étape** produit une Command qui persiste dans l'Entity. L'Entity conserve la progression globale.
 
-```
+```text
 ┌─────────────────────────┐     ┌─────────────────────────┐
 │  ShippingStepView       │     │  PaymentStepView        │
 │  localState: saisie     │     │  localState: saisie     │
@@ -592,10 +595,10 @@ Chaque **étape** utilise le localState pour la saisie en cours. La **validation
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Code abrégé (voir ADR-0009 pour le complet)
+### Code abrégé (voir ADR-25 pour le complet)
 
 ```typescript
-// Contrat Channel Checkout (ADR-0040) — Entity stocke les étapes validées
+// Contrat Channel Checkout (ADR-14) — Entity stocke les étapes validées
 
 type TCheckoutState = {
   currentStep: number;
@@ -682,7 +685,7 @@ class ShippingStepView
     };
   }
 
-  // ... D48 handlers (onAddressFieldInput, ...), N1 callbacks (identiques au Pattern B) ...
+  // ... ADR-15 handlers (onAddressFieldInput, ...), N1 callbacks (identiques au Pattern B) ...
   onAddressFieldInput(e: Event): void {
     const value = (e.currentTarget as HTMLInputElement).value;
     this.updateLocal((draft) => { draft.values.address = value; });
@@ -730,7 +733,7 @@ class ShippingStepView
 
 > **Quand** : vérifier l'unicité d'un username contre l'état d'une Entity, valider un code postal contre une liste connue, etc.
 >
-> ⚠ **`this.request()` est synchrone** (ADR-0023, I29) — il retourne
+> ⚠ **`this.request()` est synchrone** (ADR-02, I29) — il retourne
 > `T | null`, jamais une `Promise`. Il ne fait donc **pas** d'appel réseau ;
 > il interroge une Feature déjà chargée en mémoire (state Entity, table de
 > référence). Pour une vérification qui appelle réellement une API externe,
@@ -742,7 +745,7 @@ asynchrone ; l'appel `this.request()` qu'il déclenche est synchrone.
 
 > 🧭 **Tension non tranchée** : ce `setTimeout` dans la View est un mécanisme
 > asynchrone en couche concrète, ce que l'anti-pattern « Async in Concrete
-> Layer » ([anti-patterns.md](../rfc/reference/anti-patterns.md)) interdit
+> Layer » ([anti-patterns.md](../spec/reference/anti-patterns.md)) interdit
 > explicitement en citant `setTimeout` comme exemple. Aucun ADR ne tranche si
 > le debounce d'input est une exception légitime à cette règle (il ne produit
 > aucun effet de bord métier, contrairement à un `setTimeout` qui déclencherait
@@ -770,7 +773,7 @@ onUsernameInputInput(e: Event): void {
 }
 
 #checkUsernameAvailability(username: string): void {
-  // ✅ Request Channel — clé flat "ns:req" nominale (I80, convention communication.md), synchrone (ADR-0023, I29)
+  // ✅ Request Channel — clé flat "ns:req" nominale (I80, convention communication.md), synchrone (ADR-02, I29)
   const isAvailable = this.request('registration:usernameAvailable', { username });
 
   this.updateLocal(draft => {
@@ -784,7 +787,7 @@ onUsernameInputInput(e: Event): void {
 ### Points clés
 
 - **Debounce côté View** — la Feature ne reçoit pas une requête par frappe
-- **`this.request("ns:req", params)`** retourne `T | null` **synchrone** — typé depuis `TFlatRequests<F>` (le contrat `features`), jamais une `Promise` (ADR-0023, I29)
+- **`this.request("ns:req", params)`** retourne `T | null` **synchrone** — typé depuis `TFlatRequests<F>` (le contrat `features`), jamais une `Promise` (ADR-02, I29)
 - **Guard `draft.values.username === username`** — évite d'écraser si l'utilisateur a continué à taper pendant le debounce
 - Pas de spinner « en attente réseau » possible ici — la latence perçue est uniquement celle du debounce, pas d'une requête HTTP
 
@@ -792,16 +795,16 @@ onUsernameInputInput(e: Event): void {
 
 ## 6. Anti-patterns
 
-| ❌ Interdit                                                      | ✅ Correct                                                                          | Raison             |
-| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------ |
-| `this.entity.state.values[field] = value`                        | `this.entity.mutate('ns:update', { payload }, draft => { ... })`                    | ADR-0001           |
-| `get uiEvents() { return { 'input @ui.x': 'onX' } }`             | Module `uiEvents: TUIContract` + auto-discovery `on{Key}{Event}` (I48/I88)          | ADR-0042           |
-| `this.trigger('ns:cmd', payload)` sans `features` déclarant `ns` | `this.trigger("ns:cmd", payload)` avec `ns` référencé dans `get features()`         | I87, I80           |
-| `this.getUI('btn').prop('disabled', true)`                       | `this.getUI('btn').attr('disabled', 'true')`                                        | I41                |
-| `document.querySelector('.x')`                                   | `this.getUI('x')`                                                                   | I39                |
-| `onSubmitCommand(payload, metas) { }` (2 paramètres)             | `onSubmitCommand(payload: void): void { }` — strate 0, sans metas (cible strate 1b) | ADR-0028           |
-| État `touched`/`errors` dans l'Entity                            | `localState` dans la View/Behavior — ⏳ non livré (cf. bandeau en tête)             | I30, I42, ADR-0009 |
-| `static readonly namespace = …`                                  | `static readonly channel: TChannelToken<TDef, NS>` (ADR-0040)                       | I68                |
+| ❌ Interdit | ✅ Correct | Raison |
+| --- | --- | --- |
+| `this.entity.state.values[field] = value` | `this.entity.mutate('ns:update', { payload }, draft => { ... })` | ADR-10 |
+| `get uiEvents() { return { 'input @ui.x': 'onX' } }` | Module `uiEvents: TUIContract` + auto-discovery `on{Key}{Event}` (I48/I88) | ADR-14 |
+| `this.trigger('ns:cmd', payload)` sans `features` déclarant `ns` | `this.trigger("ns:cmd", payload)` avec `ns` référencé dans `get features()` | I87, I80 |
+| `this.getUI('btn').prop('disabled', true)` | `this.getUI('btn').attr('disabled', 'true')` | I41 |
+| `document.querySelector('.x')` | `this.getUI('x')` | I39 |
+| `onSubmitCommand(payload, metas) { }` (2 paramètres) | `onSubmitCommand(payload: void): void { }` — strate 0, sans metas (cible strate 1b) | ADR-31 |
+| État `touched`/`errors` dans l'Entity | `localState` dans la View/Behavior — ⏳ non livré (cf. bandeau en tête) | I30, I42, ADR-25 |
+| `static readonly namespace = …` | `static readonly channel: TChannelToken<TDef, NS>` (ADR-14) | I68 |
 
 ---
 
@@ -826,11 +829,11 @@ Avant de merger un formulaire dans Bonsai, vérifier :
 
 ## Références
 
-- [ADR-0009 — Forms Pattern](../adr/ADR-0009-forms-pattern.md) — décision architecturale complète
-- [feature.md](../rfc/3-couche-abstraite/feature.md) — pattern modulaire Feature courant (ADR-0046)
-- [view.md §2](../rfc/4-couche-concrete/view.md#2-pattern-modulaire-adr-0042) — pattern modulaire View courant (ADR-0042)
-- [behavior.md §4.3](../rfc/4-couche-concrete/behavior.md#43-contactformbehavior----formulaire-reutilisable-adr-0009) — cible Behavior anticipée (Strate 2)
-- [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md) — Entity mutation unique `mutate()`
-- [ADR-0015](../adr/ADR-0015-local-state-mechanism.md) — Mécanisme localState View & Behavior
-- [ADR-0007](../adr/ADR-0007-behavior-contract.md) — Contrat Behavior historique (⚪ Superseded → pattern modulaire ADR-0042)
-- [ADR-0016](../adr/ADR-0016-metas-handler-signature.md) — Signature metas explicite
+- [ADR-25 — Forms Pattern](../adr/ADR-25-formulaires.md) — décision architecturale complète
+- [feature.md](../spec/3-couche-abstraite/feature.md) — pattern modulaire Feature courant (ADR-09)
+- [view.md §2](../spec/4-couche-concrete/view.md#2-pattern-modulaire-adr-14) — pattern modulaire View courant (ADR-14)
+- [behavior.md §4.3](../spec/4-couche-concrete/behavior.md#43-contactformbehavior--formulaire-réutilisable-adr-25-pattern-c) — cible Behavior anticipée (Strate 2)
+- [ADR-10](../adr/ADR-10-entity-mutation.md) — Entity mutation unique `mutate()`
+- [ADR-17](../adr/ADR-17-local-state.md) — Mécanisme localState View & Behavior
+- [ADR-21](../adr/ADR-21-behavior-reutilisation.md) — Behavior et réutilisation de View
+- [ADR-04](../adr/ADR-04-metas-explicites.md) — Signature metas explicite

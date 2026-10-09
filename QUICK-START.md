@@ -1,239 +1,135 @@
 # 🚀 Guide de Démarrage Rapide - Framework Bonsai
 
+> État du code : strate 0 livrée, strate 1a livrée (Entity : patches, handlers par clé,
+> ré-entrance). Voir [ADR-31](docs/adr/ADR-31-strates-perimetre-v1.md) pour le périmètre
+> et la ligne **Livré** de chaque [ADR](docs/adr/README.md) pour l'état réel.
+
 ## Pré-requis
 
-- **Node.js 23+**
-- **pnpm** (gestionnaire de paquets recommandé)
+- **Node.js 23** (devcontainer) — la CI tourne sur Node 20
+- **pnpm** 10 (`packageManager` du `package.json`)
 - **VS Code** avec Dev Container (recommandé)
 
-## Installation et Configuration
+## Installation et configuration
 
-### Option 1: Avec Dev Container (Recommandé)
+### Option 1 : Dev Container (recommandé)
 
-1. **Cloner le repository** :
+1. Cloner le dépôt : `git clone https://github.com/NCAC/bonsai.git && cd bonsai`
+2. Ouvrir avec VS Code (`code .`) et accepter « Reopen in Container » (image `node:23-bookworm`).
 
-```bash
-git clone https://github.com/NCAC/bonsai.git
-cd bonsai
-```
-
-2. **Ouvrir avec VS Code** :
-
-```bash
-code .
-```
-
-3. **Utiliser Dev Container** : VS Code vous proposera d'ouvrir dans un container, acceptez.
-
-4. **Le container configure automatiquement** :
-   - Node.js 23
-   - pnpm dernière version
-   - Extensions VS Code optimisées
-   - Environnement de développement complet
-
-### Option 2: Installation locale
-
-1. **Installer les dépendances** :
+### Option 2 : installation locale
 
 ```bash
 pnpm install
+pnpm run build:no-watch   # régénère les artefacts versionnés (core/dist, packages/*/dist)
 ```
 
-2. **Build initial** :
+## Structure du projet
 
-```bash
-pnpm run build:no-watch
-```
-
-## Structure du Projet
-
-```
+```text
 bonsai/
-├── core/                   # Framework core (point d'entrée)
-├── packages/               # Packages individuels
-│   ├── entity/            # Entity abstraite (mutate, state)
-│   ├── event/             # Système Channel tri-lane + Radio
-│   ├── immer/             # Wrapper Immer (Tier 3 opaque)
-│   ├── types/             # Types utilitaires
-│   ├── rxjs/              # Intégration RxJS
-│   ├── valibot/           # Validation Entity (ADR-0022)
-│   └── valibot/           # Validation de schémas (Entity)
-├── lib/                   # Système de build
-├── tests/                 # Suites de tests
-├── docs/                  # Documentation (FR — voir ADR-0036)
-│   ├── rfc/              # Spécifications (le QUOI)
-│   ├── adr/              # Décisions architecturales (le POURQUOI)
-│   └── guides/           # Conventions (le COMMENT)
-└── .github/agents/        # Agents conversationnels
+├── core/                   # @bonsai/core — barrel (ré-exporte, sans code propre)
+├── packages/               # un package par composant (ADR-28)
+│   ├── application/  composer/  entity/  event/  feature/
+│   ├── foundation/   view/      error/
+│   └── immer/  rxjs/  valibot/  types/    # wrappers de bibliothèques tierces
+├── lib/                    # pipeline de build (Rollup + rollup-plugin-dts)
+├── tools/                  # pug-to-ts-template (prototype), build-bonsai-package
+├── tests/                  # unit/strate-N, types, integration, e2e, fixtures, helpers
+├── docs/                   # spec (le QUOI), adr (le POURQUOI), guides (le COMMENT)
+└── .github/agents/         # agents conversationnels
 ```
 
-## Commandes Principales
-
-### Build et Développement
+## Commandes principales
 
 ```bash
-# Build avec watch mode (développement)
-pnpm run build
-
-# Build sans watch (CI/production)
-pnpm run build:no-watch
-
-# Build avec nettoyage préalable
-pnpm run build:clean
+pnpm run build              # build en mode watch
+pnpm run build:no-watch     # build one-shot (à lancer après toute modification de packages/ ou core/, ADR-30)
+pnpm test                   # suite complète (Jest)
+pnpm run test:coverage      # couverture (seuils dans jest.config.ts)
+pnpm run test:unit          # tests/unit
+pnpm run test:e2e           # gate E2E strate 0
+pnpm run test:strate-0:regression
+pnpm tsc:check              # type-check de lib/ uniquement
+npx tsc --noEmit -p tsconfig.test.json   # type-check de packages/ + tests/ (à lancer à la main)
 ```
 
-### Tests
+Jest ne type-check pas les tests (`isolatedModules`) : voir [TESTING.md](docs/guides/TESTING.md).
 
-```bash
-# Tous les tests
-pnpm test
+## Un premier flux complet
 
-# Tests en mode watch
-pnpm run test:watch
+Extrait de la fixture de la gate E2E
+([`tests/fixtures/cart-feature.fixture.ts`](tests/fixtures/cart-feature.fixture.ts)) :
 
-# Tests avec couverture
-pnpm run test:coverage
+```ts
+import { Entity } from "@bonsai/entity";           // ⚠️ @bonsai/core ne ré-exporte pas encore Entity (ADR-28)
+import { type TChannelToken } from "@bonsai/event";
+import { Feature, type TFeatureCallbacks } from "@bonsai/feature";
 
-# Tests par type
-pnpm run test:unit
-pnpm run test:integration
-pnpm run test:e2e
-```
+type TCartState = { items: TCartItem[]; total: number };
 
-## Workflow de Développement
+class CartEntity extends Entity<TCartState> {
+  protected defineInitialState(): TCartState {
+    return { items: [], total: 0 };
+  }
+}
 
-### 1. Développement d'un nouveau package
+type TCartChannelDef = {
+  commands: { addItem: TCartItem };
+  events: { itemAdded: { item: TCartItem } };
+  requests: { getItemCount: { params: null; result: number } };
+};
 
-1. **Créer la structure** :
+const cartListens = [] as const;
 
-```bash
-mkdir -p packages/mon-package/src
-cd packages/mon-package
-```
-
-2. **Créer package.json** :
-
-```json
+class CartFeature
+  extends Feature<CartEntity, TCartChannelDef, "cart">
+  implements TFeatureCallbacks<TCartChannelDef, typeof cartListens>
 {
-  "name": "@bonsai/mon-package",
-  "version": "0.1.0",
-  "main": "dist/mon-package.js",
-  "types": "dist/mon-package.d.ts",
-  "scripts": {
-    "build": "echo 'Built by framework build system'"
+  static readonly channel: TChannelToken<TCartChannelDef, "cart"> = { namespace: "cart" };
+  get listens() { return cartListens; }
+  get queries() { return [] as const; }
+  protected get Entity() { return CartEntity; }
+
+  // I48 : handler découvert par son nom → Command "addItem"
+  onAddItemCommand(payload: TCartItem): void {
+    this.entity.mutate("addItem", (draft) => {
+      draft.items.push(payload);
+      draft.total += payload.price * payload.qty;
+    });
+    this.emit("itemAdded", { item: payload });
+  }
+
+  onGetItemCountRequest(_params: null): number {
+    return this.entity.state.items.length;
   }
 }
 ```
 
-3. **Créer le code source** dans `src/mon-package.ts`
+La View, le Composer, la Foundation et le bootstrap (`new Application({ foundation, features }).start()`)
+suivent le même principe : voir la fixture et le [README](README.md).
 
-4. **Écrire les tests** dans `/tests/unit/mon-package.test.ts`
+## Points d'attention
 
-5. **Build** : Le système de build détecte automatiquement le nouveau package
+- **Radio et Channel sont internes** (I15) : le code applicatif ne les manipule jamais ;
+  il passe par `Feature.emit()`, `Feature.request()`, `View.trigger()` et `View.request()`.
+- **`request()` est synchrone** et retourne `T | null` (ADR-02) : pas de `Promise`.
+- **Le namespace vient du manifest applicatif** (`features = { cart: CartFeature } satisfies StrictManifest<…>`,
+  ADR-08), jamais d'un `static namespace`.
+- **Mutation** : uniquement `this.entity.mutate("ns:intent", recipe)` depuis la Feature propriétaire.
 
-### 2. TDD (Test-Driven Development)
+## Workflow de développement
 
-1. **Écrire le test d'abord** :
+1. **TDD** : écrire le test dans `tests/unit/strate-N/<composant>.<sujet>.test.ts`, citer l'invariant prouvé (ADR-32).
+2. **Régression** : ajouter le fichier à `tests/unit/strate-0/strate-0.regression.test.ts` (ADR-33).
+3. **Build** : `pnpm run build:no-watch` avant de commiter une modification de source (ADR-30).
+4. **Commit** : `type(portée): description en français` (Conventional Commits, ADR-33/ADR-34).
 
-```typescript
-// tests/unit/ma-feature.test.ts
-describe("MaFeature", () => {
-  it("should do something", () => {
-    // Test qui échoue initialement
-    expect(new MaFeature().method()).toBe("expected");
-  });
-});
-```
-
-2. **Lancer le test** (il doit échouer) :
-
-```bash
-pnpm run test:watch
-```
-
-3. **Implémenter le code minimum** pour passer le test
-
-4. **Refactoriser** tout en maintenant les tests verts
-
-### 3. Debugging et Logs
-
-- **Build logs détaillés** :
-
-```bash
-DEBUG=bonsai:build pnpm run build
-```
-
-- **Logs par composant** :
-
-```bash
-DEBUG=bonsai:cache pnpm run build  # Cache uniquement
-DEBUG=bonsai:* pnpm run build      # Tous les logs
-```
-
-## Architecture et Patterns
-
-### Communication via Channels
-
-```typescript
-import { Radio } from "@bonsai/event";
-
-// Obtenir un channel
-const userChannel = Radio.channel<UserEvents>("user");
-
-// Publier un événement
-userChannel.trigger("user:login", { userId: "123" });
-
-// S'abonner à un événement
-userChannel.on("user:login", (data) => {
-  console.log("User logged in:", data.userId);
-});
-
-// Request/Reply pattern
-const result = await userChannel.request("user:getData", { userId: "123" });
-```
-
-### Entities et State
-
-```typescript
-// Entity : structure de données pure
-class UserEntity {
-  constructor(
-    public id: string,
-    public name: string,
-    public email: string
-  ) {}
-}
-
-// Feature : logique métier et cycle de vie des entities
-class UserFeature {
-  private users = new Map<string, UserEntity>();
-
-  createUser(data: CreateUserData): UserEntity {
-    const user = new UserEntity(data.id, data.name, data.email);
-    this.users.set(user.id, user);
-
-    // Notifier via channel
-    Radio.channel("user").trigger("user:created", user);
-
-    return user;
-  }
-}
-```
-
-## Prochaines Étapes
-
-1. **Finaliser les composants core** : Application, Feature, Entity classes abstraites
-2. **Améliorer le build system** : buildFramework() complet
-3. **Étendre la documentation** : API reference, exemples avancés
-4. **Créer des exemples** : Applications de démonstration
+Détails : [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Ressources
 
-- 📖 [Documentation complète](/docs/)
-- 🏗️ [Guide du Build System](/lib/DEVELOPER-GUIDE.md)
-- 🧪 [Guide des Tests](/tests/README.md)
-- 🤖 [Agent de Développement](/.github/agents/dev-framework.agent.md)
-
----
-
-_Pour obtenir de l'aide, utilisez l'agent conversationnel spécialisé ou consultez la documentation dans `/docs/`_
+- 📖 [Documentation complète](docs/README.md)
+- 🏗️ [Guide du Build System](lib/DEVELOPER-GUIDE.md)
+- 🧪 [Guide des Tests](docs/guides/TESTING.md)
+- 🤖 [Agent de Développement](.github/agents/dev-framework.agent.md)

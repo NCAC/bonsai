@@ -1,0 +1,117 @@
+# Branche P1 — Souveraineté du domaine.
+#
+# Migration depuis docs/reorganisation-sept-2026/arbre-invariants-precision.md.
+# Champs : voir P8.yaml pour la légende complète.
+
+# I5 fusionné ici : même mécanisme (`protected get entity()`) et même test que I6 ; I5 ne
+# couvrait que les Views et Behaviors, I6 que la modification.
+- id: I6
+  nature: E
+  parents: [P1]
+  roles: [Feature, Entity]
+  alias: [I5]
+  enonce: "L'Entity n'est accessible qu'à sa Feature propriétaire : aucun autre composant (View, Behavior, autre Feature, Composer, Foundation) ne peut la lire ni la modifier."
+  # Garantie compile-time seule : l'Entity est créée dans `bootstrap()`, stockée en `#entity` et
+  # exposée par `protected get entity()`. Aucune assertion d'ownership au bootstrap (la matrice
+  # d'invariants.md en annonçait une).
+  mode: type
+  etat: livre
+
+- id: I30
+  nature: C
+  parents: [P1, P5]
+  roles: [View, Behavior]
+  enonce: Une View et un Behavior ne portent aucun domain state — seul un state local de présentation borné (I42) est toléré.
+  mode: type
+  etat: partiel
+
+# I63 (schema sans transformation) et I52 (queries pures) : déclarés dans P10.yaml sous I101,
+# second parent P1.
+
+- id: I22
+  nature: D
+  parents: [P1, P8, P10]
+  roles: [Feature, Entity]
+  enonce: La relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte ; l'Entity est obligatoire, même vide.
+  pourquoi: >
+    Empêche qu'une Feature accède au state d'une autre ou qu'un namespace reste sans state
+    propre implicite — la relation 1:1:1 rend la propriété du domaine vérifiable mécaniquement
+    (`abstract get Entity()`, ADR-08, ADR-09).
+  mode: type+boot
+  etat: livre
+
+- id: I46
+  nature: D
+  parents: [P1]
+  roles: [Entity]
+  enonce: "`TStructure` (state d'une Entity) est contraint à `TJsonSerializable`."
+  pourquoi: >
+    Le domain state doit pouvoir franchir une frontière sans perte : patches et `TEntityEvent`
+    (I97) pour l'undo, les DevTools et l'event sourcing, snapshots `toJSON`/`fromJSON` et
+    hydratation SSR (ADR-24). Seules des données JSON le garantissent : une `Date`, une `Map` ou
+    une instance de classe ne survivent pas à un aller-retour. C'est aussi le terrain natif
+    d'Immer (ni `enableMapSet` ni `immerable`), et la traduction dans le type de I101 : le state
+    est de la donnée, jamais du comportement — aucune fonction ni classe n'y entre. Une date
+    s'y écrit en chaîne ISO ou en timestamp, explicitement.
+  # Contrainte `Entity<TStructure extends TJsonSerializable>` ; le test runtime ne vérifie pas le rejet.
+  # Constaté le 30/09 (sonde tsc) : une `interface` est rejetée même si ses champs sont purs
+  # (pas de signature d'index implicite) → le state se déclare en `type`. Sans `strict`,
+  # `undefined` et les champs optionnels passent alors que JSON les supprime ; les cycles de
+  # valeurs ne sont pas détectables par le type.
+  mode: type
+  etat: livre
+
+- id: I97
+  nature: D
+  parents: [P1]
+  roles: [Entity]
+  enonce: "`Entity.mutate()` utilise `Immer.produceWithPatches`."
+  pourquoi: >
+    Immer donne l'immutabilité sans code de copie manuel ; `produceWithPatches` fournit les
+    `patches`/`changedKeys` nécessaires à la détection de no-op (I51/I96) et au rollback
+    automatique si la recipe throw (ADR-05, ADR-10).
+  mode: run
+  etat: livre
+
+- id: I51
+  nature: D
+  parents: [P1]
+  roles: [Entity, Feature]
+  enonce: Les notifications de mutation d'une Entity sont auto-découvertes sur sa Feature (`on<Key>EntityUpdated` / `onAnyEntityUpdated`) — résumé de I96.
+  pourquoi: >
+    Évite l'enregistrement manuel de listeners internes ; la Feature réagit aux mutations de sa
+    propre Entity par la même convention de nommage que les handlers Command/Event (I48).
+  mode: boot
+  etat: livre
+
+- id: I96
+  nature: D
+  parents: [I51]
+  roles: [Feature, Entity]
+  enonce: Le dispatch des notifications suit un ordre déterministe (clés changées par ordre alphabétique, puis catch-all) via une souscription unique, avec isolation des erreurs par handler.
+  pourquoi: >
+    Un ordre déterministe et l'isolation des erreurs évitent qu'un handler défaillant bloque les
+    autres ou que l'ordre de notification rende les tests fragiles (ADR-05, ADR-10, ADR-31 strate 1a).
+  mode: boot
+  etat: livre
+
+- id: I53
+  nature: V
+  parents: [I96]
+  roles: [Feature, Entity]
+  enonce: Une clé de handler `on<Key>EntityUpdated` inconnue du state de l'Entity est rejetée au bootstrap.
+  mode: boot
+  etat: livre
+  preuves: [tests/unit/strate-1/feature.entity-handlers.test.ts]
+
+- id: I98
+  nature: D
+  parents: [I51, P4, I102]
+  roles: [Entity]
+  enonce: Une mutation déclenchée pendant un cycle de notification est mise en file FIFO plutôt qu'exécutée immédiatement, avec une profondeur de ré-entrance bornée.
+  pourquoi: >
+    Empêche qu'une mutation lancée depuis un handler de notification ne provoque une récursion
+    incontrôlée ou un ordre de notification imprévisible ; la borne transforme une boucle
+    infinie potentielle en erreur explicite (`EntityReentrancyError`, ADR-31 strate 1a).
+  mode: run
+  etat: livre

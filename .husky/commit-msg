@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Validation Conventional Commits (ADR-0033, CONTRIBUTING.md)
+# Validation Conventional Commits (ADR-33, CONTRIBUTING.md)
 commit_msg=$(cat "$1")
 commit_pattern='^(feat|fix|docs|refactor|test|chore|perf|ci|build)(\(.+\))?!?:.+'
 

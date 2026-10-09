@@ -1,9 +1,9 @@
 /**
- * Tests de type — Verrou compile-time du contrat View (ADR-0040 + ADR-0042 + ADR-0044 + ADR-0045)
+ * Tests de type — Verrou compile-time du contrat View (ADR-14 + ADR-15)
  *
  * Ces tests ne s'exécutent **pas** au runtime — ils vérifient que TypeScript
  * rejette correctement tout usage de View qui sort du contrat modulaire
- * déclaré dans le pattern ADR-0042. Si un `@ts-expect-error` ne déclenche
+ * déclaré dans le pattern ADR-14. Si un `@ts-expect-error` ne déclenche
  * plus d'erreur (parce que le typage a été relâché), le compilateur lève
  * « Unused '@ts-expect-error' directive » → la régression est détectée immédiatement.
  *
@@ -35,8 +35,8 @@
  *   - I86 : champ `events` toujours présent (tableau, possiblement vide),
  *     sous-typé à `TEventsFor<TEl>` sans doublons (cf. I89/I90/I91 ci-dessous).
  *   - I87 : clé d'objet ≡ namespace de la Feature référencée.
- *   - I90 (ADR-0044) : doublons dans events[] → HasNoDuplicates retourne never.
- *   - I89/I91 (ADR-0045) : TEventsFor<TEl> — events incohérents avec le
+ *   - I90 (ADR-15) : doublons dans events[] → HasNoDuplicates retourne never.
+ *   - I89/I91 (ADR-15) : TEventsFor<TEl> — events incohérents avec le
  *     sous-type d'élément → erreur compile ; fallback HTMLElement permissif.
  *
  * @jest-environment node
@@ -361,7 +361,7 @@ const _key_ns_loose = {
   }
 } satisfies TFeatureContract;
 
-// ─── ADR-0044 — HasNoDuplicates : doublons dans events[] → never ────────────
+// ─── ADR-15 — HasNoDuplicates : doublons dans events[] → never ────────────
 
 // ❌ Doublon → HasNoDuplicates<TEvts> extends false → paramètre de type never (I90).
 // @ts-expect-error — "submit" apparaît deux fois → never.
@@ -370,7 +370,7 @@ const _duplicates_ko = ui<HTMLFormElement>()(["submit", "submit"]);
 // ✅ Pas de doublon → compilation normale.
 const _duplicates_ok = ui<HTMLFormElement>()(["submit", "reset"]);
 
-// ─── ADR-0045 — TEventsFor<TEl> : restriction sémantique par sous-type ──────
+// ─── ADR-15 — TEventsFor<TEl> : restriction sémantique par sous-type ──────
 
 // ✅ Cas positifs — events cohérents avec le sous-type déclaré.
 // La vérification est que ces lignes compilent sans erreur.
@@ -396,7 +396,7 @@ const _semantic_ko_3 = ui<HTMLButtonElement>()(["play"]);
 
 // ─── Tests Jest factices — la vraie preuve est compile-time ─────────────────
 
-describe("View contract — compile-time enforcement (ADR-0040 + ADR-0042)", () => {
+describe("View contract — compile-time enforcement (ADR-14)", () => {
   it("trigger/request/listen + DOM contracts hold at the type level", () => {
     // Si ce fichier compile, toutes les contraintes ci-dessus sont satisfaites.
     // Les @ts-expect-error attestent les rejets côté TypeScript.
@@ -410,12 +410,12 @@ describe("View contract — compile-time enforcement (ADR-0040 + ADR-0042)", () 
     void _key_ns_loose;
   });
 
-  it("ADR-0044 : HasNoDuplicates — doublons dans events[] → erreur compile (I90)", () => {
+  it("ADR-15 : HasNoDuplicates — doublons dans events[] → erreur compile (I90)", () => {
     void _duplicates_ko;
     void _duplicates_ok;
   });
 
-  it("ADR-0045 : TEventsFor<TEl> — restriction sémantique par sous-type (I89/I91)", () => {
+  it("ADR-15 : TEventsFor<TEl> — restriction sémantique par sous-type (I89/I91)", () => {
     void _semantic_btn_ok;
     void _semantic_input_ok;
     void _semantic_video_ok;

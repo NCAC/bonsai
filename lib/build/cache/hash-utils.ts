@@ -1,13 +1,13 @@
-// 1. Bibliothèques standard Node.js
+// 1. Node.js standard library
 import { createHash } from "node:crypto";
-// 2. Dépendances externes
+// 2. External dependencies
 import fs from "fs-extra";
 
 /**
- * Calcule le hash du contenu d'un fichier
+ * Computes the hash of a file's content
  *
- * @param filePath Chemin du fichier
- * @returns Hash du contenu
+ * @param filePath File path
+ * @returns Content hash
  */
 export function hashFileContent(filePath: string): string {
   const content = fs.readFileSync(filePath);
@@ -15,19 +15,19 @@ export function hashFileContent(filePath: string): string {
 }
 
 /**
- * Calcule le hash d'une chaîne
+ * Computes the hash of a string
  *
- * @param content Contenu à hacher
- * @returns Hash du contenu
+ * @param content Content to hash
+ * @returns Content hash
  */
 export function hashString(content: string): string {
   return createHash("md5").update(content).digest("hex");
 }
 
 /**
- * Calcule le hash d'un objet
+ * Computes the hash of an object
  *
- * @param obj Objet à hacher
+ * @param obj Object to hash
  * @returns Hash de l'objet
  */
 export function hashObject(obj: any): string {
@@ -36,12 +36,12 @@ export function hashObject(obj: any): string {
 }
 
 /**
- * Génère une clé de cache à partir d'un nom de package et d'un chemin de fichier
+ * Builds a cache key from a package name and a file path
  *
- * @param packageName Nom du package
- * @param filePath Chemin du fichier
+ * @param packageName Package name
+ * @param filePath File path
  * @param suffix Suffixe optionnel (ex: "js", "dts")
- * @returns Clé de cache
+ * @returns Cache key
  */
 export function generateCacheKey(
   packageName: string,
@@ -53,11 +53,11 @@ export function generateCacheKey(
 }
 
 /**
- * Vérifie si un fichier a été modifié depuis le dernier build
+ * Checks whether a file changed since the last build
  *
- * @param filePath Chemin du fichier
- * @param previousHash Hash précédent
- * @returns true si le fichier a été modifié
+ * @param filePath File path
+ * @param previousHash Previous hash
+ * @returns true when the file changed
  */
 export function isFileModified(
   filePath: string,

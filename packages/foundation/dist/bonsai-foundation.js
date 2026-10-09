@@ -1,7 +1,7 @@
 /**
  * @bonsai/foundation - Version 0.0.1
  * Bundled by Bonsai Build System
- * Date: 2026-05-20T12:02:01.015Z
+ * Date: 2026-09-24T20:07:51.210Z
  */
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -41,26 +41,26 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 /**
  * @bonsai/foundation — Foundation abstract base class
  *
- * Strate 0 — Capacités :
- *   - body  = document.body            (toujours en strate 0, I33)
- *   - html  = document.documentElement (droit d'altération N1, D27)
- *   - Déclare les Composers racines via abstract get composers()
- *     (Readonly<Record<string, typeof Composer>> — ADR-0038)
- *   - Crée et attache les Composers au bootstrap dans l'ordre d'insertion
- *     (ES2015+ Object.entries garantit l'ordre des clés string)
- *   - Hooks onAttach() / onDetach()
+ * Delivered capabilities:
+ *   - body = document.body            (I33)
+ *   - html = document.documentElement (N1 alteration right, ADR-20)
+ *   - Declares the root Composers through abstract get composers()
+ *     (Readonly<Record<string, typeof Composer>> — ADR-20)
+ *   - Creates and attaches the Composers at bootstrap in insertion order
+ *     (ES2015+ Object.entries guarantees string-key order)
+ *   - onAttach() / onDetach() hooks
  *
- * Invariants :
- *   I33  — Foundation unique par application — cible <body>
- *   I20  — Seuls Foundation/Composers créent/détruisent des Views
- *   I34  — rootElement d'une View = enfant de <body>, jamais <body>
- *   I67  — Stabilité structurelle de Foundation (ADR-0038)
- *   D27  — Foundation peut altérer html/body en N1 uniquement
+ * Invariants:
+ *   I33  — A single Foundation per application — targets <body>
+ *   I20  — Only Foundation/Composers create or destroy Views
+ *   I34  — A View's rootElement is a descendant of <body>, never <body>
+ *   I67  — Structural stability of the Foundation (ADR-20)
+ *   ADR-20 — the Foundation may alter html/body at N1 only
  *
- * Strate 0 simplifications (ADR-0028) :
- *   - Pas de TUIMap (ADR-0018 Suspended)
- *   - Pas d'event delegation globale (strate 1)
- *   - Pas de params() Channel capabilities (strate 1)
+ * Not delivered yet:
+ *   - Declared global events (post-v1 track, docs/ROADMAP.md)
+ *   - Global event delegation
+ *   - Channel capabilities (form not decided)
  *
  * @packageDocumentation
  */
@@ -68,44 +68,44 @@ var _Foundation_body, _Foundation_html, _Foundation_composerInstances, _Foundati
 // ─── Foundation abstract class ───────────────────────────────────────────────
 class Foundation {
     constructor() {
-        /** Référence à <body> — toujours document.body en strate 0 (I33) */
+        /** <body> — always document.body (I33) */
         _Foundation_body.set(this, void 0);
-        /** Référence à <html> — droit d'altération N1 (D27, RFC foundation.md §2) */
+        /** <html> — N1 alteration right (ADR-20, foundation.md §2) */
         _Foundation_html.set(this, void 0);
-        /** Les instances de Composers racines créées au bootstrap */
+        /** Root Composer instances created at bootstrap */
         _Foundation_composerInstances.set(this, []);
-        /** Flag : Foundation déjà attachée */
+        /** Flag: Foundation already attached */
         _Foundation_attached.set(this, false);
         __classPrivateFieldSet(this, _Foundation_body, document.body, "f");
         __classPrivateFieldSet(this, _Foundation_html, document.documentElement, "f");
     }
     // ─── Public API ────────────────────────────────────────────────────────
     /**
-     * Référence à <body> — alignement RFC foundation.md §1.
-     * Le développeur peut altérer en N1 (classes, attributs) — D27.
+     * <body> (foundation.md §1).
+     * Developers may alter it at N1 only (classes, attributes) — ADR-20.
      */
     get body() {
         return __classPrivateFieldGet(this, _Foundation_body, "f");
     }
     /**
-     * Référence à <html> — alignement RFC foundation.md §1.
-     * Le développeur peut altérer en N1 (classes, attributs) — D27.
+     * <html> (foundation.md §1).
+     * Developers may alter it at N1 only (classes, attributes) — ADR-20.
      */
     get html() {
         return __classPrivateFieldGet(this, _Foundation_html, "f");
     }
     /**
-     * Les Composer instances créées.
+     * The created Composer instances.
      */
     get composerInstances() {
         return __classPrivateFieldGet(this, _Foundation_composerInstances, "f");
     }
     /**
-     * Attache la Foundation : résout et crée les Composers racines.
-     * Appelé une seule fois par Application.start().
+     * Attaches the Foundation: resolves and creates the root Composers.
+     * Called once by Application.start().
      *
-     * Itère sur Object.entries(this.composers) — l'ordre d'insertion des
-     * clés string non numériques est garanti par ES2015+ (§9.1.12).
+     * Iterates over Object.entries(this.composers) — insertion order of
+     * non-numeric string keys is guaranteed by ES2015+ (§9.1.12).
      */
     attach() {
         if (__classPrivateFieldGet(this, _Foundation_attached, "f")) {
@@ -123,20 +123,19 @@ class Foundation {
     }
     // ─── Lifecycle hooks ───────────────────────────────────────────────────
     /**
-     * Hook appelé après résolution des Composers racines.
-     * Surcharger pour brancher des écouteurs DOM globaux (resize, scroll, etc.).
+     * Hook called once the root Composers are resolved.
+     * Override it to add global DOM listeners (resize, scroll, etc.).
      * Default no-op.
      */
     onAttach() {
         // Default no-op
     }
     /**
-     * Hook appelé au shutdown — symétrique de onAttach().
-     * Surcharger pour débrancher les écouteurs DOM globaux installés dans onAttach().
+     * Hook called at shutdown — counterpart of onAttach().
+     * Override it to remove the global DOM listeners added in onAttach().
      * Default no-op.
      *
-     * NB : non invoqué automatiquement en strate 0 (pas de shutdown formalisé) ;
-     * point d'extension pour la strate 1.
+     * NB: not called yet — Application.stop() does not exist (stratum 1).
      */
     onDetach() {
         // Default no-op
