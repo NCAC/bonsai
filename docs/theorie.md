@@ -267,7 +267,15 @@ Action par laquelle le médiateur prend en charge un message relatif à un Chann
 
 **Dépendances :** médiateur, message, Channel, composant, traitement.
 
-### 9.5 Adresser
+### 9.5 Message local
+
+Message qu'un composant se transmet à lui-même, soumis au transport, sans Channel.
+
+**Dépendances :** message, composant, transport, Channel.
+
+Un message local n'est adressé à aucun Channel et n'est émis sur aucun Channel ; il porte un contexte causal comme tout message (A5.b).
+
+### 9.6 Adresser
 
 Transmettre un message à un Channel en vue de son traitement.
 
@@ -275,13 +283,13 @@ Transmettre un message à un Channel en vue de son traitement.
 
 Adresser ne présume pas que l'auteur du message est propriétaire d'un Channel.
 
-### 9.6 Émettre
+### 9.7 Émettre
 
 Transmettre un message depuis un Channel aux propriétaires des abonnements à ce Channel.
 
 **Dépendances :** message, Channel, abonnement, propriétaire.
 
-### 9.7 Recevoir
+### 9.8 Recevoir
 
 Se voir délivrer par transport un message émis sur un Channel.
 
@@ -289,13 +297,13 @@ Se voir délivrer par transport un message émis sur un Channel.
 
 Recevoir n'est pas une opération exclusive : plusieurs composants reçoivent un même message sans être propriétaires du Channel.
 
-### 9.8 Référence
+### 9.9 Référence
 
 Moyen permettant à un composant d'atteindre une ressource ou un autre composant sans transport.
 
 **Dépendances :** composant, ressource, transport.
 
-### 9.9 Référence structurelle
+### 9.10 Référence structurelle
 
 Référence d'un propriétaire vers une ressource dont il est propriétaire, ou d'un parent vers son enfant.
 
@@ -345,7 +353,7 @@ Transmission d'une information d'un composant à un autre composant, hors param�
 
 **Dépendances :** composant, paramètres de création, transport, contexte causal.
 
-Un message qu'un composant s'adresse à lui-même n'est pas une interaction fonctionnelle ; il reste soumis à A3.f.
+Un message local n'est pas une interaction fonctionnelle ; il reste soumis à A3.f et A5.b.
 
 ## 11. Parties du modèle et frontière
 
@@ -447,7 +455,7 @@ A1.b exclut toute délégation : faire exécuter une opération exclusive par un
 >
 > **A3.e** Seul le propriétaire d'un Channel traite les messages adressés à ce Channel, et seul il émet sur ce Channel.
 >
-> **A3.f** Tout message est adressé à un Channel ou émis sur un Channel.
+> **A3.f** Tout message est adressé à un Channel, émis sur un Channel, ou local.
 
 **Contre-exemples :** un composant obtient une information d'un autre en appelant l'une de ses méthodes (A3.a) ; un composant ouvre un Channel sous l'identité d'un autre (A3.b) ; un parent lit l'état de son enfant par une référence (A3.c) ; un parent transmet à son enfant une fonction de rappel vers lui-même, ou un élément de l'hôte (A3.d) ; deux composants traitent les messages d'un même Channel, ou un composant émet sur le Channel d'un autre (A3.e) ; une Feature construit un message et appelle directement son propre traitement (A3.f).
 
@@ -458,8 +466,12 @@ A1.b exclut toute délégation : faire exécuter une opération exclusive par un
 > **A4.b** Aucun composant du domaine n'adresse de message à un Channel dont le propriétaire appartient à l'interface utilisateur, ni ne reçoit de message émis sur un tel Channel.
 >
 > **A4.c** Seul le domaine échange des informations métier avec les systèmes extérieurs.
+>
+> **A4.d** Toute information métier contenue dans une ressource de l'interface utilisateur provient d'un message émis par le domaine ou de la réponse à une Request, et n'est remplacée qu'en traitement d'un tel message.
 
-**Contre-exemples :** une Command laisse un panier dont le total ne correspond plus à ses lignes (A4.a) ; un composant du domaine reçoit un message émis par un composant de l'interface utilisateur (A4.b) ; un composant de l'interface utilisateur échange des informations métier avec un système extérieur (A4.c).
+**Contre-exemples :** une Command laisse un panier dont le total ne correspond plus à ses lignes (A4.a) ; un composant du domaine reçoit un message émis par un composant de l'interface utilisateur (A4.b) ; un composant de l'interface utilisateur échange des informations métier avec un système extérieur (A4.c) ; au clic sur « Ajouter », une View incrémente le compteur du panier affiché sans attendre l'Event de la Feature (A4.d).
+
+A4.d ne restreint pas la projection : une ressource de l'interface utilisateur peut contenir une copie d'une information métier, la filtrer, la trier ou la paginer. Elle interdit d'altérer cette copie hors du traitement d'un message issu du domaine. Une information qui ne porte sur aucune ressource du domaine, comme la position d'un carrousel ou une saisie en cours, n'est pas une information métier (11.5).
 
 ### A5 — Causalité
 
@@ -477,7 +489,7 @@ Un changement effectué par l'hôte lui-même n'est pas un changement d'état du
 
 Le médiateur n'est soumis à aucun axiome. Toute réalisation du médiateur est tenue par les garanties suivantes.
 
-- **G1** — Il délivre un message adressé à un Channel au seul propriétaire de ce Channel, et un message émis sur un Channel aux seuls propriétaires d'un abonnement à ce Channel.
+- **G1** — Il délivre un message adressé à un Channel au seul propriétaire de ce Channel, et un message émis sur un Channel aux seuls propriétaires d'un abonnement à ce Channel, et un message local au seul composant qui l'a produit.
 - **G2** — Il ne modifie ni un message ni son contexte causal.
 - **G3** — Il ne délivre aucun message relatif à un Channel détruit.
 - **G4** — Il n'est partie à aucune interaction fonctionnelle et n'est propriétaire d'aucune ressource du modèle.
@@ -522,11 +534,11 @@ La racine n'est pas concernée : rien dans le modèle ne la crée (note de 7.4).
 1. Soit une interaction de C vers D. Par L1, elle porte sur une ressource R, de propriétaire unique O (A1.a).
 2. **Première question : l'interaction vise-t-elle l'exécution d'une opération exclusive sur R ?** La réponse est oui ou non : la partition est exhaustive et exclusive. Une réservation ou une validation qui enregistre quelque chose vise une opération exclusive ; une vérification sans effet n'en vise pas ; une négociation ou une coordination est une suite d'interactions, dont chacune se range séparément.
 3. **Si oui.** Seul O exécute l'opération (A1.b). Si C est O, il l'exécute lui-même et n'interagit avec personne. Sinon, C doit en transmettre la demande à O, ce qui passe par un message (A3.a) adressé à un Channel dont O est propriétaire, puisque seul le propriétaire d'un Channel traite ce qui lui est adressé (A3.e). C'est la voie **Command**.
-4. **Si non**, l'interaction transmet une information sur R. Seul O dispose d'une référence vers R (A3.c, 9.9) : toute connaissance de R provient donc de O.
+4. **Si non**, l'interaction transmet une information sur R. Seul O dispose d'une référence vers R (A3.c, 9.10) : toute connaissance de R provient donc de O.
 5. Si l'information va **vers** C, C la demande à O, qui seul peut y répondre : message adressé au Channel de O, traité par O (A3.e). C'est la voie **Request**. Si C est O, il n'a rien à demander.
 6. Si l'information part **de** C, C la tient de R, donc C est O (point 4). Un composant qui relaie une copie de R informe en réalité sur sa propre copie, qui est une autre ressource dont il est propriétaire. O la transmet depuis son propre Channel, seul Channel sur lequel il peut émettre (A3.e). C'est la voie **Event**.
 7. **Unicité du traitement.** Command et Request sont traitées par le propriétaire du Channel (A3.e), qui est unique (A1.a). Que ce propriétaire organise son traitement en plusieurs fonctions ne compte pas (règle d'imputation, §2.5).
-8. **Plusieurs destinataires.** Un Event est émis vers les propriétaires des abonnements au Channel de O (9.6). Recevoir n'est pas une opération exclusive (9.7) : plusieurs composants reçoivent sans devenir propriétaires. ∎
+8. **Plusieurs destinataires.** Un Event est émis vers les propriétaires des abonnements au Channel de O (9.7). Recevoir n'est pas une opération exclusive (9.8) : plusieurs composants reçoivent sans devenir propriétaires. ∎
 
 | | Vise un changement | Demande une connaissance | Informe |
 | --- | --- | --- | --- |
@@ -554,13 +566,13 @@ La racine n'est pas concernée : rien dans le modèle ne la crée (note de 7.4).
 
 ### T4 — Adressabilité
 
-> Un composant propriétaire d'aucune identité n'est propriétaire d'aucun Channel : aucun message ne peut lui être adressé, et il ne reçoit que des messages émis sur les Channels d'autres composants.
+> Un composant propriétaire d'aucune identité n'est propriétaire d'aucun Channel : aucun message ne peut lui être adressé, et, hors ses messages locaux, il ne reçoit que des messages émis sur les Channels d'autres composants.
 
 **Démonstration.**
 
 1. Tout Channel est distingué par une identité dont son propriétaire est propriétaire (A3.b) : sans identité, aucun Channel.
-2. Un message adressé l'est à un Channel (9.5) et n'est traité que par le propriétaire de ce Channel (A3.e, G1).
-3. Tout message est adressé ou émis (A3.f) ; il ne reste donc à ce composant que la réception de messages émis par d'autres (9.7). ∎
+2. Un message adressé l'est à un Channel (9.6) et n'est traité que par le propriétaire de ce Channel (A3.e, G1).
+3. Tout message est adressé, émis ou local (A3.f) ; hors ses messages locaux (9.5), il ne reste donc à ce composant que la réception de messages émis par d'autres (9.8). ∎
 
 ### T5 — Localité des invariants
 
@@ -617,7 +629,7 @@ L'Entity n'est pas un composant : elle n'a ni existence propre, ni identité, ni
 
 Composant du domaine, enfant de la racine, propriétaire d'une identité attribuée par celle-ci, du Channel distingué par cette identité et d'une Entity, qui traite les messages adressés à ce Channel et y émet.
 
-Conséquences : une Feature n'émet que sur son propre Channel (A3.e, T2) ; elle survit à tout changement de l'interface utilisateur et de l'hôte (T6) ; un fait asynchrone qu'elle admet lui revient par un message adressé à son propre Channel (9.3, A3.f).
+Conséquences : une Feature n'émet que sur son propre Channel (A3.e, T2) ; elle survit à tout changement de l'interface utilisateur et de l'hôte (T6) ; un fait asynchrone qu'elle admet lui revient par un message local (9.3, 9.5, A3.f).
 
 ### 16.4 Foundation
 
@@ -631,8 +643,10 @@ Conséquences :
 
 - elle n'est pas adressable et n'émet aucun message (D6, T4) ; elle reçoit ce que les Features émettent ;
 - son parent lui transmet, à sa création, une représentation de l'identité de sa part, jamais un élément de l'hôte (A3.d, 6.2) ;
-- elle établit sa référence structurelle en résolvant cette représentation auprès de l'hôte (9.9) ;
-- sa part ne recouvre aucune autre part existante (A2.a) : l'exclusion des slots de ses enfants en découle.
+- elle établit sa référence structurelle en résolvant cette représentation auprès de l'hôte (9.10) ;
+- sa part ne recouvre aucune autre part existante (A2.a) : l'exclusion des slots de ses enfants en découle ;
+- elle peut être propriétaire d'un état local, modifié uniquement en traitement de ses messages locaux (A5.a, 9.5). Cet état est confiné : aucun autre composant ne le modifie (A1.b) ni ne le lit (A3.c), aucun ne peut le lui demander (T4), elle ne le diffuse pas (A3.e), et il est détruit avec elle (T3). Elle peut en transmettre une valeur, figée, dans une Command ;
+- l'information métier qu'elle affiche provient du domaine et n'est remplacée qu'en traitement d'un message issu de celui-ci (A4.d).
 
 ### 16.6 Rôles restant à dériver
 
@@ -672,24 +686,25 @@ Une définition n'emploie aucun terme situé après elle. L'ordre de lecture du 
 28. abonnement
 29. traitement
 30. transport
-31. adresser
-32. émettre
-33. recevoir
-34. référence
-35. référence structurelle
-36. cause
-37. origine
-38. continuation
-39. chaîne causale
-40. contexte causal
-41. interaction fonctionnelle
-42. interface utilisateur
-43. domaine
-44. invariant métier
-45. cohérence métier
-46. information métier
-47. admission
-48. frontière de confiance
+31. message local
+32. adresser
+33. émettre
+34. recevoir
+35. référence
+36. référence structurelle
+37. cause
+38. origine
+39. continuation
+40. chaîne causale
+41. contexte causal
+42. interaction fonctionnelle
+43. interface utilisateur
+44. domaine
+45. invariant métier
+46. cohérence métier
+47. information métier
+48. admission
+49. frontière de confiance
 
 ## 18. Questions ouvertes
 
