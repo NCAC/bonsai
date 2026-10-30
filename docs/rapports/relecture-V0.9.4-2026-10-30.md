@@ -94,6 +94,8 @@ Lu à la lettre, **aucune application ne peut adresser de Command depuis un clic
 
 **Proposition.** Étendre D17 aux adaptateurs du domaine : un adaptateur du domaine n'adresse aucune Command à une Feature ; il inscrit le fait dans son état d'observation et l'émet, et les Features qui en ont besoin y sont abonnées. Les fiches de connectivité, du cycle de vie et du Viewport ne listent aujourd'hui aucune Command sortante vers une Feature : la restriction ne retire rien au catalogue.
 
+**Statut : validé et appliqué le 30 octobre 2026 (théorie V0.9.5).** D17 étendu aux adaptateurs du domaine, 16.8 et B.4 restreints, question tranchée 18.34 ; garde par construction dans `gardes.md`, guide, traçabilité et README des adaptateurs alignés.
+
 ## 3. Incohérences locales
 
 | # | Constat | Où | Proposition |

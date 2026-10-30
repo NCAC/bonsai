@@ -84,6 +84,10 @@ Une origine d'observation à antécédent inconnu **ne donne pas le droit d'adre
 
 En particulier, une notification de navigation ne commande le domaine que si le monde fermé l'établit indépendante : un `popstate` ou `hashchange` produit pendant un parcours instrumenté en cours, sans corrélation univoque, reste d'antécédent inconnu ; l'observation locale et la projection restent alors possibles, pas le relais vers `router:navigate`. Clic ou focus hors View sans admetteur autorisé explicitement : **non pris en charge en V1 tant que 18.30 reste ouvert** (P19) ; ni un écouteur global de Behavior ni une admission générale par l'adaptateur du document ne contournent cette limite. Le focus de fenêtre n'est pas le focus d'un élément.
 
+### Adaptateurs du domaine : aucune Command — D17
+
+Un adaptateur du domaine (Viewport, stockages, base indexée, cache, cookies, cycle de vie, connectivité, environnement) n'adresse **aucune Command**, ni à une Feature ni à un autre adaptateur. Il inscrit ce qu'il observe dans son état d'observation et l'émet (A3.h) ; les Features abonnées décident d'y réagir. Sa spécialisation n'associe une valeur qu'à un Event de son propre Channel (B.4). Seul un adaptateur de l'interface peut relayer une Command, sous D18.
+
 ### Projection et classification — B.5
 
 La comparaison avec l'observation intégrée supprime les **écritures équivalentes connues**, pas toutes les boucles et pas toute divergence d'un support modifié extérieurement. Un besoin de vérification physique suit le protocole de rafraîchissement, jamais une Query fraîche. L'égalité tient compte de la sémantique de l'opération et de l'état pertinent : ajouter une entrée d'historique à la même adresse peut être une nouvelle opération significative. B.5 n'est pas une preuve anti-boucle ; D9 ne couvre pas les boucles traversant une coupure inconnue. Le mode de navigation reste une donnée du contrat, jamais une déduction du contexte causal.
