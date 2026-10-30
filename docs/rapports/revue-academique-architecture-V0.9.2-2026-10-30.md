@@ -9,7 +9,7 @@
 | **Périmètre** | Lecture intégrale de la théorie, avec confrontation à l’[audit existant](audit-coherence-V0.9.2.md) |
 
 > Ce rapport consigne les remarques de la revue du 30 octobre 2026. Il ne modifie pas la théorie et ne constitue pas un arbitrage. Les références de sections, de clauses et de lignes visent la version examinée ; les liens de lignes pourront se décaler lors des révisions ultérieures.
-
+>
 > **Suite donnée le 2026-10-30.** Les corrections recommandées ont été validées sous réserve de préserver l’esprit de Bonsai, puis intégrées à la théorie V0.9.3 et aux documents associés. Le [suivi des 28 arbitrages](arbitrages-V0.9.3-2026-10-30.md) décrit les choix retenus, leurs conséquences et les contrôles requis. Les constats, citations et la note ci-dessous restent ceux de V0.9.2 ; ils ne sont ni effacés ni réévalués rétroactivement. L’alignement documentaire ne vaut pas livraison de l’implémentation.
 
 ## Table des matières
