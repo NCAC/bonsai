@@ -8,8 +8,10 @@
 
 ## 1. Où vit un invariant
 
-Un invariant apparaît à six endroits. **Le registre fait foi** ; les autres
-doivent être alignés à la main tant qu'ils ne sont pas générés.
+Un invariant apparaît dans plusieurs supports. **La théorie validée fait autorité ;
+le registre est sa déclinaison opérationnelle**, source des vues générées et des
+copies manuelles. Les autres supports doivent être alignés à la main tant qu’ils
+ne sont pas générés. Voir la [règle de confiance](../README.md#règle-de-confiance-et-dalignement).
 
 | Lieu | Contenu | Vérifié par | Statut |
 | --- | --- | --- | --- |
@@ -22,8 +24,10 @@ doivent être alignés à la main tant qu'ils ne sont pas générés.
 | tests, JSDoc de `packages/`, doc | citations `I<n>` | le registre (tests uniquement) | manuel |
 
 > ⚠️ Toute divergence entre le registre et `invariants.md` est un bug de
-> documentation : corriger `invariants.md`, jamais le registre pour « coller »
-> à la spec.
+> documentation : aligner la copie sur le registre si celui-ci respecte la théorie.
+> Si le registre contredit la théorie, corriger d’abord son contrat et son état,
+> puis ses copies et vues générées. Ni le code existant ni une citation dans un
+> test ne justifient de conserver une règle contraire à la théorie.
 
 ---
 

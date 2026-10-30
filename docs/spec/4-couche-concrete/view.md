@@ -13,19 +13,21 @@
 | **Statut** | 🟢 Stable |
 | **ADR** | [ADR-14](../../adr/ADR-14-contrats-types.md) (contrat modulaire), [ADR-15](../../adr/ADR-15-evenements-ui.md) (événements UI), [ADR-16](../../adr/ADR-16-view-scope-projection.md) (scope, `getUI`, N1/N2/N3), [ADR-17](../../adr/ADR-17-local-state.md) (localState), [ADR-19](../../adr/ADR-19-root-element.md) (`rootElement`), [ADR-22](../../adr/ADR-22-pdr.md) (PDR) |
 
+> **Lot 3 — alignement documentaire V0.9.4.** Les corrections portent sur la structure, les attributions, le cycle de vie et l'imputation du code Behavior, selon la [théorie](../../theorie.md) §2.5, §2.7, D11–D13 et §16.5–§16.7. Les ADR Accepted restent inchangés. Cette révision **ne prétend pas auditer les autres contrats** de cette page (typage, rendu détaillé, état local et DevTools) ; leurs propositions historiques restent à lire avec leurs limites de livraison et sous les obligations transversales ci-dessous. Aucune nouvelle API n'est fixée ici.
+
 ---
 
 > ## ⏳ Périmètre d'implémentation
 >
-> Ce document décrit le **contrat cible** de View. Seuls les §1–3 (pattern modulaire ADR-14) correspondent au code livré. Les éléments suivants ne sont **pas encore implémentés** :
+> Ce document distingue le **contrat cible** de View de sa surface livrée. Les §1–3 décrivent principalement le pattern modulaire ADR-14 et les primitives N1 sont livrées ; cela ne signifie pas que les garanties structurelles V0.9.4 sont implémentées. Les éléments suivants ne sont **pas encore implémentés** :
 >
 > | Élément | Strate cible | Sections concernées |
 > | --- | --- | --- |
 > | Templates N2/N3 (`get templates()`, Modes A/B/C), `TProjectionRead`, cache de `getUI()` | Strate 1c | §4.4–4.8 |
 > | Délégation d'événements sur `this.el` | Strate 1c | §4.3 |
-> | `onDetach()`, `onRender()`, nettoyage des listeners | Strate 1c | §5 |
-> | Création du `rootElement` absent et résolution dans le slot du Composer | Strate 1d | §4.1, §4.8 |
-> | `get composers()`, N-instances, exclusion des slots du scope (I40) | Strate 1d | §4.2, §6 |
+> | Nettoyage instrumenté post-validation, occurrences et réservations ; anciens hooks cibles non garantis | À concevoir | §5 |
+> | Résolution contrôlée des désignations et projection physique post-validation | À concevoir | §4.1, §4.8 |
+> | Déclaration des Composers, cardinalité, soustraction du contenu des slots (I40) | À concevoir ; non livré | §4.2, §6 |
 > | Surcharge de `uiElements` par le Composer (ADR-21) | Strate 2 | §1, §4.2 |
 > | `localState` (`get localState()`, `updateLocal()`, `this.local`, callbacks N1) | Strate 2a | §7 |
 >
@@ -61,6 +63,8 @@
 ---
 
 ## 1. Classe abstraite View
+
+**Contrat structurel cible :** une View est enfant **exclusivement d'un Composer** ; Foundation et View ne sont parents que de Composers (D11). Elle possède la part attribuée par son Composer, hors contenu de ses propres slots attribué à ses Composers. Elle conserve l'élément de chacun de ces slots. Le code livré ne garantit pas encore ce partitionnement.
 
 La View est paramétrée par **un seul générique** : son `TViewContract` (ADR-14). Ce contrat compose deux modules indépendants — `features` (canal) et `ui` (DOM) — et la classe l'utilise pour générer les exigences typage des handlers (`TViewCallbacks<TVC>`).
 
@@ -167,10 +171,11 @@ abstract class View<TVC extends TViewContract = TViewContract> {
 
 > **I4** : la View n'a **jamais** `emit()` — absent du type.
 > **I30** : la View ne possède **aucun domain state** — projection pure.
-> **I31** : `rootElement` est un sélecteur CSS fourni par le Composer (ADR-19).
-> **I34** : `rootElement` ne peut pas être `document.body`.
+> **I31** : `rootElement: string` CSS est le choix de représentation historique livré (ADR-19), compatible avec une désignation, pas une obligation théorique ; validité d'attribution et résolution contrôlée restent requises (§4.1).
+> **I32** : la View peut modifier les attributs de sa racine et son contenu hors contenu des slots attribués, mais **jamais détruire ni remplacer sa racine**.
+> **I34 — contrat partiel** : la racine appartient à la part attribuée par le Composer dans le contenu de son slot, sans se confondre avec l'élément du slot. Le refus de `document.body` dans le code livré ne prouve pas ce confinement ; voir §4.1.
 > **I39** : accès DOM **exclusivement** via `getUI(key)` — aucun accès brut.
-> **I40** : scope DOM = `rootElement`, hors sous-arbres des slots déclarés.
+> **I40** : la part exclut le **contenu** des slots attribués, pas leurs éléments conservés par la View ; exclusion non livrée.
 > **I80** : aucun `TChannelToken` dans la surface publique — Channel privé derrière Feature.
 > **I81** : `features` / `uiEvents` / `uiElements` lus une seule fois au mount, sources de vérité runtime.
 > **I82** : handler manquant pour une clé `features[NS].listens` → erreur compile (via `implements TViewCallbacks`) + throw runtime au mount (filet de sécurité).
@@ -187,7 +192,9 @@ abstract class View<TVC extends TViewContract = TViewContract> {
 
 ## 2. Pattern modulaire ADR-14
 
-Le pattern s'applique à chaque View concrète. Il est identique pour Behavior (I83) et accepte les mêmes briques de base (`TFeatureContract`, `TUIContract`, `TUIElements`).
+Le pattern s'applique à chaque View concrète. Sa réutilisation pour le code Behavior (I83) est une orientation historique, **pas une API Behavior livrée**. Un Behavior est une partie du code de la View, sans statut de composant, existence, identité, part ni Channel propres ; état et messages sont imputés à la View (§2.5, §16.7). Son code ne désigne ni celle-ci ni ses clés.
+
+Les noms des clés de la View et de **tous** ses Behaviors sont disjoints, y compris entre Behaviors ; des noms différents peuvent viser **le même élément**. Une occurrence de fait y est admise une fois, par la View : ses réactions et celles des Behaviors s'exécutent dans l'ordre fixe de déclaration, dans le même traitement local, la même unité de validation et le même contexte causal qualifié. La propagation entre listeners ne crée pas de nouveaux faits. Ni le partage d'un élément ni un Behavior n'ajoutent de droit de Command. L'agrégation des contrats, le contrôle des noms, la capture unique et cet ordre ne sont pas livrés ; voir [Behavior](behavior.md).
 
 ### 2.1 Trois modules, un contrat
 
@@ -482,14 +489,13 @@ type TViewCallbacks<TVC extends TViewContract> =
 
 ### 4.1 Point d'ancrage DOM
 
-Le `rootElement` d'une View est fourni par le **Composer** via `TResolveResult.rootElement`
-(ADR-19). La View elle-même ne déclare PAS son rootElement dans `params`.
+**Contrat cible.** Le Composer fournit à la View, **à sa création**, une désignation de sa part, jamais un élément de l'hôte ni une identité. La View établit sa référence structurelle par résolution contrôlée : vérification de propriété et de validité de l'attribution, sans que la désignation confère elle-même un accès. Sa validité finit avec cette attribution ; **réattribuer le même emplacement ne réactive pas l'ancienne désignation**. Syntaxe, transport et typage de ce protocole restent à concevoir.
 
-> **Invariant I31 (reformule ADR-19)** : le `rootElement` est un selecteur CSS `string`,
-> toujours fourni par le Composer via `TResolveResult`. Le framework le résout dans le slot :
->
-> - Si l'élément existe → hydratation (SSR, H1)
-> - Si l'élément n'existe pas → le framework parse le selecteur CSS et crée l'élément (ADR-19)
+**I31 et choix de représentation.** La chaîne CSS `TResolveResult.rootElement` est un choix historique d'API (ADR-19), pas une nécessité de la théorie. Un sélecteur trouvé sous le bon ancêtre ne prouve ni la propriété ni la validité de l'attribution. Le choix de créer un élément absent en analysant un sélecteur ne doit pas être présenté comme une obligation théorique.
+
+**I32 et autorité.** La View peut modifier les attributs de sa racine et tout son contenu **hors contenu de ses slots attribué aux Composers**. Elle ne détruit ni ne remplace sa propre racine. Elle conserve l'élément de chaque slot ; avant de le supprimer ou de le remplacer, elle détruit d'abord le Composer concerné et récupère son contenu. Les restitutions suivent une cascade logique de bas en haut, sans hook applicatif (§5–§6).
+
+**Code réel.** `View.mount(rootSelector)` résout aujourd'hui la chaîne avec un **`document.querySelector()` global**, refuse `document.body`, mais ne contrôle aucune attribution et ne crée aucune racine absente. Une racine introuvable laisse `el = null` et peut conduire au `TypeError` décrit dans le bandeau. C'est `Composer.attach()` qui crée physiquement et immédiatement le **slot** absent, pas la racine de la View. Voir [Composer §1.2](composer.md#12-classe).
 
 ### 4.2 UIElements et UIEvents (ADR-14 — pattern modulaire)
 
@@ -553,28 +559,14 @@ le code livré résout chaque sélecteur de `uiElements` via
 des handlers DOM, `packages/view/src/bonsai-view.ts` ; c'est le `rootElement` lui-même
 qui est trouvé par `document.querySelector()`) — **un seul** élément
 par clé, jamais N, et **aucune délégation** d'événement vers plusieurs
-éléments matchés. ⏳ Le modèle « N éléments par clé + délégation + N
-instances de Composer » ci-dessous décrit une **cible non livrée** —
-`get composers()` avec N instances par sélecteur matché reste également
-cible (cf. le bandeau de périmètre de [composer.md](composer.md)).
+éléments matchés. Le modèle historique « N éléments par clé + délégation + N
+instances de Composer » est **non livré** ; la cardinalité des déclarations
+et leur représentation restent à arbitrer (§6), sans se déduire d'une recherche DOM.
 
 - ⏳ Cible : pour les **events DOM**, la délégation s'appliquerait à TOUS les éléments matchés. Un seul handler `onProductItemAddToBasketClick` couvrirait N éléments `.ProductItem-addToBasket`.
-- ⏳ Cible : pour `get composers()`, si une clé est déclarée, le framework instancierait N Composers — un par élément matché (ADR-18).
+- Historique ADR-18 : N Composers par sélecteur est une proposition non livrée, distincte du nombre de Views gérées par un Composer (I37).
 
-**Override par Composer (ADR-21)** — ⏳ cible strate 2, `TResolveResult` livré est `{ view, rootElement }` sans `options` (cf. bandeau de périmètre de [composer.md](composer.md)) :
-
-```typescript
-// Le Composer peut surcharger les sélecteurs via resolve()
-class MainComposer extends Composer {
-  resolve(_event: unknown | null): TResolveResult | null {
-    return {
-      view: CartView,
-      rootElement: "[data-view='cart']",
-      options: { uiElements: { addButton: "#new-add-btn" } }   // override
-    };
-  }
-}
-```
+**Override par Composer (ADR-21)** — proposition historique non livrée : `TResolveResult` contient seulement `view` et `rootElement`, sans `options`. La forme de surcharge reste à arbitrer ; aucun snippet de résultat enrichi n'est un contrat compilable. Un paramétrage éventuel ne doit jamais transférer d'élément hôte ni contourner les attributions (voir [Composer](composer.md)).
 
 Le développeur applicatif n'écrit **jamais** de cast manuel — le pattern modulaire garantit que :
 
@@ -631,7 +623,7 @@ Avantages :
 
 - **Éléments créés dynamiquement** (fragments, `reconcile`) : les nouveaux enfants sont couverts automatiquement sans rebind
 - **Performance** : 3 listeners (click, input, submit) au lieu de N x 3
-- **Cleanup** : 3 `removeEventListener` dans `onDetach()` au lieu de N x 3
+- **Nettoyage cible** : retrait instrumenté des listeners après validation de la fin logique, pas hook applicatif pendant la cascade (§5). Le runtime actuel ne nettoie aucun listener.
 
 ### 4.4 getUI() — Primitive de projection typée
 
@@ -648,10 +640,7 @@ Avantages :
 La View accede aux noeuds DOM **exclusivement** via `getUI(key)`, jamais via
 `querySelector`, `getElementById` ou tout autre accès DOM brut (I39).
 
-> **Scope DOM (I40)** : le framework résout chaque `uiElement` dans le scope
-> du `rootElement`, en **excluant les sous-arbres des slots** déclarés dans
-> `get composers()`. Si un selecteur résout vers un élément a l'interieur
-> d'un slot, c'est une erreur au bootstrap.
+> **Scope DOM cible (I40)** : la résolution contrôlée doit exclure le **contenu attribué** des slots, y compris pour le code Behavior ; leurs éléments restent dans la part de la View. Le contrôle porte sur l'autorité, pas seulement la descendance DOM, et reste requis pendant l'exécution. Le runtime livré fait un simple `querySelector()` descendant et ne réalise pas cette exclusion.
 
 ```typescript
 abstract class View<TVC extends TViewContract = TViewContract> {
@@ -764,12 +753,14 @@ Trois modes **mutuellement exclusifs** :
  *   La View utilise getUI() manuellement dans ses handlers.
  *
  * Mode B : { root: Binding } — template complet.
- *   Le template possède TOUT le contenu de this.el.
+ *   La couverture de rendu reste limitée à la part de la View :
+ *   contenu des slots attribués exclu, racine non remplaçable (I32).
  *   Aucune autre clé autorisée.
  *
  * Mode C : { [K in keyof TUI]?: Binding } — fragments (îlots).
  *   Chaque clé est un @ui déclaré dans `uiEvents` (TUIContract, ADR-14).
- *   Le template possède le contenu INTÉRIEUR de l'élément @ui.
+ *   Le template couvre le contenu INTÉRIEUR autorisé de l'élément @ui,
+ *   hors contenu des slots attribués ; aucun transfert d'autorité.
  *   Le reste du DOM serveur est intouché.
  *   La clé `root` est interdite (réservée au Mode B).
  */
@@ -810,59 +801,16 @@ type TProjectionTemplate<TNodes = any, TData = any> = {
 }
 ```
 
-Le framework peuple automatiquement `this.nodes` dans `onAttach()` :
+Le peuplement de références de projection est une **proposition non livrée**, pas un appel garanti dans `onAttach()`. L'ancien pseudo-code d'attachement (accès à `slot`, affectation de `el`, parseur CSS et méthodes internes non définies) n'est pas une API exécutable.
 
-```typescript
-// INTERNE FRAMEWORK — le développeur ne voit jamais ce code
-//
-// Strate 0 (ADR-31) : `TResolveResult = { view, rootElement }` — le Composer
-// ne fournit PAS d'options de construction (cf. packages/composer/src/bonsai-composer.ts
-// « pas d'options (ADR-21 reporté) »). Seul `rootElement` (sélecteur CSS, ADR-19)
-// transite du Composer vers la View ; le contrat de la View reste porté par
-// ses trois getters `features`/`uiEvents`/`uiElements` (ADR-14).
-
-function attachView(view: View, rootElement: string): void {
-  // 1. Résoudre rootElement -> el (ADR-19 : string fourni par le Composer)
-  view.el = slot.querySelector(rootElement);
-  if (!view.el) {
-    // Element absent -> parser le selecteur CSS et creer l'element (ADR-19)
-    view.el = parseCssSelectorAndCreateElement(rootElement);
-    slot.appendChild(view.el);
-  }
-
-  // 2. Peupler nodes depuis templates() — sélecteurs lus depuis `view.uiElements` (ADR-14)
-  const templates = view.templates;
-
-  if (templates === null) {
-    // Mode A -- pas de nodes auto-peuples
-    view.nodes = {};
-  } else if ('root' in templates) {
-    // Mode B -- setup sur this.el directement
-    view.nodes = { root: templates.root.template.setup(view.el) };
-  } else {
-    // Mode C -- setup sur chaque @ui correspondant
-    const nodes: Record<string, any> = {};
-    for (const [key, binding] of Object.entries(templates)) {
-      if (binding) {
-        nodes[key] = binding.template.setup(view._resolveUIElement(key));
-      }
-    }
-    view.nodes = nodes;
-  }
-
-  // 3. Délégation d'événements + câblage onXXX
-  bindUIEvents(view);
-  view.onAttach();
-}
-```
+Dans la cible, la View résout sa désignation sous contrôle d'attribution ; ses références et intentions de projection sont établies dans l'initialisation autorisée, incluse dans l'unité de son Composer. Aucun template ne crée une autorité sur une part déjà attribuée. La matérialisation DOM est post-validation et peut échouer partiellement ; `setup()`, `project()` ou `create()` ne suffisent pas à établir ce protocole. La représentation des références et leur articulation avec ces opérations restent à concevoir.
 
 ### 4.7 Templates partiels Mode C — Syntaxe PugJS `@ui.xxx`
 
 En Mode C, le developpeur ecrit un ou plusieurs **fragments PugJS** qui ciblent
 chacun un `@ui` spécifique. Le reste du DOM serveur est intouche.
 
-La syntaxe `@ui.xxx` dans le `.pug` indique au compilateur :
-_"tu possedes le contenu interieur de cet élément, pas la View entière"_.
+La syntaxe historique `@ui.xxx` dans le `.pug` délimite une couverture de rendu intérieur, pas un propriétaire distinct. La View reste propriétaire de sa part ; un fragment ne dispose jamais du contenu de slots attribué aux Composers. Avant tout retrait d'un élément slot, la View détruit le Composer concerné et récupère ce contenu (§6), puis prépare la projection physique post-validation.
 
 ```pug
 _data
@@ -1014,258 +962,85 @@ class AccountView
 > .template.pug = COMMENT → logique de rendu (projections, conditions, boucles)
 > ```
 >
-> En Mode C, le DOM serveur est la source de vérité structurelle.
+> En Mode C, le DOM serveur fournit le support initial de présentation ; il ne détermine ni les existences logiques ni la validité des attributions.
 > Les fragments `.pug` ne décrivent que les **îlots réactifs**.
 > Le reste du HTML (nav, footer, contenu statique) est 100% SSR, intouché.
 
 ### 4.8 Flux d'exécution complet
 
-```text
-+------------------ BOOTSTRAP -------------------+
-|                                                  |
-|  1. DOM serveur existe (SSR/CMS/statique)        |
-|  2. Foundation/Composer cree la View (ADR-21)       |
-|  3. Framework merge params <- options (shallow)   |
-|  4. Framework resout rootElement (ADR-19) :    |
-|     4a. querySelector(rootElement) dans scope     |
-|     4b. TROUVE  -> el = existant (mode SSR)       |
-|     4c. ABSENT  -> parse selecteur CSS et cree    |
-|         l'element (SPA, ADR-19)                  |
-|     4d. Non parseable -> ERREUR (combinateurs,    |
-|         pseudo-classes non supportes)              |
-|  5. Framework resout uiElements -> cache @ui      |
-|     (scope = el, excluant sous-arbres slots I40) |
-|  6. Framework resout templates() :               |
-|     - null  -> nodes = {} (Mode A)                |
-|     - root  -> nodes.root = setup(el) (Mode B)    |
-|     - @ui   -> nodes[k] = setup(getUI(k)) (C)    |
-|     setup() = hydratation SSR (H2)               |
-|     create() = fallback SPA (ADR-19)                |
-|  7. Framework branche uiEvents par delegation    |
-|  8. View.onAttach() -- hook developpeur           |
-|                                                  |
-|  Note : si TBootstrapOptions.serverState fourni  |
-|  (ADR-24 H5), les Entities sont pre-peuplees   |
-|  silencieusement en phase 3 ('entities')         |
-|  AVANT toute View -- pas d'Event, pas de notif.   |
-|                                                  |
-+--------------------------------------------------+
-                        |
-                        v
-+------------------ RUNTIME ----------------------+
-|                                                  |
-|  Event recu via Channel (listen) :               |
-|  1. Framework evalue les selectors (§9.4.5)      |
-|  2. Mode A : getUI('key').text(...)  (N1)        |
-|     Mode B : binding.template.project(...) (auto)  |
-|     Mode C : binding.template.project(...) (auto)  |
-|  = mutations DOM chirurgicales, 0 diff, 0 alloc  |
-|  Source de mutation unique par @ui (I41)          |
-|                                                  |
-|  Lecture de valeur (tous modes) :                 |
-|  getUI('input').value() -> TProjectionRead          |
-|                                                  |
-|  Interaction utilisateur :                        |
-|  1. click sur @ui.addButton                      |
-|  2. Delegation -> View.onAddButtonClick(event)    |
-|  3. this.trigger("cart:addItem", {...}) — clé flat |
-|                                                  |
-+--------------------------------------------------+
-                        |
-                        v
-+------------------ TEARDOWN ---------------------+
-|                                                  |
-|  1. View.onDetach()                              |
-|  2. Framework nettoie event listeners delegues   |
-|  3. nodes = null (references liberees)           |
-|  4. _uiCache vide                                |
-|                                                  |
-+--------------------------------------------------+
-```
+Le tableau distingue le **contrat cible** des appels immédiats du code livré. Il ne prescrit aucune pseudo-API de bootstrap ou de teardown.
+
+| Phase cible | Structure et validation |
+| --- | --- |
+| Amorçage | La racine établit les Channels avant les consultations initiales. L'initialisation suit les dépendances déclarées ; une cible active ou non prête ne peut être interrogée. Le transport différé attend la réussite de l'amorçage ; aucune application partiellement démarrée n'est publiée |
+| Création | Seul le Composer crée la View, lui attribue sa part et fournit sa désignation. L'initialisation de la View, exécutée sur ses propres ressources, entre dans l'unité de validation du créateur, sans transfert d'autorité |
+| Préparation | Résoudre sous contrôle de propriété ; préparer déclarations, observations, état local et effets de projection dans l'unité autorisée. Les références structurelles n'exigent pas que le DOM soit déjà matérialisé |
+| Traitement | Un fait admis par la View donne un seul traitement local ; les réactions View/Behaviors suivent l'ordre déclaré et le même contexte. Les messages différés sont réservés sans être délivrés pendant l'unité ; les Queries restent synchrones et en lecture seule |
+| Validation ou échec | Les invariants d'état sont vérifiés à la frontière de l'unité, pas après chaque opération. Le rollback interne comprend existences, abonnements, attributions, restitutions et différés ; les créations abandonnées et leurs désignations ne sont pas publiées |
+| Engagement post-validation | Engager les effets physiques préparés dans l'ordre, avant la prochaine délivrance différée, sans attendre leurs achèvements asynchrones. Au premier échec synchrone, les effets suivants sont non tentés ; les précédents ne sont pas annulés |
+| Résultat | Admettre les résultats instrumentés déclarés par de nouveaux messages vers l'occurrence vivante concernée, sans réentrance. Distinguer intention, engagement, réussite observée, échec et non-tentative |
+| Fin logique | Détruire les descendants et restituer leurs parts de bas en haut, sans hook applicatif ni message délivré pendant la cascade (§5–§6) |
+| Nettoyage | Après validation, retirer les observations et appliquer les retraits physiques préparés. Les erreurs ne révoquent pas la fin logique ; les callbacks tardifs ne ressuscitent aucun destinataire |
+
+**Limite hôte :** différer une projection ne rend pas sa série d'écritures atomique. Un échec extérieur ne restaure ni le DOM déjà changé ni la validation interne ; il est traité par une nouvelle admission si le destinataire vit encore. Une intention enregistrée n'est pas une réussite matérielle (§2.5, §2.7.3).
+
+**Code réel :** le Composer crée sans argument une View puis appelle `mount(rootSelector)`. Celui-ci lit les trois getters, cherche globalement la racine, câble directement les premiers éléments UI et les Channels puis appelle `onAttach()`. Les mutations N1 sont immédiates ; aucune unité de validation, préparation d'effets, capture unique Behavior, cascade ou désinscription n'est fournie par ces classes. Le [Composer](composer.md#31-diff-pour-le-retour-simple-tresolveresult--null) décrit le diff réellement livré.
 
 ---
 
 ## 5. Cycle de vie passif
 
-Les hooks de cycle de vie des Views sont des **appels directs du framework** (L2),
-pas des Events Channel. Ils sont declenches par la Foundation ou les Composers.
+La View ne décide ni de sa création ni de sa destruction : l'existence appartient à son **Composer parent**, jamais directement à une Foundation. Elle reste responsable de ses propres ressources pendant l'initialisation incluse dans l'unité du créateur.
 
-| Hook | Quand | Usage typique |
-| --- | --- | --- |
-| `onAttach()` ✅ | Après insertion dans le DOM | Lire les `data-*` du `rootElement`, initialiser la projection |
-| `onDetach()` ⏳ | Avant retrait du DOM | Libérer ce que `onAttach()` a acquis |
-| `onRender()` ⏳ | Après chaque projection | Post-traitement DOM (focus, scroll, animations) |
+| Nom / mécanisme | État et portée |
+| --- | --- |
+| `onAttach()` | Seul hook View livré, public, appelé directement à la fin de `mount()` ; pas un Event Channel. Ne prouve ni insertion préalable, ni résolution contrôlée, ni validation transactionnelle |
+| `onDetach()`, `onRender()` | Anciennes propositions non livrées ; signatures et articulation future non arbitrées. Ne constituent pas des traitements arbitraires ajoutés au contrat |
+| Cascade cible | Fin structurelle de bas en haut, restitutions aux propriétaires encore présents, **aucun hook ou traitement applicatif ni délivrance pendant la cascade** |
+| Nettoyage cible | Instrumenté et physique après validation ; sa réussite n'est pas une condition de fin logique |
 
-```typescript
-abstract class View<TVC extends TViewContract = TViewContract> {
-  /** Appelé par le Composer après montage (livré, public). */
-  onAttach(): void {}
+L'ancien scénario « hook `onDetach()` obligatoire avant toute destruction » est incompatible avec la cascade de §2.5 et n'est pas conservé comme contrat. Le fait que le runtime n'offre pas ce hook ne signifie pas qu'il nettoie déjà les ressources : **les listeners DOM et Channel ne sont jamais retirés par ces classes**, même quand le Composer oublie la View.
 
-  /** ⏳ Appelé par le Composer avant retrait du DOM. */
-  protected onDetach(): void {}
-
-  /** ⏳ Appelé après chaque projection. */
-  protected onRender(): void {}
-}
-```
-
-> **ADR-16, I19** : la View ne décide ni de sa création,
-> ni de sa destruction. Ces hooks sont des **notifications passives**,
-> pas des decisions.
+Le code Behavior n'a ni fin de composant, ni part à restituer, ni hook autonome. Son état est celui de la View et suit son rollback interne et sa fin ; la cascade n'appelle aucun nettoyage applicatif Behavior. Voir [Behavior §3](behavior.md#3-cycle-de-vie).
 
 ### 5.1 Machine à états
 
-> ⏳ Cible, non livré.
+Ce titre conserve une ancre historique, pas la promesse de la machine `created → wired → attached → detached`. Le protocole cible distingue déclaré, en initialisation, prêt à consulter, publié et détruit (§2.7.1), indépendamment de la présence physique DOM. Le code View n'a aujourd'hui qu'un booléen `#mounted`, positionné avant les validations du montage ; un second `mount()` est un no-op, y compris après un échec partiel.
 
-```text
-created -> wired -> attached -> detached -> [destroyed]
-```
+Chaque création associe une **occurrence de vie non réutilisable**, distincte du type, du namespace ou de l'emplacement. Callbacks, opérations et messages locaux visent cette occurrence ; sa validité est contrôlée avant admission **et** avant délivrance. Une destruction validée retire ses délivrances en attente ; un callback tardif est écarté avant admission, sans transfert vers une nouvelle View au même emplacement (§2.7.2).
 
-| État | Entree (declencheur) | Sorties possibles | Hooks disponibles |
-| --- | --- | --- | --- |
-| `created` | Instanciation par le Composer | -> `wired` | `constructor` |
-| `wired` | Cablage Channels (bootstrap) | -> `attached` | -- |
-| `attached` | `el` résolu, DOM pret | -> `detached` | `onAttach()` |
-| `detached` | Slot disparu, remplacement ou shutdown | -> `destroyed` | `onDetach()` |
-| `destroyed` | Nettoyage complet (subscriptions, references DOM) | -- (terminal) | -- |
+Une destruction reste provisoire jusqu'à validation. Son annulation conserve la même occurrence, les propriétaires, parts, désignations, abonnements et réservations : ce n'est pas un remontage. Les notifications capturées entre-temps attendent l'issue de l'unité : abandon si la destruction est validée, admission après annulation sinon. Une destruction validée est terminale ; retrouver un élément dans le DOM ne réactive ni la View, ni son Composer, ni une ancienne désignation.
 
-> **Invariants de transition** :
->
-> - `onAttach()` n'est appele qu'en état `wired` -- `el` DOIT exister dans le DOM (I31)
-> - `onDetach()` est appele avant toute destruction -- pas de destruction sans detach
-> - Un état `detached` peut repasser a `attached` si le Composer monte a nouveau la même instance (cas rare)
-> - `localState` (I42) est initialise au premier `attached`, nettoye au `detached`
-> - Les subscriptions Channel sont attachees au `wired`, nettoyees au `detached`
+Les Events sont réservés aux **occurrences d'abonnement présentes à l'émission** et dans leur ordre (§2.7.6). Avant délivrance, abonnement, propriétaire et Channel doivent encore être valides. Un abonnement créé ou recréé plus tard n'hérite d'aucune réservation antérieure ; leur abandon ne réordonne pas les autres. Le runtime de View ne garantit pas encore ce protocole de durée de vie ni le rollback structurel décrit ici.
 
 ---
 
 ## 6. Déclaration des Composers
 
-> ⏳ Strate 1d.
->
-> Décision : [ADR-18](../../adr/ADR-18-composer.md). La sémantique de `get composers()` couvre
-> les N instances. Si un selecteur `uiElements` matche N éléments DOM,
-> et que la clé est dans `get composers()`, le framework instancie **N Composers**
-> -- un par élément matche. Chaque instance reçoit son élément DOM comme scope.
+**Non livré.** `get composers()` est un nom historique de proposition, pas un getter fourni ou consommé par la classe actuelle. Cette section fixe les responsabilités cibles sans inventer de type, constructeur ou snippet applicatif.
 
-La View déclare des **slots de composition** via `get composers()`. Pattern modulaire ADR-14 :
+La View déclare les emplacements de composition ; elle ne décide pas quelles Views y créer. Elle crée des **Composers seulement** (D11), auxquels elle attribue le contenu des slots. Chaque Composer décide de l'existence et des parts de ses Views. La Foundation suit la même séparation : elle ne crée pas directement de View.
 
-```typescript
-const mainViewFeatures = {
-  cart: {
-    feature:  CartFeature,
-    listens:  ['itemAdded'] as const,
-    triggers: []            as const,
-    requests: []            as const,
-  },
-} satisfies TFeatureContract;
+| Ressource / opération | Autorité cible |
+| --- | --- |
+| Racine de la View | Attribuée par son Composer ; attributs et contenu autorisé modifiables par la View, racine non destructible ni remplaçable par elle (I32) |
+| Élément slot | Reste dans la part de la View ; son contenu attribué lui est soustrait |
+| Contenu attribué au Composer | Composer propriétaire hors parts attribuées à ses Views ; aucune lecture du contenu confié aux enfants |
+| Création d'un Composer enfant | Désignation du contenu fournie à la création, jamais élément hôte passé à l'enfant ; résolution contrôlée de propriété et validité de l'attribution |
+| Retrait ou remplacement de l'élément slot | **Détruire d'abord le Composer**, récupérer le contenu, puis préparer le retrait physique |
+| Fin d'une View parente | Cascade de ses descendants de bas en haut, sans hook applicatif ; restitutions imputées à chaque propriétaire encore présent |
 
-const mainViewUiEvents = {
-  sidebarSlot: ui<HTMLDivElement>()([]),                // slot — pas d'event direct
-  contentSlot: ui<HTMLDivElement>()([]),                // slot — pas d'event direct
-  itemList:    ui<HTMLUListElement>()([]),
-} satisfies TUIContract;
+Créations, initialisations, destructions, attributions, restitutions et abonnements appartiennent à l'unité de validation concernée. Leur annulation conserve intégralement la structure antérieure, occurrences et désignations comprises, sans transfert de propriété ni recréation. Le nettoyage physique irréversible vient seulement après validation et n'est pas atomique sur l'hôte.
 
-const mainViewUiElements = {
-  sidebarSlot: '#sidebar-slot',
-  contentSlot: '#content-slot',
-  itemList:    '.MainView-itemList',
-} satisfies TUIElements<typeof mainViewUiEvents>;
-
-type TMainViewContract = TViewContract<
-  typeof mainViewFeatures,
-  typeof mainViewUiEvents
->;
-
-class MainView
-  extends View<TMainViewContract>
-  implements TViewCallbacks<TMainViewContract>
-{
-  get features()   { return mainViewFeatures;   }
-  get uiEvents()   { return mainViewUiEvents;   }
-  get uiElements() { return mainViewUiElements; }
-
-  /**
-   * Déclaration des Composers de composition.
-   *
-   * Clés : DOIVENT correspondre à des entrées dans `uiEvents` (donc
-   *        également dans `uiElements`, par contrainte `TUIElements<TUI>`).
-   * Valeurs : constructeurs de Composer importés.
-   *
-   * Le framework résout l'élément @ui correspondant comme slot pour
-   * le Composer. Le Composer décide ensuite quelle View instancier.
-   *
-   * Sémantique N-instances (ADR-18) : si `querySelectorAll(selecteur)`
-   * matche N éléments, le framework instancie N Composers — un par
-   * élément matché.
-   */
-  get composers() {
-    return {
-      sidebarSlot: SidebarComposer,
-      contentSlot: ContentComposer,
-    };
-  }
-
-  // Channel handler imposé par features.cart.listens
-  onCartItemAddedEvent(_p: { id: string; qty: number }): void { /* ... */ }
-}
-```
+Un template ou une projection ne doit donc pas retirer l'élément slot puis déduire du DOM disparu la destruction du Composer. La présence ou le retour du DOM ne prouve pas une existence et ne réactive jamais un Composer détruit. Réattribuer le même emplacement ne réactive pas non plus une ancienne désignation.
 
 ### Sémantique N-instances — composition typée par attribut (ADR-18)
 
-```typescript
-const nodeEditFormViewFeatures = {} satisfies TFeatureContract;
+Ancre et titre historiques conservés. Une répétition de champs peut motiver plusieurs attributions de contenu et plusieurs Composers, mais « un résultat de `querySelectorAll()` = une instance recevant un élément DOM » n'est ni un protocole théorique ni une capacité livrée. Cardinalité, identification des occurrences, syntaxe de déclaration et contrôles restent à concevoir.
 
-const nodeEditFormViewUiEvents = {
-  formActions:  ui<HTMLDivElement>()([]),
-  editorJsSlot: ui<HTMLDivElement>()([]),
-  mediaSlot:    ui<HTMLDivElement>()([]),
-} satisfies TUIContract;
+**I37** désigne le choix d'un type unique de Composer pouvant gérer 0..N Views hétérogènes. Ce choix reste le contrat cible d'I37, non une nécessité théorique ; seuls le type unique et **0/1 View** sont livrés, sans retour tableau. Le nombre de Composers déclarés par une View et le nombre de Views d'un Composer sont deux questions distinctes. Voir [Composer §3.2](composer.md#32-diff-pour-le-retour-tableau-tresolveresult).
 
-const nodeEditFormViewUiElements = {
-  formActions:  '.node-form__actions',
-  editorJsSlot: '[data-field-type="editorjs"]',
-  // querySelectorAll → 2 éléments → 2 instances de EditorJsComposer
-  mediaSlot:    '[data-field-type="media"]',
-  // querySelectorAll → 1 élément → 1 instance de MediaFieldComposer
-} satisfies TUIElements<typeof nodeEditFormViewUiEvents>;
-
-type TNodeEditFormViewContract = TViewContract<
-  typeof nodeEditFormViewFeatures,
-  typeof nodeEditFormViewUiEvents
->;
-
-class NodeEditFormView
-  extends View<TNodeEditFormViewContract>
-  implements TViewCallbacks<TNodeEditFormViewContract>
-{
-  get features()   { return nodeEditFormViewFeatures;   }
-  get uiEvents()   { return nodeEditFormViewUiEvents;   }
-  get uiElements() { return nodeEditFormViewUiElements; }
-
-  get composers() {
-    return {
-      editorJsSlot: EditorJsComposer,   // → 2 instances (2 éléments matchés)
-      mediaSlot:    MediaFieldComposer, // → 1 instance (1 élément matché)
-    };
-  }
-}
-```
-
-> **Ce que ce mécanisme n'est PAS** : ce n'est pas de la composition cachée.
-> `TUIContract` est compile-time, `uiElements` est résolu au bootstrap,
-> `composers` est statique, la logique de composition est dans le Composer (ADR-18).
-> La View reste aveugle au nombre d'éléments matchés au runtime.
->
-> **I36** : la View **ne compose jamais** d'autres Views.
-> Elle déclare des slots et des Composers associés, mais la décision
-> d'instanciation est entièrement portée par le Composer (ADR-18).
->
-> **Contrat** :
->
-> - Les clés de `get composers()` sont typées par `keyof TVC["ui"]` — le compilateur vérifie que chaque clé existe dans `uiEvents` (et donc dans `uiElements`).
-> - Les valeurs sont des constructeurs de Composer (`typeof Composer`).
-> - Les getters View suivent ADR-14 value-first : `rootElement` (Composer), `features`, `uiEvents`, `uiElements`, `templates`, `composers`.
+**I36** reste la séparation des responsabilités : la View déclare une composition par Composers et ne crée jamais directement d'autres Views. Un Behavior n'est pas une voie de composition parallèle : pas de composant, part ou existence propres, et aucun droit de lire ou produire dans le contenu attribué aux Composers. Les éléments peuvent être partagés entre clés de noms disjoints de la View et des Behaviors, jamais les autorités sur les parts.
 
 ---
 
@@ -1279,11 +1054,13 @@ class NodeEditFormView
 > N2/N3). `View<TVC>` garde **un seul générique** : le state local est porté
 > par un troisième champ du contrat, `TVC["local"]`, à côté de `features` et `ui`.
 
+**Lecture V0.9.4 limitée au cycle de vie et à l'imputation :** cette forme de contrat et les pipelines ci-dessous sont des propositions historiques non livrées, non un arbitrage nouveau de leur typage ou de leur ordonnancement détaillé. L'état local est initialisé dans l'unité autorisée de la View, éventuellement incluse dans celle du créateur, et prend fin avec son existence. L'état utilisé par un Behavior en fait partie, sans propriétaire ni cycle de vie distincts. Il peut changer pendant un traitement autorisé, y compris d'Event, sans créer de permission de Command. Toute projection physique reste post-validation ; callbacks et microtasks ne dispensent ni de ce préalable ni du contrôle d'occurrence (§4.8–§5).
+
 ### 7.0 Arbre de décision : localState vs domain state
 
 ```text
 Q1. Ce state pourrait-il interesser un autre composant ?
-    |   (autre View, Behavior, Feature, DevTools, analytics...)
+    |   (autre View, Feature ; Behavior n'est pas un composant)
     |
     +-- OUI --> domain state (Feature + Entity + Channel)
     |           Justification : la View n'a pas emit() (I1, I4).
@@ -1297,7 +1074,7 @@ Q2. Ce state doit-il survivre a la destruction de la View ?
     |
     +-- OUI --> domain state (Feature + Entity + Channel)
     |           Justification : le localState est lie a l'instance --
-    |           nettoye au onDetach() (I42.5). Il ne survit pas.
+    |           detruit avec la View (I42.5), pas par hook de cascade.
     |
     +-- NON --> localState suffit
                 Utiliser this.updateLocal(recipe) -- ADR-17.
@@ -1307,7 +1084,7 @@ Q2. Ce state doit-il survivre a la destruction de la View ?
 
 > **Critere de migration** (I42) : si un localState doit être observe par un autre
 > composant, il **DOIT** être migre vers Feature + Entity. Le localState est
-> strictement intra-View (ou intra-Behavior, ADR-17).
+> strictement intra-View, y compris la portion utilisée par son code Behavior (règle d'imputation).
 
 ### 7.1 Types localState
 
@@ -1344,62 +1121,23 @@ type TLocalKeyHandlers<TLocal extends TJsonSerializable> = {
 
 ### 7.2 Classe View — API localState complète
 
-> **Un seul générique, sans exception** :
-> `local` est un **troisième champ de `TViewContract`**, au même titre que
-> `features` et `ui` — **pas** un second générique sur la classe `View`.
-> `TViewContract` (livré avec 2 champs, `packages/view/src/bonsai-view.ts`)
-> gagnerait un troisième paramètre de type `L`, à défaut `never` — strictement
-> additif et rétrocompatible avec tout usage existant `TViewContract<F, U>`.
+Titre historique conservé ; **aucune API localState complète n'est livrée**. `TViewContract` possède aujourd'hui deux champs, `features` et `ui`, et `View<TVC>` un seul générique. L'ajout d'un champ `local` au contrat est la proposition historique d'ADR-17 ; son typage final et sa compatibilité ne sont pas validés par ce lot.
 
-```typescript
-// ⏳ Cible strate 2a — extension proposée du TViewContract livré (§0/§2 : 2 champs
-// aujourd'hui, features + ui). local est optionnel par défaut (never).
-type TViewContract<
-  F extends TFeatureContract = TFeatureContract,
-  U extends TUIContract = TUIContract,
-  L extends TJsonSerializable = never
-> = {
-  readonly features: F;
-  readonly ui: U;
-  readonly local: L;
-};
+| Nom historique proposé | Portée cible, sans signature garantie |
+| --- | --- |
+| `localState` | Déclaration de l'état initial pendant l'initialisation autorisée, non lors d'une réapparition DOM |
+| `updateLocal()` | Modification pendant le traitement de la View, soumise au rollback de **toute l'unité**, pas seulement à celui d'une recipe Immer |
+| `local` | Lecture interne confinée de la View ; aucun accès d'un autre composant, aucune réponse consultable ni diffusion |
+| `onLocal{Key}Updated()` | Réactions de projection proposées, imputées à la View ; ne sont ni admissions autonomes, ni hooks de cascade, ni autorisations d'écrire physiquement avant validation |
 
-// View reste à UN SEUL générique — TVC porte aussi `local`.
-abstract class View<TVC extends TViewContract = TViewContract> {
-  /**
-   * Declaration optionnelle du state local.
-   * Retourne l'etat initial -- appele une fois au premier `attached`.
-   * Un `detached -> attached` (re-montage par le Composer) reinitialise
-   * le localState en rappelant cette methode (I42.5).
-   */
-  protected get localState(): TVC["local"] { /* @abstract optionnel */ }
-
-  /**
-   * Mute le localState via une recipe Immer.
-   * Declanche le mecanisme dual N1/N2-N3 si l'etat a change.
-   *
-   * - **Synchrone** : `this.local` est a jour immediatement apres l'appel
-   * - **No-op** : si les patches sont vides (etat inchange), aucun callback ni re-projection
-   * - **Batch** : un seul appel = une seule re-projection
-   * - **Re-projection en microtask** : callbacks N1 synchrones, re-projection N2/N3 planifiee
-   * - **Erreur dans recipe** : Immer rollback, etat inchange, `MutationError` (ADR-05) sans metas
-   */
-  protected updateLocal(recipe: (draft: Draft<TVC["local"]>) => void): void;
-
-  /**
-   * Lecture de l'etat courant du localState (frozen / readonly).
-   * Disponible apres le premier `attached`, `undefined` avant.
-   */
-  protected get local(): Readonly<TVC["local"]>;
-}
-```
+Une annulation de destruction conserve l'état antérieur et la même occurrence : elle ne rappelle pas un initialiseur comme pour une nouvelle View. Après destruction validée, il n'y a pas de `detached → attached` réactivant cette occurrence ; une nouvelle View possède un nouvel état. La fin physique des références intervient après validation, sans hook applicatif pendant la cascade.
 
 ### 7.3 Mécanisme dual N1/N2-N3
 
 | Niveau | Mecanisme | Quand utiliser | Declenchement |
 | --- | --- | --- | --- |
-| **N1** | Callbacks `onLocal{Key}Updated(update: TLocalUpdate<T>)` | Mutation DOM directe (attributs, classes, texte) | **Synchrone** -- appele immédiatement après `updateLocal()` |
-| **N2/N3** | Selector `select: (data) => data.local?.xxx` dans `get templates()` | Re-projection automatique via pipeline PDR | **Microtask** -- planifie après les callbacks N1 |
+| **N1** | Callbacks `onLocal{Key}Updated(update: TLocalUpdate<T>)` proposés | Préparation de mutations de présentation | Ordre synchrone historiquement proposé ; écriture physique seulement post-validation |
+| **N2/N3** | Selector `select: (data) => data.local?.xxx` proposé dans `get templates()` | Préparation de re-projection via pipeline PDR | Microtask historiquement proposée ; ne remplace ni la validation ni le contrôle d'occurrence |
 
 Les deux mecanismes **ne s'excluent pas**. Un même `updateLocal()` peut declencher
 un callback N1 **et** une re-projection N2/N3 si les clés concernent des zones differentes.
@@ -1408,6 +1146,8 @@ un callback N1 **et** une re-projection N2/N3 si les clés concernent des zones 
 > reserve par le framework. Aucun Channel ne peut utiliser le namespace `local`.
 
 ### 7.4 Pipeline de mutation
+
+Pipeline historique non livré : les flèches de projection ci-dessous désignent la **préparation**, pas l'application physique. Une exception annule l'unité interne complète, dont les éventuelles opérations structurelles ; aucune restauration des effets hôte déjà engagés n'en découle. L'ordonnancement final reste à concevoir sous §2.5 et §2.7.
 
 ```text
 updateLocal(recipe)
@@ -1431,11 +1171,12 @@ updateLocal(recipe)
 
 | Phase | Comportement |
 | --- | --- |
-| `created` | localState non initialisé |
-| `wired` | localState non initialisé |
-| `attached` | `get localState()` est appelé -> état initial frozen stocké. `this.local` est accessible. |
-| `detached` | localState nettoyé (référence supprimée). `this.local` n'est plus accessible. |
-| `destroyed` | GC libère la mémoire |
+| Initialisation autorisée | État provisoire dans l'unité de la View et de son créateur ; aucune exigence de DOM déjà matérialisé |
+| Publication | État disponible pour les traitements autorisés de cette View, y compris son code Behavior ; aucun propriétaire Behavior distinct |
+| Échec de l'unité | Rollback interne commun ; une création abandonnée ne publie ni état ni désignation |
+| Destruction provisoire annulée | État et occurrence antérieurs conservés, sans réinitialisation |
+| Destruction validée | État prend fin avec la View ; aucun remontage de l'ancienne occurrence |
+| Après validation | Nettoyage physique des références ; GC n'est pas la définition de la fin logique |
 
 ### 7.6 Observabilité (DevTools)
 
@@ -1544,8 +1285,7 @@ class WizardView
 }
 ```
 
-> Le Behavior utilise le même mecanisme (`get localState()` + `updateLocal()`)
-> avec les mêmes 5 contraintes (ADR-17, I42). Voir [behavior.md §2.5](behavior.md#25-localstate).
+> Les mécanismes de cet exemple sont des propositions historiques non livrées ; ce lot n'en audite pas le typage détaillé. L'état utilisé par un Behavior appartient à la View, sans API ou cycle de vie Behavior autonome garanti. Voir [Behavior §2.5](behavior.md#25-localstate) pour l'imputation et le confinement, et §7.2 ci-dessus pour les limites de livraison.
 
 ---
 

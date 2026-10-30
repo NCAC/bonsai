@@ -5,7 +5,7 @@ Oct 30, 2026 · @ncac
 **Version : V0.9.4 — corrections de la revue académique du 30 octobre 2026 ; conformité documentaire distincte de l’alignement de l’implémentation.**
 
 > **Statut normatif.** Ce document fait autorité pour la théorie. Le guide, les gardes, la traçabilité et les fiches d’adaptateurs le développent sans modifier ses contrats. Les rapports datés conservent les constats historiques ; le [suivi des arbitrages V0.9.3](rapports/arbitrages-V0.9.3-2026-10-30.md) rattache les corrections aux 28 points de revue. Les choix maintiennent la propriété unique, la médiation, le domaine autonome et l’interface de projection ; ils ne promettent pas de transaction distribuée avec l’hôte.
-
+>
 > **Jalon V0.9.4.** Le [suivi des vingt corrections](rapports/corrections-V0.9.4-2026-10-30.md) rattache les amendements à la revue V0.9.3, conservée comme rapport historique. La causalité garantie est désormais celle des déclenchements observables : une notification non corrélable porte explicitement un antécédent inconnu (§2.7.4), jamais un parent inventé. Cette révision de contrat ne vaut ni preuve formelle de consistance ni note automatique de 10/10. Les ADR antérieurs Accepted ne sont pas réécrits par cette mise à jour ; leur éventuelle succession et l’alignement du code demeurent distincts.
 
 Les rapports de chaque jalon sont dans `docs/rapports/`. La matrice de traçabilité (`docs/tracabilite.md`) recense chaque élément de la théorie, et la table de conformité (`docs/gardes.md`) leurs gardes. L'historique des modifications est dans git.

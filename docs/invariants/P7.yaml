@@ -7,20 +7,21 @@
   nature: E
   parents: [P7]
   roles: [View]
-  enonce: La View n'a aucune responsabilité sur son propre cycle de vie — ni création, ni destruction, ni remplacement.
+  enonce: La View ne décide ni de sa création, ni de sa destruction, ni de son remplacement ; son existence appartient exclusivement à son Composer parent, y compris pendant une cascade annulable de destruction.
   # View n'expose que `mount()`, appelé par le Composer ; aucune destruction n'existe encore
   # (une View remplacée n'est pas détruite, cf. I20). Aucun test ne cite I19.
-  mode: type
+  mode: run
   etat: partiel
 
 - id: I20
-  nature: D
+  nature: C
   parents: [P7]
   roles: [Foundation, Composer, View]
-  enonce: Seuls la Foundation et les Composers créent, détruisent ou remplacent des Views.
+  enonce: Une View n'est enfant que d'un Composer ; la Foundation et les Views ne sont parents que de Composers. Le parent est seul propriétaire de l'existence de ses enfants et leur destruction entraîne celle de leurs descendants.
   pourquoi: >
-    Concentrer la création et la destruction à deux niveaux garantit qu'aucune View ne se recrée ni
-    ne se substitue elle-même (ADR-16, ADR-18, ADR-20).
+    D11 et §16.4–§16.6 séparent décision et rendu ; A2 et T3 fixent propriété et restitution.
+    La cascade est exécutée par l'infrastructure, de bas en haut, sans traitement applicatif,
+    et reste annulable avec son unité avant validation (§2.7.2).
   # Écart à P9 : règle structurelle non garantie avant l'exécution. `View` est exportée avec un
   # constructeur public et un `mount()` public : le code applicatif peut instancier et monter une
   # View lui-même. À remonter au compile-time (création réservée au Composer).
@@ -28,32 +29,33 @@
   etat: partiel
 
 - id: I36
-  nature: D
+  nature: C
   parents: [I20, P10]
   roles: [View, Composer]
-  enonce: La View ne compose jamais d'autres Views — elle déclare des slots, le Composer décide de l'instanciation.
+  enonce: La View déclare les slots dont elle attribue le contenu à ses Composers enfants, jamais des Views enfants ; seuls ces Composers décident quelles Views occupent leurs parts.
   pourquoi: >
     Si la View composait, elle recouvrirait le rôle du Composer et brouillerait la frontière entre
     décider et rendre (ADR-18).
   # View n'a aucune méthode de composition ; la déclaration des slots (`get composers()`) n'est pas
   # livrée. Seul l'en-tête de view.basic.test.ts cite I36 : aucun test ne le prouve.
-  mode: type
+  mode: run
   etat: partiel
 
 - id: I37
   nature: D
   parents: [I20]
   roles: [Composer]
-  enonce: Il n'existe qu'un seul type de Composer, qui gère 0..N Views hétérogènes dans un scope DOM fixe.
+  enonce: Un seul type d'API Composer exprime la composition de 0..N Views hétérogènes dans le contenu qui lui est attribué, sans recouvrement des parts ; cette multiplicité n'autorise ni transfert de part ni lecture des portions attribuées.
   pourquoi: >
-    Un type unique évite une famille de règles de cycle de vie différentes selon la variante ; la
-    multiplicité est portée par `resolve()`, pas par le typage du Composer (ADR-18).
+    Le type unique et la multiplicité portée par resolve() restent le choix de réalisation
+    compatible de l'ADR-18, non une conséquence nécessaire de la théorie. §16.6 impose
+    les frontières de propriété indépendamment de la forme du résultat.
   # Garanti par construction : une seule classe `Composer`, `resolve()` typé
   # `TResolveResult | null`. Partiel : 0/1 View seulement, N Views en strate 1d.
   mode: type
   etat: partiel
 
-# I58 (scope du Composer fixé) : déclaré dans P6.yaml sous I99, second parent I20.
+# I58 (durée de l'attribution du Composer) : P6.yaml sous I99, second parent I20.
 
 - id: I67
   nature: D

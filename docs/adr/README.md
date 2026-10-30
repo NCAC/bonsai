@@ -3,6 +3,8 @@
 > Le **pourquoi** de Bonsai : une décision par fichier, 30–80 lignes.
 > Le **quoi** (contrats, signatures) vit dans la spec ; les règles non négociables
 > dans le [registre des invariants](../spec/reference/invariants.md).
+>
+> **Autorité normative.** La [théorie validée](../theorie.md) prévaut sur tous les ADR, quel que soit leur statut. Un contrat incompatible est un écart à corriger, pas une alternative encore admissible. Les ADR tracent les décisions passées et justifient les choix de réalisation compatibles ; ils ne rouvrent pas les arbitrages théoriques. Voir la [règle de confiance](../README.md#règle-de-confiance-et-dalignement).
 
 ## Comment lire un ADR
 
@@ -14,9 +16,19 @@
 
 Dans l'index, ⚠️ / ⏳ signalent une livraison partielle ou à venir (ligne **Livré** de l'ADR).
 
-Un ADR est **vivant** : quand une décision évolue, il est réécrit en place et git
-garde l'historique. Il n'y a plus de statut `Superseded` ni `Suspended` : une
-décision abandonnée disparaît, une piste reportée va dans la [roadmap](../ROADMAP.md).
+Une décision Accepted ou Tested est conservée comme trace historique. Si elle
+change, un nouvel ADR documente sa succession, désigne explicitement la décision
+remplacée et distingue les obligations imposées par la théorie des choix de
+réalisation encore ouverts. La succession est référencée dans cet index ; elle
+n’efface pas les arguments ni les preuves de l’ancien contrat. Une proposition
+non acceptée peut évoluer ; une piste reportée va dans la [roadmap](../ROADMAP.md).
+
+Les statuts et indicateurs de livraison ci-dessous se rapportent aux contrats
+documentés par les ADR : ils n’attestent pas leur conformité à V0.9.4. Les
+incompatibilités déjà identifiées sont suivies dans le [plan de migration](../rapports/migration-invariants-runtime-V0.9.4-2026-10-30.md#7-successions-et-décisions-préparatoires).
+L’obligation d’alignement découle directement de la théorie, sans attendre un
+nouvel arbitrage sur cette obligation.
+
 Modèle : [TEMPLATE.md](TEMPLATE.md). Correspondance avec l'ancienne numérotation
 (`ADR-00xx`, `D1–D48`) : [archive/adr-v0](../archive/adr-v0/README.md).
 

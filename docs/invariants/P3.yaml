@@ -45,11 +45,14 @@
 - id: I25
   nature: C
   parents: [P3, P5]
-  roles: [View, Behavior]
-  enonce: Seuls les Views et Behaviors utilisent `trigger()` pour envoyer un Command.
-  # Feature, Composer et Foundation n'ont pas de `trigger` (capabilities.types) ; la View l'a.
-  # Le Behavior n'existe pas encore (strate 2b).
-  mode: type
+  roles: ["*"]
+  enonce: Une Command vise un Channel déclaré dans les limites des parties ; une Feature n'en adresse pas à une autre Feature, mais peut en adresser à un adaptateur du domaine. Le domaine n'adresse rien à un adaptateur de l'interface et n'en reçoit rien. Les Commands de l'interface restent soumises à I13 ; le Behavior agit au nom de sa View, et le Composer n'adresse aucune Command.
+  # A4.b, D17/D18, §16.7/§16.8 ; généralisation au-delà des seules View/Behavior.
+  # V0.9.4 : type → run pour les contrôles d'auteur, cible et partie ; état partiel conservé.
+  # Livré : trigger typé de View, absence de trigger sur Feature/Composer/Foundation.
+  # Non livré : Commands de Feature vers adaptateur domaine, rôles adaptateurs, garde D18 et imputation Behavior.
+  # Le test historique refusant tout trigger Feature ne prouve pas la capacité désormais autorisée.
+  mode: run
   etat: partiel
 
 - id: I4
@@ -64,11 +67,14 @@
 - id: I13
   nature: C
   parents: [P3, P5]
-  roles: [View]
-  enonce: La View est un point d'entrée (Command) et de projection (Event) — la causalité métier n'y transite jamais.
-  # Règle de conception : rien n'empêche un handler d'Event de View de déclencher un trigger.
-  mode: revue
-  etat: convention
+  roles: ["*"]
+  enonce: Un composant de l'interface n'adresse une Command que pendant une réaction à un fait admis d'indépendance établie ou une continuation corrélée déjà autorisée à commander, sous réserve des interdictions de son rôle. Event, relais local d'Event, résultat d'effet corrélé à un Event et observation d'antécédent inconnu n'accordent aucune permission. Une Query préalable conserve la permission de son auteur sans l'accorder au traitement consulté, toujours en lecture seule ; sa réponse n'est pas un déclencheur autonome.
+  # D18, A4.a/A4.d, §2.7.4, §9.11 ; transversal à toute l'interface, adaptateurs compris.
+  # V0.9.4 : revue/convention → run/cible ; permission dynamique, pas simple convention de handler.
+  # Non livré : View.trigger() ne contrôle aucun contexte ; un handler Event peut encore l'appeler.
+  # Les restrictions propres au rôle restent cumulatives : Composer ne commande jamais (I35).
+  mode: run
+  etat: cible
 
 - id: I3
   nature: C
@@ -89,16 +95,20 @@
   etat: partiel
 
 - id: I29
-  nature: D
+  nature: C
   parents: [P3]
   roles: [Channel]
-  enonce: "`reply()` retourne toujours `T` de façon synchrone ; `request()` retourne `T | null`."
+  enonce: Une Query rend synchroniquement une valeur du type de résultat déclaré, sans Promise ; ni l'absence de répondant ni une erreur technique ne sont converties en null. Une valeur null n'est admise que si le contrat métier la prévoit.
   pourquoi: >
-    Un replier ne fait que lire l'Entity déjà en mémoire : le rendre synchrone empêche une Request
-    de devenir un chemin d'effet asynchrone caché. Tout chargement async passe par un Command ou
-    un Event, donc reste traçable (P4). Voir ADR-02.
+    A3.g, G5 et G7 de la théorie V0.9.4 imposent une consultation synchrone en lecture seule,
+    sans réponse de substitution en cas d'échec. La consultation porte sur des ressources internes
+    accessibles, non sur un chargement extérieur ; la disponibilité et l'inactivité de la cible
+    restent obligatoires (§2.7.1). Le contrat T | null de l'ADR-02 est historique et doit être remplacé.
+  # V0.9.4, 2026-10-30 : livre → partiel ; appel direct livré, contrat complet non réalisé.
+  # Channel.request() retourne encore null sans répondant et après exception ; une Promise est acceptée.
+  # Les citations historiques d'I29 testent l'ancien contrat, pas la conformité du présent énoncé.
   mode: run
-  etat: livre
+  etat: partiel
 
 - id: I64
   nature: C
@@ -109,34 +119,32 @@
   etat: convention
 
 - id: I55
-  nature: D
+  nature: C
   parents: [I29]
   roles: [Channel]
-  enonce: Un replier qui throw ne propage jamais l'erreur — `request()` retourne `null`.
+  enonce: L'erreur technique d'une Query se propage à son auteur et entraîne l'échec de l'unité modifiante ou d'initialisation englobante selon G7 ; aucune réponse de substitution ni capture applicative ne peut transformer cet échec en validation réussie.
   pourquoi: >
-    Une Request lit l'état d'un autre domaine : si son replier échoue, la faute appartient à la
-    Feature qui répond, pas à celle qui demande, qui ne connaît ni son implémentation ni ses
-    erreurs (P1). Propager l'exception ferait franchir la frontière du domaine à une panne
-    étrangère, et obligerait chaque appelant — y compris la couche concrète, synchrone, qui
-    projette — à entourer une lecture d'un try/catch. L'échec se replie donc sur le cas que
-    l'appelant gère déjà : `null`, comme en l'absence de replier (I29). L'erreur n'est pas perdue,
-    elle est journalisée avec son `ns:request` : c'est un confinement, pas une dégradation
-    silencieuse (I102).
-  # `null` confond trois cas : aucun replier, replier en échec, réponse légitimement nulle —
-  # compromis assumé (ADR-02 rejette un `Result<T>`).
-  # Sans `strictNullChecks`, `T | null` se réduit à `T` : le compilateur n'oblige pas l'appelant
-  # à traiter `null`.
-  # Journalisation par `console.error`, sans metas ; ErrorReporter ⏳ (I65).
+    G7 et §2.5 de la théorie V0.9.4 interdisent de valider un traitement sur une consultation
+    techniquement échouée. Le rollback concerne toutes les opérations internes de l'unité,
+    y compris sa structure et ses messages différés, pas l'hôte ni un traitement déjà validé.
+    Le confinement par null des ADR-02/ADR-05 est incompatible avec cette obligation.
+  # V0.9.4, 2026-10-30 : règle historique inversée ; livre → cible.
+  # Channel.request() absorbe encore l'exception ; aucune unité de rollback englobante n'est livrée.
+  # Les anciens tests citant I55 prouvent le comportement désormais interdit, pas cette cible.
   mode: run
-  etat: livre
+  etat: cible
 
 - id: I65
-  nature: D
+  nature: C
   parents: [I55, I102]
   roles: [Channel]
-  enonce: L'erreur d'un replier est reportée via l'`ErrorReporter` avant que `null` ne soit retourné.
+  enonce: Toute erreur technique de Query est signalée avec son contexte causal, hors réponse et transport applicatif ; ce signalement ne remplace ni n'empêche la propagation et l'échec de l'unité exigés par I55.
   pourquoi: >
-    `null` seul rendrait l'échec silencieux : le reporting garantit qu'une erreur de replier n'est
-    jamais perdue, même si l'appelant ignore le `null` (ADR-03).
+    G7 exige le signalement de l'erreur avec son contexte causal, sans réponse de substitution.
+    L'observabilité ne doit donc ni blanchir une consultation échouée ni devenir un Event
+    contournant les règles de transport. Un ErrorReporter injectable reste un choix de réalisation,
+    non une exigence de la théorie ; le reporting avant retour de null de l'ADR-03 est abandonné.
+  # V0.9.4, 2026-10-30 : partiel → cible ; console.error existe, mais il accompagne encore null.
+  # Le signalement causal obligatoire n'est pas livré ; sa réalisation ne doit pas intercepter l'échec I55.
   mode: run
-  etat: partiel
+  etat: cible

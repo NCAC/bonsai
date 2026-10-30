@@ -3,6 +3,8 @@
 > Le **quoi** : contrats, signatures, sémantique, invariants.
 > Le **pourquoi** vit dans les [ADR](../adr/README.md) ; ce qui est réellement
 > livré se lit sur la ligne **Livré** de chaque ADR.
+>
+> **Autorité normative.** La [théorie validée](../theorie.md) est la source de confiance. La spécification en décline les contrats ; les ADR justifient des choix compatibles. Tout énoncé contraire doit être corrigé, même marqué stable, Accepted ou Tested. Les statuts historiques ci-dessous ne certifient pas un alignement intégral sur V0.9.4 ; les écarts identifiés sont suivis dans le [plan de migration](../rapports/migration-invariants-runtime-V0.9.4-2026-10-30.md).
 
 ## Structure
 
@@ -63,15 +65,16 @@ l'ADR et à sa strate ([ADR-31](../adr/ADR-31-strates-perimetre-v1.md)).
 
 ## Règles
 
-1. Un document dédié (`feature.md`, `entity.md`…) prévaut sur une vue d'ensemble (`README.md` de chapitre).
-2. La spec et les ADR ne se contredisent pas : si c'est le cas, l'un des deux est à corriger. En attendant, l'ADR fait foi.
+1. La théorie validée prévaut sur la spécification, les ADR et le registre. Aucun document aval ne peut y déroger ; appliquer la [règle de confiance](../README.md#règle-de-confiance-et-dalignement).
+2. Sous cette réserve, un document dédié prévaut sur une vue d’ensemble. Un ADR peut trancher un choix de réalisation compatible non fixé par la théorie ; en cas de contradiction, il faut vérifier cette compatibilité avant de lui donner prévalence. Il ne peut maintenir un contrat contraire à la théorie.
 3. La spec décrit le contrat en vigueur, sans historique : les versions antérieures sont dans git et dans l'[archive](../archive/adr-v0/README.md).
 
 ## Index des invariants par composant
 
-Les invariants sont définis dans [reference/invariants.md](reference/invariants.md),
-sauf I46–I56 (contrats TypeScript), définis dans
-[conventions-typage.md](6-transversal/conventions-typage.md). I59–I62 sont
+Le [registre YAML](../invariants/) est la source opérationnelle des invariants,
+sous l’autorité de la théorie. [reference/invariants.md](reference/invariants.md)
+et [conventions-typage.md](6-transversal/conventions-typage.md) en sont des
+présentations manuelles à maintenir alignées. I59–I62 sont
 réservés aux extensions de la Foundation ([roadmap](../ROADMAP.md)).
 
 L'index par composant est **généré** depuis le registre (champ `roles`) :

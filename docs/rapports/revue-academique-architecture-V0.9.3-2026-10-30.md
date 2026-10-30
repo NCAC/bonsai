@@ -62,7 +62,7 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [§7.1](../theorie.md#L216) et [A0.d](../theorie.md#L496) :**
 
 > Ressource associée à un composant déterminé, dont la seule opération exclusive est la destruction, et dont la destruction entraîne celle de ce composant.
-
+>
 > À tout composant qui n'est pas une racine est associée une existence, qui n'est une part d'aucune ressource ; créer un composant consiste à créer son existence. L'existence d'une racine n'est admise par aucun composant.
 
 **Problème.** « Une existence » peut se lire comme une quantification existentielle, tandis que les preuves utilisent une association fonctionnelle. A1.a assure un propriétaire unique *par ressource* ; cela ne suffit pas à assurer une existence unique *par composant*, donc un parent unique.
@@ -78,7 +78,7 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [§12](../theorie.md#L486) et [preuve de T3](../theorie.md#L672) :**
 
 > Lorsque plusieurs racines coexistent dans un même hôte, chacune forme avec ses descendants un modèle distinct, et les axiomes s'appliquent à chacun séparément.
-
+>
 > À la frontière de validation, toute ressource restante du modèle a un propriétaire encore présent dans le modèle (A1.a, A2.e, §2.5).
 
 **Problème.** Deux hypothèses naturelles sont utilisées : tout composant du modèle est relié à sa racine par une chaîne finie de parents ; le propriétaire d’une ressource actuelle est un composant encore présent. La première apparaît surtout dans un énoncé conditionnel sur plusieurs racines ; la seconde ne découle d’A1.a que si la relation de propriété est explicitement interprétée sur les composants actuels.
@@ -96,9 +96,9 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [§8.2](../theorie.md#L256), [§5.1](../theorie.md#L150) et [§6.5](../theorie.md#L202) :**
 
 > Part d'un espace des identités, dont la seule opération exclusive est l'attribution de parts en son sein.
-
+>
 > Opération qui modifie ou détruit une ressource.
-
+>
 > Lorsque la part prend fin, la portion qu'elle occupait (6.6) est rendue à la ressource distribuable dont elle a été soustraite : c'est la limite « jusqu'à la fin de cette part » de la définition (A2.d, T3).
 
 **Problème.** Rendre une portion au contenant le modifie. Cette restitution est donc une opération exclusive, mais n’est pas une attribution de nouvelle part. La définition de l’identité exclut ainsi une modification requise par la fin d’une identité subordonnée.
@@ -128,7 +128,7 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [D12](../theorie.md#L788) et [§16.6](../theorie.md#L856) :**
 
 > Un Composer ne modifie son contenu que pour créer ou retirer les éléments des parts qu'il attribue.
-
+>
 > il ne modifie son contenu que pour attribuer des parts, n'est propriétaire d'aucun état autre que le contenu de son slot et l'existence de ses Views, n'admet aucun fait de l'hôte et n'adresse aucune Command (D12).
 
 **Problème.** D12 permet le retrait ; sa reformulation au §16.6 ne permet plus que l’attribution. Or retirer une View entraîne aussi restitution de sa portion, donc modification du contenu sans nouvelle attribution.
@@ -144,7 +144,7 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [A3.f](../theorie.md#L542) et [T2](../theorie.md#L655) :**
 
 > Tout message est adressé à un Channel, émis sur un Channel, ou local.
-
+>
 > La partition est donc exhaustive sous A3.j et exclusive par le contrat déclaré, non par une inférence sur l’intention cachée ou l’effet constaté.
 
 **Problème.** A3.j sépare bien les deux modes des messages adressés. Il ne dit pas expressément qu’une même occurrence de message ne peut être à la fois adressée et émise. L’alternative d’A3.f peut se lire comme une disjonction inclusive. Le cas local est mieux séparé par « sans Channel » dans sa définition.
@@ -160,9 +160,9 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [§2.5](../theorie.md#L70) et [commentaire de G5](../theorie.md#L613) :**
 
 > La racine crée ses enfants déclarés et établit leurs Channels avant les consultations initiales.
-
+>
 > Les Queries initiales respectent G5 et ne peuvent viser une initialisation encore active.
-
+>
 > Elles lisent donc ses ressources internes validées, sans garantie d’immobilité du support extérieur ni d’instantané global entre plusieurs traitements.
 
 **Problème.** G5 refuse une cible présente dans la pile active. Cela ne refuse pas une cible dont le Channel existe, mais dont l’initialisation n’a pas encore commencé. En outre, une initialisation terminée pendant l’amorçage reste susceptible d’être abandonnée avec celui-ci : « initialisé », « consultable » et « globalement validé » ne sont pas synonymes.
@@ -178,9 +178,9 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [§2.5](../theorie.md#L74), [§11.6](../theorie.md#L466) et [A5, commentaire](../theorie.md#L588) :**
 
 > Leur achèvement asynchrone n’est pas attendu ; leurs résultats et les notifications synchrones de l’hôte sont admis puis mis en file, jamais traités par réentrance.
-
+>
 > L’admission d’un fait est un préambule sans mutation applicative qui soumet un message local au composant admetteur.
-
+>
 > L'expiration d'une minuterie ou d'un rappel d'animation est un fait provoqué : elle est admise par le composant qui les a armés, et ne relève d'aucun adaptateur de l'hôte (D7).
 
 **Problème.** Un composant peut disparaître avant le résultat d’un effet, d’une minuterie ou d’une notification déjà engagée. G8 conserve le contexte, mais ne crée pas un admetteur encore vivant. G3 ne suffit pas : un message local n’a pas de Channel.
@@ -196,7 +196,7 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [§2.5](../theorie.md#L74) :**
 
 > Après validation interne, les effets préparés sont engagés dans leur ordre de préparation, avant la prochaine délivrance différée.
-
+>
 > Une erreur d’application ne revient pas sur la validation déjà acquise : elle produit un fait d’échec et ne fait pas passer une intention publiée pour un succès.
 
 **Problème.** Le texte peut se lire comme exigeant la poursuite de tous les effets, mais ne traite pas explicitement les dépendances ni les effets rendus impossibles par un échec précédent. Un ordre total de tentative ne définit pas ce qu’il faut faire du suffixe après erreur.
@@ -212,7 +212,7 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [G8](../theorie.md#L605) et [B.4](../theorie.md#L1177) :**
 
 > Un message possède un seul parent causal de déclenchement ; les consultations s’y inscrivent sans remplacer le contexte de leur auteur à son retour.
-
+>
 > Une politique déclarée peut retenir une notification, notamment la dernière, et abandonner les autres (D19). L'infrastructure de communication conserve le contexte de la notification retenue : le résultat continue ce seul déclenchement.
 
 **Problème.** Sélectionner une notification déjà contextualisée n’est pas la même opération qu’identifier le déclencheur d’une notification produite par l’hôte. Un navigateur peut coalescer plusieurs changements et ne pas fournir d’identifiant corrélant son événement aux effets demandés. G8 pose une garantie absolue sans expliciter les conditions permettant de la réaliser pour ces sources.
@@ -228,7 +228,7 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [A5.d](../theorie.md#L582) et [D10](../theorie.md#L786) :**
 
 > Un fait de l'hôte ou d'un système extérieur est admis par un seul composant.
-
+>
 > Un fait de l'hôte qui survient dans une part est admis par le propriétaire de cette part.
 
 **Problème.** L’unicité d’admission exige de décider quand deux observations représentent le même fait. « Fait » est admis comme métalangage, mais reçoit ici une fonction technique d’identité et de routage. Une action humaine, un événement navigateur, ses passages dans plusieurs écouteurs et les événements consécutifs ne sont pas nécessairement la même unité.
@@ -244,7 +244,7 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [§11.6](../theorie.md#L466) et [18.15](../theorie.md#L991) :**
 
 > Un support physique peut changer hors du modèle ; sa nouvelle observation n’est intégrée qu’à son admission.
-
+>
 > Un autre composant consulte le propriétaire par Query.
 
 **Problème.** Le propriétaire est autorisé à accéder physiquement au support dans son périmètre. Le texte ne dit pas assez clairement si une Query rend seulement l’observation déjà admise, ou peut échantillonner le support à cet instant. Une nouvelle observation intégrée pendant une Query serait en tension avec le message local d’admission obligatoire et l’interdiction d’y produire un message différé.
@@ -260,7 +260,7 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [G2](../theorie.md#L599) et [§16.5](../theorie.md#L839) :**
 
 > Elle ne modifie ni un message, ni son contexte causal, ni une réponse.
-
+>
 > Elle peut en transmettre une valeur, figée, dans une Command autorisée par D18 ;
 
 **Problème.** G2 contraint l’infrastructure, pas expressément l’auteur d’une charge utile détachée. Le caractère « figé » est prescrit localement pour la View, sans contrat général de capture. Interdire les références vers des ressources ne suffit pas à définir le partage d’objets mutables ne désignant plus ces ressources.
@@ -276,7 +276,7 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [D8](../theorie.md#L784) et [G1](../theorie.md#L598) :**
 
 > Un message émis est délivré aux propriétaires des abonnements dans l'ordre des abonnements ; ces délivrances prennent rang au moment de l'émission.
-
+>
 > un message émis sur un Channel aux seuls propriétaires d'un abonnement à ce Channel
 
 **Problème.** Le rang paraît fixé à l’émission, mais l’éligibilité n’est pas explicitement liée à l’abonnement précis présent à cet instant. Le cas du composant détruit est traité par T3 ; celui d’un abonnement détruit et remplacé alors que le composant reste vivant ne l’est pas.
@@ -292,9 +292,9 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [énoncé de T8](../theorie.md#L740), [commentaire de T8](../theorie.md#L748) et [§11.6](../theorie.md#L470) :**
 
 > Tout effet du modèle sur un support de l’hôte est autorisé par une ressource admise ou une part issue de celle-ci par attribution, dont le propriétaire est unique dans ce modèle.
-
+>
 > L'historique, l'adresse, le titre du document ou le stockage local ne peuvent donc être modifiés que par le composant qui les a admis.
-
+>
 > Son propriétaire exerce l'autorité sur cette portion ; le propriétaire de la ressource distribuable en est privé tant que la part existe.
 
 **Problème.** Le résultat principal distingue l’admetteur et les propriétaires de parts ; sa conclusion en prose les confond. Un propriétaire de part peut avoir autorité sans avoir admis le support initial. Les restrictions supplémentaires du catalogue ne découlent pas de T8 seul.
@@ -338,7 +338,7 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [introduction du §14](../theorie.md#L617) et [L1](../theorie.md#L630) :**
 
 > L1 est le corollaire immédiat d’une prémisse explicite ; T2 nomme et classe les contrats imposés par A3.j.
-
+>
 > L1 est une reformulation utile d’A3.i, non une découverte déduite d’A3.c.
 
 **Problème.** Le texte est honnête : il ne revendique plus de découverte indue. Mais un lemme muni d’une démonstration qui répète sa prémisse apparaît au même niveau que T5, résultat réellement contraignant sur les transitions. Un lecteur peut compter ces entrées comme autant de résultats indépendants ou prendre leur nombre pour une mesure de puissance déductive.
@@ -354,7 +354,7 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [18.30](../theorie.md#L969) et [D12](../theorie.md#L788) :**
 
 > La granularité et l'admetteur d'un clic ou d'un déplacement du focus hors de la View concernée, notamment dans une portion non attribuée, restent à décider sans double admission.
-
+>
 > n'admet aucun fait de l'hôte et n'adresse aucune Command.
 
 **Problème.** L’ouverture est correctement déclarée ; elle n’est ni une contradiction cachée ni une régression V0.9.3. Cependant, le lecteur doit encore savoir ce qu’il peut livrer en V1 lorsqu’un besoin courant, comme fermer un menu au clic extérieur, dépend de cette question. Un Composer peut avoir la portion cible sans être autorisé à admettre le fait ; les raccourcis document déclarés ne constituent pas une permission générique de capture.
@@ -370,7 +370,7 @@ Les citations en bloc sont reproduites textuellement ; les liens renvoient à le
 **Citations exactes — [§15.2](../theorie.md#L773) et [§9.10](../theorie.md#L354) :**
 
 > Elle ne rétrécit pas la théorie : un autre modèle conforme aux axiomes pourrait décider autrement.
-
+>
 > Référence d'un propriétaire vers une ressource dont il est propriétaire ou vers le périmètre de l'hôte lié à cette ressource, ou d'un parent vers son enfant.
 
 **Problème.** Deux distinctions utiles doivent être rendues explicites. Premièrement, une décision ne change pas les axiomes, mais réduit bien les réalisations conformes au profil Bonsai concerné : une application V1 ne peut pas simplement choisir une autre décision. Deuxièmement, la référence parent-enfant autorisée pour la structure ne doit pas être comprise comme une permission d’appeler ses méthodes métier ou de lire son état. A3.a/A3.c et leurs contre-exemples l’interdisent déjà ; c’est l’interface de lecture qui manque de précision.

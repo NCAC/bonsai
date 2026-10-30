@@ -1,6 +1,6 @@
-# Couche concrète — Composants éphémères
+# Couche concrète — Ancrage, composition et projection
 
-> **Foundation, Composer, View, Behavior — ce qui touche le DOM**
+> **Foundation, Composer et View sont des composants ; Behavior est du code imputé à la View**
 
 [← Retour à l'index](../README.md) · [← Couche abstraite](../3-couche-abstraite/README.md)
 
@@ -8,46 +8,39 @@
 
 ## Vue d'ensemble
 
-La couche concrète contient les composants qui **gèrent le DOM**. Ils sont créés et détruits au gré des changements de route, de l'état applicatif, ou des décisions des Composers. Leur cycle de vie est éphémère — seule la couche abstraite persiste.
+La couche concrète réalise l'interface dans les périmètres admis ou attribués. La [théorie](../../theorie.md), notamment D3/D11–D13 et §16.4–§16.7, prévaut sur les anciens contrats d'API. Ce lot documentaire ne livre pas le protocole de parts, de destruction et de nettoyage décrit dans les pages dédiées.
 
 ### Caractéristiques communes
 
-- **Éphémères** : créés et détruits dynamiquement (sauf Foundation)
-- **Liés au DOM** : chaque instance gère un élément ou une région HTML
-- **Pilotés par la couche abstraite** : réagissent aux événements et au state des Features
-- **Trois niveaux d'altération DOM** (ADR-16) : N1 (attributs, classes, texte), N2 (insertion/suppression de nœuds), N3 (remplacement de sous-arbre complet)
+- **Durée logique** : la Foundation persiste pendant la vie de sa racine ; les Composers et Views suivent leur parent, pas la seule présence physique d'un nœud.
+- **Parts exclusives** : attribuer un contenu le soustrait au parent ; la fin de la part le restitue, sans transfert de propriété.
+- **Projection du domaine** : aucune autorité métier indépendante ; Composer sans Command ni état de présentation supplémentaire.
+- **Niveaux N1/N2/N3 historiques** : choix d'API subordonnés à la propriété, jamais un droit d'empiéter sur les parts attribuées.
 
 ---
 
 ## Composants
 
-L'ordre suit le **flux physique du DOM**, du parent vers l'enfant :
+L'ordre suit la composition logique ; le Behavior n'ajoute pas un enfant à l'arbre :
 
 | # | Composant | Rôle | Altérations DOM | Document |
 | --- | --- | --- | --- | --- |
-| 1 | **Foundation** | Point d'ancrage `<body>`, singleton persistant | N1 uniquement | [foundation.md](foundation.md) |
-| 2 | **Composer** | Décideur de rendu : `resolve()` → quelle View ? | — (pas d'accès DOM direct) | [composer.md](composer.md) |
+| 1 | **Foundation** | Une par racine, élément admis configurable (`body` par défaut) | Périmètre admis hors contenu attribué ; configuration non livrée | [foundation.md](foundation.md) |
+| 2 | **Composer** | Décideur de composition, parent des Views | Structure des parts et éléments correspondants seulement ; protocole complet non livré | [composer.md](composer.md) |
 | 3 | **View** | Rendu et interaction UI | N1 livré ; N2, N3 via templates ⏳ | [view.md](view.md) |
-| 4 | **Behavior** | Plugin UI réutilisable, aveugle à sa View hôte (⏳ strate 2) | N1, N2 (jamais N3 — I45) | [behavior.md](behavior.md) |
+| 4 | **Behavior** | Code réutilisable aveugle, pas un composant ; non livré | Opérations imputées à la View, hors contenu de ses slots | [behavior.md](behavior.md) |
 
-> **Foundation en premier** : c'est le `<body>`, la racine de tout le rendu. Les Composers y sont attachés, les Views sont résolues par les Composers, et les Behaviors enrichissent les Views.
+> **Parenté réservée** : Foundation et View ne sont parents que de Composers ; une View n'est enfant que d'un Composer. Un Behavior n'a ni existence, ni identité, ni part propres.
 
 ---
 
 ## Flux de vie typique
 
-```text
-Foundation (body, persistant)
-  └─ Composer (décide)
-       └─ View (affiche, éphémère)
-            ├─ Behavior A (enrichit)
-            └─ Behavior B (enrichit)
-```
-
-1. **Foundation** démarre au bootstrap — elle est le seul composant concret persistant
-2. **Composer** appelle `resolve()` au montage, puis ⏳ à chaque Event écouté, pour décider quelle View instancier
-3. **View** est créée et montée ; ses handlers DOM et Channel sont câblés (template PDR ⏳)
-4. **Behavior** ⏳ est instancié depuis `get behaviors()` de la View et s'attache à ses propres clés UI (N1/N2)
+1. **Foundation** est créée par la racine au démarrage ; elle admet l'élément déclaré et attribue le contenu de slots à ses Composers.
+2. **Composer** décide quelles Views occupent des parts disjointes du contenu reçu. Le livré offre `resolve()` pour 0/1 View, sans écoute Channel applicative.
+3. **View** reçoit à sa création une désignation de sa part ; la résolution contrôlée cible diffère du `document.querySelector()` global livré. Elle peut déclarer des Composers enfants, mécanisme non livré.
+4. **Behavior** contribue au code de la View : une admission, réactions dans l'ordre déclaré et unité commune. La forme de déclaration reste à concevoir.
+5. **Destruction** : descendants et restitutions de bas en haut dans l'unité annulable, aucun hook applicatif pendant la cascade, nettoyage physique après validation. Le code livré oublie encore les références View sans désabonnement.
 
 ---
 

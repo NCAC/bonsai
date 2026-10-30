@@ -12,7 +12,7 @@ docs/
 ├── gardes.md     ← Table de conformité : obligations, gardes et scénarios requis
 ├── adaptateurs/  ← Fiches des adaptateurs de l'hôte navigateur (annexe B de la théorie)
 ├── rapports/     ← Rapports de travail sur la théorie : audits, registre, écarts (non normatifs)
-├── invariants/   ← Registre des invariants : les RÈGLES, leur état et leur pourquoi (source de vérité)
+├── invariants/   ← Registre opérationnel des règles, états et justifications (subordonné à la théorie)
 ├── spec/          ← Spécification : le QUOI (contrats, signatures, invariants)
 ├── adr/          ← Décisions : le POURQUOI (ADR-01 à ADR-34)
 ├── guides/       ← Conventions et mode d'emploi : le COMMENT
@@ -28,6 +28,19 @@ docs/
 ## 🌱 Théorie — [theorie.md](theorie.md)
 
 La théorie fait autorité sur la spécification, les ADR et le registre : en cas d'écart, ce sont eux qui se corrigent.
+
+### Règle de confiance et d’alignement
+
+**Tout le corpus actif, les contrats TypeScript, les tests, le code et les artefacts générés doivent correspondre au corps théorique validé.** Leur existence, leur ancienneté, un statut Accepted/Tested ou une suite de tests verte ne peuvent justifier une exception à la théorie.
+
+| Niveau | Responsabilité | Traitement d’un écart |
+| --- | --- | --- |
+| Théorie validée | Source normative de confiance ; fixe les obligations et les arbitrages déjà tranchés | Une évolution exige un amendement explicite et tracé de la théorie, jamais une dérogation implicite en aval. |
+| Registre, spécification et ADR | Déclinent les obligations ; les ADR justifient les choix de réalisation restant compatibles | Corriger le document divergent ; un ADR ne remet pas en vote une obligation déjà fixée par la théorie. |
+| Guides, tests, code et artefacts | Expliquent, vérifient ou réalisent les contrats | Corriger les instructions, assertions et mécanismes incompatibles ; régénérer les sorties depuis leur source. |
+| Rapports historiques et archives | Conservent les faits et décisions de leur époque, sans autorité sur le contrat courant | Conserver leur contenu historique et expliciter leur portée ; ne pas les réécrire pour simuler un alignement passé. |
+
+L’alignement est **obligatoire**, sa réalisation peut être **progressive** : tout écart restant doit être identifié et suivi, sans être présenté comme conforme. Une succession d’ADR trace le remplacement d’une ancienne décision ; elle n’est pas une autorisation préalable pour appliquer une obligation théorique déjà validée. Les choix réellement ouverts portent uniquement sur les mécanismes compatibles avec cette obligation.
 
 | Document | Rôle |
 | --- | --- |
@@ -64,7 +77,7 @@ correspondance dans [spec/README.md](spec/README.md#anciens-identifiants-rfc-000
 
 ## 🧭 Décisions — [adr/](adr/README.md)
 
-34 ADR **vivants** (30–80 lignes), groupés en 7 chapitres : communication et
+34 ADR répertoriés (30–80 lignes), groupés en 7 chapitres : communication et
 runtime, couche abstraite, contrats typés, couche concrète, rendu,
 distribution et build, processus. Chaque ADR porte une ligne **Livré**
 (✅ / ⚠️ / ⏳) qui dit ce que le code implémente réellement.
@@ -87,6 +100,7 @@ distribution et build, processus. Chaque ADR porte une ligne **Livré**
 | découvrir la théorie | [Guide pédagogique](theorie-explication-pedagogique.md), puis [Théorie V0.9.4](theorie.md) |
 | retrouver une obligation et ses contrôles requis | [Traçabilité](tracabilite.md), puis [Gardes](gardes.md) |
 | comprendre les corrections de la dernière revue | [Suivi V0.9.4](rapports/corrections-V0.9.4-2026-10-30.md) |
+| suivre la migration du registre et du code vers V0.9.4 | [Diagnostic, plan et lots appliqués](rapports/migration-invariants-runtime-V0.9.4-2026-10-30.md) — trois lots documentaires appliqués : Query/Composer, causalité/permissions, propriété/cycle de vie ; runtime non migré |
 | comprendre l'architecture | [Philosophie](spec/1-philosophie.md), puis [Architecture](spec/2-architecture/README.md) |
 | connaître les règles non négociables | [Arbre des invariants](invariants/generated/arbre.md) (registre) · [Invariants](spec/reference/invariants.md) (matrice détaillée) |
 | connaître les règles et les écarts d'un composant | [Invariants par rôle](invariants/generated/roles/README.md) (vues générées) |
