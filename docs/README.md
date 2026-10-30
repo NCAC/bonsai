@@ -8,7 +8,7 @@
 docs/
 ├── theorie.md    ← Théorie : vocabulaire, axiomes, garanties, décisions, rôles (fait autorité)
 ├── theorie-explication-pedagogique.md ← Guide d'initiation à la théorie (non normatif)
-├── tracabilite.md ← Matrice de traçabilité, générée depuis la théorie
+├── tracabilite.md ← Index de traçabilité V0.9.3, aligné sur la théorie
 ├── gardes.md     ← Table de conformité : chaque obligation, sa garde et son test
 ├── adaptateurs/  ← Fiches des adaptateurs de l'hôte navigateur (annexe B de la théorie)
 ├── rapports/     ← Rapports de travail sur la théorie : audits, registre, écarts (non normatifs)
@@ -31,12 +31,14 @@ La théorie fait autorité sur la spécification, les ADR et le registre : en ca
 
 | Document | Rôle |
 | --- | --- |
-| [theorie.md](theorie.md) | Termes, axiomes A0–A5, garanties G1–G7, conséquences, objectifs, décisions D1–D18, rôles, gardes, annexes |
+| [theorie.md](theorie.md) | V0.9.3 : 52 termes, axiomes A0–A5, garanties G1–G8, conséquences, objectifs, décisions D1–D19, rôles, gardes, annexes |
 | [theorie-explication-pedagogique.md](theorie-explication-pedagogique.md) | Guide d'initiation, avec un exemple de boutique filé de bout en bout |
 | [tracabilite.md](tracabilite.md) | Chaque élément de la théorie : catégorie, statut, dépendances, justification |
 | [gardes.md](gardes.md) | Chaque obligation du code applicatif : niveau de garde, invariants, test |
 | [adaptateurs/](adaptateurs/README.md) | Les treize adaptateurs de l'hôte navigateur, en fiches de 30 rubriques |
 | [rapports/](rapports/) | Audit du noyau (V0.7), gardes (V0.9.1), registre rattaché, écarts du dépôt, audit de cohérence (V0.9.2) |
+
+Les [28 arbitrages du 30 octobre 2026](rapports/arbitrages-V0.9.3-2026-10-30.md) sont intégrés au socle documentaire V0.9.3. Les rapports antérieurs restent historiques. Les contrats de la spécification, les ADR et le registre opérationnel restent soumis à la théorie ; leur alignement intégral, leurs vues générées et la livraison du runtime ne sont pas présumés réalisés par cette passe. Les évolutions d’ADR Accepted suivent leur procédure de supersession. Le clic ou déplacement du focus hors d’une View reste une question ouverte (18.30).
 
 ## 📐 Spécification — [spec/](spec/README.md)
 

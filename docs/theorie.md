@@ -1,8 +1,10 @@
-# Bonsai — Vocabulaire fondamental V0.9.2
+# Bonsai — Vocabulaire fondamental V0.9.3
 
-Oct 29, 2026 · @ncac
+Oct 30, 2026 · @ncac
 
-**Version : V0.9.2 — registre, guide et conformité (en cours : reste l'alignement du dépôt).**
+**Version : V0.9.3 — arbitrages de cohérence validés le 30 octobre 2026 ; alignement de l’implémentation distinct de la conformité documentaire.**
+
+> **Statut normatif.** Ce document fait autorité pour la théorie. Le guide, les gardes, la traçabilité et les fiches d’adaptateurs le développent sans modifier ses contrats. Les rapports datés conservent les constats historiques ; le [suivi des arbitrages V0.9.3](rapports/arbitrages-V0.9.3-2026-10-30.md) rattache les corrections aux 28 points de revue. Les choix maintiennent la propriété unique, la médiation, le domaine autonome et l’interface de projection ; ils ne promettent pas de transaction distribuée avec l’hôte.
 
 Les rapports de chaque jalon sont dans `docs/rapports/`. La matrice de traçabilité (`docs/tracabilite.md`) recense chaque élément de la théorie, et la table de conformité (`docs/gardes.md`) leurs gardes. L'historique des modifications est dans git.
 
@@ -32,6 +34,8 @@ Un terme primitif n'est pas défini à partir d'autres termes de la théorie. So
 
 Chaque définition exprime une seule notion ; n'emploie ni le terme défini ni un synonyme ; n'utilise que des termes primitifs, des termes antérieurs dans la chaîne du §17 et le métalangage ; ne dépend d'aucun rôle dérivé ; ne comporte aucun exemple ; ne prescrit aucun mécanisme d'implémentation.
 
+Dans les §4 à §11, le premier paragraphe après chaque titre est la **définition**. La rubrique **Dépendances** en décrit les dépendances définitoires. Les paragraphes suivants sont des **commentaires informatifs**, sauf les paragraphes explicitement marqués **Prescription normative**. Les commentaires peuvent renvoyer à des notions ultérieures, mais ne constituent aucune prémisse supplémentaire. Une prescription normative tire son autorité de la règle nommée, ou assume explicitement le statut de règle de lecture ; elle ne se dissimule pas dans une définition.
+
 ### 2.3 Métalangage admis
 
 Sont admis sans définition : action, auteur, changer, code applicatif, commencer, contenir, continuer, déclarer, délimiter, délivrer, démarrage, désigner, destinataire, détruire, distinguer, ensemble, erreur, exécuter, exécution, exister, fait, information, limite, matérialiser, modifier, opération, partie, produire, règle, relation, signaler, suite, transmettre, utiliser, utilisateur.
@@ -50,7 +54,7 @@ Une notion a un seul terme canonique ; les synonymes sont exclus des énoncés n
 - `infrastructure de communication`, et non `médiateur`, `framework` ou `Radio` ; le terme s'emploie toujours sous sa forme complète. « Bonsai » désigne la théorie et le logiciel dans leur ensemble ;
 - `interface utilisateur`, et non `couche concrète` ;
 - `Channel`, et non `canal` ;
-- `Query`, et non `Request` ; en français, « consultation ». Avec `Command`, le couple suit la séparation commande-consultation : une Command change sans rendre, une Query rend sans changer (A3.g, T2) ;
+- `Query`, et non `Request` ; en français, « consultation ». Une Command demande une action sans réponse et peut être refusée ou sans effet ; une Query demande une connaissance en lecture seule et rend une réponse en cas de succès (A3.g, A3.j, T2) ;
 - `namespace`, uniquement pour une représentation textuelle d'identité ;
 - `adresser`, `émettre`, `recevoir` et `traiter` désignent quatre actes distincts (§9) ;
 - `création`, `attribution` : deux actes distincts ; il n'existe aucun transfert de propriété (A2.c).
@@ -61,7 +65,15 @@ Une notion a un seul terme canonique ; les synonymes sont exclus des énoncés n
 
 Une définition dit **ce qu'est** une notion. Un axiome dit **ce qui est permis, interdit ou obligatoire** ; chacune de ses clauses doit pouvoir être fausse dans un contre-exemple concevable, qui l'accompagne.
 
-**Règle de lecture.** Les axiomes sont satisfaits à l'issue de chaque opération et de chaque fin de racine. Les états intermédiaires au cours d'une opération n'y sont pas soumis. G5 garantit que ces issues se succèdent : deux traitements ne se chevauchent pas. Un traitement interrompu par une erreur est sans effet sur les ressources du modèle (G7) : son issue est l'état qui le précédait.
+**Règle de lecture — autorité et validation.** Les règles d’autorité, d’accès, de médiation et de causalité s’appliquent pendant toute l’exécution. Les invariants d’état sont vérifiés à la validation d’un traitement modifiant, à la réussite de l’amorçage et à la fin de la racine. Un traitement modifiant est un traitement autre qu’une consultation, même s’il ne change finalement rien. Ses opérations internes peuvent produire des états intermédiaires ; elles ne constituent pas chacune une validation. Une consultation imbriquée ne valide pas l’état de son auteur. G5 interdit d’interroger un composant actif ; A3.g impose la lecture seule transitive. Les échecs suivent G7 : seules les ressources internes bénéficient du rollback, pas les effets déjà appliqués à l’hôte.
+
+**Règle de lecture — amorçage et création.** L’amorçage est la phase exceptionnelle d’initialisation causée par le démarrage, avant ouverture du transport applicatif différé. La racine crée ses enfants déclarés et établit leurs Channels avant les consultations initiales. L’initialisation des états et de la composition est autorisée pendant cette phase ; les messages différés attendent sa réussite. Les admissions survenues entre-temps attendent sa clôture. Un échec abandonne le modèle en construction et ses messages différés ; aucune application partiellement démarrée n’est publiée. Les effets hôte suivent les limites de G7. Après l’amorçage, l’initialisation d’un composant créé pendant un traitement fait partie de l’unité de validation de son créateur, y compris pour l’échec ; elle reste exécutée par le composant propriétaire des ressources concernées. Cette inclusion ne délègue aucune autorité. Les Queries initiales respectent G5 et ne peuvent viser une initialisation encore active.
+
+**Règle de lecture — effets extérieurs.** Un traitement prépare ses effets irréversibles sur l’hôte et les systèmes extérieurs ; ils ne sont engagés qu’après validation de son état interne. Leur application n’est pas une transaction distribuée : plusieurs effets peuvent réussir partiellement, et leur échec est admis par un nouveau message. Différer une projection DOM ne rend pas sa série d’écritures atomique. Aucune émission ne doit annoncer la réussite d’un effet encore seulement prévu. Les ressources d’observation et les intentions enregistrées restent distinctes de la matérialisation extérieure qu’elles décrivent.
+
+**Règle de lecture — phase post-validation.** Après validation interne, les effets préparés sont engagés dans leur ordre de préparation, avant la prochaine délivrance différée. Leur achèvement asynchrone n’est pas attendu ; leurs résultats et les notifications synchrones de l’hôte sont admis puis mis en file, jamais traités par réentrance. Une erreur d’application ne revient pas sur la validation déjà acquise : elle produit un fait d’échec et ne fait pas passer une intention publiée pour un succès. Les messages différés d’une unité annulée sont retirés sans réordonner les autres. D8 règle l’ordre de la file, non une attente de tous les résultats extérieurs.
+
+**Règle de lecture — structure transactionnelle.** Le rollback interne de G7 inclut les existences, abonnements, attributions et restitutions : une destruction structurelle reste provisoire jusqu’à validation. Son annulation conserve les composants, propriétaires, parts et désignations antérieurs ; elle n’est ni une nouvelle création ni un transfert de propriété. Les créations abandonnées et leurs désignations ne deviennent pas publiées. Le nettoyage physique irréversible est différé à la phase post-validation. Ces règles ne restaurent pas un support déjà changé par l’hôte et ne promettent pas une restauration DOM après échec d’un effet.
 
 **Règle d'imputation.** Ce qu'exécute une partie d'un composant qui n'est pas elle-même un composant est exécuté par ce composant.
 
@@ -69,7 +81,7 @@ Une définition dit **ce qu'est** une notion. Un axiome dit **ce qui est permis,
 
 ### 2.6 Objectifs, conséquences et décisions
 
-Une **conséquence** est un lemme, un théorème ou une garantie : ce que les définitions, les axiomes et les garanties établissent. Un **objectif** est une qualité que Bonsai poursuit sans que les axiomes l'imposent (15.1). Une qualité que les axiomes établissent est une conséquence, non un objectif.
+Une **conséquence établie** est une proposition démontrée à partir des définitions et d’hypothèses explicitement identifiées : axiomes, règles de lecture et garanties d’infrastructure ; une conséquence propre à un choix Bonsai nomme aussi la décision concernée. Les **garanties d’infrastructure** sont des obligations contractuelles prises comme hypothèses, non des résultats démontrés depuis les axiomes. Une propriété garantie du système est une conséquence dont ces hypothèses sont nommées. Un **objectif** est une qualité que Bonsai poursuit sans que les axiomes l’imposent (15.1).
 
 Aucune démonstration ne s'appuie sur un objectif, et aucun objectif n'est une prémisse. Une décision (15.2) donne sa justification, nomme l'alternative qu'elle écarte, et désigne ce qu'elle protège : un objectif, une conséquence, ou la clause d'axiome ou la définition qu'elle met en œuvre.
 
@@ -165,7 +177,7 @@ Information transmise par le composant qui crée une ressource, au cours de cett
 
 **Dépendances :** composant, ressource, création.
 
-Une information transmise après la création n'est pas un paramètre de création : c'est une interaction fonctionnelle, soumise à A3.a.
+Une information transmise après la création n’est pas un paramètre de création. Elle constitue une interaction fonctionnelle seulement si elle satisfait 10.6, notamment ses exclusions ; elle est alors soumise à A3.a.
 
 ### 6.3 Part
 
@@ -223,7 +235,7 @@ Composant du modèle qui n'est l'enfant d'aucun composant du modèle.
 
 **Dépendances :** composant, enfant, modèle.
 
-L'existence d'une racine satisfait la définition 7.1, mais elle est fournie par l'hôte et n'est pas une ressource du modèle ; aucun composant ne l'admet (A0.d). A1.a et T1 ne s'y appliquent pas. Aucun composant n'en étant propriétaire, aucun ne peut la détruire (A1.b) : sa fin ne peut venir que de l'hôte.
+**Prescription normative — règle de lecture de la racine.** L’existence d’une racine satisfait 7.1, mais est fournie par l’hôte et n’est pas une ressource du modèle ; aucun composant ne l’admet (A0.d). A1.a et T1 ne s’y appliquent pas. Aucun composant n’est autorisé à en provoquer la destruction : sa fin ne peut venir que de l’hôte. L’abandon d’un amorçage échoué retire le modèle en construction, sans accorder à un composant la propriété de cette existence extérieure.
 
 ### 7.5 Composition
 
@@ -260,6 +272,14 @@ Une représentation d'identité n'est pas une ressource (§2.3).
 Représentation textuelle d'une identité dans un espace des identités.
 
 **Dépendances :** représentation d'identité, identité, espace des identités.
+
+### 8.5 Désignation
+
+Information nommant une ressource ou un composant en vue d’une résolution, sans en donner l’accès direct ni accorder d’autorité.
+
+**Dépendances :** ressource, composant.
+
+**Prescription normative — validité des désignations (A2.c, A2.d, A3.c).** Une désignation de part vise une attribution déterminée. Elle est utilisable seulement pendant la vie de cette part ; une nouvelle attribution du même emplacement ne la réactive pas. Elle ne requiert pas une identité du §8.2 dont le propriétaire de la part serait propriétaire.
 
 ## 9. Communication
 
@@ -323,19 +343,21 @@ Recevoir n'est pas une opération exclusive : plusieurs composants reçoivent un
 
 ### 9.9 Référence
 
-Information permettant à un composant d'atteindre une ressource, du modèle ou de l'hôte, ou un autre composant, sans transport.
+Information donnant à un composant un accès direct à une ressource, du modèle ou de l’hôte, ou à un autre composant, sans transport ni résolution préalable d’une désignation.
 
-**Dépendances :** composant, ressource, transport.
+**Dépendances :** composant, ressource, hôte, transport, désignation.
 
 Le code applicatif n'est ni une ressource ni une référence : désigner la classe d'un composant à créer ne permet d'atteindre aucune ressource ni aucun composant existant.
 
 ### 9.10 Référence structurelle
 
-Référence d'un propriétaire vers une ressource dont il est propriétaire, ou d'un parent vers son enfant.
+Référence d'un propriétaire vers une ressource dont il est propriétaire ou vers le périmètre de l'hôte lié à cette ressource, ou d'un parent vers son enfant.
 
-**Dépendances :** référence, propriétaire, ressource, parent, enfant.
+**Dépendances :** référence, propriétaire, ressource, périmètre, hôte, parent, enfant.
 
-**Résolution auprès de l'hôte.** Un composant peut établir une référence structurelle vers une ressource dont il est propriétaire et que l'hôte matérialise, en résolvant auprès de l'hôte la représentation de l'identité de cette ressource. L'hôte n'étant pas un composant, cette résolution n'est pas une interaction fonctionnelle ; l'opération est exécutée par le composant.
+**Prescription normative — résolution contrôlée (A3.c, A3.d).** Une désignation permet de demander une résolution ; elle n’accorde aucune autorité. Pour établir une référence structurelle, la résolution vérifie que la ressource désignée est bien celle dont le composant est propriétaire ; l'accès à son support hôte reste borné au périmètre autorisé par cette ressource (11.6), sans propriété du support. Un sélecteur n’autorise pas une recherche libre hors de ce périmètre. Une représentation d’identité peut servir de désignation sans devenir une référence. L’hôte n’étant pas un composant, sa résolution n’est pas une interaction fonctionnelle.
+
+**Prescription normative — initialisation avant matérialisation (§2.5).** Une part peut être créée et attribuée dans le modèle avant que son élément soit matérialisé par l'hôte. Son initialisation utilise alors la ressource logique et prépare ses effets ; elle ne suppose ni élément physique déjà résoluble ni écriture hôte immédiate. La résolution du support n'est effective qu'après sa matérialisation, pendant l'application des effets ou un traitement ultérieur. Une désignation ne permet pas de forcer cette application avant validation.
 
 ### 9.11 Réponse
 
@@ -343,7 +365,7 @@ Information rendue par transport à l'auteur d'un message adressé, produite par
 
 **Dépendances :** transport, message, adresser, traitement.
 
-Une réponse n'est pas un message : elle n'a ni Channel ni contexte causal propre. Le traitement qui la produit s'exécute au cours du traitement de l'auteur (seule exception de G5), qui la reçoit sans attendre aucun fait ultérieur (9.3). Elle n'est pas une interaction distincte : elle fait partie de l'interaction portée par le message adressé auquel elle répond (10.6, « hors transport »).
+Une réponse n’est pas un message : elle n’a ni Channel ni contexte causal propre. Elle est rendue synchroniquement à l’auteur d’un message déclaré avec réponse (A3.j), pendant son traitement ou une initialisation autorisée (§2.5), sans attendre un fait ultérieur. Elle fait partie de cette interaction et non d’une interaction distincte (10.6). Une erreur n’est ni une réponse métier ni une valeur de substitution : elle se propage selon G7.
 
 ## 10. Causalité et interaction
 
@@ -383,6 +405,8 @@ Information portée par un message permettant de le rattacher à une chaîne cau
 
 Le contexte causal n'est pas une ressource (§2.3).
 
+La causalité décrit le déclenchement de l’exécution, avec un seul parent causal par message hors origine ; elle ne retrace pas toutes les dépendances historiques des données lues. Lire un état construit par des traitements antérieurs ne fusionne pas leurs origines. La création et la restitution des contextes relèvent de G8, non d’un choix du code applicatif.
+
 ### 10.6 Interaction fonctionnelle
 
 Transmission d'une information d'un composant à un autre composant, hors paramètres de création, hors transport et hors contexte causal.
@@ -395,11 +419,13 @@ Un message local n'est pas une interaction fonctionnelle ; il reste soumis à A3
 
 ### 11.1 Interface utilisateur
 
-Partie du modèle formée des composants propriétaires d'une ressource par laquelle l'utilisateur perçoit le modèle ou agit sur lui, et de toutes les ressources dont ces composants sont propriétaires.
+Partie du modèle formée des composants propriétaires d’une ressource servant de support de présentation à l’utilisateur ou d’expression de son intention, et de toutes les ressources dont ces composants sont propriétaires.
 
 **Dépendances :** modèle, composant, ressource, propriétaire.
 
 Une ressource appartient donc à la même partie du modèle que son propriétaire.
+
+Une condition d’environnement n’est pas un support d’interaction du seul fait qu’une action humaine peut la modifier. Le focus d’un champ et le focus de la fenêtre sont ainsi distincts. Pour les cas limites de l’hôte navigateur, le classement normatif explicite est celui de B.3 ; l’annexe A en expose les motifs.
 
 ### 11.2 Domaine
 
@@ -437,6 +463,12 @@ Action par laquelle une ressource ou un message est produit dans le modèle à p
 
 **Dépendances :** ressource, message, modèle, hôte, système extérieur.
 
+**Prescription normative — admission (A5.a, A5.c).** L’admission d’un fait est un préambule sans mutation applicative qui soumet un message local au composant admetteur. Ses réactions, ses changements d’état et ses messages sortants sont exécutés pendant le traitement de ce message, sous G5 et G7. Admettre une ressource produit une ressource du modèle liée à un support extérieur, et non une double appartenance du même objet à A0.a. Les paramètres initiaux sont admis pendant l’amorçage ; les faits ultérieurs passent par des messages. Un support physique peut changer hors du modèle ; sa nouvelle observation n’est intégrée qu’à son admission.
+
+**Prescription normative — support et autorité (A1.b, A2.e).** « Admettre une ressource de l’hôte » est le raccourci pour produire une ressource du modèle liée à un périmètre de ce support. Son propriétaire est autorisé à préparer les effets de ce périmètre ; il ne devient pas propriétaire du support extérieur. Cette autorité est exercée par le composant, même lorsque Bonsai fournit le mécanisme d’application. La conservation physique du support n’entraîne pas celle de la ressource admise. Les conflits d’autorité entre racines coordonnées sont traités par B.2, distinctement de l’unicité interne A1.a.
+
+**Prescription normative — portions du support (6.5, A1.b).** L'attribution d'une part d'une telle ressource, directement ou par attributions successives, lie cette part à sa seule portion du support. Son propriétaire exerce l'autorité sur cette portion ; le propriétaire de la ressource distribuable en est privé tant que la part existe. Cela n'est ni un transfert de propriété de ressource existante ni une admission supplémentaire du même support. Les créations physiques dans cette portion restent des effets préparés soumis au §2.5.
+
 ### 11.7 Frontière de confiance
 
 Limite du modèle à laquelle s'opère l'admission.
@@ -471,11 +503,11 @@ Ce dont un parent est propriétaire n'est pas son enfant, mais l'existence de ce
 
 > **A1.a** Toute ressource du modèle a exactement un propriétaire.
 >
-> **A1.b** Un composant n'exécute d'opération exclusive que sur une ressource dont il est propriétaire.
+> **A1.b** Un composant n’exécute d’opération exclusive sur une ressource du modèle que s’il en est propriétaire. Il ne prépare d’effet sur un support de l’hôte qu’en vertu d’une ressource admise ou d'une part issue de celle-ci par attribution dont il est propriétaire, dans son seul périmètre (11.6) ; cela ne lui attribue pas la propriété du support extérieur.
 
 **Contre-exemples :** une ressource du modèle n'a aucun propriétaire (A1.a) ; deux composants modifient le même état, un composant modifie le titre du document alors qu'aucun composant ne l'a admis, ou plusieurs composants modifient une variable globale, ressource de l'hôte qu'aucun n'a admise (A1.b).
 
-A1.b porte sur toute ressource, y compris celles de l'hôte : une ressource de l'hôte n'est modifiable qu'après avoir été admise (T8). A1.b exclut toute délégation : faire exécuter une opération exclusive par un autre composant que le propriétaire, c'est la faire exécuter par un non-propriétaire. L'imputation et la cascade relèvent des règles de lecture (§2.5).
+A1.b réserve au propriétaire les opérations sur les ressources du modèle et la préparation des effets autorisés sur les supports admis (11.6, T8). Elle exclut toute délégation de cette autorité à un autre composant. La propriété de la ressource admise ne signifie pas la maîtrise des changements spontanés du support. L’imputation et la cascade relèvent des règles de lecture (§2.5).
 
 ### A2 — Origine de la propriété
 
@@ -486,6 +518,10 @@ A1.b porte sur toute ressource, y compris celles de l'hôte : une ressource de l
 > **A2.c** Le propriétaire d'une ressource demeure le même jusqu'à la destruction de celle-ci.
 >
 > **A2.d** Le propriétaire d'une ressource distribuable n'en attribue de part qu'à ses enfants. Une part ne prend fin qu'avec son propriétaire.
+>
+> **A2.e** Toute propriété initiale résulte exclusivement d’une création, d’une admission ou d’une attribution selon A2.a. Un composant n’est propriétaire d’aucune ressource extérieure non admise ; toute ressource dont il est propriétaire appartient au modèle.
+
+**Contre-exemple d’A2.e :** un composant se déclare propriétaire d’un stockage extérieur avant toute admission, sans création ni attribution.
 
 **Contre-exemples :** un composant choisit lui-même son identité (A2.a) ; un composant crée son propre espace des identités et s'y nomme (A2.b) ; un composant remet un état dont il est propriétaire à un autre composant (A2.c) ; une View attribue une part de son DOM à une View voisine, ou détruit son élément racine en cours de vie (A2.d).
 
@@ -505,21 +541,27 @@ A2.d garantit que la portion rendue à la fin d'une part revient au propriétair
 >
 > **A3.f** Tout message est adressé à un Channel, émis sur un Channel, ou local.
 >
-> **A3.g** Le traitement d'un message adressé qui rend une réponse n'exécute aucune opération exclusive.
+> **A3.g** Le traitement d’un message déclaré avec réponse est en lecture seule : il ne crée, ne modifie ni ne détruit aucune ressource du modèle, n’engage aucun effet sur l’hôte ou un système extérieur et ne produit aucun message différé. Il peut adresser d’autres messages avec réponse soumis à la même restriction. Les allocations temporaires de calcul ne constituent pas de ce seul fait des ressources du modèle.
 >
 > **A3.h** Un composant n'émet d'information que sur une ressource dont il est propriétaire.
+>
+> **A3.i** Toute interaction fonctionnelle a pour objet une ou plusieurs ressources déterminées. Une demande de connaissance porte sur ces ressources ou sur une information calculée à partir de celles-ci. Une demande d’action est adressée au propriétaire des ressources sur lesquelles elle lui demande d’agir ; une consultation accède aux ressources d’autres propriétaires uniquement par d’autres consultations conformes.
+>
+> **A3.j** Tout message adressé est déclaré avant sa délivrance soit comme une demande d’action sans réponse, soit comme une demande de connaissance avec réponse. Son mode ne dépend pas des effets constatés de son traitement. Un message émis annonce une information sur une ressource de son auteur (A3.h).
+
+**Contre-exemples complémentaires :** une consultation lance une Command, remplit un cache persistant ou déclenche un appel réseau (A3.g) ; un composant expose comme interaction autonome un calcul sans aucune ressource pour objet (A3.i) ; une notification adressée sans demande d’action ni consultation, ou une demande d’action qui devient avec réponse seulement parce qu’elle n’a rien changé (A3.j).
 
 **Contre-exemples :** un composant obtient une information d'un autre en appelant l'une de ses méthodes (A3.a) ; un composant ouvre un Channel sous l'identité d'un autre (A3.b) ; un parent lit l'état de son enfant par une référence (A3.c) ; un parent transmet à son enfant une fonction de rappel vers lui-même, ou un élément de l'hôte (A3.d) ; deux composants traitent les messages d'un même Channel, ou un composant émet sur le Channel d'un autre (A3.e) ; une Feature construit un message et appelle directement son propre traitement (A3.f) ; le traitement d'une demande de connaissance incrémente un compteur de consultations, ou le traitement d'une demande de changement rend une réponse (A3.g) ; une Feature émet qu'une commande a été expédiée, sur la foi d'une réponse du serveur, sans avoir inscrit ce statut dans son état (A3.h).
 
 ### A4 — Autosuffisance du domaine
 
-> **A4.a** Les invariants métier sont satisfaits à l'issue de chaque traitement, en présence ou en l'absence d'interface utilisateur.
+> **A4.a** Les invariants métier sur l’état interne sont satisfaits à chaque frontière de validation (§2.5), en présence ou en l’absence d’interface utilisateur. Leur satisfaction ne peut exiger une transaction atomique avec une matérialisation extérieure non transactionnelle : la règle métier représente explicitement les intentions, observations, succès et échecs nécessaires.
 >
 > **A4.b** Aucun composant du domaine n'adresse de message à un Channel dont le propriétaire appartient à l'interface utilisateur, ni ne reçoit de message émis sur un tel Channel.
 >
 > **A4.c** Seul le domaine échange des informations métier avec les systèmes extérieurs.
 >
-> **A4.d** Toute information métier contenue dans une ressource de l'interface utilisateur provient d'un message émis par un composant du domaine ou d'une réponse produite par un tel composant, et n'est remplacée que par une information de même provenance.
+> **A4.d** Toute information présentée comme l’état métier validé provient d’un message émis par le domaine ou d’une réponse produite par celui-ci, éventuellement par dérivation de présentation. Une telle dérivation ne crée aucune autorité métier. Une intention ou un brouillon non validé peut porter sur le métier, mais ne doit pas être présenté comme son état confirmé.
 >
 > **A4.e** Un Channel dont le propriétaire appartient au domaine ne prend fin qu'avec la racine.
 
@@ -527,15 +569,15 @@ A2.d garantit que la portion rendue à la fin d'une part revient au propriétair
 
 A4.e vient de ce qu'un message peut être adressé au domaine à tout moment : tout composant qui dispose d'une représentation de l'identité d'un Channel du domaine peut y adresser un message tant que la racine existe. Pour que ce message puisse être traité, et les invariants métier vérifiés à l'issue de ce traitement (A4.a), le Channel doit exister.
 
-A4.d ne restreint pas la projection : une ressource de l'interface utilisateur peut contenir une copie d'une information métier, la filtrer, la trier ou la paginer. Elle interdit de la remplacer par une information que le domaine n'a ni émise ni rendue en réponse. Une information qui ne porte sur aucune ressource du domaine, comme la position d'un carrousel ou une saisie en cours, n'est pas une information métier (11.5).
+A4.d autorise les dérivations de présentation : copie, tri, filtre, pagination, formatage. Une règle faisant autorité sur le prix applicable, un total contractuel ou l’éligibilité est calculée par le domaine, non par la projection. Une saisie peut être une intention concernant le métier sans être une information validée. Un affichage optimiste est identifié comme non confirmé. Des réponses obtenues pendant des traitements distincts ne constituent pas automatiquement un instantané cohérent.
 
 ### A5 — Causalité
 
-> **A5.a** Tout changement d'état résulte du traitement d'un message.
+> **A5.a** Tout changement d’état interne résulte du traitement d’un message ou de l’initialisation autorisée au §2.5. Les changements de supports extérieurs par l’hôte ne sont intégrés comme observations du modèle que par admission ; les effets préparés par un traitement suivent sa validation interne.
 >
-> **A5.b** Tout message porte un contexte causal.
+> **A5.b** Tout message porte un contexte causal fidèle à son déclenchement. Un message produit pendant un traitement en continue la causalité, y compris au retour d’une consultation imbriquée. Une nouvelle origine ne peut être établie que pour l’amorçage ou l’admission d’un fait spontané ; le code applicatif ne substitue ni ne réinitialise ce contexte.
 >
-> **A5.c** Un fait de l'hôte ou d'un système extérieur n'entre dans le modèle que par un message, produit par le composant qui l'admet. Ce message a pour cause une origine, sauf si le fait a été provoqué par le traitement d'un message antérieur : il en est alors une continuation, et le composant qui a provoqué le fait en conserve le contexte causal jusqu'à son admission.
+> **A5.c** Un fait de l’hôte ou d’un système extérieur n’entre dans le modèle que par le message local du composant qui l’admet. Ce message a pour cause une origine, sauf si le fait a été provoqué par un traitement ou une initialisation antérieurs : il en est alors une continuation. La conservation et la restitution du contexte sont garanties par G8.
 >
 > **A5.d** Un fait de l'hôte ou d'un système extérieur est admis par un seul composant.
 
@@ -557,38 +599,35 @@ L'infrastructure de communication n'est soumise à aucun axiome. Toute réalisat
 - **G2** — Elle ne modifie ni un message, ni son contexte causal, ni une réponse.
 - **G3** — Elle ne délivre aucun message relatif à un Channel détruit.
 - **G4** — Elle n'est partie à aucune interaction fonctionnelle et n'est propriétaire d'aucune ressource du modèle.
-- **G5** — Elle ne délivre un message qu'après la fin du traitement en cours. Seul le traitement d'un message adressé qui rend une réponse s'exécute au cours d'un autre traitement.
+- **G5** — Elle ne délivre un message différé qu’après la validation du traitement modifiant en cours ou la réussite de l’amorçage. Un message déclaré avec réponse est traité synchroniquement pendant l’exécution de son auteur. Si son destinataire est déjà actif dans la pile des traitements ou initialisations, y compris s’il s’agit de l’auteur, l’adressage est refusé avec erreur et contexte causal ; il n’est pas mis en file en attendant une réponse. Une consultation imbriquée ne constitue pas une frontière de validation de l’auteur. Les traitements différés ne se chevauchent pas.
 - **G6** — Elle ne délivre un message qu'à un composant de la même racine que son auteur ; une réponse n'est donc produite que dans cette racine.
-- **G7** — Un traitement interrompu par une erreur ne produit aucun changement d'état des ressources du modèle que l'hôte ne matérialise pas ; aucun des messages qu'il a produits n'est délivré, et aucune réponse n'est rendue. L'erreur est signalée avec le contexte causal du message traité.
+- **G7** — L’échec d’une unité de validation restaure les ressources internes qu’elle a modifiées, abandonne ses créations internes et ses messages différés non délivrés, et ne rend aucune réponse de substitution. Une erreur de consultation interrompt son auteur et se propage jusqu’au traitement extérieur ou à l’amorçage ; aucune récupération locale n’est implicitement autorisée. Les consultations déjà exécutées restent dans la trace, sans effet grâce à A3.g. Les effets déjà appliqués à l’hôte ou aux systèmes extérieurs ne sont pas annulés : ils peuvent réussir partiellement, et les faits de succès ou d’échec sont admis par un nouveau message. L’erreur est signalée avec son contexte causal. Un refus métier attendu peut être une valeur normale de réponse ; une erreur de transport ne devient jamais un `null` de substitution.
+- **G8** — Elle établit le contexte initial de l’amorçage et celui des admissions spontanées, rattache les messages produits à leur traitement déclencheur et conserve le contexte des effets provoqués jusqu’à leur admission, même si celle-ci survient après l’échec du traitement ou de l’effet. Un message possède un seul parent causal de déclenchement ; les consultations s’y inscrivent sans remplacer le contexte de leur auteur à son retour. Les effets doivent passer par les interfaces Bonsai qui assurent cette conservation ; un appel brut perdant ce lien n’est pas conforme.
 
 Par G6, deux racines qui coexistent dans un même hôte ne se transmettent aucun message : un nom de Channel n'a de sens qu'au sein de sa racine.
 
-Par G7, un traitement interrompu n'a pas d'autre issue que l'état qui le précédait : A4.a ne peut pas être violé par un traitement qui échoue à mi-chemin, et aucun Event n'annonce un état qui n'a pas été atteint (A3.h). Ce que l'hôte matérialise, une écriture dans un stockage ou un élément du DOM modifié, ne peut pas être annulé : un traitement confie ses effets sur l'hôte à un adaptateur par une Command, qui n'est délivrée qu'à la fin du traitement (G5), ou les exécute en dernier. L'annulation fait partie de l'infrastructure de communication, au sens de la remarque sous 3.3.
+Par G7, un traitement interrompu retrouve son état interne précédent et ne publie pas ses messages différés. Cette propriété ne promet aucune restauration des supports extérieurs. Une View peut laisser une projection partiellement appliquée si l’écriture hôte échoue ; les adaptateurs décrivent leurs possibilités de reprise et de compensation. Préparer les effets puis les appliquer après validation évite de publier une transaction interne annulée, mais ne prouve ni la réussite de ces effets ni leur atomicité. Une Command à un adaptateur ne transforme pas davantage l’hôte en transaction. L’annulation interne relève de l’infrastructure de communication (3.3).
 
 Par G4, matérialiser un Channel ne confère pas à l'infrastructure de communication la propriété de ce Channel : celle-ci suit l'identité qui le distingue (A3.b).
 
-Par G5, les traitements se succèdent : un message produit au cours d'un traitement n'est délivré qu'après la fin de celui-ci, et une erreur survenue dans un traitement ne peut pas en interrompre un autre. La seule exception, le traitement d'un message adressé qui rend une réponse (9.11), n'exécute aucune opération exclusive (A3.g) ; et le composant qui y répond n'est en cours de traitement que s'il en est lui-même l'auteur, puisque seul l'auteur l'est ; la réponse ne sort alors pas de lui (T2). Elle est donc produite, pour tout autre composant, à partir d'un état issu d'un traitement achevé. L'ordre dans lequel les messages en attente sont délivrés n'est pas fixé par G5 : c'est la décision D8.
+Par G5, les traitements différés se succèdent. Les consultations seules peuvent s’imbriquer ; elles sont en lecture seule transitive (A3.g) et ne peuvent relire un composant encore actif. Elles lisent donc ses ressources internes validées, sans garantie d’immobilité du support extérieur ni d’instantané global entre plusieurs traitements. Leur échec interrompt la pile synchrone selon G7. Les consultations déjà délivrées ne sont pas effacées rétroactivement si leur auteur échoue ensuite. L’ordre des messages différés est fixé par D8.
 
 ## 14. Conséquences établies
 
-Chaque conséquence est suivie de sa démonstration. Les catégories `Command`, `Query` et `Event` n'apparaissent qu'en conclusion de T2, jamais en prémisse.
+Chaque conséquence est suivie de sa démonstration et nomme ses hypothèses. L1 est le corollaire immédiat d’une prémisse explicite ; T2 nomme et classe les contrats imposés par A3.j. Il ne prétend pas déduire cette discipline de la seule propriété.
 
 ### L1 — Lemme de l'objet
 
-> Toute interaction fonctionnelle porte sur une ressource.
+> Toute interaction fonctionnelle a pour objet une ou plusieurs ressources déterminées.
 
 L'objet d'une interaction est ce qu'elle demande de changer, ce qu'elle demande de connaître, ou ce sur quoi elle informe. Les autres valeurs qu'elle transmet, comme une quantité saisie ou une heure lue (3.2), n'en sont pas l'objet.
 
 **Démonstration.**
 
-1. Une interaction fonctionnelle transmet une information d'un composant C à un autre composant D, hors contexte causal (10.6). Elle passe par un message adressé à un Channel ou émis sur un Channel (A3.a).
-2. **Message émis.** Seul le propriétaire du Channel y émet (A3.e) : C informe, et n'émet d'information que sur une ressource dont il est propriétaire (A3.h).
-3. **Message adressé.** Il est traité par le propriétaire du Channel, ici D (A3.e) : C lui demande de changer ou de faire connaître quelque chose.
-4. Ce que D peut changer, ce sont des ressources dont il est propriétaire (A1.b).
-5. Ce que D peut faire connaître sans autre interaction, il l'atteint par une référence structurelle (A3.c) : une ressource dont il est propriétaire, du modèle ou admise de l'hôte (9.9, 9.10), ou l'un de ses enfants, dont il ne connaît sans interaction que l'existence (A0.c, A3.a), qui est une ressource (7.1).
-6. Dans tous les cas, l'interaction porte sur une ressource. ∎
+1. A3.i impose explicitement un objet constitué d’une ou plusieurs ressources à toute interaction fonctionnelle.
+2. Les informations accessoires et les calculs de présentation ne changent pas cet objet. ∎
 
-L1 ne présuppose aucune des trois voies : elle n'emploie que les clauses de A3 et la définition de l'interaction fonctionnelle.
+L1 est une reformulation utile d’A3.i, non une découverte déduite d’A3.c. Un calcul pur sans ressource pour objet reste du code interne ; il n’est pas offert comme interaction autonome. Lire librement l’heure pendant un traitement reste permis (18.15), sans en faire l’objet d’un service de consultation dépourvu de ressource.
 
 ### T1 — Composition par création
 
@@ -604,23 +643,24 @@ La racine n'est pas concernée : rien dans le modèle ne la crée (note de 7.4).
 
 ### T2 — Les trois voies
 
-> Toute interaction fonctionnelle relève d'exactement l'une des trois voies suivantes : un composant autre que le propriétaire adresse à celui-ci une demande de changement (**Command**) ; un composant autre que le propriétaire lui adresse une demande de connaissance, dont le traitement lui rend une réponse sans exécuter d'opération exclusive (**Query**) ; le propriétaire émet une information sur sa ressource (**Event**). Une Command et une Query sont traitées par le seul propriétaire ; un Event peut être reçu par plusieurs composants.
+> Toute interaction fonctionnelle relève exactement d’un des trois contrats suivants : demande d’action adressée sans réponse (**Command**) ; demande de connaissance adressée avec réponse et en lecture seule (**Query**) ; information émise sur une ressource de l’auteur (**Event**). Command et Query sont traitées par le seul propriétaire du Channel ; un Event peut être reçu par plusieurs composants. Une Command exprime une intention de changement mais peut être refusée, devenue inutile ou sans effet. Une Query en échec ne rend pas de valeur et propage l’erreur selon G7.
 
 **Démonstration.**
 
-1. Soit une interaction de C vers D. Par L1, elle porte sur une ressource R, de propriétaire unique O (A1.a).
-2. **Première question : l'interaction vise-t-elle l'exécution d'une opération exclusive sur R ?** La réponse est oui ou non : la partition est exhaustive et exclusive. Une réservation ou une validation qui enregistre quelque chose vise une opération exclusive ; une vérification sans effet n'en vise pas ; une négociation ou une coordination est une suite d'interactions, dont chacune se range séparément.
-3. **Si oui.** Seul O exécute l'opération (A1.b). Si C est O, il l'exécute lui-même et n'interagit avec personne. Sinon, C doit en transmettre la demande à O, ce qui passe par un message (A3.a) adressé à un Channel dont O est propriétaire, puisque seul le propriétaire d'un Channel traite ce qui lui est adressé (A3.e). Son traitement exécute une opération exclusive : il ne rend pas de réponse (A3.g). C'est la voie **Command**.
-4. **Si non**, l'interaction transmet une information sur R. Seul O dispose d'une référence vers R (A3.c, 9.10) : toute connaissance de R provient donc de O.
-5. Si l'information va **vers** C, C la demande à O, qui seul peut la fournir : message adressé au Channel de O, traité par O (A3.e), dont le traitement rend l'information à C en réponse (9.11), sans exécuter d'opération exclusive (A3.g). C'est la voie **Query**. Si C est O, il n'a rien à demander.
-6. Si l'information part **de** C sans avoir été demandée, elle passe par un message émis (A3.a), et porte sur une ressource dont C est propriétaire (A3.h) : C est O. Un composant qui veut relayer une information reçue d'un autre doit d'abord la conserver : il informe alors sur sa propre copie, qui est une autre ressource dont il est propriétaire. O la transmet depuis son propre Channel, seul Channel sur lequel il peut émettre (A3.e). C'est la voie **Event**.
-7. **Unicité du traitement.** Command et Query sont traitées par le propriétaire du Channel (A3.e), qui est unique (A1.a). Que ce propriétaire organise son traitement en plusieurs fonctions ne compte pas (règle d'imputation, §2.5).
-8. **Plusieurs destinataires.** Un Event est émis vers les propriétaires des abonnements au Channel de O (9.7). Recevoir n'est pas une opération exclusive (9.8) : plusieurs composants reçoivent sans devenir propriétaires. ∎
+1. Par A3.a, une interaction passe par un message adressé ou émis, soumis au transport ; par A3.i, son objet est déterminé.
+2. Un message adressé possède avant délivrance exactement un des modes d’A3.j. La demande d’action sans réponse est nommée **Command** ; la demande de connaissance avec réponse est nommée **Query**. Les modes sont disjoints et ne changent pas selon le résultat.
+3. La Query respecte la lecture seule transitive d’A3.g. Une Command ne rend aucune réponse, même si son traitement ne modifie rien. L’autorité d’action demeure celle d’A1.b ; une consultation composée accède à une autre ressource uniquement par une autre Query (A3.i).
+4. Le message émis est nommé **Event**. Seul le propriétaire du Channel y émet (A3.e), sur une ressource dont il est propriétaire (A3.h). Relayer une information exige de l’inscrire dans une ressource propre avant de l’émettre.
+5. Le propriétaire du Channel, unique par A1.a, traite seul les messages adressés (A3.e, G1). Les propriétaires des abonnements peuvent recevoir le même Event (9.7, G1), sans devenir propriétaires de la ressource annoncée.
+6. La partition est donc exhaustive sous A3.j et exclusive par le contrat déclaré, non par une inférence sur l’intention cachée ou l’effet constaté. ∎
 
-| | Vise un changement | Demande une connaissance | Informe |
+| Contrat déclaré | Délivrance | Réponse | Effets |
 | --- | --- | --- | --- |
-| **C est O** | aucune interaction | impossible : O dispose d'une référence vers R | **Event** |
-| **C n'est pas O** | **Command** | **Query** | impossible : seul O connaît R |
+| **Command** | différée | aucune | action autorisée, refus ou absence de changement possibles |
+| **Query** | synchrone, hors réentrance | connaissance en cas de succès | lecture seule transitive |
+| **Event** | différée vers les abonnés | aucune | annonce une ressource de l’auteur ; les abonnés réagissent séparément |
+
+Un message local n’est pas une interaction fonctionnelle ; il n’ajoute pas une quatrième voie intercomposants. Une Command vers soi reste permise (18.13), sans constituer une interaction entre composants. Une Query vers soi est refusée par G5.
 
 ### T3 — Destruction en cascade
 
@@ -629,7 +669,7 @@ La racine n'est pas concernée : rien dans le modèle ne la crée (note de 7.4).
 **Démonstration.**
 
 1. L'existence d'un composant C prend fin : soit son parent P la détruit, par une opération exclusive (7.1, A1.b), soit, si C est une racine, l'hôte y met fin (7.4).
-2. À l'issue de l'opération, toute ressource restante du modèle a un propriétaire (A1.a, règle de lecture du §2.5).
+2. À la frontière de validation, toute ressource restante du modèle a un propriétaire encore présent dans le modèle (A1.a, A2.e, §2.5).
 3. Une ressource dont C était propriétaire ne peut pas recevoir un nouveau propriétaire (A2.c).
 4. Elle ne peut donc pas subsister : sa fin fait partie de la destruction de C (règle de cascade, §2.5).
 5. Parmi ces ressources figure l'existence des enfants de C ; leur fin entraîne celle de leurs propres ressources, et ainsi de suite. ∎
@@ -657,19 +697,18 @@ Un tel composant peut néanmoins adresser des messages et recevoir les réponses
 
 ### T5 — Localité des invariants
 
-> Un invariant métier qui lie plusieurs ressources porte sur des ressources d'un seul propriétaire.
+> Une transition validée exigeant la modification conjointe de ressources internes préexistantes de propriétaires distincts ne peut pas être réalisée par des traitements séparés tout en préservant l’invariant à chaque frontière de validation. Si cette transition doit être réalisable atomiquement, les ressources concernées relèvent du même propriétaire.
 
-Un invariant lie deux ressources lorsqu'un changement de l'une, permis par le code applicatif, n'est compatible avec l'invariant qu'accompagné d'un changement de l'autre.
+Dans ce résultat, « lie » signifie qu’une transition effectivement requise ne peut modifier une ressource sans modifier conjointement l’autre. Une simple relation mathématique conservée en refusant tout changement n’impose pas cette réalisabilité.
 
 **Démonstration.**
 
-1. Soit un invariant liant une ressource R1 de propriétaire O1 et une ressource R2 de propriétaire O2, avec O1 distinct de O2 : la satisfaction de l'invariant dépend des valeurs conjointes de R1 et R2.
-2. Un traitement est exécuté par un seul composant (9.3) et ne modifie que des ressources dont celui-ci est propriétaire (A1.b).
-3. Il existe des changements de R1 qui exigent un changement correspondant de R2 pour maintenir l'invariant. Aucun traitement de O2 ne s'exécute au cours de celui de O1, hors traitements qui rendent une réponse et ne modifient rien (G5, A3.g) : à l'issue du traitement par O1 qui change R1, R2 n'a donc pas changé.
-4. L'invariant est donc violé à l'issue de ce traitement, ce qu'interdit A4.a.
-5. Donc O1 et O2 sont un même composant. ∎
+1. Considérons une transition requise sur deux ressources internes préexistantes de propriétaires distincts ; sa réalisation exige de modifier les deux avant validation.
+2. A1.b réserve chaque modification à son propriétaire. G5 interdit le chevauchement de leurs traitements modifiants ; les consultations imbriquées sont en lecture seule (A3.g).
+3. À la première frontière où une des deux ressources est effectivement changée, l’autre ne peut donc pas avoir été modifiée conjointement par son propriétaire. L’invariant serait violé, contrairement à A4.a.
+4. Refuser ou annuler cette transition préserve l’invariant mais ne réalise pas le changement requis. Pour qu’il soit réalisable atomiquement, il faut réunir les ressources sous un même propriétaire. ∎
 
-Deux règles indépendantes posées sur deux ressources de propriétaires distincts ne sont pas concernées : elles ne lient rien.
+Deux règles indépendantes, une relation maintenue par refus et une coordination à cohérence éventuelle ne sont pas ce résultat. L’initialisation d’un enfant crée de nouvelles ressources ; la cascade détruit les existences et ressources selon §2.5. Ces mécanismes ne fournissent pas une mutation atomique générale de ressources préexistantes de propriétaires distincts. Aucune atomicité avec l’hôte n’est déduite de T5.
 
 ### T6 — Survie du domaine
 
@@ -698,13 +737,13 @@ Toute Feature est propriétaire d'un Channel (16.3) : une Feature n'est détruit
 
 ### T8 — Admission préalable
 
-> Toute ressource de l'hôte que le modèle modifie a été admise, et a exactement un propriétaire.
+> Tout effet du modèle sur un support de l’hôte est autorisé par une ressource admise ou une part issue de celle-ci par attribution, dont le propriétaire est unique dans ce modèle.
 
 **Démonstration.**
 
-1. Pour modifier une ressource, un composant doit en être propriétaire (A1.b).
-2. Une ressource de l'hôte n'a de propriétaire qu'après son admission, et le composant qui l'admet en est le propriétaire initial (A2.a).
-3. Une fois admise, elle est une ressource du modèle et a exactement un propriétaire (A1.a). ∎
+1. A1.b impose une ressource propre au composant, admise ou issue de celle-ci par attribution, pour préparer un effet sur le support dans son périmètre.
+2. A2.e exclut une propriété arbitraire du support extérieur ; l’admission produit la ressource du modèle liée à celui-ci (11.6), avec pour propriétaire initial son admetteur (A2.a). Les parts attribuées limitent l'autorité à leurs portions, soustraites à leur ressource d'origine (6.5).
+3. La ressource autorisant l'effet a exactement un propriétaire dans le modèle (A1.a). Le support n’a pas changé de catégorie. ∎
 
 L'historique, l'adresse, le titre du document ou le stockage local ne peuvent donc être modifiés que par le composant qui les a admis.
 
@@ -715,16 +754,16 @@ L'historique, l'adresse, le titre du document ou le stockage local ne peuvent do
 Un objectif est une qualité que Bonsai poursuit sans que les axiomes l'imposent. Il justifie des décisions ; il n'est pas une règle du modèle, et aucune démonstration ne s'y appuie (2.6). La liste est courte : elle ne s'allonge que si une décision ne peut se justifier ni par un de ces objectifs ni par une conséquence.
 
 - **O1 — Rejouabilité.** Un code applicatif déterministe, rejoué depuis le même état initial sur la même suite de faits admis, produit les mêmes changements d'état. Bonsai n'ajoute aucun aléa (D8) ; les valeurs lues librement (18.15) ne se rejouent à l'identique que si l'implémentation les enregistre et les restitue, ce qui ne relève pas de la théorie.
-- **O2 — Détection précoce des violations.** Une violation d'une règle du modèle est signalée au plus tôt : à la construction, à défaut par l'analyse statique, à défaut au démarrage, à défaut à l'exécution (18.7, §19).
+- **O2 — Détection précoce des violations.** Une violation mécaniquement détectable est signalée au niveau le plus précoce possible : construction, analyse statique, démarrage ou exécution (18.7, §19). Une obligation sémantique non vérifiable mécaniquement fait l'objet d'une justification et d'une revue ; cet objectif ne promet ni détection exhaustive ni preuve automatique de conformité.
 - **O3 — Ergonomie de développement.** Une application conforme s'écrit sans code ni notion étrangers à son métier, au-delà de ce que les axiomes exigent.
 
 Les autres qualités souvent invoquées sont des conséquences, non des objectifs :
 
 | Qualité | Établie par |
 | --- | --- |
-| Traçabilité causale : tout changement d'état se rattache à une cause | A5.a, A5.b |
-| Cohérence métier : les invariants sont satisfaits à l'issue de chaque traitement, et un invariant qui lie plusieurs ressources relève d'un seul propriétaire | A4.a, T5 |
-| Continuité du domaine : le domaine ne prend fin qu'avec la racine | A4.e, T6 |
+| Traçabilité causale : tout changement d'état interne se rattache à son déclenchement, non à la provenance exhaustive des données | A5.a, A5.b, G8 |
+| Cohérence métier : les invariants d'état interne sont satisfaits aux frontières de validation ; une transition requise exigeant des mutations conjointes de ressources internes préexistantes relève d'un même propriétaire | §2.5, A4.a, T5 |
+| Continuité des composants du domaine propriétaires d'un Channel, tant que la racine existe | A4.e, T6 |
 | Isolation des composants : on n'agit sur une ressource que par son propriétaire | A1, A3.c, G1 |
 
 Le déterminisme n'est ni un axiome ni un objectif distinct : un code qui lit l'heure ou une valeur aléatoire reste conforme (18.15), et ce que Bonsai garantit de son côté est l'ordre de délivrance (D8), au service de O1.
@@ -738,21 +777,22 @@ D3, D7, D10 et D15 nomment le document, son corps, l'adresse et l'historique : c
 - **D1 — Enfants de la racine.** Les Features et la Foundation sont des enfants de la racine. La racine ne détruit pas l'existence de la Foundation. *Pourquoi :* un domaine à plat, où aucune Feature n'est responsable de l'existence d'une autre, et une Foundation qui reste propriétaire du corps du document tant que la racine existe. *Alternative écartée :* des Features enfants d'autres composants ; A4.e le permettrait sous un parent qui ne les détruit jamais, mais leur existence dépendrait alors de la survie de ce parent. La survie des Features ne dépend pas de D1 (T6). *Protège :* A4.e, dont c'est la façon la plus simple de garantir le respect ; O3.
 - **D2 — Pérennité de l'Entity.** Une Feature ne détruit pas son Entity. Réinitialiser une Entity est une modification, non une destruction. L'identité et le Channel d'une Feature, eux, ne prennent fin qu'avec elle par A2.d et A4.e. *Pourquoi :* détruire puis recréer une Entity revient à la modifier ; la détruire sans la recréer laisserait des invariants sans objet à l'issue du traitement. *Alternative écartée :* réinitialiser une Entity par destruction puis recréation. *Protège :* A4.a, A4.e.
 - **D3 — Élément de la Foundation.** La Foundation admet un élément de l'hôte comme ressource distribuable, par défaut le corps du document. Elle n'admet rien d'autre de l'hôte. Deux racines n'admettent pas deux éléments dont l'un contient l'autre. *Pourquoi :* la Foundation relève de l'interface utilisateur, et une ressource relève de la même partie que son propriétaire (11.1) ; les autres sources du document relèvent de parties différentes et ont leur adaptateur (D7). Un élément autre que le corps permet à plusieurs racines de coexister sans se disputer l'affichage. *Alternative écartée :* une Foundation qui admettrait toutes les sources du document (en-tête, élément racine, fenêtre) ; une Foundation limitée au corps, qui exclurait plusieurs racines dans un même document. *Protège :* 11.1, D7, G6.
-- **D4 — Une Feature, une Entity.** Une Feature est propriétaire d'exactement une Entity. *Pourquoi :* T5 exige seulement qu'un invariant qui lie plusieurs ressources relève d'un seul propriétaire ; une seule Entity donne à chaque Feature un état unique et lisible. *Alternative écartée :* une Feature propriétaire de plusieurs Entities. *Protège :* O3.
+- **D4 — Une Feature, une Entity.** Une Feature est propriétaire d'exactement une Entity. *Pourquoi :* T5 exige un propriétaire commun pour rendre réalisable une transition requise qui impose des mutations conjointes de ressources internes préexistantes ; une seule Entity donne à chaque Feature un état unique et lisible, sans prétendre que toute relation entre ressources impose leur regroupement. *Alternative écartée :* une Feature propriétaire de plusieurs Entities. *Protège :* O3.
 - **D5 — Retirée.** La règle qu'elle énonçait découle des axiomes : la racine attribue leur identité aux Features (16.1).
 - **D6 — Interface non adressable.** Ni une View ni un Composer n'est propriétaire d'une identité. *Pourquoi :* une View ou un Composer est détruit par cascade à tout moment (T3) ; un Channel de l'un d'eux pourrait disparaître alors qu'un message lui est destiné, ce que A4.e évite pour le domaine. Toute coordination entre Views passe par le domaine, et l'interface reste une projection. *Alternative écartée :* des Views propriétaires d'une identité subordonnée, pour que des Views s'adressent des messages entre elles. *Protège :* A4.d, T3.
-- **D7 — Adaptateurs de l'hôte.** Chaque source de faits ou de ressources de l'hôte située hors des éléments admis par les Foundations (D3) est admise par un seul composant, son adaptateur, enfant de la racine, hors les moyens d'appel des systèmes extérieurs, les minuteries et les rappels d'animation, admis par le composant qui les utilise ou les arme (B.6). Aucun autre composant n'admet cette source. *Pourquoi :* une seule frontière de confiance par source, et un seul message d'origine par fait spontané (A5.d). Un adaptateur reçoit une identité de la racine (D1, A2.d), ce qui lui permet d'être propriétaire d'un Channel et d'émettre les faits qu'il admet. Le document lui-même, hors de son corps (en-tête, élément racine, faits de l'utilisateur survenant au niveau du document), a son propre adaptateur, qui relève de l'interface utilisateur. Un adaptateur relève d'une seule partie (11.1) : les sources d'une même zone de l'hôte qui relèvent de parties différentes ont des adaptateurs distincts (annexe A). *Alternative écartée :* chaque composant qui a besoin d'une source l'admet lui-même ; un même fait produirait alors plusieurs origines. *Protège :* A5.c, A5.d, 11.7.
-- **D8 — Ordre de délivrance.** Les messages en attente sont délivrés dans l'ordre où ils ont été produits. Un message émis est délivré aux propriétaires des abonnements dans l'ordre des abonnements ; ces délivrances prennent rang au moment de l'émission. *Pourquoi :* à code applicatif et faits admis identiques, la suite des traitements est la même, et c'est l'ordre que suit un développeur qui lit son code. *Alternative écartée :* un ordre non spécifié, ou une délivrance en profondeur d'abord, où un message produit au cours d'un traitement passerait avant les messages plus anciens. *Protège :* O1, O3.
-- **D9 — Borne causale.** Toute suite de continuations dont chacune continue la précédente, depuis l'origine, compte au plus un nombre fixé de termes, le même pour toute la racine. Un message qui allongerait une telle suite au-delà de la borne n'est pas délivré, et l'infrastructure de communication le signale. Un message émis reçu par plusieurs composants ouvre des suites parallèles, et n'allonge chacune que d'un terme. Les continuations par faits provoqués comptent (A5.c). *Pourquoi :* une boucle entre composants n'est visible d'aucun d'eux ; sans borne, elle se prolonge sans fin, loin de sa cause. *Alternative écartée :* aucune borne, ou une détection des cycles, qui signalerait à tort des répétitions légitimes et laisserait passer une chaîne longue sans cycle. *Protège :* O2, A5.b. La valeur de la borne est fixée par le Manifest (16.9).
+- **D7 — Adaptateurs de l'hôte.** Chaque source de faits ou de ressources de l'hôte située hors des éléments admis par les Foundations (D3) est admise par un seul composant, son adaptateur, enfant de la racine, hors les moyens d'appel des systèmes extérieurs, les minuteries et les rappels d'animation, admis par le composant qui les utilise ou les arme (B.6). Aucun autre composant n'admet cette source. *Pourquoi :* une seule frontière de confiance par source, et un seul message d'origine par fait spontané (A5.d). Un adaptateur reçoit une identité de la racine (D1, A2.d), ce qui lui permet d'être propriétaire d'un Channel et d'émettre sur l'état d'observation où il a inscrit les faits admis (A3.h). Le document lui-même, hors des éléments admis par les Foundations (en-tête, élément racine, sources déclarées de niveau document), a son propre adaptateur, qui relève de l'interface utilisateur. Un adaptateur relève d'une seule partie (11.1) : les sources d'une même zone de l'hôte qui relèvent de parties différentes ont des adaptateurs distincts (B.3 ; motifs en annexe A). *Alternative écartée :* chaque composant qui a besoin d'une source l'admet lui-même ; un même fait produirait alors plusieurs origines. *Protège :* A5.c, A5.d, 11.7.
+- **D8 — Ordre de délivrance.** Les messages différés en attente sont délivrés dans l'ordre où ils ont été produits, après validation du traitement modifiant ou réussite de l'amorçage (G5, G7). Un message émis est délivré aux propriétaires des abonnements dans l'ordre des abonnements ; ces délivrances prennent rang au moment de l'émission. Les Queries suivent l'exception synchrone de G5, non cette file. *Pourquoi :* à code applicatif et faits admis identiques, la suite des traitements est la même, et c'est l'ordre que suit un développeur qui lit son code. *Alternative écartée :* un ordre non spécifié, ou une délivrance en profondeur d'abord, où un message différé produit au cours d'un traitement passerait avant les messages plus anciens. *Protège :* O1, O3.
+- **D9 — Borne causale.** Toute suite de continuations dont chacune continue la précédente, depuis l'origine, compte au plus un nombre fixé de termes, le même pour toute la racine. Un message qui allongerait une telle suite au-delà de la borne n'est pas délivré, et l'infrastructure de communication le signale. La borne porte seulement sur la profondeur, ni sur le travail total ni sur la terminaison de tout processus. Un message émis reçu par plusieurs composants ouvre des suites parallèles, et n'allonge chacune que d'un terme. Les continuations par faits provoqués comptent (A5.c, G8). Les expirations d'une minuterie répétitive armée une seule fois sont sœurs, rattachées à cet armement ; un réarmement effectué en réaction à une expiration ou à une réponse continue cette réaction. Un polling par réarmements successifs peut donc atteindre la borne ; aucune de ces étapes ne permet de réinitialiser l'origine (A5.b). *Pourquoi :* une suite de déclenchements entre composants peut s'allonger sans qu'aucun d'eux en voie l'ensemble ; la borne la signale, sans prétendre détecter toutes les boucles. *Alternative écartée :* aucune borne, ou une détection des cycles, qui signalerait à tort des répétitions légitimes et laisserait passer une chaîne longue sans cycle. *Protège :* O2, A5.b. La valeur de la borne est fixée par le Manifest (16.9).
 - **D10 — Admission par la cible.** Un fait de l'hôte qui survient dans une part est admis par le propriétaire de cette part. Un fait d'une source de niveau document déclarée, comme un raccourci global, est admis par l'adaptateur du document quelle que soit sa cible ; aucune View ne l'admet. *Pourquoi :* une View connaît sa part, mais un raccourci global n'appartient à aucune part ; la déclaration rend le partage connu dès le démarrage. *Alternative écartée :* l'admission par la cible seule, qui obligerait chaque View contenant un champ à relayer le raccourci ; l'admission par le premier composant qui réagit, qui dépendrait de l'exécution. *Protège :* A5.d, O2, O3.
 - **D11 — Composition réservée.** Une View n'est enfant que d'un Composer ; la Foundation et les Views ne sont parents que de Composers. *Pourquoi :* séparer la décision de ce qui est affiché de son rendu (règle de méthode, §16). *Alternative écartée :* une View parente d'autres Views, qui décide elle-même de ce qu'elle monte. *Protège :* §16, O3.
 - **D12 — Décideur pur.** Un Composer ne modifie son contenu que pour créer ou retirer les éléments des parts qu'il attribue. Il n'est propriétaire d'aucun état autre que le contenu de son slot et l'existence de ses Views, n'admet aucun fait de l'hôte et n'adresse aucune Command. *Pourquoi :* sa décision se recalcule entièrement à partir des messages qu'il reçoit et des réponses à ses Queries : elle reste une projection du domaine, et sa seule fonction est de composer. *Alternative écartée :* un Composer qui écrit dans le DOM, deux producteurs se partageant alors un même contenu ; un Composer doté de gestionnaires d'événements ou d'un état local. *Protège :* §16, A4.d, T7, O3.
-- **D13 — Behavior aveugle.** Le code d'un Behavior ne désigne ni la View qui le déclare ni les clés de celle-ci, et ses clés ne recoupent pas les siennes. *Pourquoi :* un même Behavior doit pouvoir se greffer sur des Views sans rapport. *Alternative écartée :* un Behavior qui lit la View qui le déclare ; un Behavior composant, enfant de la View avec sa propre part, que T7, A5.d et A3.d excluent dès qu'il réagit à un fait sur un élément que la View utilise aussi. *Protège :* O3, O2.
-- **D14 — Enfants de la racine déclarés.** Les enfants de la racine sont créés au démarrage, d'après le Manifest, et seulement ainsi. Le Manifest peut être composé de déclarations venues de plusieurs modules, chargés indépendamment, pourvu qu'elles soient réunies avant le démarrage. *Pourquoi :* tout ce qui détermine les Channels existe avant le premier message ; un message adressé à un Channel non déclaré est détecté au démarrage, non au moment où il est adressé. *Alternative écartée :* un enregistrement dynamique, ou des Features créées à la demande après le démarrage ; A4.e le permettrait, mais aucune vérification ne précéderait le premier message. Le chargement différé du code d'une Feature déclarée reste possible. *Protège :* O2, O3.
+- **D13 — Behavior aveugle.** Le code d'un Behavior ne désigne ni la View qui le déclare ni les clés de celle-ci. Les noms des clés de la View et de chacun de ses Behaviors sont disjoints, y compris entre Behaviors ; des clés de noms différents peuvent désigner le même élément. *Pourquoi :* un même Behavior doit pouvoir se greffer sur des Views sans rapport, sans collision de noms ni interdiction de réagir au même élément. *Alternative écartée :* des noms de clés partagés ; un Behavior qui lit la View qui le déclare ; un Behavior composant, enfant de la View avec sa propre part, que T7, A5.d et A3.d excluent dès qu'il réagit à un fait sur un élément que la View utilise aussi. *Protège :* O3, O2.
+- **D14 — Enfants de la racine déclarés.** Les enfants de la racine sont créés au démarrage, d'après le Manifest, et seulement ainsi. Le Manifest peut être composé de déclarations venues de plusieurs modules, chargés indépendamment, pourvu qu'elles soient réunies avant le démarrage. L'amorçage établit tous leurs Channels avant les consultations initiales ; les délivrances différées n'ont lieu qu'après sa réussite (§2.5). *Pourquoi :* les Channels et les contrats déclarés existent avant les premières consultations ; les cibles non déclarées peuvent être refusées avant l'ouverture du transport différé, sans prétendre connaître toutes les instances futures de l'interface. *Alternative écartée :* un enregistrement dynamique, ou des Features créées à la demande après le démarrage ; A4.e le permettrait, mais aucune vérification ne précéderait le premier message. Le chargement différé du code d'une Feature déclarée reste possible s'il respecte le protocole d'amorçage. *Protège :* O2, O3.
 - **D15 — Navigation fournie.** Bonsai fournit une Feature de navigation, de namespace réservé `router`, activée par le Manifest (16.9). Son contrat est celui que projette l'adaptateur historique : la Command `router:navigate { location, mode }`, l'Event `router:routeChanged { route, mode }` et la Query `router:currentRoute`, où le mode est l'ajout d'une entrée, le remplacement de l'entrée courante ou le suivi d'un retour ou d'une avance (B.5). Une application peut ne pas l'activer et déclarer à la place la projection de sa propre Feature de navigation. La Feature de navigation n'est propriétaire que de l'état de navigation : l'adresse relève de l'adaptateur historique (18.2, D7), et un retour ou une avance se demande à celui-ci par une View (A4.b). *Pourquoi :* toute application à plusieurs pages en a besoin, et le contrat entre la Feature et l'adaptateur historique doit être le même partout. *Alternative écartée :* une Feature de navigation écrite par chaque application, sans contrat commun avec l'adaptateur ; une Feature de navigation qui modifierait elle-même l'adresse, ce que 11.1 et D7 excluent. *Protège :* O3, B.5.
-- **D16 — Contrats déclarés.** Le code d'un composant déclare les Channels qu'il écoute et ceux auxquels il adresse des messages, les messages de son propre Channel, et les faits de l'hôte qu'il admet ; ce contrat est connu avant le démarrage, même pour un composant créé après celui-ci. Ses traitements sont dérivés de ce contrat : un traitement par message ou fait déclaré, et aucun autre. *Pourquoi :* tout ce qu'un composant peut recevoir et adresser est connu avant le premier message ; A3, A4.b et D10 deviennent vérifiables par construction, par analyse statique ou au démarrage (§19). *Alternative écartée :* des abonnements et des traitements enregistrés à l'exécution, invisibles avant le démarrage. *Protège :* O2, O3.
+- **D16 — Contrats déclarés.** Le code d'un composant déclare les Channels qu'il écoute et ceux auxquels il adresse des messages, les messages de son propre Channel et leur mode, et les faits de l'hôte qu'il admet ; ce contrat est connu avant le démarrage, même pour un composant créé après celui-ci. Ses traitements sont dérivés de ce contrat : un traitement par message déclaré, y compris le message local d'admission d'un fait déclaré, et aucun autre. *Pourquoi :* la structure des communications et les modes Command/Query peuvent être contrôlés avant délivrance ; cela ne prouve ni A3 dans son ensemble, notamment A3.h, ni les propriétés de toutes les instances futures. A4.b et D10 sont contrôlés dans la limite des déclarations ; les vérifications liées aux instances et à la pile active restent à l'exécution (§19). *Alternative écartée :* des abonnements et des traitements enregistrés à l'exécution, invisibles avant le démarrage. *Protège :* O2, O3, A3.j.
 - **D17 — Chorégraphie du domaine.** Une Feature n'adresse aucune Command à une autre Feature. Les Features se coordonnent par les Events qu'elles émettent sur leurs propres ressources ; elles peuvent s'adresser des Queries, et adresser des Commands aux adaptateurs de l'hôte du domaine. *Pourquoi :* aucune Feature ne devient l'orchestratrice des autres ; chacune ne décide que de sa propre ressource, en réaction à ce qu'elle apprend, et le contexte causal rend le déroulement d'ensemble reconstituable (A5). *Alternative écartée :* des Commands entre Features (orchestration), qui laissent émerger une Feature coordinatrice et concentrent la logique de plusieurs processus. *Protège :* règle de méthode du §16, O3, A5.
-- **D18 — L'interface relaie, elle n'enchaîne pas.** Un composant de l'interface utilisateur n'adresse de Command qu'en traitement d'un fait qu'il admet, intention de l'utilisateur ou fait de l'hôte, jamais en traitement d'un Event ou d'une réponse. *Pourquoi :* enchaîner une Command à un Event est une décision métier ; placée dans l'interface, elle échappe au domaine, cesse d'opérer sans interface (A4.a) et rouvre l'orchestration que D17 ferme. *Alternative écartée :* une View qui réagit à un Event par une Command. *Protège :* D17, A4.a.
+- **D18 — L'interface relaie, elle n'enchaîne pas.** Un composant de l'interface utilisateur n'adresse de Command qu'en réaction à un fait qu'il admet, intention de l'utilisateur ou fait de l'hôte, traité par son message local d'admission. La permission suit le déclencheur de la réaction, non la dernière enveloppe de message : un relais local d'un Event ne l'accorde pas. Des Queries peuvent être incluses dans cette réaction ; à leur retour, son auteur peut adresser une Command si le déclencheur est toujours le fait admis. Le traitement d'une Query reste lui-même en lecture seule (A3.g). Une réaction déclenchée par un Event n'adresse jamais de Command, même après une Query ou un relais local. Une réponse n'est ni un message ni un nouveau déclencheur (9.11, G8). *Pourquoi :* enchaîner une Command à un Event est une décision métier ; placée dans l'interface, elle échappe au domaine, cesse d'opérer sans interface (A4.a) et rouvre l'orchestration que D17 ferme. *Alternative écartée :* une View qui réagit à un Event par une Command, directement ou en le déguisant en message local ; l'interdiction de toute Command après une Query, qui empêcherait une consultation préalable dans une réaction à un fait. *Protège :* D17, A4.a, A5.b.
+- **D19 — Regroupements à déclencheur unique en V1.** Une politique déclarée peut sélectionner une notification, notamment la dernière, et abandonner les autres. Le résultat continue le déclenchement de la notification retenue, sous le contrôle de l'infrastructure de communication ; il n'annonce pas une fusion de leurs contextes. Les agrégations exigeant plusieurs parents causaux sont reportées au-delà de la V1. Lire un état issu d'autres traitements ne constitue pas une telle agrégation de déclencheurs (10.5). *Pourquoi :* conserver une causalité de déclenchement à parent unique, dont la profondeur est calculable sans inventer une origine ni prétendre tracer toute provenance des données. *Alternative écartée :* une agrégation multi-parent en V1, ou un contexte choisi arbitrairement pour la masquer. *Protège :* A5.b, G8, D9, O2.
 
 ## 16. Rôles dérivés
 
@@ -768,7 +808,7 @@ Chaque Feature reçoit son identité de la racine : une identité est une part d
 
 État du domaine dont le propriétaire est une Feature, avec les opérations exclusives qui le modifient.
 
-L'Entity n'est pas un composant : elle n'a ni existence propre, ni identité, ni Channel. Ce qu'elle exécute est exécuté par sa Feature (règle d'imputation, §2.5). Les invariants métier qui la concernent sont définis par le code applicatif et satisfaits à l'issue de chaque traitement (A4.a).
+L'Entity n'est pas un composant : elle n'a ni existence propre, ni identité, ni Channel. Ce qu'elle exécute est exécuté par sa Feature (règle d'imputation, §2.5). Les invariants métier qui concernent son état interne sont définis par le code applicatif et satisfaits aux frontières de validation (§2.5, A4.a). Une observation ou une intention enregistrée ne garantit pas la matérialisation d'un effet extérieur.
 
 ### 16.3 Feature
 
@@ -776,7 +816,7 @@ Composant du domaine, enfant de la racine, propriétaire d'une identité attribu
 
 Bonsai en fournit une, la Feature de navigation, de namespace réservé `router` (D15). Une Feature n'adresse aucune Command à une autre Feature (D17).
 
-Conséquences : une Feature n'émet que sur son propre Channel (A3.e, T2) ; elle survit à tout changement de l'interface utilisateur et de l'hôte (T6) ; un fait asynchrone qu'elle admet lui revient par un message local (9.3, 9.5, A3.f).
+Conséquences : une Feature n'émet que sur son propre Channel (A3.e, T2) ; elle survit aux changements de l'interface utilisateur et de l'hôte tant que la racine existe, mais prend fin avec celle-ci (T6) ; un fait asynchrone qu'elle admet lui revient par un message local (9.3, 9.5, A5.c).
 
 ### 16.4 Foundation
 
@@ -791,14 +831,14 @@ Un **slot** est un élément de la part d'une View, ou de l'élément admis par 
 Conséquences :
 
 - elle n'est pas adressable et n'émet aucun message (D6, T4) ; elle reçoit ce que les Features émettent et les réponses à ses Queries (9.11) ;
-- son parent lui transmet, à sa création, une représentation de l'identité de sa part, jamais un élément de l'hôte (A3.d, 6.2) ;
-- elle établit sa référence structurelle en résolvant cette représentation auprès de l'hôte (9.10) ;
+- son parent lui transmet, à sa création, une désignation de sa part, jamais un élément de l'hôte ni une identité dont elle devrait être propriétaire (8.5, A3.d, 6.2) ;
+- elle établit sa référence structurelle par résolution contrôlée de cette désignation : la propriété est vérifiée, la désignation n'accorde aucun accès par elle-même et n'est valable que pour cette attribution ; une réattribution du même emplacement ne la réactive pas (8.5, 9.10) ;
 - sa part ne recouvre aucune autre part existante (T7) ; le contenu des slots qu'elle attribue à ses Composers lui est soustrait (6.5), et elle conserve l'élément de chaque slot ;
 - elle ne détruit jamais son élément racine (A2.d) ; elle peut en modifier les attributs et dispose de tout ce qu'il contient, hors le contenu de ses slots ;
 - retirer l'élément d'un slot mettrait fin au contenu attribué sans que son propriétaire prenne fin (A2.d) : la View détruit d'abord le Composer concerné, ce qui lui rend ce contenu (T3) ;
-- elle peut être propriétaire d'un état local, modifié uniquement en traitement de ses messages locaux (A5.a, 9.5). Cet état est confiné : aucun autre composant ne le modifie (A1.b) ni ne le lit (A3.c), aucun ne peut le lui demander (T4), elle ne le diffuse pas (A3.e), et il est détruit avec elle (T3). Elle peut en transmettre une valeur, figée, dans une Command ;
-- l'information métier qu'elle affiche provient du domaine et n'est remplacée qu'en traitement d'un message issu de celui-ci (A4.d) ;
-- elle n'adresse de Command qu'en traitement d'un fait qu'elle admet, jamais en réaction à un Event ou à une réponse (D18).
+- elle peut être propriétaire d'un état local, initialisé selon §2.5 et modifié pendant tout traitement autorisé, y compris celui d'un Event reçu (A5.a). Cet état est confiné : aucun autre composant ne le modifie (A1.b) ni ne le lit (A3.c), aucun ne peut le lui demander (T4), elle ne le diffuse pas (A3.e), et il est détruit avec elle (T3). Elle peut en transmettre une valeur, figée, dans une Command autorisée par D18 ;
+- l'état métier qu'elle présente comme validé provient du domaine, éventuellement par dérivation de présentation sans autorité métier ; un brouillon ou une intention reste distinct de l'état confirmé (A4.d). Préparer sa projection puis l'appliquer après validation interne ne rend pas les écritures DOM atomiques ; un échec hôte est admis par un nouveau message (§2.5, G7) ;
+- elle peut consulter le domaine puis adresser une Command dans la même réaction à un fait admis ; elle n'en adresse jamais dans une réaction déclenchée par un Event, même par relais local ou après une Query (D18).
 
 ### 16.6 Composer
 
@@ -807,9 +847,9 @@ Composant de l'interface utilisateur, enfant de la Foundation ou d'une View, pro
 Conséquences :
 
 - il n'est propriétaire d'aucune identité (D6) : il n'est pas adressable et n'émet aucun message (T4) ; il reçoit des messages émis et adresse des Queries, dont il reçoit les réponses (T2, 9.11) ;
-- à sa création, puis à chaque message qu'il traite, il décide quelles Views occupent des parts de son contenu ; il crée ou détruit leur existence, dont il est propriétaire (7.2, A1.b) ;
+- pendant son initialisation autorisée (§2.5), puis à chaque message qu'il traite, il décide quelles Views occupent des parts de son contenu ; il crée ou détruit leur existence, dont il est propriétaire (7.2, A1.b). L'initialisation d'une View entre dans son unité de validation, sans lui déléguer l'autorité sur les ressources de celle-ci ;
 - les parts qu'il attribue ne se recouvrent pas (T7) ; détruire une View lui rend sa part (A2.d, T3) ;
-- une View qu'il crée reçoit une représentation de l'identité de sa part, jamais un élément de l'hôte (A3.d, 6.2) ;
+- à sa création, il reçoit de son parent une désignation du contenu attribué ; une View qu'il crée reçoit une désignation de sa part, jamais un élément de l'hôte. Ces désignations n'exigent aucune identité ; leur résolution contrôlée vérifie la propriété et leur validité s'arrête avec l'attribution concernée (8.5, 9.10, A3.d, 6.2) ;
 - il ne lit de son contenu que la portion qui n'est pas attribuée à ses Views (6.5, A3.c) ;
 - son slot ne disparaît pas tant qu'il existe : pour en retirer l'élément, son parent le détruit d'abord (16.5, A2.d) ;
 - il est détruit avec son parent, et ses Views avec lui (T3) ;
@@ -817,15 +857,15 @@ Conséquences :
 
 ### 16.7 Behavior
 
-Partie réutilisable du code d'une View. Un Behavior n'est pas un composant : ce qu'il exécute est exécuté par la View qui le déclare (règle d'imputation, §2.5). Les clés qu'il déclare désignent des éléments de la part de cette View, les messages qu'il produit sont adressés par cette View, et son état local fait partie de l'état local de celle-ci.
+Partie réutilisable du code d'une View. Un Behavior n'est pas un composant : ce qu'il exécute est exécuté par la View qui le déclare (règle d'imputation, §2.5). Une **clé**, dans les déclarations d'une View ou d'un Behavior, est un nom local désignant un élément de la part de la View ; ce terme propre aux rôles n'ajoute pas une notion fondamentale au §17. Les clés qu'il déclare désignent des éléments de cette part, les messages qu'il produit sont adressés par cette View, et son état local fait partie de l'état local de celle-ci.
 
 Conséquences :
 
-- un fait survenant dans la part est admis une fois, par la View, même lorsque la View et ses Behaviors y réagissent tous (A5.d, D10) ; les messages produits en réaction partagent la même origine ;
-- les réactions de la View et de ses Behaviors à un même fait s'exécutent dans un ordre fixe, celui de leur déclaration ; les messages qu'elles produisent sont délivrés dans cet ordre (D8) ;
+- un fait survenant dans la part est admis une fois, par la View, même lorsque la View et ses Behaviors y réagissent tous (A5.d, D10) ; leurs réactions s'exécutent pendant le traitement du même message local d'admission et leurs messages en continuent le contexte, origine spontanée ou continuation provoquée (11.6, A5.c, G8) ;
+- les réactions de la View et de ses Behaviors à un même fait s'exécutent dans un ordre fixe, celui de leur déclaration ; leurs messages différés sont délivrés dans l'ordre de production (D8), leurs Queries selon le contrat synchrone de G5 ;
 - il n'a ni existence propre, ni identité, ni part ; il prend fin avec sa View (T3) ;
-- il ne produit rien ni hors de la part de sa View, ni dans le contenu de ses slots (16.5) : un contenu affiché au-dessus du reste de la page relève d'un Composer, et un fait de niveau document, comme le focus qui sort de la part, relève d'un adaptateur (D7, D10) ;
-- son code ne désigne ni la View qui le déclare ni les clés de celle-ci (D13).
+- il ne produit rien ni hors de la part de sa View, ni dans le contenu de ses slots (16.5) : un contenu affiché au-dessus du reste de la page relève d'un Composer ; seuls les faits de niveau document déclarés relèvent de l'adaptateur correspondant (D7, D10). Le cas général du clic ou du focus hors d'une View reste ouvert (18.30) ;
+- son code ne désigne ni la View qui le déclare ni les clés de celle-ci. Les noms de clés de la View et des différents Behaviors sont disjoints, mais peuvent désigner les mêmes éléments sans multiplier les admissions (D13).
 
 **Contre-exemples :** un Behavior insère une infobulle dans le corps du document, hors de la part de sa View ; un Behavior écoute le défilement de la fenêtre au lieu de recevoir les Events de l'adaptateur qui l'admet.
 
@@ -837,11 +877,11 @@ Conséquences :
 
 - il relève d'une seule partie, celle des ressources qu'il admet (11.1, 18.14) ;
 - il est seul à admettre ses sources (D7, A5.d), et propriétaire initial des ressources qu'il admet (A2.a) ;
-- il émet sur son Channel les faits qu'il admet et ce qu'il sait de ses ressources (A3.e, A3.h) ; les autres composants lui adressent des Commands et des Queries, sous la réserve de A4.b ;
+- il inscrit dans un état d'observation dont il est propriétaire les faits qu'il entend annoncer, avant d'émettre sur son Channel une information sur cet état (A3.e, A3.h). Un fait brut n'est pas, à lui seul, une ressource ; les intentions d'effets ne sont pas annoncées comme des succès. Les autres composants lui adressent des Commands et des Queries, sous la réserve de A4.b ;
 - un composant du domaine n'adresse rien à un adaptateur de l'interface utilisateur et ne reçoit rien de lui (A4.b) : un adaptateur de l'interface reçoit les Events du domaine et en tient ses ressources pour projection (A4.d), comme le titre ou l'adresse ;
-- à l'admission d'un fait, il peut adresser une Command déclarée, y compris au domaine : un adaptateur de l'interface informe ainsi le domaine sans que celui-ci reçoive ses Events (A4.b) ;
-- une ressource qu'il tient en projection n'est modifiée que si la valeur projetée diffère de sa valeur courante (annexe B.5) ;
-- il conserve le contexte causal des faits qu'il provoque jusqu'à leur admission (A5.c) ;
+- pendant le traitement du message local d'admission d'un fait, il peut adresser une Command déclarée, y compris au domaine : un adaptateur de l'interface informe ainsi le domaine sans que celui-ci reçoive ses Events (A4.b, D18). Le préambule d'admission ne mute pas l'état applicatif (11.6) ;
+- une ressource qu'il tient en projection n'est modifiée que si la projection n'est pas déjà satisfaite selon l'équivalence de B.5 ; les effets sont préparés puis appliqués après validation interne, sans transaction extérieure ni rollback des effets déjà appliqués (§2.5, G7) ;
+- il utilise les interfaces Bonsai par lesquelles l'infrastructure de communication conserve et restitue le contexte causal des faits provoqués ; il ne le fabrique ni ne le remplace lui-même (A5.c, G8) ;
 - il ne transmet aucune référence vers une ressource de l'hôte (A3.c, A3.d).
 
 ### 16.9 Manifest
@@ -854,14 +894,14 @@ Conséquences :
 
 - il ne contient aucune référence (A3.d) : il désigne des classes, et le code applicatif n'est pas une référence (9.9) ;
 - la racine le lit à sa création ; il ne change pas pendant la vie de la racine (D14) ;
-- tout ce qu'il déclare est connu avant le premier message : l'unicité et la forme des namespaces, les namespaces désignés par les messages, le caractère disjoint des périmètres (B.2) sont vérifiables avant le démarrage, à la compilation lorsque le Manifest est écrit d'un seul tenant, au démarrage lorsqu'il est assemblé à partir de modules (O2). L'unicité par hôte des adaptateurs (B.2), qui oppose les Manifests de racines distinctes, n'est vérifiable qu'au démarrage de la seconde racine ;
+- les contrats et les enfants déclarés de la racine sont connus avant l'ouverture du transport différé, non toutes les futures instances de Views et de Composers. L'unicité et la forme des namespaces, les cibles déclarées et la disjonction des périmètres déclarés sont vérifiables avant le démarrage, à la compilation lorsque ces données sont littérales et réunies, au démarrage lorsqu'elles viennent de modules (O2, D16). Les conflits physiques d'écriture entre racines d'un même hôte demandent une vérification commune au démarrage, notamment de la seconde racine (B.2) ; cette vérification ne garantit pas l'absence d'auteurs extérieurs non coordonnés ;
 - chaque racine a son Manifest (G6).
 
 **Contre-exemples :** un Manifest transmet l'élément du corps du document au lieu d'un sélecteur (A3.d) ; une Feature `chat` est créée au premier clic sur « Aide », et `chat:open` ne vise aucun Channel avant ce clic (D14).
 
 ## 17. Chaîne de non-circularité
 
-Une définition n'emploie aucun terme situé après elle. L'ordre de lecture du document suit exactement la chaîne.
+Une définition n'emploie aucun terme situé après elle. L'ordre de lecture du document suit exactement cette chaîne de **52 termes**. Le graphe de dépendances porte sur les seules phrases définitoires et leurs dépendances définitoires (§2.2), non sur les commentaires informatifs ni sur les prescriptions normatives explicitement séparées. Leurs renvois vers l'aval ne sont pas des dépendances de définition.
 
 1. modèle *(primitif)*
 2. hôte *(primitif)*
@@ -890,81 +930,104 @@ Une définition n'emploie aucun terme situé après elle. L'ordre de lecture du 
 25. identité
 26. représentation d'identité
 27. namespace
-28. Channel
-29. abonnement
-30. traitement
-31. transport
-32. message local
-33. adresser
-34. émettre
-35. recevoir
-36. référence
-37. référence structurelle
-38. réponse
-39. cause
-40. origine
-41. continuation
-42. chaîne causale
-43. contexte causal
-44. interaction fonctionnelle
-45. interface utilisateur
-46. domaine
-47. invariant métier
-48. cohérence métier
-49. information métier
-50. admission
-51. frontière de confiance
+28. désignation
+29. Channel
+30. abonnement
+31. traitement
+32. transport
+33. message local
+34. adresser
+35. émettre
+36. recevoir
+37. référence
+38. référence structurelle
+39. réponse
+40. cause
+41. origine
+42. continuation
+43. chaîne causale
+44. contexte causal
+45. interaction fonctionnelle
+46. interface utilisateur
+47. domaine
+48. invariant métier
+49. cohérence métier
+50. information métier
+51. admission
+52. frontière de confiance
 
 ## 18. Questions ouvertes
 
-Les numéros des questions sont stables : une question tranchée garde son numéro et passe en 18.B, avec la réponse, l'endroit de la théorie qui la porte et la version qui l'a tranchée. Aucune question n'est à la fois ouverte et tranchée.
+Les numéros des questions sont stables : une question tranchée garde son numéro et passe en 18.B, avec la réponse, l'endroit de la théorie qui la porte et la version qui l'a tranchée. Une réponse antérieure incompatible avec un arbitrage validé est mise à jour en conservant son jalon historique ; une question non tranchée demeure ou revient en 18.A. Aucune question n'est à la fois ouverte et tranchée.
+
+Les précisions V0.9.3 ci-dessous regroupent les 28 points de revue arbitrés le 30 octobre 2026 ; elles ne valent ni clôture globale des audits historiques ni constat d'alignement de l'implémentation. En particulier, le cas V4 de l'audit V0.9.2 n'appartient pas à ces arbitrages.
 
 ### 18.A Questions ouvertes
 
-Aucune question n'est ouverte. Les constats de l'audit de cohérence qui attendent un arbitrage sont recensés dans `docs/rapports/audit-coherence-V0.9.2.md` (§10).
+| # | Question | État et limites actuelles |
+| --- | --- | --- |
+| 18.30 | Clic ou déplacement du focus hors d'une View (audit V0.9.2, V4) | Ouvert, non arbitré par les 28 points V0.9.3. D10 couvre les parts et les sources de niveau document déclarées ; D12 interdit au Composer d'admettre un fait. La granularité et l'admetteur d'un clic ou d'un déplacement du focus hors de la View concernée, notamment dans une portion non attribuée, restent à décider sans double admission. Le focus de la fenêtre classé en B.3 ne résout pas le focus d'un élément. |
+
+L'[audit historique V0.9.2](rapports/audit-coherence-V0.9.2.md) conserve ses constats et propositions ; une proposition qui n'appartient pas aux arbitrages validés n'acquiert aucune autorité par sa seule présence dans ce rapport. L'alignement du guide, des gardes, des fiches, de la traçabilité et du code reste un travail distinct.
 
 ### 18.B Questions tranchées
 
 | # | Question | Réponse | Portée par | Tranchée en |
 | --- | --- | --- | --- | --- |
-| 18.1 | Périmètre causal | Le périmètre observé est le modèle, étendu aux faits extérieurs qu'il a provoqués. La longueur d'une suite de continuations qui traverse plusieurs faits provoqués est bornée par D9. | 10.2, A5.c | V0.6 |
+| 18.1 | Périmètre causal | Le périmètre observé est le modèle, étendu aux faits extérieurs qu'il a provoqués. D9 borne la profondeur des suites de continuations, non le travail total ni la terminaison ; la causalité suit le déclenchement, pas toute provenance historique des données. | 10.2, 10.5, A5.c, G8, D9 | V0.6 ; précisée en V0.9.3 |
 | 18.2 | Navigation et adresse | L'adresse est perçue et modifiée par l'utilisateur : elle relève de l'interface utilisateur. Que l'état de navigation soit une information métier relève de chaque application ; s'il l'est, il vit dans une Feature et l'adresse en est une projection. | 11.1, A4.d | V0.6 |
-| 18.3 | Stockage et survie à la racine | Le stockage n'est une ressource du modèle qu'une fois admis ; il prend fin avec son propriétaire. Sa matérialisation survit hors du modèle ; une nouvelle racine l'admet à nouveau, comme une origine. | A2.a, T3 (remarque), A5.c | V0.6 |
+| 18.3 | Stockage et survie à la racine | L'admission produit une ressource du modèle distincte du support de stockage ; elle prend fin avec son propriétaire, sans effacer nécessairement ce support extérieur. Une nouvelle racine produit une nouvelle ressource admise dont les valeurs initiales relèvent de sa cause de démarrage, non de la session précédente. | A2.a, T3 (remarque), §2.5, 11.6, A5.c, G8 | V0.6 ; précisée en V0.9.3 |
 | 18.4 | Frontière de confiance | Une seule notion : la frontière est formée de tous les points d'admission, et ce qui la franchit est validé par son traitement (A4.a). Les distinctions entre hôte et système extérieur tiennent à qui admet, et sont portées par A4.c, D3, D7 et 16.5. | 11.7 (remarque) | V0.8 |
-| 18.5 | Racines multiples | Plusieurs racines peuvent coexister dans un même hôte. Chacune forme un modèle distinct ; l'infrastructure de communication ne transmet aucun message d'une racine à une autre (G6), et chacune perçoit les changements que l'autre provoque dans l'hôte comme des faits spontanés. La Foundation de chaque racine admet un élément distinct (D3). | G6, §12, D3 | V0.8 |
+| 18.5 | Racines multiples | Plusieurs racines peuvent coexister dans un même hôte. Chacune forme un modèle distinct ; aucun message ne passe de l'une à l'autre (G6), et les changements provoqués par une autre sont des faits spontanés. Leurs éléments de Foundation sont disjoints (D3) ; cela ne suffit pas pour les écritures globales. B.2 impose leur exclusivité et des périmètres physiques disjoints pour les stockages, sans garantie contre les onglets ou scripts non coordonnés. | G6, §12, D3, B.2, B.3 | V0.8 ; précisée en V0.9.3 |
 | 18.6 | Délégation | La délégation est exclue : seul le propriétaire exécute une opération exclusive. Elle serait réexaminée si la dérivation d'un rôle rencontrait un cas que l'attribution, les messages et les paramètres de création ne couvrent pas. | A1.b | V0.6 |
-| 18.7 | Garantie au plus tôt et gardes | Le principe relève de la théorie à deux titres : comme règle de méthode, qui impose à toute règle contraignant le code applicatif une garde au niveau le plus précoce possible (§19), et comme décision, les contrats déclarés (D16). O2 en est le but. | §19, D16, O2 | V0.9.1 |
-| 18.8 | Déterminisme | Le déterminisme n'est pas un axiome : un code qui lit librement l'heure ou une valeur aléatoire reste conforme (18.15). L'infrastructure de communication n'ajoute aucun aléa : les messages sont délivrés dans l'ordre de leur production (D8). La rejouabilité est un objectif (O1) ; restituer les valeurs lues librement relève de l'implémentation. | D8, O1, 18.15 | V0.8 |
-| 18.9 | Cohésion et borne causale | La longueur des suites de continuations d'une chaîne causale est bornée par décision (D9), au service de la détection précoce (O2). « Une responsabilité, un rôle » (P10) est une règle de méthode pour la dérivation des rôles, non un axiome ni une décision. | D9, §16 | V0.8 |
+| 18.7 | Garantie au plus tôt et gardes | Une obligation contrôlable reçoit une garde au niveau le plus précoce possible ; une obligation sémantique non vérifiable reçoit une justification explicite et une revue, notamment A3.h et une partie d'A4.d. D16 permet le contrôle de la structure et des modes déclarés, pas de tout A3 ni de toutes les instances futures. Les tests ne sont pas des preuves générales. | §19, D16, O2 | V0.9.1 ; précisée en V0.9.3 |
+| 18.8 | Déterminisme | Le déterminisme n'est pas un axiome : lire librement l'heure ou une valeur aléatoire reste conforme (18.15). L'infrastructure de communication n'ajoute aucun aléa : les messages différés suivent l'ordre de production (D8), les Queries le contrat synchrone de G5. La rejouabilité reste un objectif ; restituer les valeurs lues librement relève de l'implémentation. | D8, G5, O1, 18.15 | V0.8 ; précisée en V0.9.3 |
+| 18.9 | Cohésion et borne causale | D9 borne seulement la profondeur : un timer répétitif armé une fois produit des expirations sœurs ; un réarmement continue la réaction et un polling peut atteindre la borne. Ni le travail total ni la terminaison ne sont garantis ; aucune origine n'est réinitialisée pour contourner la borne. « Une responsabilité, un rôle » (P10) est une règle de méthode pour les rôles. | D9, A5.b, G8, §16 | V0.8 ; précisée en V0.9.3 |
 | 18.10 | Objectifs | Les objectifs forment une catégorie distincte de la décision et de la conséquence : une qualité que les axiomes établissent est une conséquence. La liste est courte : rejouabilité (O1), détection précoce (O2) et ergonomie de développement (O3). | 2.6, 15.1 | V0.8 |
 | 18.11 | Rattachement au registre | Chaque principe `P<n>` et chaque invariant `I<n>` reçoit un statut et l'élément de la théorie qui le fonde. Le report dans `docs/invariants/` relève de l'alignement du dépôt. | `docs/rapports/registre-V0.9.2.md` | V0.9.2 |
-| 18.12 | Admission d'un fait dont la cible est dans une part | Un fait n'est admis qu'une fois (A5.d). Il l'est par le propriétaire de la part où il survient, sauf s'il relève d'une source de niveau document déclarée, admise par l'adaptateur du document (D10). | A5.d, D10 | V0.8 |
-| 18.13 | Adresser son propre Channel | Permis, sans conséquence propre pour le modèle : un message adressé à son propre Channel est mis en file comme tout message (G5) et traité après le traitement en cours. Un propriétaire exécute ses opérations lui-même (A1.b) et lit ses ressources sans rien demander (T2). Le message local (9.5) reste le moyen prévu pour se transmettre un fait provoqué. | G5, A1.b, T2 | V0.7 |
-| 18.14 | Adaptateurs mixtes | Un adaptateur relève d'une seule partie (11.1) : les adaptateurs dont les sources relevaient des deux parties sont scindés. L'adaptateur du document (interface) garde l'en-tête, l'élément racine, le plein écran et les faits de l'utilisateur de niveau document ; la visibilité et le focus de la fenêtre passent à l'adaptateur du cycle de vie (domaine), les cookies à l'adaptateur de stockage (domaine) ; le défilement de la fenêtre quitte l'adaptateur Viewport (domaine) pour un adaptateur du défilement (interface). | D7, 11.1, annexe A | V0.9 |
-| 18.15 | Lecture d'une information de l'hôte | Lire une ressource de l'hôte, dont l'état persiste et ne change que par des faits, exige d'en être propriétaire, donc de l'avoir admise. Lire une valeur que l'hôte produit à chaque lecture, comme l'heure ou une valeur aléatoire, n'est pas une admission. | 3.2 (note), 9.9, A3.c | V0.7 |
+| 18.12 | Admission d'un fait dont la cible est dans une part | Un fait n'est admis qu'une fois (A5.d), par le propriétaire de la part où il survient, sauf source de niveau document déclarée, admise par l'adaptateur du document (D10). L'admission soumet un message local sans mutation applicative préalable. Cette réponse ne tranche pas le cas hors View de 18.30. | A5.d, D10, 11.6 | V0.8 ; précisée en V0.9.3 |
+| 18.13 | Adresser son propre Channel | Une Command vers soi est permise et différée jusqu'à validation. Une Query vers soi est refusée avec erreur, comme toute Query vers un composant actif, jamais mise en file pour attendre une réponse. Le propriétaire lit directement ses propres ressources ; le message local reste la voie d'admission d'un fait. | G5, G7, A1.b, 9.5, T2 | V0.7 ; corrigée en V0.9.3 |
+| 18.14 | Adaptateurs mixtes | Un adaptateur relève d'une seule partie (11.1). Le document, l'historique, le défilement et le presse-papiers sont des supports de présentation ou d'intention ; visibilité et focus de la fenêtre, Viewport et environnement sont des conditions d'environnement du domaine. Les cookies relèvent du stockage. Pour les cas limites, B.3 fixe explicitement la convention normative ; A en explique les motifs sans trancher le focus d'un élément hors View (18.30). | D7, 11.1, B.3 | V0.9 ; précisée en V0.9.3 |
+| 18.15 | Lecture d'une information de l'hôte | L'accès direct à un support hôte persistant passe par une référence structurelle bornée au périmètre d'une ressource propre admise ou issue de celle-ci par attribution, sans propriété du support. Un autre composant consulte le propriétaire par Query. Lire une valeur que l'hôte produit à chaque lecture, comme l'heure ou une valeur aléatoire, reste libre et n'est pas une admission. | 3.2 (note), 9.9, 9.10, 11.6, A3.c | V0.7 ; précisée en V0.9.3 |
+| 18.16 | Propriété, objet et modes des interactions | A2.e clôt les origines de propriété. A3.i impose une ou plusieurs ressources pour objet : pas de service de calcul pur autonome sans ressource. A3.j distingue avant délivrance action sans réponse et connaissance avec réponse ; une Command peut être refusée ou sans effet. L1 et T2 exposent ces prémisses explicites. | A2.e, A3.i, A3.j, L1, T2 | V0.9.3 — 30 octobre 2026 |
+| 18.17 | Validation, amorçage et création | Les contraintes d'autorité restent permanentes ; les invariants d'état sont vérifiés aux frontières de validation. L'amorçage exceptionnel a une cause ; les Channels précèdent les consultations initiales et les délivrances différées attendent sa réussite. Les admissions survenues entre-temps attendent sa clôture ; un échec abandonne le modèle en construction et ses messages différés. L'initialisation d'un composant créé pendant un traitement entre dans l'unité du créateur, sans déplacement de l'autorité de chaque propriétaire. | §2.5, A5.a, G5, G7, D14 | V0.9.3 — 30 octobre 2026 |
+| 18.18 | Lecture seule et réentrance des Queries | La lecture seule est transitive : aucune création de ressource du modèle, aucun effet extérieur, aucune Command, aucun Event ni message local ; seules les Queries imbriquées conformes sont permises. G5 refuse toute cible active, y compris soi. | A3.g, G5, T2 | V0.9.3 — 30 octobre 2026 |
+| 18.19 | Échec et effets extérieurs | L'erreur de Query se propage jusqu'au traitement extérieur ou à l'amorçage, sans reprise locale ni réponse de substitution. Les Queries déjà délivrées restent dans la trace. Le rollback concerne les ressources internes et les messages différés non délivrés ; les effets hôte sont différés après validation mais non atomiques, avec admission ultérieure de leurs succès ou échecs. | §2.5, G7, 9.11 | V0.9.3 — 30 octobre 2026 |
+| 18.20 | Désignation d'une part | Une désignation est une information à résoudre sous contrôle de propriété, non un accès ni une autorité. Views et Composers reçoivent des désignations de parts, sans devenir propriétaires d'identités ; une désignation expirée n'est pas réactivée par réattribution du même emplacement. | 8.5, 9.9, 9.10, 16.5, 16.6 | V0.9.3 — 30 octobre 2026 |
+| 18.21 | Faits annoncés par les adaptateurs | A3.h est conservé : avant Event, le fait est inscrit dans un état d'observation dont l'adaptateur est propriétaire ; l'admission seule ne transforme pas un fait en ressource. | A3.h, 16.8, B.4 | V0.9.3 — 30 octobre 2026 |
+| 18.22 | Fidélité et responsabilité causales | G8 confie les contextes à l'infrastructure de communication. Un message a un parent de déclenchement, hors origine ; lire des données antérieures ne fusionne pas leurs origines. Les effets passent par les interfaces qui conservent ce lien. | 10.5, A5.b, A5.c, G8 | V0.9.3 — 30 octobre 2026 |
+| 18.23 | Regroupements et V1 | Sélectionner la dernière notification et abandonner les autres est permis ; son contexte de déclenchement est conservé. Les agrégations exigeant plusieurs parents causaux sont reportées au-delà de la V1 par une décision explicite, non introduites implicitement en annexe. | D19, B.4 | V0.9.3 — 30 octobre 2026 |
+| 18.24 | Portée de T5 et de T6 | T5 concerne une transition requise sur des ressources internes préexistantes de propriétaires distincts, pas une simple relation maintenue par refus. T6 ne protège que les composants du domaine propriétaires d'un Channel, tant que leur racine existe, sans atomicité avec l'hôte. | T5, T6, A4.a, A4.e | V0.9.3 — 30 octobre 2026 |
+| 18.25 | Projection et état métier | Les dérivations de présentation ne créent pas d'autorité métier ; les brouillons restent non confirmés. B.5 supprime les échos équivalents, sans preuve générale de convergence ; pour l'historique, l'équivalence dépend de la valeur et de l'opération demandée. | A4.a, A4.d, B.5 | V0.9.3 — 30 octobre 2026 |
+| 18.26 | Déclencheur des Commands de l'interface | D18 suit la réaction au fait admis, pas la dernière enveloppe : une Query préalable et son retour n'interdisent pas la Command ; un Event ne l'autorise jamais, même relayé par un message local. | D18, 9.11, G8 | V0.9.3 — 30 octobre 2026 |
+| 18.27 | Exclusivité physique entre racines | Défilement de fenêtre et presse-papiers sont uniques par hôte, comme les autres écritures globales du catalogue. Les préfixes, bases, caches et cookies doivent former des périmètres physiques disjoints entre racines d'un même hôte ; aucune exclusivité n'est garantie contre des auteurs non coordonnés. | B.2, B.3, 16.9 | V0.9.3 — 30 octobre 2026 |
+| 18.28 | État local et clés des Behaviors | Une View peut modifier son état local pendant tout traitement autorisé, Event compris. Les noms de clés de la View et de ses Behaviors sont disjoints, y compris entre Behaviors ; les mêmes éléments peuvent être désignés. Une clé est une notion de rôle, non un terme fondamental supplémentaire. | A5.a, D13, 16.5, 16.7 | V0.9.3 — 30 octobre 2026 |
+| 18.29 | Statut des définitions et des garanties | Le graphe du §17 porte uniquement sur les définitions, distinctes des commentaires et prescriptions normatives. Les garanties d'infrastructure sont des hypothèses contractuelles ; les conséquences en nomment les prémisses. Gardes, revues et tests ne prouvent pas à eux seuls la conformité générale, et leur prescription ne signifie pas qu'ils sont déjà réalisés. | §2.2, §2.6, §14, §17, §19 | V0.9.3 — 30 octobre 2026 |
 
 ## 19. Gardes
 
 Une garde vérifie qu'une règle de la théorie est respectée par le code applicatif. Elle n'est pas une notion du modèle : elle relève de l'implémentation de Bonsai, et n'est jamais la source d'une règle.
 
-**Règle de méthode.** Toute règle qui contraint le code applicatif, clause d'axiome ou décision, est protégée par une garde, au niveau le plus précoce que son énoncé permet. Une garde placée à un niveau plus tardif nomme ce qui empêche le niveau précédent.
+**Règle de méthode.** Toute règle qui contraint le code applicatif, clause d'axiome ou décision, reçoit soit une garde au niveau le plus précoce que son énoncé permet, soit une justification explicite de sa non-vérifiabilité mécanique et une revue documentée. Une garde placée à un niveau plus tardif nomme ce qui empêche le niveau précédent. L'absence de garde ne supprime pas l'obligation normative.
 
 | Niveau | La violation… |
 | --- | --- |
 | Construction | ne peut pas s'écrire : l'interface de programmation ne l'offre pas |
 | Statique | s'écrit, mais l'analyse du code avant exécution la refuse |
-| Démarrage | est refusée avant le premier message |
+| Démarrage | est refusée avant l'ouverture du transport applicatif différé, avec les contrôles requis avant les consultations initiales |
 | Exécution | est détectée lorsqu'elle survient, et signalée avec son contexte causal |
 
-Les contrats déclarés (D16) et le Manifest (16.9, D14) rendent connus avant le premier message tout ce qu'un composant peut recevoir et adresser, et tous les composants qui existent : ils portent l'essentiel des gardes statiques et de démarrage. L'objectif qu'elles servent est O2.
+Les contrats déclarés (D16) et le Manifest (16.9, D14) rendent connus les formes et modes des messages et les enfants déclarés de la racine avant l'ouverture du transport différé. Ils permettent des gardes de structure et de modes, sans prouver tout A3 ni connaître toutes les instances futures de Views et de Composers. La validité d'une désignation lors de sa résolution, l'absence de cible active d'une Query et les propriétés dépendant d'instances demandent aussi des contrôles à l'exécution. L'objectif servi est O2, dans ses limites explicites.
 
-La table de conformité (`docs/gardes.md`) associe chaque obligation que la théorie impose au code applicatif à sa garde et à au moins un test, ou justifie l'absence de garde. Deux obligations n'en admettent pas : A3.h, dont l'origine de l'information émise n'est pas observable, et A4.d en partie, dont la provenance d'une valeur affichée ne l'est pas. Les garanties (§13) et D8 engagent l'implémentation de Bonsai : elles reçoivent des tests de conformité, non des gardes.
+La [table de conformité](gardes.md) doit associer chaque obligation à sa garde et aux tests de validation prévus, ou à la justification de non-vérifiabilité et à la revue correspondante. A3.h et une partie d'A4.d imposent notamment une revue sémantique : on peut contrôler une inscription d'état ou une voie de projection, sans prouver mécaniquement que l'information émise porte bien sur cette ressource ni qu'une dérivation n'a créé aucune autorité métier. Les garanties (§13) et D8 engagent l'implémentation de Bonsai : elles appellent des tests de conformité, non des gardes du code applicatif.
+
+Un test donne une vérification sur les cas exercés, pas une preuve générale. Ce paragraphe prescrit une couverture ; il n'affirme ni que les gardes existent déjà ni que les tests ont été exécutés ou réussis. L'état de réalisation, les résultats et les écarts doivent être consignés séparément de la norme V0.9.3.
 
 ## Annexe A — Inventaire des sources de l'hôte navigateur
 
 *Annexe non normative.* Elle inventorie, pour un hôte navigateur, les sources de faits et de ressources situées hors des éléments admis par les Foundations (D3). Le catalogue des adaptateurs qui en découle forme l'annexe B, normative (D7, 16.8). Les règles qui découlent de la théorie ne sont pas énoncées ici : l'annexe renvoie aux clauses qui les portent.
 
-La colonne « Partie » applique 11.1 à chaque source : une source relève de l'interface utilisateur lorsque l'utilisateur perçoit le modèle ou agit sur lui à travers elle ; sinon, du domaine. Une ressource relevant de la même partie que son propriétaire, chaque adaptateur relève d'une seule partie, et les sources sont groupées en conséquence (18.14, tranchée). La colonne « Modifiable » indique si le modèle peut exécuter une opération exclusive sur la ressource une fois admise (T8).
+La colonne « Partie » explique le classement à partir de 11.1 : les supports de présentation et d'expression d'une intention relèvent de l'interface utilisateur ; les conditions d'environnement ne deviennent pas des supports d'interaction parce qu'une action humaine peut les modifier. Pour les cas limites, B.3 fixe explicitement la convention normative, notamment le focus de la fenêtre dans le domaine, distinct du focus d'un champ. Le présent inventaire ne crée pas de règle de classement. Une ressource relevant de la même partie que son propriétaire, chaque adaptateur relève d'une seule partie (18.14). La colonne « Modifiable » indique si le modèle peut exécuter une opération exclusive après admission (T8), sans promettre une transaction avec l'hôte (§2.5, G7).
 
 ### A.1 Le document hors corps — adaptateur du document (interface utilisateur)
 
@@ -979,6 +1042,8 @@ La colonne « Partie » applique 11.1 à chaque source : une source relève de l
 
 Les métadonnées de référencement sont perçues à travers l'aperçu d'un partage ou un résultat de recherche : elles relèvent de l'interface utilisateur, et l'information métier qu'elles portent en est une projection (A4.d), comme le titre.
 
+Cet inventaire ne résout pas le cas général du clic ou du déplacement du focus hors d'une View. Les raccourcis déclarés ne constituent pas une autorisation générale d'admettre tout fait au niveau document ; le constat V4 de l'audit historique reste ouvert en 18.30.
+
 ### A.2 La fenêtre — adaptateur Viewport (domaine)
 
 | Source | Faits observés | Modifiable | Partie |
@@ -992,6 +1057,8 @@ Les métadonnées de référencement sont perçues à travers l'aperçu d'un par
 | Source | Faits observés | Modifiable | Partie |
 | --- | --- | --- | --- |
 | Défilement de la fenêtre, restauration du défilement | défilement | oui | interface utilisateur |
+
+Le défilement de la fenêtre est une écriture globale, distincte du défilement d'un élément d'une part. Des Foundations disjointes ne séparent pas ce support physique : le catalogue impose un seul adaptateur du défilement par hôte (B.2, B.3).
 
 ### A.4 La navigation — adaptateur historique (interface utilisateur)
 
@@ -1016,6 +1083,8 @@ Chaque ligne relève d'une catégorie d'adaptateur distincte : leurs modèles d'
 
 Ces ressources sont matérialisées par l'hôte : ce sont des ressources de l'hôte, non des systèmes extérieurs. Leur matérialisation survit à la fin de la racine, mais aucune ressource du modèle ne lui survit (T3, remarque ; 18.3, tranchée).
 
+Les préfixes de clés, noms de bases, noms de caches et périmètres de cookies délimitent des supports physiques d'écriture, non de simples noms logiques propres à une racine. Leur disjonction entre racines d'un même hôte est requise par B.2 ; elle n'offre aucune garantie contre les écritures d'onglets ou de scripts non coordonnés.
+
 ### A.6 Cycle de vie de la page — adaptateur du cycle de vie (domaine)
 
 | Source | Faits observés | Modifiable | Partie |
@@ -1025,7 +1094,7 @@ Ces ressources sont matérialisées par l'hôte : ce sont des ressources de l'h�
 | Cycle de vie de la page | arrière-plan, gel, reprise, retour depuis le cache | non | domaine |
 | Fermeture imminente | fin annoncée | non | domaine |
 
-La fermeture imminente précède la fin de la racine (7.4). L'admettre permet au domaine de conserver son état avant que l'hôte n'y mette fin.
+La fermeture imminente précède la fin de la racine (7.4). L'admettre permet au domaine de tenter de conserver son état avant que l'hôte n'y mette fin, sans garantie d'achèvement de l'effet extérieur. Le fait est inscrit dans un état d'observation avant un éventuel Event (A3.h, 16.8).
 
 ### A.7 Connectivité — adaptateur de connectivité (domaine)
 
@@ -1044,7 +1113,7 @@ L'état du réseau et l'état de la page sont deux fonctions distinctes (règle 
 
 ### A.9 Capacités soumises à autorisation
 
-Géolocalisation, presse-papiers, notifications, caméra et microphone, verrouillage de l'écran, vibration. Chacune relève d'un adaptateur distinct ; la réponse à une demande d'autorisation est un fait provoqué (A5.c). Seul le presse-papiers, qui relève de l'interface utilisateur, figure au catalogue V1 ; les autres capacités sont reportées (annexe B).
+Géolocalisation, presse-papiers, notifications, caméra et microphone, verrouillage de l'écran, vibration. Chacune relève d'un adaptateur distinct ; la réponse à une demande d'autorisation est un fait provoqué (A5.c). Seul le presse-papiers, support de présentation ou d'expression d'une intention, figure au catalogue V1 dans l'interface utilisateur ; ses écritures globales imposent une seule instance par hôte (B.2, B.3). Les autres capacités sont reportées (annexe B).
 
 ### A.10 Hors de l'hôte et cas limites
 
@@ -1057,7 +1126,7 @@ Géolocalisation, presse-papiers, notifications, caméra et microphone, verrouil
 
 ## Annexe B — Catalogue des adaptateurs de l'hôte navigateur
 
-*Annexe normative.* Elle précise D7 pour l'hôte navigateur, sans créer de décision. Les fiches détaillées de chaque catégorie (`docs/adaptateurs/`) en développent les messages, les gardes et les tests ; en cas d'écart, la présente annexe fait autorité.
+*Annexe normative.* Elle précise D7 pour l'hôte navigateur et applique D19 aux regroupements de notifications. B.3 explicite les conventions de classement des cas limites ; l'annexe A en expose les motifs sans autorité normative. Les [fiches détaillées des adaptateurs](adaptateurs/README.md) développent les messages, les gardes et les tests ; en cas d'écart, la présente annexe fait autorité. Leur alignement et leur validation ne sont pas présumés réalisés.
 
 ### B.1 Finitude
 
@@ -1071,7 +1140,9 @@ Tout adaptateur satisfait 16.8. En outre :
 
 - la racine ne détruit pas un adaptateur : il prend fin avec elle ;
 - dans une racine, une source déterminée n'est admise que par une seule instance d'adaptateur (A5.d, D7) ; une catégorie à plusieurs instances leur attribue des périmètres disjoints, déclarés et vérifiés au démarrage ;
-- une catégorie marquée « une par hôte » n'est activée que par une seule des racines qui coexistent dans un même hôte (G6) : deux racines qui pilotent la même ressource de l'hôte se contrediraient.
+- une catégorie marquée « une par hôte » n'est activée que par une seule des racines qui coexistent dans un même hôte : document, historique, défilement de la fenêtre et presse-papiers ont une autorité exclusive d'écriture globale. L'isolation des messages (G6) et la disjonction des Foundations ne suffisent pas à assurer cette exclusivité physique ;
+- pour le stockage local et de session, les préfixes de clés ne se recouvrent pas ; pour la base de données indexée et le cache, les noms de bases et de caches sont distincts ; les périmètres de cookies désignent des emplacements physiques disjoints, en tenant compte du nom, du domaine et du chemin. Cette exigence vaut aussi entre racines d'un même hôte, pas seulement entre instances d'une racine. Les opérations d'écriture ou de suppression restent dans le périmètre déclaré ; un effacement global ne devient pas conforme par l'usage de préfixes distincts ;
+- le contrôle commun au démarrage doit refuser les conflits entre racines coordonnées, notamment lors de l'arrivée d'une seconde racine. Il ne garantit pas l'exclusivité contre les autres onglets, les scripts ou les auteurs non coordonnés. Leurs changements restent des faits extérieurs à admettre ; aucune transaction extérieure ni absence de concurrence physique n'est déduite des axiomes.
 
 ### B.3 Catégories V1
 
@@ -1079,7 +1150,7 @@ Tout adaptateur satisfait 16.8. En outre :
 | --- | --- | --- | --- |
 | Document | interface utilisateur | une par hôte | A.1 |
 | Viewport | domaine | une par racine | A.2 |
-| Défilement | interface utilisateur | une par racine | A.3 |
+| Défilement | interface utilisateur | une par hôte | A.3 |
 | Historique | interface utilisateur | une par hôte | A.4 |
 | Stockage local | domaine | plusieurs, par préfixe de clé | A.5 |
 | Stockage de session | domaine | plusieurs, par préfixe de clé | A.5 |
@@ -1089,25 +1160,33 @@ Tout adaptateur satisfait 16.8. En outre :
 | Cycle de vie | domaine | une par racine | A.6 |
 | Connectivité | domaine | une par racine | A.7 |
 | Environnement | domaine | une par racine | A.8 |
-| Presse-papiers | interface utilisateur | une par racine | A.9 |
+| Presse-papiers | interface utilisateur | une par hôte | A.9 |
+
+**Convention normative de classement.** Le document, l'historique, le défilement et le presse-papiers sont des supports de présentation ou d'expression d'une intention ; Viewport, cycle de vie, connectivité et environnement décrivent des conditions d'environnement. Le focus de la fenêtre reste donc dans le domaine, sans assimiler le focus d'un champ à cette condition. Les stockages, base indexée, caches et cookies relèvent du domaine. Le fait qu'un utilisateur puisse provoquer un changement n'inverse pas ces conventions (11.1). Elles ne tranchent pas l'admission d'un clic ou du focus hors d'une View (18.30).
+
+Les catégories à plusieurs instances sont soumises aux périmètres physiques disjoints de B.2, y compris entre racines d'un même hôte. « Une par racine » autorise plusieurs observations des conditions d'environnement ; cela ne confère pas à chaque racine une autorité d'écriture sur une ressource globale.
 
 Les autres capacités soumises à autorisation (géolocalisation, notifications, caméra, microphone, verrouillage de l'écran, vibration) sont reportées après la V1 : une application qui les utilise n'est pas conforme à la V1.
 
 ### B.4 Opérations réservées et points d'extension
 
-Les opérations suivantes sont réalisées par Bonsai et ne sont pas surchargeables par le code applicatif : l'identité et le Channel ; la connexion à la source ; l'admission ; la création du contexte causal d'une origine et la restitution de celui d'un fait provoqué (A5.c) ; le transport (G2) ; l'enregistrement et le retrait des observateurs de l'hôte ; le contrôle d'unicité du périmètre ; la destruction.
+Les opérations suivantes sont réalisées par Bonsai et ne sont pas surchargeables par le code applicatif : l'identité et le Channel ; la connexion à la source ; l'admission ; l'établissement du contexte causal et la restitution de celui d'un fait provoqué (A5.b, A5.c, G8) ; le transport (G2) ; l'enregistrement et le retrait des observateurs de l'hôte ; le contrôle d'unicité du périmètre ; la destruction.
 
-Une spécialisation n'intervient que sur des valeurs déjà admises et détachées de toute ressource de l'hôte : filtrer, normaliser, sélectionner l'information émise, associer une valeur à un message déclaré (un Event émis sur son Channel, ou une Command adressée à un Channel déclaré, sous la réserve de A4.b), regrouper des notifications selon une politique déclarée. Elle ne produit ni ne remplace un contexte causal, n'observe aucune autre source, n'émet sur aucun autre Channel et ne transmet aucune référence.
+Une spécialisation n'intervient que sur des valeurs déjà admises et détachées de toute ressource de l'hôte : filtrer, normaliser, sélectionner l'information à inscrire dans son état d'observation puis à émettre (A3.h), associer une valeur à un message déclaré (un Event émis sur son Channel, ou une Command adressée à un Channel déclaré, sous la réserve d'A4.b et, pour l'interface utilisateur, de D18). Ses opérations applicatives s'exécutent dans une initialisation autorisée ou un traitement, notamment celui du message local d'admission ; le préambule d'admission ne mute pas l'état applicatif (§2.5, 11.6). La spécialisation ne produit ni ne remplace un contexte causal, n'observe aucune autre source, n'émet sur aucun autre Channel et ne transmet aucune référence.
+
+Une politique déclarée peut retenir une notification, notamment la dernière, et abandonner les autres (D19). L'infrastructure de communication conserve le contexte de la notification retenue : le résultat continue ce seul déclenchement. Ce mécanisme n'annonce pas une synthèse de toutes les causes des données. Une agrégation exigeant plusieurs parents causaux n'est pas prise en charge en V1 ; son report est le choix explicite de D19, non une liberté implicite du point d'extension. Ni le regroupement ni son délai éventuel ne permettent d'inventer une origine ou de réinitialiser la profondeur (A5.b, G8, D9).
 
 **Contre-exemples :** une sous-classe de l'adaptateur Viewport ajoute son propre écouteur de défilement (autre source, autre catégorie) ; une sous-classe de l'adaptateur historique émet un Event avec un contexte causal qu'elle a construit (A5.c, A5.b) ; une sous-classe de l'adaptateur de stockage local transmet l'objet de stockage de l'hôte dans un message (A3.d).
 
 ### B.5 Projection
 
-Un adaptateur de l'interface utilisateur qui tient une ressource en projection d'une information du domaine (A4.d) ne la modifie que si la valeur projetée diffère de sa valeur courante. Une projection ne produit donc aucun fait lorsque la ressource reflète déjà le domaine, ce qui exclut qu'un fait admis, projeté en retour, en produise un autre.
+Un adaptateur de l'interface utilisateur qui tient une ressource en projection d'une information du domaine (A4.d) ne la modifie que si la projection demandée n'est pas déjà satisfaite. L'équivalence compare la valeur et, lorsque cela change le sens de l'effet, l'opération demandée. Pour une simple affectation, une valeur identique suffit à éviter une réécriture. La vérification supprime les échos équivalents ; elle ne prouve ni convergence générale ni absence de boucle entre transformations différentes. Une alternance de positions 0 et 100 peut respecter cette règle à chaque écriture. D9 n'y ajoute qu'une borne de profondeur, non une preuve de terminaison.
 
-La manière de modifier la ressource, lorsqu'elle doit l'être, est portée par l'information du domaine elle-même, non par le contexte causal du message reçu, qui ne fait pas partie de l'information transmise (10.6). Pour l'historique, l'Event de navigation porte son mode : ajouter une entrée, remplacer l'entrée courante, ou suivre un retour ou une avance, auquel cas une adresse différente de l'adresse courante, issue d'une redirection, remplace l'entrée.
+La manière de modifier la ressource, lorsqu'elle doit l'être, est portée par l'information du domaine elle-même, non par le contexte causal du message reçu, qui ne fait pas partie de l'information transmise (10.6). Pour l'historique, l'Event de navigation porte son mode : ajouter une entrée, remplacer l'entrée courante, ou suivre un retour ou une avance. Une égalité d'adresse ne suffit pas à considérer une demande d'ajout comme satisfaite : une nouvelle entrée peut être l'effet demandé. À l'inverse, suivre un retour ou une avance vers l'adresse courante ne crée pas d'entrée ; une adresse différente issue d'une redirection remplace l'entrée. L'équivalence porte donc sur la valeur **et** l'opération, pas sur l'adresse seule.
 
-**Contre-exemple :** au retour sur une adresse, l'adaptateur historique reçoit le changement de route qui en résulte et ajoute une entrée identique à l'adresse courante ; ou, après une redirection, il ajoute une entrée au lieu de remplacer la précédente, et le retour suivant ramène à l'adresse redirigée.
+La projection prépare ses effets pendant le traitement puis les applique après validation interne (§2.5, G7). Plusieurs écritures peuvent réussir partiellement ; leurs succès ou échecs sont admis par un nouveau message et inscrits dans un état d'observation avant un Event (A3.h). Un état souhaité n'est pas une observation de succès, et aucune dérivation de présentation ne crée d'autorité métier (A4.a, A4.d).
+
+**Contre-exemples :** au retour sur une adresse, l'adaptateur historique reçoit le changement de route qui en résulte et ajoute une entrée identique à l'adresse courante ; après une redirection, il ajoute une entrée au lieu de remplacer la précédente ; ou il ignore une nouvelle demande explicite d'ajout au seul motif que l'adresse est identique. Ces cas confondent l'égalité de valeur et l'opération demandée.
 
 ### B.6 Hors catalogue
 

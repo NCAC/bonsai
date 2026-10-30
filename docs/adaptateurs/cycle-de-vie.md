@@ -12,16 +12,16 @@
 | 6 | Instances par racine | Une. |
 | 7 | Absence de recouvrement | —. |
 | 8 | Partie du modèle | Domaine ; Commands et Queries adressables par tout composant de la racine ; ses Events peuvent être reçus par le domaine comme par l'interface utilisateur (A4.b ne restreint que le domaine). |
-| 9 | Ressources admises | Garde de sortie (demande de confirmation avant de quitter). |
+| 9 | Ressources admises et état d'observation | Garde de sortie (demande de confirmation avant de quitter) ; état d'observation interne de la visibilité, du focus et du dernier signal de cycle de vie, avec séquence si les répétitions sont significatives (règles communes du catalogue). |
 | 10 | Faits admis | Masqué, visible, focus, perte de focus, gel, reprise, retour depuis le cache, fermeture imminente. |
 | 11 | Faits spontanés | Tous : origines (A5.c). |
 | 12 | Faits provoqués | Aucun. |
-| 13 | Opérations exclusives | Activer ou retirer la garde de sortie. |
+| 13 | Opérations exclusives | Activer ou retirer la garde de sortie après validation interne ; mettre à jour son état d'observation en traitement d'un message d'admission, jamais d'une Query. |
 | 14 | Identité | Attribuée par la racine (16.1) ; sa représentation est déclarée au Manifest (16.9). Namespace : `lifecycle`. |
 | 15 | Channel | Distingué par cette identité ; l'adaptateur est seul à y traiter et à y émettre (A3.e). |
 | 16 | Commands acceptées | `lifecycle:guardExit`, `lifecycle:releaseExit`. |
 | 17 | Queries acceptées | `lifecycle:visibility`, `lifecycle:hasFocus`. |
-| 18 | Events émis | `lifecycle:hidden`, `lifecycle:visible`, `lifecycle:focused`, `lifecycle:blurred`, `lifecycle:frozen`, `lifecycle:resumed`, `lifecycle:restored`, `lifecycle:closing` ; il n'émet d'information que sur ce qu'il a admis (A3.h). |
+| 18 | Events émis | `lifecycle:hidden`, `lifecycle:visible`, `lifecycle:focused`, `lifecycle:blurred`, `lifecycle:frozen`, `lifecycle:resumed`, `lifecycle:restored`, `lifecycle:closing` ; chaque signal est inscrit dans son état d'observation avant émission (A3.h), sans journal infini. |
 | 19 | Points d'extension | —aucun au-delà de B.4. |
 | 20 | Opérations réservées | Celles de B.4 : identité et Channel, connexion à la source, admission, contexte causal, transport, observateurs de l'hôte, contrôle du périmètre, destruction. |
 | 21 | Références structurelles | Vers les ressources qu'il admet, résolues auprès de l'hôte à sa création (9.10) ; jamais transmises (A3.c, A3.d). |

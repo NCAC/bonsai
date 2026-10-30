@@ -1,5 +1,7 @@
 # Bonsai — Écarts entre la théorie et le dépôt (jalon V0.9.2)
 
+> **Périmètre historique.** Les écarts ci-dessous ne constituent pas une réévaluation du code sous V0.9.3. Les [arbitrages du 30 octobre 2026](arbitrages-V0.9.3-2026-10-30.md#5-conséquences-sur-le-registre-et-limplémentation) complètent les cibles de correction : propagation des erreurs de Query, rollback structurel, phase post-validation et autorité physique entre racines. Aucun écart d’implémentation n’est déclaré résolu par les seuls amendements documentaires.
+
 *Inventaire consolidé des écarts entre la théorie V0.9.2 et le dépôt : branche `develop` (`1d49cec`) pour le code, branche `feature/documentation-big-bang` (`c93eb74`) pour la spécification et les ADR. La théorie fait autorité : chaque écart se corrige dans le dépôt, jamais dans la théorie. Gravité : **critique** = une garantie ou un axiome est violé à l'exécution ; **important** = une décision n'est pas réalisée ou une garde manque ; **mineur** = formulation de la spécification.*
 
 ## 1. Infrastructure de communication (`packages/event`)

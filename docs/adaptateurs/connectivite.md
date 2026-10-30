@@ -12,16 +12,16 @@
 | 6 | Instances par racine | Une. |
 | 7 | Absence de recouvrement | —. |
 | 8 | Partie du modèle | Domaine ; Commands et Queries adressables par tout composant de la racine ; ses Events peuvent être reçus par le domaine comme par l'interface utilisateur (A4.b ne restreint que le domaine). |
-| 9 | Ressources admises | Aucune ressource modifiable. |
+| 9 | Ressources admises et état d'observation | Aucune ressource de l'hôte modifiable ; état d'observation interne de la connectivité, propriété de l'adaptateur, mis à jour à chaque fait avant émission (règles communes du catalogue). |
 | 10 | Faits admis | Passage en ligne, hors ligne. |
 | 11 | Faits spontanés | Tous : origines (A5.c). |
 | 12 | Faits provoqués | Aucun. |
-| 13 | Opérations exclusives | Aucune. |
+| 13 | Opérations exclusives | Aucune sur l'hôte ; mise à jour de son état d'observation en traitement du message d'admission, jamais d'une Query. |
 | 14 | Identité | Attribuée par la racine (16.1) ; sa représentation est déclarée au Manifest (16.9). Namespace : `connectivity`. |
 | 15 | Channel | Distingué par cette identité ; l'adaptateur est seul à y traiter et à y émettre (A3.e). |
 | 16 | Commands acceptées | Aucune. |
 | 17 | Queries acceptées | `connectivity:online`. |
-| 18 | Events émis | `connectivity:online`, `connectivity:offline` ; il n'émet d'information que sur ce qu'il a admis (A3.h). |
+| 18 | Events émis | `connectivity:online`, `connectivity:offline` ; portent sur son état d'observation déjà mis à jour (A3.h), non sur un fait simplement relayé. |
 | 19 | Points d'extension | —aucun au-delà de B.4. |
 | 20 | Opérations réservées | Celles de B.4 : identité et Channel, connexion à la source, admission, contexte causal, transport, observateurs de l'hôte, contrôle du périmètre, destruction. |
 | 21 | Références structurelles | Vers les ressources qu'il admet, résolues auprès de l'hôte à sa création (9.10) ; jamais transmises (A3.c, A3.d). |
