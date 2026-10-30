@@ -100,6 +100,7 @@ distribution et build, processus. Chaque ADR porte une ligne **Livré**
 | découvrir la théorie | [Guide pédagogique](theorie-explication-pedagogique.md), puis [Théorie V0.9.4](theorie.md) |
 | retrouver une obligation et ses contrôles requis | [Traçabilité](tracabilite.md), puis [Gardes](gardes.md) |
 | comprendre les corrections de la dernière revue | [Suivi V0.9.4](rapports/corrections-V0.9.4-2026-10-30.md) |
+| connaître les réserves avant gel de la V0.9.4 | [Relecture de fond V0.9.4](rapports/relecture-V0.9.4-2026-10-30.md) — propositions R1–R4, L1–L7, S1–S3, non appliquées |
 | suivre la migration du registre et du code vers V0.9.4 | [Diagnostic, plan et lots appliqués](rapports/migration-invariants-runtime-V0.9.4-2026-10-30.md) — trois lots documentaires appliqués : Query/Composer, causalité/permissions, propriété/cycle de vie ; runtime non migré |
 | comprendre l'architecture | [Philosophie](spec/1-philosophie.md), puis [Architecture](spec/2-architecture/README.md) |
 | connaître les règles non négociables | [Arbre des invariants](invariants/generated/arbre.md) (registre) · [Invariants](spec/reference/invariants.md) (matrice détaillée) |
