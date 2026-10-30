@@ -625,6 +625,12 @@ Avantages :
 - **Performance** : 3 listeners (click, input, submit) au lieu de N x 3
 - **Nettoyage cible** : retrait instrumenté des listeners après validation de la fin logique, pas hook applicatif pendant la cascade (§5). Le runtime actuel ne nettoie aucun listener.
 
+> ⏳ Cible non livrée — **qualification des saisies (protocole du monde fermé, théorie §2.7.4).**
+>
+> Les saisies dans la part (clic, appui sur une touche, saisie d'une valeur, soumission) relèvent du protocole du monde fermé. Leurs **opérations productrices** sont les simulations et envois d'événements de l'hôte : `click()`, `submit()`, `requestSubmit()`, `dispatchEvent()`, ainsi que `select()` et `execCommand()` pour la saisie. Le code applicatif n'y accède que par une interface Bonsai instrumentée ; un appel brut est refusé par une garde statique (G8). Une saisie qu'aucune opération instrumentée en cours de la même racine n'a pu produire est un **fait indépendant établi** : sa réaction peut adresser une Command déclarée (D18). Une saisie survenant pendant une telle opération, sans corrélation univoque, est d'antécédent inconnu et n'accorde aucune Command.
+>
+> `isTrusted` n'est pas la preuve. L'indépendance ne vaut que dans le périmètre observé : un script non coordonné de la page n'est pas distingué d'une action humaine (B.2). La forme de l'interface instrumentée reste à définir avec l'API cible de la View.
+
 ### 4.4 getUI() — Primitive de projection typée
 
 > ⚠️ **§4.4–4.8 décrivent la cible strate 1c (cf. bandeau de périmètre)** —

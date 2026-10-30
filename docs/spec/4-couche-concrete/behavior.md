@@ -86,7 +86,7 @@ L'agrégation des déclarations Channel et la représentation des abonnements do
 | Observation à antécédent inconnu | Aucun droit de Command ; état local et projection possibles dans leurs autres limites |
 | Retour d'une Query | Pas un déclencheur autonome ; conserve chez l'auteur la permission préexistante, sans l'accorder au traitement de Query, toujours en lecture seule |
 
-Un clic n'est pas autorisé à commander par son seul nom, sa proximité temporelle ou `isTrusted` : la qualification dépend du protocole de source (§2.7.4). Les réactions d'un Behavior ne fabriquent ni origine indépendante ni nouveau contexte pour contourner D18 ou D9.
+Un clic n'est pas autorisé à commander par son seul nom, sa proximité temporelle ou `isTrusted` : la qualification dépend du protocole de source (§2.7.4). Pour les saisies dans la part, c'est le protocole du monde fermé : une saisie qu'aucune opération instrumentée en cours n'a pu produire est indépendante ([View §4.3](view.md#43-délégation-dévénements)). Un Behavior qui appelle directement `click()` ou `dispatchEvent()` viole G8. Les réactions d'un Behavior ne fabriquent ni origine indépendante ni nouveau contexte pour contourner D18 ou D9.
 
 ### 2.4 Templates en îlots (N2)
 

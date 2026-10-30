@@ -79,7 +79,7 @@ D18 n'autorise une Command de l'interface qu'en réaction à « un fait admis do
 - `spec/4-couche-concrete/behavior.md` : le chargement au défilement n'est pas couvert ;
 - `rapports/corrections-V0.9.4`, §7 point 3 : ces protocoles restent à valider.
 
-Lu à la lettre, **aucune application ne peut adresser de Command depuis un clic**, et le bouton « retour » du navigateur ne peut pas atteindre le routeur. D18 est intenable tant que ce point n'est pas tranché. La proposition détaillée est au §6.
+Lu à la lettre, **aucune application ne peut adresser de Command depuis un clic**, et le bouton « retour » du navigateur ne peut pas atteindre le routeur. D18 est intenable tant que ce point n'est pas tranché. La proposition détaillée est au §6. **Statut : validée et appliquée le 30 octobre 2026.**
 
 ### R4 — Un adaptateur du domaine peut orchestrer une Feature
 
@@ -132,7 +132,7 @@ Le guide est **exact** au regard de la V0.9.4 : aucune contradiction relevée. I
 9. **Impacts sur les rôles.** View, Behavior et les adaptateurs du document, de l'historique et du défilement disposent d'un protocole. Le retour arrière sans `history.back()` instrumenté en cours devient indépendant, ce qui débloque `router:navigate { mode: pop }`. D18 est inchangé.
 10. **Impacts sur les gardes.** Nouvelle garde statique : les API de l'hôte productrices d'occurrences (`click()`, `focus()`, `blur()`, `dispatchEvent()`, `history.back()`/`forward()`/`go()`, `scrollTo()`…) sont interdites hors des interfaces Bonsai instrumentées. Nouveaux tests discriminants : retour utilisateur seul → indépendant ; `history:back` instrumenté en cours suivi d'un `popstate` → corrélé ; deux retours qui se chevauchent sans corrélation univoque → antécédent inconnu.
 11. **Impacts sur le guide et les fiches.** Le guide retire ses conditionnels. Rubriques 11 et 30 des fiches historique, défilement et document, rubrique 11 des autres. 18.26 renvoie au protocole.
-12. **Statut.** Proposé, en attente de validation.
+12. **Statut.** Validé le 30 octobre 2026 et appliqué : théorie (§2.7.4, commentaire d'A5, B.5, 18.26, nouvelle question tranchée 18.32, note d'amendement en tête) ; fiches historique, document, connectivité, environnement et README des adaptateurs ; spécification View (§4.3) et Behavior ; `gardes.md` ; guide ; traçabilité. La formulation appliquée précise deux points par rapport à la proposition : chaque source **déclare** ses opérations productrices, et les notifications générales de défilement, de redimensionnement et de focus restent hors du protocole, parce qu'une écriture de présentation peut les produire.
 
 ## 7. Ordre de traitement proposé
 
