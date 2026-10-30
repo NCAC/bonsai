@@ -58,8 +58,9 @@ La frontière est simple : **ce que le développeur écrit appartient au modèle
 > 2. Le modèle ne contient que des composants, des ressources et des messages, et rien n'est à la fois deux de ces choses.
 > 3. Tout ce qu'on peut connaître ou changer d'un composant est son existence ou une ressource dont il est propriétaire.
 > 4. À chaque composant est associée exactement une existence, et chaque existence concerne exactement un composant ; cette association ne change pas. Celle d'un non-racine est une ressource du modèle créée avec lui ; celle de la racine reste extérieure, fournie par l'hôte et jamais admise par un composant.
+> 5. Une application a une seule racine ; tout autre composant y remonte par une chaîne finie de parents, et elle contient un nombre fini de composants et de ressources.
 
-**Contre-exemples :** un registre de Channels fait à la fois partie de la tuyauterie de l'infrastructure et de l'état qu'un composant modifie ; un « service » qui n'est ni composant, ni ressource, ni message est appelé par les composants ; un composant expose un cache interne qui n'est pas une ressource, et un autre l'interroge.
+**Contre-exemples :** un registre de Channels fait à la fois partie de la tuyauterie de l'infrastructure et de l'état qu'un composant modifie ; un « service » qui n'est ni composant, ni ressource, ni message est appelé par les composants ; un composant expose un cache interne qui n'est pas une ressource, et un autre l'interroge ; deux composants sont chacun le parent de l'autre.
 
 **Pourquoi ?** A0 ferme les portes de sortie. Toutes les autres règles portent sur les composants, les ressources et les messages : s'il existait une quatrième sorte de chose dans le modèle, ou une zone floue entre le modèle et le reste, il suffirait d'y ranger ce qui gêne pour échapper à la théorie.
 
@@ -110,7 +111,7 @@ A1 dit qu'il y a toujours un propriétaire. Il reste à savoir **comment on le d
 
 **Pourquoi « par le haut ».** Imagine que chaque composant choisisse son propre nom : deux d'entre eux finiront par choisir `cart`. Si au contraire les noms sont distribués par un seul propriétaire, la racine, les collisions deviennent impossibles **par construction** : on n'a pas besoin de les détecter, elles ne peuvent pas exister. C'est le principe du `namespace` attribué à chaque Feature par l'Application, d'après le Manifest (§10).
 
-**Pourquoi aucun transfert.** Si la propriété pouvait passer de main en main, la question « à qui est ceci ? » dépendrait du moment où on la pose. En la rendant fixe, elle a une réponse unique pour toute la vie de la ressource, et TypeScript peut même la vérifier à la compilation. Le prix à payer : on ne déplace pas un composant d'un parent à un autre, on le recrée.
+**Pourquoi aucun transfert.** Si la propriété pouvait passer de main en main, la question « à qui est ceci ? » dépendrait du moment où on la pose. En la rendant fixe, elle a une réponse unique pour toute la vie de la ressource. Le prix à payer : on ne déplace pas un composant d'un parent à un autre, on le recrée.
 
 **Admettre ne signifie pas s'approprier le navigateur.** L'admission produit une ressource du modèle distincte de son support hôte : admettre un périmètre de stockage ne transfère pas la propriété de l'objet `localStorage` du navigateur. Les opérations du modèle passent par le propriétaire de la ressource admise ; l'hôte et les acteurs extérieurs gardent leur existence propre. Cette distinction, jointe à A2.e, ferme les prétendues ressources « déjà là » auxquelles aucun propriétaire n'aurait été donné.
 
@@ -528,7 +529,7 @@ Les **gardes** sont les mécanismes qui détectent ou empêchent une violation d
 1. **Par construction.** La violation est impossible à écrire, parce que l'outil n'existe pas. Exemple : Radio n'est pas exporté par `@bonsai/core`, donc aucun composant ne peut ouvrir un Channel à la place de son propriétaire (A3.b).
 2. **Avant l'exécution (statique).** TypeScript, ou à défaut une règle de lint, refuse le code. Exemple : une View déclare les Commands qu'elle peut adresser ; en adresser une autre est une erreur de type.
 3. **Au démarrage.** L'application refuse de se lancer. Exemple : une référence à un namespace inexistant est détectée au bootstrap.
-4. **À l'exécution.** Une erreur est levée au moment de la violation. Exemple : enregistrer un second traitement pour la même Command lève `DuplicateHandlerError` (A3.e).
+4. **À l'exécution.** Une erreur est levée au moment de la violation. Exemple : une Query vers un composant dont un traitement est en cours est refusée avec une erreur (G5).
 
 **Pourquoi cette hiérarchie ?** Plus une erreur est détectée tôt, moins elle coûte. C'est le principe de Bonsai : **garantir au plus tôt** (§19), en justifiant un contrôle plus tardif ou l'absence de contrôle possible. Son meilleur allié, ce sont les **contrats déclarés** (D16) : tu décris à l'avance ce que ton composant écoute, adresse et admet, et ses traitements en sont dérivés. Les contrats sont connus avant le démarrage, même pour des classes instanciées plus tard ; pas toutes les futures instances ni toutes les propriétés sémantiques de leur code. La table décrit les contrôles et scénarios requis, pas une preuve qu'ils sont déjà implémentés ou exécutés.
 
@@ -541,7 +542,7 @@ Les **gardes** sont les mécanismes qui détectent ou empêchent une violation d
 | Handlers manquants détectés par `implements` | compilation | D16 : un traitement par message ou fait déclaré, et aucun autre |
 | Namespaces vérifiés au bootstrap | démarrage | A2.a, A2.d et D1 : les identités sont attribuées à partir du manifest |
 | Éléments des Foundations distincts et non emboîtés ; désignation d'une View bornée à sa part vivante | démarrage, puis exécution pour les attributions futures | D3, A2.d et A3.c : pas d'accès à une part étrangère ni de réutilisation d'une attribution périmée |
-| `DuplicateHandlerError` | exécution | A3.e : seul le propriétaire d'un Channel traite ce qui y est adressé |
+| Query vers une cible en cours de traitement refusée | exécution | G5 : pas de consultation réentrante, aucune lecture d'un état intermédiaire |
 | Pas de Command vers une autre Feature dans le contrat d'une Feature | construction | D17 : chorégraphie du domaine |
 | Capacité de commander liée à la réaction autorisée, conservée à travers appels, locaux et effets corrélés | statique, puis exécution pour le contexte dynamique | D18 : Event → local/effet hôte → Command interdit ; fait indépendant établi → Query → Command permis après retour ; observation inconnue sans permission |
 | Profondeur d'un segment de déclenchements établis dépassée | exécution | D9 : pas de borne sur les boucles traversant une coupure non corrélable |

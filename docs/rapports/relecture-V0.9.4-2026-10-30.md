@@ -108,6 +108,8 @@ Lu à la lettre, **aucune application ne peut adresser de Command depuis un clic
 | L6 | Le guide présente `DuplicateHandlerError` comme garde d'exécution d'A3.e. Sous D16, les traitements sont dérivés du contrat, un par message : le doublon est impossible par construction. | guide §11 | Remplacer l'exemple, par exemple par une Query vers une cible active (G5). |
 | L7 | Le guide affirme que TypeScript « peut même vérifier » à la compilation que la propriété ne change jamais. Rien dans `gardes.md` ne porte cette garde. | guide §4 | Retirer la phrase, ou la rattacher à une garde de `gardes.md`. |
 
+**Statut : L1 à L7 validés et appliqués le 30 octobre 2026 (théorie V0.9.5).** A0.e porte la structure finie et enracinée (31 clauses d'axiomes) ; T3 et T6 y renvoient.
+
 ## 4. Guide
 
 Le guide est **exact** au regard de la V0.9.4 : aucune contradiction relevée. Il a en revanche **perdu sa fonction**, qui est d'expliquer la théorie à un développeur junior. Les §5, §6 (G5, D9, G7), §8 et §10 recopient le protocole sous une forme à peine abrégée, par exemple les réservations, l'engagement « jusqu'au premier échec synchrone » ou les bilans d'engagement du Composer. Et l'exemple principal, le panier, n'est conforme que sous une hypothèse que la théorie ne fournit pas (R3).

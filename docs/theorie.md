@@ -506,7 +506,7 @@ Limite du modèle à laquelle s'opère l'admission.
 
 La frontière de confiance n'a pas de propriétaire : elle est formée de tous les points d'admission. Ce qui la franchit n'est pas présumé conforme : un message admis est traité comme tout message, et les invariants métier sont satisfaits à l'issue de son traitement (A4.a) ; c'est ce traitement qui valide ce qui entre. En deçà de la frontière, toute ressource a un propriétaire (A1.a) et tout message une cause (A5.b) : c'est le sens du mot « confiance ».
 
-Les différences entre l'hôte et les systèmes extérieurs ne tiennent pas à la frontière, mais à qui admet : seul le domaine échange des informations métier avec un système extérieur (A4.c) ; une source de l'hôte est admise par la Foundation (D3), par la View propriétaire de la part (16.5) ou par un adaptateur (D7) ; le moyen d'appel d'un système extérieur, requête ou connexion, est une ressource de l'hôte admise par le composant du domaine qui l'utilise, et les faits qui y arrivent, réponse ou message poussé par le serveur, sont admis par ce composant (A5.c).
+Les différences entre l'hôte et les systèmes extérieurs ne tiennent pas à la frontière, mais à qui admet : seul le domaine échange des informations métier avec un système extérieur (A4.c) ; une source de l'hôte est admise par la Foundation (D3), par la View propriétaire de la part (16.5) ou par un adaptateur (D7) ; les minuteries et rappels d'animation sont admis par le composant qui les arme (B.6) ; le moyen d'appel d'un système extérieur, requête ou connexion, est une ressource de l'hôte admise par le composant du domaine qui l'utilise, et les faits qui y arrivent, réponse ou message poussé par le serveur, sont admis par ce composant (A5.c).
 
 ### 11.8 Effet
 
@@ -520,7 +520,7 @@ L’effet est la direction inverse de l’admission : il porte vers l’hôte ou
 
 Chaque clause est suivie de son contre-exemple.
 
-**Champ des axiomes.** Tout modèle non abandonné a exactement une racine ; chaque autre composant lui est relié par une chaîne finie de parents. Les configurations présentes contiennent un nombre fini de composants et ressources : cette finitude permet la clôture structurelle, sans garantir la terminaison d’un code applicatif arbitraire. Lorsque plusieurs racines coexistent dans un même hôte, chacune et ses descendants forment un modèle distinct ; les axiomes s’appliquent séparément. Une même source de l’hôte peut être admise une fois par racine. Un changement provoqué par une autre racine n’est pas une continuation inter-racines (G6) ; il est indépendant pour la racine observatrice si le protocole l’établit, sinon qualifié antécédent inconnu (C.4).
+**Champ des axiomes.** Lorsque plusieurs racines coexistent dans un même hôte, chacune et ses descendants forment un modèle distinct ; les axiomes s’appliquent séparément (A0.e). La finitude d’A0.e permet la clôture structurelle, sans garantir la terminaison d’un code applicatif arbitraire. Un changement provoqué par une autre racine n’est pas une continuation inter-racines (G6) ; il est indépendant pour la racine observatrice si le protocole l’établit, sinon qualifié antécédent inconnu (C.4).
 
 ### A0 — Cadre
 
@@ -531,12 +531,14 @@ Chaque clause est suivie de son contre-exemple.
 > **A0.c** Tout ce qu'on peut connaître ou changer d'un composant est son existence ou une ressource dont il est propriétaire.
 >
 > **A0.d** À chaque composant est associée exactement une existence, et chaque existence concerne exactement un composant ; cette association est immuable. Celle d’un non-racine est une ressource du modèle qui n’est une part d’aucune ressource ; créer ce composant consiste à créer cette existence. L’existence de la racine est extérieure et n’est admise par aucun composant.
+>
+> **A0.e** Tout modèle a exactement une racine ; tout autre composant y est relié par une chaîne finie de parents, et le modèle contient un nombre fini de composants et de ressources.
 
 **Contre-exemples :** un registre de Channels est à la fois une partie de l'infrastructure de communication et une ressource qu'un composant modifie (A0.a) ; un service qui n'est ni composant, ni ressource, ni message est appelé par les composants, ou un parent traite son enfant comme une ressource (A0.b) ; un composant expose un cache interne qui n'est pas une ressource, et un autre l'interroge (A0.c) ; un composant est instancié sans existence : aucun composant ne peut le détruire, et il survit à son créateur ; ou un composant admet l'existence de la racine, et la détruit (A0.d).
 
 Ce dont un parent est propriétaire n'est pas son enfant, mais l'existence de celui-ci (A0.b, 7.1).
 
-**Contre-exemples structurels complémentaires :** deux existences différentes sont associées au même composant (A0.d) ; un cycle de parents, une chaîne sans racine ou une population structurelle infinie sont exclus par le champ des axiomes.
+**Contre-exemples structurels complémentaires :** deux existences différentes sont associées au même composant (A0.d) ; un cycle de parents, une chaîne sans racine ou une population structurelle infinie (A0.e).
 
 ### A1 — Propriété unique
 
@@ -594,7 +596,7 @@ A2.d maintient la restitution auprès du propriétaire du contenant, sans transf
 
 ### A4 — Autosuffisance du domaine
 
-> **A4.a** Les invariants métier sur l’état interne sont satisfaits à la fin réussie de chaque unité de validation (§2.5), en présence ou en l’absence d’interface utilisateur. Leur satisfaction ne peut exiger une transaction atomique avec une matérialisation extérieure non transactionnelle : la règle métier représente explicitement les intentions, observations, succès et échecs nécessaires.
+> **A4.a** Les invariants métier sur l’état interne sont satisfaits à la fin réussie de chaque unité de validation (§2.5), en présence ou en l’absence d’interface utilisateur.
 >
 > **A4.b** Aucun composant du domaine n'adresse de message à un Channel dont le propriétaire appartient à l'interface utilisateur, ni ne reçoit de message émis sur un tel Channel.
 >
@@ -605,6 +607,8 @@ A2.d maintient la restitution auprès du propriétaire du contenant, sans transf
 > **A4.e** Un Channel dont le propriétaire appartient au domaine ne prend fin qu'avec la racine.
 
 **Contre-exemples :** une Command laisse un panier dont le total ne correspond plus à ses lignes (A4.a) ; un composant du domaine reçoit un message émis par un composant de l'interface utilisateur, ou une Feature adresse un message au Channel de l'adaptateur du document (A4.b) ; un composant de l'interface utilisateur échange des informations métier avec un système extérieur (A4.c) ; au clic sur « Ajouter », une View incrémente le compteur du panier affiché sans attendre l'Event de la Feature (A4.d) ; une Feature est détruite par son parent, ou détruit son propre Channel, alors que l'application continue (A4.e).
+
+A4.a n’exige aucune transaction atomique avec une ressource de l’hôte ou un système extérieur : la règle métier représente explicitement les intentions, observations, succès et échecs nécessaires (C.3).
 
 A4.e pose la continuité d’existence des Channels du domaine pendant la vie de la racine ; elle ne se déduit pas de la seule cohérence d’A4.a. Une autre architecture pourrait détruire un Channel puis refuser les demandes ultérieures tout en conservant ses invariants. Bonsai exclut cette alternative par cet axiome. Existence ne signifie pas disponibilité inconditionnelle : une Query peut être refusée selon G5, une Command peut être refusée par le métier, et aucune progression générale n’est promise face à un traitement non terminant ou une activité infinie.
 
@@ -715,7 +719,7 @@ Un message local n’est pas une interaction fonctionnelle ; il n’ajoute pas u
 2. À la fin réussie d’une unité de validation, toute ressource restante du modèle a un propriétaire encore présent dans ce modèle (A1.a, §2.5).
 3. Une ressource dont C était propriétaire ne peut pas recevoir un nouveau propriétaire (A2.c).
 4. Elle ne peut donc pas subsister : sa fin fait partie de la destruction de C (règle de cascade, §2.5).
-5. Parmi ces ressources figure l'existence des enfants de C ; leur fin entraîne celle de leurs propres ressources. La configuration structurelle est finie et enracinée (§12) : l’application aux descendants n’exige aucune chaîne infinie. L’ordre d’imputation des fins et restitutions est celui du §2.5, pas une autorité générale donnée à C sur leurs ressources. ∎
+5. Parmi ces ressources figure l'existence des enfants de C ; leur fin entraîne celle de leurs propres ressources. La configuration structurelle est finie et enracinée (A0.e) : l’application aux descendants n’exige aucune chaîne infinie. L’ordre d’imputation des fins et restitutions est celui du §2.5, pas une autorité générale donnée à C sur leurs ressources. ∎
 
 Pour une ressource de l'hôte admise, sa fin dans le modèle n'est pas un effacement par l'hôte : elle cesse d'être une ressource du modèle, et ce que l'hôte matérialise lui reste. Une racine qui l'admet à nouveau en fait une nouvelle ressource, dont le composant qui l'admet est le propriétaire initial (A2.a) ; ce qu'elle y trouve entre dans le modèle par un message dont la cause est une origine (A5.c). Le stockage, l'adresse ou l'historique survivent ainsi au rechargement de la page sans qu'aucune ressource du modèle survive à sa racine.
 
@@ -742,7 +746,7 @@ Un tel composant peut néanmoins adresser des messages et recevoir les réponses
 
 > Une transition validée exigeant la modification conjointe de ressources internes préexistantes de propriétaires distincts ne peut pas être réalisée par des traitements séparés tout en préservant l’invariant à la fin de chaque unité de validation. Si cette transition doit être réalisable atomiquement, les ressources concernées relèvent du même propriétaire.
 
-Dans ce résultat, « lie » signifie qu’une transition effectivement requise ne peut modifier une ressource sans modifier conjointement l’autre. Une simple relation mathématique conservée en refusant tout changement n’impose pas cette réalisabilité.
+Dans ce résultat, une **transition requise** est une transition qui ne peut modifier une ressource sans modifier conjointement l’autre. Une simple relation mathématique conservée en refusant tout changement n’impose pas cette réalisabilité.
 
 **Démonstration.**
 
@@ -762,7 +766,7 @@ Deux règles indépendantes, une relation maintenue par refus et une coordinatio
 1. Soit C un composant du domaine, propriétaire d'un Channel K. K est une ressource dont C est propriétaire.
 2. Si C est détruit, toutes les ressources dont il est propriétaire prennent fin avec lui (T3), K compris.
 3. Or K ne prend fin qu'avec la racine (A4.e).
-4. C n'est donc pas détruit avant la fin de la racine ; le champ du §12 le rattache à celle-ci par une chaîne finie. À la fin de la racine, qui vient de l'hôte (7.4), il prend fin avec sa descendance (T3). ∎
+4. C n'est donc pas détruit avant la fin de la racine ; A0.e le rattache à celle-ci par une chaîne finie. À la fin de la racine, qui vient de l'hôte (7.4), il prend fin avec sa descendance (T3). ∎
 
 Toute Feature est propriétaire d'un Channel (16.3) : une Feature n'est détruite qu'avec la racine. Il en va de même d'un adaptateur de l'hôte qui appartient au domaine (D7). Aucune décision n'intervient dans cette démonstration.
 
@@ -1032,13 +1036,13 @@ L'[audit historique V0.9.2](rapports/audit-coherence-V0.9.2.md) conserve ses con
 | 18.2 | Navigation et adresse | L'adresse est perçue et modifiée par l'utilisateur : elle relève de l'interface utilisateur. Que l'état de navigation soit une information métier relève de chaque application ; s'il l'est, il vit dans une Feature et l'adresse en est une projection. | 11.1, A4.d | V0.6 |
 | 18.3 | Stockage et survie à la racine | L'admission produit une ressource du modèle distincte de la ressource de stockage de l’hôte ; elle prend fin avec son propriétaire, sans effacer nécessairement cette ressource de l’hôte. Une nouvelle racine produit une nouvelle ressource admise dont les valeurs initiales relèvent de sa cause de démarrage, non de la session précédente. | A2.a, T3 (remarque), §2.5, 11.6, A5.c, G8 | V0.6 ; précisée en V0.9.3 |
 | 18.4 | Frontière de confiance | Une seule notion : la frontière est formée de tous les points d'admission, et ce qui la franchit est validé par son traitement (A4.a). Les distinctions entre hôte et système extérieur tiennent à qui admet, et sont portées par A4.c, D3, D7 et 16.5. | 11.7 (remarque) | V0.8 |
-| 18.5 | Racines multiples | Un modèle fini et enraciné par racine, sans message inter-racines (G6). Une modification d’une autre racine est indépendante si le protocole l’établit, sinon d’antécédent inconnu. Foundations disjointes et écritures globales exclusives selon B.2 ; aucune garantie contre les auteurs non coordonnés. | G6, §12, C.4, D3, B.2, B.3 | V0.8 ; révisée en V0.9.4 |
+| 18.5 | Racines multiples | Un modèle fini et enraciné par racine, sans message inter-racines (G6). Une modification d’une autre racine est indépendante si le protocole l’établit, sinon d’antécédent inconnu. Foundations disjointes et écritures globales exclusives selon B.2 ; aucune garantie contre les auteurs non coordonnés. | G6, §12, A0.e, C.4, D3, B.2, B.3 | V0.8 ; révisée en V0.9.4 |
 | 18.6 | Délégation | La délégation est exclue : seul le propriétaire exécute une opération exclusive. Elle serait réexaminée si la dérivation d'un rôle rencontrait un cas que l'attribution, les messages et les paramètres de création ne couvrent pas. | A1.b | V0.6 |
 | 18.7 | Garantie au plus tôt et gardes | Une obligation contrôlable reçoit une garde au niveau le plus précoce possible ; une obligation sémantique non vérifiable reçoit une justification explicite et une revue, notamment A3.h et une partie d'A4.d. D16 permet le contrôle de la structure et des modes déclarés, pas de tout A3 ni de toutes les instances futures. Les tests ne sont pas des preuves générales. | §19, D16, O2 | V0.9.1 ; précisée en V0.9.3 |
 | 18.8 | Déterminisme | Le déterminisme n'est pas un axiome : lire librement l'heure ou une valeur aléatoire reste conforme (18.15). L'infrastructure de communication n'ajoute aucun aléa : les messages différés suivent l'ordre de production (D8), les Queries le contrat synchrone de G5. La rejouabilité reste un objectif ; restituer les valeurs lues librement relève de l'implémentation. | D8, G5, O1, 18.15 | V0.8 ; précisée en V0.9.3 |
 | 18.9 | Cohésion et borne causale | D9 borne seulement la profondeur : un timer répétitif armé une fois produit des expirations sœurs ; un réarmement continue la réaction et un polling peut atteindre la borne. Ni le travail total ni la terminaison ne sont garantis ; aucune origine n'est réinitialisée pour contourner la borne. « Une responsabilité, un rôle » (P10) est une règle de méthode pour les rôles. | D9, A5.b, G8, §16 | V0.8 ; précisée en V0.9.3 |
 | 18.10 | Objectifs | Les objectifs forment une catégorie distincte de la décision et de la conséquence : une qualité que les axiomes établissent est une conséquence. La liste est courte : rejouabilité (O1), détection précoce (O2) et ergonomie de développement (O3). | 2.6, 15.1 | V0.8 |
-| 18.11 | Rattachement au registre | Chaque principe `P<n>` et chaque invariant `I<n>` reçoit un statut et l'élément de la théorie qui le fonde. Le report dans `docs/invariants/` relève de l'alignement du dépôt. | `docs/rapports/registre-V0.9.2.md` | V0.9.2 |
+| 18.11 | Rattachement au registre | Chaque principe `P<n>` et chaque invariant `I<n>` reçoit un statut et l'élément de la théorie qui le fonde. Le report dans `docs/invariants/` relève de l'alignement du dépôt. | `docs/invariants/` (registre YAML) ; `docs/rapports/migration-invariants-runtime-V0.9.4-2026-10-30.md` | V0.9.2 ; précisée en V0.9.5 |
 | 18.12 | Admission d'un fait dont la cible est dans une part | Un fait n'est admis qu'une fois (A5.d), par le propriétaire de la part où il survient, sauf source de niveau document déclarée, admise par l'adaptateur du document (D10). L'admission soumet un message local sans mutation applicative préalable. Cette réponse ne tranche pas le cas hors View de 18.30. | A5.d, D10, 11.6 | V0.8 ; précisée en V0.9.3 |
 | 18.13 | Adresser son propre Channel | Une Command vers soi est permise et différée jusqu'à validation. Une Query vers soi est refusée avec erreur, comme toute Query vers un composant actif, jamais mise en file pour attendre une réponse. Le propriétaire lit directement ses propres ressources ; le message local reste la voie d'admission d'un fait. | G5, G7, A1.b, 9.5, T2 | V0.7 ; corrigée en V0.9.3 |
 | 18.14 | Adaptateurs mixtes | Un adaptateur relève d'une seule partie (11.1). Le document, l'historique, le défilement et le presse-papiers sont des supports de présentation ou d'intention ; visibilité et focus de la fenêtre, Viewport et environnement sont des conditions d'environnement du domaine. Les cookies relèvent du stockage. Pour les cas limites, B.3 fixe explicitement la convention normative ; A en explique les motifs sans trancher le focus d'un élément hors View (18.30). | D7, 11.1, B.3 | V0.9 ; précisée en V0.9.3 |
