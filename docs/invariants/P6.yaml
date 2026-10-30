@@ -54,7 +54,7 @@
   enonce: Le Composer reçoit à sa création la désignation du contenu attribué pour son occurrence de vie ; il ne transfère ni ne déplace cette attribution. Son parent le détruit avant de retirer l'élément du slot ; une réutilisation du même emplacement ne réactive ni l'ancien Composer ni sa désignation.
   pourquoi: >
     A2, T3 et §16.6 lient attribution et existence logique, non présence physique du DOM.
-    Les créations et destructions provisoires restent annulables avec l'unité (§2.5, §2.7.2) ;
+    Les créations et destructions provisoires restent annulables avec l'unité (§2.5, C.2) ;
     la disparition physique ne définit aucune suspension ou résurrection implicite.
   # Aucun protocole d'attribution, de destruction ou d'occurrence de vie livré.
   mode: run
@@ -114,7 +114,7 @@
   roles: [Composer]
   enonce: Le Composer ne modifie le contenu de son slot que pour attribuer ou restituer les parts de ses Views, créer ou retirer les éléments correspondants ; il ne réalise aucun rendu supplémentaire, ne tient aucun état local indépendant et n'adresse aucune Command. Il admet les seuls résultats instrumentés de ses propres effets de composition, déclarés avec leurs traitements locaux, jamais une notification générale de l'hôte.
   pourquoi: >
-    D12, §16.6 et §2.7.3 distinguent la composition structurelle autorisée de la présentation.
+    D12, §16.6 et C.3 distinguent la composition structurelle autorisée de la présentation.
     L'interdiction absolue d'écriture de l'ADR-18 est trop large. Les opérations structurelles
     restent dans l'unité de validation ; les effets hôte sont engagés après sa réussite, sans
     transaction extérieure. Les résultats propres n'ouvrent ni source générale ni droit de Command.
@@ -129,7 +129,7 @@
   nature: C
   parents: [I38]
   roles: [Foundation]
-  enonce: Unique par racine, la Foundation admet l'élément configuré par le Manifest, `body` par défaut, et reste bornée à cet élément hors contenu attribué aux Composers. Elle n'admet ni l'en-tête ni les sources de niveau document, réservés à l'adaptateur correspondant ; ses résultats instrumentés propres restent régis par §2.7.3.
+  enonce: Unique par racine, la Foundation admet l'élément configuré par le Manifest, `body` par défaut, et reste bornée à cet élément hors contenu attribué aux Composers. Elle n'admet ni l'en-tête ni les sources de niveau document, réservés à l'adaptateur correspondant ; ses résultats instrumentés propres restent régis par C.3.
   pourquoi: >
     D1, D3 et §16.4 fixent l'admission et ses limites ; l'ADR-20 ne confère pas d'autorité
     générale sur html, document ou window. Le support hôte n'est pas lui-même une ressource interne.

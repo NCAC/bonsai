@@ -11,7 +11,7 @@
 | **Composant** | Foundation, enfant de la racine |
 | **Couche** | Concrète ; persistante pendant la vie de sa racine (D1) |
 | **Statut** | Contrat documentaire V0.9.4 ; runtime livré partiel et incompatible sur plusieurs points |
-| **Référence normative** | [Théorie](../../theorie.md) : §2.5, §2.7.2–§2.7.3, A0–A2, D3, D7, D11, §16.4 et §16.9 |
+| **Référence normative** | [Théorie](../../theorie.md) : §2.5, C.2–C.3, A0–A2, D3, D7, D11, §16.4 et §16.9 |
 | **Historique** | [ADR-20](../../adr/ADR-20-foundation.md), [ADR-07](../../adr/ADR-07-application-bootstrap.md), conservés Accepted sans modification ; leurs choix incompatibles sont à réexaminer |
 
 > ## ⏳ Périmètre d'implémentation
@@ -50,7 +50,7 @@ Le runtime Foundation n'a aujourd'hui ni contrat Channel ni méthodes d'écoute,
 
 Toute capacité future devra être déclarée selon D16. La réception éventuelle d'Events d'adaptateurs ne sera **pas** une admission directe de leurs sources hôte. D18 s'applique à toute Command de l'interface : un Event, son relais local ou un résultat d'effet corrélé à cet Event n'ouvre aucun droit de commander ; une Query préalable ne change pas cette restriction. Une observation à antécédent inconnu ne l'ouvre pas davantage.
 
-L'admission du **résultat instrumenté de ses propres effets autorisés**, y compris un bilan d'engagement, est en revanche permise par §2.7.3. Les résultats et traitements locaux doivent être déclarés ; ils visent son occurrence de vie et respectent D9. Cette exception ne donne accès à aucune source générale de l'hôte et ne promet pas que ces mécanismes soient livrés.
+L'admission du **résultat instrumenté de ses propres effets autorisés**, y compris un bilan d'engagement, est en revanche permise par C.3. Les résultats et traitements locaux doivent être déclarés ; ils visent son occurrence de vie et respectent D9. Cette exception ne donne accès à aucune source générale de l'hôte et ne promet pas que ces mécanismes soient livrés.
 
 ---
 
@@ -65,11 +65,11 @@ Le titre N1 conserve un repère historique ; il n'établit plus une exception d'
 | Élément d'un slot | Reste dans le périmètre du parent ; le **contenu** attribué appartient au Composer et est soustrait à l'autorité de la Foundation tant que sa part existe |
 | Contenu attribué aux Composers, puis à leurs Views | Ni lecture ni modification directe par la Foundation ; aucun accès fonctionnel aux états des enfants |
 | `html`, en-tête, `document`, `window`, titre et sources globales | Aucun accès supplémentaire autorisé : les ressources et sources hors de l'élément admis relèvent des adaptateurs D7 ; les faits de niveau document déclarés suivent D10 |
-| Résultat instrumenté d'un effet propre autorisé | Admission locale permise selon §2.7.3, sans abonnement à une source générale |
+| Résultat instrumenté d'un effet propre autorisé | Admission locale permise selon C.3, sans abonnement à une source générale |
 
 Le choix de l'élément ne permet pas de contourner D3 en désignant `html`, `document` ou `window` pour récupérer les capacités globales exclues. Une écoute directe du redimensionnement de fenêtre, du défilement global ou d'un raccourci de niveau document n'est pas une responsabilité Foundation. Les anciens exemples fondés sur `window.addEventListener()` et `this.html` sont donc retirés, sans modifier l'ADR historique.
 
-Les effets DOM sont préparés pendant une initialisation ou un traitement autorisé et engagés après validation interne (§2.5). Plusieurs écritures ne deviennent pas atomiques ; engagement et réussite observée sont distincts. Un échec est traité par le protocole de résultat déclaré pour l'occurrence vivante concernée, sans rollback de ce que l'hôte a déjà appliqué (§2.7.3).
+Les effets DOM sont préparés pendant une initialisation ou un traitement autorisé et engagés après validation interne (§2.5). Plusieurs écritures ne deviennent pas atomiques ; engagement et réussite observée sont distincts. Un échec est traité par le protocole de résultat déclaré pour l'occurrence vivante concernée, sans rollback de ce que l'hôte a déjà appliqué (C.3).
 
 ---
 
@@ -115,7 +115,7 @@ Un getter conditionnel livré ne constitue pas un mécanisme réactif : il n'est
 | Étape | Contrat cible | Observation du livré |
 | --- | --- | --- |
 | Paramètres de la racine | Manifest propre à la racine, classe Foundation et désignation de son élément, `body` par défaut | [Options Application](../../../packages/application/src/bonsai-application.ts) limitées ici à la classe `foundation` et aux `features` ; aucun champ d'élément Foundation |
-| Amorçage | Channels établis, initialisations ordonnées et disponibilité contrôlée avant publication ; admissions et différés attendent la clôture | Features initialisées synchroniquement avant création de la Foundation en phase 4 |
+| Démarrage | Channels établis, initialisations ordonnées et disponibilité contrôlée avant publication ; admissions et différés attendent la clôture | Features initialisées synchroniquement avant création de la Foundation en phase 4 |
 | Création Foundation | Existence créée par la racine, admission du seul élément déclaré, création des Composers et attributions sous une même unité | Constructeur sans argument, capture directe de `document.body` et `document.documentElement`, puis `attach()` |
 | Attachement des Composers | Désignations de parts résolues sous contrôle de propriété ; initialisations et effets préparés sous §2.5 | Sélecteurs du record passés au constructeur Composer, puis `attach(body)` et éventuel `View.mount()` |
 | Hook historique | Ni permission globale ni preuve de publication transactionnelle | `Foundation.onAttach()` appelé après tous les Composers racines |
@@ -129,5 +129,5 @@ L'erreur de second `attach()` est un garde **par instance**, pas la preuve d'un 
 
 ## Lecture suivante
 
-→ [composer.md](composer.md) — composition structurelle et résultats propres sous D12 et §2.7.3 ; runtime encore partiel
+→ [composer.md](composer.md) — composition structurelle et résultats propres sous D12 et C.3 ; runtime encore partiel
 → [Cycle de vie](../2-architecture/lifecycle.md) — existence, cascade, rollback et nettoyage

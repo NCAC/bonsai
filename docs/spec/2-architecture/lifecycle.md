@@ -8,7 +8,7 @@
 
 > ## ⏳ Périmètre d'implémentation (ADR-31)
 >
-> Ce document est une **conception documentaire**, non une annonce de mécanismes runtime livrés. La référence normative est la [théorie V0.9.4](../../theorie.md), notamment §2.5, §2.7.2, §2.7.3, §2.7.6, A0–A2, T3 et §16.4–§16.7. Les ADR Accepted restent des traces historiques ; leurs contrats incompatibles ne prévalent pas sur cette théorie.
+> Ce document est une **conception documentaire**, non une annonce de mécanismes runtime livrés. La référence normative est la [théorie V0.9.4](../../theorie.md), notamment §2.5, C.2, C.3, C.6, A0–A2, T3 et §16.4–§16.7. Les ADR Accepted restent des traces historiques ; leurs contrats incompatibles ne prévalent pas sur cette théorie.
 >
 > | Observation vérifiée dans les sources | Portée réelle |
 > | --- | --- |
@@ -51,7 +51,7 @@ Le cycle attach/detach répété de navigation ne s'applique pas aux Features. L
 
 La Foundation appartient à la couche concrète mais reste persistante au sens de D1. Foundation et View ne sont parents **que de Composers** ; une View n'est enfant que d'un Composer (D11). Un Behavior n'est donc jamais un maillon supplémentaire de la cascade.
 
-Le montage est une matérialisation sur l'hôte. Une initialisation logique peut être prête sans DOM déjà matérialisé (§2.7.1). Oublier une référence JavaScript, enlever un nœud ou appeler un hook ne constitue pas le protocole de destruction de l'existence.
+Le montage est une matérialisation sur l'hôte. Une initialisation logique peut être prête sans DOM déjà matérialisé (C.1). Oublier une référence JavaScript, enlever un nœud ou appeler un hook ne constitue pas le protocole de destruction de l'existence.
 
 ---
 
@@ -65,7 +65,7 @@ Le contrat cible distingue **clôture logique annulable** et **nettoyage physiqu
 2. **Restitution au propriétaire encore vivant.** La fin d'une part rend sa portion à la ressource distribuable dont elle était soustraite. Cette modification est imputée au propriétaire de ce contenant alors qu'il est encore présent dans l'ordre logique, même s'il disparaît ensuite. Aucune nouvelle attribution ni méthode fonctionnelle du parent n'est implicite.
 3. **Structure provisoire et rollback commun.** Existences, abonnements, attributions et restitutions appartiennent à l'unité de validation. Une destruction annulée conserve les composants, propriétaires, parts, désignations et occurrences de vie antérieurs. Les créations abandonnées et leurs désignations ne sont pas publiées. Créations et destructions de cette unité s'annulent ensemble sous G7.
 4. **Aucun traitement applicatif pendant la cascade.** Ces étapes ne délivrent aucun message et n'exécutent aucun hook applicatif. La fermeture logique n'attend pas la réussite du nettoyage matériel. Retrait DOM, désinscription physique et annulation extérieure irréversibles sont préparés puis engagés après validation (§2.5).
-5. **Aucune résurrection par notification.** Après destruction validée, les délivrances en attente sont retirées et les callbacks tardifs sont écartés avant admission. Une trace technique peut signaler un abandon ou un échec de nettoyage, sans appeler le composant disparu (§2.7.2–§2.7.3).
+5. **Aucune résurrection par notification.** Après destruction validée, les délivrances en attente sont retirées et les callbacks tardifs sont écartés avant admission. Une trace technique peut signaler un abandon ou un échec de nettoyage, sans appeler le composant disparu (C.2–C.3).
 
 Par exemple, pour une View contenant un Composer enfant, les Views de ce Composer prennent fin et leurs portions lui sont restituées avant sa propre fin ; son contenu revient ensuite à la View encore vivante ; la part de cette View revient enfin à son Composer parent. C'est l'ordre logique des restitutions, non une suite de hooks de destruction.
 
@@ -77,7 +77,7 @@ Par exemple, pour une View contenant un Composer enfant, les Views de ce Compose
 | Parts, désignations et états locaux | Fin logique selon la propriété et la cascade ; leur conservation physique éventuelle ne les maintient pas dans le modèle |
 | Écritures DOM, retraits et autres effets préparés | Engagement post-validation ; pas de transaction distribuée, d'atomicité DOM ni de restauration d'un support déjà modifié |
 
-Une erreur d'effet ne révoque pas la validation interne. Les bilans d'engagement et résultats instrumentés déclarés reviennent à l'occurrence **encore vivante** du composant concerné, y compris Foundation ou Composer pour leurs effets autorisés (§2.7.3). Après sa disparition, seule une observation technique de l'erreur est possible. L'idempotence matérielle, les reprises et la prise en charge exhaustive des ressources restent à concevoir ; elles ne se déduisent pas de T3.
+Une erreur d'effet ne révoque pas la validation interne. Les bilans d'engagement et résultats instrumentés déclarés reviennent à l'occurrence **encore vivante** du composant concerné, y compris Foundation ou Composer pour leurs effets autorisés (C.3). Après sa disparition, seule une observation technique de l'erreur est possible. L'idempotence matérielle, les reprises et la prise en charge exhaustive des ressources restent à concevoir ; elles ne se déduisent pas de T3.
 
 ### 2.1 Occurrences de vie et réservations
 
@@ -85,7 +85,7 @@ Chaque création reçoit une occurrence de vie non réutilisable, distincte du n
 
 Pendant une destruction provisoire, une notification techniquement capturée attend l'issue de l'unité : abandon si la destruction est validée, admission après annulation sinon. La capture n'exécute pas de traitement applicatif. L'annulation conserve la même occurrence et les conservations causales antérieures.
 
-À l'émission d'un Event, ses réservations fixent les occurrences d'abonnement et leur ordre (§2.7.6). Avant chaque délivrance, abonnement réservé, propriétaire et Channel doivent encore être valides. Un abonnement détruit puis recréé est un autre abonnement : **$S \ne S'$**, même si cible et déclaration sont identiques. Il ne reprend aucun Event réservé à $S$. Une destruction annulée conserve au contraire $S$ et ses réservations ; un abandon ne réordonne pas les autres et ne fait pas échouer rétroactivement l'émetteur validé.
+À l'émission d'un Event, ses réservations fixent les occurrences d'abonnement et leur ordre (C.6). Avant chaque délivrance, abonnement réservé, propriétaire et Channel doivent encore être valides. Un abonnement détruit puis recréé est un autre abonnement : **$S \ne S'$**, même si cible et déclaration sont identiques. Il ne reprend aucun Event réservé à $S$. Une destruction annulée conserve au contraire $S$ et ses réservations ; un abandon ne réordonne pas les autres et ne fait pas échouer rétroactivement l'émetteur validé.
 
 ---
 
@@ -99,7 +99,7 @@ La [spécification Application](../3-couche-abstraite/application.md) et [ADR-07
 | Disponibilité | Channels établis avant les consultations initiales ; initialisations ordonnées par dépendances, puis ordre déclaré ; Query vers cible active ou non prête refusée | Features instanciées et Channels créés avant `bootstrap()` des Features ; pas de protocole complet de disponibilité |
 | Initialisation | Sous la cause de démarrage, avant ouverture du transport différé ; admissions en attente jusqu'à clôture | `Feature.onInit()` synchrone, puis Foundation, Composers et Views |
 | Publication | Après réussite de toute l'unité ; échec : abandon du modèle en construction et de ses différés | Pas de rollback structurel complet ni de publication transactionnelle |
-| Création après amorçage | Initialisation de l'enfant incluse dans l'unité de validation du créateur, échec compris ; chaque propriétaire exécute ses propres opérations | Instanciation et montage directs par le Composer ; aucune garantie transactionnelle correspondante |
+| Création après démarrage | Initialisation de l'enfant incluse dans l'unité de validation du créateur, échec compris ; chaque propriétaire exécute ses propres opérations | Instanciation et montage directs par le Composer ; aucune garantie transactionnelle correspondante |
 
 L'inclusion de l'initialisation d'un enfant dans l'unité du créateur ne délègue aucune autorité sur ses ressources. Les Queries initiales ne visent pas une initialisation encore active. Les effets irréversibles restent soumis à la préparation et à l'engagement post-validation ; un échec extérieur ne restaure pas l'hôte.
 
@@ -109,7 +109,7 @@ La fin de la racine vient **de l'hôte**. Aucun composant n'en admet l'existence
 
 Ce n'est pas un shutdown livré en trois appels, ni une promesse de hooks dans l'ordre inverse d'enregistrement. L'ordre nécessaire est structurel, de bas en haut ; il ne fixe pas à lui seul l'ordre entre frères. Une éventuelle API d'arrêt et son articulation avec le signal de l'hôte restent à concevoir : le nom historique `Application.stop()` ne constitue pas une API disponible ni un droit de détruire l'existence extérieure.
 
-La fin du modèle n'efface pas ce que l'hôte conserve : DOM, stockage, adresse ou opérations déjà engagées peuvent subsister. Une admission ultérieure par une autre racine crée de nouvelles ressources. Ni fin de racine ni abandon d'amorçage ne promettent un rollback de l'hôte.
+La fin du modèle n'efface pas ce que l'hôte conserve : DOM, stockage, adresse ou opérations déjà engagées peuvent subsister. Une admission ultérieure par une autre racine crée de nouvelles ressources. Ni fin de racine ni abandon de démarrage ne promettent un rollback de l'hôte.
 
 ---
 
@@ -130,7 +130,7 @@ Aucune classe ni aucun hook Behavior n'est livré. Un Behavior n'a pas de cycle 
 
 ### Composer
 
-`resolve(event)` est le point de décision livré, avec `null` lors de l'attachement initial. Le Composer ne déclare ni `onMount()`, ni `onUnmount()`, ni `onAttach()`, ni `onDetach()`. Aucun abonnement Channel ne déclenche actuellement sa résolution en application. D12 exclut état local indépendant, présentation générale et Command ; les résultats instrumentés déclarés de ses propres effets de composition restent autorisés (§2.7.3).
+`resolve(event)` est le point de décision livré, avec `null` lors de l'attachement initial. Le Composer ne déclare ni `onMount()`, ni `onUnmount()`, ni `onAttach()`, ni `onDetach()`. Aucun abonnement Channel ne déclenche actuellement sa résolution en application. D12 exclut état local indépendant, présentation générale et Command ; les résultats instrumentés déclarés de ses propres effets de composition restent autorisés (C.3).
 
 ### Foundation
 
@@ -141,7 +141,7 @@ Aucune classe ni aucun hook Behavior n'est livré. Un Behavior n'a pas de cycle 
 - Représentation et validation des existences, parts, désignations, occurrences et réservations ; journal de rollback commun aux créations et destructions.
 - Capture unique, attente pendant destruction provisoire, filtrage avant admission/délivrance et retrait des différés vers une occurrence clôturée.
 - Registre des ressources instrumentées, préparation du nettoyage, engagement post-validation, résultats déclarés, diagnostics et stratégie de reprise après échec partiel.
-- Articulation de l'amorçage, des hooks historiques, de la disponibilité et de la fin signalée par l'hôte ; aucune nouvelle signature n'est fixée ici.
+- Articulation du démarrage, des hooks historiques, de la disponibilité et de la fin signalée par l'hôte ; aucune nouvelle signature n'est fixée ici.
 - Composition par Composers enfants, inclusion des Behaviors dans le traitement de la View et isolation effective entre racines.
 
 ---

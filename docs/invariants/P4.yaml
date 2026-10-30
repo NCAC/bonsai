@@ -11,7 +11,7 @@
   parents: [P4]
   roles: ["*"]
   enonce: Tout message, Command, Query, Event ou local, porte le contexte de son déclenchement observable ; chaque message hors origine a exactement un parent établi, et chaque origine conserve sa qualification démarrage, spontanée ou observation d'antécédent inconnu. Une réponse de Query n'est pas un message et ne crée aucun contexte propre.
-  # A5.b, G8, §9.11, §10.2/§10.5 et §2.7.4 ; aucun format de champs n'est prescrit ici.
+  # A5.b, G8, §9.11, §10.2/§10.5 et C.4 ; aucun format de champs n'est prescrit ici.
   # V0.9.4 : boot → run ; l'intégrité du contexte doit être assurée pendant toute l'exécution.
   # Non livré : handlers à un paramètre, messages sans contexte ; metas Entity libre ne réalise pas G8.
   mode: run
@@ -22,7 +22,7 @@
   parents: [P4, I102]
   roles: ["*"]
   enonce: L'infrastructure de communication établit l'origine de démarrage et qualifie chaque admission selon son protocole déclaré en résultat corrélé, fait indépendant établi ou observation d'antécédent inconnu. Elle conserve les liens connus ; ni le code applicatif ni une sélection D19 ne peuvent inventer un parent, effacer un lien ou transformer l'inconnu en indépendance établie.
-  # G8, §2.7.4 et D19 : un appel trigger n'est pas à lui seul une origine spontanée.
+  # G8, C.4 et D19 : un appel trigger n'est pas à lui seul une origine spontanée.
   # Dernier effet, proximité temporelle, égalité de valeur et isTrusted seul ne prouvent aucun lien.
   # Non livré : aucun protocole de qualification/corrélation des admissions ni contrôle des sélections.
   mode: run
@@ -53,7 +53,7 @@
   roles: ["*"]
   enonce: Les métadonnées causales sont établies et dérivées par l'infrastructure de communication ; le code applicatif les reçoit et les propage explicitement sans les fabriquer ni les remplacer. Le contexte des opérations corrélables est conservé jusqu'au résultat, à l'annulation ou à la clôture de l'occurrence de vie, même après un échec ; une Query restitue à son auteur son contexte sans le remplacer.
   pourquoi: >
-    G8, §2.7.2/§2.7.4 et §9.11 imposent l'établissement, la conservation et la restitution
+    G8, C.2/C.4 et §9.11 imposent l'établissement, la conservation et la restitution
     du contexte. La propagation explicite conserve le choix compatible de l'ADR-04 plutôt
     qu'un contexte implicite applicatif ; elle ne permet pas de choisir soi-même un parent.
     Un oubli de propagation n'ouvre jamais une nouvelle origine. Les formes exactes de l'API,

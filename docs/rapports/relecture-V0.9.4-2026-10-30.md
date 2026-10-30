@@ -50,6 +50,8 @@ Conséquences :
 
 Les autres notions (réservation, occurrence de vie, pile active, phases d'un composant, engagement) sont des notions de protocole : elles vont en annexe C (R2), et aucun axiome ne doit plus les nommer.
 
+**Statut : validé et appliqué le 30 octobre 2026 (théorie V0.9.5).** Définitions 9.12 Message différé, 9.13 Unité de validation et 11.8 Effet ; chaîne de 55 termes ; « support » et « amorçage » unifiés ; « traitement modifiant » et « frontière de validation » remplacés par l'unité de validation. A5.c et G5 ne nomment plus « composant vivant » ni « pile active ». Le sens « support de présentation » de 11.1, distinct, est conservé.
+
 ### R2 — Un protocole d'exécution s'est installé dans le noyau
 
 La théorie est passée d'environ 14 500 à près de 23 000 mots entre V0.9.2 et V0.9.4. L'essentiel de l'ajout est opérationnel : §2.7 (six contrats), quatre des six règles de lecture du §2.5, les précisions de D8, D9, D14, D16 et D19.
@@ -69,6 +71,8 @@ Trois problèmes de construction, indépendants du volume :
 Le noyau garde les définitions, les axiomes, la règle « autorité et validation », la règle « amorçage et création » réduite à trois phrases, et des garanties G1 à G8 courtes renvoyant à l'annexe C. Les mentions de `isTrusted` et `readonly` vont dans les fiches d'adaptateurs et la spécification.
 
 Rien n'est perdu ni affaibli : l'annexe C reste normative. Le noyau redevient lisible et indépendant de l'hôte, comme le demandent le §2.2 et la feuille de route.
+
+**Statut : validé et appliqué le 30 octobre 2026 (théorie V0.9.5).** Annexe C (C.1 à C.8) et profil de corrélation du navigateur en B.7 ; exceptions des résultats propres écrites dans D3, D7 et 16.4. Écart à la proposition : les garanties G1 à G8 gardent leur contenu, dont chaque phrase est une obligation ; seuls leurs renvois et leur vocabulaire changent. Le guide reçoit une section « Aller plus loin » qui reprend le protocole.
 
 ### R3 — Aucun protocole n'établit l'indépendance d'une saisie de l'utilisateur
 

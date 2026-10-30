@@ -1,6 +1,6 @@
 # Adaptateur Viewport
 
-*V0.9.4 — 30 octobre 2026. Fiche non normative ; la [théorie](../theorie.md), notamment §2.7 et A5, fait autorité. Les [contrats communs](README.md) s'appliquent aux 30 rubriques : disponibilité/publication, valeurs capturées sans alias mutable, effets post-validation, occurrences de vie et causalité observable. « Disponible » désigne le catalogue, non une implémentation vérifiée.*
+*V0.9.4 — 30 octobre 2026. Fiche non normative ; la [théorie](../theorie.md), notamment l’annexe C et A5, fait autorité. Les [contrats communs](README.md) s'appliquent aux 30 rubriques : disponibilité/publication, valeurs capturées sans alias mutable, effets post-validation, occurrences de vie et causalité observable. « Disponible » désigne le catalogue, non une implémentation vérifiée.*
 
 | # | Rubrique | Contenu |
 | --- | --- | --- |
@@ -29,7 +29,7 @@
 | 23 | Cycle de vie | Créé au démarrage s'il est déclaré ; la racine ne le détruit pas, il prend fin avec elle (B.2) ; par A4.e, son Channel du domaine ne prend fin qu'avec la racine. |
 | 24 | Nettoyage | Clôture logique de bas en haut, restitutions au propriétaire du contenant encore vivant ; structure provisoire annulable sous G7. Retrait physique des observateurs et tentative d'annulation après validation. Contrôle de vie avant admission et délivrance ; callbacks tardifs abandonnés sans réassignation. Une capture pendant destruction provisoire attend l'issue ; fin de racine : contextes clos. |
 | 25 | Autorisations | Aucune. |
-| 26 | Gardes | Contrats communs : Query prête/inactive, capture sans alias mutable, G7, effets ordonnés et suffixe non tenté au premier échec synchrone, vie vérifiée avant admission/délivrance, B.4 réservé et classification §2.7.4. Démarrage : catégorie/déclaration/identité valides, points de rupture ordonnés sans recouvrement ; aucune référence hôte publique ni autre source. |
+| 26 | Gardes | Contrats communs : Query prête/inactive, capture sans alias mutable, G7, effets ordonnés et suffixe non tenté au premier échec synchrone, vie vérifiée avant admission/délivrance, B.4 réservé et classification C.4. Démarrage : catégorie/déclaration/identité valides, points de rupture ordonnés sans recouvrement ; aucune référence hôte publique ni autre source. |
 | 27 | Tests positifs | Scénarios de conformité : passage sous 768 px intégré avant un unique `viewport:breakpointChanged` ; `catalog` adapte sa pagination. `resize` non corrélable reste inconnu après sélection D19 ; `refresh` produit un résultat local corrélé puis `refreshed`. |
 | 28 | Tests négatifs | À refuser ou signaler : lecture fraîche de `window.innerWidth` dans une Query, cible non prête/active, sous-classe écoutant le défilement, parent attribué au dernier plein écran, `isTrusted` utilisé seul, fusion multi-parent, alias mutable ou callback tardif réassigné ; D9 présenté comme bornant une boucle traversant l'inconnu. |
 | 29 | Décisions et objectifs associés | D7, A5.d, 11.1, 18.14, O3. |

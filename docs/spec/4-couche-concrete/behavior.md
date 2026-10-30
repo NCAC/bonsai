@@ -11,7 +11,7 @@
 | **Nature** | Partie réutilisable du code d'une View, **pas un composant** |
 | **Couche** | Interface utilisateur, par imputation à la View |
 | **Statut** | Contrat documentaire V0.9.4 ; aucun package Behavior livré |
-| **Référence normative** | [Théorie](../../theorie.md), §2.5, §2.7.2–§2.7.6, D10, D11, D13, D16, D18 et §16.5–§16.7 |
+| **Référence normative** | [Théorie](../../theorie.md), §2.5, C.2–C.6, D10, D11, D13, D16, D18 et §16.5–§16.7 |
 | **Historique** | [ADR-21](../../adr/ADR-21-behavior-reutilisation.md), [ADR-14](../../adr/ADR-14-contrats-types.md), [ADR-15](../../adr/ADR-15-evenements-ui.md), [ADR-17](../../adr/ADR-17-local-state.md), [ADR-25](../../adr/ADR-25-formulaires.md) ; Accepted conservés sans modification |
 
 > ## ⏳ Périmètre d'implémentation
@@ -68,7 +68,7 @@ Deux clés de noms différents peuvent désigner le même élément, notamment p
 
 Les traitements sont dérivés des messages et faits déclarés (D16), pas enregistrés librement à l'exécution. Les conventions historiques de noms de handlers View ne fixent pas à elles seules une future API Behavior.
 
-Une occurrence de fait dans la part est **admise une fois, par la View**, même si ses propres réactions et celles de plusieurs Behaviors sont concernées. Le préambule capture la notification et ses valeurs sans mutation applicative ; les réactions ont lieu pendant **le même traitement du même message local**, dans la **même unité de validation** et le même contexte causal qualifié. La propagation entre écouteurs ne constitue pas de nouvelles occurrences (§2.7.4, D10).
+Une occurrence de fait dans la part est **admise une fois, par la View**, même si ses propres réactions et celles de plusieurs Behaviors sont concernées. Le préambule capture la notification et ses valeurs sans mutation applicative ; les réactions ont lieu pendant **le même traitement du même message local**, dans la **même unité de validation** et le même contexte causal qualifié. La propagation entre écouteurs ne constitue pas de nouvelles occurrences (C.4, D10).
 
 Les réactions s'exécutent dans l'ordre fixe de leur déclaration, y compris celles de la View ; une implémentation doit rendre cet ordre explicite et vérifiable. Aucun ordre fondé sur la propagation DOM, la découverte fortuite des méthodes ou des admissions distinctes n'est acceptable. Les messages différés suivent ensuite l'ordre de production D8 ; les Queries suivent le contrat synchrone G5.
 
@@ -76,7 +76,7 @@ Les réactions s'exécutent dans l'ordre fixe de leur déclaration, y compris ce
 
 Ce titre conserve le repère historique : **« propres » qualifie les dépendances déclarées, jamais la propriété d'un Channel**. Un Behavior n'a ni identité ni Channel. Les écoutes, Queries et Commands nécessaires à son code appartiennent au contrat de la View et sont exécutées par elle. Il n'est ni adressable ni une source d'Events autonome.
 
-L'agrégation des déclarations Channel et la représentation des abonnements doivent encore être spécifiées. Elles doivent préserver l'imputation à la View, l'ordre des réactions et les réservations par occurrence d'abonnement (§2.7.6), sans transformer plusieurs fragments de code en composants indépendants.
+L'agrégation des déclarations Channel et la représentation des abonnements doivent encore être spécifiées. Elles doivent préserver l'imputation à la View, l'ordre des réactions et les réservations par occurrence d'abonnement (C.6), sans transformer plusieurs fragments de code en composants indépendants.
 
 | Déclencheur de la réaction imputée à la View | Droit de Command selon D18 |
 | --- | --- |
@@ -86,7 +86,7 @@ L'agrégation des déclarations Channel et la représentation des abonnements do
 | Observation à antécédent inconnu | Aucun droit de Command ; état local et projection possibles dans leurs autres limites |
 | Retour d'une Query | Pas un déclencheur autonome ; conserve chez l'auteur la permission préexistante, sans l'accorder au traitement de Query, toujours en lecture seule |
 
-Un clic n'est pas autorisé à commander par son seul nom, sa proximité temporelle ou `isTrusted` : la qualification dépend du protocole de source (§2.7.4). Pour les saisies dans la part, c'est le protocole du monde fermé : une saisie qu'aucune opération instrumentée en cours n'a pu produire est indépendante ([View §4.3](view.md#43-délégation-dévénements)). Un Behavior qui appelle directement `click()` ou `dispatchEvent()` viole G8. Les réactions d'un Behavior ne fabriquent ni origine indépendante ni nouveau contexte pour contourner D18 ou D9.
+Un clic n'est pas autorisé à commander par son seul nom, sa proximité temporelle ou `isTrusted` : la qualification dépend du protocole de source (C.4). Pour les saisies dans la part, c'est le protocole du monde fermé : une saisie qu'aucune opération instrumentée en cours n'a pu produire est indépendante ([View §4.3](view.md#43-délégation-dévénements)). Un Behavior qui appelle directement `click()` ou `dispatchEvent()` viole G8. Les réactions d'un Behavior ne fabriquent ni origine indépendante ni nouveau contexte pour contourner D18 ou D9.
 
 ### 2.4 Templates en îlots (N2)
 
@@ -100,7 +100,7 @@ Une écriture N2 ne peut supprimer un slot dont le Composer existe encore. La Vi
 
 L'état utilisé par un Behavior est **une partie de l'état local de la View**. Le Behavior n'en est pas un propriétaire distinct. Cet état est initialisé dans l'unité autorisée de la View, modifié seulement pendant ses traitements, et soumis au même rollback interne. Il peut évoluer en réaction à un Event sans autoriser pour autant une Command.
 
-L'état reste confiné : aucun autre composant ne le lit, ne le modifie ou ne le demande ; il n'est pas diffusé. Une valeur figée peut entrer dans une Command autorisée par D18, sans alias mutable (§2.7.5). Un brouillon ou une validation de saisie n'est pas une certification de l'état métier du domaine. Il prend fin avec la View, pas lors d'un « détachement Behavior » indépendant.
+L'état reste confiné : aucun autre composant ne le lit, ne le modifie ou ne le demande ; il n'est pas diffusé. Une valeur figée peut entrer dans une Command autorisée par D18, sans alias mutable (C.5). Un brouillon ou une validation de saisie n'est pas une certification de l'état métier du domaine. Il prend fin avec la View, pas lors d'un « détachement Behavior » indépendant.
 
 Les noms historiques `localState`, `updateLocal()` et callbacks de mise à jour décrits dans [View §7](view.md#7-api-localstate) ne sont pas livrés pour Behavior. Le partitionnement interne, le typage et l'ordre des réactions de projection restent à concevoir, sans relâcher la règle d'imputation.
 
@@ -120,7 +120,7 @@ Un Behavior ne naît ni ne meurt comme composant. Sa contribution est initialis�
 | Fin logique de la View | Cascade de ses descendants de bas en haut, restitutions aux propriétaires encore vivants ; aucun hook ou traitement applicatif Behavior pendant la cascade |
 | Après validation | Nettoyage physique des ressources instrumentées ; callbacks tardifs filtrés avant admission et délivrance vers l'occurrence de la View |
 
-Un callback destiné à cette View ne peut être repris par une nouvelle View au même emplacement. Un abonnement recréé n'hérite pas des Events réservés au précédent : $S \ne S'$ (§2.7.2, §2.7.6). Les résultats instrumentés reviennent à la View encore vivante, non à un Behavior destinataire autonome. Les échecs de nettoyage après sa fin peuvent être tracés techniquement, sans réaction applicative d'un destinataire détruit.
+Un callback destiné à cette View ne peut être repris par une nouvelle View au même emplacement. Un abonnement recréé n'hérite pas des Events réservés au précédent : $S \ne S'$ (C.2, C.6). Les résultats instrumentés reviennent à la View encore vivante, non à un Behavior destinataire autonome. Les échecs de nettoyage après sa fin peuvent être tracés techniquement, sans réaction applicative d'un destinataire détruit.
 
 Il n'existe aujourd'hui ni `Behavior.onAttach()` ni `Behavior.onDetach()`. Ces noms figurant dans l'ancienne cible ne sont pas des signatures garanties ; surtout, un hook de nettoyage applicatif pendant la cascade serait incompatible avec §2.5. Le [cycle de vie commun](../2-architecture/lifecycle.md) distingue les hooks View/Foundation effectivement présents et les mécanismes encore à concevoir.
 
@@ -151,7 +151,7 @@ Une Command de tracking n'est possible que si le déclencheur satisfait D18. Un 
 
 Le défilement visé est celui d'un élément déclaré dans la part de la View, hors contenu de slot attribué, jamais une écoute directe de `window`. Position et indicateurs de présentation appartiennent à l'état local de la View. Le traitement peut les actualiser et préparer une projection sur les clés du fragment.
 
-Une notification générale de défilement peut être qualifiée à antécédent inconnu par le protocole navigateur (§2.7.4). Elle n'autorise alors aucune Command, notamment pour demander automatiquement la page suivante au domaine. Un mécanisme de chargement supplémentaire exige un déclencheur autorisé et un protocole causal explicite ; une minuterie ou une Query ne blanchit pas une causalité inconnue.
+Une notification générale de défilement peut être qualifiée à antécédent inconnu par le protocole navigateur (C.4). Elle n'autorise alors aucune Command, notamment pour demander automatiquement la page suivante au domaine. Un mécanisme de chargement supplémentaire exige un déclencheur autorisé et un protocole causal explicite ; une minuterie ou une Query ne blanchit pas une causalité inconnue.
 
 ### 4.3 ContactFormBehavior — formulaire réutilisable (ADR-25, pattern C)
 

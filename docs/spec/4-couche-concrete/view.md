@@ -13,7 +13,7 @@
 | **Statut** | 🟢 Stable |
 | **ADR** | [ADR-14](../../adr/ADR-14-contrats-types.md) (contrat modulaire), [ADR-15](../../adr/ADR-15-evenements-ui.md) (événements UI), [ADR-16](../../adr/ADR-16-view-scope-projection.md) (scope, `getUI`, N1/N2/N3), [ADR-17](../../adr/ADR-17-local-state.md) (localState), [ADR-19](../../adr/ADR-19-root-element.md) (`rootElement`), [ADR-22](../../adr/ADR-22-pdr.md) (PDR) |
 
-> **Lot 3 — alignement documentaire V0.9.4.** Les corrections portent sur la structure, les attributions, le cycle de vie et l'imputation du code Behavior, selon la [théorie](../../theorie.md) §2.5, §2.7, D11–D13 et §16.5–§16.7. Les ADR Accepted restent inchangés. Cette révision **ne prétend pas auditer les autres contrats** de cette page (typage, rendu détaillé, état local et DevTools) ; leurs propositions historiques restent à lire avec leurs limites de livraison et sous les obligations transversales ci-dessous. Aucune nouvelle API n'est fixée ici.
+> **Lot 3 — alignement documentaire V0.9.4.** Les corrections portent sur la structure, les attributions, le cycle de vie et l'imputation du code Behavior, selon la [théorie](../../theorie.md) §2.5, annexe C, D11–D13 et §16.5–§16.7. Les ADR Accepted restent inchangés. Cette révision **ne prétend pas auditer les autres contrats** de cette page (typage, rendu détaillé, état local et DevTools) ; leurs propositions historiques restent à lire avec leurs limites de livraison et sous les obligations transversales ci-dessous. Aucune nouvelle API n'est fixée ici.
 
 ---
 
@@ -625,7 +625,7 @@ Avantages :
 - **Performance** : 3 listeners (click, input, submit) au lieu de N x 3
 - **Nettoyage cible** : retrait instrumenté des listeners après validation de la fin logique, pas hook applicatif pendant la cascade (§5). Le runtime actuel ne nettoie aucun listener.
 
-> ⏳ Cible non livrée — **qualification des saisies (protocole du monde fermé, théorie §2.7.4).**
+> ⏳ Cible non livrée — **qualification des saisies (protocole du monde fermé, théorie C.4).**
 >
 > Les saisies dans la part (clic, appui sur une touche, saisie d'une valeur, soumission) relèvent du protocole du monde fermé. Leurs **opérations productrices** sont les simulations et envois d'événements de l'hôte : `click()`, `submit()`, `requestSubmit()`, `dispatchEvent()`, ainsi que `select()` et `execCommand()` pour la saisie. Le code applicatif n'y accède que par une interface Bonsai instrumentée ; un appel brut est refusé par une garde statique (G8). Une saisie qu'aucune opération instrumentée en cours de la même racine n'a pu produire est un **fait indépendant établi** : sa réaction peut adresser une Command déclarée (D18). Une saisie survenant pendant une telle opération, sans corrélation univoque, est d'antécédent inconnu et n'accorde aucune Command.
 >
@@ -978,7 +978,7 @@ Le tableau distingue le **contrat cible** des appels immédiats du code livré. 
 
 | Phase cible | Structure et validation |
 | --- | --- |
-| Amorçage | La racine établit les Channels avant les consultations initiales. L'initialisation suit les dépendances déclarées ; une cible active ou non prête ne peut être interrogée. Le transport différé attend la réussite de l'amorçage ; aucune application partiellement démarrée n'est publiée |
+| Démarrage | La racine établit les Channels avant les consultations initiales. L'initialisation suit les dépendances déclarées ; une cible active ou non prête ne peut être interrogée. Le transport différé attend la réussite du démarrage ; aucune application partiellement démarrée n'est publiée |
 | Création | Seul le Composer crée la View, lui attribue sa part et fournit sa désignation. L'initialisation de la View, exécutée sur ses propres ressources, entre dans l'unité de validation du créateur, sans transfert d'autorité |
 | Préparation | Résoudre sous contrôle de propriété ; préparer déclarations, observations, état local et effets de projection dans l'unité autorisée. Les références structurelles n'exigent pas que le DOM soit déjà matérialisé |
 | Traitement | Un fait admis par la View donne un seul traitement local ; les réactions View/Behaviors suivent l'ordre déclaré et le même contexte. Les messages différés sont réservés sans être délivrés pendant l'unité ; les Queries restent synchrones et en lecture seule |
@@ -988,7 +988,7 @@ Le tableau distingue le **contrat cible** des appels immédiats du code livré. 
 | Fin logique | Détruire les descendants et restituer leurs parts de bas en haut, sans hook applicatif ni message délivré pendant la cascade (§5–§6) |
 | Nettoyage | Après validation, retirer les observations et appliquer les retraits physiques préparés. Les erreurs ne révoquent pas la fin logique ; les callbacks tardifs ne ressuscitent aucun destinataire |
 
-**Limite hôte :** différer une projection ne rend pas sa série d'écritures atomique. Un échec extérieur ne restaure ni le DOM déjà changé ni la validation interne ; il est traité par une nouvelle admission si le destinataire vit encore. Une intention enregistrée n'est pas une réussite matérielle (§2.5, §2.7.3).
+**Limite hôte :** différer une projection ne rend pas sa série d'écritures atomique. Un échec extérieur ne restaure ni le DOM déjà changé ni la validation interne ; il est traité par une nouvelle admission si le destinataire vit encore. Une intention enregistrée n'est pas une réussite matérielle (§2.5, C.3).
 
 **Code réel :** le Composer crée sans argument une View puis appelle `mount(rootSelector)`. Celui-ci lit les trois getters, cherche globalement la racine, câble directement les premiers éléments UI et les Channels puis appelle `onAttach()`. Les mutations N1 sont immédiates ; aucune unité de validation, préparation d'effets, capture unique Behavior, cascade ou désinscription n'est fournie par ces classes. Le [Composer](composer.md#31-diff-pour-le-retour-simple-tresolveresult--null) décrit le diff réellement livré.
 
@@ -1011,13 +1011,13 @@ Le code Behavior n'a ni fin de composant, ni part à restituer, ni hook autonome
 
 ### 5.1 Machine à états
 
-Ce titre conserve une ancre historique, pas la promesse de la machine `created → wired → attached → detached`. Le protocole cible distingue déclaré, en initialisation, prêt à consulter, publié et détruit (§2.7.1), indépendamment de la présence physique DOM. Le code View n'a aujourd'hui qu'un booléen `#mounted`, positionné avant les validations du montage ; un second `mount()` est un no-op, y compris après un échec partiel.
+Ce titre conserve une ancre historique, pas la promesse de la machine `created → wired → attached → detached`. Le protocole cible distingue déclaré, en initialisation, prêt à consulter, publié et détruit (C.1), indépendamment de la présence physique DOM. Le code View n'a aujourd'hui qu'un booléen `#mounted`, positionné avant les validations du montage ; un second `mount()` est un no-op, y compris après un échec partiel.
 
-Chaque création associe une **occurrence de vie non réutilisable**, distincte du type, du namespace ou de l'emplacement. Callbacks, opérations et messages locaux visent cette occurrence ; sa validité est contrôlée avant admission **et** avant délivrance. Une destruction validée retire ses délivrances en attente ; un callback tardif est écarté avant admission, sans transfert vers une nouvelle View au même emplacement (§2.7.2).
+Chaque création associe une **occurrence de vie non réutilisable**, distincte du type, du namespace ou de l'emplacement. Callbacks, opérations et messages locaux visent cette occurrence ; sa validité est contrôlée avant admission **et** avant délivrance. Une destruction validée retire ses délivrances en attente ; un callback tardif est écarté avant admission, sans transfert vers une nouvelle View au même emplacement (C.2).
 
 Une destruction reste provisoire jusqu'à validation. Son annulation conserve la même occurrence, les propriétaires, parts, désignations, abonnements et réservations : ce n'est pas un remontage. Les notifications capturées entre-temps attendent l'issue de l'unité : abandon si la destruction est validée, admission après annulation sinon. Une destruction validée est terminale ; retrouver un élément dans le DOM ne réactive ni la View, ni son Composer, ni une ancienne désignation.
 
-Les Events sont réservés aux **occurrences d'abonnement présentes à l'émission** et dans leur ordre (§2.7.6). Avant délivrance, abonnement, propriétaire et Channel doivent encore être valides. Un abonnement créé ou recréé plus tard n'hérite d'aucune réservation antérieure ; leur abandon ne réordonne pas les autres. Le runtime de View ne garantit pas encore ce protocole de durée de vie ni le rollback structurel décrit ici.
+Les Events sont réservés aux **occurrences d'abonnement présentes à l'émission** et dans leur ordre (C.6). Avant délivrance, abonnement, propriétaire et Channel doivent encore être valides. Un abonnement créé ou recréé plus tard n'hérite d'aucune réservation antérieure ; leur abandon ne réordonne pas les autres. Le runtime de View ne garantit pas encore ce protocole de durée de vie ni le rollback structurel décrit ici.
 
 ---
 

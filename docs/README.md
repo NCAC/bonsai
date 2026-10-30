@@ -8,7 +8,7 @@
 docs/
 ├── theorie.md    ← Théorie : vocabulaire, axiomes, garanties, décisions, rôles (fait autorité)
 ├── theorie-explication-pedagogique.md ← Guide d'initiation à la théorie (non normatif)
-├── tracabilite.md ← Index de traçabilité V0.9.4, aligné sur la théorie
+├── tracabilite.md ← Index de traçabilité V0.9.5, aligné sur la théorie
 ├── gardes.md     ← Table de conformité : obligations, gardes et scénarios requis
 ├── adaptateurs/  ← Fiches des adaptateurs de l'hôte navigateur (annexe B de la théorie)
 ├── rapports/     ← Rapports de travail sur la théorie : audits, registre, écarts (non normatifs)
@@ -44,14 +44,14 @@ L’alignement est **obligatoire**, sa réalisation peut être **progressive** :
 
 | Document | Rôle |
 | --- | --- |
-| [theorie.md](theorie.md) | V0.9.4 : 52 termes, six contrats opérationnels transversaux (§2.7), axiomes A0–A5, garanties G1–G8, conséquences, objectifs, décisions D1–D19 (D5 retirée), rôles, gardes et annexes |
+| [theorie.md](theorie.md) | V0.9.5 : 55 termes, axiomes A0–A5, garanties G1–G8, conséquences, objectifs, décisions D1–D19 (D5 retirée), rôles, gardes, annexes A et B (navigateur) et C (protocole d’exécution) |
 | [theorie-explication-pedagogique.md](theorie-explication-pedagogique.md) | Guide d'initiation, avec un exemple de boutique filé de bout en bout |
 | [tracabilite.md](tracabilite.md) | Chaque élément de la théorie : catégorie, statut, dépendances, justification |
 | [gardes.md](gardes.md) | Obligations, niveaux de garde, invariants et scénarios de conformité requis, dont P01–P20 ; aucune exécution de test présumée |
 | [adaptateurs/](adaptateurs/README.md) | Les treize adaptateurs de l'hôte navigateur, en fiches de 30 rubriques |
 | [rapports/](rapports/) | Audits et revues historiques, arbitrages V0.9.3 et suivi des vingt corrections V0.9.4 ; documents non normatifs |
 
-Le socle documentaire courant est **V0.9.4 — 30 octobre 2026**. Il conserve les [28 arbitrages V0.9.3](rapports/arbitrages-V0.9.3-2026-10-30.md) et intègre les réponses aux vingt constats de la [revue V0.9.3](rapports/revue-academique-architecture-V0.9.3-2026-10-30.md), détaillées dans le [suivi des corrections V0.9.4](rapports/corrections-V0.9.4-2026-10-30.md). Les constats, citations et notes des rapports historiques ne sont pas réévalués rétroactivement.
+Le socle documentaire courant est **V0.9.5 — 30 octobre 2026** : vocabulaire opérationnel défini et protocole d’exécution en annexe C, sans obligation ajoutée ni retirée, après le protocole du monde fermé (points R1 à R3 de la [relecture de fond V0.9.4](rapports/relecture-V0.9.4-2026-10-30.md)). Il conserve les [28 arbitrages V0.9.3](rapports/arbitrages-V0.9.3-2026-10-30.md) et intègre les réponses aux vingt constats de la [revue V0.9.3](rapports/revue-academique-architecture-V0.9.3-2026-10-30.md), détaillées dans le [suivi des corrections V0.9.4](rapports/corrections-V0.9.4-2026-10-30.md). Les constats, citations et notes des rapports historiques ne sont pas réévalués rétroactivement.
 
 Les contrats transversaux précisent la disponibilité des Queries, la publication des états provisoires, les occurrences de vie, les résultats d’effets, la capture sans alias mutable et les réservations d’abonnements. La causalité garantie est **observable** : une notification non corrélable porte un antécédent inconnu, sans parent inventé ni permission de Command pour l’interface. D9 borne les segments connus, pas les boucles traversant une coupure d’observation.
 
@@ -97,10 +97,10 @@ distribution et build, processus. Chaque ADR porte une ligne **Livré**
 
 | … | Je lis |
 | --- | --- |
-| découvrir la théorie | [Guide pédagogique](theorie-explication-pedagogique.md), puis [Théorie V0.9.4](theorie.md) |
+| découvrir la théorie | [Guide pédagogique](theorie-explication-pedagogique.md), puis [Théorie V0.9.5](theorie.md) |
 | retrouver une obligation et ses contrôles requis | [Traçabilité](tracabilite.md), puis [Gardes](gardes.md) |
 | comprendre les corrections de la dernière revue | [Suivi V0.9.4](rapports/corrections-V0.9.4-2026-10-30.md) |
-| connaître les réserves avant gel de la V0.9.4 | [Relecture de fond V0.9.4](rapports/relecture-V0.9.4-2026-10-30.md) — propositions R1–R4, L1–L7, S1–S3, non appliquées |
+| connaître les réserves avant gel de la théorie | [Relecture de fond V0.9.4](rapports/relecture-V0.9.4-2026-10-30.md) — propositions R1–R4, L1–L7, S1–S3, non appliquées |
 | suivre la migration du registre et du code vers V0.9.4 | [Diagnostic, plan et lots appliqués](rapports/migration-invariants-runtime-V0.9.4-2026-10-30.md) — trois lots documentaires appliqués : Query/Composer, causalité/permissions, propriété/cycle de vie ; runtime non migré |
 | comprendre l'architecture | [Philosophie](spec/1-philosophie.md), puis [Architecture](spec/2-architecture/README.md) |
 | connaître les règles non négociables | [Arbre des invariants](invariants/generated/arbre.md) (registre) · [Invariants](spec/reference/invariants.md) (matrice détaillée) |

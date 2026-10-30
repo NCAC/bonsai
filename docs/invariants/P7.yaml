@@ -21,7 +21,7 @@
   pourquoi: >
     D11 et §16.4–§16.6 séparent décision et rendu ; A2 et T3 fixent propriété et restitution.
     La cascade est exécutée par l'infrastructure, de bas en haut, sans traitement applicatif,
-    et reste annulable avec son unité avant validation (§2.7.2).
+    et reste annulable avec son unité avant validation (C.2).
   # Écart à P9 : règle structurelle non garantie avant l'exécution. `View` est exportée avec un
   # constructeur public et un `mount()` public : le code applicatif peut instancier et monter une
   # View lui-même. À remonter au compile-time (création réservée au Composer).

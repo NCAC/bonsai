@@ -4,7 +4,7 @@
 
 [← Retour à l’architecture](README.md) · [← Cycle de vie](lifecycle.md)
 
-> **Statut normatif — V0.9.4, lot 2, 30 octobre 2026.** La [théorie validée](../../theorie.md), notamment §2.7.2–§2.7.4, §9.11, §10, G8 et D9/D18/D19, fait autorité. Ce document décline les contrats du [registre P4](../../invariants/P4.yaml) et les permissions du [registre P3](../../invariants/P3.yaml). Les obligations déjà fixées ne sont pas remises en discussion par les choix de représentation restant ouverts. Les anciens exemples sont conservés dans git ; ils ne sont plus un contrat cible admissible lorsqu’ils coupent ou inventent un lien causal.
+> **Statut normatif — V0.9.4, lot 2, 30 octobre 2026.** La [théorie validée](../../theorie.md), notamment C.2–C.4, §9.11, §10, G8 et D9/D18/D19, fait autorité. Ce document décline les contrats du [registre P4](../../invariants/P4.yaml) et les permissions du [registre P3](../../invariants/P3.yaml). Les obligations déjà fixées ne sont pas remises en discussion par les choix de représentation restant ouverts. Les anciens exemples sont conservés dans git ; ils ne sont plus un contrat cible admissible lorsqu’ils coupent ou inventent un lien causal.
 >
 > **État de réalisation.** I7/I8/I9/I54 et I13 sont `cible` ; I25 reste `partiel`. Aucun contexte causal contrôlé n’est livré : handlers à un paramètre, `emit()`, `request()` et `View.trigger()` sans métadonnées ; seul `Entity.mutate()` accepte encore un objet `metas` libre et optionnel. Cet objet ne réalise ni authenticité, ni qualification, ni conservation G8. Le lot est documentaire, sans changement du runtime.
 
@@ -70,7 +70,7 @@ Une omission de contexte ne crée jamais implicitement une nouvelle origine. Une
 
 ## 5. Cycle de vie des metas
 
-**G8 et §2.7.2 — Le contexte d’une opération corrélable est conservé jusqu’au résultat attendu, à l’annulation ou à la clôture de son occurrence de vie, même après un échec.** Une opération répétitive le conserve jusqu’à son annulation ou à cette clôture.
+**G8 et C.2 — Le contexte d’une opération corrélable est conservé jusqu’au résultat attendu, à l’annulation ou à la clôture de son occurrence de vie, même après un échec.** Une opération répétitive le conserve jusqu’à son annulation ou à cette clôture.
 
 | Transition | Règle de conservation |
 | --- | --- |

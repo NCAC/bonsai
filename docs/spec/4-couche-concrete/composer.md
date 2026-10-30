@@ -11,7 +11,7 @@
 | **Composant** | Composer |
 | **Couche** | Concrète (éphémère) |
 | **Statut** | Alignement documentaire V0.9.4 ; contrat cible distinct du runtime livré |
-| **Référence normative** | [Théorie](../../theorie.md), §2.5, §2.7, D11, D12 et §16.5–§16.7 |
+| **Référence normative** | [Théorie](../../theorie.md), §2.5, annexe C, D11, D12 et §16.5–§16.7 |
 | **Historique** | [ADR-18](../../adr/ADR-18-composer.md), [ADR-19](../../adr/ADR-19-root-element.md), [ADR-14](../../adr/ADR-14-contrats-types.md) ; ADR Accepted conservés sans modification |
 
 > ## ⏳ Périmètre d'implémentation
@@ -49,7 +49,7 @@ Son parent lui attribue le **contenu** d'un slot, pas l'élément du slot lui-m�
 
 **D12 corrige la lecture trop générale d'I35 « jamais d'écriture DOM ».** Le Composer ne modifie la structure que pour attribuer ou restituer les parts de ses Views, créer ou retirer les éléments correspondants. Il n'effectue aucun rendu de présentation supplémentaire et ne possède aucun état local indépendant de ce contenu et de ces existences. Il n'adresse aucune Command et, sans identité ni Channel propre, n'émet aucun message. Les décisions se recalculent à partir des messages reçus, des réponses aux Queries et des Views présentes.
 
-Il n'admet aucune notification générale de l'hôte. En revanche, les **résultats instrumentés de ses propres effets de composition** sont permis (§2.7.3) : leur contrat et leurs traitements locaux sont déclarés selon D16, bilans d'engagement compris. Cette admission n'ajoute ni source générale, ni handler arbitraire, ni état indépendant, ni droit de Command. Elle reste soumise à l'occurrence de vie et à la borne causale D9.
+Il n'admet aucune notification générale de l'hôte. En revanche, les **résultats instrumentés de ses propres effets de composition** sont permis (C.3) : leur contrat et leurs traitements locaux sont déclarés selon D16, bilans d'engagement compris. Cette admission n'ajoute ni source générale, ni handler arbitraire, ni état indépendant, ni droit de Command. Elle reste soumise à l'occurrence de vie et à la borne causale D9.
 
 ### 1.1 Types
 
@@ -88,7 +88,7 @@ Un panneau dépendant de l'authentification choisit la View de connexion ou de p
 
 ### 2.3 Composer multi-Channel — routeur et authentification
 
-Un contenu principal peut dépendre de la route et de l'authentification. Consulter plusieurs réponses ne constitue pas un instantané global, ni une permission d'interroger une cible encore active ou non prête (§2.7.1, §2.7.5). La sélection ne crée ou ne détruit que les Views et parts dont le Composer est propriétaire ; elle ne commande ni navigation ni authentification. La forme API de ces dépendances reste ouverte.
+Un contenu principal peut dépendre de la route et de l'authentification. Consulter plusieurs réponses ne constitue pas un instantané global, ni une permission d'interroger une cible encore active ou non prête (C.1, C.5). La sélection ne crée ou ne détruit que les Views et parts dont le Composer est propriétaire ; elle ne commande ni navigation ni authentification. La forme API de ces dépendances reste ouverte.
 
 ---
 
@@ -132,9 +132,9 @@ Les séquences suivantes sont des **obligations cibles**, non des signatures ni 
 3. Pendant son initialisation autorisée, ou un traitement déclaré ultérieur, le Composer décide des Views ; il crée leur existence et leur attribue des parts disjointes, qu'il cesse alors de lire ou modifier directement.
 4. Chaque View reçoit à sa création la désignation de sa part et réalise son initialisation sur ses propres ressources. Cette initialisation appartient à l'unité de validation du créateur, sans transfert d'autorité sur ces ressources. Les consultations respectent la disponibilité et la lecture seule.
 5. Les validations portent sur l'unité complète, pas sur chaque opération intermédiaire. Les existences, abonnements, attributions, restitutions et messages différés sont provisoires jusqu'à sa réussite. Un échec les annule ensemble ; les créations abandonnées et leurs désignations ne sont pas publiées.
-6. Les effets physiques préparés ne sont engagés **qu'après validation interne**, dans l'ordre de préparation, avant la délivrance différée suivante. L'amorçage ne publie aucune application partiellement démarrée.
+6. Les effets physiques préparés ne sont engagés **qu'après validation interne**, dans l'ordre de préparation, avant la délivrance différée suivante. Le démarrage ne publie aucune application partiellement démarrée.
 
-Cette projection n'est pas une transaction hôte : les écritures peuvent réussir partiellement. Au premier échec synchrone d'engagement, les suivantes sont non tentées ; les engagements précédents ne sont pas annulés. Les résultats capturés sont admis par de nouveaux messages vers l'occurrence vivante concernée, sans réentrance ni annonce anticipée de réussite. L'ordre des engagements ne garantit pas celui des achèvements asynchrones (§2.7.3).
+Cette projection n'est pas une transaction hôte : les écritures peuvent réussir partiellement. Au premier échec synchrone d'engagement, les suivantes sont non tentées ; les engagements précédents ne sont pas annulés. Les résultats capturés sont admis par de nouveaux messages vers l'occurrence vivante concernée, sans réentrance ni annonce anticipée de réussite. L'ordre des engagements ne garantit pas celui des achèvements asynchrones (C.3).
 
 ### 4.2 Sequence de detachement (normative)
 
@@ -173,13 +173,13 @@ Le nom de section est conservé comme repère historique. Il n'impose pas la mac
 | Niveau | Lecture correcte |
 | --- | --- |
 | Code livré | `#state` passe à `active` après montage, à `idle` à l'oubli des références ; pas de destruction, de transaction ni de garde d'occurrence |
-| Protocole cible (§2.7.1) | Déclaré, en initialisation, prêt à consulter, publié, détruit ; disponibilité logique distincte de la matérialisation DOM |
+| Protocole cible (C.1) | Déclaré, en initialisation, prêt à consulter, publié, détruit ; disponibilité logique distincte de la matérialisation DOM |
 | Destruction provisoire | Annulable avec la même occurrence, sans nouvelle création ; les admissions capturées attendent l'issue de l'unité |
 | Destruction validée | Terminale pour cette occurrence ; aucune réactivation au retour d'un élément au même emplacement |
 
-Chaque création réserve une **occurrence de vie non réutilisable**, distincte de l'emplacement ou du namespace. Callbacks, opérations et messages locaux visent cette occurrence ; sa validité est vérifiée avant admission et avant délivrance. Une notification capturée pendant une destruction provisoire est abandonnée si celle-ci est validée, admise après annulation sinon (§2.7.2).
+Chaque création réserve une **occurrence de vie non réutilisable**, distincte de l'emplacement ou du namespace. Callbacks, opérations et messages locaux visent cette occurrence ; sa validité est vérifiée avant admission et avant délivrance. Une notification capturée pendant une destruction provisoire est abandonnée si celle-ci est validée, admise après annulation sinon (C.2).
 
-De même, les réservations d'Events portent sur les **occurrences d'abonnement présentes à l'émission**, dans leur ordre (§2.7.6). Un abonnement créé ou recréé plus tard ne reprend aucun Event réservé à l'ancien. L'annulation d'une destruction conserve les réservations antérieures ; sa validation les annule sans réordonner les autres. Ni une même chaîne CSS, ni un même élément retrouvé, ni un même type de View ne remplacent ces contrôles.
+De même, les réservations d'Events portent sur les **occurrences d'abonnement présentes à l'émission**, dans leur ordre (C.6). Un abonnement créé ou recréé plus tard ne reprend aucun Event réservé à l'ancien. L'annulation d'une destruction conserve les réservations antérieures ; sa validation les annule sans réordonner les autres. Ni une même chaîne CSS, ni un même élément retrouvé, ni un même type de View ne remplacent ces contrôles.
 
 **Choix API encore ouverts :** représentation des désignations et des attributions, déclarations de dépendances et de résultats instrumentés, cardinalité et rapprochement des résultats, composition imbriquée, instrumentation de validation/rollback et de nettoyage. Ces obligations ne prescrivent ici aucun constructeur, hook, getter ou type nouveau.
 
@@ -189,4 +189,4 @@ De même, les réservations d'Events portent sur les **occurrences d'abonnement 
 
 -> [view.md](view.md) -- propriété de la part, projection et code Behavior
 -> [2-architecture/lifecycle.md](../2-architecture/lifecycle.md) -- validation, occurrences, cascade et nettoyage
--> [Théorie](../../theorie.md) -- §2.5, §2.7, D11–D13 et §16.5–§16.7
+-> [Théorie](../../theorie.md) -- §2.5, annexe C, D11–D13 et §16.5–§16.7

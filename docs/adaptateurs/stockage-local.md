@@ -1,6 +1,6 @@
 # Adaptateur du stockage local
 
-*V0.9.4 — 30 octobre 2026. Fiche non normative ; la [théorie](../theorie.md), notamment §2.7 et A5, fait autorité. Les [contrats communs](README.md) s'appliquent aux 30 rubriques : disponibilité/publication, valeurs capturées sans alias mutable, effets post-validation, occurrences de vie et causalité observable. « Disponible » désigne le catalogue, non une implémentation vérifiée.*
+*V0.9.4 — 30 octobre 2026. Fiche non normative ; la [théorie](../theorie.md), notamment l’annexe C et A5, fait autorité. Les [contrats communs](README.md) s'appliquent aux 30 rubriques : disponibilité/publication, valeurs capturées sans alias mutable, effets post-validation, occurrences de vie et causalité observable. « Disponible » désigne le catalogue, non une implémentation vérifiée.*
 
 | # | Rubrique | Contenu |
 | --- | --- | --- |
@@ -29,7 +29,7 @@
 | 23 | Cycle de vie | Créé au démarrage s'il est déclaré ; la racine ne le détruit pas, il prend fin avec elle (B.2) ; par A4.e, son Channel du domaine ne prend fin qu'avec la racine. |
 | 24 | Nettoyage | Clôture logique de bas en haut, restitutions au propriétaire du contenant encore vivant ; structure provisoire annulable sous G7. Retrait physique des observateurs et tentative d'annulation après validation, sans vider le stockage. Contrôle de vie avant admission et délivrance ; callbacks tardifs abandonnés sans réassignation. Une capture pendant destruction provisoire attend l'issue ; fin de racine : contextes clos. |
 | 25 | Autorisations | Aucune. |
-| 26 | Gardes | Contrats communs : Query prête/inactive sur observation intégrée, capture sans alias mutable, G7, effets ordonnés et suffixe non tenté au premier échec synchrone, contrôle de vie avant admission/délivrance, B.4 réservé et classification §2.7.4. Démarrage : catégorie/déclaration/identité valides, préfixes disjoints entre racines coordonnées ; aucune référence hôte publique ni écriture hors périmètre. |
+| 26 | Gardes | Contrats communs : Query prête/inactive sur observation intégrée, capture sans alias mutable, G7, effets ordonnés et suffixe non tenté au premier échec synchrone, contrôle de vie avant admission/délivrance, B.4 réservé et classification C.4. Démarrage : catégorie/déclaration/identité valides, préfixes disjoints entre racines coordonnées ; aucune référence hôte publique ni écriture hors périmètre. |
 | 27 | Tests positifs | Scénarios de conformité : `prefs:set` puis résultat corrélé ; nouvelle racine intégrant l'entrée sous sa cause de démarrage (18.3). Une modification physique sans admission ne change pas `get` ; `refresh` lit après validation puis `refreshed` suit l'intégration. `storage` sans preuve indépendante reste inconnu. |
 | 28 | Tests négatifs | À refuser ou signaler : Feature lisant directement `localStorage` (D7), Query `get` ou `keys` relisant le support, cible non prête/active, préfixes `cart` et `cart:lines` recouvrants, notification extérieure déclarée spontanée sans preuve, alias mutable ou callback tardif réassigné ; vidage continuant son suffixe après échec synchrone d'engagement. |
 | 29 | Décisions et objectifs associés | D7, A5.d, 18.3, 18.15, O3. |

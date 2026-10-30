@@ -9,7 +9,7 @@
   enonce: L'état métier de référence est encapsulé dans l'Entity de sa Feature ; seule cette Feature y accède directement et le modifie. Les valeurs capturées, projections et brouillons de l'interface ne créent aucune autorité métier concurrente.
 - id: P2
   titre: Dépendances déclarées
-  # D16, §2.7.1, §2.7.3, §2.7.4 et §16.9.
+  # D16, C.1, C.3, C.4 et §16.9.
   enonce: Les contrats connus avant le démarrage déclarent les Channels et messages accessibles, leurs modes, les faits admis, les résultats et bilans d'effets propres, leurs traitements locaux, les dépendances initiales et les protocoles de source. Aucune interaction ni aucun traitement applicatif implicite ne contourne ces déclarations.
 - id: P3
   titre: Sémantique des trois voies
@@ -17,7 +17,7 @@
   enonce: Une Command demande une action sans réponse à un seul propriétaire, qui peut la refuser ; un Event émis par le propriétaire sur sa ressource est diffusé à ses abonnés ; une Query demande une connaissance synchrone en lecture seule transitive. Les trois modes sont exclusifs ; un message local reste interne à son auteur.
 - id: P4
   titre: Causalité observable et segments bornés
-  # A5, G8, D9, D19 et §2.7.4.
+  # A5, G8, D9, D19 et C.4.
   enonce: L'infrastructure conserve les déclenchements observables et distingue continuation corrélée, indépendance établie et observation d'antécédent inconnu, sans parent inventé ni lien connu effacé. La borne causale porte sur les segments connus ; elle ne garantit ni terminaison ni absence de boucle à travers une coupure d'observation.
 - id: P5
   titre: Interface de projection, domaine autonome
@@ -29,7 +29,7 @@
   enonce: Chaque ressource du modèle a un propriétaire unique et immuable, seul à exécuter ses opérations exclusives. Dans l'interface, les attributions de parts disjointes soustraient les portions attribuées à l'accès du contenant ; leur restitution n'est pas un transfert. Cette propriété ne se confond pas avec celle du support DOM extérieur ; les effets sur ce support restent bornés par les ressources et désignations autorisées.
 - id: P7
   titre: Cycle de vie hétéronome
-  # A0.d, A1.a, A2, T3 et §2.5/§2.7.2.
+  # A0.d, A1.a, A2, T3 et §2.5/C.2.
   enonce: Chaque composant a une existence unique ; hors racine, son parent est propriétaire de cette existence et décide de sa création ou de sa destruction. La structure est finie et enracinée ; la fin du parent entraîne celle de ses descendants et de leurs ressources, avec restitutions de bas en haut. L'existence et la fin de la racine sont extérieures au modèle ; la vie logique ne se confond pas avec la matérialisation DOM.
 - id: P8
   titre: Identités et déclarations par racine

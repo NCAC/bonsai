@@ -69,7 +69,7 @@
   parents: [P3, P5]
   roles: ["*"]
   enonce: Un composant de l'interface n'adresse une Command que pendant une réaction à un fait admis d'indépendance établie ou une continuation corrélée déjà autorisée à commander, sous réserve des interdictions de son rôle. Event, relais local d'Event, résultat d'effet corrélé à un Event et observation d'antécédent inconnu n'accordent aucune permission. Une Query préalable conserve la permission de son auteur sans l'accorder au traitement consulté, toujours en lecture seule ; sa réponse n'est pas un déclencheur autonome.
-  # D18, A4.a/A4.d, §2.7.4, §9.11 ; transversal à toute l'interface, adaptateurs compris.
+  # D18, A4.a/A4.d, C.4, §9.11 ; transversal à toute l'interface, adaptateurs compris.
   # V0.9.4 : revue/convention → run/cible ; permission dynamique, pas simple convention de handler.
   # Non livré : View.trigger() ne contrôle aucun contexte ; un handler Event peut encore l'appeler.
   # Les restrictions propres au rôle restent cumulatives : Composer ne commande jamais (I35).
@@ -103,7 +103,7 @@
     A3.g, G5 et G7 de la théorie V0.9.4 imposent une consultation synchrone en lecture seule,
     sans réponse de substitution en cas d'échec. La consultation porte sur des ressources internes
     accessibles, non sur un chargement extérieur ; la disponibilité et l'inactivité de la cible
-    restent obligatoires (§2.7.1). Le contrat T | null de l'ADR-02 est historique et doit être remplacé.
+    restent obligatoires (C.1). Le contrat T | null de l'ADR-02 est historique et doit être remplacé.
   # V0.9.4, 2026-10-30 : livre → partiel ; appel direct livré, contrat complet non réalisé.
   # Channel.request() retourne encore null sans répondant et après exception ; une Promise est acceptée.
   # Les citations historiques d'I29 testent l'ancien contrat, pas la conformité du présent énoncé.

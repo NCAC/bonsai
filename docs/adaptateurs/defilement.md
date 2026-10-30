@@ -1,6 +1,6 @@
 # Adaptateur du défilement
 
-*V0.9.4 — 30 octobre 2026. Fiche non normative ; la [théorie](../theorie.md), notamment §2.7 et A5, fait autorité. Les [contrats communs](README.md) s'appliquent aux 30 rubriques : disponibilité/publication, valeurs capturées sans alias mutable, effets post-validation, occurrences de vie et causalité observable. « Disponible » désigne le catalogue, non une implémentation vérifiée.*
+*V0.9.4 — 30 octobre 2026. Fiche non normative ; la [théorie](../theorie.md), notamment l’annexe C et A5, fait autorité. Les [contrats communs](README.md) s'appliquent aux 30 rubriques : disponibilité/publication, valeurs capturées sans alias mutable, effets post-validation, occurrences de vie et causalité observable. « Disponible » désigne le catalogue, non une implémentation vérifiée.*
 
 | # | Rubrique | Contenu |
 | --- | --- | --- |
@@ -29,7 +29,7 @@
 | 23 | Cycle de vie | Créé au démarrage s'il est déclaré ; la racine ne le détruit pas, il prend fin avec elle (B.2). |
 | 24 | Nettoyage | Clôture logique de bas en haut, restitutions au propriétaire du contenant encore vivant ; structure provisoire annulable sous G7. Retrait physique des observateurs et tentative d'annulation après validation, sans promettre de restaurer la position. Contrôle de vie avant admission et délivrance ; callbacks tardifs abandonnés sans réassignation. Une capture pendant destruction provisoire attend l'issue ; fin de racine : contextes clos. |
 | 25 | Autorisations | Aucune. |
-| 26 | Gardes | Contrats communs : Query prête/inactive, capture sans alias mutable, G7, effets ordonnés et suffixe non tenté au premier échec synchrone, vie vérifiée avant admission/délivrance, B.4 réservé, classification §2.7.4 et D18. Catégorie/déclaration/identité valides, une seule instance dans l'hôte coordonné ; aucune référence hôte publique. |
+| 26 | Gardes | Contrats communs : Query prête/inactive, capture sans alias mutable, G7, effets ordonnés et suffixe non tenté au premier échec synchrone, vie vérifiée avant admission/délivrance, B.4 réservé, classification C.4 et D18. Catégorie/déclaration/identité valides, une seule instance dans l'hôte coordonné ; aucune référence hôte publique. |
 | 27 | Tests positifs | Scénarios de conformité : clic indépendant établi admis par la View puis `scroll:toTop` ; résultat instrumenté corrélé et `scroll` général distinct, inconnu sans preuve. Une navigation validée du domaine portant une position déclenche sa projection sans Command UI ; le résultat n'en autorise aucune. D19 conserve l'inconnu de la notification sélectionnée. |
 | 28 | Tests négatifs | À refuser ou signaler : Feature adressant `scroll:toTop`, Behavior écoutant `window`, double instance, Query lisant physiquement la position ou cible non prête/active, parent déduit du dernier défilement demandé, regroupement prétendant réparer la corrélation, Command depuis inconnu ou résultat d'effet déclenché par Event UI, alias mutable ou callback réassigné. |
 | 29 | Décisions et objectifs associés | D7, D10, A4.b, 18.14, O3. |
