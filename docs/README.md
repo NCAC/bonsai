@@ -6,6 +6,12 @@
 
 ```text
 docs/
+├── theorie.md    ← Théorie : vocabulaire, axiomes, garanties, décisions, rôles (fait autorité)
+├── theorie-explication-pedagogique.md ← Guide d'initiation à la théorie (non normatif)
+├── tracabilite.md ← Matrice de traçabilité, générée depuis la théorie
+├── gardes.md     ← Table de conformité : chaque obligation, sa garde et son test
+├── adaptateurs/  ← Fiches des adaptateurs de l'hôte navigateur (annexe B de la théorie)
+├── rapports/     ← Rapports de travail sur la théorie : audits, registre, écarts (non normatifs)
 ├── invariants/   ← Registre des invariants : les RÈGLES, leur état et leur pourquoi (source de vérité)
 ├── spec/          ← Spécification : le QUOI (contrats, signatures, invariants)
 ├── adr/          ← Décisions : le POURQUOI (ADR-01 à ADR-34)
@@ -18,6 +24,19 @@ docs/
     ├── analyses/      ← audits et analyses ponctuelles
     └── explorations/  ← notes de réflexion brutes
 ```
+
+## 🌱 Théorie — [theorie.md](theorie.md)
+
+La théorie fait autorité sur la spécification, les ADR et le registre : en cas d'écart, ce sont eux qui se corrigent.
+
+| Document | Rôle |
+| --- | --- |
+| [theorie.md](theorie.md) | Termes, axiomes A0–A5, garanties G1–G7, conséquences, objectifs, décisions D1–D18, rôles, gardes, annexes |
+| [theorie-explication-pedagogique.md](theorie-explication-pedagogique.md) | Guide d'initiation, avec un exemple de boutique filé de bout en bout |
+| [tracabilite.md](tracabilite.md) | Chaque élément de la théorie : catégorie, statut, dépendances, justification |
+| [gardes.md](gardes.md) | Chaque obligation du code applicatif : niveau de garde, invariants, test |
+| [adaptateurs/](adaptateurs/README.md) | Les treize adaptateurs de l'hôte navigateur, en fiches de 30 rubriques |
+| [rapports/](rapports/) | Audit du noyau (V0.7), gardes (V0.9.1), registre rattaché, écarts du dépôt, audit de cohérence (V0.9.2) |
 
 ## 📐 Spécification — [spec/](spec/README.md)
 
