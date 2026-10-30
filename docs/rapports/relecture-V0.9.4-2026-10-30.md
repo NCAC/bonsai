@@ -124,6 +124,8 @@ Le guide est **exact** au regard de la V0.9.4 : aucune contradiction relevée. I
 | S2 | Le lot 3 retire l'API cible : `behavior.md` déclare qu'« aucun `get behaviors()`, type `TBehaviorContract` ou `TBehaviorCallbacks` […] n'est fixé par ce document », et `composer.md` laisse les choix d'API « encore ouverts ». Or D16 fait du contrat déclaré la source des traitements : l'API cible *est* la réalisation de D16, et l'ergonomie (O3) se juge sur elle. | Rétablir dans chaque fiche de rôle une section « API cible ⏳ », marquée comme telle, alignée sur la théorie, distincte de la section « livré ». |
 | S3 | Lexique (§2.4) : « Request » dans 16 fichiers, `request(` dans 13, « couche concrète » dans 8, et les dossiers `3-couche-abstraite`, `4-couche-concrete`. Le code livré s'appelle encore `request()`, ce qui est légitime dans une description du livré. | Réserver ces termes aux passages « livré » ; renommer les dossiers au moment de la migration de la spécification, pas avant. |
 
+**Statut : S1 validé et appliqué le 30 octobre 2026.** Bandeau d'avertissement en tête des 18 fichiers non alignés ; statut 🔴 « non aligné sur la théorie V0.9.5 » dans l'index de `spec/`. S2 et S3 restent à traiter.
+
 ## 6. Proposition détaillée pour R3 — protocole du monde fermé
 
 1. **Problème.** Aucune source d'intention (clic, saisie, retour arrière, défilement) n'a de protocole d'indépendance. D18 interdit donc toute Command de l'interface.

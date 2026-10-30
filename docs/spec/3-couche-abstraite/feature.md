@@ -1,5 +1,7 @@
 # Feature
 
+> ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
+
 > **Unité métier : classe abstraite, 5 capacités, handlers auto-découverts, déclaration Channel, cycle de vie**
 
 [← Retour à la couche abstraite](README.md) · [← Communication](../2-architecture/communication.md)

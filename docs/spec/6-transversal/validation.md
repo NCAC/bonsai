@@ -1,5 +1,7 @@
 # Validation statique et dynamique
 
+> ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
+
 > **Compile-time, bootstrap, runtime — garanties TypeScript et garde-fous framework**
 
 [← Retour a l'index](../README.md)
