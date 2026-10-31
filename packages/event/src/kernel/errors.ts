@@ -16,15 +16,19 @@ export type TTransportErrorCode =
   | "NOT_CAPTURABLE"        // payload that cannot be captured by value (G2, A3.d)
   | "DUPLICATE_NAMESPACE"   // two Channels with the same namespace in one root
   | "NO_UNIT"               // operation outside any validation unit (A5.a)
+  | "UNRECOVERABLE"         // a Query failure was intercepted by the author (G7)
   | "ROOT_ABANDONED";       // the root failed to start
 
 export class TransportError extends Error {
   readonly code: TTransportErrorCode;
+  /** Original error, when this one reports it (UNRECOVERABLE). */
+  readonly cause?: unknown;
 
-  constructor(code: TTransportErrorCode, message: string) {
+  constructor(code: TTransportErrorCode, message: string, cause?: unknown) {
     super(`[${code}] ${message}`);
     this.name = "TransportError";
     this.code = code;
+    if (cause !== undefined) this.cause = cause;
   }
 }
 

@@ -206,7 +206,16 @@ export class Root {
       this.#unit = null;
     }
     // A Query error or a refused submission cannot be recovered locally (G7).
-    failure = failure ?? unit.poisoned;
+    if (failure === null && unit.poisoned !== null) {
+      // The author intercepted a Query failure: the unit fails anyway (G7).
+      failure = {
+        error: new TransportError(
+          "UNRECOVERABLE",
+          "Query refusée ou en échec : l'unité est annulée et ne peut pas reprendre localement (G7)",
+          unit.poisoned.error
+        )
+      };
+    }
     if (failure !== null) {
       for (let i = unit.undo.length - 1; i >= 0; i--) {
         try {

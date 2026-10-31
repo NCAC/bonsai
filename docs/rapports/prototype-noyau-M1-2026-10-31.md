@@ -28,9 +28,9 @@ Vérifier, par du code exécutable, que les garanties de l'infrastructure de com
 
 ## 3. Ce que le prototype apprend
 
-**R1 — G7 n'est réalisable que si toute ressource interne passe par Bonsai.** Le noyau ne peut annuler que ce qui lui a été journalisé. Un champ ordinaire d'une classe de Feature, de View ou de Composer, modifié pendant un traitement, échappe à l'annulation. A0.c dit déjà que tout ce qu'on peut changer d'un composant est une ressource dont il est propriétaire ; il faut en tirer une garde : **pas de champ mutable dans une sous-classe de composant**, l'état passant par l'Entity (lot M2, patches Immer comme journal), l'état local de la View et le contenu du slot du Composer. Proposition : ajouter cette garde à `gardes.md` (lint, niveau statique) et l'expliquer dans le guide.
+**R1 — G7 n'est réalisable que si toute ressource interne passe par Bonsai.** Le noyau ne peut annuler que ce qui lui a été journalisé. Un champ ordinaire d'une classe de Feature, de View ou de Composer, modifié pendant un traitement, échappe à l'annulation. A0.c dit déjà que tout ce qu'on peut changer d'un composant est une ressource dont il est propriétaire ; il faut en tirer une garde : **pas de champ mutable dans une sous-classe de composant**, l'état passant par l'Entity (lot M2, patches Immer comme journal), l'état local de la View et le contenu du slot du Composer. Proposition : ajouter cette garde à `gardes.md` (lint, niveau statique) et l'expliquer dans le guide. **Validé le 31 octobre 2026** : ligne A0.c / G7 de `gardes.md` (lint, gel de l'instance à l'exécution, revue) et explication dans le guide.
 
-**R2 — L'empoisonnement de l'unité est la bonne réalisation de « aucune récupération locale ».** Le code applicatif peut intercepter l'erreur d'une Query, mais l'unité échoue quand même. C'est conforme à G7, mais surprenant pour un développeur. Proposition : un lint contre `try/catch` autour de `query`, et un message d'erreur qui le dit.
+**R2 — L'empoisonnement de l'unité est la bonne réalisation de « aucune récupération locale ».** Le code applicatif peut intercepter l'erreur d'une Query, mais l'unité échoue quand même. C'est conforme à G7, mais surprenant pour un développeur. Proposition : un lint contre `try/catch` autour de `query`, et un message d'erreur qui le dit. **Validé le 31 octobre 2026** : ligne G7 de `gardes.md` ; le prototype lève désormais une `TransportError` `UNRECOVERABLE`, avec l'erreur d'origine en `cause`, quand l'auteur a intercepté l'échec.
 
 **R3 — La file est vidée de façon synchrone, jusqu'au bout.** C'est simple et commode à tester, et G5 ne demande rien d'autre. Mais une longue chaîne bloque le fil de l'hôte jusqu'à la borne D9. Rendre la main entre deux unités (microtâche ou tâche) reste compatible avec la théorie, puisque la frontière normative est la validation. **Question de conception pour la suite de M1**, à trancher dans un ADR.
 
@@ -48,6 +48,6 @@ Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignat
 
 ## 5. Suite proposée
 
-1. Valider les gardes R1 et R2 dans `gardes.md`.
+1. ~~Valider les gardes R1 et R2 dans `gardes.md`~~ : fait.
 2. Trancher R3 (vidage synchrone ou par tâches) dans un ADR.
 3. Lot M2 : brancher l'Entity sur le journal d'unité et vérifier les invariants métier à la fin de chaque unité de validation.

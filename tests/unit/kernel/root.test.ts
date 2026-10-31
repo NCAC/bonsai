@@ -208,7 +208,11 @@ describe("G7 — a failing unit is rolled back", () => {
     });
     root.admit(handles, "go", {}, click);
     expect(state).toBe(0);
+    const [error] = failures(root) as TransportError[];
     expect(failures(root)).toHaveLength(1);
+    expect(error!.code).toBe("UNRECOVERABLE");
+    expect(error!.message).toContain("ne peut pas reprendre localement");
+    expect((error!.cause as Error).message).toBe("boom");
   });
 
   it("does not publish a component created by a failing unit", () => {
