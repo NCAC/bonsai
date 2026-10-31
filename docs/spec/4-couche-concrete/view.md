@@ -1056,7 +1056,19 @@ Les Events sont réservés aux **occurrences d'abonnement présentes à l'émiss
 
 ## 6. Déclaration des Composers
 
-**Non livré.** `get composers()` est un nom historique de proposition, pas un getter fourni ou consommé par la classe actuelle. Cette section fixe les responsabilités cibles sans inventer de type, constructeur ou snippet applicatif.
+> ⏳ **Cible non livrée.** `get composers()` n'est ni fourni ni consommé par la classe actuelle. Son API cible, commune à la View et à la Foundation, est fixée dans [Composer §1.3](composer.md#13-api-cible-) :
+
+```typescript
+// ─── View ou Foundation : déclaration des slots ──────────────────────────────
+get composers() {
+  return {
+    main: { slot: "[data-slot='main']", composer: MainComposer },
+    side: { slot: "[data-slot='side']", composer: CartPanelComposer },
+  } as const;                      // clés de slot disjointes des clés UI
+}
+```
+
+Les clés de slot sont disjointes des clés UI de la View et de ses Behaviors (contrôle statique, comme D13).
 
 La View déclare les emplacements de composition ; elle ne décide pas quelles Views y créer. Elle crée des **Composers seulement** (D11), auxquels elle attribue le contenu des slots. Chaque Composer décide de l'existence et des parts de ses Views. La Foundation suit la même séparation : elle ne crée pas directement de View.
 
@@ -1075,7 +1087,7 @@ Un template ou une projection ne doit donc pas retirer l'élément slot puis dé
 
 ### Sémantique N-instances — composition typée par attribut (ADR-18)
 
-Ancre et titre historiques conservés. Une répétition de champs peut motiver plusieurs attributions de contenu et plusieurs Composers, mais « un résultat de `querySelectorAll()` = une instance recevant un élément DOM » n'est ni un protocole théorique ni une capacité livrée. Cardinalité, identification des occurrences, syntaxe de déclaration et contrôles restent à concevoir.
+Ancre et titre historiques conservés. Une répétition de champs peut motiver plusieurs attributions de contenu et plusieurs Composers, mais « un résultat de `querySelectorAll()` = une instance recevant un élément DOM » n'est ni un protocole théorique ni une capacité livrée. **Choix V1 (31 octobre 2026) :** une entrée de `composers` correspond à exactement un slot ; la sémantique « N-instances » d'ADR-18 n'est pas retenue. N zones composées passent par N Views, chacune avec son slot et donc son Composer ; une liste purement visuelle relève de la projection de la View.
 
 **I37** désigne le choix d'un type unique de Composer pouvant gérer 0..N Views hétérogènes. Ce choix reste le contrat cible d'I37, non une nécessité théorique ; seuls le type unique et **0/1 View** sont livrés, sans retour tableau. Le nombre de Composers déclarés par une View et le nombre de Views d'un Composer sont deux questions distinctes. Voir [Composer §3.2](composer.md#32-diff-pour-le-retour-tableau-tresolveresult).
 

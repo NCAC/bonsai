@@ -10,7 +10,7 @@
 | --- | --- |
 | **Composant** | Foundation, enfant de la racine |
 | **Couche** | Concrète ; persistante pendant la vie de sa racine (D1) |
-| **Statut** | Contrat documentaire V0.9.4 ; runtime livré partiel et incompatible sur plusieurs points |
+| **Statut** | Contrat documentaire V0.9.5 ; API cible ⏳ au §3 ; runtime livré partiel et incompatible sur plusieurs points |
 | **Référence normative** | [Théorie](../../theorie.md) : §2.5, C.2–C.3, A0–A2, D3, D7, D11, §16.4 et §16.9 |
 | **Historique** | [ADR-20](../../adr/ADR-20-foundation.md), [ADR-07](../../adr/ADR-07-application-bootstrap.md), conservés Accepted sans modification ; leurs choix incompatibles sont à réexaminer |
 
@@ -18,7 +18,7 @@
 >
 > [La classe livrée](../../../packages/foundation/src/bonsai-foundation.ts) utilise toujours `document.body` et `document.documentElement`. Elle expose `body` et `html` comme `HTMLElement` bruts, lit `composers` une fois et attache les Composers dans l'ordre de `Object.entries()`. `onAttach()` est appelé ensuite ; `onDetach()` est déclaré mais n'a pas d'appelant.
 >
-> **Non livrés** : choix de l'élément dans le Manifest, admission et attribution contrôlées, isolation entre racines, cycle de destruction transactionnel et nettoyage complet. Aucune capacité Channel n'est livrée sur Foundation ; sa forme future n'est pas fixée. Les accès bruts et suggestions d'écoute globale du code ne sont pas des autorisations du contrat cible.
+> **Non livrés** : choix de l'élément dans le Manifest, admission et attribution contrôlées, isolation entre racines, cycle de destruction transactionnel et nettoyage complet. Aucune capacité Channel n'est livrée sur Foundation, et la V1 n'en prévoit pas (§1.1). Les accès bruts et suggestions d'écoute globale du code ne sont pas des autorisations du contrat cible.
 
 ---
 
@@ -46,9 +46,9 @@ Ni PDR de View, ni template principal, ni rôle de rendu de présentation : la F
 
 ### 1.1 Capacités Channel
 
-Le runtime Foundation n'a aujourd'hui ni contrat Channel ni méthodes d'écoute, de Command ou de Query. La forme de ces capacités reste à concevoir ; un contrat générique ou un nouveau module de types ne sont pas annoncés ici.
+Le runtime Foundation n'a aujourd'hui ni contrat Channel ni méthodes d'écoute, de Command ou de Query. **En V1, la Foundation n'en a pas** (choix validé le 31 octobre 2026) : elle ne déclare que ses `composers` (§3), et sa composition de premier niveau est fixe. Toute variation, y compris de mise en page, est décidée par un Composer : par exemple, un slot unique dont le Composer choisit entre `LayoutStandardView` et `LayoutPaiementView`, chacune avec ses propres slots. Un second décideur de composition, à côté des Composers, contredirait la règle « une fonction par rôle » (§16).
 
-Toute capacité future devra être déclarée selon D16. La réception éventuelle d'Events d'adaptateurs ne sera **pas** une admission directe de leurs sources hôte. D18 s'applique à toute Command de l'interface : un Event, son relais local ou un résultat d'effet corrélé à cet Event n'ouvre aucun droit de commander ; une Query préalable ne change pas cette restriction. Une observation à antécédent inconnu ne l'ouvre pas davantage.
+Une capacité future, au-delà de la V1, devra être déclarée selon D16. La réception éventuelle d'Events d'adaptateurs ne sera **pas** une admission directe de leurs sources hôte. D18 s'applique à toute Command de l'interface : un Event, son relais local ou un résultat d'effet corrélé à cet Event n'ouvre aucun droit de commander ; une Query préalable ne change pas cette restriction. Une observation à antécédent inconnu ne l'ouvre pas davantage.
 
 L'admission du **résultat instrumenté de ses propres effets autorisés**, y compris un bilan d'engagement, est en revanche permise par C.3. Les résultats et traitements locaux doivent être déclarés ; ils visent son occurrence de vie et respectent D9. Cette exception ne donne accès à aucune source générale de l'hôte et ne promet pas que ces mécanismes soient livrés.
 
@@ -86,6 +86,20 @@ Un slot est un élément du périmètre admis dont **le contenu** est attribué 
 | Création dans l'unité du créateur | L'initialisation du Composer et des Views qu'il crée est incluse dans cette unité, sans délégation d'autorité ; échec et rollback structurel communs |
 | Fin des enfants | Cascade logique de bas en haut, restitutions au propriétaire encore vivant, sans hook applicatif pendant la cascade ; nettoyage physique post-validation |
 
+**API cible ⏳.** La Foundation déclare ses slots comme une View ([Composer §1.3](composer.md#13-api-cible-)) :
+
+```typescript
+// ─── View ou Foundation : déclaration des slots ──────────────────────────────
+get composers() {
+  return {
+    main: { slot: "[data-slot='main']", composer: MainComposer },
+    side: { slot: "[data-slot='side']", composer: CartPanelComposer },
+  } as const;                      // clés de slot disjointes des clés UI
+}
+```
+
+Chaque entrée désigne exactement un élément de l'élément admis ; une recherche qui ne trouve pas exactement un élément est refusée au démarrage. La déclaration est lue une fois : la liste des slots de la Foundation ne change pas pendant la vie de la racine.
+
 **Livré seulement :** `get composers()` retourne un `Readonly<Record<string, typeof Composer>>`. Ses clés sont des sélecteurs CSS recherchés sous `document.body`, ses valeurs des classes Composer. `attach()` lit ce record une fois et parcourt `Object.entries()` ; pour les clés chaînes non numériques, l'ordre d'insertion est conservé. Ce parcours n'est pas un protocole général de composition dynamique ou de validation des parts.
 
 Dans [le Composer livré](../../../packages/composer/src/bonsai-composer.ts), `attach()` résout le slot sous l'élément parent et crée un élément simplifié s'il manque. Cela ne valide ni la résolution CSS générale, ni la disjonction des parts. Dans [la View livrée](../../../packages/view/src/bonsai-view.ts), `mount()` résout encore son `rootElement` par `document.querySelector()` global, pas sous le slot ; il ne crée pas une racine absente. La conformité des références structurelles n'est donc pas garantie par ces sélecteurs.
@@ -104,7 +118,7 @@ La délégation reste un choix de conception utile : un Composer racine décide 
 | Lecture unique de `composers` au bootstrap | Comportement runtime livré ; aucune réévaluation automatique |
 | Interdiction générale de modifier la composition Foundation (ancien I67) | Choix historique hors de ce lot, à réexaminer ; ne pas le présenter comme théorème V0.9.4 |
 | Délégation à une View de page et ses Composers | Principe architectural compatible ; `View.composers` et la cascade correspondante ne sont pas livrés |
-| Évolution contrôlée des Composers de premier niveau | Déclencheurs, droits, déclaration, ordre et API restent à concevoir sous §2.5, A1–A2 et D11 ; aucune nouvelle API promise ici |
+| Évolution des Composers de premier niveau | Exclue en V1 : la Foundation n'a pas de Channel et sa déclaration est lue une fois ; la variation passe par les Composers (§1.1) |
 
 Un getter conditionnel livré ne constitue pas un mécanisme réactif : il n'est lu qu'une fois. L'absence de mécanisme runtime ne doit pas être reformulée comme une interdiction issue des axiomes.
 

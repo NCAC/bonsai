@@ -10,13 +10,13 @@
 | --- | --- |
 | **Composant** | Composer |
 | **Couche** | Concrète (éphémère) |
-| **Statut** | Alignement documentaire V0.9.4 ; contrat cible distinct du runtime livré |
+| **Statut** | Alignement documentaire V0.9.5 ; API cible ⏳ au §1.3 ; contrat cible distinct du runtime livré |
 | **Référence normative** | [Théorie](../../theorie.md), §2.5, annexe C, D11, D12 et §16.5–§16.7 |
 | **Historique** | [ADR-18](../../adr/ADR-18-composer.md), [ADR-19](../../adr/ADR-19-root-element.md), [ADR-14](../../adr/ADR-14-contrats-types.md) ; ADR Accepted conservés sans modification |
 
 > ## ⏳ Périmètre d'implémentation
 >
-> Les obligations ci-dessous ne décrivent pas des garanties déjà fournies par le runtime. Les noms d'API sont documentés seulement lorsqu'ils existent dans [la source Composer](../../../packages/composer/src/bonsai-composer.ts) ou [la source View](../../../packages/view/src/bonsai-view.ts). Les anciennes signatures cibles ne sont pas des API compilables.
+> Les obligations ci-dessous ne décrivent pas des garanties déjà fournies par le runtime. Les §1.1, §1.2, §2 à §6 décrivent la surface livrée de [la source Composer](../../../packages/composer/src/bonsai-composer.ts) et [la source View](../../../packages/view/src/bonsai-view.ts) ; l'API cible est au §1.3, marquée ⏳.
 >
 > | Sujet | Livré | Contrat cible / limite |
 > | --- | --- | --- |
@@ -32,7 +32,7 @@
 
 ## Table des matieres
 
-1. [Classe abstraite Composer](#1-classe-abstraite-composer)
+1. [Classe abstraite Composer](#1-classe-abstraite-composer) — dont [l'API cible](#13-api-cible-)
 2. [Exemples](#2-exemples)
 3. [Méthode resolve()](#3-méthode-resolve)
 4. [Cycle de vie et attachement](#4-cycle-de-vie-et-attachement)
@@ -58,7 +58,7 @@ Il n'admet aucune notification générale de l'hôte. En revanche, les **résult
 | `TResolveResult` | Objet avec `view: TViewClass` et `rootElement: string`, sans `options` |
 | `TComposerOptions` | Objet avec `rootElement: string`, utilisé pour le sélecteur du slot |
 | `TViewClass` | Type structurel exporté par View ; ne prouve aucune propriété ni validité d'attribution |
-| `TComposerContract`, `TComposerEvent` | Propositions historiques non livrées ; leur forme ne fixe pas ici les déclarations D16 ni les résultats instrumentés |
+| `TComposerContract`, `TComposerFeatures`, `TComposeContext`, `TComposition` | API cible ⏳ du §1.3 ; non livrés. `TComposerEvent` historique est abandonné : `resolve` ne reçoit pas d'Event |
 
 **I31 :** le sélecteur CSS est un **choix de représentation compatible**, livré sous la forme `rootElement: string`, pas une obligation déduite de la théorie. Le contrat impose une **désignation fournie à la création**, dont la résolution contrôlée vérifie la propriété et la validité pour l'attribution concernée. La désignation ne confère pas d'accès à elle seule. Aucun élément de l'hôte n'est transmis à l'enfant. Une réattribution du même emplacement ne réactive jamais une ancienne désignation.
 
@@ -72,11 +72,70 @@ La surface existante comprend le constructeur recevant `TComposerOptions`, les g
 
 Il n'existe aujourd'hui ni module Feature Composer, ni `request()`, ni branchement des Events écoutés, ni hook de destruction. L'absence de hook applicatif pendant une cascade est une obligation cible, non la preuve qu'il n'y aurait aucune ressource d'observation à nettoyer.
 
+### 1.3 API cible ⏳
+
+> ⏳ **Cible non livrée**, validée le 31 octobre 2026 (point S2 de la [relecture V0.9.4](../../rapports/relecture-V0.9.4-2026-10-30.md)), avec quatre choix : `resolve` sans l'Event déclencheur ; une entrée de `composers` pour exactement un slot ; une Foundation sans Channel en V1 ; aucun handler applicatif pour les résultats de composition.
+
+Le parent déclare ses slots ; chaque entrée désigne **exactement un** élément de sa part et le Composer qui en reçoit le contenu :
+
+```typescript
+// ─── View ou Foundation : déclaration des slots ──────────────────────────────
+get composers() {
+  return {
+    main: { slot: "[data-slot='main']", composer: MainComposer },
+    side: { slot: "[data-slot='side']", composer: CartPanelComposer },
+  } as const;                      // clés de slot disjointes des clés UI
+}
+```
+
+Le Composer déclare ses dépendances et le catalogue fini des Views qu'il peut créer, puis une seule fonction de décision :
+
+```typescript
+const mainFeatures = {
+  router: { feature: RouterFeature, listens: ["routeChanged"],   queries: ["currentRoute"] },
+  auth:   { feature: AuthFeature,   listens: ["sessionChanged"], queries: ["session"] },
+} satisfies TComposerFeatures;     // pas de lane `triggers` : D12
+
+const mainViews = { login: LoginView, product: ProductView, cart: CartView } as const;
+
+type TMainContract = TComposerContract<typeof mainFeatures, typeof mainViews>;
+
+class MainComposer extends Composer<TMainContract> {
+  get features() { return mainFeatures; }
+  get views()    { return mainViews; }   // catalogue fini des Views possibles
+
+  resolve(ctx: TComposeContext<TMainContract>): TComposition<TMainContract> {
+    if (!ctx.query("auth:session", {}).loggedIn) return [{ view: "login", key: "login" }];
+    const route = ctx.query("router:currentRoute", {});
+    switch (route.name) {
+      case "product": return [{ view: "product", key: `product:${route.params.id}`,
+                                params: { productId: route.params.id } }];
+      case "cart":    return [{ view: "cart", key: "cart" }];
+      default:        return [];
+    }
+  }
+}
+```
+
+| Règle | Ce que l'API garantit |
+| --- | --- |
+| D12, aucune Command | `TComposerFeatures` n'a pas de lane `triggers` ; `TComposeContext` n'offre que `query`. |
+| D12, aucun état propre | `resolve` ne reçoit pas l'Event déclencheur : elle se recalcule à partir des seules Queries. Un même état du domaine donne une même composition, quel que soit l'ordre des Events qui y ont mené. Un champ mutable de sous-classe est un état indépendant, refusé en revue et par lint. |
+| D11, T7 | Le tableau rendu donne les Views et leur ordre dans le slot. Le Composer crée pour chacune un élément et lui en attribue la part, sans recouvrement. |
+| A3.d | `params` ne contient que des valeurs, typées par le contrat de la View visée. |
+| T3, réconciliation | Même `key` et même View : instance conservée (optimisation). `params` différents : destruction puis recréation, car ce sont des paramètres de création. `key` absente : destruction, avec sa descendance. Les clés sont uniques dans une composition. |
+| C.3, échec de création | Une View dont l'élément n'a pas pu être créé est détruite logiquement ; l'erreur est signalée avec son contexte causal (G7), sans nouvel essai ni handler applicatif. Le prochain Event déclaré relance `resolve` à partir de l'état du domaine. |
+| Répétition | Une entrée de `composers` correspond à un seul slot ; une recherche qui ne trouve pas exactement un élément est refusée à l'exécution. N zones composées passent par N Views, chacune avec son slot ; une liste purement visuelle relève de la projection de la View. |
+
+**Quand `resolve` est appelée.** Par Bonsai seulement, à deux moments : pendant l'initialisation du Composer, dans l'unité de validation de son créateur (au démarrage pour les Composers de la Foundation) ; puis pendant le traitement de chaque Event déclaré dans `listens`, qui forme sa propre unité de validation. Jamais au retour d'une Query, sur un fait de l'hôte, sur un résultat de composition, ni à la demande du code applicatif.
+
+**Limite connue.** Deux Events successifs, par exemple `auth:sessionChanged` puis `router:routeChanged` lors d'une connexion suivie d'une redirection, donnent deux appels ; les effets de la première unité sont engagés avant la seconde délivrance (C.3). Une composition intermédiaire peut donc s'afficher brièvement. Elle correspond à un état validé du domaine. Un regroupement à la manière de D19, ou un Event unique émis par le domaine, sont des pistes hors V1.
+
 ---
 
 ## 2. Exemples
 
-Ces cas décrivent des responsabilités, sans inventer de classes applicatives, de types manquants ou de syntaxe cible.
+Ces cas décrivent des responsabilités ; leur écriture cible est celle du §1.3, dont l'exemple réalise le cas 2.3.
 
 ### 2.1 Composer statique — aucun Channel (forme livrée)
 
@@ -88,7 +147,7 @@ Un panneau dépendant de l'authentification choisit la View de connexion ou de p
 
 ### 2.3 Composer multi-Channel — routeur et authentification
 
-Un contenu principal peut dépendre de la route et de l'authentification. Consulter plusieurs réponses ne constitue pas un instantané global, ni une permission d'interroger une cible encore active ou non prête (C.1, C.5). La sélection ne crée ou ne détruit que les Views et parts dont le Composer est propriétaire ; elle ne commande ni navigation ni authentification. La forme API de ces dépendances reste ouverte.
+Un contenu principal peut dépendre de la route et de l'authentification. Consulter plusieurs réponses ne constitue pas un instantané global, ni une permission d'interroger une cible encore active ou non prête (C.1, C.5). La sélection ne crée ou ne détruit que les Views et parts dont le Composer est propriétaire ; elle ne commande ni navigation ni authentification. Ces dépendances se déclarent dans `features` et se consultent par `ctx.query` (§1.3).
 
 ---
 
@@ -117,7 +176,7 @@ Ce tableau décrit **l'algorithme livré**, pas une destruction conforme à la t
 
 **Non livré. I37 :** « un type unique de Composer, 0..N Views hétérogènes » reste le **choix d'API cible du registre**, non une nécessité théorique sur la cardinalité ou la forme du retour. Le runtime gère 0/1 View ; il n'accepte pas de tableau. La conservation d'une instance à sélection identique est également un choix de rapprochement, pas une conséquence des axiomes.
 
-Le futur rapprochement d'une décision avec la composition existante doit contrôler les attributions, leur non-recouvrement et leurs occurrences, sans prendre la présence DOM comme source de vérité. Les règles d'identification, de conservation, d'ordre et de représentation des résultats multiples restent à arbitrer. L'ancien pseudo-diff basé sur « élément disparu du DOM → cleanup » ne constitue plus un contrat cible.
+Le futur rapprochement d'une décision avec la composition existante doit contrôler les attributions, leur non-recouvrement et leurs occurrences, sans prendre la présence DOM comme source de vérité. Identification par `key`, conservation, ordre et représentation des résultats multiples sont fixés par l'API cible (§1.3). L'ancien pseudo-diff basé sur « élément disparu du DOM → cleanup » ne constitue plus un contrat cible.
 
 ---
 

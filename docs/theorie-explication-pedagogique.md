@@ -437,7 +437,18 @@ Cette restriction des sources générales n'interdit pas les **résultats instru
 
 Un composant de l'interface qui **décide quelle View afficher** dans une zone de la page. Il est propriétaire d'une part de la page, son *slot*, attribuée par son parent (la Foundation, ou une View qui déclare un emplacement). Il est le parent des Views qu'il affiche, et lui seul l'est : une View ne crée jamais une autre View (D11). Comme la View, il n'a ni nom ni Channel : on ne lui adresse rien, il reçoit des Events et peut poser des Queries (D6).
 
-Son travail tient en une fonction : `resolve(event)`. À sa création, puis à chaque message autorisé qu'il traite — Event reçu ou résultat instrumenté de son propre effet de composition déclaré — il répond à une seule question : « quelle(s) View(s) doivent occuper mon slot maintenant ? », avec une View, plusieurs, ou aucune.
+Son travail tient en une fonction : `resolve`. Bonsai l'appelle à sa création, puis chaque fois qu'il reçoit un des Events qu'il a déclarés. Elle répond à une seule question : « quelle(s) View(s) doivent occuper mon slot maintenant ? », avec une View, plusieurs, ou aucune. Elle ne reçoit pas l'Event qui l'a déclenchée : elle consulte le domaine, si bien qu'un même état donne toujours le même écran (API cible, pas encore livrée) :
+
+```typescript
+resolve(ctx) {
+  if (!ctx.query("auth:session", {}).loggedIn) return [{ view: "login", key: "login" }];
+  const route = ctx.query("router:currentRoute", {});
+  if (route.name === "product") return [{ view: "product", key: `product:${route.params.id}`, params: { productId: route.params.id } }];
+  return route.name === "cart" ? [{ view: "cart", key: "cart" }] : [];
+}
+```
+
+La `key` sert à reconnaître une View d'un appel à l'autre : même clé, même View, l'instance est conservée ; une clé qui disparaît, la View est détruite. Si Bonsai ne parvient pas à créer l'élément d'une View, celle-ci est détruite et l'erreur signalée, sans nouvel essai.
 
 *Ce qui découle des axiomes :*
 
