@@ -1,0 +1,40 @@
+/**
+ * Kernel prototype — transport errors (G5, G7, D9).
+ *
+ * A transport error is not a business answer: it interrupts the author and
+ * propagates to the outermost validation unit, which then fails (G7).
+ */
+
+export type TTransportErrorCode =
+  | "UNKNOWN_TARGET"        // no such Channel in this root (G6)
+  | "UNDECLARED_MESSAGE"    // message absent from the declared contract (D16)
+  | "TARGET_NOT_READY"      // Query to a target not ready (C.1)
+  | "TARGET_ACTIVE"         // Query to a target with an execution in progress (G5)
+  | "READ_ONLY"             // forbidden operation during a Query (A3.g)
+  | "NOT_OWNER"             // emit on a Channel one does not own (A3.e), destroy a non-child (A1.b)
+  | "CAUSAL_BOUND"          // depth beyond the Manifest bound (D9)
+  | "NOT_CAPTURABLE"        // payload that cannot be captured by value (G2, A3.d)
+  | "DUPLICATE_NAMESPACE"   // two Channels with the same namespace in one root
+  | "NO_UNIT"               // operation outside any validation unit (A5.a)
+  | "ROOT_ABANDONED";       // the root failed to start
+
+export class TransportError extends Error {
+  readonly code: TTransportErrorCode;
+
+  constructor(code: TTransportErrorCode, message: string) {
+    super(`[${code}] ${message}`);
+    this.name = "TransportError";
+    this.code = code;
+  }
+}
+
+/** Raised by `Root.start()` when the startup unit fails (§2.5, C.1). */
+export class StartupError extends Error {
+  readonly cause: unknown;
+
+  constructor(cause: unknown) {
+    super("Startup failed: the model under construction was abandoned");
+    this.name = "StartupError";
+    this.cause = cause;
+  }
+}
