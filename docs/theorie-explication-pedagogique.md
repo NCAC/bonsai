@@ -475,6 +475,26 @@ Un morceau de code de View **réutilisable**, que tu greffes sur des Views sans 
 
 C'est ce qui rend le tracking juste. Pour un clic utilisateur sur « Ajouter au panier » (`data-track`), la View et son `TrackingBehavior` réagissent au même fait admis **une seule fois** par la View. Dans cette réaction autorisée, les deux Commands (`cart:addItem` et `analytics:trackInteraction`) partagent la même origine : le tracking peut apparaître dans la chaîne de l'ajout au panier. Le Behavior ne crée aucune permission supplémentaire de commander.
 
+Voici à quoi il ressemblera (API cible, pas encore livrée) :
+
+```typescript
+class TrackingBehavior extends Behavior<TTrackingContract> implements TBehaviorCallbacks<TTrackingContract> {
+  get features()   { return { analytics: { feature: AnalyticsFeature, listens: [], triggers: ["trackInteraction"], queries: [] } }; }
+  get uiEvents()   { return { tracked: ui<HTMLElement>()(["click"]) }; }
+  get uiElements() { return { tracked: "[data-track]" }; }
+
+  // un clic est un fait de l'hôte : le contexte permet d'adresser une Command
+  onTrackedClick(event: MouseEvent, ctx: TFactContext<TTrackingContract>): void {
+    ctx.trigger("analytics:trackInteraction", { category: this.params.category });
+  }
+}
+
+// la View le déclare, avec des paramètres qui ne sont que des valeurs
+get behaviors() { return [TrackingBehavior.with({ category: "cart" })] as const; }
+```
+
+Un handler d'Event, lui, reçoit un contexte qui n'a pas de `trigger` : la règle D18 est vérifiée par le compilateur. La View réagit d'abord à un fait, puis ses Behaviors, dans l'ordre du tableau.
+
 - **Il est aveugle (D13).** Il ne voit ni la View qui le porte ni ses clés : c'est ce qui le rend réutilisable.
 - **Les noms de clés sont disjoints.** Aucun nom n'est partagé entre la View et un Behavior, ni entre deux Behaviors de cette View. Des clés de noms différents peuvent néanmoins désigner le même élément : ce n'est pas un partage de propriété entre composants, puisque tout est imputé à la View.
 - **Il est borné à la part de sa View.** Il ne voit pas l'intérieur des Views enfants : un `TrackingBehavior` posé sur une View de haut niveau ne capte pas les clics de ses descendantes. Chaque View qui veut le tracking le déclare.

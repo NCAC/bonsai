@@ -46,6 +46,7 @@
 
 1. [Classe abstraite View](#1-classe-abstraite-view)
 2. [Pattern modulaire ADR-14](#2-pattern-modulaire-adr-14)
+   - [Contexte de handler ⏳ (D18)](#24-contexte-de-handler--d18)
 3. [Types utilitaires du pattern modulaire](#3-types-utilitaires-du-pattern-modulaire)
 4. [Contrat de rendu PDR](#4-contrat-de-rendu-pdr)
    - [Point d'ancrage DOM](#41-point-dancrage-dom)
@@ -316,6 +317,38 @@ this.trigger("cart:addItem", { productId, qty });
 const token: TChannelToken<TCartDef, "cart"> = CartFeature.channel; // non
 this.trigger(CartFeature.channel, "addItem", { productId, qty }); // non
 ```
+
+### 2.4 Contexte de handler ⏳ (D18)
+
+> ⏳ **Cible non livrée**, validée le 31 octobre 2026 (point S2 de la [relecture V0.9.4](../../rapports/relecture-V0.9.4-2026-10-30.md)). Le livré expose `this.trigger()` et `this.request()` (§1, §2.2) ; la cible les remplace par le contexte passé à chaque handler, et renomme la lane `requests` en `queries` (lexique de la théorie, §2.4).
+
+Chaque handler reçoit, en second argument, un **contexte** dont le type dépend du déclencheur. C'est ce qui rend D18 vérifiable à la compilation : un traitement d'Event ne peut pas adresser de Command, faute de méthode pour le faire.
+
+| Handler | Déclencheur | Contexte | Offre |
+| --- | --- | --- | --- |
+| `on{Clé}{ÉvénementDOM}(event, ctx)` | Fait de l'hôte admis par la View dans sa part | `TFactContext<TVC>` | `trigger`, `query` |
+| `on{Ns}{Event}Event(payload, ctx)` | Event reçu d'une Feature ou d'un adaptateur | `TEventContext<TVC>` | `query` |
+
+```typescript
+class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartViewContract> {
+  get features()   { return cartViewFeatures;   }   // lane `queries: ["total"]`
+  get uiEvents()   { return cartViewUiEvents;   }
+  get uiElements() { return cartViewUiElements; }
+  get behaviors()  { return [TrackingBehavior.with({ category: "cart" })] as const; }
+
+  onAddButtonClick(_event: MouseEvent, ctx: TFactContext<TCartViewContract>): void {
+    const total = ctx.query("cart:total", {});        // Query permise ; la permission est conservée
+    ctx.trigger("cart:addItem", { productId: "abc", qty: 1 });
+  }
+
+  onCartItemAddedEvent(payload: { productId: string; qty: number }, ctx: TEventContext<TCartViewContract>): void {
+    this.getUI("totalDisplay").text(String(payload.qty)); // projection et état local permis
+    // ctx.trigger(...) : n'existe pas sur TEventContext — erreur de compilation (D18)
+  }
+}
+```
+
+Ce que le type ne peut pas trancher reste vérifié à l'exécution : qu'un fait de l'hôte soit bien indépendant selon le monde fermé, ou corrélé à une réaction autorisée (C.4), et qu'une Query ne vise pas une cible en cours de traitement (G5). Un fait d'antécédent inconnu reçoit un `TFactContext` dont `trigger` lève une erreur de transport (G7). Les Behaviors de la View reçoivent les mêmes contextes ([Behavior §2.0](behavior.md#20-api-cible-)).
 
 ---
 

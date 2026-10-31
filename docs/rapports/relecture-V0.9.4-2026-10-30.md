@@ -124,7 +124,9 @@ Le guide est **exact** au regard de la V0.9.4 : aucune contradiction relevée. I
 | S2 | Le lot 3 retire l'API cible : `behavior.md` déclare qu'« aucun `get behaviors()`, type `TBehaviorContract` ou `TBehaviorCallbacks` […] n'est fixé par ce document », et `composer.md` laisse les choix d'API « encore ouverts ». Or D16 fait du contrat déclaré la source des traitements : l'API cible *est* la réalisation de D16, et l'ergonomie (O3) se juge sur elle. | Rétablir dans chaque fiche de rôle une section « API cible ⏳ », marquée comme telle, alignée sur la théorie, distincte de la section « livré ». |
 | S3 | Lexique (§2.4) : « Request » dans 16 fichiers, `request(` dans 13, « couche concrète » dans 8, et les dossiers `3-couche-abstraite`, `4-couche-concrete`. Le code livré s'appelle encore `request()`, ce qui est légitime dans une description du livré. | Réserver ces termes aux passages « livré » ; renommer les dossiers au moment de la migration de la spécification, pas avant. |
 
-**Statut : S1 validé et appliqué le 30 octobre 2026.** Bandeau d'avertissement en tête des 18 fichiers non alignés ; statut 🔴 « non aligné sur la théorie V0.9.5 » dans l'index de `spec/`. S2 et S3 restent à traiter.
+**Statut : S1 validé et appliqué le 30 octobre 2026.** Bandeau d'avertissement en tête des 18 fichiers non alignés ; statut 🔴 « non aligné sur la théorie V0.9.5 » dans l'index de `spec/`.
+
+**Statut : S2 validé le 31 octobre 2026 pour le Behavior et la View.** API cible ⏳ du Behavior (`Behavior<TBC>`, `TBehaviorContract`, `TBehaviorCallbacks`, `get behaviors()`, `with()` par valeurs, état local nommé) dans `behavior.md` §2.0 ; contexte de handler (`TFactContext` avec `trigger`, `TEventContext` sans) pour la View et les Behaviors dans `view.md` §2.4, qui rend D18 vérifiable par construction ; ordre des réactions : la View, puis ses Behaviors dans l'ordre déclaré. Restent le Composer et la Foundation, puis S3.
 
 ## 6. Proposition détaillée pour R3 — protocole du monde fermé
 

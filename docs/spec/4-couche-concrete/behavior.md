@@ -10,13 +10,13 @@
 | --- | --- |
 | **Nature** | Partie réutilisable du code d'une View, **pas un composant** |
 | **Couche** | Interface utilisateur, par imputation à la View |
-| **Statut** | Contrat documentaire V0.9.4 ; aucun package Behavior livré |
+| **Statut** | Contrat documentaire V0.9.5 ; API cible ⏳ fixée au §2.0 ; aucun package Behavior livré |
 | **Référence normative** | [Théorie](../../theorie.md), §2.5, C.2–C.6, D10, D11, D13, D16, D18 et §16.5–§16.7 |
 | **Historique** | [ADR-21](../../adr/ADR-21-behavior-reutilisation.md), [ADR-14](../../adr/ADR-14-contrats-types.md), [ADR-15](../../adr/ADR-15-evenements-ui.md), [ADR-17](../../adr/ADR-17-local-state.md), [ADR-25](../../adr/ADR-25-formulaires.md) ; Accepted conservés sans modification |
 
 > ## ⏳ Périmètre d'implémentation
 >
-> **Aucun mécanisme Behavior n'est livré** : ni package `@bonsai/behavior`, ni agrégation des déclarations et réactions, ni contrôle des collisions de clés, ni état local intégré à la View. Les anciens exemples de classes, types génériques, hooks et `get behaviors()` ne sont pas des API disponibles ; ils sont remplacés ici par des obligations et cas de conception sans syntaxe inventée.
+> **Aucun mécanisme Behavior n'est livré** : ni package `@bonsai/behavior`, ni agrégation des déclarations et réactions, ni contrôle des collisions de clés, ni état local intégré à la View. L'API cible du §2.0 (`Behavior<TBC>`, `TBehaviorContract`, `TBehaviorCallbacks`, `get behaviors()`, contexte de handler) est **⏳ non livrée** : elle fixe ce que la réalisation doit offrir, pas ce qui existe.
 >
 > [La View livrée](../../../packages/view/src/bonsai-view.ts) possède ses contrats UI/Feature et `onAttach()`, mais pas `onDetach()`, ni orchestration Behavior. [Le Composer livré](../../../packages/composer/src/bonsai-composer.ts) oublie la View courante sans retirer ses listeners. Les garanties de cycle de vie cible ne sont donc pas fournies par ce runtime.
 
@@ -25,7 +25,7 @@
 ## Table des matières
 
 1. [Contrat](#1-contrat)
-2. [Déclarations](#2-déclarations)
+2. [Déclarations](#2-déclarations) — dont [l'API cible](#20-api-cible-)
 3. [Cycle de vie](#3-cycle-de-vie)
 4. [Exemples](#4-exemples)
 
@@ -54,11 +54,70 @@ Les disjonctions de **noms** ne créent pas des parts DOM distinctes : View et B
 
 ## 2. Déclarations
 
-Les déclarations d'un Behavior font partie du contrat agrégé de sa View. Elles doivent être connues avant le démarrage selon D16, y compris pour les classes de Views instanciées plus tard. Cela ne prétend pas résoudre à l'avance toutes les instances et tous les éléments physiques. L'écriture et le typage de cette agrégation restent à concevoir ; les types View existants ne prouvent pas qu'elle fonctionne aujourd'hui.
+Les déclarations d'un Behavior font partie du contrat agrégé de sa View. Elles doivent être connues avant le démarrage selon D16, y compris pour les classes de Views instanciées plus tard. Cela ne prétend pas résoudre à l'avance toutes les instances et tous les éléments physiques.
+
+### 2.0 API cible ⏳
+
+> ⏳ **Cible non livrée**, validée le 31 octobre 2026 (point S2 de la [relecture V0.9.4](../../rapports/relecture-V0.9.4-2026-10-30.md)). Le Behavior reprend la forme modulaire de la View ([View §2](view.md#2-pattern-modulaire-adr-14)) ; `trigger` et `query` passent par le **contexte du handler**, comme pour la View ([View §2.4](view.md#24-contexte-de-handler--d18)).
+
+```typescript
+// ─── Déclaration du Behavior : même forme modulaire qu'une View ─────────────
+const trackingFeatures = {
+  analytics: { feature: AnalyticsFeature, listens: [] as const,
+               triggers: ["trackInteraction"] as const, queries: [] as const },
+} satisfies TFeatureContract;
+
+const trackingUi = {
+  tracked: ui<HTMLElement>()(["click"]),          // clé propre au Behavior
+} satisfies TUIContract;
+
+const trackingElements = { tracked: "[data-track]" } satisfies TUIElements<typeof trackingUi>;
+
+type TTrackingContract = TBehaviorContract<
+  typeof trackingFeatures, typeof trackingUi,
+  { category: string },                           // paramètres : valeurs seulement
+  { clicks: number }                              // état local, partie de celui de la View
+>;
+
+class TrackingBehavior
+  extends Behavior<TTrackingContract>
+  implements TBehaviorCallbacks<TTrackingContract>
+{
+  get features()     { return trackingFeatures; }
+  get uiEvents()     { return trackingUi; }
+  get uiElements()   { return trackingElements; }
+  get initialState() { return { clicks: 0 }; }
+
+  // Fait de l'hôte admis par la View : le contexte offre trigger et query (D18)
+  onTrackedClick(event: MouseEvent, ctx: TFactContext<TTrackingContract>): void {
+    this.setState({ clicks: this.state.clicks + 1 });
+    ctx.trigger("analytics:trackInteraction",
+      { category: this.params.category, label: (event.target as HTMLElement).dataset.track ?? "" });
+  }
+}
+
+// ─── Côté View : déclaration, paramètres par valeur ──────────────────────────
+class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartViewContract> {
+  get behaviors() { return [TrackingBehavior.with({ category: "cart" })] as const; }
+  // …
+}
+```
+
+| Règle | Ce que l'API garantit |
+| --- | --- |
+| D13, aveugle | `Behavior<TBC>` n'a ni propriété `view` ni accès aux clés de la View ; son générique ne connaît pas la View. |
+| D13, clés disjointes | `TViewContract` intègre le type de `behaviors` : une clé commune à la View et à un Behavior, ou à deux Behaviors, rend le contrat `never` et la compilation échoue. Deux occurrences du même Behavior dans une View ont les mêmes clés : elles sont donc refusées. Des clés de noms différents peuvent viser le même élément. |
+| D16 | Handlers dérivés du contrat par `TBehaviorCallbacks` : un par fait ou message déclaré, aucun enregistrement à l'exécution. |
+| D18 | Un handler de fait de l'hôte reçoit `TFactContext`, qui offre `trigger` et `query` ; un handler d'Event reçoit `TEventContext`, qui n'offre que `query`. La continuation autorisée et le monde fermé restent vérifiés à l'exécution (C.4). |
+| Imputation, A5.d | La View admet chaque fait une seule fois ; elle réagit d'abord, puis ses Behaviors dans l'ordre du tableau `behaviors`, pendant le même traitement. |
+| A3.d, C.5 | `with()` n'accepte que des valeurs sérialisables, capturées à la création : ni fonction, ni élément, ni référence. |
+| État local | `initialState`, `state` et `setState` portent sur une partie nommée de l'état local de la View, détruite avec elle et annulée avec son unité de validation (G7). |
+
+Aucun hook de cycle de vie n'est offert au Behavior : son initialisation est celle de `initialState`, dans l'unité de la View (§3).
 
 ### 2.1 Clés UI propres (I43)
 
-La validation doit refuser tout nom commun entre les clés de la View et celles d'un Behavior, ou entre deux Behaviors de cette View (D13). Le contrôle doit aussi couvrir des occurrences réutilisées d'un même Behavior ; le mécanisme de configuration ou de nommage de ces occurrences n'est pas fixé ici.
+La validation doit refuser tout nom commun entre les clés de la View et celles d'un Behavior, ou entre deux Behaviors de cette View (D13). Deux occurrences d'un même Behavior dans une View ont les mêmes clés : elles sont refusées (§2.0). Une View qui a besoin de deux configurations déclare deux Behaviors distincts.
 
 Les sélecteurs sont résolus **sous contrôle de la part** de la View, et pas seulement sous un ancêtre DOM : le contenu de ses slots en est soustrait. L'élément du slot reste à la View, contrairement à ce contenu. Un simple `querySelector()` descendant n'établit pas à lui seul l'autorité requise.
 
@@ -66,17 +125,17 @@ Deux clés de noms différents peuvent désigner le même élément, notamment p
 
 ### 2.2 Handlers auto-découverts
 
-Les traitements sont dérivés des messages et faits déclarés (D16), pas enregistrés librement à l'exécution. Les conventions historiques de noms de handlers View ne fixent pas à elles seules une future API Behavior.
+Les traitements sont dérivés des messages et faits déclarés (D16), pas enregistrés librement à l'exécution. Ils suivent les conventions de la View : `on{Clé}{ÉvénementDOM}` pour un fait de la part, `on{Ns}{Event}Event` pour un Event reçu (§2.0).
 
 Une occurrence de fait dans la part est **admise une fois, par la View**, même si ses propres réactions et celles de plusieurs Behaviors sont concernées. Le préambule capture la notification et ses valeurs sans mutation applicative ; les réactions ont lieu pendant **le même traitement du même message local**, dans la **même unité de validation** et le même contexte causal qualifié. La propagation entre écouteurs ne constitue pas de nouvelles occurrences (C.4, D10).
 
-Les réactions s'exécutent dans l'ordre fixe de leur déclaration, y compris celles de la View ; une implémentation doit rendre cet ordre explicite et vérifiable. Aucun ordre fondé sur la propagation DOM, la découverte fortuite des méthodes ou des admissions distinctes n'est acceptable. Les messages différés suivent ensuite l'ordre de production D8 ; les Queries suivent le contrat synchrone G5.
+Les réactions s'exécutent dans un ordre fixe : celle de la View d'abord, puis celles des Behaviors dans l'ordre du tableau `behaviors`. Aucun ordre fondé sur la propagation DOM, la découverte fortuite des méthodes ou des admissions distinctes n'est acceptable. Les messages différés suivent ensuite l'ordre de production D8 ; les Queries suivent le contrat synchrone G5.
 
 ### 2.3 Channels propres
 
 Ce titre conserve le repère historique : **« propres » qualifie les dépendances déclarées, jamais la propriété d'un Channel**. Un Behavior n'a ni identité ni Channel. Les écoutes, Queries et Commands nécessaires à son code appartiennent au contrat de la View et sont exécutées par elle. Il n'est ni adressable ni une source d'Events autonome.
 
-L'agrégation des déclarations Channel et la représentation des abonnements doivent encore être spécifiées. Elles doivent préserver l'imputation à la View, l'ordre des réactions et les réservations par occurrence d'abonnement (C.6), sans transformer plusieurs fragments de code en composants indépendants.
+`TViewContract` agrège les dépendances déclarées par les Behaviors à celles de la View ; la View s'abonne une fois par Event déclaré et délivre l'Event à ses réactions dans l'ordre du §2.2. Cette agrégation doit préserver l'imputation à la View, l'ordre des réactions et les réservations par occurrence d'abonnement (C.6), sans transformer plusieurs fragments de code en composants indépendants.
 
 | Déclencheur de la réaction imputée à la View | Droit de Command selon D18 |
 | --- | --- |
@@ -102,7 +161,7 @@ L'état utilisé par un Behavior est **une partie de l'état local de la View**.
 
 L'état reste confiné : aucun autre composant ne le lit, ne le modifie ou ne le demande ; il n'est pas diffusé. Une valeur figée peut entrer dans une Command autorisée par D18, sans alias mutable (C.5). Un brouillon ou une validation de saisie n'est pas une certification de l'état métier du domaine. Il prend fin avec la View, pas lors d'un « détachement Behavior » indépendant.
 
-Les noms historiques `localState`, `updateLocal()` et callbacks de mise à jour décrits dans [View §7](view.md#7-api-localstate) ne sont pas livrés pour Behavior. Le partitionnement interne, le typage et l'ordre des réactions de projection restent à concevoir, sans relâcher la règle d'imputation.
+Dans l'API cible, chaque Behavior lit et modifie sa partie par `state` et `setState`, typés par son contrat ; la partie est nommée par la classe du Behavior, ce qui exclut toute collision. Les noms historiques `localState` et `updateLocal()` de [View §7](view.md#7-api-localstate) ne sont pas livrés.
 
 ---
 
@@ -139,7 +198,7 @@ Il n'existe aujourd'hui ni `Behavior.onAttach()` ni `Behavior.onDetach()`. Ces n
 
 ## 4. Exemples
 
-Les cas suivants fixent des responsabilités, **sans pseudo-code ni syntaxe d'API anticipée**. Les ancres historiques sont conservées pour les références entrantes ; les anciens snippets ne sont plus un contrat exécutable.
+Les cas suivants fixent des responsabilités ; l'API qui les exprime est celle du §2.0, dont l'exemple reprend le cas 4.1. Les ancres historiques sont conservées pour les références entrantes.
 
 ### 4.1 TrackingBehavior — handlers auto-découverts, pas d'altération DOM
 
@@ -165,7 +224,7 @@ La forme de configuration d'une destination métier et l'assemblage déclaratif 
 
 La View déclare les fragments réutilisables et leur ordre ; leurs noms de clés sont contrôlés ensemble, ainsi que ses propres clés. Les dépendances Channel et sources déclarées sont agrégées sans multiplier les admissions de faits. Le comportement ne dépend pas de l'ordre fortuit de branchement des listeners.
 
-**Restent à concevoir et non livrés :** syntaxe de déclaration, classes ou autre forme de code réutilisable, configuration par valeurs, occurrences multiples, agrégation des contrats, contrôle des noms et des périmètres, capture unique, ordre de toutes les réactions, état local et rollback commun, suivi des abonnements et nettoyage post-validation. Aucun `get behaviors()`, type `TBehaviorContract` ou `TBehaviorCallbacks`, constructeur ou hook nouveau n'est fixé par ce document.
+**API fixée (⏳ non livrée) :** `get behaviors()`, `Behavior<TBC>`, `TBehaviorContract`, `TBehaviorCallbacks`, `with()` par valeurs, `initialState`/`state`/`setState`, contextes `TFactContext` et `TEventContext` (§2.0). **Reste à réaliser dans le runtime :** contrôle des périmètres sous la part, capture unique, rollback commun de l'état local, suivi des abonnements et nettoyage post-validation.
 
 ---
 
