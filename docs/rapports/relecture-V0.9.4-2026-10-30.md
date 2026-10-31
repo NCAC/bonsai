@@ -128,7 +128,11 @@ Le guide est **exact** au regard de la V0.9.4 : aucune contradiction relevée. I
 
 **Statut : S2 validé le 31 octobre 2026 pour le Behavior et la View.** API cible ⏳ du Behavior (`Behavior<TBC>`, `TBehaviorContract`, `TBehaviorCallbacks`, `get behaviors()`, `with()` par valeurs, état local nommé) dans `behavior.md` §2.0 ; contexte de handler (`TFactContext` avec `trigger`, `TEventContext` sans) pour la View et les Behaviors dans `view.md` §2.4, qui rend D18 vérifiable par construction ; ordre des réactions : la View, puis ses Behaviors dans l'ordre déclaré.
 
-**Statut : S2 complété le 31 octobre 2026 pour le Composer et la Foundation.** API cible ⏳ dans `composer.md` §1.3 (`get composers()`, `TComposerContract`, `resolve(ctx)` rendant une composition ordonnée par `key`), reprise par `view.md` §6 et `foundation.md` §1.1 et §3. Quatre choix validés : `resolve` sans l'Event déclencheur ; une entrée de `composers` pour exactement un slot (abandon des « N-instances » d'ADR-18) ; Foundation sans Channel en V1 ; échec de création d'un élément : View détruite logiquement et erreur signalée, sans nouvel essai ni handler applicatif. Reste S3.
+**Statut : S2 complété le 31 octobre 2026 pour le Composer et la Foundation.** API cible ⏳ dans `composer.md` §1.3 (`get composers()`, `TComposerContract`, `resolve(ctx)` rendant une composition ordonnée par `key`), reprise par `view.md` §6 et `foundation.md` §1.1 et §3. Quatre choix validés : `resolve` sans l'Event déclencheur ; une entrée de `composers` pour exactement un slot (abandon des « N-instances » d'ADR-18) ; Foundation sans Channel en V1 ; échec de création d'un élément : View détruite logiquement et erreur signalée, sans nouvel essai ni handler applicatif.
+
+**Statut : S3 clos le 31 octobre 2026, sans modification immédiate.** Règle retenue : « Request », `request(`, « couche concrète » et les noms historiques ne sont admis que dans les passages qui décrivent le code livré. Les fichiers marqués 🔴 et les dossiers `3-couche-abstraite` et `4-couche-concrete` sont renommés lors de leur migration, pour ne pas casser les liens deux fois.
+
+**Bilan au 31 octobre 2026 : toutes les propositions de cette relecture sont traitées** (R1 à R4, L1 à L7, S1 à S3). Étape suivante : prototype du noyau de communication (lot M1 du rapport de migration).
 
 ## 6. Proposition détaillée pour R3 — protocole du monde fermé
 
