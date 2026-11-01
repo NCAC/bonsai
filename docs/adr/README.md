@@ -44,6 +44,7 @@ Modèle : [TEMPLATE.md](TEMPLATE.md). Correspondance avec l'ancienne numérotati
 | [ADR-04](ADR-04-metas-explicites.md) | Metas causales explicites `(payload, metas)` | 🟢 ⏳ |
 | [ADR-05](ADR-05-propagation-erreurs.md) | Propagation des erreurs | 🟢 ⚠️ |
 | [ADR-06](ADR-06-modes-validation.md) | Modes de validation | 🟢 ⚠️ |
+| [ADR-35](ADR-35-vidage-file-differee.md) | Vidage synchrone de la file des messages différés ; unités longues signalées | 🟢 ⚠️ |
 
 ### Couche abstraite
 
