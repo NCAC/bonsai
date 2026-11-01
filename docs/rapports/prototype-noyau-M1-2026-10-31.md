@@ -148,5 +148,5 @@ Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignat
 4. ~~Lot M3~~ : fait (section 3 ter).
 5. ~~Lot M4~~ : fait (section 3 quater).
 6. ~~Lot M5~~ : fait (section 3 quinquies).
-7. Compléter ADR-35 et le guide avec les deux constats de M5.
+7. ~~Compléter ADR-35 et le guide avec les deux constats de M5~~ : fait, avec l'ordre explicite dans Composer §1.3.
 8. Lot M6 : intégration (classes de base, contrats publics, parcours panier, multiracine, catalogue d'adaptateurs).
