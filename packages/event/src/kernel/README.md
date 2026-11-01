@@ -7,7 +7,7 @@ Prototype of the communication kernel required by the theory
 
 | File | Content |
 | --- | --- |
-| `root.ts` | `Root`: one registry, queue and trace per model (G6); validation units with journal and rollback (G7); deferred delivery (G5, D8); synchronous read-only Queries (G5, A3.g); reservations (C.6); causal contexts (G8); depth bound (D9); startup (§2.5); effects (C.3) |
+| `root.ts` | `Root`: one registry, queue and trace per model (G6); validation units with journal and rollback (G7); deferred delivery (G5, D8); synchronous read-only Queries (G5, A3.g); reservations (C.6); causal contexts (G8); depth bound (D9); startup (§2.5); effects (C.3); synchronous drain with long units reported (ADR-35) |
 | `capture.ts` | Capture by copy and deep freeze of transmitted values (G2, C.5) |
 | `errors.ts` | `TransportError` codes and `StartupError` |
 | `types.ts` | Component specs, contexts, admissions, trace entries |

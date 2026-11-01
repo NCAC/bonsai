@@ -113,9 +113,17 @@ export type TTraceEntry =
   | { readonly type: "unit-failed"; readonly owner: string; readonly context: TCausalContext; readonly error: unknown }
   | { readonly type: "delivery-abandoned"; readonly reason: string; readonly name: string; readonly context: TCausalContext }
   | { readonly type: "admission-abandoned"; readonly reason: string; readonly name: string }
-  | { readonly type: "effects"; readonly owner: string; readonly context: TCausalContext; readonly report: ReadonlyArray<{ readonly label: string; readonly outcome: TEffectOutcome; readonly error?: unknown }> };
+  | { readonly type: "effects"; readonly owner: string; readonly context: TCausalContext; readonly report: ReadonlyArray<{ readonly label: string; readonly outcome: TEffectOutcome; readonly error?: unknown }> }
+  /** A unit, effects included, longer than the threshold (ADR-35, O2). */
+  | { readonly type: "long-unit"; readonly owner: string; readonly context: TCausalContext; readonly durationMs: number }
+  /** A drain of the queue longer than the threshold (ADR-35, O2). */
+  | { readonly type: "long-drain"; readonly units: number; readonly context: TCausalContext; readonly durationMs: number };
 
 export interface TRootOptions {
   /** Causal bound fixed by the Manifest (D9). */
   readonly causalBound: number;
+  /** Threshold above which a unit or a drain is reported (ADR-35). Default: 50 ms. */
+  readonly longUnitMs?: number;
+  /** Clock in milliseconds. Default: `performance.now()`. Injected by tests. */
+  readonly now?: () => number;
 }

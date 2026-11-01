@@ -516,3 +516,38 @@ describe("A5.a — no operation outside a validation unit", () => {
     expect(() => kept.trigger("cart", "add")).toThrow(TransportError);
   });
 });
+
+// ── ADR-35 ───────────────────────────────────────────────────────────────────
+
+describe("ADR-35 — synchronous drain, long units reported", () => {
+  it("finishes the whole chain before admit returns", () => {
+    const log: string[] = [];
+    const { root, handles } = boot((ctx) => {
+      ctx.create({ name: "b", channel: { namespace: "b", events: ["done"], commands: { step: (_p, c) => { log.push("b"); c.emit("done"); } } } });
+      ctx.create({ name: "c", listens: [{ namespace: "b", event: "done", handler: () => log.push("c") }] });
+      return ctx.create({ name: "a", locals: { go: (_p, c) => { log.push("a"); c.trigger("b", "step"); } } });
+    });
+    root.admit(handles, "go", {}, click);
+    expect(log).toEqual(["a", "b", "c"]);
+  });
+
+  it("reports a unit and a drain beyond the threshold, without changing behaviour", () => {
+    let clock = 0;
+    const root = new Root({ causalBound: 10, longUnitMs: 50, now: () => clock });
+    let view!: TComponentHandle;
+    root.start((ctx) => {
+      ctx.create({ name: "fast", channel: { namespace: "fast", commands: { go: () => { clock += 10; } } } });
+      view = ctx.create({
+        name: "slowView",
+        locals: { render: (_p, c) => { clock += 80; c.trigger("fast", "go"); } }
+      });
+    });
+    root.admit(view, "render", {}, click);
+    const longUnits = root.trace.filter((e) => e.type === "long-unit");
+    const longDrains = root.trace.filter((e) => e.type === "long-drain");
+    expect(longUnits).toHaveLength(1);
+    expect(longUnits[0]).toMatchObject({ owner: "slowView", durationMs: 80 });
+    expect(longDrains).toHaveLength(1);
+    expect(longDrains[0]).toMatchObject({ units: 2, durationMs: 90 });
+  });
+});

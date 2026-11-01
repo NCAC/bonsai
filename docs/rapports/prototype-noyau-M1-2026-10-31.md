@@ -32,7 +32,7 @@ Vérifier, par du code exécutable, que les garanties de l'infrastructure de com
 
 **R2 — L'empoisonnement de l'unité est la bonne réalisation de « aucune récupération locale ».** Le code applicatif peut intercepter l'erreur d'une Query, mais l'unité échoue quand même. C'est conforme à G7, mais surprenant pour un développeur. Proposition : un lint contre `try/catch` autour de `query`, et un message d'erreur qui le dit. **Validé le 31 octobre 2026** : ligne G7 de `gardes.md` ; le prototype lève désormais une `TransportError` `UNRECOVERABLE`, avec l'erreur d'origine en `cause`, quand l'auteur a intercepté l'échec.
 
-**R3 — La file est vidée de façon synchrone, jusqu'au bout.** C'est simple et commode à tester, et G5 ne demande rien d'autre. Mais une longue chaîne bloque le fil de l'hôte jusqu'à la borne D9. Rendre la main entre deux unités (microtâche ou tâche) reste compatible avec la théorie, puisque la frontière normative est la validation. **Question de conception pour la suite de M1**, à trancher dans un ADR.
+**R3 — La file est vidée de façon synchrone, jusqu'au bout.** C'est simple et commode à tester, et G5 ne demande rien d'autre. Mais une longue chaîne bloque le fil de l'hôte jusqu'à la borne D9. Rendre la main entre deux unités (microtâche ou tâche) reste compatible avec la théorie, puisque la frontière normative est la validation. **Question de conception pour la suite de M1**, à trancher dans un ADR. **Tranché le 1er novembre 2026 par [ADR-35](../adr/ADR-35-vidage-file-differee.md)** : vidage synchrone conservé ; le noyau mesure unités et vidages et signale ceux qui dépassent un seuil (50 ms par défaut). Une liste longue se projette dans une seule View plutôt qu'en N Views.
 
 **R4 — L'ordre des dépendances initiales est l'ordre de création.** C.1 demande des dépendances de consultation déclarées et un ordre qui les respecte ; le prototype se contente de l'ordre de création et refuse une Query vers une cible encore en initialisation. Le graphe de dépendances déclarées relève du lot M2 (démarrage).
 
@@ -49,5 +49,5 @@ Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignat
 ## 5. Suite proposée
 
 1. ~~Valider les gardes R1 et R2 dans `gardes.md`~~ : fait.
-2. Trancher R3 (vidage synchrone ou par tâches) dans un ADR.
+2. ~~Trancher R3 dans un ADR~~ : ADR-35, mesure ajoutée au prototype (27 tests).
 3. Lot M2 : brancher l'Entity sur le journal d'unité et vérifier les invariants métier à la fin de chaque unité de validation.

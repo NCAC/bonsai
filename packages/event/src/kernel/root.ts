@@ -96,6 +96,8 @@ let rootCounter = 0;
 export class Root {
   readonly #id: string;
   readonly #bound: number;
+  readonly #longMs: number;
+  readonly #now: () => number;
   readonly #registry = new Map<string, ChannelRecord>();
   readonly #subscriptions: SubscriptionRecord[] = [];
   readonly #components = new Map<string, ComponentRecord>();
@@ -111,6 +113,8 @@ export class Root {
   constructor(options: TRootOptions) {
     this.#id = `r${++rootCounter}`;
     this.#bound = options.causalBound;
+    this.#longMs = options.longUnitMs ?? 50;
+    this.#now = options.now ?? (() => performance.now());
     // The root's existence is provided by the host, not admitted (A0.d, 7.4).
     this.#record = {
       handle: Object.freeze({ occurrence: this.#nextId("c"), name: "root" }),
@@ -192,6 +196,7 @@ export class Root {
   // ── Units ──────────────────────────────────────────────────────────────────
 
   #runUnit(owner: ComponentRecord, cause: TCausalContext, body: (ctx: TUnitContext) => void): { error: unknown } | null {
+    const startedAt = this.#now();
     const unit: Unit = { open: true, staged: [], undo: [], effects: [], poisoned: null };
     this.#unit = unit;
     this.#active.push(owner);
@@ -225,10 +230,12 @@ export class Root {
         }
       }
       this.#push({ type: "unit-failed", owner: owner.handle.name, context: cause, error: failure.error });
+      this.#measure("long-unit", startedAt, { owner: owner.handle.name, context: cause });
       return failure;
     }
     this.#queue.push(...unit.staged);
     this.#engage(unit.effects);
+    this.#measure("long-unit", startedAt, { owner: owner.handle.name, context: cause });
     return null;
   }
 
@@ -271,13 +278,32 @@ export class Root {
   #drain(): void {
     if (this.#draining || this.#unit !== null || this.#state !== "started") return;
     this.#draining = true;
+    // ADR-35: the queue is drained in one go, without yielding to the host.
+    const startedAt = this.#now();
+    const context = this.#queue[0]?.context;
+    let units = 0;
     try {
       while (this.#queue.length > 0) {
         const delivery = this.#queue.shift()!;
         this.#deliver(delivery);
+        units++;
       }
     } finally {
       this.#draining = false;
+      if (context !== undefined) this.#measure("long-drain", startedAt, { units, context });
+    }
+  }
+
+  /** Reports a unit or a drain longer than the threshold (ADR-35, O2). */
+  #measure(type: "long-unit", startedAt: number, data: { owner: string; context: TCausalContext }): void;
+  #measure(type: "long-drain", startedAt: number, data: { units: number; context: TCausalContext }): void;
+  #measure(type: "long-unit" | "long-drain", startedAt: number, data: { owner?: string; units?: number; context: TCausalContext }): void {
+    const durationMs = this.#now() - startedAt;
+    if (durationMs <= this.#longMs) return;
+    if (type === "long-unit") {
+      this.#push({ type, owner: data.owner!, context: data.context, durationMs });
+    } else {
+      this.#push({ type, units: data.units!, context: data.context, durationMs });
     }
   }
 
