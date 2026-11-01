@@ -42,7 +42,7 @@ spec/
 | ↳ [application](3-couche-abstraite/application.md) | Bootstrap, manifest applicatif typé | [07](../adr/ADR-07-application-bootstrap.md), [08](../adr/ADR-08-namespace-manifest.md) | 🟠 |
 | ↳ [feature](3-couche-abstraite/feature.md) | Unité métier, 5 capacités, handlers auto-découverts | [09](../adr/ADR-09-feature-contract.md), [14](../adr/ADR-14-contrats-types.md) | 🟠 |
 | ↳ [entity](3-couche-abstraite/entity.md) | State, mutations Immer, notifications, schema | [10](../adr/ADR-10-entity-mutation.md), [11](../adr/ADR-11-entity-schema-valibot.md), [12](../adr/ADR-12-entity-intent-typing.md) | 🟠 |
-| ↳ [router](3-couche-abstraite/router.md) | Feature framework de navigation | [13](../adr/ADR-13-router.md) | 🔴 |
+| ↳ [router](3-couche-abstraite/router.md) | Feature framework de navigation | [13](../adr/ADR-13-router.md) | 🟠 |
 | [4-couche-concrete](4-couche-concrete/README.md) | Ce qui touche le DOM | — | 🟢 |
 | ↳ [foundation](4-couche-concrete/foundation.md) | Racine `<body>`, Composers racines, N1 | [20](../adr/ADR-20-foundation.md) | 🟠 |
 | ↳ [composer](4-couche-concrete/composer.md) | Décideur de composition, `resolve(event)` | [18](../adr/ADR-18-composer.md), [19](../adr/ADR-19-root-element.md) | 🟠 |

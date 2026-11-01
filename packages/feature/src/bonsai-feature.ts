@@ -221,7 +221,9 @@ export abstract class Feature<
    * @throws `BonsaiNamespaceError` when the namespace is invalid or reserved.
    */
   constructor(namespace: TSelfNS) {
-    assertValidNamespace(namespace);
+    // A class provided by the framework (static `framework`, e.g. the router) may take a reserved namespace.
+    // The Application manifest still refuses a reserved key: only the Application instantiates it (I71).
+    assertValidNamespace(namespace, { framework: (new.target as { framework?: boolean }).framework === true });
     this.#namespace = namespace;
   }
 

@@ -1,0 +1,20 @@
+{
+  "name": "@bonsai/router",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/bonsai-router.ts",
+  "types": "./src/bonsai-router.ts",
+  "exports": {
+    ".": {
+      "types": "./src/bonsai-router.ts",
+      "default": "./src/bonsai-router.ts"
+    }
+  },
+  "src": "./src/bonsai-router.ts",
+  "dependencies": {
+    "@bonsai/entity": "workspace:^",
+    "@bonsai/event": "workspace:^",
+    "@bonsai/feature": "workspace:^"
+  }
+}

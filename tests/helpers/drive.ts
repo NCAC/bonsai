@@ -37,6 +37,9 @@ export function drive(
     foundation?: ConstructorParameters<typeof Application>[0] extends infer O ? (O extends { foundation?: infer F } ? F : never) : never;
     document?: Document;
     anchor?: string;
+    router?: boolean;
+    adapters?: ConstructorParameters<typeof Application>[0] extends infer O ? (O extends { adapters?: infer A } ? A : never) : never;
+    adapterOptions?: ConstructorParameters<typeof Application>[0] extends infer O ? (O extends { adapterOptions?: infer A } ? A : never) : never;
   } = {}
 ): TDrive {
   let probe!: TComponentHandle;
@@ -74,7 +77,10 @@ export function drive(
     ...(options.causalBound === undefined ? {} : { causalBound: options.causalBound }),
     ...(options.foundation === undefined ? {} : { foundation: options.foundation }),
     ...(options.document === undefined ? {} : { document: options.document }),
-    ...(options.anchor === undefined ? {} : { anchor: options.anchor })
+    ...(options.anchor === undefined ? {} : { anchor: options.anchor }),
+    ...(options.router === undefined ? {} : { router: options.router }),
+    ...(options.adapters === undefined ? {} : { adapters: options.adapters }),
+    ...(options.adapterOptions === undefined ? {} : { adapterOptions: options.adapterOptions })
   });
   application.start();
   const root = application.root!;

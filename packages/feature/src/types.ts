@@ -581,7 +581,7 @@ export function isReservedNamespace(ns: string): ns is ReservedNamespace {
  * `Application.start()` (whole-manifest validation). Throws
  * `BonsaiNamespaceError` with a stable code.
  */
-export function assertValidNamespace(ns: string): void {
+export function assertValidNamespace(ns: string, options?: { readonly framework?: boolean }): void {
   if (typeof ns !== "string" || ns.length === 0) {
     throw new BonsaiNamespaceError(
       "NAMESPACE_INVALID_FORMAT",
@@ -594,7 +594,7 @@ export function assertValidNamespace(ns: string): void {
       `Namespace "${ns}" must be camelCase (lowercase first letter, letters only)`
     );
   }
-  if (isReservedNamespace(ns)) {
+  if (isReservedNamespace(ns) && options?.framework !== true) {
     throw new BonsaiNamespaceError(
       "NAMESPACE_RESERVED",
       `Namespace "${ns}" is reserved by the framework`

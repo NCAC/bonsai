@@ -221,6 +221,12 @@ export interface TUnitContext extends TReadContext {
   mutate<S = unknown>(recipe: (draft: Draft<S>) => void): TStateChange<S> | null;
   /** Registers how to undo an internal mutation if the unit fails (G7). */
   journal(undo: () => void): void;
+  /**
+   * Whether the trigger of this unit grants the right to command (D18). Lets a
+   * built-in relay what it is entitled to relay, without attempting a Command
+   * that would fail the unit.
+   */
+  mayCommand(): boolean;
   /** Prepares an effect, engaged only after the unit validates (C.3). */
   prepareEffect(label: string, run: () => void): void;
   /** Captures the current causal context for a later provoked fact (G8). */

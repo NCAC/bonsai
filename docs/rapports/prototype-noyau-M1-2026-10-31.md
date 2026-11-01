@@ -182,6 +182,30 @@ Deuxième étape : la couche concrète tourne sur le noyau et le parcours comple
 - **Dette de documentation.** `view.md`, `composer.md`, `foundation.md` portent une section « Livré sur le noyau » qui fait foi ; leurs exemples antérieurs, comme ceux de `feature.md`, `entity.md` et `application.md`, restent à réécrire.
 - **Branche `documentation-big-bang`** : elle ne porte pas les modifications de docs de M6.1 et M6.2, seulement `feature/noyau-m1`.
 
+## 3 octies. Lot M6.3a — Routeur et adaptateur historique sur le noyau (1er novembre 2026)
+
+Le paquet `@bonsai/router` livre la Feature de navigation (D15) et l'adaptateur historique (D7). Parcours complet dans jsdom : clic dans une View → `router:navigate` → écriture de l'entrée → projection de la route → retour de l'utilisateur suivi. Suite à 359 tests verts, `tsc` propre, six mutations de contrôle toutes détectées.
+
+**Réalisé.**
+
+- **`RouterFeature`** (`router`) : `navigate { location, mode }`, `routeChanged { route, mode }`, `currentRoute`. Classe du framework (`static framework`) : seule voie pour un namespace réservé, instanciée par l'`Application` (`router: true`).
+- **`HistoryAdapter`** (`history`) : composant de l'interface, enfant de la racine, activé par `adapters: [HistoryAdapter]` (une instance par catégorie, exige `router`). Commands `push/replace/back/forward/refresh`, Query `location` (observation intégrée), Events `navigated/requestResult/refreshed/failed`.
+- **Projection (B.5)** : `push` écrit toujours ; `replace` et `pop` écrivent seulement si l'adresse diffère (redirection → remplacement).
+- **Monde fermé (C.4)** : sans traversée engagée, `popstate` est un fait indépendant (relayé en `pop`) ; avec une seule, c'est un résultat corrélé qui garde le droit de la réaction demandeuse ; avec plusieurs, antécédent inconnu, sans droit ni relais.
+- **Noyau** : garde A4.b (seul un composant de l'interface commande un adaptateur de l'interface) ; `mayCommand()` dans le contexte d'unité, pour relayer sans tenter une Command qui ferait échouer l'unité.
+- **Application** : `router`, `adapters`, `adapterOptions` (paramètres sérialisables par catégorie), `stop()` (retire les observateurs de l'hôte).
+
+**Constats et décisions.**
+
+- **Le droit se propage par continuation.** Un clic « retour » (droit) demande `history:back` ; le `popstate` corrélé continue cette réaction et peut être relayé. Un retour de l'utilisateur sans traversée engagée est indépendant. Le même Event relayé à l'adaptateur par un Event du domaine n'a aucun droit. L'adaptateur lit ce droit par `mayCommand()` plutôt que de le déduire de la classification : une classification « corrélé » ne suffit pas à trancher.
+- **Un domaine ne peut pas rediriger lui-même.** Une Feature n'a pas de `trigger` (D17) : la redirection vers `/login` est une Command `router:navigate { replace }` émise par une View ou l'adaptateur. À examiner avec les cas d'usage de gardes de route (hors D15).
+- **Le seuil de fermeture d'une traversée est une durée.** Sans identifiant de traversée dans l'hôte, l'adaptateur ferme une traversée engagée à la notification ou après `traversalTimeoutMs` (rubrique 30 de la fiche, toujours ouverte). Deux traversées qui se chevauchent marquent les deux « inconnues », même si l'hôte n'en notifie qu'une.
+- **`hashchange` n'est pas écouté** : un changement d'ancre provoque aussi `popstate`.
+- **Pas de `params` de route** (motifs) : D15 ne les porte pas.
+- **Pas de garde d'abonnement A4.b** : le noyau interdit à un composant du domaine d'adresser l'adaptateur, mais n'interdit pas encore qu'il écoute ses Events.
+- **Pas de destruction de racine** : `stop()` ne retire que les observateurs de l'hôte (B.2).
+- **Spec.** `router.md` est réécrit et aligné ; la fiche `historique.md` renvoie à l'implémentation.
+
 ## 4. Hors périmètre
 
 Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignations et DOM (M3–M4) ; qualification des sources par le monde fermé et D18 (M5) ; remplacement de `Channel` et `Radio`, et branchement des classes de base (M6).
@@ -197,4 +221,5 @@ Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignat
 7. ~~Compléter ADR-35 et le guide avec les deux constats de M5~~ : fait, avec l'ordre explicite dans Composer §1.3.
 8. ~~Lot M6.1~~ : fait (section 3 sexies).
 9. ~~Lot M6.2~~ : fait (section 3 septies). Reste : réécrire les exemples des specs `feature`, `entity`, `application`, `view`, `composer`, `foundation`.
-10. Lot M6.3 : routeur et adaptateur historique ; retrait de `Channel` et `Radio`.
+10. ~~Lot M6.3a~~ : routeur et adaptateur historique, fait (section 3 octies).
+11. Lot M6.3b : retrait de `Channel` et `Radio`.

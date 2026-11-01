@@ -51,3 +51,16 @@ export function createRootElement(
 export function createPrerenderedDOM(html: string): void {
   document.body.innerHTML = html;
 }
+
+/**
+ * Waits until a condition holds (the host notifies history traversals
+ * asynchronously). Rejects after `timeoutMs`, so a failure points at the
+ * condition instead of at a later assertion.
+ */
+export async function until(condition: () => boolean, timeoutMs = 1500): Promise<void> {
+  const start = Date.now();
+  while (!condition()) {
+    if (Date.now() - start > timeoutMs) throw new Error("until(): condition not met in time");
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}

@@ -1,153 +1,84 @@
 # Router
 
-> ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
+> 🟠 **Livré sur le noyau (lot M6.3a, 1er novembre 2026), aligné sur la théorie V0.9.5 (D15, annexe B.5, C.4).** Reste hors périmètre : correspondance de routes à motifs (`params`), gardes, routes imbriquées. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
 
-> **Spécialisation Feature pour la navigation — namespace réservé `router`**
+> **Feature de navigation fournie par le framework — namespace réservé `router`**
 
 [← Retour à la couche abstraite](README.md)
 
 ---
 
-> Décision : [ADR-13](../../adr/ADR-13-router.md). Namespace `router` réservé (I28, I71).
->
-> ## ⏳ Périmètre d'implémentation
->
-> Seule la réservation du namespace `router` est livrée (`RESERVED_NAMESPACES`).
-> `RouterFeature`, `RouteEntity` et le Channel `router` sont une cible strate 2.
+> Décision : [ADR-13](../../adr/ADR-13-router.md), précisée par D15. Namespace `router` réservé (I28, I71). Paquet `@bonsai/router`.
 
-## 1. Classe RouterFeature
+## 1. Rôle et partage des responsabilités
 
-Le Router est une Feature **instanciée par le framework**, pas par le développeur.
-Il encapsule l'accès exclusif à l'History API du navigateur.
-
-```typescript
-// TRouterDef est le SEUL nom utilisé dans ce document — cf. §4 pour le
-// contenu complet (commands/events/requests). Pas de champ `namespace` sur
-// ce type : le namespace vit sur le token (ADR-14), jamais sur la
-// définition du Channel elle-même.
-type TRouterDef = TChannelDefinition & {
-  // ... commands/events/requests de navigation, cf. §4
-};
-
-class RouterFeature extends Feature<RouteEntity, TRouterDef, "router"> {
-  // Namespace "router" réservé (I28) — porté par le token typé (ADR-14), pas par `static namespace` (I68)
-  static readonly channel: TChannelToken<TRouterDef, "router"> = { namespace: "router" };
-}
-```
-
-| Aspect | Détail |
-| --- | --- |
-| **Instanciation** | Par Application au bootstrap, hors manifest applicatif |
-| **Namespace** | `router` — réservé (`RESERVED_NAMESPACES`, I71) |
-| **History API** | Accès exclusif — aucun autre composant ne touche `window.history` |
-| **Entity** | `RouteEntity` — contient l'URL courante, les params, la query |
-
-> 🧭 **Question ouverte** (ADR-13) : `router` étant
-> réservé, `StrictManifest<M>` résout toute clé `router` du value-manifest en
-> `never` (I71) — un développeur ne peut donc **pas** écrire `router:
-> RouterFeature` dans son manifest applicatif comme pour une Feature
-> ordinaire. Le mécanisme par lequel `Application` instancie et enregistre
-> `RouterFeature` (probablement une injection hors manifest, similaire à
-> `Foundation`) reste à spécifier au moment de l'implémentation — ne pas
-> présumer qu'il réutilise le chemin `satisfies StrictManifest<AppManifest>`.
-
----
-
-## 2. API de navigation
-
-> **Périmètre v1** : l'API ci-dessous est **stable mais minimale**. Les patterns avancés
-> (guards, lazy-loading de routes, nested routing) seront formalisés dans une annexe
-> dédiée si le besoin se confirme à l'usage.
-
-### Commands (trigger par les Views/Behaviors)
-
-| Command | Payload | Description |
+| Composant | Possède | Ne fait pas |
 | --- | --- | --- |
-| `router:navigate` | `{ path: string, params?: Record<string, string> }` | Navigation programmatique |
-| `router:back` | `void` | Historique arrière |
-| `router:forward` | `void` | Historique avant |
+| `RouterFeature` (`router`) | l'**état de navigation** (chemin, paramètres de requête, fragment) | toucher l'adresse de l'hôte |
+| `HistoryAdapter` (`history`) | l'**adresse** et l'historique de session (D7) ; adaptateur de l'interface utilisateur | décider de la navigation |
 
-### Events (emit par le Router)
+Les deux sont activés par le Manifest de l'`Application`, hors des `features` applicatives (la clé `router` y est refusée, I71) :
 
-| Event | Payload | Description |
+```typescript
+new Application({
+  document,
+  router: true,                 // Feature de navigation (D15)
+  adapters: [HistoryAdapter],   // adaptateur historique (D7) ; exige `router`
+  features: { /* … */ },
+  foundation: AppFoundation
+});
+```
+
+`RouterFeature` porte `static readonly framework = true`, seule voie pour prendre un namespace réservé ; l'`Application` est la seule à l'instancier. L'adaptateur historique est une catégorie (B.3) : deux adaptateurs de la même catégorie sont refusés. `adapterOptions: { history: { traversalTimeoutMs } }` fixe ses paramètres de création (sérialisables).
+
+## 2. Contrat (D15)
+
+| Message | Forme | Émetteur → récepteur |
 | --- | --- | --- |
-| `router:routeChanged` | `TRouteState` | Émis après chaque changement de route |
+| Command `router:navigate` | `{ location, mode }` | interface (View, adaptateur) → Feature |
+| Event `router:routeChanged` | `{ route, mode }` | Feature → abonnés (l'adaptateur projette l'adresse) |
+| Query `router:currentRoute` | `null` → `TRoute` | tout composant |
 
-> Les Features qui réagissent à la navigation écoutent `router:routeChanged`.
-> C'est le mécanisme standard pour le chargement de données par route.
+- `location` : chemin de l'application, `"/chemin?clé=valeur#ancre"`. Toute autre forme (`//hôte`, URL absolue, sans `/`) est refusée.
+- `route` : `{ path, query, hash }` ; une clé de requête répétée garde sa dernière valeur.
+- `mode` : `"push"` (ajouter une entrée), `"replace"` (remplacer l'entrée courante), `"pop"` (suivre un retour ou une avance).
+- L'Event part même si la route est inchangée : un `push` vers l'adresse courante demande une nouvelle entrée (B.5).
 
-### Requests
+Un retour ou une avance se **demande à l'adaptateur** (`history:back`, `history:forward`), par une View (A4.b, garde du noyau : un composant du domaine qui adresse une Command à l'adaptateur échoue). Le routeur ne les connaît pas.
 
-| Request | Params | Result | Description |
-| --- | --- | --- | --- |
-| `router:currentRoute` | `void` | `TRouteState` | Lecture de la route courante |
+## 3. Adaptateur historique
 
----
+Fiche : [`docs/adaptateurs/historique.md`](../../adaptateurs/historique.md).
 
-## 3. Entity Route
+- **Commands** `history:push|replace|back|forward|refresh` ; **Query** `history:location` (observation intégrée, jamais une lecture fraîche de l'hôte) ; **Events** `history:navigated|requestResult|refreshed|failed`.
+- **Projection** de `router:routeChanged` (B.5) : `push` écrit toujours une entrée ; `replace` écrit si l'adresse diffère ; `pop` n'écrit rien si l'adresse est déjà celle-ci, remplace l'entrée sinon (redirection). L'équivalence porte sur l'adresse **et** l'opération.
+- **Monde fermé (C.4)** : seuls `history:back` et `history:forward` produisent un `popstate`, et tous passent par l'adaptateur.
+  - aucune traversée engagée : fait **indépendant** (origine spontanée), droit de commander ; relayé en `router:navigate { mode: "pop" }` ;
+  - une seule engagée : résultat **corrélé**, il continue la réaction qui l'a demandée et garde son droit (un clic peut commander, un Event relayé non) ;
+  - plusieurs engagées : **antécédent inconnu**, aucun droit, rien n'est relayé (D18).
+  Une traversée engagée se ferme à la notification de l'hôte ou après `traversalTimeoutMs` (2000 ms par défaut) par un Event `history:failed`.
+- **Démarrage** : l'adresse trouvée à la création entre dans le modèle comme fait indépendant ; elle est relayée en `router:navigate { mode: "replace" }`.
+- **Extension** : `protected normalize(location)` sur une adresse déjà détachée de l'hôte ; rien d'autre n'est surchargeable (B.4).
+- `Application.stop()` retire les observateurs de l'hôte (B.2).
 
-```typescript
-type TRouteState = TJsonSerializable & {
-  /** URL courante (pathname) */
-  path: string;
-  /** Paramètres de route (ex: { id: '42' }) */
-  params: Record<string, string>;
-  /** Query string parsée */
-  query: Record<string, string>;
-  /** Fragment (hash) */
-  hash: string;
-};
-
-class RouteEntity extends Entity<TRouteState> {
-  // Entity est abstraite — defineInitialState() est obligatoire (ADR-10).
-  protected defineInitialState(): TRouteState {
-    return { path: "/", params: {}, query: {}, hash: "" };
-  }
-}
-```
-
----
-
-## 4. Messages standards — TRouterDef
-
-```typescript
-// Même type que celui esquissé en §1 — défini en entier ici (co-localisation, I74).
-// Pas de champ `namespace` (ADR-14) : il vit sur TChannelToken<TRouterDef, "router">.
-type TRouterDef = TChannelDefinition & {
-  readonly commands: {
-    navigate: { path: string; params?: Record<string, string> };
-    back: void;
-    forward: void;
-  };
-
-  readonly events: {
-    routeChanged: TRouteState;
-  };
-
-  readonly requests: {
-    currentRoute: { params: void; result: TRouteState };
-  };
-};
-```
-
----
-
-## 5. Flux de navigation canonique
+## 4. Flux canonique
 
 ```text
-1. View → trigger(router:navigate, { path: '/products/42' })
-2. RouterFeature ← handle(router:navigate)
-3. RouterFeature → window.history.pushState(...)
-4. RouterFeature → entity.mutate("router:navigate", draft => { draft.path = '/products/42'; draft.params = { id: '42' }; })
-5. RouterFeature → emit(routeChanged, { path, params, query, hash })
-6. ProductFeature ← listen(router:routeChanged) → fetch('/api/products/42') → entity.mutate("product:load", draft => { ... })
-7. ProductFeature → emit(loaded, {...})
-8. ProductView ← listen(product:loaded) → re-projection
+1. View (clic, droit de commander) → trigger(router:navigate, { location: "/products/42", mode: "push" })
+2. RouterFeature : mutate(route), emit(routeChanged, { route, mode })
+3. HistoryAdapter ← routeChanged : écrit l'entrée (effet après validation), puis intègre le résultat
+4. Features et Views abonnées à routeChanged réagissent (chorégraphie, ADR-01) ;
+   charger les données d'une page vient d'une Feature, pas de la View (D17, D18)
+5. Retour de l'utilisateur : popstate indépendant → history:navigated, relais router:navigate { mode: "pop" } → 2.
 ```
 
-> Le Router **ne connaît pas** les Features qui écoutent ses Events.
-> C'est de la chorégraphie pure (ADR-01) : chaque Feature réagit de manière autonome
-> au changement de route.
+## 5. Limites connues
+
+- Pas de `params` de route (motifs `/products/:id`) : D15 ne les porte pas ; la Feature de navigation d'une application peut les dériver de `route.path`.
+- `hashchange` n'est pas écouté seul ; un changement d'ancre provoque aussi `popstate`.
+- La fenêtre de non-clôture d'une traversée est une durée, non un identifiant de l'hôte (fiche, rubrique 30).
+- Deux `routeChanged` successifs avant que le résultat du premier soit intégré comparent à l'observation précédente.
+- Pas de destruction de la racine : seul `stop()` retire les observateurs.
 
 ---
 

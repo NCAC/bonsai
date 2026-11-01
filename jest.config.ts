@@ -45,6 +45,7 @@ const config: Config = {
     "^@bonsai/composer$": "<rootDir>/packages/composer/src/bonsai-composer.ts",
     "^@bonsai/foundation$":
       "<rootDir>/packages/foundation/src/bonsai-foundation.ts",
+    "^@bonsai/router$": "<rootDir>/packages/router/src/bonsai-router.ts",
     "^@bonsai/behavior$": "<rootDir>/packages/behavior/src/bonsai-behavior.ts",
     "^@bonsai/application$":
       "<rootDir>/packages/application/src/bonsai-application.ts",

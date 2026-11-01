@@ -472,6 +472,10 @@ export class Root {
         const channel = this.#registry.get(namespace);
         if (channel === undefined || !channel.alive) fail(new TransportError("UNKNOWN_TARGET", `no Channel "${namespace}" in this root`));
         if (channel!.owner.spec.channel?.commands?.[command] === undefined) fail(new TransportError("UNDECLARED_MESSAGE", `command "${namespace}:${command}" not declared`));
+        // A4.b: only a component of the user interface addresses a Command to an adapter of the interface.
+        if (channel!.owner.spec.ui === true && self.spec.ui !== true) {
+          fail(new TransportError("NOT_AUTHORIZED", `${self.handle.name} is not a component of the user interface: it may not address "${namespace}:${command}" (A4.b)`));
+        }
         if (self.spec.ui === true && !unit.right) {
           fail(new TransportError("NOT_AUTHORIZED", `${self.handle.name} may not command: the trigger of this reaction grants no right (D18)`));
         }
@@ -603,6 +607,10 @@ export class Root {
         guard();
         unit.undo.push(undo);
       },
+      mayCommand: () => {
+        guard();
+        return unit.right;
+      },
       prepareEffect: (label, run) => {
         guard();
         unit.effects.push({ owner: self, label, run, context: cause });
@@ -644,6 +652,7 @@ export class Root {
       destroy: forbidden("destroy"),
       journal: forbidden("journal"),
       prepareEffect: forbidden("prepareEffect"),
+      mayCommand: forbidden("mayCommand"),
       correlate: forbidden("correlate")
     };
   }

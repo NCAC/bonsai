@@ -54,6 +54,7 @@ import {
   describeFeature
 } from "@bonsai/feature";
 import type { Foundation } from "@bonsai/foundation";
+import { RouterFeature } from "@bonsai/router";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -82,6 +83,11 @@ export type TFeaturesManifest = Readonly<
  *   Required with a `foundation`.
  * - `anchor`: selector of the distributable resource the Foundation admits.
  *   Default `"body"`.
+ * - `router`: activates the Feature of navigation (D15), namespace `router`
+ *   (reserved: it is not declared among `features`).
+ * - `adapters`: built-in adapters of the host (D7, annex B), one per category
+ *   (B.2). They are created after the Features and before the Foundation, and
+ *   need `document`. A class lists the namespaces it requires (`requires`).
  * - `causalBound`: the bound on causal chains fixed by the Manifest (D9).
  *   Default 50.
  */
@@ -93,7 +99,17 @@ export type TApplicationOptions<
   readonly foundation?: new () => Foundation;
   readonly document?: Document;
   readonly anchor?: string;
+  readonly router?: boolean;
+  readonly adapters?: readonly TAdapterClass[];
+  /** Serializable creation parameters of the adapters, by category (Manifest, 16.9). */
+  readonly adapterOptions?: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
   readonly causalBound?: number;
+};
+
+/** A built-in adapter class: a category, the namespaces it needs, and its description for the kernel. */
+export type TAdapterClass = (new () => object) & {
+  readonly category: string;
+  readonly requires?: readonly string[];
 };
 
 // ─── Application class ───────────────────────────────────────────────────────
@@ -105,6 +121,10 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
   readonly #foundation: (new () => Foundation) | null;
   readonly #document: Document | undefined;
   readonly #anchor: string | undefined;
+  readonly #router: boolean;
+  readonly #adapters: readonly TAdapterClass[];
+  readonly #adapterOptions: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
+  readonly #stop = new AbortController();
   #started = false;
   #root: Root | null = null;
   #featureInstances: Feature<any, any, any>[] = [];
@@ -116,8 +136,26 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
     this.#foundation = options?.foundation ?? null;
     this.#document = options?.document;
     this.#anchor = options?.anchor;
+    this.#router = options?.router ?? false;
+    this.#adapters = options?.adapters ?? [];
+    this.#adapterOptions = options?.adapterOptions ?? {};
     if (this.#foundation !== null && this.#document === undefined) {
       throw new Error("[Bonsai Application] a `foundation` needs the host `document` it renders in");
+    }
+    if (this.#adapters.length > 0 && this.#document === undefined) {
+      throw new Error("[Bonsai Application] `adapters` need the host `document` they observe");
+    }
+    const categories = new Set<string>();
+    for (const adapter of this.#adapters) {
+      if (categories.has(adapter.category)) {
+        throw new Error(`[Bonsai Application] two adapters of the category "${adapter.category}": a source of the host is admitted by one instance only (A5.d, D7)`);
+      }
+      categories.add(adapter.category);
+      for (const needed of adapter.requires ?? []) {
+        if (needed === "router" && !this.#router) {
+          throw new Error(`[Bonsai Application] the adapter "${adapter.category}" needs the Feature "${needed}": activate it with \`router: true\``);
+        }
+      }
     }
   }
 
@@ -156,6 +194,7 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
 
     // ── Phase 0c — cross-reference validation from the instances (I70) ───
     const known = new Set(entries.map(([ns]) => ns));
+    if (this.#router) known.add("router");
     for (let i = 0; i < entries.length; i++) {
       const [ownNs] = entries[i]!;
       const instance = this.#featureInstances[i]!;
@@ -173,18 +212,30 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
       }
     }
 
+    // The Feature of navigation is provided by the framework, outside the manifest (D15, I71).
+    const framework = this.#router ? [new RouterFeature("router")] : [];
+
     // ── Phase 1 — kernel startup (§2.5, C.1) ─────────────────────────────
     this.#root = new Root({
       causalBound: this.#causalBound,
       ...(this.#document === undefined ? {} : { document: this.#document })
     });
-    // Features first (I56), then the Foundation, then the other components.
+    // Features first (I56), then the adapters of the host, then the Foundation, then the other components.
+    const adapters = this.#adapters.map((Adapter) =>
+      describeComponent(new Adapter(), {
+        ...this.#adapterOptions[Adapter.category],
+        root: this.#root,
+        document: this.#document,
+        signal: this.#stop.signal
+      })
+    );
     const foundation =
       this.#foundation === null
         ? []
         : [describeComponent(new this.#foundation(), { anchor: this.#anchor })];
     this.#root.startFromManifest([
-      ...this.#featureInstances.map((instance) => describeFeature(instance)),
+      ...[...this.#featureInstances, ...framework].map((instance) => describeFeature(instance)),
+      ...adapters,
       ...foundation,
       ...this.#components
     ]);
@@ -193,6 +244,14 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
   /** The communication root (one per Application, G6); `null` before start(). */
   get root(): Root | null {
     return this.#root;
+  }
+
+  /**
+   * Removes the observers that Bonsai registered on the host (B.2). The model
+   * is not destroyed: this is the only part of a stop that exists yet.
+   */
+  stop(): void {
+    this.#stop.abort();
   }
 
   /** Whether the application has started. */

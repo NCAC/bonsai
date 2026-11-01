@@ -15,6 +15,7 @@
   "dependencies": {
     "@bonsai/event": "workspace:^",
     "@bonsai/feature": "workspace:^",
-    "@bonsai/foundation": "workspace:^"
+    "@bonsai/foundation": "workspace:^",
+    "@bonsai/router": "workspace:^"
   }
 }

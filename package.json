@@ -49,6 +49,7 @@
     "@bonsai/event": "workspace:^",
     "@bonsai/feature": "workspace:^",
     "@bonsai/foundation": "workspace:^",
+    "@bonsai/router": "workspace:^",
     "@bonsai/immer": "workspace:^",
     "@bonsai/rxjs": "workspace:^",
     "@bonsai/types": "workspace:^",

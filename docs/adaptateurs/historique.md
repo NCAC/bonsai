@@ -2,6 +2,8 @@
 
 *V0.9.4 — 30 octobre 2026. Fiche non normative ; la [théorie](../theorie.md), notamment l’annexe C et A5, fait autorité. Les [contrats communs](README.md) s'appliquent aux 30 rubriques : disponibilité/publication, valeurs capturées sans alias mutable, effets post-validation, occurrences de vie et causalité observable. « Disponible » désigne le catalogue, non une implémentation vérifiée.*
 
+> **Implémentation (lot M6.3a, 1er novembre 2026).** `HistoryAdapter` de `@bonsai/router` livre les rubriques 13 à 19 : push, replace, back, forward, refresh ; Query `history:location` ; Events `navigated`, `requestResult`, `refreshed`, `failed` ; classification indépendant / corrélé / antécédent inconnu ; projection de `router:routeChanged` par mode (B.5) ; point d'extension `normalize`. Fenêtre de non-clôture (rubrique 30) : durée `traversalTimeoutMs`. Voir [router.md](../spec/3-couche-abstraite/router.md).
+
 | # | Rubrique | Contenu |
 | --- | --- | --- |
 | 1 | Nom canonique | Adaptateur historique. |
