@@ -350,6 +350,8 @@ class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartVi
 
 Ce que le type ne peut pas trancher reste vérifié à l'exécution : qu'un fait de l'hôte soit bien indépendant selon le monde fermé, ou corrélé à une réaction autorisée (C.4), et qu'une Query ne vise pas une cible en cours de traitement (G5). Un fait d'antécédent inconnu reçoit un `TFactContext` dont `trigger` lève une erreur de transport (G7). Les Behaviors de la View reçoivent les mêmes contextes ([Behavior §2.0](behavior.md#20-api-cible-)).
 
+**Initialisation.** L'initialisation d'une View continue l'unité de son créateur, avec son droit de commander. Une View créée par un Composer en réaction à un Event n'a donc aucun droit de Command pendant son initialisation : elle consulte le domaine (`query`) et projette, mais le chargement des données d'une page incombe à la Feature qui réagit à `router:routeChanged` (D17, D18 ; constat du prototype, lot M5).
+
 ---
 
 ## 3. Types utilitaires du pattern modulaire
