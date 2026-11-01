@@ -96,6 +96,29 @@ export interface TManifestEntry extends TComponentSpec {
   readonly dependsOn?: readonly string[];
 }
 
+/** Handle on a distributable resource or on a part (6.3–6.5). */
+export interface TResourceHandle {
+  readonly id: string;
+  readonly label: string;
+}
+
+/**
+ * Designation of a part (8.5): information to resolve under ownership
+ * control, valid only for one attribution; never an access by itself.
+ */
+export interface TDesignation {
+  readonly resource: string;
+  readonly portion: string;
+  readonly attribution: string;
+}
+
+/** Options of a creation: creation parameters (6.2) and attributed part (6.5). */
+export interface TCreateOptions {
+  readonly params?: unknown;
+  /** Portion of a distributable resource owned by the creator, attributed to the child. */
+  readonly part?: { readonly resource: TResourceHandle; readonly portion: string };
+}
+
 /** Correlation of a provoked fact with the treatment that caused it (G8). */
 export interface TCorrelationToken {
   readonly kind: "correlation";
@@ -123,7 +146,17 @@ export interface TUnitContext extends TReadContext {
   trigger(namespace: string, command: string, payload?: unknown): void;
   emit(event: string, payload?: unknown): void;
   local(name: string, payload?: unknown): void;
-  create(spec: TComponentSpec): TComponentHandle;
+  create(spec: TComponentSpec, options?: TCreateOptions): TComponentHandle;
+  /** Creation parameters received from the parent, captured by copy (6.2, A3.d). */
+  params<P = unknown>(): P;
+  /** Designation of the part attributed at creation, if any (8.5). */
+  designation(): TDesignation | null;
+  /** Admits a host element as a distributable resource owned by self (D3, A2.b). */
+  admitDistributable(label: string): TResourceHandle;
+  /** Controlled resolution: valid only for a living attribution owned by self (9.10). */
+  resolve(designation: TDesignation): TResourceHandle;
+  /** Portions currently attributed within a resource owned by self (T7). */
+  attributed(resource: TResourceHandle): readonly string[];
   destroy(child: TComponentHandle): void;
   /** Mutates the component's own Entity; journaled for G7 (16.2). */
   mutate<S = unknown>(recipe: (draft: Draft<S>) => void): void;
@@ -147,6 +180,8 @@ export type TTraceEntry =
   | { readonly type: "effects"; readonly owner: string; readonly context: TCausalContext; readonly report: ReadonlyArray<{ readonly label: string; readonly outcome: TEffectOutcome; readonly error?: unknown }> }
   /** A unit, effects included, longer than the threshold (ADR-35, O2). */
   | { readonly type: "long-unit"; readonly owner: string; readonly context: TCausalContext; readonly durationMs: number }
+  /** A portion returned to its container at the end of a part (6.5, T3), imputed to the container's owner. */
+  | { readonly type: "restitution"; readonly portion: string; readonly container: string; readonly imputedTo: string; readonly endedOwner: string }
   /** A drain of the queue longer than the threshold (ADR-35, O2). */
   | { readonly type: "long-drain"; readonly units: number; readonly context: TCausalContext; readonly durationMs: number };
 

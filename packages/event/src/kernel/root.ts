@@ -33,6 +33,9 @@ import type {
   TCausalContext,
   TComponentHandle,
   TComponentSpec,
+  TCreateOptions,
+  TDesignation,
+  TResourceHandle,
   TCorrelationToken,
   TDeferredHandler,
   TEffectOutcome,
@@ -58,6 +61,20 @@ interface ComponentRecord {
   channel: ChannelRecord | null;
   readonly subscriptions: SubscriptionRecord[];
   entity: { readonly def: TEntityDefinition<unknown>; state: unknown } | null;
+  /** Distributable resources and parts owned by the component (6.3–6.5). */
+  readonly resources: ResourceRecord[];
+  params: unknown;
+  designation: TDesignation | null;
+}
+
+/** A distributable resource; a part is one whose `container` is set (6.3, 6.5). */
+interface ResourceRecord {
+  readonly handle: TResourceHandle;
+  readonly owner: ComponentRecord;
+  readonly container: { readonly resource: ResourceRecord; readonly portion: string } | null;
+  /** Portions subtracted from this resource, by the part that occupies them (6.6). */
+  readonly portions: Map<string, ResourceRecord>;
+  alive: boolean;
 }
 
 interface ChannelRecord {
@@ -93,6 +110,8 @@ interface Unit {
   readonly effects: PreparedEffect[];
   /** Components whose Entity was created or mutated in this unit (A4.a). */
   readonly touched: Set<ComponentRecord>;
+  /** Restitutions performed by provisional destructions, traced at commit. */
+  readonly restitutions: TTraceEntry[];
   poisoned: { error: unknown } | null;
 }
 
@@ -108,6 +127,7 @@ export class Root {
   readonly #registry = new Map<string, ChannelRecord>();
   readonly #subscriptions: SubscriptionRecord[] = [];
   readonly #components = new Map<string, ComponentRecord>();
+  readonly #resources = new Map<string, ResourceRecord>();
   readonly #queue: Delivery[] = [];
   readonly #active: ComponentRecord[] = [];
   readonly #trace: TTraceEntry[] = [];
@@ -131,7 +151,10 @@ export class Root {
       status: "ready",
       channel: null,
       subscriptions: [],
-      entity: null
+      entity: null,
+      resources: [],
+      params: undefined,
+      designation: null
     };
   }
 
@@ -237,7 +260,7 @@ export class Root {
 
   #runUnit(owner: ComponentRecord, cause: TCausalContext, body: (ctx: TUnitContext) => void): { error: unknown } | null {
     const startedAt = this.#now();
-    const unit: Unit = { open: true, staged: [], undo: [], effects: [], touched: new Set(), poisoned: null };
+    const unit: Unit = { open: true, staged: [], undo: [], effects: [], touched: new Set(), restitutions: [], poisoned: null };
     this.#unit = unit;
     this.#active.push(owner);
     let failure: { error: unknown } | null = null;
@@ -274,6 +297,7 @@ export class Root {
       this.#measure("long-unit", startedAt, { owner: owner.handle.name, context: cause });
       return failure;
     }
+    for (const entry of unit.restitutions) this.#push(entry);
     this.#queue.push(...unit.staged);
     this.#engage(unit.effects);
     this.#measure("long-unit", startedAt, { owner: owner.handle.name, context: cause });
@@ -450,9 +474,37 @@ export class Root {
         const context = submit();
         unit.staged.push({ kind: "local", target: self, name, payload: this.#capture(payload, unit), context });
       },
-      create: (spec) => {
+      create: (spec, options) => {
         guard();
-        return this.#create(self, spec, cause, unit);
+        return this.#create(self, spec, cause, unit, options);
+      },
+      params: <P>(): P => self.params as P,
+      designation: () => self.designation,
+      admitDistributable: (label) => {
+        guard();
+        const resource: ResourceRecord = { handle: Object.freeze({ id: this.#nextId("res"), label }), owner: self, container: null, portions: new Map(), alive: true };
+        this.#resources.set(resource.handle.id, resource);
+        self.resources.push(resource);
+        unit.undo.push(() => {
+          resource.alive = false;
+          this.#resources.delete(resource.handle.id);
+          self.resources.splice(self.resources.indexOf(resource), 1);
+        });
+        return resource.handle;
+      },
+      resolve: (designation) => {
+        guard();
+        const part = this.#resources.get(designation.attribution);
+        const valid = part !== undefined && part.alive && part.owner === self && part.container !== null
+          && part.container.resource.handle.id === designation.resource && part.container.portion === designation.portion
+          && part.container.resource.portions.get(designation.portion) === part;
+        if (!valid) fail(new TransportError("INVALID_DESIGNATION", `designation of portion "${designation.portion}" does not resolve to a living part owned by ${self.handle.name} (8.5, 9.10)`));
+        return part!.handle;
+      },
+      attributed: (resource) => {
+        const record = this.#resources.get(resource.id);
+        if (record === undefined || !record.alive || record.owner !== self) fail(new TransportError("NOT_OWNER", `${self.handle.name} does not own resource ${resource.label}`));
+        return [...record!.portions.keys()];
       },
       destroy: (child) => {
         guard();
@@ -506,6 +558,11 @@ export class Root {
         return self.entity.state as S;
       },
       mutate: forbidden("mutate"),
+      params: forbidden("params"),
+      designation: forbidden("designation"),
+      admitDistributable: forbidden("admitDistributable"),
+      resolve: forbidden("resolve"),
+      attributed: forbidden("attributed"),
       trigger: forbidden("trigger"),
       emit: forbidden("emit"),
       local: forbidden("local"),
@@ -547,7 +604,7 @@ export class Root {
 
   // ── Structure: creation and cascade, journaled for G7 ──────────────────────
 
-  #create(parent: ComponentRecord, spec: TComponentSpec, cause: TCausalContext, unit: Unit): TComponentHandle {
+  #create(parent: ComponentRecord, spec: TComponentSpec, cause: TCausalContext, unit: Unit, options: TCreateOptions = {}): TComponentHandle {
     const record: ComponentRecord = {
       handle: Object.freeze({ occurrence: this.#nextId("c"), name: spec.name }),
       spec,
@@ -556,7 +613,10 @@ export class Root {
       status: "initializing",
       channel: null,
       subscriptions: [],
-      entity: null
+      entity: null,
+      resources: [],
+      params: undefined,
+      designation: null
     };
     if (spec.entity !== undefined) {
       // Initial state captured by copy and frozen; checked at the end of the unit (A4.a).
@@ -577,6 +637,30 @@ export class Root {
       const subscription: SubscriptionRecord = { owner: record, namespace: listen.namespace, event: listen.event, handler: listen.handler, alive: true };
       record.subscriptions.push(subscription);
       this.#subscriptions.push(subscription);
+    }
+    record.params = this.#capture(options.params, unit);
+    if (options.part !== undefined) {
+      // Attribution (6.5): only by the container's owner (A1.b), only to a child (A2.d), never overlapping (T7).
+      const container = this.#resources.get(options.part.resource.id);
+      const fail = (error: TransportError): never => { unit.poisoned = unit.poisoned ?? { error }; throw error; };
+      if (container === undefined || !container.alive || container.owner !== parent) fail(new TransportError("NOT_OWNER", `${parent.handle.name} does not own resource ${options.part.resource.label} (A1.b)`));
+      if (container!.portions.has(options.part.portion)) fail(new TransportError("PORTION_TAKEN", `portion "${options.part.portion}" of ${options.part.resource.label} is already attributed (T7)`));
+      const part: ResourceRecord = {
+        handle: Object.freeze({ id: this.#nextId("part"), label: `${container!.handle.label}/${options.part.portion}` }),
+        owner: record,
+        container: { resource: container!, portion: options.part.portion },
+        portions: new Map(),
+        alive: true
+      };
+      container!.portions.set(options.part.portion, part);
+      this.#resources.set(part.handle.id, part);
+      record.resources.push(part);
+      record.designation = Object.freeze({ resource: container!.handle.id, portion: options.part.portion, attribution: part.handle.id });
+      unit.undo.push(() => {
+        part.alive = false;
+        if (container!.portions.get(options.part!.portion) === part) container!.portions.delete(options.part!.portion);
+        this.#resources.delete(part.handle.id);
+      });
     }
     parent.children.push(record);
     this.#components.set(record.handle.occurrence, record);
@@ -625,7 +709,22 @@ export class Root {
       channelAlive: node.channel?.alive ?? false,
       subscriptions: node.subscriptions.map((s) => ({ s, alive: s.alive, index: this.#subscriptions.indexOf(s) }))
     }));
+    const snapshots = new Map<ResourceRecord, Array<[string, ResourceRecord]>>();
+    const ended: ResourceRecord[] = [];
     for (const node of order) {
+      // Bottom-up: each restitution is imputed to the container's owner, still present here (§2.5, T3).
+      for (const resource of node.resources) {
+        if (resource.container !== null && resource.container.resource.portions.get(resource.container.portion) === resource) {
+          const { resource: container, portion } = resource.container;
+          if (!snapshots.has(container)) snapshots.set(container, [...container.portions.entries()]);
+          container.portions.delete(portion);
+          unit.restitutions.push({ type: "restitution", portion, container: container.handle.label, imputedTo: container.owner.handle.name, endedOwner: node.handle.name });
+        }
+        if (resource.alive) {
+          resource.alive = false;
+          ended.push(resource);
+        }
+      }
       node.status = "destroyed";
       if (node.channel !== null) {
         node.channel.alive = false;
@@ -652,6 +751,13 @@ export class Root {
       for (const { s, alive, index } of restored) {
         s.alive = alive;
         this.#subscriptions.splice(index, 0, s);
+      }
+      // Same parts and designations as before: neither a new creation nor a transfer (C.7).
+      for (const resource of ended) resource.alive = true;
+      // Exact restoration, order of attribution included.
+      for (const [container, entries] of snapshots) {
+        container.portions.clear();
+        for (const [portion, part] of entries) container.portions.set(portion, part);
       }
     });
   }

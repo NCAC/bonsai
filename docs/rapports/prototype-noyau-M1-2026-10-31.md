@@ -67,6 +67,29 @@ Vérifier, par du code exécutable, que les garanties de l'infrastructure de com
 - **`dependsOn` est déclaré à part.** On ne peut pas le déduire du contrat : celui-ci dit quelles Queries un composant peut adresser, pas lesquelles il adresse pendant son initialisation. À garder déclaratif, et à intégrer à la forme du Manifest.
 - **L'Entity livrée (`packages/entity`) a sa propre file de réentrance et ses notifications (`onAnyEntityUpdated`).** Dans le noyau, ces notifications deviennent des Events émis dans l'unité et délivrés après sa validation. Le raccordement de la classe livrée relève du lot M6.
 
+## 3 ter. Lot M3 — Structure transactionnelle (1er novembre 2026)
+
+**Réalisé, sans DOM.** Un composant admet un élément de l'hôte comme ressource distribuable (`admitDistributable`, D3). À la création d'un enfant, son parent peut lui attribuer une portion d'une ressource dont il est propriétaire (`create(spec, { part })`) : une part est créée, soustraite de la ressource, et l'enfant reçoit une **désignation** de cette attribution avec ses paramètres de création, capturés par copie (6.2, A3.d). L'enfant obtient sa part par **résolution contrôlée** (`resolve`), valide seulement pour une attribution vivante dont il est propriétaire (8.5, 9.10). Il n'existe aucune autre voie de fin d'une part que la fin de son propriétaire (A2.d). La destruction en cascade rend les portions de bas en haut, chaque restitution étant imputée au propriétaire du contenant encore présent ; une destruction annulée restaure exactement la structure antérieure.
+
+| Porte de sortie du lot M3 (rapport de migration) | Test |
+| --- | --- |
+| Annulation conservant mêmes instances, parts et réservations | destruction de `view-a` puis échec : même occurrence, même part, même désignation, portions dans le même ordre ; aucune restitution publiée |
+| Aucune réanimation ni réattribution de callback tardif | résultat corrélé adressé à la View détruite : abandonné ; présenté à la nouvelle View de la même portion : abandonné |
+| Restitutions imputées de bas en haut | `view-a → composer`, `view-b-sub → view-b`, `view-b → composer`, `composer → foundation` |
+| Parts disjointes (T7) | seconde attribution de la portion `a` : `PORTION_TAKEN` |
+| Attribution par le seul propriétaire (A1.b) | portion d'une ressource d'autrui : `NOT_OWNER` |
+| Désignation d'autrui ou périmée (8.5) | `INVALID_DESIGNATION`, y compris l'ancienne désignation après réattribution de la même portion |
+| Paramètres de création par valeur (6.2, A3.d) | copie gelée ; fonction refusée : `NOT_CAPTURABLE` |
+
+45 tests du noyau, suite complète réussie. Trois mutations vérifiées (cascade de haut en bas, contrôle de la désignation, contrôle T7) : chacune fait échouer au moins un test.
+
+**Ce que le lot M3 apprend.**
+
+- **L'annulation doit restaurer l'ordre, pas seulement le contenu.** Le premier essai réinsérait les portions rendues à la fin : la structure était équivalente, mais l'ordre d'attribution changeait (`b,a` au lieu de `a,b`). Comme l'ordre des parts d'un slot est l'ordre d'affichage (Composer §1.3), « conserver les parts antérieures » (C.7) inclut leur ordre. Le noyau restaure désormais un instantané exact.
+- **Les restitutions d'une destruction annulée ne doivent pas apparaître dans la trace.** Elles sont collectées pendant l'unité et publiées seulement à sa validation, comme les messages différés.
+- **Attribuer à la création suffit.** Théorie et API cible ne prévoient l'attribution qu'à la création de l'enfant ; le prototype n'offre pas d'autre voie, ce qui élimine par construction l'attribution à un non-enfant (A2.d) et la fin d'une part sans celle de son propriétaire.
+- **Une désignation est un objet de données, comparable et transmissible.** Sa validité ne tient qu'à l'attribution qu'elle nomme ; un même emplacement réattribué donne une autre désignation. C'est ce qui permettra au lot M4 de passer un sélecteur à la View sans lui donner d'accès par lui-même.
+
 ## 4. Hors périmètre
 
 Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignations et DOM (M3–M4) ; qualification des sources par le monde fermé et D18 (M5) ; remplacement de `Channel` et `Radio`, et branchement des classes de base (M6).
@@ -76,4 +99,5 @@ Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignat
 1. ~~Valider les gardes R1 et R2 dans `gardes.md`~~ : fait.
 2. ~~Trancher R3 dans un ADR~~ : ADR-35, mesure ajoutée au prototype (27 tests).
 3. ~~Lot M2~~ : fait (section 3 bis).
-4. Lot M3 : structure transactionnelle des parts et désignations (Composer, View), sans DOM réel.
+4. ~~Lot M3~~ : fait (section 3 ter).
+5. Lot M4 : matérialisation DOM des parts après validation, effets de projection et résultats propres déclarés.

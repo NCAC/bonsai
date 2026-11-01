@@ -17,6 +17,8 @@ export type TTransportErrorCode =
   | "DUPLICATE_NAMESPACE"   // two Channels with the same namespace in one root
   | "NO_UNIT"               // operation outside any validation unit (A5.a)
   | "UNRECOVERABLE"         // a Query failure was intercepted by the author (G7)
+  | "PORTION_TAKEN"         // portion already attributed: parts never overlap (T7)
+  | "INVALID_DESIGNATION"   // designation of a part that ended, or not owned by the resolver (8.5)
   | "ROOT_ABANDONED";       // the root failed to start
 
 export class TransportError extends Error {

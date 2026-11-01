@@ -7,7 +7,7 @@ Prototype of the communication kernel required by the theory
 
 | File | Content |
 | --- | --- |
-| `root.ts` | `Root`: one registry, queue and trace per model (G6); validation units with journal and rollback (G7); deferred delivery (G5, D8); synchronous read-only Queries (G5, A3.g); reservations (C.6); causal contexts (G8); depth bound (D9); startup (§2.5); effects (C.3); synchronous drain with long units reported (ADR-35); Entity on the unit journal and invariants at the end of each unit (A4.a); startup from a Manifest ordered by initial dependencies (C.1) |
+| `root.ts` | `Root`: one registry, queue and trace per model (G6); validation units with journal and rollback (G7); deferred delivery (G5, D8); synchronous read-only Queries (G5, A3.g); reservations (C.6); causal contexts (G8); depth bound (D9); startup (§2.5); effects (C.3); synchronous drain with long units reported (ADR-35); Entity on the unit journal and invariants at the end of each unit (A4.a); startup from a Manifest ordered by initial dependencies (C.1); distributable resources, parts, designations and bottom-up restitutions, cancellable exactly (6.5, 8.5, C.7) |
 | `capture.ts` | Capture by copy and deep freeze of transmitted values (G2, C.5) |
 | `errors.ts` | `TransportError` codes and `StartupError` |
 | `types.ts` | Component specs, contexts, admissions, trace entries |
@@ -25,5 +25,5 @@ root.start((ctx) => {
 root.admit(view, "click", {}, { kind: "independent" });
 ```
 
-Tests: `tests/unit/kernel/root.test.ts` (M1), `tests/unit/kernel/entity.test.ts` (M2). Findings and next steps:
+Tests: `tests/unit/kernel/root.test.ts` (M1), `tests/unit/kernel/entity.test.ts` (M2), `tests/unit/kernel/structure.test.ts` (M3). Findings and next steps:
 [prototype report](../../../../docs/rapports/prototype-noyau-M1-2026-10-31.md).
