@@ -1,5 +1,8 @@
 # DevTools et outils de debug
 
+> 🗑️ **`Channel` (classe) et `Radio` sont retirés (lot M6.3b, 1er novembre 2026)**. Les passages qui les décrivent sont historiques ; voir [communication.md](./2-architecture/communication.md).
+
+
 > ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../theorie.md) prévaut ([règle de confiance](../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
 
 > **Instrumentation, observabilité et outillage de développement du framework Bonsai**

@@ -74,7 +74,7 @@ Contraintes du registry :
 - `collect()` rend un instantané immuable et **verrouille** le registry ; un enregistrement après `collect()` est une erreur en mode strict, ignoré sinon ;
 - déclarer deux fois le même namespace est une erreur (I21) ;
 - `reset()` n'existe que pour les tests ;
-- c'est un singleton runtime, comme Radio.
+- c'est un singleton runtime (le singleton technique `Radio` est retiré : la racine est propre à chaque Application).
 
 > **Point ouvert** (ADR-27) : un manifest alimenté au runtime ne bénéficie plus
 > de `satisfies StrictManifest` pour les modules chargés tard ; seul le filet
@@ -129,7 +129,7 @@ import { Entity } from "@bonsai/entity";
 // ✅ Import depuis le package du composant — dépendance explicite
 import { Entity } from "@bonsai/entity";
 import { Feature } from "@bonsai/feature";
-import { Channel, Radio } from "@bonsai/event";
+import { Root } from "@bonsai/event"; // noyau (Channel et Radio sont retirés)
 
 // ❌ Interdit — crée des dépendances circulaires et masque le DAG
 import { Entity } from "@bonsai/core";
@@ -156,7 +156,7 @@ packages/{name}/
 ```
 
 `@bonsai/core` (dans `core/`) est le seul méta-package : barrel pur, sans code
-propre, qui ré-exporte la surface publique des composants (pas `Channel` ni `Radio`, I80).
+propre, qui ré-exporte la surface publique des composants (pas les types de transport internes, I80).
 
 ---
 

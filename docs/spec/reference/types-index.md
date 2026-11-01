@@ -45,9 +45,11 @@
 
 ## Types Channel et handlers
 
+> 🗑️ **`Channel` (classe) et `Radio` sont retirés (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau ([communication.md](../2-architecture/communication.md)). Le mot « Channel » ne désigne plus que le **contrat typé** d'une Feature (`TChannelDefinition`, `TChannelToken`). Les lignes qui décrivent la classe ou `Radio` sont historiques.
+
 | Type | Definition | État | Source |
 | --- | --- | --- | --- |
-| `Channel<TDef>` | Classe runtime **interne** au framework (ADR-14 — typée par `TChannelDefinition`) — registres de handlers, dispatch, garde-fous. Créée à la **Phase 1 du bootstrap** depuis le manifest applicatif (ADR-08 — ADR-14). Exportée par `@bonsai/event` pour l'usage inter-packages, **non** exportée par `@bonsai/core` (I80) | ✅ | [communication.md](../2-architecture/communication.md) |
+| `Channel<TDef>` | 🗑️ Classe retirée (lot M6.3b). Types conservés : `TChannelDefinition`, `TChannelToken`, `TTokenDef`, `TAnyEventPayload` (`packages/event/src/channel-types.ts`). | 🗑️ | [communication.md](../2-architecture/communication.md) |
 | `TChannelToken<TDef, NS>` | Token discriminant `{ namespace: NS }` typé par `TDef`. Exposé par `Feature.channel` static (ADR-14). C'est l'unique pont entre la classe Feature et son contrat de communication | ✅ | [feature.md](../3-couche-abstraite/feature.md), [communication.md](../2-architecture/communication.md) |
 | `TCommandCallbacks<TDef>` / `TRequestCallbacks<TDef>` / `TListenCallbacks<TListens>` | Composants de `TFeatureCallbacks` (ADR-09) — absents de cet index jusqu'à cette correction | ✅ | [feature.md](../3-couche-abstraite/feature.md) |
 | `TFeatureCallbacks<TDef, TListens>` | Clause `implements` unique d'une Feature (ADR-09, I92) : `TCommandCallbacks<TDef> & TRequestCallbacks<TDef> & TListenCallbacks<TListens>`. Handler manquant → `TS2515` ; signature fautive → `TS2416` | ✅ | [feature.md](../3-couche-abstraite/feature.md) |

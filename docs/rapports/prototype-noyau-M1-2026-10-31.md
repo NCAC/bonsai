@@ -222,6 +222,12 @@ Les classes `Channel` et `Radio`, qui portaient les messages avant le noyau, son
 - **Erreurs orphelines.** `ListenerError`, `NoHandlerError` et `DuplicateHandlerError` de `@bonsai/error` ne sont plus levées par personne ; `TransportError` du noyau les remplace. Leur retrait relève de la spécification des erreurs, non faite.
 - **Dette de documentation.** Les specs `communication`, `lifecycle`, `distribution`, `validation`, `devtools`, les références (`glossaire`, `invariants`, `types-index`, `anti-patterns`) et `1-philosophie` parlent encore de `Channel`/`Radio` ; elles sont déjà signalées comme non alignées. Leur réécriture suit la théorie, pas le code.
 
+## 3 decies. Réécriture des specs (1er novembre 2026)
+
+Réécrites sur le livré : `feature.md`, `entity.md`, `application.md`, `foundation.md`, `composer.md`, `view.md` (annexes A templates et B `localState` conservées comme cibles, donc view reste 🟠), `communication.md` (Channel = contrat typé, transport = racine). Bannières de retrait `Channel`/`Radio` ajoutées ou lignes corrigées dans glossaire, invariants (I10, I11, I15, I76, I94), types-index, anti-patterns, philosophie, distribution, lifecycle, devtools, validation, erreurs, conventions-typage, 5-rendu. Documentation seule : 313 tests et `tsc` inchangés.
+
+Limites : les passages historiques de `5-rendu.md`, `devtools.md`, `validation.md` et `conventions-typage.md` portent une bannière mais ne sont pas réécrits ; I94 est marqué partiel (sentinel Radio retiré sans remplaçant).
+
 ## 4. Hors périmètre
 
 Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignations et DOM (M3–M4) ; qualification des sources par le monde fermé et D18 (M5) ; branchement des classes de base et remplacement de `Channel` et `Radio` (M6, fait).

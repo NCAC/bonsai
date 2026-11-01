@@ -1,8 +1,8 @@
 # Composer -- Décideur de composition
 
-> 🟠 **Partiellement aligné sur la théorie V0.9.5 : livré sur le noyau (lot M6.2, 1er novembre 2026).** La section « Livré sur le noyau » ci-dessous fait foi ; les paragraphes qui la contredisent (`resolve(event)`, `mount()`, `rootElement`, `this.trigger`, `this.request`, `element()`, hooks `onAttach`/`onDetach`) montrent l'ancienne forme, liste dans le [rapport du prototype](../../rapports/prototype-noyau-M1-2026-10-31.md). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
-
 > **Propriétaire du contenu attribué d'un slot et de l'existence de ses Views ; composition structurelle, jamais rendu de présentation supplémentaire**
+
+> 🟢 **Aligné sur la théorie V0.9.5 et sur le code livré (lot M6.2, 1er novembre 2026)** pour la décision, la réconciliation et les slots. Les séquences de cycle de vie des §4 à §6 sont les obligations de la théorie ; leur réalisation dans le noyau est signalée au §7. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
 
 [<- Retour couche concrete](README.md) | [<- Foundation](foundation.md) | [-> View](view.md)
 
@@ -12,49 +12,23 @@
 | --- | --- |
 | **Composant** | Composer |
 | **Couche** | Concrète (éphémère) |
-| **Statut** | Alignement documentaire V0.9.5 ; API cible ⏳ au §1.3 ; contrat cible distinct du runtime livré |
+| **Paquet** | `@bonsai/composer` |
 | **Référence normative** | [Théorie](../../theorie.md), §2.5, annexe C, D11, D12 et §16.5–§16.7 |
 | **Historique** | [ADR-18](../../adr/ADR-18-composer.md), [ADR-19](../../adr/ADR-19-root-element.md), [ADR-14](../../adr/ADR-14-contrats-types.md) ; ADR Accepted conservés sans modification |
 
-> ## ⏳ Périmètre d'implémentation
->
-> Les obligations ci-dessous ne décrivent pas des garanties déjà fournies par le runtime. Les §1.1, §1.2, §2 à §6 décrivent la surface livrée de [la source Composer](../../../packages/composer/src/bonsai-composer.ts) et [la source View](../../../packages/view/src/bonsai-view.ts) ; l'API cible est au §1.3, marquée ⏳.
->
-> | Sujet | Livré | Contrat cible / limite |
-> | --- | --- | --- |
-> | Décision | Classe `Composer` non générique ; `resolve(event: unknown \| null)` retourne `TResolveResult \| null` | 0/1 View aujourd'hui ; tableau non livré (§3.2) |
-> | Attachement | `attach(parentElement)` cherche le slot puis le crée physiquement s'il manque, avant la résolution | Pas de préparation transactionnelle ni de résolution contrôlée des attributions |
-> | Montage View | `View.mount()` fait un `document.querySelector()` global, sans créer la racine absente | Ne garantit ni confinement au slot ni propriété de la part |
-> | Détachement | `#detachCurrent()` oublie seulement les références | La View n'est pas démontée ; ses listeners DOM et Channel restent actifs |
-> | Recalcul | `performResolve(event)` existe ; aucune écoute Channel ne le déclenche en application | Contrat Feature, écoute et `request()` Composer non livrés |
-> | États | Champ privé `#state: "idle" \| "active"` | Pas de destruction logique, cascade, rollback structurel ni occurrences de vie instrumentées |
-> | Composition imbriquée | Aucun `View.composers` livré | Désignations, restitutions, réservations et nettoyage post-validation restent à concevoir |
-
----
-
-## Livré sur le noyau (lot M6.2)
-
-- **Forme** : `get features()` (Events qui le font décider à nouveau, Queries qu'il lit ; pas de `triggers`, D12), `get views()` (catalogue fini), `resolve(ctx)` avec `ctx = { query }` seul. `resolve` ne reçoit jamais l'Event déclencheur : la composition est recalculée depuis l'état du domaine.
-- **Composition** : tableau ordonné de `{ view, key, params? }` ; la clé est unique dans la composition (sinon l'unité échoue) et la View doit appartenir au catalogue.
-- **Réconciliation (T3)** : même clé, même View, `params` égaux (comparaison stable) → l'instance est gardée ; sinon elle est détruite puis recréée ; une clé disparue est détruite avec ses descendants. Une View nouvelle est placée avant la prochaine View conservée (ordre explicite) ; le registre interne est annulé avec l'unité qui échoue (G7).
-- **Exécution** : à l'initialisation, dans l'unité de son créateur, puis dans l'unité de chaque Event déclaré dans `features[Ns].listens`.
-- **Limite connue (C.3)** : une View dont l'élément n'a pas pu être créé n'est pas encore détruite logiquement ; l'échec figure dans la trace du noyau. Le typage des `params` de composition est générique.
-- **Disparus** : `resolve(event)`, `TResolveResult`, `rootElement`, `TComposerOptions`.
-
----
-
 ## Table des matieres
 
-1. [Classe abstraite Composer](#1-classe-abstraite-composer) — dont [l'API cible](#13-api-cible-)
-2. [Exemples](#2-exemples)
-3. [Méthode resolve()](#3-méthode-resolve)
+1. [Rôle et propriété](#1-rôle-et-propriété)
+2. [API](#2-api)
+3. [Réconciliation et exécution](#3-réconciliation-et-exécution)
 4. [Cycle de vie et attachement](#4-cycle-de-vie-et-attachement)
 5. [Cascade de destruction](#5-cascade-de-destruction)
-6. [Cycle de vie -- machine a états](#6-cycle-de-vie----machine-a-états)
+6. [Occurrences de vie](#6-occurrences-de-vie)
+7. [Livré et limites](#7-livré-et-limites)
 
 ---
 
-## 1. Classe abstraite Composer
+## 1. Rôle et propriété
 
 Le Composer est un composant enfant d'une Foundation ou d'une View. **Une View n'est enfant que d'un Composer ; Foundation et View ne sont parents que de Composers** (D11). La Foundation ne crée donc pas directement de View dans le contrat cible.
 
@@ -64,30 +38,11 @@ Son parent lui attribue le **contenu** d'un slot, pas l'élément du slot lui-m�
 
 Il n'admet aucune notification générale de l'hôte. En revanche, les **résultats instrumentés de ses propres effets de composition** sont permis (C.3) : leur contrat et leurs traitements locaux sont déclarés selon D16, bilans d'engagement compris. Cette admission n'ajoute ni source générale, ni handler arbitraire, ni état indépendant, ni droit de Command. Elle reste soumise à l'occurrence de vie et à la borne causale D9.
 
-### 1.1 Types
+## 2. API
 
-| Nom historique | Surface réellement livrée / portée |
-| --- | --- |
-| `TResolveResult` | Objet avec `view: TViewClass` et `rootElement: string`, sans `options` |
-| `TComposerOptions` | Objet avec `rootElement: string`, utilisé pour le sélecteur du slot |
-| `TViewClass` | Type structurel exporté par View ; ne prouve aucune propriété ni validité d'attribution |
-| `TComposerContract`, `TComposerFeatures`, `TComposeContext`, `TComposition` | API cible ⏳ du §1.3 ; non livrés. `TComposerEvent` historique est abandonné : `resolve` ne reçoit pas d'Event |
+Livrée (`Composer<TComposerContract>`), identique pour un Composer enfant d'une Foundation ou d'une View. Le parent crée le Composer en lui attribuant un slot ; le Composer ne se crée jamais lui-même.
 
-**I31 :** le sélecteur CSS est un **choix de représentation compatible**, livré sous la forme `rootElement: string`, pas une obligation déduite de la théorie. Le contrat impose une **désignation fournie à la création**, dont la résolution contrôlée vérifie la propriété et la validité pour l'attribution concernée. La désignation ne confère pas d'accès à elle seule. Aucun élément de l'hôte n'est transmis à l'enfant. Une réattribution du même emplacement ne réactive jamais une ancienne désignation.
-
-La syntaxe de ces désignations et leur liaison aux attributions restent à concevoir. Un sélecteur égal ou une référence DOM retrouvée ne prouvent pas qu'il s'agit de la même attribution. Le passage actuel d'un `HTMLElement` à `attach()` est un fait du code livré, pas la réalisation de ce contrat cible.
-
-### 1.2 Classe
-
-La surface existante comprend le constructeur recevant `TComposerOptions`, les getters `rootElement`, `slot`, `currentView`, les méthodes `attach()`, `performResolve()` et la méthode abstraite `resolve()`. `slot` expose actuellement un `HTMLElement | null` ; `currentView` conserve au plus une View. Cette surface ne doit pas être interprétée comme une autorisation théorique d'accéder aux ressources de l'enfant.
-
-`attach()` cherche par `parentElement.querySelector(rootElement)`. En cas d'absence, il ajoute immédiatement un élément créé au parent, puis appelle `resolve(null)`. Le parseur simplifié crée toujours un `div`, ignore le tag demandé et extrait les attributs, la première classe et l'id. Il crée le **slot**, pas la racine de la View. Ce comportement ne réalise ni un parseur CSS général ni une création post-validation.
-
-Il n'existe aujourd'hui ni module Feature Composer, ni `request()`, ni branchement des Events écoutés, ni hook de destruction. L'absence de hook applicatif pendant une cascade est une obligation cible, non la preuve qu'il n'y aurait aucune ressource d'observation à nettoyer.
-
-### 1.3 API cible ⏳
-
-> ⏳ **Cible non livrée**, validée le 31 octobre 2026 (point S2 de la [relecture V0.9.4](../../rapports/relecture-V0.9.4-2026-10-30.md)), avec quatre choix : `resolve` sans l'Event déclencheur ; une entrée de `composers` pour exactement un slot ; une Foundation sans Channel en V1 ; aucun handler applicatif pour les résultats de composition.
+> Validée le 31 octobre 2026 (point S2 de la [relecture V0.9.4](../../rapports/relecture-V0.9.4-2026-10-30.md)) et **livrée au lot M6.2**, avec quatre choix : `resolve` sans l'Event déclencheur ; une entrée de `composers` pour exactement un slot ; une Foundation sans Channel en V1 ; aucun handler applicatif pour les résultats de composition.
 
 Le parent déclare ses slots ; chaque entrée désigne **exactement un** élément de sa part et le Composer qui en reçoit le contenu :
 
@@ -118,14 +73,11 @@ class MainComposer extends Composer<TMainContract> {
   get views()    { return mainViews; }   // catalogue fini des Views possibles
 
   resolve(ctx: TComposeContext<TMainContract>): TComposition<TMainContract> {
-    if (!ctx.query("auth:session", {}).loggedIn) return [{ view: "login", key: "login" }];
-    const route = ctx.query("router:currentRoute", {});
-    switch (route.name) {
-      case "product": return [{ view: "product", key: `product:${route.params.id}`,
-                                params: { productId: route.params.id } }];
-      case "cart":    return [{ view: "cart", key: "cart" }];
-      default:        return [];
-    }
+    if (!ctx.query("auth:session", null).loggedIn) return [{ view: "login", key: "login" }];
+    const route = ctx.query("router:currentRoute", null);       // { path, query, hash }
+    const product = /^\/products\/(\w+)$/.exec(route.path);
+    if (product) return [{ view: "product", key: `product:${product[1]}`, params: { productId: product[1] } }];
+    return route.path === "/cart" ? [{ view: "cart", key: "cart" }] : [];
   }
 }
 ```
@@ -147,56 +99,23 @@ class MainComposer extends Composer<TMainContract> {
 
 ---
 
-## 2. Exemples
+## 3. Réconciliation et exécution
 
-Ces cas décrivent des responsabilités ; leur écriture cible est celle du §1.3, dont l'exemple réalise le cas 2.3.
+`resolve` est appelée par le framework, **jamais par le code applicatif** ni au retour d'une Query, d'un fait de l'hôte ou d'un résultat de composition. Elle reçoit `ctx = { query }` seulement.
 
-### 2.1 Composer statique — aucun Channel (forme livrée)
+| Étape | Comportement livré |
+| --- | --- |
+| Validation | Une clé dupliquée, ou une View hors du catalogue, fait échouer l'unité (aucune trace dans le slot, registre interne restauré, G7) |
+| Conserver | Même `key`, même View, `params` égaux (comparaison indépendante de l'ordre des champs) |
+| Détruire | `key` disparue, View différente ou `params` différents ; les descendants partent avec elle, de bas en haut |
+| Créer | Nouvelle `key` : `create(description de la View, { params, part: { resource: slot, portion: key, before? } })` ; `before` est la clé de la prochaine View conservée, ce qui place chaque View explicitement (ordre du tableau) |
+| Journal | La table interne des Views présentes est modifiée avec un `journal` d'annulation : un échec de l'unité la restaure |
 
-Un pied de page peut être choisi sans Event : la résolution initiale retourne sa classe View et un sélecteur de racine. Le code livré instancie cette View et appelle son `mount()` ; l'élément doit déjà exister, et sa recherche est globale. Dans la cible, la part doit être attribuée et sa désignation transmise à la création ; l'initialisation de la View entre dans l'unité de validation du Composer.
-
-### 2.2 Composer conditionnel — un Channel
-
-Un panneau dépendant de l'authentification choisit la View de connexion ou de profil d'après le message reçu et les réponses aux Queries autorisées. Il ne mémorise pas un état d'authentification indépendant. Ce branchement Channel et ces Queries ne sont pas livrés pour Composer. Un résultat instrumenté de projection peut signaler une non-tentative ou un échec ; son traitement reste borné à la composition, sans Command.
-
-### 2.3 Composer multi-Channel — routeur et authentification
-
-Un contenu principal peut dépendre de la route et de l'authentification. Consulter plusieurs réponses ne constitue pas un instantané global, ni une permission d'interroger une cible encore active ou non prête (C.1, C.5). La sélection ne crée ou ne détruit que les Views et parts dont le Composer est propriétaire ; elle ne commande ni navigation ni authentification. Ces dépendances se déclarent dans `features` et se consultent par `ctx.query` (§1.3).
-
----
-
-## 3. Méthode resolve()
-
-`resolve(event)` est le point de décision livré. L'appel initial reçoit `null` ; `performResolve(event)` permet de le rappeler, mais seuls les tests le font actuellement, sans écoute Channel applicative. Le contrat cible autorise l'initialisation puis les traitements déclarés ; il ne déduit aucun nouvel appel de la seule présence physique d'un slot.
-
-La réapparition d'un élément DOM n'est **ni une création logique, ni une réactivation**. Après destruction validée, une composition ultérieure exige une nouvelle occurrence, une nouvelle attribution et de nouvelles désignations. Une annulation de destruction provisoire, au contraire, conserve les existences et désignations antérieures : ce n'est pas une recréation.
-
-### 3.1 Diff pour le retour simple (`TResolveResult | null`)
-
-Ce tableau décrit **l'algorithme livré**, pas une destruction conforme à la théorie. L'égalité porte sur la classe et la chaîne `rootElement`, non sur une preuve de part ou d'attribution.
-
-| Nouveau résultat | View courante | Action du code |
-| --- | --- | --- |
-| Même classe, même `rootElement` | Instance présente | No-op, instance conservée |
-| Même classe, autre `rootElement` | Instance présente | Oublier les références, créer et monter une nouvelle View |
-| Autre classe | Instance présente | Oublier les références, créer et monter une nouvelle View |
-| Résultat non nul | Aucune | Créer et monter la View |
-| `null` | Instance présente | Oublier les références seulement |
-| `null` | Aucune | No-op |
-
-`#attachNew()` appelle le constructeur sans argument puis `mount(result.rootElement)`, et ne renseigne ses références qu'après ce montage. Il n'y a pas de rollback complet si le montage échoue ; les opérations déjà réalisées, dont les listeners, ne sont pas annulées. `#detachCurrent()` ne retire ni racine, ni slot, ni abonnement.
-
-### 3.2 Diff pour le retour tableau (`TResolveResult[]`)
-
-**Non livré. I37 :** « un type unique de Composer, 0..N Views hétérogènes » reste le **choix d'API cible du registre**, non une nécessité théorique sur la cardinalité ou la forme du retour. Le runtime gère 0/1 View ; il n'accepte pas de tableau. La conservation d'une instance à sélection identique est également un choix de rapprochement, pas une conséquence des axiomes.
-
-Le futur rapprochement d'une décision avec la composition existante doit contrôler les attributions, leur non-recouvrement et leurs occurrences, sans prendre la présence DOM comme source de vérité. Identification par `key`, conservation, ordre et représentation des résultats multiples sont fixés par l'API cible (§1.3). L'ancien pseudo-diff basé sur « élément disparu du DOM → cleanup » ne constitue plus un contrat cible.
-
----
+La réapparition d'un élément DOM n'est **ni une création logique, ni une réactivation** : après destruction validée, une composition ultérieure crée une nouvelle occurrence, une nouvelle attribution et de nouvelles désignations.
 
 ## 4. Cycle de vie et attachement
 
-Les séquences suivantes sont des **obligations cibles**, non des signatures ni une liste d'appels runtime déjà disponibles. Voir aussi le [cycle de vie commun](../2-architecture/lifecycle.md).
+Les séquences suivantes sont les **obligations de la théorie** ; le noyau les réalise (§7). Voir aussi le [cycle de vie commun](../2-architecture/lifecycle.md).
 
 ### 4.1 Sequence d'attachement (normative)
 
@@ -239,13 +158,13 @@ L'existence ne se déduit donc ni de la connexion au document, ni de la présenc
 
 ---
 
-## 6. Cycle de vie -- machine a états
+## 6. Occurrences de vie
 
 Le nom de section est conservé comme repère historique. Il n'impose pas la machine `idle → resolving → active → detaching → destroyed` précédemment proposée.
 
 | Niveau | Lecture correcte |
 | --- | --- |
-| Code livré | `#state` passe à `active` après montage, à `idle` à l'oubli des références ; pas de destruction, de transaction ni de garde d'occurrence |
+| Code livré | Les occurrences de vie, la destruction provisoire et leur annulation sont assurées par le noyau (lot M3) ; le Composer n'a pas d'état propre |
 | Protocole cible (C.1) | Déclaré, en initialisation, prêt à consulter, publié, détruit ; disponibilité logique distincte de la matérialisation DOM |
 | Destruction provisoire | Annulable avec la même occurrence, sans nouvelle création ; les admissions capturées attendent l'issue de l'unité |
 | Destruction validée | Terminale pour cette occurrence ; aucune réactivation au retour d'un élément au même emplacement |
@@ -258,8 +177,25 @@ De même, les réservations d'Events portent sur les **occurrences d'abonnement 
 
 ---
 
+## 7. Livré et limites
+
+| Sujet | État |
+| --- | --- |
+| `Composer<TComposerContract>` : `features`, `views`, `resolve(ctx)`, composition `{ view, key, params? }` | Livré |
+| Réconciliation par clé, ordre explicite, annulation avec l'unité | Livré (tests `tests/unit/domain/composer.test.ts`) |
+| Exécution à l'initialisation et sur chaque Event déclaré | Livré |
+| Composition imbriquée (View → Composer → View) | Livré |
+| Création des parts, restitutions, destruction en cascade, occurrences de vie | Fournis par le noyau (lots M3–M4) |
+| Destruction logique d'une View dont l'élément n'a pas pu être créé | **Non livré** : l'échec est rapporté dans la trace (C.3) |
+| Typage des `params` de composition par le contrat de la View visée | Non livré : `Readonly<Record<string, unknown>>` |
+| Hooks applicatifs de cycle de vie (`onDetach`, etc.) | Supprimés ; absents par décision (§4.2) |
+| `TResolveResult`, `TComposerOptions`, `attach()`, `performResolve()`, `rootElement` | Supprimés |
+
+---
+
 ## Lecture suivante
 
--> [view.md](view.md) -- propriété de la part, projection et code Behavior
+-> [view.md](view.md) -- propriété de la part, projection et handlers
+-> [foundation.md](foundation.md) -- racine de composition
 -> [2-architecture/lifecycle.md](../2-architecture/lifecycle.md) -- validation, occurrences, cascade et nettoyage
 -> [Théorie](../../theorie.md) -- §2.5, annexe C, D11–D13 et §16.5–§16.7

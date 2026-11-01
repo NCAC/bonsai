@@ -76,14 +76,14 @@ pas _autour_ d'une librairie.
 
 ### 3.3 Flux unidirectionnel strict
 
-Toutes les interactions passent par des Channels.
+Toutes les interactions passent par la racine du noyau, selon des contrats de Channel déclarés.
 Le flux suit un chemin prévisible : UI → Command → Feature → Entity → Event → UI.
 Aucun raccourci, aucun appel direct entre composants (sauf Entity ↔ Feature, I6).
 
 ### 3.4 Découplage par communication événementielle
 
 Aucun composant n'a de référence directe vers un autre (sauf Entity ↔ Feature).
-La communication passe exclusivement par les Channels — Commands, Events et Requests.
+La communication passe exclusivement par la racine du noyau — Commands, Events et Queries.
 Le graphe de dépendances est visible dans les déclarations statiques.
 
 ### 3.5 Encapsulation stricte du state
@@ -96,7 +96,7 @@ Personne ne lit le state directement — les consommateurs passent par
 
 Chaque composant est isolé, avec des responsabilités bien définies.
 Les dépendances sont déclarées statiquement → les tests ne montent
-que les Channels nécessaires, pas toute l'application.
+que les contrats nécessaires, pas toute l'application.
 
 > **Les tests sont une preuve d'architecture** ([ADR-32](../adr/ADR-32-tests-preuve-architecture.md)) :
 > chaque test documente explicitement l'invariant qu'il prouve — un test
@@ -149,7 +149,7 @@ dans la signature du composant, pas cachées dans son implémentation.
 - Le graphe de communication est lisible dans le code sans l'exécuter
 - Les invariants sont vérifiables à la compilation (TypeScript)
 - Les tests ne montent que les Channels déclarés
-- L'infrastructure (Radio) reste interne au framework
+- L'infrastructure (la racine du noyau) reste interne au framework
 
 > Voir [ADR-03](../adr/ADR-03-channel-runtime.md) pour le détail.
 

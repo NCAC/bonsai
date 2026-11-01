@@ -2,6 +2,8 @@
 
 > ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
 
+> 🗑️ **`Channel` (classe) et `Radio` sont retirés (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau ([communication.md](../2-architecture/communication.md)). Le mot « Channel » ne désigne plus que le **contrat typé** d'une Feature (`TChannelDefinition`, `TChannelToken`). Les lignes qui décrivent la classe ou `Radio` sont historiques.
+
 > **Les patterns explicitement INTERDITS dans Bonsai**
 
 [← Retour à l'index](../README.md) · [Invariants](invariants.md) · [ADR](../../adr/README.md)
@@ -157,6 +159,8 @@ et **détection** (compile-time, bootstrap ou runtime).
 ---
 
 ### ❌ Radio Direct Access
+
+> 🗑️ `Radio` est retiré : cet anti-pattern est désormais impossible par construction ; il devient « accéder à la racine du noyau » (`Root`), non exporté par la surface applicative. L'explication ci-dessous est historique.
 
 **Description** : Accéder à un Channel via `Radio.channel('name')` au lieu de le déclarer dans la définition du composant.
 

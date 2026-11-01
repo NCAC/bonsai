@@ -1,8 +1,8 @@
 # Foundation -- Point d'ancrage par racine
 
-> 🟠 **Partiellement aligné sur la théorie V0.9.5 : livré sur le noyau (lot M6.2, 1er novembre 2026).** La section « Livré sur le noyau » ci-dessous fait foi ; les paragraphes qui la contredisent (`resolve(event)`, `mount()`, `rootElement`, `this.trigger`, `this.request`, `element()`, hooks `onAttach`/`onDetach`) montrent l'ancienne forme, liste dans le [rapport du prototype](../../rapports/prototype-noyau-M1-2026-10-31.md). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
-
 > **Élément configurable par Manifest, body par défaut, parts attribuées aux Composers ; aucune source globale**
+
+> 🟢 **Aligné sur la théorie V0.9.5 et sur le code livré (lots M6.2 et M6.3, 1er novembre 2026)** pour l'ancre, les slots et la création des Composers. Le choix du périmètre entre plusieurs racines d'un même document reste à vérifier au démarrage (§5). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
 
 [<- Retour couche concrete](README.md) | [<- Behavior](behavior.md) | [-> Composer](composer.md)
 
@@ -12,28 +12,9 @@
 | --- | --- |
 | **Composant** | Foundation, enfant de la racine |
 | **Couche** | Concrète ; persistante pendant la vie de sa racine (D1) |
-| **Statut** | Contrat documentaire V0.9.5 ; API cible ⏳ au §3 ; runtime livré partiel et incompatible sur plusieurs points |
+| **Paquet** | `@bonsai/foundation` |
 | **Référence normative** | [Théorie](../../theorie.md) : §2.5, C.2–C.3, A0–A2, D3, D7, D11, §16.4 et §16.9 |
-| **Historique** | [ADR-20](../../adr/ADR-20-foundation.md), [ADR-07](../../adr/ADR-07-application-bootstrap.md), conservés Accepted sans modification ; leurs choix incompatibles sont à réexaminer |
-
-> ## ⏳ Périmètre d'implémentation
->
-> [La classe livrée](../../../packages/foundation/src/bonsai-foundation.ts) utilise toujours `document.body` et `document.documentElement`. Elle expose `body` et `html` comme `HTMLElement` bruts, lit `composers` une fois et attache les Composers dans l'ordre de `Object.entries()`. `onAttach()` est appelé ensuite ; `onDetach()` est déclaré mais n'a pas d'appelant.
->
-> **Non livrés** : choix de l'élément dans le Manifest, admission et attribution contrôlées, isolation entre racines, cycle de destruction transactionnel et nettoyage complet. Aucune capacité Channel n'est livrée sur Foundation, et la V1 n'en prévoit pas (§1.1). Les accès bruts et suggestions d'écoute globale du code ne sont pas des autorisations du contrat cible.
-
----
-
-## Livré sur le noyau (lot M6.2)
-
-- **Forme** : `get composers()` renvoie `{ clé: { slot, composer } }`. Le `slot` est un sélecteur qui doit correspondre à exactement un élément existant de l'ancre ; la partie du Composer **est** cet élément (il est adopté, pas créé).
-- **Ancre** : option `anchor` de l'`Application` (sélecteur, `body` par défaut), admise comme ressource distribuable ; `document` est requis avec une Foundation.
-- **Ordre** : créée après les Features (I56) ; chaque Composer reçoit une part nommée par sa clé.
-- **Erreur de slot** : un sélecteur qui ne correspond pas à un seul élément fait échouer l'effet de matérialisation, rapporté dans la trace (pas dans le démarrage, C.3).
-- **Facultative** : `Application` fonctionne sans Foundation (I33 reste suspendu).
-- **Disparus** : getters `body`/`html`, hooks `onAttach`/`onDetach`.
-
----
+| **Historique** | [ADR-20](../../adr/ADR-20-foundation.md), [ADR-07](../../adr/ADR-07-application-bootstrap.md), conservés Accepted sans modification |
 
 ## Table des matieres
 
@@ -42,6 +23,7 @@
 3. [Composers racines](#3-composers-racines)
    3.bis [Pattern délégation pour composition dynamique](#3bis-pattern-délégation-pour-composition-dynamique-adr-20)
 4. [Relation avec Application](#4-relation-avec-application)
+5. [Livré et limites](#5-livré-et-limites)
 
 ---
 
@@ -67,11 +49,13 @@ L'admission du **résultat instrumenté de ses propres effets autorisés**, y co
 
 ---
 
+---
+
 ## 2. Droits d'altération DOM (N1)
 
 Le titre N1 conserve un repère historique ; il n'établit plus une exception d'accès général à `html` et `body`.
 
-| Périmètre | Contrat cible |
+| Périmètre | Contrat |
 | --- | --- |
 | Élément admis par la Foundation | Les effets autorisés restent bornés à cette ressource et à sa portion non attribuée ; aucune propriété du support extérieur n'est acquise |
 | Attributs de son élément d'ancrage | Les altérations de présentation de niveau N1 restent dans ce périmètre ; si l'ancrage n'est pas `body`, aucun droit sur `body` n'en découle |
@@ -86,11 +70,13 @@ Les effets DOM sont préparés pendant une initialisation ou un traitement autor
 
 ---
 
+---
+
 ## 3. Composers racines
 
 Un slot est un élément du périmètre admis dont **le contenu** est attribué à un Composer. La Foundation possède l'existence de ce Composer ; l'attribution désigne celui-ci comme propriétaire initial de sa part, sans transférer la propriété d'une ressource existante (A2).
 
-| Obligation cible | Conséquence |
+| Obligation | Conséquence |
 | --- | --- |
 | Enfants exclusivement Composers (D11) | Les Views sont créées et détruites par les Composers, jamais directement par la Foundation |
 | Parts disjointes (T7) | Ni chevauchement de slots attribués, ni accès au contenu confié aux enfants |
@@ -99,7 +85,7 @@ Un slot est un élément du périmètre admis dont **le contenu** est attribué 
 | Création dans l'unité du créateur | L'initialisation du Composer et des Views qu'il crée est incluse dans cette unité, sans délégation d'autorité ; échec et rollback structurel communs |
 | Fin des enfants | Cascade logique de bas en haut, restitutions au propriétaire encore vivant, sans hook applicatif pendant la cascade ; nettoyage physique post-validation |
 
-**API cible ⏳.** La Foundation déclare ses slots comme une View ([Composer §1.3](composer.md#13-api-cible-)) :
+**API livrée.** La Foundation déclare ses slots comme une View ([Composer §2](composer.md#2-api)) :
 
 ```typescript
 // ─── View ou Foundation : déclaration des slots ──────────────────────────────
@@ -111,11 +97,11 @@ get composers() {
 }
 ```
 
-Chaque entrée désigne exactement un élément de l'élément admis ; une recherche qui ne trouve pas exactement un élément est refusée au démarrage. La déclaration est lue une fois : la liste des slots de la Foundation ne change pas pendant la vie de la racine.
+Chaque entrée désigne exactement un élément de l'élément admis ; une recherche qui ne trouve pas exactement un élément fait échouer l'effet de matérialisation (rapporté dans la trace du noyau, C.3). La déclaration est lue une fois : la liste des slots de la Foundation ne change pas pendant la vie de la racine.
 
-**Livré seulement :** `get composers()` retourne un `Readonly<Record<string, typeof Composer>>`. Ses clés sont des sélecteurs CSS recherchés sous `document.body`, ses valeurs des classes Composer. `attach()` lit ce record une fois et parcourt `Object.entries()` ; pour les clés chaînes non numériques, l'ordre d'insertion est conservé. Ce parcours n'est pas un protocole général de composition dynamique ou de validation des parts.
 
-Dans [le Composer livré](../../../packages/composer/src/bonsai-composer.ts), `attach()` résout le slot sous l'élément parent et crée un élément simplifié s'il manque. Cela ne valide ni la résolution CSS générale, ni la disjonction des parts. Dans [la View livrée](../../../packages/view/src/bonsai-view.ts), `mount()` résout encore son `rootElement` par `document.querySelector()` global, pas sous le slot ; il ne crée pas une racine absente. La conformité des références structurelles n'est donc pas garantie par ces sélecteurs.
+
+---
 
 ---
 
@@ -128,33 +114,52 @@ La délégation reste un choix de conception utile : un Composer racine décide 
 | Sujet | Statut |
 | --- | --- |
 | Existence Foundation persistante | Décision D1 active ; n'impose pas une liste de Composers éternellement constante |
-| Lecture unique de `composers` au bootstrap | Comportement runtime livré ; aucune réévaluation automatique |
+| Lecture unique de `composers` au démarrage | Livré ; aucune réévaluation automatique |
 | Interdiction générale de modifier la composition Foundation (ancien I67) | Choix historique hors de ce lot, à réexaminer ; ne pas le présenter comme théorème V0.9.4 |
-| Délégation à une View de page et ses Composers | Principe architectural compatible ; `View.composers` et la cascade correspondante ne sont pas livrés |
+| Délégation à une View de page et ses Composers | Principe architectural compatible ; `View.composers` et la cascade correspondante sont livrés (lot M6.2) |
 | Évolution des Composers de premier niveau | Exclue en V1 : la Foundation n'a pas de Channel et sa déclaration est lue une fois ; la variation passe par les Composers (§1.1) |
 
 Un getter conditionnel livré ne constitue pas un mécanisme réactif : il n'est lu qu'une fois. L'absence de mécanisme runtime ne doit pas être reformulée comme une interdiction issue des axiomes.
 
 ---
 
+---
+
 ## 4. Relation avec Application
 
-| Étape | Contrat cible | Observation du livré |
-| --- | --- | --- |
-| Paramètres de la racine | Manifest propre à la racine, classe Foundation et désignation de son élément, `body` par défaut | [Options Application](../../../packages/application/src/bonsai-application.ts) limitées ici à la classe `foundation` et aux `features` ; aucun champ d'élément Foundation |
-| Démarrage | Channels établis, initialisations ordonnées et disponibilité contrôlée avant publication ; admissions et différés attendent la clôture | Features initialisées synchroniquement avant création de la Foundation en phase 4 |
-| Création Foundation | Existence créée par la racine, admission du seul élément déclaré, création des Composers et attributions sous une même unité | Constructeur sans argument, capture directe de `document.body` et `document.documentElement`, puis `attach()` |
-| Attachement des Composers | Désignations de parts résolues sous contrôle de propriété ; initialisations et effets préparés sous §2.5 | Sélecteurs du record passés au constructeur Composer, puis `attach(body)` et éventuel `View.mount()` |
-| Hook historique | Ni permission globale ni preuve de publication transactionnelle | `Foundation.onAttach()` appelé après tous les Composers racines |
-| Fin | Fondation et descendants clôturés avec la racine selon le [cycle de vie](../2-architecture/lifecycle.md) ; aucun rollback de l'hôte promis | `onDetach()` jamais appelé, pas de shutdown, références View oubliées sans désabonnement |
+```typescript
+class AppFoundation extends Foundation {
+  get composers() {
+    return { main: { slot: "[data-region='main']", composer: MainComposer } } as const;
+  }
+}
 
-L'erreur de second `attach()` est un garde **par instance**, pas la preuve d'un singleton global ou d'une isolation entre Applications. Le singleton `Radio` livré et l'usage de `document.body` empêchent d'inférer la coexistence sûre de plusieurs racines à partir de cette seule classe.
+new Application({ features, document, foundation: AppFoundation, anchor: "body" });
+```
 
-**À concevoir avant de revendiquer la conformité :** forme du paramètre d'élément dans le Manifest, validation des périmètres entre racines, admission et désignations contrôlées, capacités déclarées éventuelles, évolution de composition, rollback structurel, occurrences de vie et nettoyage post-validation. Les getters bruts `html`/`body` et le rôle global des hooks historiques devront être réconciliés avec ces limites ; ce lot ne modifie aucun runtime.
+| Étape | Comportement livré |
+| --- | --- |
+| Paramètres de la racine | Options de l'`Application` : classe `foundation`, `anchor` (sélecteur, `body` par défaut), `document` (requis) |
+| Démarrage | Features d'abord (I56), puis adaptateurs, puis Foundation, dans l'unité de démarrage unique ; admissions et messages différés attendent sa clôture |
+| Création | La Foundation admet l'ancre comme ressource distribuable (`admitDistributable`) puis crée chaque Composer avec une part `{ resource: ancre, portion: clé, host: slot }` : l'élément du slot est **adopté**, pas créé |
+| Slot | Un sélecteur qui ne correspond pas à exactement un élément de l'ancre fait échouer l'effet de matérialisation ; l'erreur figure dans la trace du noyau |
+| Fin | Avec la racine ; `Application.stop()` ne retire que les observateurs de l'hôte |
+
+`getter body`, `html`, `onAttach()` et `onDetach()` sont supprimés. La Foundation n'a pas de Channel en V1 (§1.1).
+
+## 5. Livré et limites
+
+| Sujet | État |
+| --- | --- |
+| `Foundation.composers`, ancre, adoption des slots, création des Composers | Livré (`tests/unit/domain/foundation.test.ts`) |
+| Foundation facultative | Oui : I33 suspendu |
+| Disjonction des périmètres entre racines d'un même document (B.2) | Non vérifiée au démarrage |
+| Élément d'ancrage déclaré dans un Manifest de modules | Option d'`Application` seulement |
+| Évolution de la composition de premier niveau | Exclue en V1 (§3.bis) |
 
 ---
 
 ## Lecture suivante
 
-→ [composer.md](composer.md) — composition structurelle et résultats propres sous D12 et C.3 ; runtime encore partiel
+→ [composer.md](composer.md) — composition structurelle et résultats propres sous D12 et C.3
 → [Cycle de vie](../2-architecture/lifecycle.md) — existence, cascade, rollback et nettoyage

@@ -1,5 +1,8 @@
 # Conventions de typage
 
+> 🗑️ **`Channel` (classe) et `Radio` sont retirés (lot M6.3b, 1er novembre 2026)**. Les passages qui les décrivent sont historiques ; voir [communication.md](../2-architecture/communication.md).
+
+
 > **Préfixes, contraintes, patterns TypeScript fondamentaux du framework Bonsai**
 
 [← Retour a l'index](../README.md)
