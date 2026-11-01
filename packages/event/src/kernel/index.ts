@@ -1,6 +1,6 @@
 /**
- * Kernel prototype (migration lot M1). Not exported by `@bonsai/event` yet:
- * it lives beside the delivered `Channel`/`Radio` until it is validated.
+ * Communication kernel (migration lots M1–M6). Exported by `@bonsai/event`;
+ * the domain layer runs on it since lot M6.1, the concrete layers follow (M6.2).
  */
 
 export { Root } from "./root";

@@ -1,29 +1,29 @@
 /**
  * @bonsai/entity — Entity base class
  *
- * Implements ADR-10:
- *   - mutate(intent, params?, recipe) through Immer produceWithPatches
- *   - changedKeys derived from the patches (first path segment)
- *   - No-op detection (no patch produced → no notification)
- *   - Catch-all notification onAnyEntityUpdated (I51) — enriched event
- *     (patches, inversePatches, payload, metas)
- *   - FIFO re-entrance bounded by maxEntityNotificationDepth (I98,
- *     stratum 1a) — see docs/spec/3-couche-abstraite/entity.md
- *   - MutationError when the recipe throws (automatic Immer rollback,
- *     ADR-05)
- *   - initialState getter (ADR-10)
+ * The Entity describes the domain state of a Feature (theory 11.3, A4.a):
+ *   - its initial state (`defineInitialState`)
+ *   - its business invariants (`invariants`), verified by the kernel at the
+ *     successful end of every validation unit that touched the state
+ *   - its read methods (`query`-style getters), which read the current state
  *
- * NOTE: per-key `on<Key>EntityUpdated` handlers are NOT dispatched here —
- * that is the job of `Feature#registerEntityHandlers` (I96), which
- * subscribes to `onAnyEntityUpdated` and routes internally. An Entity never
- * knows its Feature (I6).
+ * The state itself is **owned by the kernel** (migration lot M6.1): it lives in
+ * the root, is mutated only through the handler context (`ctx.mutate`), and is
+ * journaled so that a failed unit leaves it intact (G7). The Entity holds no
+ * mutable state and no `mutate` method: a mutation outside a unit is not
+ * expressible (A5.a).
+ *
+ * `state` is readable only while a handler of the owning Feature is running
+ * (the Feature binds the Entity to the kernel's current state for the duration
+ * of the handler). Anywhere else it throws: the current state is observed
+ * through a Query (G5), never by holding the Entity.
+ *
+ * Notifications `on<Key>EntityUpdated` / `onAnyEntityUpdated` are not sent by
+ * the Entity any more: after a mutation the Feature delivers them to itself as
+ * a deferred local message (G5, D8). An Entity never knows its Feature (I6).
  */
 
-import { Immer } from "@bonsai/immer";
 import type { Draft, Patch } from "immer";
-import { EntityReentrancyError, MutationError } from "@bonsai/error";
-
-Immer.enablePatches();
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -41,9 +41,6 @@ export type TJsonSerializable =
 /**
  * Extracts the state structure (TStructure) of a concrete Entity class.
  *
- * Introduced by ADR-09 — derives the state shape from an Entity class
- * without declaring it again by hand.
- *
  * @example
  *   type TCartState = TEntityState<CartEntity>;  // = { items: [...]; total: number }
  */
@@ -51,7 +48,7 @@ export type TEntityState<E extends Entity<TJsonSerializable>> =
   E extends Entity<infer S> ? S : never;
 
 /**
- * Optional parameters passed to mutate() — payload + metas (traceability).
+ * Optional parameters passed to `ctx.mutate()` — payload + metas (traceability).
  */
 export type TMutationParams = {
   payload?: unknown;
@@ -59,9 +56,9 @@ export type TMutationParams = {
 };
 
 /**
- * Event emitted after a successful (non no-op) mutation.
- * Received by onAnyEntityUpdated listeners, and dispatched by the Feature to
- * its per-key/catch-all handlers (I96).
+ * Event describing a successful (non no-op) mutation.
+ * Received by the Feature's `on<Key>EntityUpdated` / `onAnyEntityUpdated`
+ * handlers, as a deferred local message.
  */
 export type TEntityEvent<
   TStructure extends TJsonSerializable = TJsonSerializable
@@ -78,25 +75,68 @@ export type TEntityEvent<
 };
 
 /**
- * Signature of the catch-all listener.
+ * Recipe applied to a draft of the state.
  */
-export type TEntityUpdateListener<
-  TStructure extends TJsonSerializable = TJsonSerializable
-> = (event: TEntityEvent<TStructure>) => void;
+export type TEntityRecipe<TStructure extends TJsonSerializable> = (
+  draft: Draft<TStructure>
+) => void;
 
 /**
- * Mutation waiting in the re-entrance queue (I98).
+ * A business invariant: `check` returns `true` when the state satisfies it.
+ * Verified at the end of every validation unit that touched the state (A4.a).
  */
-type TPendingMutation<TStructure extends TJsonSerializable> = {
-  intent: string;
-  params: TMutationParams | null;
-  recipe: (draft: Draft<TStructure>) => void;
+export type TEntityInvariant<TStructure extends TJsonSerializable> = {
+  readonly name: string;
+  readonly check: (state: TStructure) => boolean;
 };
+
+// ─── Internal binding to the kernel state ────────────────────────────────────
+
+const stateSources = new WeakMap<object, () => unknown>();
+
+/**
+ * @internal Framework use only (`@bonsai/feature`).
+ *
+ * Binds an Entity to the kernel's current state for the duration of a handler.
+ * Returns the function that restores the previous binding (bindings nest when
+ * a Query reaches the same Feature again).
+ */
+export function bindEntityState(
+  entity: Entity<TJsonSerializable>,
+  source: () => unknown
+): () => void {
+  const previous = stateSources.get(entity);
+  stateSources.set(entity, source);
+  return () => {
+    if (previous === undefined) stateSources.delete(entity);
+    else stateSources.set(entity, previous);
+  };
+}
+
+/**
+ * @internal Framework use only (`@bonsai/feature`).
+ *
+ * What the kernel needs to own the state of an Entity: its name, its initial
+ * state and its invariants.
+ */
+export function describeEntity<TStructure extends TJsonSerializable>(
+  entity: Entity<TStructure>
+): {
+  readonly name: string;
+  readonly initial: TStructure;
+  readonly invariants: ReadonlyArray<TEntityInvariant<TStructure>>;
+} {
+  return {
+    name: entity.constructor.name,
+    initial: entity.initialState,
+    invariants: entity.invariants
+  };
+}
 
 // ─── Abstract Entity class ───────────────────────────────────────────────────
 
 /**
- * Entity — immutable state container of a Feature (I6, I22, I46).
+ * Entity — description of the domain state of a Feature (I6, I22, I46).
  *
  * Abstract class: subclasses must implement `defineInitialState()`.
  *
@@ -104,49 +144,12 @@ type TPendingMutation<TStructure extends TJsonSerializable> = {
  */
 export abstract class Entity<TStructure extends TJsonSerializable> {
   /**
-   * Current Entity state. Readable by subclasses and by any code holding a
-   * reference to the Entity.
-   */
-  #state!: TStructure;
-
-  /**
    * Copy of the initial state, returned by `initialState` (ADR-10).
    */
-  #initialState!: TStructure;
-
-  /**
-   * Catch-all listeners (I51).
-   */
-  #listeners: Array<TEntityUpdateListener<TStructure>> = [];
-
-  /**
-   * Initialisation flag (lazy init, to work around the abstract-member restriction).
-   */
-  #initialized = false;
-
-  // ─── FIFO re-entrance (I98) ────────────────────────────────────────────
-
-  /** `true` while a mutate → notify cycle is running (external driver). */
-  #draining = false;
-
-  /** Depth of the current cycle (1 = external call, incremented on each dequeue). */
-  #cycleDepth = 0;
-
-  /** FIFO queue of mutations triggered during a notification. */
-  #queue: TPendingMutation<TStructure>[] = [];
+  readonly #initialState: TStructure;
 
   constructor() {
-    // Actual initialisation happens in #ensureInitialized(), because
-    // TS forbids accessing abstract members in the constructor.
-    this.#ensureInitialized();
-  }
-
-  #ensureInitialized(): void {
-    if (!this.#initialized) {
-      this.#initialState = this.defineInitialState();
-      this.#state = this.#initialState;
-      this.#initialized = true;
-    }
+    this.#initialState = this.defineInitialState();
   }
 
   // ─── Abstract ────────────────────────────────────────────────────────
@@ -160,175 +163,36 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
   // ─── Overridable configuration ─────────────────────────────────────────
 
   /**
-   * Maximum re-entrance depth (I98, stratum 1a — default 3).
-   * A concrete subclass may override it for advanced use cases.
+   * Business invariants (11.3, A4.a). Verified by the kernel at the end of
+   * every validation unit that touched the state and at the end of startup;
+   * a violation fails the unit, which is rolled back (G7).
    */
-  protected get maxEntityNotificationDepth(): number {
-    return 3;
+  get invariants(): ReadonlyArray<TEntityInvariant<TStructure>> {
+    return [];
   }
 
   // ─── Public API ──────────────────────────────────────────────────────
 
   /**
-   * Current state (read-only from outside).
+   * Current state, frozen, while a handler of the owning Feature is running.
+   *
+   * @throws outside a handler: the current state is observed through a Query.
    */
   get state(): TStructure {
-    return this.#state;
+    const source = stateSources.get(this);
+    if (source === undefined) {
+      throw new Error(
+        `[Bonsai Entity] "${this.constructor.name}".state is readable only inside a handler of its Feature. ` +
+          "Observe the current state through a Query (G5, I6)."
+      );
+    }
+    return source() as TStructure;
   }
 
   /**
    * Returns the initial state as defined at construction (ADR-10).
-   * Public, for reset or comparison.
    */
   get initialState(): TStructure {
     return this.#initialState;
-  }
-
-  /**
-   * Immutable mutation through Immer produceWithPatches (ADR-10, I97).
-   *
-   * Overload 1: mutate(intent, recipe)
-   * Overload 2: mutate(intent, params, recipe)
-   *
-   * Detects no-ops: when no patch is produced → no notification, returns
-   * `null`.
-   *
-   * Re-entrance (I98): when called during a running notification cycle, the
-   * mutation is queued (FIFO) and executed once the current cycle ends —
-   * returns `null` immediately (the event is not available synchronously).
-   * Throws `EntityReentrancyError` if `maxEntityNotificationDepth` would be
-   * exceeded.
-   *
-   * @throws MutationError when the recipe throws (state intact, Immer rollback).
-   * @throws EntityReentrancyError when the maximum re-entrance depth is exceeded.
-   */
-  mutate(
-    intent: string,
-    recipe: (draft: Draft<TStructure>) => void
-  ): TEntityEvent<TStructure> | null;
-  mutate(
-    intent: string,
-    params: TMutationParams,
-    recipe: (draft: Draft<TStructure>) => void
-  ): TEntityEvent<TStructure> | null;
-  mutate(
-    intent: string,
-    paramsOrRecipe: TMutationParams | ((draft: Draft<TStructure>) => void),
-    maybeRecipe?: (draft: Draft<TStructure>) => void
-  ): TEntityEvent<TStructure> | null {
-    // Overload resolution
-    let params: TMutationParams | null = null;
-    let recipe: (draft: Draft<TStructure>) => void;
-
-    if (typeof paramsOrRecipe === "function") {
-      recipe = paramsOrRecipe;
-    } else {
-      params = paramsOrRecipe;
-      recipe = maybeRecipe!;
-    }
-
-    // Re-entrance: a cycle is already running — enqueue (I98)
-    if (this.#draining) {
-      const wouldBeDepth = this.#cycleDepth + this.#queue.length + 1;
-      if (wouldBeDepth > this.maxEntityNotificationDepth) {
-        throw new EntityReentrancyError(
-          `Entity re-entrance exceeded maxEntityNotificationDepth (${this.maxEntityNotificationDepth}) — intent "${intent}"`,
-          "I98",
-          "Entity",
-          "Check that no entity handler triggers a cascading mutation loop."
-        );
-      }
-      this.#queue.push({ intent, params, recipe });
-      return null;
-    }
-
-    // External call — this mutate() drives the whole cycle (first + queue)
-    this.#draining = true;
-    this.#cycleDepth = 1;
-    try {
-      const firstEvent = this.#runCycle(intent, params, recipe);
-
-      while (this.#queue.length > 0) {
-        this.#cycleDepth += 1;
-        const next = this.#queue.shift()!;
-        this.#runCycle(next.intent, next.params, next.recipe);
-      }
-
-      return firstEvent;
-    } finally {
-      this.#draining = false;
-      this.#cycleDepth = 0;
-      this.#queue.length = 0;
-    }
-  }
-
-  /**
-   * Registers a catch-all listener (I51).
-   * Called after every non no-op mutation. No error isolation here — a
-   * listener exception propagates up to the external caller of `mutate()`
-   * (I98 relies on that propagation). `BroadcastError` isolation is the
-   * responsibility of the Feature dispatch (I96).
-   */
-  onAnyEntityUpdated(listener: TEntityUpdateListener<TStructure>): void {
-    this.#listeners.push(listener);
-  }
-
-  // ─── Private ─────────────────────────────────────────────────────────
-
-  /**
-   * Runs a full cycle: recipe → patches → notification.
-   * Does not handle the queue — that is the caller's job (`mutate()`).
-   */
-  #runCycle(
-    intent: string,
-    params: TMutationParams | null,
-    recipe: (draft: Draft<TStructure>) => void
-  ): TEntityEvent<TStructure> | null {
-    const previousState = this.#state;
-
-    let nextState: TStructure;
-    let patches: Patch[];
-    let inversePatches: Patch[];
-    try {
-      [nextState, patches, inversePatches] = Immer.produceWithPatches(
-        previousState,
-        recipe
-      ) as [TStructure, Patch[], Patch[]];
-    } catch (error) {
-      throw new MutationError(
-        `Recipe threw for intent "${intent}" — state kept (Immer rollback)`,
-        "ADR-05",
-        "Entity",
-        error instanceof Error ? error.message : String(error)
-      );
-    }
-
-    if (patches.length === 0) {
-      // No-op — no notification
-      return null;
-    }
-
-    // changedKeys derived from the first path segment of each patch (I97)
-    const changedKeys = [...new Set(patches.map((p) => String(p.path[0])))];
-
-    this.#state = nextState;
-
-    const event: TEntityEvent<TStructure> = {
-      intent,
-      payload: params?.payload,
-      metas: params?.metas,
-      changedKeys,
-      patches,
-      inversePatches,
-      previousState,
-      nextState,
-      timestamp: Date.now()
-    };
-
-    for (const listener of this.#listeners) {
-      listener(event);
-    }
-
-    return event;
   }
 }

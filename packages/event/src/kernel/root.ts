@@ -25,7 +25,7 @@
  */
 
 import { Immer } from "@bonsai/immer";
-import type { Draft } from "immer";
+import type { Draft, Patch } from "immer";
 import { capture } from "./capture";
 import { InvariantError, ManifestError, StartupError, TransportError } from "./errors";
 import type {
@@ -43,10 +43,13 @@ import type {
   TManifestEntry,
   TOriginKind,
   TReadContext,
+  TStateChange,
   TRootOptions,
   TTraceEntry,
   TUnitContext
 } from "./types";
+
+Immer.enablePatches();
 
 // ── Internal records ─────────────────────────────────────────────────────────
 
@@ -583,17 +586,18 @@ export class Root {
         if (self.entity === null) fail(new TransportError("NOT_OWNER", `${self.handle.name} owns no Entity`));
         return self.entity!.state as S;
       },
-      mutate: <S>(recipe: (draft: Draft<S>) => void): void => {
+      mutate: <S>(recipe: (draft: Draft<S>) => void): TStateChange<S> | null => {
         guard();
         const entity = self.entity;
         if (entity === null) fail(new TransportError("NOT_OWNER", `${self.handle.name} owns no Entity (16.2)`));
-        const previous = entity!.state;
-        const next = Immer.produce(previous as S, recipe);
-        if (next === previous) return;
+        const previous = entity!.state as S;
+        const [next, patches, inversePatches] = Immer.produceWithPatches(previous, recipe) as [S, Patch[], Patch[]];
+        if (next === previous) return null;
         entity!.state = next;
         // Immutable states: restoring the previous reference is an exact undo (G7).
         unit.undo.push(() => { entity!.state = previous; });
         unit.touched.add(self);
+        return { previous, next, patches, inversePatches };
       },
       journal: (undo) => {
         guard();

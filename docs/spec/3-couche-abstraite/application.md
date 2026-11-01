@@ -1,6 +1,7 @@
 # Application
 
-> ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
+> 🟠 **Partiellement aligné sur la théorie V0.9.5 (lot M6.1, 1er novembre 2026).** Le démarrage des Features sur le noyau est livré (§2, §3). La Foundation n'est **pas encore branchée** (lot M6.2) : son phase 4 et l'invariant I33 sont suspendus. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
+
 
 > **Déclaration du manifest, bootstrap par phases, arrêt**
 
@@ -45,7 +46,7 @@ const features = {
   user: UserFeature,
 } satisfies StrictManifest<AppManifest>;
 
-const app = new Application({ foundation: AppFoundation, features });
+const app = new Application({ features });
 app.start();
 app.started; // true
 ```
@@ -56,15 +57,16 @@ type TFeaturesManifest = Readonly<
 >;
 
 type TApplicationOptions<M extends TFeaturesManifest = TFeaturesManifest> = {
-  readonly foundation?: typeof Foundation; // obligatoire au start() (I33)
   readonly features?: M;
+  readonly components?: readonly TManifestEntry[]; // autres enfants de la racine (Foundation, adaptateurs ; sondes en test)
+  readonly causalBound?: number;                   // borne des chaînes causales fixée par le Manifest (D9) ; 50 par défaut
 };
 
 class Application<M extends TFeaturesManifest = TFeaturesManifest> {
   constructor(options?: TApplicationOptions<M>); // aucun side-effect
   start(): void;
   readonly started: boolean;
-  readonly foundation: Foundation | null;        // après start()
+  readonly root: Root | null;                    // la racine de communication, après start() (G6)
 }
 ```
 
@@ -74,33 +76,21 @@ class Application<M extends TFeaturesManifest = TFeaturesManifest> {
 
 ## 3. `start()` — séquence de bootstrap
 
-`start()` exécute des phases **strictement ordonnées** ; chacune se termine
-avant que la suivante commence. Les phases 0a–0c n'ont **aucun effet de bord** :
-un manifest invalide échoue avant qu'un seul Channel existe.
+`start()` exécute des phases **strictement ordonnées**. Les phases 0a–0c n'ont **aucun effet de bord** : un manifest invalide échoue avant qu'une seule Feature existe.
 
 | Phase | Contenu | Effet | Invariants |
 | --- | --- | --- | --- |
 | **0a** | Filet runtime du manifest : format et réservation de chaque clé, `static channel` présent, `channel.namespace` = clé | aucun | I21, I22, I57, I71, I73 |
-| **0b** | Instanciation de chaque Feature ; **sentinel** : si Radio a changé pendant le `new`, erreur (constructeur non inerte) | aucun | I94 |
+| **0b** | Instanciation de chaque Feature (constructeur inerte : ni Entity ni noyau) | aucun | I94 |
 | **0c** | Lecture de `instance.listens` et `instance.queries` ; chaque namespace référencé doit exister dans le manifest | aucun | I70, I93 |
-| **1** | Un Channel par namespace dans Radio | Radio | — |
-| **3** | Pour chaque Feature, dans l'ordre du manifest : `bootstrap()` — instanciation de l'Entity, auto-discovery des handlers (I48), puis `onInit()` | Radio, Entities | I48, I56 |
-| **4** | `new FoundationClass()` puis `attach()` : Composers racines, puis Views | DOM | I33 |
+| **1** | Une `Root` ; les Features puis les `components` deviennent ses enfants, dans un ordre qui respecte les dépendances initiales (`queries`, C.1). Pour chaque Feature, dans l'unité de démarrage : création de l'Entity, déclaration des handlers (I48), `onInit(ctx)` | racine | I48, I56 |
 
-- La couche abstraite est **entièrement active** avant la couche concrète (I56).
-- Il n'y a pas de phase 2 : l'Entity est instanciée par la Feature en phase 3. La numérotation suit le code.
+- Le démarrage est **une seule unité** (§2.5) : si une Feature échoue, tout le modèle en construction est abandonné (`StartupError`, la cause d'origine est conservée).
+- Les messages différés et les admissions attendent le succès du démarrage.
+- La Foundation, ses Composers et ses Views seront des enfants de la racine à partir du lot M6.2 ; leur phase (ancienne phase 4) n'existe pas encore.
 - `start()` est la **frontière de confiance** (I66) : ce que le typage garantit et qu'un `as any` ou du JavaScript pur pourrait contourner est revérifié ici.
 
-**Erreurs** : `BonsaiNamespaceError` (codes `NAMESPACE_INVALID_FORMAT`,
-`NAMESPACE_RESERVED`, `NAMESPACE_UNKNOWN_REFERENCE`, `FEATURE_MISSING_CHANNEL`,
-`FEATURE_CHANNEL_NAMESPACE_MISMATCH`) ; erreur si le constructeur d'une Feature
-n'est pas inerte, si `foundation` manque, ou si `start()` est appelé deux fois.
-
-> ⚠️ **Ordre en phase 3** : `bootstrap()` puis `onInit()` s'enchaînent Feature
-> par Feature. Un `request()` émis depuis `onInit()` vers une Feature placée
-> **plus loin** dans le manifest retourne `null` : son replier n'est pas encore
-> enregistré. Placer les Features interrogées au démarrage avant celles qui les
-> interrogent.
+**Erreurs** : `BonsaiNamespaceError` (codes `NAMESPACE_INVALID_FORMAT`, `NAMESPACE_RESERVED`, `NAMESPACE_UNKNOWN_REFERENCE`, `FEATURE_MISSING_CHANNEL`, `FEATURE_CHANNEL_NAMESPACE_MISMATCH`) ; `ManifestError` si les dépendances initiales sont cycliques ; `StartupError` si une unité de démarrage échoue ; erreur si `start()` est appelé deux fois.
 
 ### 3.1 Cible
 

@@ -136,6 +136,27 @@ D9 pendant l'unité et au préambule était déjà couvert au lot M1. 60 tests d
 - **Une View créée par un Composer en réaction à un Event n'a pas le droit de commander à son initialisation.** Charger les données d'une page à son montage ne peut donc pas venir de la View : c'est la Feature qui réagit à `router:routeChanged` (chorégraphie, D17). Le prototype confirme la règle de D18 ; **le guide doit le dire explicitement**, car c'est le premier réflexe d'un développeur venant d'un autre framework.
 - **La carte des droits par contexte n'est jamais purgée.** Comme les jetons de corrélation (R5), sa durée de vie doit suivre celle des contextes conservés (C.2).
 
+## 3 sexies. Lot M6.1 — Feature, Entity et Application sur le noyau (1er novembre 2026)
+
+Première étape de l'intégration : le domaine (Features, Entities, Application) tourne sur le noyau ; `View`, `Composer` et `Foundation` restent sur l'ancien `Radio` jusqu'à M6.2. Les tests du domaine passent par une sonde de la même racine (`tests/helpers/drive.ts`) qui adresse des Commands et des Queries comme le ferait l'interface : 61 tests dans `tests/unit/domain/`, suite complète à 340 tests verts, huit mutations de contrôle toutes détectées.
+
+**Réalisé.**
+
+- **Feature** : handlers `(payload, ctx)` ; contexte `TFeatureContext` (`emit`, `mutate`, `query`, sans `trigger`, D17) et `TFeatureQueryContext` (`query` seul, A3.g) ; plus de `bootstrap()`, `this.emit`, `this.request` ni `this.entity.mutate` ; `describeFeature` produit la description donnée au noyau ; découverte des handlers à travers l'héritage.
+- **Entity** : décrit l'état (initial, invariants, lectures) mais ne le détient plus ; `state` lisible seulement pendant un handler de la Feature propriétaire ; `mutate` et la file de ré-entrance (I98) supprimés.
+- **Notifications** : chaque mutation effective envoie à la Feature un message local différé (G5, D8) ; `on<Clé>EntityUpdated` puis `onAnyEntityUpdated` s'exécutent chacun dans leur unité.
+- **Application** : une `Root` par Application, démarrage par Manifest, `components` pour les autres enfants de la racine, `causalBound` (50 par défaut). Les dépendances initiales viennent de `queries`.
+- **Noyau** : `mutate` renvoie le changement (patches, états avant et après) ou `null` ; `@bonsai/event` exporte `Root` et les types du noyau ; `TChannelToken` porte `events`.
+
+**Constats et décisions.**
+
+- **Les Events émis doivent être déclarés à l'exécution** (D16). Le code livré ne les connaissait que par le type. Ils sont déclarés dans le jeton `static readonly channel` (`events: [...]`) ; le typage de ces clés par rapport à `TChannelDef` n'est pas encore vérifié (un `keyof` rend le jeton contravariant : à traiter avec les contrats de M6.2).
+- **Un échec dans un handler de notification n'annule plus la mutation.** Il échoue seul, dans sa propre unité : la mutation était déjà validée. L'isolation par `BroadcastError` n'a plus d'objet.
+- **Une clé inconnue dans `on<Clé>EntityUpdated` échoue avant le démarrage du noyau** (`hardInvariant` I96), pas dans l'unité de démarrage : l'erreur est une `BonsaiError`, pas une `StartupError`.
+- **Les dépendances de démarrage viennent de `queries`, pas de `listens`.** Deux Features qui se déclarent mutuellement dans `queries` forment un cycle refusé (`ManifestError`), même si aucune ne se sert de l'autre à l'initialisation. C'est plus strict que le code livré ; à garder si `queries` doit rester la déclaration des dépendances initiales, sinon à scinder.
+- **La Foundation n'est plus requise par `Application`** pendant M6.1 (I33 suspendu) ; `foundation` n'est plus une option. Le test de bout en bout du panier (`tests/e2e/strate-0.cart-round-trip.test.ts`) est suspendu jusqu'à M6.2.
+- **Dette de documentation.** `feature.md`, `entity.md` et `application.md` portent une section « Livré sur le noyau » qui fait foi ; leurs exemples antérieurs (`this.emit`, `this.entity.mutate`, `bootstrap()`) sont à réécrire en M6.2. La lane `requests` et les handlers `on…Request` gardent leur nom jusque-là.
+
 ## 4. Hors périmètre
 
 Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignations et DOM (M3–M4) ; qualification des sources par le monde fermé et D18 (M5) ; remplacement de `Channel` et `Radio`, et branchement des classes de base (M6).
@@ -149,4 +170,6 @@ Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignat
 5. ~~Lot M4~~ : fait (section 3 quater).
 6. ~~Lot M5~~ : fait (section 3 quinquies).
 7. ~~Compléter ADR-35 et le guide avec les deux constats de M5~~ : fait, avec l'ordre explicite dans Composer §1.3.
-8. Lot M6 : intégration (classes de base, contrats publics, parcours panier, multiracine, catalogue d'adaptateurs).
+8. ~~Lot M6.1~~ : fait (section 3 sexies).
+9. Lot M6.2 : `Foundation`, `Composer`, `View` sur le noyau ; parcours complet dans jsdom ; renommage `requests` → `queries` ; exemples de `feature.md`, `entity.md`, `application.md`.
+10. Lot M6.3 : routeur et adaptateur historique ; retrait de `Channel` et `Radio`.

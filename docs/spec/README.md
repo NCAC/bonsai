@@ -39,9 +39,9 @@ spec/
 | ↳ [distribution](2-architecture/distribution.md) | Modes IIFE et ESM modulaire | [27](../adr/ADR-27-mode-esm-modulaire.md) | 🔴 |
 | ↳ [erreurs](2-architecture/erreurs.md) | Catégories, propagation, diagnostics | [05](../adr/ADR-05-propagation-erreurs.md) | 🔴 |
 | [3-couche-abstraite](3-couche-abstraite/README.md) | Ce qui vit toute la session | — | 🔴 |
-| ↳ [application](3-couche-abstraite/application.md) | Bootstrap, manifest applicatif typé | [07](../adr/ADR-07-application-bootstrap.md), [08](../adr/ADR-08-namespace-manifest.md) | 🔴 |
-| ↳ [feature](3-couche-abstraite/feature.md) | Unité métier, 5 capacités, handlers auto-découverts | [09](../adr/ADR-09-feature-contract.md), [14](../adr/ADR-14-contrats-types.md) | 🔴 |
-| ↳ [entity](3-couche-abstraite/entity.md) | State, mutations Immer, notifications, schema | [10](../adr/ADR-10-entity-mutation.md), [11](../adr/ADR-11-entity-schema-valibot.md), [12](../adr/ADR-12-entity-intent-typing.md) | 🔴 |
+| ↳ [application](3-couche-abstraite/application.md) | Bootstrap, manifest applicatif typé | [07](../adr/ADR-07-application-bootstrap.md), [08](../adr/ADR-08-namespace-manifest.md) | 🟠 |
+| ↳ [feature](3-couche-abstraite/feature.md) | Unité métier, 5 capacités, handlers auto-découverts | [09](../adr/ADR-09-feature-contract.md), [14](../adr/ADR-14-contrats-types.md) | 🟠 |
+| ↳ [entity](3-couche-abstraite/entity.md) | State, mutations Immer, notifications, schema | [10](../adr/ADR-10-entity-mutation.md), [11](../adr/ADR-11-entity-schema-valibot.md), [12](../adr/ADR-12-entity-intent-typing.md) | 🟠 |
 | ↳ [router](3-couche-abstraite/router.md) | Feature framework de navigation | [13](../adr/ADR-13-router.md) | 🔴 |
 | [4-couche-concrete](4-couche-concrete/README.md) | Ce qui touche le DOM | — | 🟢 |
 | ↳ [foundation](4-couche-concrete/foundation.md) | Racine `<body>`, Composers racines, N1 | [20](../adr/ADR-20-foundation.md) | 🟢 |
@@ -59,7 +59,7 @@ spec/
 | [reference/types-index](reference/types-index.md) | Index des types TypeScript | — | 🔴 |
 
 **Statut** : 🟢 stable — le contrat est figé, prêt à implémenter ; 🟡 brouillon —
-en cours de rédaction ; 🔴 non aligné sur la théorie V0.9.5 — antérieur à la refonte, il peut la contredire et porte un bandeau d'avertissement. Le statut dit si la **spécification** est finie, pas si
+en cours de rédaction ; 🟠 partiellement aligné — le contrat d'exécution est livré sur le noyau (lot M6) pour certaines sections, les autres montrent l'ancienne forme ; 🔴 non aligné sur la théorie V0.9.5 — antérieur à la refonte, il peut la contredire et porte un bandeau d'avertissement. Le statut dit si la **spécification** est finie, pas si
 le **code** l'est : une section non livrée porte un encadré ⏳ qui renvoie à
 l'ADR et à sa strate ([ADR-31](../adr/ADR-31-strates-perimetre-v1.md)).
 

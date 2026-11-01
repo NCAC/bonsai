@@ -1,4 +1,4 @@
-import type { Draft } from "immer";
+import type { Draft, Patch } from "immer";
 
 /**
  * Kernel prototype (migration lot M1) — public types.
@@ -148,6 +148,14 @@ export type TAdmission =
   | { readonly kind: "independent" }
   | { readonly kind: "unknown" };
 
+/** Change made to an Entity state by one `mutate` call. */
+export interface TStateChange<S = unknown> {
+  readonly previous: S;
+  readonly next: S;
+  readonly patches: readonly Patch[];
+  readonly inversePatches: readonly Patch[];
+}
+
 /** Context offered to a Query handler: read-only, transitive (A3.g). */
 export interface TReadContext {
   readonly self: TComponentHandle;
@@ -189,8 +197,11 @@ export interface TUnitContext extends TReadContext {
   /** Portions currently attributed within a resource owned by self (T7). */
   attributed(resource: TResourceHandle): readonly string[];
   destroy(child: TComponentHandle): void;
-  /** Mutates the component's own Entity; journaled for G7 (16.2). */
-  mutate<S = unknown>(recipe: (draft: Draft<S>) => void): void;
+  /**
+   * Mutates the component's own Entity; journaled for G7 (16.2).
+   * Returns the description of the change, or `null` when the recipe changed nothing.
+   */
+  mutate<S = unknown>(recipe: (draft: Draft<S>) => void): TStateChange<S> | null;
   /** Registers how to undo an internal mutation if the unit fails (G7). */
   journal(undo: () => void): void;
   /** Prepares an effect, engaged only after the unit validates (C.3). */

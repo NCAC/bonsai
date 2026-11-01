@@ -1,8 +1,37 @@
 # Entity
 
-> ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
+> 🟠 **Partiellement aligné sur la théorie V0.9.5 : l'état appartient au noyau (lot M6.1, 1er novembre 2026).** La section « Livré sur le noyau » ci-dessous fait foi. Les §3 à §6 décrivent encore l'Entity qui détient son état, expose `mutate()` et notifie ses écouteurs : c'est l'ancienne forme. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
+
 
 > **Structure de données encapsulée : `TStructure`, mutations, query, notifications**
+
+## Livré sur le noyau (lot M6.1)
+
+L'Entity **décrit** l'état de la Feature ; le **noyau le possède**. Il le crée à partir de `defineInitialState()`, le modifie seulement par `ctx.mutate` dans une unité de validation, le journalise (G7) et vérifie les invariants à la fin de l'unité (A4.a).
+
+| Avant | Maintenant |
+| --- | --- |
+| `entity.mutate(intent, recipe)` | `ctx.mutate(intent, recipe)` ou `ctx.mutate(intent, { payload, metas }, recipe)` — supprimé de la classe |
+| `entity.onAnyEntityUpdated(listener)` | supprimé : la Feature reçoit un message local différé (voir [feature.md](feature.md)) |
+| File FIFO de ré-entrance, `maxEntityNotificationDepth` (I98) | supprimée : file différée du noyau et borne causale D9 |
+| `MutationError` si la recette lève | l'unité échoue et l'état est restauré tel quel ; l'erreur est celle de la recette |
+| `entity.state` lisible partout | lisible seulement pendant un handler de la Feature propriétaire ; sinon erreur explicite. Hors handler, on observe le state par une Query |
+| Pas d'invariants métier | `get invariants()` : liste `{ name, check(state) }`, vérifiée en fin d'unité (une violation intermédiaire réparée avant la fin est acceptée) |
+
+```typescript
+class CartEntity extends Entity<TCartState> {
+  protected defineInitialState(): TCartState { return { items: [], total: 0 }; }
+  override get invariants() {
+    return [{ name: "total-never-negative", check: (s: TCartState) => s.total >= 0 }];
+  }
+  get query() { return { getTotal: () => this.state.total }; }   // lit l'état de l'unité en cours
+}
+```
+
+- `TEntityEvent` est inchangé (`intent`, `payload`, `metas`, `changedKeys`, `patches`, `inversePatches`, `previousState`, `nextState`, `timestamp`) : c'est le payload du message local.
+- `changedKeys` suit l'ordre des patches ; les handlers par clé sont appelés dans l'**ordre alphabétique** des clés, puis le catch-all.
+- Un recette sans effet renvoie `null` et ne notifie personne.
+- L'état est gelé en profondeur : le modifier hors `ctx.mutate` est impossible.
 
 [← Retour à la couche abstraite](README.md) · [Feature](feature.md) · [Application](application.md)
 

@@ -51,8 +51,11 @@ class CounterFeature extends Feature<
 describe("Encapsulation Feature → Entity [I6]", () => {
   it("I6 — `entity` est inaccessible hors de la Feature (compile-time)", () => {
     const feature = new CounterFeature("counter");
-    // @ts-expect-error — `entity` est protected (I6)
-    void feature.entity;
+    // Jamais exécuté : le getter lève tant que la Feature n'est pas démarrée (I94).
+    const read = () =>
+      // @ts-expect-error — `entity` est protected (I6)
+      feature.entity;
+    void read;
   });
 });
 

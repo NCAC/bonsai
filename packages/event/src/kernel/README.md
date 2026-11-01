@@ -2,8 +2,9 @@
 
 Prototype of the communication kernel required by the theory
 ([docs/theorie.md](../../../../docs/theorie.md), §13 and annex C). It lives
-**beside** the delivered `Channel` and `Radio` and is not exported by
-`@bonsai/event` yet.
+beside the legacy `Channel` and `Radio` (still used by the concrete layers until
+lot M6.2) and is exported by `@bonsai/event`: the domain layer (`Feature`,
+`Entity`, `Application`) runs on it since lot M6.1.
 
 | File | Content |
 | --- | --- |

@@ -1,8 +1,52 @@
 # Feature
 
-> ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
+> 🟠 **Partiellement aligné sur la théorie V0.9.5 : le contrat d'exécution est livré sur le noyau (lot M6.1, 1er novembre 2026).** La section « Livré sur le noyau » ci-dessous fait foi pour les handlers, leur contexte, la déclaration des Events, la notification des mutations et le démarrage. Les exemples des §1 à §8 qui écrivent `this.emit(…)`, `this.entity.mutate(…)`, `this.request(…)` ou appellent `bootstrap()` montrent l'ancienne forme (avant le noyau) : le [rapport du prototype](../../rapports/prototype-noyau-M1-2026-10-31.md) en tient la liste. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
+
 
 > **Unité métier : classe abstraite, 5 capacités, handlers auto-découverts, déclaration Channel, cycle de vie**
+
+## Livré sur le noyau (lot M6.1)
+
+Une Feature est un **enfant de la racine** (`Root`, une par Application, G6). Ses handlers s'exécutent chacun dans une **unité de validation** (G7) : mutations et émissions d'un handler s'appliquent ensemble ou pas du tout.
+
+| Ancienne forme | Forme livrée |
+| --- | --- |
+| `onAddItemCommand(payload)` avec `this.entity.mutate(…)` et `this.emit(…)` | `onAddItemCommand(payload, ctx)` avec `ctx.mutate(intent, recipe)` et `ctx.emit(event, payload)` |
+| `this.request(token, name, params)` (retour `null` si absent) | `ctx.query(token, name, params)` (synchrone, lecture seule, G5 ; erreur de transport si la cible n'existe pas ou n'est pas prête) |
+| `onGetTotalRequest(params)` | `onGetTotalRequest(params, ctx: TFeatureQueryContext)` : seul `query` est offert (A3.g) |
+| `onCartItemAddedEvent(payload)` | `onCartItemAddedEvent(payload, ctx)` : même contexte que pour une Command |
+| `onInit()` appelé par `bootstrap()` | `onInit(ctx)` appelé dans l'unité de démarrage (§2.5), après la création de l'Entity |
+| `feature.bootstrap()` | supprimé : `Application.start()` décrit la Feature au noyau (`describeFeature`) |
+| Events émis sur n'importe quelle clé du `TChannelDef` | Events **déclarés** par `static readonly channel = { namespace, events: [...] }` (D16) ; une émission non déclarée échoue (`UNDECLARED_MESSAGE`) |
+
+```typescript
+class CartFeature
+  extends Feature<CartEntity, TCartChannelDef, "cart">
+  implements TFeatureCallbacks<TCartChannelDef, typeof cartListens, CartEntity>
+{
+  static readonly channel: TChannelToken<TCartChannelDef, "cart"> = {
+    namespace: "cart",
+    events: ["itemAdded"]                       // D16 : tout ce qui peut être émis est déclaré
+  };
+  get listens() { return cartListens; }
+  get queries() { return [PRICING] as const; }  // aussi : dépendances initiales (C.1)
+  protected get Entity() { return CartEntity; }
+
+  onAddItemCommand(payload: TCartItem, ctx: TFeatureContext<TCartChannelDef, CartEntity>): void {
+    ctx.mutate("addItem", (draft) => { draft.items.push(payload); });
+    ctx.emit("itemAdded", { item: payload });
+  }
+}
+```
+
+Points qui changent le comportement :
+
+- **Pas de `trigger`.** Le contexte d'une Feature n'en offre pas : une Feature n'adresse jamais de Command (D17).
+- **Ordre de démarrage.** `queries` déclare les dépendances initiales (C.1) : une Feature démarre après celles qu'elle interroge, quel que soit l'ordre du manifest ; un cycle est refusé avant tout démarrage (`ManifestError`). `listens` ne crée aucune dépendance. L'avertissement de §3 de [application.md](application.md) (« `request()` vers une Feature plus loin dans le manifest retourne `null` ») ne s'applique plus.
+- **Notification des mutations.** Chaque `ctx.mutate` qui change l'état envoie à la Feature un **message local différé** (G5, D8) : les handlers `on<Clé>EntityUpdated(prev, next, patches, ctx)` puis `onAnyEntityUpdated(event, ctx)` s'exécutent après l'unité qui a muté, chacun dans sa propre unité. Un handler qui lève échoue seul : la mutation reste ; l'isolation par `BroadcastError` n'existe plus. La file de ré-entrance FIFO de l'Entity (I98) est remplacée par la file différée du noyau, bornée par D9.
+- **Héritage.** Les handlers hérités d'une classe ancêtre sont découverts ; l'implémentation la plus dérivée est appelée.
+- **`this.entity`.** Reste `protected` (I6) ; son `state` n'est lisible que pendant un handler. Hors handler, le state s'observe par une Query.
+- **Reste à livrer.** Le renommage de la lane `requests` en `queries` et des handlers `on…Request` en `on…Query` (lexique de la théorie) est reporté à l'étape M6.2, avec les contrats de la View.
 
 [← Retour à la couche abstraite](README.md) · [← Communication](../2-architecture/communication.md)
 

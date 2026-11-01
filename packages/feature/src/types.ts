@@ -36,7 +36,7 @@
  * @packageDocumentation
  */
 
-import type { Entity, TJsonSerializable } from "@bonsai/entity";
+import type { Entity, TEntityState, TJsonSerializable, TEntityEvent, TEntityRecipe, TMutationParams } from "@bonsai/entity";
 import type { TChannelDefinition, TChannelToken } from "@bonsai/event";
 import type { CamelCase, UnionToIntersection } from "@bonsai/types";
 import type { Feature } from "./bonsai-feature";
@@ -406,6 +406,55 @@ export type TChannelCallbacks<F extends TFeatureContract> = UnionToIntersection<
   }[keyof F & string]
 >;
 
+// ─── Handler contexts (migration lot M6.1, theory A3, A4, D17) ──────────────
+
+/**
+ * Read context: what a Query handler receives (A3.g). Read-only and transitive:
+ * it can only query. Any other operation is refused by the kernel.
+ */
+export type TFeatureQueryContext = {
+  /** Queries a declared Channel; returns the typed result (G5: synchronous, read-only). */
+  query<
+    TDef extends TChannelDefinition,
+    TNS extends string,
+    K extends keyof TDef["requests"] & string
+  >(
+    token: TChannelToken<TDef, TNS>,
+    name: K,
+    params: TDef["requests"][K]["params"]
+  ): TDef["requests"][K]["result"];
+};
+
+/**
+ * Context of a handler that processes a deferred message (Command, Event,
+ * Entity notification): the unit it runs in can emit on the Feature's own
+ * Channel and mutate its own Entity. There is no `trigger`: a Feature never
+ * addresses a Command (D17).
+ */
+export type TFeatureContext<
+  TDef extends TChannelDefinition = TChannelDefinition,
+  TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>
+> = TFeatureQueryContext & {
+  /** Emits an Event on the Feature's own Channel (A3.e); delivered after the unit validates (G5). */
+  emit<K extends keyof TDef["events"] & string>(
+    event: K,
+    payload: TDef["events"][K]
+  ): void;
+  /**
+   * Mutates the Entity (A4.a, G7). Returns the notification event, or `null`
+   * when the recipe changed nothing. Two overloads, as in ADR-10.
+   */
+  mutate(
+    intent: string,
+    recipe: TEntityRecipe<TEntityState<TEntity>>
+  ): TEntityEvent<TEntityState<TEntity>> | null;
+  mutate(
+    intent: string,
+    params: TMutationParams,
+    recipe: TEntityRecipe<TEntityState<TEntity>>
+  ): TEntityEvent<TEntityState<TEntity>> | null;
+};
+
 // ─── Feature callbacks (ADR-09 — I88 symmetry extended to Feature) ──
 
 /**
@@ -419,9 +468,13 @@ export type TChannelCallbacks<F extends TFeatureContract> = UnionToIntersection<
  *   TCommandCallbacks<{ commands: { addItem: { productId: string } }; ... }>
  *   → { onAddItemCommand(payload: { productId: string }): void }
  */
-export type TCommandCallbacks<TDef extends TChannelDefinition> = {
+export type TCommandCallbacks<
+  TDef extends TChannelDefinition,
+  TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>
+> = {
   [K in keyof TDef["commands"] & string as `on${Capitalize<K>}Command`]: (
-    payload: TDef["commands"][K]
+    payload: TDef["commands"][K],
+    ctx: TFeatureContext<TDef, TEntity>
   ) => void;
 };
 
@@ -434,7 +487,8 @@ export type TCommandCallbacks<TDef extends TChannelDefinition> = {
  */
 export type TRequestCallbacks<TDef extends TChannelDefinition> = {
   [K in keyof TDef["requests"] & string as `on${Capitalize<K>}Request`]: (
-    params: TDef["requests"][K]["params"]
+    params: TDef["requests"][K]["params"],
+    ctx: TFeatureQueryContext
   ) => TDef["requests"][K]["result"];
 };
 
@@ -451,14 +505,17 @@ export type TRequestCallbacks<TDef extends TChannelDefinition> = {
  * as an `implements` target.
  */
 export type TListenCallbacks<
-  TListens extends readonly TChannelToken<TChannelDefinition, string>[]
+  TListens extends readonly TChannelToken<TChannelDefinition, string>[],
+  TDef extends TChannelDefinition = TChannelDefinition,
+  TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>
 > = UnionToIntersection<
   TListens[number] extends infer Tok
     ? Tok extends TChannelToken<infer DEF, infer NS>
       ? {
           [E in keyof DEF["events"] &
             string as `on${Capitalize<NS & string>}${Capitalize<E>}Event`]: (
-            payload: DEF["events"][E]
+            payload: DEF["events"][E],
+            ctx: TFeatureContext<TDef, TEntity>
           ) => void;
         }
       : never
@@ -488,10 +545,11 @@ export type TListenCallbacks<
 export type TFeatureCallbacks<
   TDef extends TChannelDefinition,
   TListens extends readonly TChannelToken<TChannelDefinition, string>[] =
-    readonly []
-> = TCommandCallbacks<TDef> &
+    readonly [],
+  TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>
+> = TCommandCallbacks<TDef, TEntity> &
   TRequestCallbacks<TDef> &
-  TListenCallbacks<TListens>;
+  TListenCallbacks<TListens, TDef, TEntity>;
 
 // ─── Runtime safety net ─────────────────────────────────────────────────────
 

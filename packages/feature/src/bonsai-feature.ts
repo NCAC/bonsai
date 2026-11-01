@@ -1,12 +1,17 @@
 /**
  * @bonsai/feature — Feature base class
  *
- * The 5 capabilities (ADR-01):
- *   C1 — emit(event, payload) on its own Channel (typed by TChannelDef, ADR-14)
- *   C2 — handle(command) through auto-discovered on{Name}Command methods
- *   C3 — listen(event) on declared external Channels through on{Channel}{EventName}Event
- *   C4 — reply(request) through auto-discovered on{Name}Request methods
- *   C5 — request(token, name, params) to declared Channels (typed by the token, ADR-14)
+ * The 5 capabilities (ADR-01), realised on the kernel (migration lot M6.1):
+ *   C1 — ctx.emit(event, payload) on its own Channel (typed by TChannelDef, ADR-14)
+ *   C2 — handle(command) through auto-discovered on{Name}Command(payload, ctx) methods
+ *   C3 — listen(event) on declared external Channels through on{Channel}{EventName}Event(payload, ctx)
+ *   C4 — reply(query) through auto-discovered on{Name}Request(params, ctx) methods
+ *   C5 — ctx.query(token, name, params) to declared Channels (typed by the token, ADR-14)
+ *
+ * Every handler receives a context as second argument: there is no `this.emit`,
+ * `this.request` or `this.entity.mutate` any more. A handler runs inside a
+ * validation unit of the kernel (G7): its mutations and emissions are
+ * applied together or not at all. A Feature never addresses a Command (D17).
  *
  * Invariants:
  *   I1  — A Feature can only emit() on its own Channel, never on another Feature's
@@ -37,29 +42,39 @@
  *   I93 — `listens` and `queries` are instance `abstract get` on Feature
  *         (ADR-09 — TS2515 when missing on a concrete class)
  *   I94 — The Feature constructor is inert: assertValidNamespace + #namespace
- *         only. No Radio/Entity side effect.
+ *         only. No kernel/Entity side effect.
  *   I96 — Entity handlers `on<Key>EntityUpdated`/`onAnyEntityUpdated` are
  *         auto-discovered on the Feature (same mechanism as I48), dispatched
  *         in alphabetical order of `changedKeys`, then the catch-all. Unknown
- *         key → bootstrap error. A throwing handler is isolated (BroadcastError,
- *         ADR-05) and the next notification still runs (stratum 1a)
+ *         key → bootstrap error. The notification is a deferred local message
+ *         the Feature sends to itself after the mutation (G5, D8): a throwing
+ *         handler fails its own unit, never the one that mutated.
  *
  * @packageDocumentation
  */
 
 import {
-  Entity,
+  type Entity,
   type TEntityEvent,
-  type TJsonSerializable
+  type TJsonSerializable,
+  type TMutationParams,
+  type TEntityRecipe,
+  bindEntityState,
+  describeEntity
 } from "@bonsai/entity";
-import {
-  Radio,
-  type Channel,
-  type TChannelDefinition,
-  type TChannelToken
+import type {
+  TChannelDefinition,
+  TChannelToken,
+  TManifestEntry,
+  TReadContext,
+  TUnitContext
 } from "@bonsai/event";
-import { BroadcastError, hardInvariant } from "@bonsai/error";
-import { assertValidNamespace } from "./types";
+import { hardInvariant } from "@bonsai/error";
+import {
+  assertValidNamespace,
+  type TFeatureContext,
+  type TFeatureQueryContext
+} from "./types";
 
 // ─── Re-exports — public surface of the package ─────────────────────────────
 
@@ -76,6 +91,9 @@ export type {
   ValidatedManifest,
   StrictManifest,
   TBonsaiNamespaceErrorCode,
+  // ── Handler contexts (lot M6.1) ────────────────────────────────────────
+  TFeatureContext,
+  TFeatureQueryContext,
   // ── Contract modules (ADR-14) ──────────────────────────────────────────
   TFeatureRef,
   TFeatureRefForNS,
@@ -109,17 +127,36 @@ export type {
  * The constructor always takes `namespace: TSelfNS` (ADR-08), which lets
  * `StrictManifest<M>` check at compile time that the class matches its
  * registration key (I72).
- *
- * This type only encodes the constructor signature. The static `channel`
- * member (ADR-14) is checked by `TStrictFeatureClass` at the manifest and by
- * the runtime safety net of `Application.start()`; `listens`/`queries` are
- * instance getters (ADR-09).
  */
 export type TFeatureClass<
   TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>,
   TChannelDef extends TChannelDefinition = TChannelDefinition,
   TSelfNS extends string = string
 > = new (namespace: TSelfNS) => Feature<TEntity, TChannelDef, TSelfNS>;
+
+// ─── Framework description of a Feature ──────────────────────────────────────
+
+const DESCRIBE = Symbol("bonsai.feature.describe");
+
+/** Name of the local message a Feature sends itself after a mutation (I96). */
+const ENTITY_UPDATED = "entityUpdated";
+
+/**
+ * @internal Framework use only (`Application`).
+ *
+ * Builds the description the kernel needs to create the Feature as a child of
+ * the root: its Channel, subscriptions, local message, Entity and initial
+ * Query dependencies (D16, C.1). Creates the Entity (I22).
+ */
+export function describeFeature(
+  feature: Feature<any, any, any>
+): TManifestEntry {
+  return (
+    feature as unknown as { [DESCRIBE](): TManifestEntry }
+  )[DESCRIBE]();
+}
+
+const lowerFirst = (s: string): string => s[0]!.toLowerCase() + s.slice(1);
 
 // ─── Feature abstract class ──────────────────────────────────────────────────
 
@@ -143,6 +180,10 @@ export type TFeatureClass<
  *   - derived from the application manifest key (source of truth — I69)
  *   - checked at compile time by `StrictManifest<M>` through `satisfies`
  *   - checked at runtime by `assertValidNamespace()` (safety net — I71)
+ *
+ * **The Events a Feature may emit are declared on its `static readonly
+ * channel` token** (`events`, D16): the kernel refuses an emission that was
+ * not declared.
  */
 export abstract class Feature<
   TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>,
@@ -153,13 +194,8 @@ export abstract class Feature<
    * Tokens of the external Channels this Feature listens to (C3 — I2, ADR-14,
    * ADR-09 — I93).
    *
-   * **Instance** declaration (`abstract get`, ADR-09), like View's
-   * `abstract get` (ADR-14). Every concrete Feature MUST implement this
-   * getter (TS2515 otherwise).
-   *
-   * `Application.start()` reads the returned tokens in Phase 0c, AFTER pure
-   * instantiation (inert ctor — I94) and BEFORE any Radio/Entity side effect,
-   * to validate cross-dependencies (I70).
+   * **Instance** declaration (`abstract get`, ADR-09). Every concrete Feature
+   * MUST implement this getter (TS2515 otherwise).
    */
   abstract get listens(): readonly TChannelToken<TChannelDefinition, string>[];
 
@@ -167,16 +203,13 @@ export abstract class Feature<
    * Tokens of the external Channels this Feature queries (C5 — I17,
    * ADR-14, ADR-09 — I93).
    *
-   * **Instance** declaration (`abstract get`, ADR-09) — see `listens`.
-   * Not enforced yet: `request()` accepts any token (ADR-01).
+   * Also the declaration of its **initial Query dependencies** (C.1): the
+   * kernel starts the Feature after the Features it queries.
    */
   abstract get queries(): readonly TChannelToken<TChannelDefinition, string>[];
 
   readonly #namespace: TSelfNS;
-  #entity!: TEntity;
-  // Own channel — assigned at bootstrap; the cast is safe by I22 (1 namespace = 1 TDef).
-  #channel!: Channel<TChannelDef>;
-  #bootstrapped = false;
+  #entity: TEntity | null = null;
 
   // ─── Constructor ───────────────────────────────────────────────────────
 
@@ -184,7 +217,6 @@ export abstract class Feature<
    * Creates a Feature bound to the given namespace.
    *
    * Called only by `Application.start()`, which passes the manifest key.
-   * Manual instantiation (tests) must pass the namespace too.
    *
    * @throws `BonsaiNamespaceError` when the namespace is invalid or reserved.
    */
@@ -208,201 +240,187 @@ export abstract class Feature<
 
   /**
    * Namespace of this instance — immutable, set by the constructor.
-   * Typed `TSelfNS` (a string literal when the Feature is parameterised).
    */
   get namespace(): TSelfNS {
     return this.#namespace;
   }
 
   /**
-   * Access to the Entity (I6 — exclusive owner).
-   * `protected`: only the Feature and its subclasses reach it.
-   * Typed by the concrete class (TEntity) thanks to ADR-09.
+   * Access to the Entity description and read methods (I6 — exclusive owner).
+   * `protected`: only the Feature and its subclasses reach it. Its `state` is
+   * readable only inside a handler; mutation goes through `ctx.mutate`.
    */
   protected get entity(): TEntity {
+    if (this.#entity === null) {
+      throw new Error(
+        `[Bonsai Feature] "${this.#namespace}": the Entity exists only once the Feature is started by its Application (I94).`
+      );
+    }
     return this.#entity;
-  }
-
-  /**
-   * Bootstrap: creates the Entity, registers the handlers on the Channel and
-   * calls onInit(). Called by Application, or manually in tests.
-   */
-  bootstrap(): void {
-    if (this.#bootstrapped) return;
-    this.#bootstrapped = true;
-
-    // Safe cast by I22: 1 namespace = 1 Feature = 1 TDef (I75).
-    this.#channel = Radio.me().channel(
-      this.#namespace
-    ) as unknown as Channel<TChannelDef>;
-
-    // I22 — 1:1 Entity creation through the Entity getter (ADR-09)
-    const EntityCtor = this.Entity;
-    this.#entity = new EntityCtor();
-
-    // Handler auto-discovery (I48)
-    this.#registerCommandHandlers();
-    this.#registerRequestRepliers();
-    this.#registerEventListeners();
-    this.#registerEntityHandlers();
-
-    // Lifecycle
-    this.onInit();
-  }
-
-  // ─── Capabilities (C1–C5) ──────────────────────────────────────────────
-
-  /**
-   * C1 — Emits a typed Event on this Feature's own Channel (I1, ADR-14).
-   */
-  protected emit<K extends keyof TChannelDef["events"] & string>(
-    eventName: K,
-    payload: TChannelDef["events"][K]
-  ): void {
-    this.#channel.emit(eventName, payload);
-  }
-
-  /**
-   * C5 — Performs a typed Request to a declared Channel (I17, ADR-14).
-   * Returns the typed result or null (ADR-02).
-   */
-  protected request<
-    TDef extends TChannelDefinition,
-    TNS extends string,
-    K extends keyof TDef["requests"] & string
-  >(
-    token: TChannelToken<TDef, TNS>,
-    requestName: K,
-    params: TDef["requests"][K]["params"]
-  ): TDef["requests"][K]["result"] | null {
-    return Radio.me().channelFor(token).request(requestName, params);
   }
 
   // ─── Lifecycle hooks ───────────────────────────────────────────────────
 
   /**
-   * Hook called after bootstrap. Override it in subclasses.
+   * Hook called inside the startup unit, after the Entity exists (I56).
+   * Override it in subclasses. It receives the same context as a handler.
    */
-  onInit(): void {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onInit(_ctx: TFeatureContext<TChannelDef, TEntity>): void {
     // Default no-op — subclasses override
   }
 
-  // ─── Private : Auto-discovery (I48) ────────────────────────────────────
+  // ─── Framework description (internal) ──────────────────────────────────
 
-  /**
-   * Discovers the `on{Name}Command` methods and registers them as handlers
-   * on this Feature's own Channel (C2).
-   *
-   * Convention: `onAddItemCommand` → command "addItem"
-   */
-  #registerCommandHandlers(): void {
-    // Cast to the untyped Channel to register by string (I75).
-    const ch = this.#channel as unknown as Channel;
-    const proto = Object.getPrototypeOf(this);
-    const methods = Object.getOwnPropertyNames(proto) as string[];
+  [DESCRIBE](): TManifestEntry {
+    const namespace = this.#namespace;
 
+    // I22 — 1:1 Entity creation through the Entity getter (ADR-09)
+    const EntityCtor = this.Entity;
+    const entity = new EntityCtor();
+    this.#entity = entity;
+    const definition = describeEntity(entity);
+
+    const methods = this.#methodNames();
+    this.#checkEntityHandlers(methods, definition.initial);
+
+    const token = (this.constructor as { channel?: TChannelToken<TChannelDefinition> }).channel;
+    const events = token?.events ?? [];
+
+    const commands: Record<string, (payload: unknown, c: TUnitContext) => void> = {};
+    const queries: Record<string, (params: unknown, c: TReadContext) => unknown> = {};
+    const listens: Array<{ namespace: string; event: string; handler: (payload: unknown, c: TUnitContext) => void }> = [];
+    const self = this as unknown as Record<string, (...args: unknown[]) => unknown>;
+
+    // Handler auto-discovery (I48)
     for (const method of methods) {
-      const match = method.match(/^on([A-Z][a-zA-Z]*)Command$/);
+      let match = method.match(/^on([A-Z][a-zA-Z]*)Command$/);
       if (match) {
-        const commandName = match[1][0].toLowerCase() + match[1].slice(1);
-        ch.handle(commandName, (payload: unknown) => {
-          (this as unknown as Record<string, (p: unknown) => void>)[method](
-            payload
-          );
-        });
+        commands[lowerFirst(match[1]!)] = (payload, c) =>
+          this.#run(c, () => self[method]!(payload, this.#featureContext(c)));
+        continue;
+      }
+      match = method.match(/^on([A-Z][a-zA-Z]*)Request$/);
+      if (match) {
+        queries[lowerFirst(match[1]!)] = (params, c) =>
+          this.#run(c, () => self[method]!(params, this.#queryContext(c)));
       }
     }
-  }
 
-  /**
-   * Discovers the `on{Name}Request` methods and registers them as repliers
-   * on this Feature's own Channel (C4, I3).
-   *
-   * Convention: `onGetTotalRequest` → request "getTotal"
-   */
-  #registerRequestRepliers(): void {
-    // Cast to the untyped Channel to register by string (I75).
-    const ch = this.#channel as unknown as Channel;
-    const proto = Object.getPrototypeOf(this);
-    const methods = Object.getOwnPropertyNames(proto) as string[];
-
-    for (const method of methods) {
-      const match = method.match(/^on([A-Z][a-zA-Z]*)Request$/);
-      if (match) {
-        const requestName = match[1][0].toLowerCase() + match[1].slice(1);
-        ch.reply(requestName, (params: unknown) => {
-          return (this as unknown as Record<string, (p: unknown) => unknown>)[
-            method
-          ](params);
-        });
-      }
-    }
-  }
-
-  /**
-   * Discovers the `on{Channel}{EventName}Event` methods and registers them as
-   * listeners on the Channels declared by `get listens()` (C3, I2, I48,
-   * ADR-14, ADR-09 — I93).
-   *
-   * Convention: `onCartItemAddedEvent` with `get listens() { return [CartFeature.channel]; }`
-   * → listens to "itemAdded" on the "cart" Channel
-   *
-   * Pattern: on + ChannelName(PascalCase) + EventName(PascalCase) + Event
-   */
-  #registerEventListeners(): void {
-    const listenTokens = this.listens;
-    if (listenTokens.length === 0) return;
-
-    const proto = Object.getPrototypeOf(this);
-    const methods = Object.getOwnPropertyNames(proto) as string[];
-
-    for (const token of listenTokens) {
-      const channelName = token.namespace;
-      const channelPascal = channelName[0].toUpperCase() + channelName.slice(1);
+    // Subscriptions to the declared external Channels (C3, I2, I48)
+    for (const external of this.listens) {
+      const channelPascal = external.namespace[0]!.toUpperCase() + external.namespace.slice(1);
       const prefix = `on${channelPascal}`;
-      const suffix = "Event";
-
-      // Cast to the untyped Channel to register by string (I75).
-      const ch = Radio.me().channel(channelName) as unknown as Channel;
-
       for (const method of methods) {
-        if (method.startsWith(prefix) && method.endsWith(suffix)) {
-          const eventPascal = method.slice(prefix.length, -suffix.length);
-          if (eventPascal.length === 0) continue;
-
-          const eventName = eventPascal[0].toLowerCase() + eventPascal.slice(1);
-
-          ch.listen(eventName, (payload: unknown) => {
-            (this as unknown as Record<string, (p: unknown) => void>)[method](
-              payload
-            );
-          });
-        }
+        if (!method.startsWith(prefix) || !method.endsWith("Event")) continue;
+        const eventPascal = method.slice(prefix.length, -"Event".length);
+        if (eventPascal.length === 0) continue;
+        listens.push({
+          namespace: external.namespace,
+          event: lowerFirst(eventPascal),
+          handler: (payload, c) =>
+            this.#run(c, () => self[method]!(payload, this.#featureContext(c)))
+        });
       }
     }
+
+    return {
+      name: namespace,
+      channel: { namespace, events, commands, queries },
+      listens,
+      locals: {
+        [ENTITY_UPDATED]: (event, c) =>
+          this.#run(c, () => this.#dispatchEntityEvent(event as TEntityEvent, this.#featureContext(c)))
+      },
+      entity: definition,
+      init: (c) => this.#run(c, () => this.onInit(this.#featureContext(c))),
+      dependsOn: this.queries.map((t) => t.namespace)
+    };
+  }
+
+  // ─── Private ───────────────────────────────────────────────────────────
+
+  /**
+   * Names of the methods declared on the concrete class and its ancestors up
+   * to `Feature` (I48). A subclass that overrides one handler keeps those it
+   * inherits; the most derived implementation is the one called.
+   */
+  #methodNames(): string[] {
+    const names = new Set<string>();
+    for (
+      let proto = Object.getPrototypeOf(this) as object | null;
+      proto !== null && proto !== Feature.prototype;
+      proto = Object.getPrototypeOf(proto) as object | null
+    ) {
+      for (const name of Object.getOwnPropertyNames(proto)) names.add(name);
+    }
+    return [...names];
   }
 
   /**
-   * Discovers the `on{Key}EntityUpdated` methods and subscribes once to
-   * `entity.onAnyEntityUpdated()` to dispatch them (I96, stratum 1a).
-   *
-   * Convention: `onItemsEntityUpdated` with an `items` key in the Entity
-   * state → called on every mutation that changes `items`.
-   * `onAnyEntityUpdated` (catch-all) is wired without key checking.
-   *
-   * Runtime safety net: an `on<Key>EntityUpdated` method whose `<Key>`
-   * matches no key of the Entity state → bootstrap error.
+   * Binds the Entity to the kernel's current state for the duration of a
+   * handler, so that its read methods see the state of the running unit.
    */
-  #registerEntityHandlers(): void {
-    const proto = Object.getPrototypeOf(this);
-    const methods = Object.getOwnPropertyNames(proto) as string[];
-    const stateKeys = new Set(Object.keys(this.#entity.state as object));
+  #run<R>(c: TReadContext, fn: () => R): R {
+    const entity = this.#entity!;
+    const restore = bindEntityState(entity, () => c.state());
+    try {
+      return fn();
+    } finally {
+      restore();
+    }
+  }
 
+  #queryContext(c: TReadContext): TFeatureQueryContext {
+    return {
+      query: (token, name, params) =>
+        c.query(token.namespace, name, params)
+    };
+  }
+
+  #featureContext(c: TUnitContext): TFeatureContext<TChannelDef, TEntity> {
+    const mutate = (
+      intent: string,
+      paramsOrRecipe: TMutationParams | TEntityRecipe<any>,
+      maybeRecipe?: TEntityRecipe<any>
+    ): TEntityEvent<any> | null => {
+      const params = typeof paramsOrRecipe === "function" ? null : paramsOrRecipe;
+      const recipe = typeof paramsOrRecipe === "function" ? paramsOrRecipe : maybeRecipe!;
+      const change = c.mutate<any>(recipe);
+      if (change === null) return null; // no-op: no notification
+      const event: TEntityEvent<any> = {
+        intent,
+        payload: params?.payload,
+        metas: params?.metas,
+        // Keys derived from the first path segment of each patch (I97)
+        changedKeys: [...new Set(change.patches.map((p) => String(p.path[0])))],
+        patches: [...change.patches],
+        inversePatches: [...change.inversePatches],
+        previousState: change.previous,
+        nextState: change.next,
+        timestamp: Date.now()
+      };
+      // The notification is a deferred local message (G5, D8).
+      c.local(ENTITY_UPDATED, event);
+      return event;
+    };
+    return {
+      ...this.#queryContext(c),
+      emit: (event, payload) => c.emit(event, payload),
+      mutate: mutate as TFeatureContext<TChannelDef, TEntity>["mutate"]
+    };
+  }
+
+  /**
+   * Runtime safety net: an `on<Key>EntityUpdated` method whose `<Key>`
+   * matches no key of the Entity state → bootstrap error (I96).
+   */
+  #checkEntityHandlers(methods: string[], initial: TJsonSerializable): void {
+    const stateKeys = new Set(Object.keys(initial as object));
     for (const method of methods) {
       const match = method.match(/^on([A-Z][a-zA-Z]*)EntityUpdated$/);
       if (!match || match[1] === "Any") continue;
-
-      const key = match[1][0].toLowerCase() + match[1].slice(1);
+      const key = lowerFirst(match[1]!);
       hardInvariant(
         stateKeys.has(key),
         `Feature "${this.#namespace}" declares entity handler "${method}" for unknown key "${key}"`,
@@ -410,61 +428,29 @@ export abstract class Feature<
         this.#namespace
       );
     }
-
-    this.#entity.onAnyEntityUpdated((event: TEntityEvent) => {
-      this.#dispatchEntityEvent(event);
-    });
   }
 
   /**
    * Routes a `TEntityEvent` to the per-key handlers (alphabetical order of
-   * `changedKeys`), then to the catch-all, when present. Each call is
-   * isolated: a throw becomes a logged `BroadcastError` and the
-   * notification continues (ADR-05, I96).
+   * `changedKeys`), then to the catch-all, when present (I96).
    */
-  #dispatchEntityEvent(event: TEntityEvent): void {
-    const self = this as unknown as Record<
-      string,
-      (...args: unknown[]) => void
-    >;
+  #dispatchEntityEvent(
+    event: TEntityEvent,
+    ctx: TFeatureContext<TChannelDef, TEntity>
+  ): void {
+    const self = this as unknown as Record<string, (...args: unknown[]) => void>;
 
     for (const key of [...event.changedKeys].sort()) {
-      const handlerName = `on${key[0].toUpperCase()}${key.slice(1)}EntityUpdated`;
+      const handlerName = `on${key[0]!.toUpperCase()}${key.slice(1)}EntityUpdated`;
       if (typeof self[handlerName] !== "function") continue;
-
-      const keyPatches = event.patches.filter(
-        (p) => String(p.path[0]) === key
-      );
+      const keyPatches = event.patches.filter((p) => String(p.path[0]) === key);
       const prev = (event.previousState as Record<string, unknown>)[key];
       const next = (event.nextState as Record<string, unknown>)[key];
-
-      try {
-        self[handlerName](prev, next, keyPatches);
-      } catch (error) {
-        console.error(
-          new BroadcastError(
-            `Entity handler "${handlerName}" threw for intent "${event.intent}"`,
-            "ADR-05",
-            this.#namespace
-          ),
-          error
-        );
-      }
+      self[handlerName](prev, next, keyPatches, ctx);
     }
 
     if (typeof self["onAnyEntityUpdated"] === "function") {
-      try {
-        self["onAnyEntityUpdated"](event);
-      } catch (error) {
-        console.error(
-          new BroadcastError(
-            `Entity handler "onAnyEntityUpdated" threw for intent "${event.intent}"`,
-            "ADR-05",
-            this.#namespace
-          ),
-          error
-        );
-      }
+      self["onAnyEntityUpdated"](event, ctx);
     }
   }
 }

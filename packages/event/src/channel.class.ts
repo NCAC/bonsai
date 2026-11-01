@@ -55,6 +55,12 @@ export type TChannelToken<
   TNS extends string = string
 > = {
   readonly namespace: TNS;
+  /**
+   * Events the Channel's owner may emit (D16: everything a component can do
+   * is declared at its creation). Required of a Feature's own token by the
+   * kernel; ignored by `Radio`.
+   */
+  readonly events?: readonly string[];
   readonly _def?: TDef;
 };
 

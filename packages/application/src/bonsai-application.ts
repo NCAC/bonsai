@@ -2,28 +2,32 @@
  * @bonsai/application — Application class
  *
  * Capabilities (ADR-07, ADR-08, ADR-09):
- *   - constructor({ foundation, features }) — declares the application manifest
- *   - start() — phased bootstrap:
+ *   - constructor({ features, components?, causalBound? }) — declares the application manifest
+ *   - start() — phased bootstrap on the communication kernel (migration lot M6.1):
  *       Phase 0a: namespace format validation (assertValidNamespace)
- *       Phase 0b: pure instantiation of the Features (inert ctor — I94) + sentinel
+ *       Phase 0b: pure instantiation of the Features (inert ctor — I94)
  *       Phase 0c: read instance.listens/queries — cross-reference validation (I70)
- *       Phase 1: Channels (one channel per Feature)
- *       Phase 3: Features (bootstrap() — Entity, handlers, onInit() — on the Phase 0b instances)
- *       Phase 4: Foundation (composers → views, attach)
+ *       Phase 1: kernel startup — one `Root` per Application (G6); the Features
+ *                become its children in an order that respects their initial
+ *                Query dependencies (`queries`, C.1); each creates its Entity,
+ *                registers its handlers and runs `onInit()` inside the startup
+ *                unit (§2.5, I56)
+ *       (Foundation → Composers → Views: not wired yet — lot M6.2)
  *
  * Invariants:
  *   I23  — Application is dormant at runtime (no handle/emit/listen/request)
  *   I21  — The manifest guarantees uniqueness at compile time; Application
  *          validates format, reserved names and `channel` consistency at bootstrap
  *   I33  — An Application without a Foundation cannot render anything
+ *          (not enforced during lot M6.1: the Foundation is not wired yet)
  *   I56  — Every Feature's onInit() runs before the Foundation is created
  *   I68  — The namespace is carried by the manifest, not by a static (ADR-08)
  *   I69  — The manifest is the single source of truth for identity (ADR-08)
  *   I70  — Every reference to an external namespace MUST be validated against
  *          the manifest — read from instance.listens/queries (ADR-09)
  *   I71  — `RESERVED_NAMESPACES` is a framework constant (ADR-08)
- *   I94  — The Feature constructor is inert: the Phase 0b sentinel detects
- *          any unexpected Radio side effect (ADR-09)
+ *   I94  — The Feature constructor is inert: it creates no Entity and
+ *          touches no kernel; everything happens at startup (ADR-09)
  *
  * Not delivered yet:
  *   - stop()
@@ -35,16 +39,17 @@
  */
 
 import {
-  Radio,
+  Root,
   type TChannelDefinition,
-  type TChannelToken
+  type TChannelToken,
+  type TManifestEntry
 } from "@bonsai/event";
 import {
   Feature,
   BonsaiNamespaceError,
-  assertValidNamespace
+  assertValidNamespace,
+  describeFeature
 } from "@bonsai/feature";
-import { Foundation } from "@bonsai/foundation";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -53,12 +58,6 @@ import { Foundation } from "@bonsai/foundation";
  * by `Application`. Strict consistency (camelCase, reserved words,
  * `TSelfNS ↔ key` agreement) is enforced on the caller side by
  * `StrictManifest<M>` through `satisfies` (see ADR-08 and `@bonsai/feature/types`).
- *
- * Application only needs here:
- *   - `string` keys (the namespaces)
- *   - values = `(namespace) => Feature` constructors
- *
- * Strict typing of the application manifest lives in `@bonsai/feature`.
  */
 export type TFeaturesManifest = Readonly<
   Record<string, new (namespace: string) => Feature<any, any, any>>
@@ -67,32 +66,37 @@ export type TFeaturesManifest = Readonly<
 /**
  * Application constructor options.
  *
- * - `foundation`: concrete Foundation class (required by `start()` — throws
- *   otherwise, I33).
  * - `features`: application manifest (key = namespace, value = Feature class).
  *   Compile-time validation happens on the caller side through
  *   `satisfies StrictManifest<AppManifest>`; Application only runs a runtime
  *   safety net in `start()`.
+ * - `components`: other children of the root, created after the Features
+ *   (the Foundation and the adapters, from lot M6.2 on; probes in tests).
+ * - `causalBound`: the bound on causal chains fixed by the Manifest (D9).
+ *   Default 50.
  */
 export type TApplicationOptions<
   M extends TFeaturesManifest = TFeaturesManifest
 > = {
-  readonly foundation?: typeof Foundation;
   readonly features?: M;
+  readonly components?: readonly TManifestEntry[];
+  readonly causalBound?: number;
 };
 
 // ─── Application class ───────────────────────────────────────────────────────
 
 export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
   readonly #manifest: M;
+  readonly #components: readonly TManifestEntry[];
+  readonly #causalBound: number;
   #started = false;
-  #foundationClass: typeof Foundation | null;
-  #foundationInstance: Foundation | null = null;
+  #root: Root | null = null;
   #featureInstances: Feature<any, any, any>[] = [];
 
   constructor(options?: TApplicationOptions<M>) {
-    this.#foundationClass = options?.foundation ?? null;
     this.#manifest = options?.features ?? ({} as M);
+    this.#components = options?.components ?? [];
+    this.#causalBound = options?.causalBound ?? 50;
   }
 
   // ─── Public API ────────────────────────────────────────────────────────
@@ -100,29 +104,17 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
   /**
    * Phased bootstrap (ADR-07, ADR-09). Can only be called once.
    *
-   * Phases:
-   *   Phase 0a — namespace format validation (assertValidNamespace + I73/I22)
-   *   Phase 0b — pure instantiation (inert ctor, I94) + Radio sentinel
-   *   Phase 0c — read instance.listens/queries — reference validation (I70)
-   *   Phase 1  — Channels  : `Radio.channel(namespace)` for each Feature
-   *   Phase 3  — Features  : `bootstrap()` on the Phase 0b instances (I56)
-   *   Phase 4  — Foundation: `Foundation.attach()` (Composers → Views)
-   *
    * @throws when called twice (no re-bootstrap)
    * @throws `BonsaiNamespaceError` when the manifest breaks the invariants
    *   (runtime safety net — compile time should already have caught it
    *   through `StrictManifest<M>`).
-   * @throws when no Foundation was given to the constructor (I33).
+   * @throws `ManifestError` when the initial Query dependencies are cyclic (C.1).
+   * @throws `StartupError` when a Feature fails during startup: the model
+   *   under construction is abandoned (§2.5).
    */
   start(): void {
     if (this.#started) {
       throw new Error("[Bonsai Application] Cannot start() — already started");
-    }
-    if (this.#foundationClass === null) {
-      throw new Error(
-        "[Bonsai Application] Cannot start() — no Foundation provided. " +
-          "Pass { foundation: MyFoundation } to the Application constructor (I33)."
-      );
     }
 
     // ── Phase 0a — format + channel validation (ADR-08 — I70/I71/I73) ───
@@ -134,26 +126,13 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
       [string, new (namespace: string) => Feature<any, any>]
     >;
 
-    // ── Phase 0b — pure instantiation + I94 sentinel ─────────────────────────
+    // ── Phase 0b — pure instantiation ───────────────────────────────────
     // The Feature ctor is inert (I94): assertValidNamespace + #namespace.
-    // Sentinel: no Channel may be created/removed in Radio during `new`.
     for (const [namespace, FeatureClass] of entries) {
-      const nssBefore = Radio.me().getChannelNames();
-      const instance = new FeatureClass(namespace);
-      const nssAfter = Radio.me().getChannelNames();
-      if (nssBefore.length !== nssAfter.length) {
-        throw new Error(
-          `[Bonsai Application] Feature "${namespace}" constructor is not inert —` +
-            ` Radio was mutated during new ${FeatureClass.name}("${namespace}").` +
-            ` Move all Radio/Entity calls out of the constructor (I94 — ADR-09).`
-        );
-      }
-      this.#featureInstances.push(instance);
+      this.#featureInstances.push(new FeatureClass(namespace));
     }
 
     // ── Phase 0c — cross-reference validation from the instances (I70) ───
-    // listens + queries read from the instances (abstract get — I93).
-    // Runs BEFORE Phase 1 (Channel creation) — no Radio side effect.
     const known = new Set(entries.map(([ns]) => ns));
     for (let i = 0; i < entries.length; i++) {
       const [ownNs] = entries[i]!;
@@ -172,27 +151,17 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
       }
     }
 
-    // Phase 1: Channels — creates each Feature's channel in Radio
-    for (const [namespace] of entries) {
-      Radio.me().channel(namespace);
-    }
-
-    // Phase 3: Features — bootstrap the Phase 0b instances
-    // (auto-discovery handlers I48, entity, onInit I56)
-    for (const instance of this.#featureInstances) {
-      instance.bootstrap();
-    }
-
-    // Phase 4: Views — Foundation → Composers → Views
-    const FoundationClass = this
-      .#foundationClass as unknown as new () => Foundation;
-    this.#foundationInstance = new FoundationClass();
-    this.#foundationInstance.attach();
+    // ── Phase 1 — kernel startup (§2.5, C.1) ─────────────────────────────
+    this.#root = new Root({ causalBound: this.#causalBound });
+    this.#root.startFromManifest([
+      ...this.#featureInstances.map((instance) => describeFeature(instance)),
+      ...this.#components
+    ]);
   }
 
-  /** The instantiated Foundation (after start). */
-  get foundation(): Foundation | null {
-    return this.#foundationInstance;
+  /** The communication root (one per Application, G6); `null` before start(). */
+  get root(): Root | null {
+    return this.#root;
   }
 
   /** Whether the application has started. */

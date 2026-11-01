@@ -6,14 +6,15 @@
  * "Unused '@ts-expect-error' directive" and the regression is caught.
  *
  * Covers:
- *   I1  — a Feature emits only on its own Channel, and `emit()` is protected.
+ *   I1  — a Feature emits only on its own Channel, through its handler context
+ *         (`ctx.emit`); the Feature itself has no `emit()` any more (lot M6.1).
  *   I4  — a View has no `emit()` (the declared-Channels part is I77,
  *         view-contract.types.test.ts).
  *   I23 — Application exposes no Channel capability (dormant at runtime).
- *   I25 — only Views (and Behaviors, ⏳) have `trigger()`: not Feature,
- *         Composer nor Foundation.
+ *   I25 — only Views (and Behaviors, ⏳) have `trigger()`: not Feature
+ *         (nor its handler context, D17), Composer nor Foundation.
  *   I46 — an Entity state must be `TJsonSerializable`.
- *   I79 — `Feature.request()` takes a typed `TChannelToken`, never a string.
+ *   I79 — `ctx.query()` takes a typed `TChannelToken`, never a string.
  *
  * @jest-environment node
  */
@@ -23,7 +24,7 @@ import type { Application } from "@bonsai/application";
 import type { Composer } from "@bonsai/composer";
 import { Entity } from "@bonsai/entity";
 import { type TChannelToken } from "@bonsai/event";
-import { Feature } from "@bonsai/feature";
+import { Feature, type TFeatureContext } from "@bonsai/feature";
 import type { Foundation } from "@bonsai/foundation";
 import type { View } from "@bonsai/view";
 
@@ -78,37 +79,43 @@ class CartFeature extends Feature<CounterEntity, TCartDef, "cart"> {
     return CounterEntity;
   }
 
-  emitOwnEvent(): void {
-    this.emit("itemAdded", { id: "a" });
+  handle(ctx: TFeatureContext<TCartDef, CounterEntity>): void {
+    ctx.emit("itemAdded", { id: "a" });
   }
 
-  emitForeignEvent(): void {
+  emitForeignEvent(ctx: TFeatureContext<TCartDef, CounterEntity>): void {
     // @ts-expect-error — `priceChanged` belongs to another Channel (I1)
-    this.emit("priceChanged", { id: "a" });
+    ctx.emit("priceChanged", { id: "a" });
   }
 
-  requestWithToken(): void {
-    this.request(PricingFeature.channel, "price", { id: "a" });
+  queryWithToken(ctx: TFeatureContext<TCartDef, CounterEntity>): void {
+    ctx.query(PricingFeature.channel, "price", { id: "a" });
   }
 
-  requestWithString(): void {
+  queryWithString(ctx: TFeatureContext<TCartDef, CounterEntity>): void {
     // @ts-expect-error — a namespace string is not a TChannelToken (I79)
-    this.request("pricing", "price", { id: "a" });
+    ctx.query("pricing", "price", { id: "a" });
   }
 
-  sendCommand(): void {
-    // @ts-expect-error — a Feature has no `trigger()` (I25)
-    this.trigger("pricing:refresh", {});
+  sendCommand(ctx: TFeatureContext<TCartDef, CounterEntity>): void {
+    // @ts-expect-error — a Feature's context has no `trigger()` (I25, D17)
+    ctx.trigger("pricing:refresh", {});
   }
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe("Feature capabilities [I1, I25, I79]", () => {
-  it("I1 — `emit()` is not callable from outside the Feature", () => {
+  it("I1 — a Feature has no `emit()`: emission goes through the handler context", () => {
     const cart = new CartFeature("cart");
-    // @ts-expect-error — `emit` is protected (I1)
+    // @ts-expect-error — no `emit` on Feature (lot M6.1)
     void cart.emit;
+  });
+
+  it("I25 — a Feature has no `trigger()`", () => {
+    const cart = new CartFeature("cart");
+    // @ts-expect-error — no `trigger` on Feature (I25, D17)
+    void cart.trigger;
   });
 });
 

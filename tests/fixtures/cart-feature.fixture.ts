@@ -20,7 +20,9 @@ import { type TChannelToken } from "@bonsai/event";
 import {
   Feature,
   type TFeatureContract,
-  type TFeatureCallbacks
+  type TFeatureCallbacks,
+  type TFeatureContext,
+  type TFeatureQueryContext
 } from "@bonsai/feature";
 import {
   View,
@@ -89,10 +91,11 @@ const cartListens = [] as const;
  */
 export class CartFeature
   extends Feature<CartEntity, TCartChannelDef, "cart">
-  implements TFeatureCallbacks<TCartChannelDef, typeof cartListens>
+  implements TFeatureCallbacks<TCartChannelDef, typeof cartListens, CartEntity>
 {
   static readonly channel: TChannelToken<TCartChannelDef, "cart"> = {
-    namespace: "cart"
+    namespace: "cart",
+    events: ["itemAdded"]
   };
   get listens() {
     return cartListens;
@@ -106,17 +109,17 @@ export class CartFeature
   }
 
   // C2 — Command handler auto-discovered (I48)
-  onAddItemCommand(payload: TCartItem): void {
-    this.entity.mutate("addItem", (draft) => {
+  onAddItemCommand(payload: TCartItem, ctx: TFeatureContext<TCartChannelDef, CartEntity>): void {
+    ctx.mutate("addItem", (draft) => {
       draft.items.push(payload);
       draft.total += payload.price * payload.qty;
     });
     // C1 — emit on own Channel
-    this.emit("itemAdded", { item: payload });
+    ctx.emit("itemAdded", { item: payload });
   }
 
   // C4 — Reply auto-discovered
-  onGetItemCountRequest(_params: null): number {
+  onGetItemCountRequest(_params: null, _ctx: TFeatureQueryContext): number {
     return this.entity.query.getItemCount();
   }
 }

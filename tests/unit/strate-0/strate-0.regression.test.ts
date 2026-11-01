@@ -19,6 +19,8 @@
  * | #5   | 2026-04-20 | entity.basic                                     |
  * | #7   | 2026-04-20 | feature.basic (ex feature.core)                  |
  * | #8   | 2026-04-20 | view.basic (ex view.core)                        |
+ * | M6.1 | 2026-11-01 | entity.basic et feature.basic remplacés par       |
+ * |      |            | tests/unit/domain/{entity,feature}.test (noyau)  |
  *
  * ── Utilisation ────────────────────────────────────────────────────────
  *
@@ -32,11 +34,9 @@
 import "./channel.basic.test";
 import "./radio.singleton.test";
 
-// ── PR #5 — Entity basic (ADR-10, I6, I46, I51, I52) ───────────────
-import "./entity.basic.test";
-
-// ── PR #7 — Feature basic (5 capacités, I1, I2, I3, I6, I21, I48) ─
-import "./feature.basic.test";
+// ── PR #5 / #7 — Entity et Feature : migrés sur le noyau (lot M6.1) ─────
+import "../domain/entity.test";
+import "../domain/feature.test";
 
 // ── PR #8 — View basic (ADR-14, I4, I31, I34, I39, I40, I48, ADR-15) ────
 import "./view.basic.test";
