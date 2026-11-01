@@ -90,6 +90,29 @@ Vérifier, par du code exécutable, que les garanties de l'infrastructure de com
 - **Attribuer à la création suffit.** Théorie et API cible ne prévoient l'attribution qu'à la création de l'enfant ; le prototype n'offre pas d'autre voie, ce qui élimine par construction l'attribution à un non-enfant (A2.d) et la fin d'une part sans celle de son propriétaire.
 - **Une désignation est un objet de données, comparable et transmissible.** Sa validité ne tient qu'à l'attribution qu'elle nomme ; un même emplacement réattribué donne une autre désignation. C'est ce qui permettra au lot M4 de passer un sélecteur à la View sans lui donner d'accès par lui-même.
 
+## 3 quater. Lot M4 — Matérialisation dans l'hôte et effets (1er novembre 2026)
+
+**Réalisé.** Avec un document hôte (jsdom dans les tests), `admitDistributable("#app")` admet l'élément désigné, une fois, à l'admission (D3). Chaque attribution prépare un effet du **propriétaire du contenant** : la création de l'élément de la part, engagée après validation (D12, C.3). Une View projette par `ctx.project(part, label, write)` : l'élément n'est remis à `write` qu'à l'engagement, et jamais pendant le traitement ; le code applicatif n'a donc aucune voie d'écriture immédiate. Une destruction validée prépare le retrait physique des parts dont le contenant survit (C.7) ; une destruction annulée ne touche pas l'hôte. La position d'une part est explicite (`before`).
+
+| Porte de sortie du lot M4 (rapport de migration) | Test |
+| --- | --- |
+| Effet 2 en erreur, effet 3 non tenté | lot M1 (`engaged`, `failed`, `not-attempted`) |
+| Résultat d'un enfant non transféré au créateur | au démarrage, le Composer reçoit le bilan de ses deux matérialisations, chaque View celui de sa propre projection |
+| Échec extérieur ne révoquant pas le passé | l'hôte refuse l'écriture : bilan `failed`, ancien texte affiché, Entity conservant sa nouvelle valeur validée |
+| Callback d'un composant détruit abandonné | lot M3 |
+| DOM logique avant matérialisation | aucun élément de part pendant l'unité de démarrage ; parts créées dans l'ordre ensuite |
+| Destruction validée, puis annulée | élément retiré et remplacé à sa place ; unité annulée : hôte inchangé |
+| Élément hôte absent | `HOST_NOT_FOUND`, démarrage abandonné |
+
+51 tests du noyau, suite complète (328 tests) réussie. Trois mutations vérifiées (matérialisation imputée à l'enfant, projection immédiate, absence de retrait) : chacune fait échouer au moins un test.
+
+**Ce que le lot M4 apprend.**
+
+- **L'ordre des parts ne peut pas venir de l'historique des attributions.** Réattribuer une portion la place en fin d'ordre d'attribution ; remplacer une View la déplaçait donc après sa voisine. L'ordre d'affichage est une décision de composition : il est désormais **explicite** (`before`), ce que la réconciliation du Composer (§1.3) calculera à partir du tableau rendu par `resolve`. À reporter dans la spécification du Composer.
+- **`structuredClone` n'existe pas dans tous les hôtes** (jsdom). Le noyau a maintenant son propre copieur, identique partout et plus strict : il n'accepte que des données (primitives, tableaux, objets simples, `Date`, `Map`, `Set`) et refuse toute instance de classe, ce qui réalise A3.d sans dépendre de l'hôte.
+- **Remettre l'élément seulement à l'engagement suffit à empêcher l'écriture pendant le traitement.** C'est une garde par construction de C.3 pour la View. En revanche, une projection peut encore écrire dans le contenu des slots de sa part ; ce point reste à la revue, ou à un futur découpage de l'élément confié.
+- **La matérialisation est un effet du parent, la projection un effet de l'enfant.** Le bilan de chacun lui revient : c'est la règle de C.3, et le prototype montre qu'elle découle simplement du propriétaire de l'effet.
+
 ## 4. Hors périmètre
 
 Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignations et DOM (M3–M4) ; qualification des sources par le monde fermé et D18 (M5) ; remplacement de `Channel` et `Radio`, et branchement des classes de base (M6).
@@ -100,4 +123,5 @@ Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignat
 2. ~~Trancher R3 dans un ADR~~ : ADR-35, mesure ajoutée au prototype (27 tests).
 3. ~~Lot M2~~ : fait (section 3 bis).
 4. ~~Lot M3~~ : fait (section 3 ter).
-5. Lot M4 : matérialisation DOM des parts après validation, effets de projection et résultats propres déclarés.
+5. ~~Lot M4~~ : fait (section 3 quater).
+6. Lot M5 : admission des faits DOM dans les parts (D10), qualification par le monde fermé (C.4) et droit de Command selon le déclencheur (D18).

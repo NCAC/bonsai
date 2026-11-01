@@ -116,7 +116,12 @@ export interface TDesignation {
 export interface TCreateOptions {
   readonly params?: unknown;
   /** Portion of a distributable resource owned by the creator, attributed to the child. */
-  readonly part?: { readonly resource: TResourceHandle; readonly portion: string };
+  readonly part?: {
+    readonly resource: TResourceHandle;
+    readonly portion: string;
+    /** Position in the host: before the part occupying this portion; at the end otherwise. */
+    readonly before?: string;
+  };
 }
 
 /** Correlation of a provoked fact with the treatment that caused it (G8). */
@@ -151,8 +156,17 @@ export interface TUnitContext extends TReadContext {
   params<P = unknown>(): P;
   /** Designation of the part attributed at creation, if any (8.5). */
   designation(): TDesignation | null;
-  /** Admits a host element as a distributable resource owned by self (D3, A2.b). */
+  /**
+   * Admits a host element as a distributable resource owned by self (D3, A2.b).
+   * With a host document, `label` is a selector resolved once, at admission.
+   */
   admitDistributable(label: string): TResourceHandle;
+  /**
+   * Prepares a projection on the element of a resource owned by self (16.5).
+   * The element is given to `write` only at engagement, after validation (C.3);
+   * a part not yet materialized makes the effect fail.
+   */
+  project(resource: TResourceHandle, label: string, write: (element: Element) => void): void;
   /** Controlled resolution: valid only for a living attribution owned by self (9.10). */
   resolve(designation: TDesignation): TResourceHandle;
   /** Portions currently attributed within a resource owned by self (T7). */
@@ -190,6 +204,8 @@ export interface TRootOptions {
   readonly causalBound: number;
   /** Threshold above which a unit or a drain is reported (ADR-35). Default: 50 ms. */
   readonly longUnitMs?: number;
+  /** Host document: distributable resources are admitted from it and parts materialized in it (lot M4). */
+  readonly document?: Document;
   /** Clock in milliseconds. Default: `performance.now()`. Injected by tests. */
   readonly now?: () => number;
 }

@@ -19,6 +19,7 @@ export type TTransportErrorCode =
   | "UNRECOVERABLE"         // a Query failure was intercepted by the author (G7)
   | "PORTION_TAKEN"         // portion already attributed: parts never overlap (T7)
   | "INVALID_DESIGNATION"   // designation of a part that ended, or not owned by the resolver (8.5)
+  | "HOST_NOT_FOUND"        // the host element to admit does not exist (D3)
   | "ROOT_ABANDONED";       // the root failed to start
 
 export class TransportError extends Error {

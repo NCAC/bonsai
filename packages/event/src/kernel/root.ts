@@ -75,6 +75,8 @@ interface ResourceRecord {
   /** Portions subtracted from this resource, by the part that occupies them (6.6). */
   readonly portions: Map<string, ResourceRecord>;
   alive: boolean;
+  /** Host element once materialized (admission, or engagement of the attribution). */
+  element: Element | null;
 }
 
 interface ChannelRecord {
@@ -124,6 +126,7 @@ export class Root {
   readonly #bound: number;
   readonly #longMs: number;
   readonly #now: () => number;
+  readonly #document: Document | null;
   readonly #registry = new Map<string, ChannelRecord>();
   readonly #subscriptions: SubscriptionRecord[] = [];
   readonly #components = new Map<string, ComponentRecord>();
@@ -142,6 +145,7 @@ export class Root {
     this.#bound = options.causalBound;
     this.#longMs = options.longUnitMs ?? 50;
     this.#now = options.now ?? (() => performance.now());
+    this.#document = options.document ?? null;
     // The root's existence is provided by the host, not admitted (A0.d, 7.4).
     this.#record = {
       handle: Object.freeze({ occurrence: this.#nextId("c"), name: "root" }),
@@ -482,7 +486,12 @@ export class Root {
       designation: () => self.designation,
       admitDistributable: (label) => {
         guard();
-        const resource: ResourceRecord = { handle: Object.freeze({ id: this.#nextId("res"), label }), owner: self, container: null, portions: new Map(), alive: true };
+        let element: Element | null = null;
+        if (this.#document !== null) {
+          element = this.#document.querySelector(label);
+          if (element === null) fail(new TransportError("HOST_NOT_FOUND", `no host element matches "${label}" (D3)`));
+        }
+        const resource: ResourceRecord = { handle: Object.freeze({ id: this.#nextId("res"), label }), owner: self, container: null, portions: new Map(), alive: true, element };
         this.#resources.set(resource.handle.id, resource);
         self.resources.push(resource);
         unit.undo.push(() => {
@@ -501,6 +510,21 @@ export class Root {
         if (!valid) fail(new TransportError("INVALID_DESIGNATION", `designation of portion "${designation.portion}" does not resolve to a living part owned by ${self.handle.name} (8.5, 9.10)`));
         return part!.handle;
       },
+      project: (resource, label, write) => {
+        guard();
+        const record = this.#resources.get(resource.id);
+        if (record === undefined || !record.alive || record.owner !== self) fail(new TransportError("NOT_OWNER", `${self.handle.name} does not own resource ${resource.label} (A1.b)`));
+        unit.effects.push({
+          owner: self,
+          label,
+          context: cause,
+          run: () => {
+            if (!record!.alive) return;
+            if (record!.element === null) throw new Error(`${record!.handle.label} is not materialized (9.10)`);
+            write(record!.element);
+          }
+        });
+      },
       attributed: (resource) => {
         const record = this.#resources.get(resource.id);
         if (record === undefined || !record.alive || record.owner !== self) fail(new TransportError("NOT_OWNER", `${self.handle.name} does not own resource ${resource.label}`));
@@ -510,7 +534,7 @@ export class Root {
         guard();
         const record = this.#components.get(child.occurrence);
         if (record === undefined || record.parent !== self) fail(new TransportError("NOT_OWNER", `${self.handle.name} is not the parent of ${child.name} (A1.b, T1)`));
-        this.#destroy(record!, unit);
+        this.#destroy(record!, unit, cause);
       },
       state: <S>(): S => {
         if (self.entity === null) fail(new TransportError("NOT_OWNER", `${self.handle.name} owns no Entity`));
@@ -563,6 +587,7 @@ export class Root {
       admitDistributable: forbidden("admitDistributable"),
       resolve: forbidden("resolve"),
       attributed: forbidden("attributed"),
+      project: forbidden("project"),
       trigger: forbidden("trigger"),
       emit: forbidden("emit"),
       local: forbidden("local"),
@@ -650,9 +675,31 @@ export class Root {
         owner: record,
         container: { resource: container!, portion: options.part.portion },
         portions: new Map(),
-        alive: true
+        alive: true,
+        element: null
       };
       container!.portions.set(options.part.portion, part);
+      // Materialization of the part: an effect of the container's owner, engaged after validation (D12, C.3).
+      if (this.#document !== null) {
+        const document = this.#document;
+        const portion = options.part.portion;
+        unit.effects.push({
+          owner: parent,
+          label: `materialize ${part.handle.label}`,
+          context: cause,
+          run: () => {
+            if (!part.alive) return;
+            const host = container!.element;
+            if (host === null) throw new Error(`${container!.handle.label} is not materialized (9.10)`);
+            const element = document.createElement("div");
+            element.setAttribute("data-bonsai-part", portion);
+            // Order is explicit: before the part named by `before`, otherwise at the end (Composer §1.3).
+            const before = options.part!.before === undefined ? null : container!.portions.get(options.part!.before)?.element ?? null;
+            host.insertBefore(element, before !== null && before.parentNode === host ? before : null);
+            part.element = element;
+          }
+        });
+      }
       this.#resources.set(part.handle.id, part);
       record.resources.push(part);
       record.designation = Object.freeze({ resource: container!.handle.id, portion: options.part.portion, attribution: part.handle.id });
@@ -694,7 +741,7 @@ export class Root {
   }
 
   /** Cascade, bottom-up; provisional until the unit validates (C.7). */
-  #destroy(record: ComponentRecord, unit: Unit): void {
+  #destroy(record: ComponentRecord, unit: Unit, cause: TCausalContext): void {
     const order: ComponentRecord[] = [];
     const visit = (node: ComponentRecord): void => {
       for (const child of node.children) visit(child);
@@ -737,6 +784,17 @@ export class Root {
       }
     }
     parent.children.splice(position, 1);
+    // Physical cleanup, post-validation (C.7): only parts whose container survives; nested elements go with them.
+    const destroyed = new Set(order);
+    for (const resource of ended) {
+      if (resource.container === null || destroyed.has(resource.container.resource.owner)) continue;
+      unit.effects.push({
+        owner: resource.container.resource.owner,
+        label: `remove ${resource.handle.label}`,
+        context: cause,
+        run: () => { resource.element?.remove(); resource.element = null; }
+      });
+    }
     unit.undo.push(() => {
       // Cancellation keeps the same occurrences, Channels and reservations (C.2).
       parent.children.splice(position, 0, record);
