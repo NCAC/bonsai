@@ -24,8 +24,10 @@
  * (M3–M4), closed-world qualification of host sources and D18 (M5).
  */
 
+import { Immer } from "@bonsai/immer";
+import type { Draft } from "immer";
 import { capture } from "./capture";
-import { StartupError, TransportError } from "./errors";
+import { InvariantError, ManifestError, StartupError, TransportError } from "./errors";
 import type {
   TAdmission,
   TCausalContext,
@@ -34,6 +36,8 @@ import type {
   TCorrelationToken,
   TDeferredHandler,
   TEffectOutcome,
+  TEntityDefinition,
+  TManifestEntry,
   TOriginKind,
   TReadContext,
   TRootOptions,
@@ -53,6 +57,7 @@ interface ComponentRecord {
   status: TStatus;
   channel: ChannelRecord | null;
   readonly subscriptions: SubscriptionRecord[];
+  entity: { readonly def: TEntityDefinition<unknown>; state: unknown } | null;
 }
 
 interface ChannelRecord {
@@ -86,6 +91,8 @@ interface Unit {
   readonly staged: Delivery[];
   readonly undo: Array<() => void>;
   readonly effects: PreparedEffect[];
+  /** Components whose Entity was created or mutated in this unit (A4.a). */
+  readonly touched: Set<ComponentRecord>;
   poisoned: { error: unknown } | null;
 }
 
@@ -123,7 +130,8 @@ export class Root {
       children: [],
       status: "ready",
       channel: null,
-      subscriptions: []
+      subscriptions: [],
+      entity: null
     };
   }
 
@@ -153,6 +161,38 @@ export class Root {
     }
     this.#state = "started";
     this.#drain();
+  }
+
+  /**
+   * Starts from a Manifest (16.9, D14): the root creates its declared children
+   * in an order that respects their initial Query dependencies; among children
+   * without remaining dependency, declaration order decides; a cycle or an
+   * unknown dependency is refused before startup (C.1).
+   */
+  startFromManifest(entries: readonly TManifestEntry[]): void {
+    const byNamespace = new Map<string, TManifestEntry>();
+    for (const entry of entries) {
+      if (entry.channel !== undefined) byNamespace.set(entry.channel.namespace, entry);
+    }
+    for (const entry of entries) {
+      for (const dependency of entry.dependsOn ?? []) {
+        if (!byNamespace.has(dependency)) throw new ManifestError(`${entry.name} depends on unknown namespace "${dependency}"`);
+      }
+    }
+    const ordered: TManifestEntry[] = [];
+    const placed = new Set<TManifestEntry>();
+    while (ordered.length < entries.length) {
+      const next = entries.find((entry) => !placed.has(entry) && (entry.dependsOn ?? []).every((d) => placed.has(byNamespace.get(d)!)));
+      if (next === undefined) {
+        const blocked = entries.filter((entry) => !placed.has(entry)).map((entry) => entry.name);
+        throw new ManifestError(`cyclic initial dependencies between ${blocked.join(", ")} (C.1)`);
+      }
+      ordered.push(next);
+      placed.add(next);
+    }
+    this.start((ctx) => {
+      for (const entry of ordered) ctx.create(entry);
+    });
   }
 
   /**
@@ -197,7 +237,7 @@ export class Root {
 
   #runUnit(owner: ComponentRecord, cause: TCausalContext, body: (ctx: TUnitContext) => void): { error: unknown } | null {
     const startedAt = this.#now();
-    const unit: Unit = { open: true, staged: [], undo: [], effects: [], poisoned: null };
+    const unit: Unit = { open: true, staged: [], undo: [], effects: [], touched: new Set(), poisoned: null };
     this.#unit = unit;
     this.#active.push(owner);
     let failure: { error: unknown } | null = null;
@@ -221,6 +261,7 @@ export class Root {
         )
       };
     }
+    if (failure === null) failure = this.#checkInvariants(unit);
     if (failure !== null) {
       for (let i = unit.undo.length - 1; i >= 0; i--) {
         try {
@@ -236,6 +277,23 @@ export class Root {
     this.#queue.push(...unit.staged);
     this.#engage(unit.effects);
     this.#measure("long-unit", startedAt, { owner: owner.handle.name, context: cause });
+    return null;
+  }
+
+  /** A4.a: business invariants of every Entity touched by the unit. */
+  #checkInvariants(unit: Unit): { error: unknown } | null {
+    for (const record of unit.touched) {
+      if (record.status === "destroyed" || record.entity === null) continue;
+      for (const invariant of record.entity.def.invariants ?? []) {
+        let satisfied: boolean;
+        try {
+          satisfied = invariant.check(record.entity.state);
+        } catch (error) {
+          return { error };
+        }
+        if (!satisfied) return { error: new InvariantError(record.entity.def.name, invariant.name) };
+      }
+    }
     return null;
   }
 
@@ -402,6 +460,22 @@ export class Root {
         if (record === undefined || record.parent !== self) fail(new TransportError("NOT_OWNER", `${self.handle.name} is not the parent of ${child.name} (A1.b, T1)`));
         this.#destroy(record!, unit);
       },
+      state: <S>(): S => {
+        if (self.entity === null) fail(new TransportError("NOT_OWNER", `${self.handle.name} owns no Entity`));
+        return self.entity!.state as S;
+      },
+      mutate: <S>(recipe: (draft: Draft<S>) => void): void => {
+        guard();
+        const entity = self.entity;
+        if (entity === null) fail(new TransportError("NOT_OWNER", `${self.handle.name} owns no Entity (16.2)`));
+        const previous = entity!.state;
+        const next = Immer.produce(previous as S, recipe);
+        if (next === previous) return;
+        entity!.state = next;
+        // Immutable states: restoring the previous reference is an exact undo (G7).
+        unit.undo.push(() => { entity!.state = previous; });
+        unit.touched.add(self);
+      },
       journal: (undo) => {
         guard();
         unit.undo.push(undo);
@@ -427,6 +501,11 @@ export class Root {
       self: self.handle,
       cause,
       query: <T>(namespace: string, name: string, params?: unknown): T => this.#query<T>(namespace, name, params, cause, unit),
+      state: <S>(): S => {
+        if (self.entity === null) return forbidden("state without Entity")();
+        return self.entity.state as S;
+      },
+      mutate: forbidden("mutate"),
       trigger: forbidden("trigger"),
       emit: forbidden("emit"),
       local: forbidden("local"),
@@ -476,8 +555,14 @@ export class Root {
       children: [],
       status: "initializing",
       channel: null,
-      subscriptions: []
+      subscriptions: [],
+      entity: null
     };
+    if (spec.entity !== undefined) {
+      // Initial state captured by copy and frozen; checked at the end of the unit (A4.a).
+      record.entity = { def: spec.entity, state: capture(spec.entity.initial) };
+      unit.touched.add(record);
+    }
     if (spec.channel !== undefined) {
       const existing = this.#registry.get(spec.channel.namespace);
       if (existing !== undefined && existing.alive) {

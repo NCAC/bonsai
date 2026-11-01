@@ -42,3 +42,27 @@ export class StartupError extends Error {
     this.cause = cause;
   }
 }
+
+/**
+ * A business invariant is violated at the end of a validation unit (A4.a).
+ * Not a transport error: the unit fails and is rolled back (G7).
+ */
+export class InvariantError extends Error {
+  readonly entity: string;
+  readonly invariant: string;
+
+  constructor(entity: string, invariant: string) {
+    super(`Invariant "${invariant}" of entity "${entity}" violated at the end of the validation unit (A4.a)`);
+    this.name = "InvariantError";
+    this.entity = entity;
+    this.invariant = invariant;
+  }
+}
+
+/** The Manifest cannot be ordered: unknown or cyclic initial dependency (C.1). */
+export class ManifestError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ManifestError";
+  }
+}

@@ -42,6 +42,31 @@ Vérifier, par du code exécutable, que les garanties de l'infrastructure de com
 
 **R7 — Coût de la capture.** Chaque message et chaque réponse sont copiés puis gelés. C'est sûr, mais coûteux pour de grosses charges. Une immuabilité par construction (valeurs déjà gelées, structures persistantes) pourrait éviter la copie ; à mesurer avant de choisir.
 
+## 3 bis. Lot M2 — Entity, invariants et démarrage (1er novembre 2026)
+
+**Réalisé.** Une Feature déclare son Entity (`entity: { name, initial, invariants }`, D4) ; son traitement la lit par `ctx.state()` et la modifie par `ctx.mutate(recette)`, via Immer. Chaque modification est journalisée dans l'unité. À la fin réussie de l'unité, le noyau vérifie les invariants de chaque Entity créée ou modifiée ; une violation fait échouer l'unité, qui est annulée (A4.a, G7). `Root.startFromManifest()` crée les enfants de la racine dans un ordre qui respecte leurs dépendances de consultation initiales (`dependsOn`), puis l'ordre de déclaration, et refuse un cycle ou une dépendance inconnue avant le démarrage (C.1).
+
+| Porte de sortie du lot M2 (rapport de migration) | Test |
+| --- | --- |
+| Mutation réussie puis exception : état restauré | `addThenCrash` : total inchangé, Event non délivré |
+| Une Query intermédiaire ne valide pas son auteur | `addInTwoSteps` : invariant rompu, Query vers une autre Feature, invariant rétabli, unité validée |
+| Démarrage tardivement échoué sans publication partielle | deuxième enfant en échec : `StartupError`, le premier n'est jamais publié, admission abandonnée |
+| Invariant violé à la fin d'une unité | `addBroken` : `InvariantError`, état restauré, Event abandonné |
+| Invariant violé par l'état initial | `StartupError` |
+| Écriture directe dans l'état gelé (garde A0.c / G7) | `TypeError`, unité annulée |
+| Modification d'une Entity pendant une Query (A3.g) | `READ_ONLY` |
+| Ordre et cycle des dépendances initiales | `analytics`, `catalog`, puis `cart` qui consulte `catalog` ; cycle et dépendance inconnue : `ManifestError` |
+
+36 tests du noyau, suite complète réussie. Trois mutations vérifiées (vérification des invariants, annulation de l'Entity, ordre des dépendances) : chacune fait échouer au moins un test.
+
+**Ce que le lot M2 apprend.**
+
+- **L'annulation n'a pas besoin des patches inverses.** Les états Immer sont immuables : restaurer la référence précédente est une annulation exacte, plus simple et sans risque d'application partielle. Les patches restent utiles pour notifier les clés modifiées et pour les outils de développement.
+- **Le gel de l'état réalise déjà la garde A0.c pour l'Entity.** Une écriture directe lève une `TypeError` et l'unité échoue. Les champs de classe restent couverts par le lint.
+- **Les invariants ne sont vérifiés que pour les Entities touchées par l'unité.** Le coût suit le travail fait. Une vérification doit être une fonction pure de l'état ; une exception levée par elle fait échouer l'unité.
+- **`dependsOn` est déclaré à part.** On ne peut pas le déduire du contrat : celui-ci dit quelles Queries un composant peut adresser, pas lesquelles il adresse pendant son initialisation. À garder déclaratif, et à intégrer à la forme du Manifest.
+- **L'Entity livrée (`packages/entity`) a sa propre file de réentrance et ses notifications (`onAnyEntityUpdated`).** Dans le noyau, ces notifications deviennent des Events émis dans l'unité et délivrés après sa validation. Le raccordement de la classe livrée relève du lot M6.
+
 ## 4. Hors périmètre
 
 Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignations et DOM (M3–M4) ; qualification des sources par le monde fermé et D18 (M5) ; remplacement de `Channel` et `Radio`, et branchement des classes de base (M6).
@@ -50,4 +75,5 @@ Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignat
 
 1. ~~Valider les gardes R1 et R2 dans `gardes.md`~~ : fait.
 2. ~~Trancher R3 dans un ADR~~ : ADR-35, mesure ajoutée au prototype (27 tests).
-3. Lot M2 : brancher l'Entity sur le journal d'unité et vérifier les invariants métier à la fin de chaque unité de validation.
+3. ~~Lot M2~~ : fait (section 3 bis).
+4. Lot M3 : structure transactionnelle des parts et désignations (Composer, View), sans DOM réel.

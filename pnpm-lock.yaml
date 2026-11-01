@@ -231,6 +231,9 @@ importers:
       '@bonsai/error':
         specifier: workspace:^
         version: link:../error
+      '@bonsai/immer':
+        specifier: workspace:^
+        version: link:../immer
       '@bonsai/rxjs':
         specifier: workspace:^
         version: link:../rxjs

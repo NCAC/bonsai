@@ -1,3 +1,5 @@
+import type { Draft } from "immer";
+
 /**
  * Kernel prototype (migration lot M1) — public types.
  *
@@ -37,6 +39,23 @@ export interface TComponentHandle {
   readonly name: string;
 }
 
+/**
+ * A business invariant on an Entity state (11.3). `check` returns `true` when
+ * satisfied; it is verified at the successful end of each validation unit
+ * that touched the Entity, and at the end of startup (A4.a).
+ */
+export interface TInvariant<S> {
+  readonly name: string;
+  readonly check: (state: S) => boolean;
+}
+
+/** State of the domain owned by a Feature, with its invariants (16.2). */
+export interface TEntityDefinition<S> {
+  readonly name: string;
+  readonly initial: S;
+  readonly invariants?: ReadonlyArray<TInvariant<S>>;
+}
+
 /** Handler of a deferred message (Command, Event, local message). */
 export type TDeferredHandler = (payload: unknown, ctx: TUnitContext) => void;
 
@@ -67,6 +86,14 @@ export interface TComponentSpec {
   readonly locals?: Readonly<Record<string, TDeferredHandler>>;
   /** Initialisation, executed inside the creator's validation unit (§2.5). */
   readonly init?: (ctx: TUnitContext) => void;
+  /** Entity owned by the component (D4: exactly one for a Feature). */
+  readonly entity?: TEntityDefinition<any>;
+}
+
+/** Entry of a Manifest: a child of the root and its initial Query dependencies (C.1). */
+export interface TManifestEntry extends TComponentSpec {
+  /** Namespaces this child queries during its initialisation. */
+  readonly dependsOn?: readonly string[];
 }
 
 /** Correlation of a provoked fact with the treatment that caused it (G8). */
@@ -87,6 +114,8 @@ export interface TReadContext {
   readonly self: TComponentHandle;
   readonly cause: TCausalContext;
   query<T = unknown>(namespace: string, name: string, params?: unknown): T;
+  /** Current state of the component's own Entity, frozen. */
+  state<S = unknown>(): S;
 }
 
 /** Context offered during a validation unit (treatment or initialisation). */
@@ -96,6 +125,8 @@ export interface TUnitContext extends TReadContext {
   local(name: string, payload?: unknown): void;
   create(spec: TComponentSpec): TComponentHandle;
   destroy(child: TComponentHandle): void;
+  /** Mutates the component's own Entity; journaled for G7 (16.2). */
+  mutate<S = unknown>(recipe: (draft: Draft<S>) => void): void;
   /** Registers how to undo an internal mutation if the unit fails (G7). */
   journal(undo: () => void): void;
   /** Prepares an effect, engaged only after the unit validates (C.3). */

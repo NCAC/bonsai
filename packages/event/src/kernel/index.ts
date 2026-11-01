@@ -5,6 +5,6 @@
 
 export { Root } from "./root";
 export { capture } from "./capture";
-export { TransportError, StartupError } from "./errors";
+export { TransportError, StartupError, InvariantError, ManifestError } from "./errors";
 export type { TTransportErrorCode } from "./errors";
 export type * from "./types";
