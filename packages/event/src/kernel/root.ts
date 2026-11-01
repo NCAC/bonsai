@@ -740,23 +740,42 @@ export class Root {
             if (!part.alive) return;
             const host = container!.element;
             if (host === null) throw new Error(`${container!.handle.label} is not materialized (9.10)`);
-            const element = document.createElement("div");
-            element.setAttribute("data-bonsai-part", portion);
-            // Order is explicit: before the part named by `before`, otherwise at the end (Composer §1.3).
-            const before = options.part!.before === undefined ? null : container!.portions.get(options.part!.before)?.element ?? null;
-            host.insertBefore(element, before !== null && before.parentNode === host ? before : null);
+            let element: Element;
+            if (options.part!.host !== undefined) {
+              // A declared slot: exactly one existing element of the container (Foundation §3).
+              const matches = host.querySelectorAll(options.part!.host);
+              if (matches.length !== 1) throw new Error(`slot "${options.part!.host}" matches ${matches.length} elements of ${container!.handle.label}, expected exactly one`);
+              element = matches[0]!;
+              element.setAttribute("data-bonsai-part", portion);
+            } else {
+              element = document.createElement("div");
+              element.setAttribute("data-bonsai-part", portion);
+              // Order is explicit: before the part named by `before`, otherwise at the end (Composer §1.3).
+              const before = options.part!.before === undefined ? null : container!.portions.get(options.part!.before)?.element ?? null;
+              host.insertBefore(element, before !== null && before.parentNode === host ? before : null);
+            }
             part.element = element;
             // Host sources of the part (D10, B.4): registered by Bonsai, admitted by the part's owner only.
-            for (const [type, local] of Object.entries(record.spec.dom ?? {})) {
+            for (const [type, admission] of Object.entries(record.spec.dom ?? {})) {
+              const local = typeof admission === "string" ? admission : admission.local;
+              const keys = typeof admission === "string" ? undefined : admission.keys;
               element.addEventListener(type, (event) => {
                 const target = event.target as Element | null;
                 if (target === null || target.closest("[data-bonsai-part]") !== element) return; // innermost part only (A5.d)
+                let ui: string | null = target.getAttribute("data-ui");
+                if (keys !== undefined) {
+                  ui = null;
+                  for (const [key, selector] of Object.entries(keys)) {
+                    const hit = target.closest(selector);
+                    if (hit !== null && element.contains(hit)) { ui = key; break; }
+                  }
+                }
                 const pending = this.#simulating;
                 // Closed world (C.4): an occurrence no instrumented operation could have produced is independent.
                 const admission: TAdmission = pending !== null && pending.element === element && pending.type === type
                   ? { kind: "correlated", token: pending.token }
                   : { kind: "independent" };
-                this.admit(record.handle, local, { type, ui: target.getAttribute("data-ui") }, admission);
+                this.admit(record.handle, local, { type, ui }, admission);
               });
             }
           }

@@ -19,6 +19,7 @@
  * | #5   | 2026-04-20 | entity.basic                                     |
  * | #7   | 2026-04-20 | feature.basic (ex feature.core)                  |
  * | #8   | 2026-04-20 | view.basic (ex view.core)                        |
+ * | M6.2 | 2026-11-01 | view.basic, composer.basic, foundation.basic remplacés par domain/{view,composer,foundation}.test |
  * | M6.1 | 2026-11-01 | entity.basic et feature.basic remplacés par       |
  * |      |            | tests/unit/domain/{entity,feature}.test (noyau)  |
  *
@@ -38,5 +39,7 @@ import "./radio.singleton.test";
 import "../domain/entity.test";
 import "../domain/feature.test";
 
-// ── PR #8 — View basic (ADR-14, I4, I31, I34, I39, I40, I48, ADR-15) ────
-import "./view.basic.test";
+// ── PR #8 — View, Composer, Foundation : migrés sur le noyau (lot M6.2) ──
+import "../domain/view.test";
+import "../domain/composer.test";
+import "../domain/foundation.test";

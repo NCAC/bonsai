@@ -1,64 +1,69 @@
 /**
- * @bonsai/view — View base class (ADR-14)
+ * @bonsai/view — View base class (ADR-14, migration lot M6.2)
  *
- * Capabilities:
- *   - trigger("ns:cmd", payload) → sends a typed Command through the Channel
- *   - request("ns:req", params)  → queries a typed Channel
- *   - getUI(key) → TProjectionNode<TEl>, typed to the HTMLElement subtype (phantom)
- *   - I48 channel auto-discovery: on{NS}{Event}Event → channel.listen
- *   - I48 UI auto-discovery     : on{UIKey}{DomEvent} → addEventListener
- *   - onAttach() lifecycle hook
+ * A View projects the domain onto the part of the document its Composer
+ * attributed to it. It is a child of a Composer only (D11).
  *
- * ADR-14 modular pattern:
- *   1. `const features satisfies TFeatureContract` — Feature-grouped
- *   2. `const uiEvents satisfies TUIContract`      — DOM events + phantom TEl
- *   3. `const uiElements satisfies TUIElements<typeof uiEvents>` — selectors
- *   4. `type TVC = TViewContract<typeof features, typeof uiEvents>`
- *   5. `class XxxView extends View<TVC> implements TViewCallbacks<TVC>`
+ * Every handler receives a context as its second argument (D18):
+ *   - `on{UiKey}{DomEvent}(fact, ctx: TFactContext)` — a fact of the host
+ *     admitted in the View's part: `ctx.query` and `ctx.trigger`
+ *   - `on{Ns}{Event}Event(payload, ctx: TEventContext)` — an Event of a Feature:
+ *     `ctx.query` only. No `trigger`: an Event grants no right to command.
  *
- * Three abstract getters:
- *   - `get features()`   → Feature refs + lanes (structural, not overridable)
- *   - `get uiEvents()`   → DOM events + phantom TEl (structural)
- *   - `get uiElements()` → CSS selectors (overridable by the Composer, ADR-21 — not delivered)
+ * A handler runs inside a validation unit (G7). Its projections (`getUI(key)`)
+ * are *prepared* during the unit and engaged after it validates (C.3); a
+ * handler therefore never reads the document.
  *
- * The Channel stays private behind its Feature (I80) — no `TChannelToken` in
- * the public surface.
+ * Declarations (read once, when the View is described to the kernel):
+ *   1. `get features()`   — Features it listens to, queries and addresses
+ *   2. `get uiEvents()`   — UI keys, their element subtype and host events
+ *   3. `get uiElements()` — CSS selector of each key, inside the View's part
+ *   4. `get template()`   — initial content of the part (HTML string; default empty)
+ *   5. `get composers()`  — slots of the part and the Composer of each
+ *
+ * Removed with this lot: `this.trigger`, `this.request`, `mount()`, `onAttach()`,
+ * and `TProjectionNode.element()` (a raw element contradicts I39 and cannot be
+ * given before engagement).
  *
  * Invariants:
  *   I4  — A View NEVER has emit() — absent from the type
- *   I31 — rootElement is a CSS selector string injected at mount
- *   I36 — A View never composes other Views directly
- *   I39 — DOM access only through getUI(key)
- *   I40 — DOM scope: resolution inside rootElement only
+ *   I36 — A View never composes other Views directly (only declares Composers)
+ *   I39 — DOM access only through getUI(key), as prepared effects
  *   I48 — Handlers are auto-discovered by naming convention
- *   I75 — No `any` in the public surface; internal casts are documented
  *   I80 — No TChannelToken in the consumer public surface
  *   I81 — `features` / `uiEvents` / `uiElements` are the sources of truth
  *   I82 — Missing handler → compile error through `implements TViewCallbacks`
- *   I83 — Reusable modular `T{Component}Contract` pattern
  *   I84 — A non-empty `events: [E, ...]` requires the matching DOM handlers
  *   I85 — `ui<TEl>()(events)` is the only TUIEntry helper (curried form)
- *   I86 — `events` is always present in TUIEntry (never optional); ReadonlyArray<TEventsFor<TEl>> without duplicates
+ *   I86 — `events` is always present in TUIEntry (never optional)
  *   I87 — object key ≡ namespace of the referenced Feature
  *   I88 — Contract/Callbacks symmetry
- *   I89 — every declared event name belongs to TEventsFor<TEl> ⊆ keyof HTMLElementEventMap (ADR-15)
- *   I90 — no duplicate in TUIEntry["events"] — double binding forbidden (ADR-15)
- *   I91 — TEventsFor<TEl> is Bonsai's official element → events mapping (ADR-15)
+ *   I89–I91 — events belong to TEventsFor<TEl> ⊆ keyof HTMLElementEventMap (ADR-15)
+ *
+ * Known limit (view.md §4.4): a projection receives the whole part, slot
+ * contents included; writing there is forbidden by review, not by construction.
  *
  * @packageDocumentation
  */
 
-import { Radio, type Channel } from "@bonsai/event";
+import {
+  DESCRIBE,
+  describeComponent,
+  type TComponentSpec,
+  type TUnitContext
+} from "@bonsai/event";
 import { type UnionToIntersection } from "@bonsai/types";
 import type {
   TFeatureContract,
   TFlatTriggers,
-  TFlatRequests,
+  TFlatQueries,
   TCommandPayloadFor,
-  TRequestParamsFor,
-  TRequestResultFor,
-  TChannelCallbacks
+  TQueryParamsFor,
+  TQueryResultFor,
+  TEventPayloadFor,
+  TChannelHandlerName
 } from "@bonsai/feature";
+import type { TComposerClass } from "@bonsai/composer";
 
 // ─── UI contract module (ADR-14) ───────────────────────────────────────────
 
@@ -275,8 +280,7 @@ export type HasNoDuplicates<
  *             `[]` = explicitly non-interactive element (projection only).
  *             Constrained to `TEventsFor<TEl>` — valid names + semantic consistency (I89 / I91).
  * - `_el?`  : phantom TEl (compile time only, never allocated at runtime).
- *             Lets `getUI(k).element()` return `TEl` instead of a generic
- *             `HTMLElement`.
+ *             Types the events of the key (`TEventsFor<TEl>`).
  *
  * NO CSS selector here — it lives in `get uiElements()` (overridable, ADR-21).
  */
@@ -333,14 +337,13 @@ export type TUIElements<TUI extends TUIContract> = {
 export type ExtractEl<TEntry extends TUIEntry> =
   TEntry extends TUIEntry<infer TEl, infer _TEvts> ? TEl : HTMLElement;
 
-// ─── Generic TProjectionNode (ADR-14) ──────────────────────────────────────
+// ─── Projection (ADR-14, C.3) ───────────────────────────────────────────────
 
 /**
- * N1 projection node — targeted DOM mutations typed to the TEl subtype.
- * `element()` returns the actual declared HTMLElement (HTMLButtonElement, ...).
- * Known gap (ADR-16): exposing the raw element weakens I39.
+ * Projection onto the element of a UI key. Each call *prepares* an effect,
+ * engaged after the unit validates (C.3); none reads the document.
  */
-export type TProjectionNode<TEl extends HTMLElement = HTMLElement> = {
+export type TProjectionNode<_TEl extends HTMLElement = HTMLElement> = {
   /** Sets textContent */
   text(value: string): void;
   /** Sets an attribute */
@@ -351,18 +354,50 @@ export type TProjectionNode<TEl extends HTMLElement = HTMLElement> = {
   visible(show: boolean): void;
   /** Sets an inline style property */
   style(property: string, value: string): void;
-  /** Returns the underlying element typed at the declared sub-type. */
-  element(): TEl;
 };
 
-// ─── UI handlers (I48 UI) ────────────────────────────────────────────────────
+// ─── Handler contexts (D18) ─────────────────────────────────────────────────
+
+/** A fact of the host admitted in the View's part, as data (A3.d). */
+export type TFact = {
+  /** Host event type, e.g. `"click"`. */
+  readonly type: string;
+  /** UI key the target belongs to, `null` when none. */
+  readonly ui: string | null;
+};
+
+/** What every View handler can do: ask Queries. */
+export type TQueryContext<TVC extends TViewContract> = {
+  /** Synchronous, read-only Query on a declared Channel (G5). */
+  query<K extends TFlatQueries<TVC["features"]> & string>(
+    key: K,
+    params: TQueryParamsFor<TVC["features"], K>
+  ): TQueryResultFor<TVC["features"], K>;
+};
+
+/**
+ * Context of the reaction to a fact of the host. It offers `trigger`: the
+ * right to command is checked at run time (D18, C.4).
+ */
+export type TFactContext<TVC extends TViewContract = TViewContract> = TQueryContext<TVC> & {
+  /** Addresses a Command of a declared Feature; delivered after the unit validates (G5). */
+  trigger<K extends TFlatTriggers<TVC["features"]> & string>(
+    key: K,
+    payload: TCommandPayloadFor<TVC["features"], K>
+  ): void;
+};
+
+/**
+ * Context of the reaction to an Event. No `trigger`: an Event, its local relay
+ * or an effect correlated to it grants no right to command (D18).
+ */
+export type TEventContext<TVC extends TViewContract = TViewContract> = TQueryContext<TVC>;
+
+// ─── Handlers required by the contract ─────────────────────────────────────
 
 /**
  * Maps a DOM event name to its native type in HTMLElementEventMap.
- *
- * The `: Event` branch covers events of specific sub-maps missing from the
- * base `HTMLElementEventMap` (e.g. `"enterpictureinpicture"` from
- * `HTMLVideoElementEventMap`). It is still needed with ADR-15.
+ * Kept for the contract types; a handler receives a `TFact`, not this event.
  */
 export type TDOMEventFor<S extends string> = S extends keyof HTMLElementEventMap
   ? HTMLElementEventMap[S]
@@ -372,25 +407,45 @@ export type TDOMEventFor<S extends string> = S extends keyof HTMLElementEventMap
  * DOM handlers REQUIRED for a UI entry: one per declared event.
  * I48 UI convention: `on{UIKey}{DomEvent}` (no suffix — ADR-15).
  */
-export type TUIEntryHandlers<TKey extends string, TEntry extends TUIEntry> =
+export type TUIEntryHandlers<
+  TKey extends string,
+  TEntry extends TUIEntry,
+  TVC extends TViewContract = TViewContract
+> =
   TEntry extends TUIEntry<infer _TEl, infer TEvts>
     ? {
         [E in TEvts[number] as `on${Capitalize<TKey>}${Capitalize<E & string>}`]: (
-          e: TDOMEventFor<E & string>
+          fact: TFact,
+          ctx: TFactContext<TVC>
         ) => void;
       }
     : never;
 
 /**
  * Intersection of every DOM handler required by a `TUIContract`.
- *
- * Contract/Callbacks symmetry (ADR-14, I88): declaring `events: ["click"]`
- * requires `on{Key}Click`. An `events: []` entry requires no handler.
+ * An `events: []` entry requires no handler (I88).
  */
-export type TUICallbacks<U extends TUIContract> = UnionToIntersection<
+export type TUICallbacks<
+  U extends TUIContract,
+  TVC extends TViewContract = TViewContract
+> = UnionToIntersection<
   {
-    [K in keyof U]: TUIEntryHandlers<K & string, U[K]>;
+    [K in keyof U]: TUIEntryHandlers<K & string, U[K], TVC>;
   }[keyof U]
+>;
+
+/**
+ * Event handlers REQUIRED by the `listens` of a `TFeatureContract` (I48 channel).
+ */
+export type TEventCallbacks<TVC extends TViewContract> = UnionToIntersection<
+  {
+    [NS in keyof TVC["features"] & string]: {
+      [E in TVC["features"][NS]["listens"][number] as TChannelHandlerName<NS, E & string>]: (
+        payload: TEventPayloadFor<TVC["features"], `${NS}:${E & string}`>,
+        ctx: TEventContext<TVC>
+      ) => void;
+    };
+  }[keyof TVC["features"] & string]
 >;
 
 // ─── View composition (ADR-14) ─────────────────────────────────────────────
@@ -408,72 +463,35 @@ export type TViewContract<
 };
 
 /**
- * Single `implements` clause of a View (ADR-14, I88).
- *
- * Merges:
- *  - `TChannelCallbacks<F>`: channel handlers (I48 channel — `on{NS}{Event}Event`)
- *  - `TUICallbacks<U>`     : DOM handlers     (I48 UI      — `on{UIKey}{DomEvent}`)
- *
- * Contract/Callbacks symmetry: for every `TViewContract`, the developer writes
- * `extends View<TVC>` AND `implements TViewCallbacks<TVC>`.
+ * Single `implements` clause of a View (ADR-14, I88): the handlers of the
+ * Events it listens to and of the host events it declares.
  */
-export type TViewCallbacks<TVC extends TViewContract> = TChannelCallbacks<
-  TVC["features"]
-> &
-  TUICallbacks<TVC["ui"]>;
+export type TViewCallbacks<TVC extends TViewContract> = TEventCallbacks<TVC> &
+  TUICallbacks<TVC["ui"], TVC>;
 
 /**
  * Structural type of a concrete View class, independent of its contract.
- * Used by orchestrating components (Composer) that only depend on the public
- * mount surface, not on the specific contract.
- *
- * A single `any`, since View<> has a single generic.
- * `...args: any[]` accepts any constructor; concrete Views may or may not
- * declare one — the surface the Composer uses is `mount(rootSelector)`,
- * independent of the constructor.
+ * Used by orchestrating components (Composer) that only depend on the
+ * creation surface, not on the specific contract.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type TViewClass = abstract new (...args: any[]) => View<any>;
 
-// ─── ProjectionNode factory ──────────────────────────────────────────────────
-
-function createProjectionNode<TEl extends HTMLElement = HTMLElement>(
-  el: TEl
-): TProjectionNode<TEl> {
-  return {
-    text(value: string): void {
-      el.textContent = value;
-    },
-    attr(name: string, value: string): void {
-      el.setAttribute(name, value);
-    },
-    toggleClass(className: string, force: boolean): void {
-      el.classList.toggle(className, force);
-    },
-    visible(show: boolean): void {
-      el.style.display = show ? "" : "none";
-    },
-    style(property: string, value: string): void {
-      el.style.setProperty(property, value);
-    },
-    element(): TEl {
-      return el;
-    }
-  };
-}
+/** A slot of the View's part and the Composer that receives its content. */
+export type TViewSlotDeclaration = {
+  /** CSS selector matching exactly one element inside the View's part. */
+  readonly slot: string;
+  readonly composer: TComposerClass;
+};
 
 // ─── Internal helpers ────────────────────────────────────────────────────────
 
-function capitalize(s: string): string {
-  return s.length === 0 ? s : s[0].toUpperCase() + s.slice(1);
-}
+const capitalize = (s: string): string => (s.length === 0 ? s : s[0]!.toUpperCase() + s.slice(1));
 
 function parseNSKey(key: string): { namespace: string; name: string } {
   const idx = key.indexOf(":");
   if (idx <= 0 || idx === key.length - 1) {
-    throw new Error(
-      `[Bonsai View] Malformed namespaced key "${key}". Expected "namespace:name".`
-    );
+    throw new Error(`[Bonsai View] Malformed namespaced key "${key}". Expected "namespace:name".`);
   }
   return { namespace: key.slice(0, idx), name: key.slice(idx + 1) };
 }
@@ -483,38 +501,7 @@ function parseNSKey(key: string): { namespace: string; name: string } {
 /**
  * View — presentation layer parameterised by a single generic: `TViewContract`.
  *
- * Usage pattern:
- *
  * ```ts
- * import { CartFeature } from "../Cart/cart.feature";
- * import { View, ui, type TViewContract, type TViewCallbacks,
- *   type TFeatureContract, type TUIContract, type TUIElements
- * } from "@bonsai/view";
- *
- * const cartViewFeatures = {
- *   cart: {
- *     feature:  CartFeature,
- *     listens:  ["itemAdded"]  as const,
- *     triggers: ["addItem"]    as const,
- *     requests: []             as const,
- *   },
- * } satisfies TFeatureContract;
- *
- * const cartViewUiEvents = {
- *   total:  ui<HTMLSpanElement>()([]),
- *   addBtn: ui<HTMLButtonElement>()(["click"]),
- * } satisfies TUIContract;
- *
- * const cartViewUiElements = {
- *   total:  ".cart-total",
- *   addBtn: "#add-btn",
- * } satisfies TUIElements<typeof cartViewUiEvents>;
- *
- * type TCartViewContract = TViewContract<
- *   typeof cartViewFeatures,
- *   typeof cartViewUiEvents
- * >;
- *
  * class CartView
  *   extends View<TCartViewContract>
  *   implements TViewCallbacks<TCartViewContract>
@@ -522,257 +509,213 @@ function parseNSKey(key: string): { namespace: string; name: string } {
  *   get features()   { return cartViewFeatures; }
  *   get uiEvents()   { return cartViewUiEvents; }
  *   get uiElements() { return cartViewUiElements; }
+ *   get template()   { return `<button data-ui="addButton">Add</button><span data-ui="itemCount"></span>`; }
  *
- *   onCartItemAddedEvent(p: { id: string; qty: number }): void {
- *     this.getUI("total").text(`${p.qty} items`);  // → TProjectionNode<HTMLSpanElement>
+ *   onAddButtonClick(_fact: TFact, ctx: TFactContext<TCartViewContract>): void {
+ *     ctx.trigger("cart:addItem", { productId: "p1", qty: 1, price: 10 });
  *   }
- *   onAddBtnClick(e: MouseEvent): void {
- *     this.trigger("cart:addItem", { id: "p1", qty: 1 });  // ✅ inferred payload
+ *   onCartItemAddedEvent(payload: { item: TCartItem }, ctx: TEventContext<TCartViewContract>): void {
+ *     this.getUI("itemCount").text(String(ctx.query("cart:getItemCount", null)));
  *   }
  * }
  * ```
  */
 export abstract class View<TVC extends TViewContract = TViewContract> {
-  #rootElement: string | null = null;
-  #rootEl: HTMLElement | null = null;
-  #mounted = false;
-  #uiSelectors: Readonly<Record<string, string>> = {};
-  #uiDomEvents: Readonly<Record<string, readonly string[]>> = {};
-  #features: TFeatureContract = {};
+  /** The unit context of the handler being run, for `getUI` and `params`. */
+  #current: TUnitContext | null = null;
+  #selectors: Readonly<Record<string, string>> = {};
 
-  // ─── Abstract: three sources of truth (ADR-14 / I81) ────────────────
+  // ─── Abstract: sources of truth (ADR-14 / I81) ──────────────────────
 
-  /**
-   * Feature module: Feature refs by lane (Feature-grouped).
-   * Read once at mount (ADR-14). Structural — not overridable.
-   */
+  /** Features: Events it listens to, Queries it asks, Commands it addresses. */
   abstract get features(): TVC["features"];
 
-  /**
-   * UI events module: DOM nodes + HTML types + declared events.
-   * Structural — not overridable. Read at mount to add listeners (ADR-15).
-   */
+  /** UI keys with their element subtype and the host events they declare. */
   abstract get uiEvents(): TVC["ui"];
 
-  /**
-   * CSS selector module — overridable by the Composer (ADR-21).
-   * Planned: the Composer will inject overrides through `resolve() → options`
-   * (stratum 2, not delivered).
-   */
+  /** CSS selector of each UI key, resolved inside the View's part. */
   abstract get uiElements(): TUIElements<TVC["ui"]>;
 
-  // ─── Public API ────────────────────────────────────────────────────────
+  // ─── Optional declarations ──────────────────────────────────────────
 
-  /** The rootElement selector injected at mount (I31). */
-  get rootElement(): string | null {
-    return this.#rootElement;
+  /** Initial content of the part (HTML). Projected when the part exists. */
+  get template(): string {
+    return "";
   }
 
   /**
-   * Root DOM element after mount. Available in onAttach() and in handlers —
-   * lets subclasses read data-* attributes (I34).
+   * Slots of the part and their Composers (Composer §1.3). Keys are disjoint
+   * from the UI keys; each slot selector matches exactly one element of the
+   * part, in the content produced by `template`.
    */
-  protected get el(): HTMLElement | null {
-    return this.#rootEl;
+  get composers(): Readonly<Record<string, TViewSlotDeclaration>> {
+    return {};
+  }
+
+  // ─── Handler-only API ───────────────────────────────────────────────
+
+  /** Creation parameters given by the Composer, frozen (6.2). Only inside a handler. */
+  protected get params(): Readonly<Record<string, unknown>> {
+    return (this.#unit("params").params<Record<string, unknown>>() ?? {}) as Readonly<Record<string, unknown>>;
   }
 
   /**
-   * Mounts the View on a rootElement. Called by the Composer.
-   * - Reads `get features()` / `get uiEvents()` / `get uiElements()` once (ADR-14)
-   * - Resolves the rootElement in the DOM (whole document today, not the
-   *   Composer's slot — ADR-19 gap)
-   * - Auto-discovers the UI handlers (I48 UI — driven by uiEvents[k].events)
-   * - Auto-discovers the Channel listeners (I48 channel — driven by features[NS].listens)
-   * - Calls onAttach()
+   * I39 — typed projection on a UI key. Every operation is *prepared*: it is
+   * engaged after the unit validates (C.3). Only inside a handler.
    */
-  mount(rootSelector: string): void {
-    if (this.#mounted) return;
-    this.#mounted = true;
-
-    // ADR-14: contract modules are read once
-    this.#features = this.features;
-    this.#uiSelectors = this.uiElements;
-
-    // Extract DOM events per UI key (runtime, ADR-15)
-    const uiEvents = this.uiEvents;
-    const domEventsMap: Record<string, readonly string[]> = {};
-    for (const key of Object.keys(uiEvents)) {
-      domEventsMap[key] = uiEvents[key].events;
+  getUI<K extends keyof TVC["ui"] & string>(key: K): TProjectionNode<ExtractEl<TVC["ui"][K]>> {
+    const c = this.#unit(`getUI("${key}")`);
+    const selector = this.#selectors[key];
+    if (selector === undefined) {
+      throw new Error(`[Bonsai View] Unknown UI key "${key}". Declared keys: ${Object.keys(this.#selectors).join(", ")}`);
     }
-    this.#uiDomEvents = domEventsMap;
-
-    this.#rootElement = rootSelector;
-    this.#rootEl = document.querySelector(rootSelector) as HTMLElement;
-
-    // I34: rootElement must not be document.body itself
-    if (this.#rootEl === document.body) {
-      throw new Error(
-        `[Bonsai View] I34 — rootElement cannot be document.body. Provide a child element selector.`
-      );
-    }
-
-    // Auto-discovery
-    this.#registerUIHandlers();
-    this.#registerChannelListeners();
-
-    // Lifecycle
-    this.onAttach();
+    const part = c.resolve(c.designation()!);
+    const write = (label: string, apply: (el: HTMLElement) => void): void => {
+      c.project(part, `${key}.${label}`, (root) => {
+        const el = root.querySelector(selector) as HTMLElement | null;
+        if (el === null) throw new Error(`[Bonsai View] UI element "${key}" not found with selector "${selector}" in the part`);
+        apply(el);
+      });
+    };
+    return {
+      text: (value) => write("text", (el) => { el.textContent = value; }),
+      attr: (name, value) => write(`attr:${name}`, (el) => { el.setAttribute(name, value); }),
+      toggleClass: (className, force) => write(`class:${className}`, (el) => { el.classList.toggle(className, force); }),
+      visible: (show) => write("visible", (el) => { el.style.display = show ? "" : "none"; }),
+      style: (property, value) => write(`style:${property}`, (el) => { el.style.setProperty(property, value); })
+    };
   }
 
-  /**
-   * I39 — typed DOM access through `getUI(key)`. Resolves inside the
-   * rootElement scope (I40; slot exclusion not delivered yet).
-   * Returns `TProjectionNode<TEl>`, where `TEl` comes from the `_el?` phantom
-   * of the declared UI entry — `element()` returns the actual HTML subtype.
-   */
-  getUI<K extends keyof TVC["ui"] & string>(
-    key: K
-  ): TProjectionNode<ExtractEl<TVC["ui"][K]>> {
-    const selector = this.#uiSelectors[key];
-    if (!selector) {
-      throw new Error(
-        `[Bonsai View] Unknown UI key "${key}". Declared keys: ${Object.keys(this.#uiSelectors).join(", ")}`
-      );
-    }
+  // ─── Kernel description (internal) ─────────────────────────────────
 
-    const el = this.#rootEl!.querySelector(selector) as ExtractEl<TVC["ui"][K]>;
-    if (!el) {
-      throw new Error(
-        `[Bonsai View] UI element "${key}" not found with selector "${selector}" in rootElement "${this.#rootElement}"`
-      );
-    }
+  /** @internal Description given to the kernel by the Composer that creates the View. */
+  [DESCRIBE](): TComponentSpec {
+    const features = this.features as TFeatureContract;
+    const uiEvents = this.uiEvents as TUIContract;
+    const selectors = this.uiElements as Readonly<Record<string, string>>;
+    this.#selectors = selectors;
+    const methods = this.#methodNames();
+    const self = this as unknown as Record<string, (...args: unknown[]) => void>;
 
-    return createProjectionNode(el);
-  }
-
-  /**
-   * Sends a typed Command through the Channel (I4 — a View can only send).
-   *
-   * `key` is a namespaced `"ns:cmd"` key; it must belong to
-   * `TFlatTriggers<TVC["features"]>`, otherwise a compile error.
-   * `protected` — subclasses call it from their UI handlers.
-   */
-  protected trigger<K extends TFlatTriggers<TVC["features"]> & string>(
-    key: K,
-    payload: TCommandPayloadFor<TVC["features"], K>
-  ): void {
-    const { namespace, name } = parseNSKey(key);
-    // Cast to the untyped Channel to register by string (I75).
-    const ch = Radio.me().channel(namespace) as unknown as Channel;
-    ch.trigger(name, payload);
-  }
-
-  /**
-   * Performs a typed synchronous Request to a declared Channel.
-   * Returns the typed result, or `null` when the owning Feature registered
-   * no replier (ADR-02).
-   *
-   * `key` is a namespaced `"ns:req"` key; it must belong to
-   * `TFlatRequests<TVC["features"]>`, otherwise a compile error.
-   */
-  protected request<K extends TFlatRequests<TVC["features"]> & string>(
-    key: K,
-    params: TRequestParamsFor<TVC["features"], K>
-  ): TRequestResultFor<TVC["features"], K> | null {
-    const { namespace, name } = parseNSKey(key);
-    // Cast to the untyped Channel to register by string (I75).
-    const ch = Radio.me().channel(namespace) as unknown as Channel;
-    return ch.request(name, params) as TRequestResultFor<
-      TVC["features"],
-      K
-    > | null;
-  }
-
-  // ─── Lifecycle hooks ───────────────────────────────────────────────────
-
-  /** Hook called after mount. Override it in subclasses. */
-  onAttach(): void {
-    // Default no-op
-  }
-
-  // ─── Private: auto-discovery ───────────────────────────────────────────
-
-  /**
-   * I48 UI — for each `uiEvents[k]` entry with `events: [E1, E2, ...]`,
-   * adds `addEventListener(E)` on the element resolved through
-   * `uiElements[k]` and dispatches to the matching `on{Key}{Event}` method.
-   *
-   * Convention: `events: ["click"]` on `addBtn` → addEventListener("click")
-   * → `onAddBtnClick(e)` method.
-   *
-   * Runtime counterpart of I84/I82: a missing handler throws (compile time
-   * should have caught it; this is a safety net).
-   *
-   * Known gap (ADR-15): only the direct prototype is inspected, so a handler
-   * inherited from a parent View is reported as missing.
-   */
-  #registerUIHandlers(): void {
-    const proto = Object.getPrototypeOf(this);
-    const methods = Object.getOwnPropertyNames(proto) as string[];
-
-    for (const uiKey of Object.keys(this.#uiDomEvents)) {
-      const events = this.#uiDomEvents[uiKey];
-      if (events.length === 0) continue; // non-interactive
-
-      const uiKeyPascal = capitalize(uiKey);
-      const selector = this.#uiSelectors[uiKey];
-      if (!selector) {
-        throw new Error(
-          `[Bonsai View] UI key "${uiKey}" declared in uiEvents but missing in uiElements.`
-        );
+    // I48 UI — one handler per declared (key, event); a missing one is a safety net (I84).
+    const domTypes = new Map<string, Record<string, string>>();
+    for (const [uiKey, entry] of Object.entries(uiEvents)) {
+      if (entry.events.length === 0) continue;
+      const selector = selectors[uiKey];
+      if (selector === undefined) {
+        throw new Error(`[Bonsai View] UI key "${uiKey}" declared in uiEvents but missing in uiElements.`);
       }
-      const el = this.#rootEl!.querySelector(selector) as HTMLElement;
-      if (!el) continue; // no element = no listener (silent)
-
-      for (const domEvent of events) {
-        const handlerName = `on${uiKeyPascal}${capitalize(domEvent)}`;
+      for (const domEvent of entry.events) {
+        const handlerName = `on${capitalize(uiKey)}${capitalize(domEvent)}`;
         if (!methods.includes(handlerName)) {
           throw new Error(
             `[Bonsai View] Missing handler "${handlerName}" for declared event "${domEvent}" on ui.${uiKey}. ` +
               `Add the method or remove "${domEvent}" from uiEvents.${uiKey}.events.`
           );
         }
-        el.addEventListener(domEvent, (event: Event) => {
-          (this as unknown as Record<string, (e: Event) => void>)[handlerName](
-            event
+        const keys = domTypes.get(domEvent) ?? {};
+        keys[uiKey] = selector;
+        domTypes.set(domEvent, keys);
+      }
+    }
+    const dom: Record<string, { local: string; keys: Record<string, string> }> = {};
+    for (const [type, keys] of domTypes) dom[type] = { local: "fact", keys };
+
+    // I48 channel — on{NS}{Event}Event for each listened Event.
+    const listens: NonNullable<TComponentSpec["listens"]>[number][] = [];
+    for (const [namespace, entry] of Object.entries(features)) {
+      for (const event of entry.listens) {
+        const handlerName = `on${capitalize(namespace)}${capitalize(event)}Event`;
+        if (typeof self[handlerName] !== "function") {
+          throw new Error(
+            `[Bonsai View] Missing handler "${handlerName}" for declared listen "${namespace}:${event}". ` +
+              `Add the method or remove "${event}" from features.${namespace}.listens.`
           );
+        }
+        listens.push({
+          namespace,
+          event,
+          handler: (payload, c) => this.#run(c, () => self[handlerName]!(payload, this.#eventContext(c)))
         });
       }
+    }
+
+    return {
+      name: this.constructor.name,
+      ui: true,
+      dom,
+      listens,
+      locals: {
+        fact: (payload, c) => {
+          const fact = payload as TFact;
+          if (fact.ui === null || !uiEvents[fact.ui]?.events.includes(fact.type as never)) return;
+          const handlerName = `on${capitalize(fact.ui)}${capitalize(fact.type)}`;
+          this.#run(c, () => self[handlerName]!(fact, this.#factContext(c)));
+        }
+      },
+      init: (c) => {
+        this.#run(c, () => {
+          const part = c.resolve(c.designation()!);
+          const template = this.template;
+          if (template !== "") c.project(part, "template", (el) => { el.innerHTML = template; });
+          for (const [key, { slot, composer }] of Object.entries(this.composers)) {
+            if (key in uiEvents) throw new Error(`[Bonsai View] slot key "${key}" collides with a UI key (D13)`);
+            const ComposerClass = composer as unknown as new () => object;
+            c.create(describeComponent(new ComposerClass()), { part: { resource: part, portion: key, host: slot } });
+          }
+        });
+      }
+    };
+  }
+
+  // ─── Private ───────────────────────────────────────────────────────
+
+  #unit(operation: string): TUnitContext {
+    if (this.#current === null) {
+      throw new Error(`[Bonsai View] ${operation} is usable only inside a handler of the View (C.3)`);
+    }
+    return this.#current;
+  }
+
+  /** Makes the unit context available to `getUI` and `params` while a handler runs. */
+  #run<R>(c: TUnitContext, fn: () => R): R {
+    const previous = this.#current;
+    this.#current = c;
+    try {
+      return fn();
+    } finally {
+      this.#current = previous;
     }
   }
 
-  /**
-   * I48 channel — for each Feature in `features` and each event of
-   * `features[NS].listens`, wires the `on{NS}{Event}Event` method on the
-   * matching Channel.
-   *
-   * Runtime counterpart of I82 — `implements TViewCallbacks` enforces presence
-   * at compile time; this net catches bypasses (`as any` cast).
-   */
-  #registerChannelListeners(): void {
-    for (const namespace of Object.keys(this.#features)) {
-      const entry = this.#features[namespace];
-      const listens = entry.listens;
-      if (listens.length === 0) continue;
-
-      const ch = Radio.me().channel(namespace) as unknown as Channel;
-
-      for (const eventName of listens) {
-        const handlerName = `on${capitalize(namespace)}${capitalize(eventName)}Event`;
-        const handler = (this as unknown as Record<string, unknown>)[
-          handlerName
-        ];
-        if (typeof handler !== "function") {
-          throw new Error(
-            `[Bonsai View] Missing handler "${handlerName}" for declared listen "${namespace}:${eventName}". ` +
-              `Add the method or remove "${eventName}" from features.${namespace}.listens.`
-          );
-        }
-
-        ch.listen(eventName, (payload: unknown) => {
-          (handler as (p: unknown) => void).call(this, payload);
-        });
-      }
+  #methodNames(): string[] {
+    const names = new Set<string>();
+    for (
+      let proto = Object.getPrototypeOf(this) as object | null;
+      proto !== null && proto !== View.prototype;
+      proto = Object.getPrototypeOf(proto) as object | null
+    ) {
+      for (const name of Object.getOwnPropertyNames(proto)) names.add(name);
     }
+    return [...names];
+  }
+
+  #eventContext(c: TUnitContext): TEventContext<TVC> {
+    return {
+      query: ((key: string, params: unknown) => {
+        const { namespace, name } = parseNSKey(key);
+        return c.query(namespace, name, params);
+      }) as TEventContext<TVC>["query"]
+    };
+  }
+
+  #factContext(c: TUnitContext): TFactContext<TVC> {
+    return {
+      ...this.#eventContext(c),
+      trigger: ((key: string, payload: unknown) => {
+        const { namespace, name } = parseNSKey(key);
+        c.trigger(namespace, name, payload);
+      }) as TFactContext<TVC>["trigger"]
+    };
   }
 }

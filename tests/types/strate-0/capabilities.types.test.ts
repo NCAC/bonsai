@@ -41,13 +41,13 @@ class CounterEntity extends Entity<TCounterState> {
 type TPricingDef = {
   readonly commands: Record<string, never>;
   readonly events: { priceChanged: { id: string } };
-  readonly requests: { price: { params: { id: string }; result: number } };
+  readonly queries: { price: { params: { id: string }; result: number } };
 };
 
 type TCartDef = {
   readonly commands: { addItem: { id: string } };
   readonly events: { itemAdded: { id: string } };
-  readonly requests: Record<string, never>;
+  readonly queries: Record<string, never>;
 };
 
 class PricingFeature extends Feature<CounterEntity, TPricingDef, "pricing"> {

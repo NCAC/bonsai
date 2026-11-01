@@ -5,7 +5,7 @@
  *   C1 — ctx.emit(event, payload) on its own Channel (typed by TChannelDef, ADR-14)
  *   C2 — handle(command) through auto-discovered on{Name}Command(payload, ctx) methods
  *   C3 — listen(event) on declared external Channels through on{Channel}{EventName}Event(payload, ctx)
- *   C4 — reply(query) through auto-discovered on{Name}Request(params, ctx) methods
+ *   C4 — reply(query) through auto-discovered on{Name}Query(params, ctx) methods
  *   C5 — ctx.query(token, name, params) to declared Channels (typed by the token, ADR-14)
  *
  * Every handler receives a context as second argument: there is no `this.emit`,
@@ -101,18 +101,18 @@ export type {
   // Flattening helpers
   TFlatListens,
   TFlatTriggers,
-  TFlatRequests,
+  TFlatQueries,
   // Payload extractors
   TEventPayloadFor,
   TCommandPayloadFor,
-  TRequestParamsFor,
-  TRequestResultFor,
+  TQueryParamsFor,
+  TQueryResultFor,
   // Channel callbacks (Contract/Callbacks symmetry — I88)
   TChannelHandlerName,
   TChannelCallbacks,
   // Feature callbacks (ADR-09 — I88 symmetry extended to Feature)
   TCommandCallbacks,
-  TRequestCallbacks,
+  TQueryCallbacks,
   TListenCallbacks,
   TFeatureCallbacks,
   // Feature class constraint (ADR-09 — I95)
@@ -300,7 +300,7 @@ export abstract class Feature<
           this.#run(c, () => self[method]!(payload, this.#featureContext(c)));
         continue;
       }
-      match = method.match(/^on([A-Z][a-zA-Z]*)Request$/);
+      match = method.match(/^on([A-Z][a-zA-Z]*)Query$/);
       if (match) {
         queries[lowerFirst(match[1]!)] = (params, c) =>
           this.#run(c, () => self[method]!(params, this.#queryContext(c)));

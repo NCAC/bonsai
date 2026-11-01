@@ -44,9 +44,9 @@ spec/
 | ↳ [entity](3-couche-abstraite/entity.md) | State, mutations Immer, notifications, schema | [10](../adr/ADR-10-entity-mutation.md), [11](../adr/ADR-11-entity-schema-valibot.md), [12](../adr/ADR-12-entity-intent-typing.md) | 🟠 |
 | ↳ [router](3-couche-abstraite/router.md) | Feature framework de navigation | [13](../adr/ADR-13-router.md) | 🔴 |
 | [4-couche-concrete](4-couche-concrete/README.md) | Ce qui touche le DOM | — | 🟢 |
-| ↳ [foundation](4-couche-concrete/foundation.md) | Racine `<body>`, Composers racines, N1 | [20](../adr/ADR-20-foundation.md) | 🟢 |
-| ↳ [composer](4-couche-concrete/composer.md) | Décideur de composition, `resolve(event)` | [18](../adr/ADR-18-composer.md), [19](../adr/ADR-19-root-element.md) | 🟢 |
-| ↳ [view](4-couche-concrete/view.md) | Projection, contrat modulaire, `getUI`, `localState` | [14](../adr/ADR-14-contrats-types.md)–[17](../adr/ADR-17-local-state.md) | 🟢 |
+| ↳ [foundation](4-couche-concrete/foundation.md) | Racine `<body>`, Composers racines, N1 | [20](../adr/ADR-20-foundation.md) | 🟠 |
+| ↳ [composer](4-couche-concrete/composer.md) | Décideur de composition, `resolve(event)` | [18](../adr/ADR-18-composer.md), [19](../adr/ADR-19-root-element.md) | 🟠 |
+| ↳ [view](4-couche-concrete/view.md) | Projection, contrat modulaire, `getUI`, `localState` | [14](../adr/ADR-14-contrats-types.md)–[17](../adr/ADR-17-local-state.md) | 🟠 |
 | ↳ [behavior](4-couche-concrete/behavior.md) | Plugin UI réutilisable et aveugle | [21](../adr/ADR-21-behavior-reutilisation.md) | 🟡 |
 | [5-rendu](5-rendu.md) | PDR, templates Pug, ProjectionList, hydratation, selectors | [22](../adr/ADR-22-pdr.md)–[26](../adr/ADR-26-souscription-view.md) | 🔴 |
 | [6-transversal/conventions-typage](6-transversal/conventions-typage.md) | Préfixes, contraintes, patterns TypeScript | [08](../adr/ADR-08-namespace-manifest.md), [14](../adr/ADR-14-contrats-types.md) | 🟢 |

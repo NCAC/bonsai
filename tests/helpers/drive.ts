@@ -34,6 +34,9 @@ export function drive(
     listen?: ReadonlyArray<{ namespace: string; event: string }>;
     components?: readonly TManifestEntry[];
     causalBound?: number;
+    foundation?: ConstructorParameters<typeof Application>[0] extends infer O ? (O extends { foundation?: infer F } ? F : never) : never;
+    document?: Document;
+    anchor?: string;
   } = {}
 ): TDrive {
   let probe!: TComponentHandle;
@@ -68,7 +71,10 @@ export function drive(
   const application = new Application({
     features,
     components: [...(options.components ?? []), probeSpec],
-    ...(options.causalBound === undefined ? {} : { causalBound: options.causalBound })
+    ...(options.causalBound === undefined ? {} : { causalBound: options.causalBound }),
+    ...(options.foundation === undefined ? {} : { foundation: options.foundation }),
+    ...(options.document === undefined ? {} : { document: options.document }),
+    ...(options.anchor === undefined ? {} : { anchor: options.anchor })
   });
   application.start();
   const root = application.root!;

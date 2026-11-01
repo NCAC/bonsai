@@ -12,14 +12,16 @@
  *                Query dependencies (`queries`, C.1); each creates its Entity,
  *                registers its handlers and runs `onInit()` inside the startup
  *                unit (§2.5, I56)
- *       (Foundation → Composers → Views: not wired yet — lot M6.2)
+ *       Then the Foundation (if any), which creates its Composers, which
+ *       create the Views (lot M6.2)
  *
  * Invariants:
  *   I23  — Application is dormant at runtime (no handle/emit/listen/request)
  *   I21  — The manifest guarantees uniqueness at compile time; Application
  *          validates format, reserved names and `channel` consistency at bootstrap
  *   I33  — An Application without a Foundation cannot render anything
- *          (not enforced during lot M6.1: the Foundation is not wired yet)
+ *          (still not enforced: the Foundation stays optional — a headless
+ *          Application is legitimate in tests)
  *   I56  — Every Feature's onInit() runs before the Foundation is created
  *   I68  — The namespace is carried by the manifest, not by a static (ADR-08)
  *   I69  — The manifest is the single source of truth for identity (ADR-08)
@@ -40,6 +42,7 @@
 
 import {
   Root,
+  describeComponent,
   type TChannelDefinition,
   type TChannelToken,
   type TManifestEntry
@@ -50,6 +53,7 @@ import {
   assertValidNamespace,
   describeFeature
 } from "@bonsai/feature";
+import type { Foundation } from "@bonsai/foundation";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -72,6 +76,12 @@ export type TFeaturesManifest = Readonly<
  *   safety net in `start()`.
  * - `components`: other children of the root, created after the Features
  *   (the Foundation and the adapters, from lot M6.2 on; probes in tests).
+ * - `foundation`: the root of the visual tree. Created after the Features
+ *   (I56), it admits the `anchor` and creates its Composers (lot M6.2).
+ * - `document`: host document the Foundation's anchor is resolved in.
+ *   Required with a `foundation`.
+ * - `anchor`: selector of the distributable resource the Foundation admits.
+ *   Default `"body"`.
  * - `causalBound`: the bound on causal chains fixed by the Manifest (D9).
  *   Default 50.
  */
@@ -80,6 +90,9 @@ export type TApplicationOptions<
 > = {
   readonly features?: M;
   readonly components?: readonly TManifestEntry[];
+  readonly foundation?: new () => Foundation;
+  readonly document?: Document;
+  readonly anchor?: string;
   readonly causalBound?: number;
 };
 
@@ -89,6 +102,9 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
   readonly #manifest: M;
   readonly #components: readonly TManifestEntry[];
   readonly #causalBound: number;
+  readonly #foundation: (new () => Foundation) | null;
+  readonly #document: Document | undefined;
+  readonly #anchor: string | undefined;
   #started = false;
   #root: Root | null = null;
   #featureInstances: Feature<any, any, any>[] = [];
@@ -97,6 +113,12 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
     this.#manifest = options?.features ?? ({} as M);
     this.#components = options?.components ?? [];
     this.#causalBound = options?.causalBound ?? 50;
+    this.#foundation = options?.foundation ?? null;
+    this.#document = options?.document;
+    this.#anchor = options?.anchor;
+    if (this.#foundation !== null && this.#document === undefined) {
+      throw new Error("[Bonsai Application] a `foundation` needs the host `document` it renders in");
+    }
   }
 
   // ─── Public API ────────────────────────────────────────────────────────
@@ -152,9 +174,18 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
     }
 
     // ── Phase 1 — kernel startup (§2.5, C.1) ─────────────────────────────
-    this.#root = new Root({ causalBound: this.#causalBound });
+    this.#root = new Root({
+      causalBound: this.#causalBound,
+      ...(this.#document === undefined ? {} : { document: this.#document })
+    });
+    // Features first (I56), then the Foundation, then the other components.
+    const foundation =
+      this.#foundation === null
+        ? []
+        : [describeComponent(new this.#foundation(), { anchor: this.#anchor })];
     this.#root.startFromManifest([
       ...this.#featureInstances.map((instance) => describeFeature(instance)),
+      ...foundation,
       ...this.#components
     ]);
   }

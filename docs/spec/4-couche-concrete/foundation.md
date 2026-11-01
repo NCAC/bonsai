@@ -1,5 +1,7 @@
 # Foundation -- Point d'ancrage par racine
 
+> 🟠 **Partiellement aligné sur la théorie V0.9.5 : livré sur le noyau (lot M6.2, 1er novembre 2026).** La section « Livré sur le noyau » ci-dessous fait foi ; les paragraphes qui la contredisent (`resolve(event)`, `mount()`, `rootElement`, `this.trigger`, `this.request`, `element()`, hooks `onAttach`/`onDetach`) montrent l'ancienne forme, liste dans le [rapport du prototype](../../rapports/prototype-noyau-M1-2026-10-31.md). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
+
 > **Élément configurable par Manifest, body par défaut, parts attribuées aux Composers ; aucune source globale**
 
 [<- Retour couche concrete](README.md) | [<- Behavior](behavior.md) | [-> Composer](composer.md)
@@ -19,6 +21,17 @@
 > [La classe livrée](../../../packages/foundation/src/bonsai-foundation.ts) utilise toujours `document.body` et `document.documentElement`. Elle expose `body` et `html` comme `HTMLElement` bruts, lit `composers` une fois et attache les Composers dans l'ordre de `Object.entries()`. `onAttach()` est appelé ensuite ; `onDetach()` est déclaré mais n'a pas d'appelant.
 >
 > **Non livrés** : choix de l'élément dans le Manifest, admission et attribution contrôlées, isolation entre racines, cycle de destruction transactionnel et nettoyage complet. Aucune capacité Channel n'est livrée sur Foundation, et la V1 n'en prévoit pas (§1.1). Les accès bruts et suggestions d'écoute globale du code ne sont pas des autorisations du contrat cible.
+
+---
+
+## Livré sur le noyau (lot M6.2)
+
+- **Forme** : `get composers()` renvoie `{ clé: { slot, composer } }`. Le `slot` est un sélecteur qui doit correspondre à exactement un élément existant de l'ancre ; la partie du Composer **est** cet élément (il est adopté, pas créé).
+- **Ancre** : option `anchor` de l'`Application` (sélecteur, `body` par défaut), admise comme ressource distribuable ; `document` est requis avec une Foundation.
+- **Ordre** : créée après les Features (I56) ; chaque Composer reçoit une part nommée par sa clé.
+- **Erreur de slot** : un sélecteur qui ne correspond pas à un seul élément fait échouer l'effet de matérialisation, rapporté dans la trace (pas dans le démarrage, C.3).
+- **Facultative** : `Application` fonctionne sans Foundation (I33 reste suspendu).
+- **Disparus** : getters `body`/`html`, hooks `onAttach`/`onDetach`.
 
 ---
 

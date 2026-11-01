@@ -35,7 +35,7 @@ import {
 export type TChannelDefinition = {
   readonly commands: Record<string, unknown>;
   readonly events:   Record<string, unknown>;
-  readonly requests: Record<string, { params: unknown; result: unknown }>;
+  readonly queries: Record<string, { params: unknown; result: unknown }>;
 };
 
 /**
@@ -276,11 +276,11 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
    * Registers the single replier of a Request.
    * @throws DuplicateHandlerError if a replier is already registered.
    */
-  reply<K extends keyof TDef["requests"] & string>(
+  reply<K extends keyof TDef["queries"] & string>(
     requestName: K,
     replier: (
-      params: TDef["requests"][K]["params"]
-    ) => TDef["requests"][K]["result"]
+      params: TDef["queries"][K]["params"]
+    ) => TDef["queries"][K]["result"]
   ): void {
     if (this.#requestRepliers.has(requestName)) {
       throw new DuplicateHandlerError(
@@ -296,27 +296,27 @@ export class Channel<TDef extends TChannelDefinition = TChannelDefinition> {
   /**
    * Removes a replier.
    */
-  unreply<K extends keyof TDef["requests"] & string>(
+  unreply<K extends keyof TDef["queries"] & string>(
     requestName: K
   ): void {
     this.#requestRepliers.delete(requestName);
   }
 
   /**
-   * Performs a synchronous Request. Returns `TDef['requests'][K]['result'] | null`.
+   * Performs a synchronous Request. Returns `TDef['queries'][K]['result'] | null`.
    * - No replier → null (ADR-02)
    * - Replier throws → null, error logged (I55)
    */
-  request<K extends keyof TDef["requests"] & string>(
+  request<K extends keyof TDef["queries"] & string>(
     requestName: K,
-    params: TDef["requests"][K]["params"]
-  ): TDef["requests"][K]["result"] | null {
+    params: TDef["queries"][K]["params"]
+  ): TDef["queries"][K]["result"] | null {
     const replier = this.#requestRepliers.get(requestName);
     if (!replier) {
       return null;
     }
     try {
-      return replier(params as unknown) as TDef["requests"][K]["result"];
+      return replier(params as unknown) as TDef["queries"][K]["result"];
     } catch (error) {
       console.error(
         `[Bonsai] Request replier error on "${this.name}:${requestName}"`,

@@ -1,141 +1,79 @@
 /**
- * @bonsai/foundation — Foundation abstract base class
+ * @bonsai/foundation — Foundation abstract base class (migration lot M6.2)
  *
- * Delivered capabilities:
- *   - body = document.body            (I33)
- *   - html = document.documentElement (N1 alteration right, ADR-20)
- *   - Declares the root Composers through abstract get composers()
- *     (Readonly<Record<string, typeof Composer>> — ADR-20)
- *   - Creates and attaches the Composers at bootstrap in insertion order
- *     (ES2015+ Object.entries guarantees string-key order)
- *   - onAttach() / onDetach() hooks
+ * One Foundation per root (G6). It is a child of the root, which owns its
+ * existence. It admits one element of the host as a distributable resource —
+ * by default `body` — and attributes the content of its declared slots to
+ * Composers. It creates no View (D11) and has no Channel in V1.
+ *
+ *   - `get composers()` — the slots of the admitted element, each with the
+ *     Composer that receives its content. Read once, at startup (I67).
+ *
+ * A slot is a selector that must match exactly one element inside the admitted
+ * element; otherwise its materialisation fails and is reported (Foundation §3).
+ *
+ * Removed with this lot: the `body` / `html` getters (the Foundation holds no
+ * host element: theory D3, Foundation §2) and the `onAttach` / `onDetach`
+ * hooks (global DOM listeners are a matter for adapters, D7).
  *
  * Invariants:
- *   I33  — A single Foundation per application — targets <body>
- *   I20  — Only Foundation/Composers create or destroy Views
- *   I34  — A View's rootElement is a descendant of <body>, never <body>
- *   I67  — Structural stability of the Foundation (ADR-20)
- *   ADR-20 — the Foundation may alter html/body at N1 only
- *
- * Not delivered yet:
- *   - Declared global events (post-v1 track, docs/ROADMAP.md)
- *   - Global event delegation
- *   - Channel capabilities (form not decided)
+ *   I20  — Only Composers create or destroy Views
+ *   I67  — Structural stability of the Foundation's first level (ADR-20)
  *
  * @packageDocumentation
  */
 
-import { Composer, type TComposerOptions } from "@bonsai/composer";
+import {
+  DESCRIBE,
+  describeComponent,
+  type TComponentSpec
+} from "@bonsai/event";
+import type { TComposerClass } from "@bonsai/composer";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+/** A slot of the admitted element and the Composer that receives its content. */
+export type TSlotDeclaration = {
+  /** CSS selector matching exactly one element inside the admitted element. */
+  readonly slot: string;
+  readonly composer: TComposerClass;
+};
+
+/** Slots by key. The key names the portion; it must be unique. */
+export type TFoundationSlots = Readonly<Record<string, TSlotDeclaration>>;
+
+/** Options the Application gives when it creates the Foundation. */
+export type TFoundationOptions = {
+  /** CSS selector of the element admitted by the Foundation. Default `body`. */
+  readonly anchor?: string;
+};
 
 // ─── Foundation abstract class ───────────────────────────────────────────────
 
 export abstract class Foundation {
-  /** <body> — always document.body (I33) */
-  #body: HTMLElement;
-
-  /** <html> — N1 alteration right (ADR-20, foundation.md §2) */
-  #html: HTMLElement;
-
-  /** Root Composer instances created at bootstrap */
-  #composerInstances: Composer[] = [];
-
-  /** Flag: Foundation already attached */
-  #attached = false;
-
-  constructor() {
-    this.#body = document.body;
-    this.#html = document.documentElement;
-  }
-
-  // ─── Public API ────────────────────────────────────────────────────────
-
   /**
-   * <body> (foundation.md §1).
-   * Developers may alter it at N1 only (classes, attributes) — ADR-20.
-   */
-  protected get body(): HTMLElement {
-    return this.#body;
-  }
-
-  /**
-   * <html> (foundation.md §1).
-   * Developers may alter it at N1 only (classes, attributes) — ADR-20.
-   */
-  protected get html(): HTMLElement {
-    return this.#html;
-  }
-
-  /**
-   * The created Composer instances.
-   */
-  get composerInstances(): readonly Composer[] {
-    return this.#composerInstances;
-  }
-
-  /**
-   * Attaches the Foundation: resolves and creates the root Composers.
-   * Called once by Application.start().
+   * Declares the Foundation's slots — Composer §1.3.
    *
-   * Iterates over Object.entries(this.composers) — insertion order of
-   * non-numeric string keys is guaranteed by ES2015+ (§9.1.12).
+   * @example
+   *   get composers() {
+   *     return { main: { slot: "[data-slot='main']", composer: MainComposer } } as const;
+   *   }
    */
-  attach(): void {
-    if (this.#attached) {
-      throw new Error(
-        "[Bonsai Foundation] Foundation already attached — I33 singleton violated"
-      );
-    }
-    this.#attached = true;
+  abstract get composers(): TFoundationSlots;
 
-    const composersMap = this.composers;
-
-    for (const [selector, ComposerCtor] of Object.entries(composersMap)) {
-      const ComposerClass = ComposerCtor as unknown as new (
-        opts: TComposerOptions
-      ) => Composer;
-      const instance = new ComposerClass({ rootElement: selector });
-      instance.attach(this.#body);
-      this.#composerInstances.push(instance);
-    }
-
-    this.onAttach();
-  }
-
-  // ─── Abstract ──────────────────────────────────────────────────────────
-
-  /**
-   * Declares the Foundation's root Composers — ADR-20.
-   *
-   * Keys = CSS selectors in <body> (free string, checked at runtime).
-   * Values = concrete Composer classes.
-   *
-   * Stable, persistent layout — typically 3 to 5 entries
-   * (#header, #main, #footer, #aside...). Evaluated once at bootstrap (I67).
-   *
-   * For dynamic composition, delegate to a dedicated View through
-   * View.composers + PDR (ADR-20, delegation pattern).
-   */
-  abstract get composers(): Readonly<Record<string, typeof Composer>>;
-
-  // ─── Lifecycle hooks ───────────────────────────────────────────────────
-
-  /**
-   * Hook called once the root Composers are resolved.
-   * Override it to add global DOM listeners (resize, scroll, etc.).
-   * Default no-op.
-   */
-  onAttach(): void {
-    // Default no-op
-  }
-
-  /**
-   * Hook called at shutdown — counterpart of onAttach().
-   * Override it to remove the global DOM listeners added in onAttach().
-   * Default no-op.
-   *
-   * NB: not called yet — Application.stop() does not exist (stratum 1).
-   */
-  onDetach(): void {
-    // Default no-op
+  /** @internal Description given to the kernel by the Application. */
+  [DESCRIBE](options?: TFoundationOptions): TComponentSpec {
+    return {
+      name: this.constructor.name,
+      init: (c) => {
+        const anchor = c.admitDistributable(options?.anchor ?? "body");
+        for (const [key, { slot, composer }] of Object.entries(this.composers)) {
+          const ComposerClass = composer as unknown as new () => object;
+          c.create(describeComponent(new ComposerClass()), {
+            part: { resource: anchor, portion: key, host: slot }
+          });
+        }
+      }
+    };
   }
 }

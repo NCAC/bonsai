@@ -8,8 +8,8 @@
  *
  * Scénario complet avec DOM :
  *
- *   1. Application.register(CartFeature) + Application.start()
- *   2. CartView est montée dans le DOM (via Foundation → MainComposer → CartView)
+ *   1. new Application({ features, foundation, document }).start()
+ *   2. CartView est créée par MainComposer dans l'emplacement de AppFoundation
  *   3. Simuler click sur @ui.addButton
  *      → ADR-15 auto-dérive → CartView.onAddButtonClick()
  *      → CartView.trigger(cart:addItem, { productId: "123", qty: 1 })
@@ -45,10 +45,7 @@ import { resetDOM } from "../helpers/dom-setup";
 import { Application } from "@bonsai/application";
 import { CartFeature, AppFoundation } from "../fixtures/cart-feature.fixture";
 
-// Suspendu pendant la migration vers le noyau (lot M6) : la View, le Composer et la
-// Foundation parlent encore à l'ancien `Radio`, alors que les Features sont sur le noyau.
-// Ce test est réécrit et réactivé à l'étape M6.2, quand les couches concrètes migrent.
-describe.skip("🚪 GATE Strate 0 — Cart round-trip E2E [ADR-31]", () => {
+describe("🚪 GATE Strate 0 — Cart round-trip E2E [ADR-31]", () => {
   beforeEach(() => {
     resetDOM();
 
@@ -58,54 +55,40 @@ describe.skip("🚪 GATE Strate 0 — Cart round-trip E2E [ADR-31]", () => {
         <h1>Bonsai Cart</h1>
       </header>
       <main data-region="main">
-        <div data-view="cart">
-          <span data-ui="itemCount">0</span>
-          <span data-ui="total">0.00</span>
-          <button data-ui="addButton">Add Item</button>
-          <ul data-ui="itemList"></ul>
-          <div data-ui="emptyMessage">Cart is empty</div>
-        </div>
       </main>
     `;
   });
 
   it("click addButton → trigger → handle → mutate → emit → N1 projection → DOM updated", () => {
-    // ── 1. Bootstrap ──────────────────────────────────────────────
-    // ADR-08 — manifest applicatif (clé = namespace, valeur = classe Feature).
-    // L'unicité, le format camelCase et l'accord TSelfNS↔clé sont vérifiés
-    // au compile-time via `StrictManifest<M>` (cf. tests de type).
+    // ── 1. Bootstrap : Features, puis Foundation → Composer → View ────
     const app = new Application({
-      features: { cart: CartFeature }
+      features: { cart: CartFeature },
+      foundation: AppFoundation,
+      document
     });
     app.start();
 
-    // ── 2. Vérifier que la View est montée ────────────────────────
-    const addButton = document.querySelector(
-      "[data-ui='addButton']"
-    ) as HTMLElement;
-    expect(addButton).not.toBeNull();
+    // ── 2. La View existe dans l'emplacement déclaré, avec son gabarit ─
+    const main = document.querySelector("[data-region='main']")!;
+    expect(main.children).toHaveLength(1); // la partie de la View, créée par le Composer
+    const addButton = document.querySelector("[data-ui='addButton']") as HTMLElement;
+    const itemCount = document.querySelector("[data-ui='itemCount']")!;
+    const total = document.querySelector("[data-ui='total']")!;
+    const emptyMsg = document.querySelector("[data-ui='emptyMessage']") as HTMLElement;
+    expect(itemCount.textContent).toBe("0");
 
-    const itemCount = document.querySelector("[data-ui='itemCount']");
-    const total = document.querySelector("[data-ui='total']");
-    const emptyMsg = document.querySelector(
-      "[data-ui='emptyMessage']"
-    ) as HTMLElement;
-
-    // État initial — pré-rendu côté template (PDR), la View n'a rien projeté
-    expect(itemCount!.textContent).toBe("0");
-
-    // ── 3. Premier click ──────────────────────────────────────────
+    // ── 3. Premier click : fait → trigger → Command → mutate → Event → projection
     addButton.click();
-
-    // ── 4. Projection N1 mise à jour ──────────────────────────────
-    expect(itemCount!.textContent).toBe("1");
-    expect(total!.textContent).toBe("9.99");
-    // visible(false) → display:none (ADR-22)
+    expect(itemCount.textContent).toBe("1");
+    expect(total.textContent).toBe("9.99");
     expect(emptyMsg.style.display).toBe("none");
 
-    // ── 5. Deuxième click — confirme la persistance du state ─────
+    // ── 4. Deuxième click : l'état est celui de la Feature, pas de la View
     addButton.click();
-    expect(itemCount!.textContent).toBe("2");
-    expect(total!.textContent).toBe("19.98");
+    expect(itemCount.textContent).toBe("2");
+    expect(total.textContent).toBe("19.98");
+
+    // ── 5. Aucune unité n'a échoué ────────────────────────────────────
+    expect(app.root!.trace.filter((t) => t.type === "unit-failed")).toEqual([]);
   });
 });

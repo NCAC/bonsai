@@ -135,3 +135,65 @@ describe("M4 — results of effects (C.3)", () => {
     expect(reports.read).toEqual(["new label"]);             // the Entity keeps its validated value
   });
 });
+
+describe("M6.2 — declared slots and UI keys", () => {
+  it("adopts an existing element of the container as the part of a declared slot", () => {
+    document.body.innerHTML = `<div id="app"><section data-slot="main"></section><aside data-slot="side"></aside></div>`;
+    const root = new Root({ causalBound: 10, document });
+    root.start((ctx) => {
+      ctx.create({
+        name: "foundation",
+        init: (c) => {
+          const app = c.admitDistributable("#app");
+          c.create({ name: "main", init: (cc) => { cc.project(cc.resolve(cc.designation()!), "fill", (el) => { el.append("hello"); }); } }, { part: { resource: app, portion: "main", host: "[data-slot='main']" } });
+        }
+      });
+    });
+    const section = document.querySelector("section")!;
+    expect(section.getAttribute("data-bonsai-part")).toBe("main");
+    expect(section.textContent).toBe("hello");
+    expect(document.querySelector("aside")!.hasAttribute("data-bonsai-part")).toBe(false);
+  });
+
+  it("refuses a slot that does not match exactly one element, and reports it", () => {
+    document.body.innerHTML = `<div id="app"><i data-slot="x"></i><i data-slot="x"></i></div>`;
+    const root = new Root({ causalBound: 10, document });
+    root.start((ctx) => {
+      ctx.create({
+        name: "foundation",
+        init: (c) => {
+          const app = c.admitDistributable("#app");
+          c.create({ name: "main" }, { part: { resource: app, portion: "main", host: "[data-slot='x']" } });
+          c.create({ name: "other" }, { part: { resource: app, portion: "other", host: "[data-slot='absent']" } });
+        }
+      });
+    });
+    const failed = root.trace.filter((e) => e.type === "effects").flatMap((e) => (e.type === "effects" ? e.report : []));
+    expect(failed.map((r) => `${r.label}:${r.outcome}`)).toEqual(["materialize #app/main:failed", "materialize #app/other:not-attempted"]);
+    expect(String((failed[0] as { error?: unknown }).error)).toMatch(/matches 2 elements/);
+  });
+
+  it("attributes a host event to the UI key whose selector matches, else null", () => {
+    document.body.innerHTML = `<div id="app"></div>`;
+    const seen: unknown[] = [];
+    const root = new Root({ causalBound: 10, document });
+    root.start((ctx) => {
+      ctx.create({
+        name: "foundation",
+        init: (c) => {
+          const app = c.admitDistributable("#app");
+          c.create({
+            name: "view",
+            ui: true,
+            dom: { click: { local: "fact", keys: { add: ".add", row: "li" } } },
+            locals: { fact: (p) => { seen.push(p); } },
+            init: (cc) => { cc.project(cc.resolve(cc.designation()!), "fill", (el) => { el.innerHTML = `<button class="add"><b>+</b></button><ul><li><span>x</span></li></ul><p>none</p>`; }); }
+          }, { part: { resource: app, portion: "v" } });
+        }
+      });
+    });
+    const part = document.querySelector("[data-bonsai-part='v']")!;
+    for (const selector of ["b", "span", "p"]) part.querySelector(selector)!.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+    expect(seen).toEqual([{ type: "click", ui: "add" }, { type: "click", ui: "row" }, { type: "click", ui: null }]);
+  });
+});

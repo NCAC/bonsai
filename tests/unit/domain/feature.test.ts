@@ -64,7 +64,7 @@ type TCartDef = {
     askPricingOnCommand: { productId: string };
   };
   events: { itemAdded: { item: TItem }; priced: { price: number | null } };
-  requests: {
+  queries: {
     getTotal: { params: null; result: number };
     getItems: { params: null; result: TItem[] };
   };
@@ -73,7 +73,7 @@ type TCartDef = {
 type TPricingDef = {
   commands: Record<never, never>;
   events: Record<never, never>;
-  requests: { getItemPrice: { params: { productId: string }; result: number | null } };
+  queries: { getItemPrice: { params: { productId: string }; result: number | null } };
 };
 
 const PRICING: TChannelToken<TPricingDef, "pricing"> = { namespace: "pricing" };
@@ -90,7 +90,7 @@ class PricingFeature
   onInit(): void { PricingFeature.started.push("pricing"); }
   static started: string[] = [];
 
-  onGetItemPriceRequest(params: { productId: string }, _ctx: TFeatureQueryContext): number | null {
+  onGetItemPriceQuery(params: { productId: string }, _ctx: TFeatureQueryContext): number | null {
     return this.entity.query.getItemPrice(params.productId);
   }
 }
@@ -129,11 +129,11 @@ class CartFeature
     ctx.emit("priced", { price: ctx.query(PRICING, "getItemPrice", payload) });
   }
 
-  onGetTotalRequest(_p: null, _ctx: TFeatureQueryContext): number { return this.entity.query.getTotal(); }
-  onGetItemsRequest(_p: null, _ctx: TFeatureQueryContext): TItem[] { return this.entity.query.getItems(); }
+  onGetTotalQuery(_p: null, _ctx: TFeatureQueryContext): number { return this.entity.query.getTotal(); }
+  onGetItemsQuery(_p: null, _ctx: TFeatureQueryContext): TItem[] { return this.entity.query.getItems(); }
 }
 
-type TListenerDef = { commands: Record<never, never>; events: Record<never, never>; requests: { lastEvent: { params: null; result: string | null } } };
+type TListenerDef = { commands: Record<never, never>; events: Record<never, never>; queries: { lastEvent: { params: null; result: string | null } } };
 type TListenerState = { lastEvent: string | null };
 
 class ListenerEntity extends Entity<TListenerState> {
@@ -152,7 +152,7 @@ class ListenerFeature extends Feature<ListenerEntity, TListenerDef, "listener"> 
   onCartItemAddedEvent(_payload: { item: unknown }, ctx: TFeatureContext<TListenerDef, ListenerEntity>): void {
     ctx.mutate("recordEvent", (draft) => { draft.lastEvent = "itemAdded"; });
   }
-  onLastEventRequest(): string | null { return this.entity.state.lastEvent; }
+  onLastEventQuery(): string | null { return this.entity.state.lastEvent; }
 }
 
 const features = { pricing: PricingFeature, cart: CartFeature, listener: ListenerFeature };
@@ -246,7 +246,7 @@ describe("Feature on the kernel — lot M6.1", () => {
   describe("I48 — handlers inherited from an ancestor class", () => {
     it("a subclass overriding one handler keeps the handlers it inherits", () => {
       class Derived extends CartFeature {
-        override onGetTotalRequest(): number { return -1; }   // most derived wins
+        override onGetTotalQuery(): number { return -1; }   // most derived wins
       }
       const d = drive({ pricing: PricingFeature, cart: Derived });
       d.send("cart", "addItem", item(2));                     // inherited Command

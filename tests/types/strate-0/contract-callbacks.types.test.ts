@@ -18,14 +18,21 @@
 import { describe, it } from "@jest/globals";
 import type { TChannelToken } from "@bonsai/event";
 import type { TFeatureCallbacks, TFeatureContract } from "@bonsai/feature";
-import { ui, type TUIContract, type TViewCallbacks, type TViewContract } from "@bonsai/view";
+import {
+  ui,
+  type TFact,
+  type TFactContext,
+  type TUIContract,
+  type TViewCallbacks,
+  type TViewContract
+} from "@bonsai/view";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
 type TCartChannelDef = {
   commands: { addItem: { id: string } };
   events: { itemAdded: { id: string } };
-  requests: Record<never, never>;
+  queries: Record<never, never>;
 };
 
 const cartListens = [
@@ -71,7 +78,7 @@ describe("Contract/Callbacks symmetry — I88", () => {
     // @ts-expect-error — onSaveBtnClick (derived from `saveBtn: ["click"]`) is missing
     const _missing: TViewCallbacks<TSaveViewContract> = {};
     const _complete: TViewCallbacks<TSaveViewContract> = {
-      onSaveBtnClick: (_e: MouseEvent) => {}
+      onSaveBtnClick: (_fact: TFact, _ctx: TFactContext<TSaveViewContract>) => {}
     };
     void _missing;
     void _complete;

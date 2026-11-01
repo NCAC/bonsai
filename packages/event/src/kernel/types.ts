@@ -96,9 +96,20 @@ export interface TComponentSpec {
    * message that receives them (D10, D16). Only occurrences whose innermost
    * part is the component's own are admitted.
    */
-  readonly dom?: Readonly<Record<string, string>>;
+  readonly dom?: Readonly<Record<string, string | TDomAdmission>>;
   /** Entity owned by the component (D4: exactly one for a Feature). */
   readonly entity?: TEntityDefinition<any>;
+}
+
+/**
+ * Admission of a host event type with the UI keys it can be attributed to: the
+ * payload's `ui` is the first key, in declaration order, whose selector matches
+ * the target or an ancestor inside the part; without `keys`, it is the target's
+ * `data-ui` attribute.
+ */
+export interface TDomAdmission {
+  readonly local: string;
+  readonly keys?: Readonly<Record<string, string>>;
 }
 
 /** Entry of a Manifest: a child of the root and its initial Query dependencies (C.1). */
@@ -132,6 +143,12 @@ export interface TCreateOptions {
     readonly portion: string;
     /** Position in the host: before the part occupying this portion; at the end otherwise. */
     readonly before?: string;
+    /**
+     * The part is an element of the container that already exists (a declared slot):
+     * a selector that must match exactly one element inside the container's element.
+     * Without it, the part is a new element created in the container.
+     */
+    readonly host?: string;
   };
 }
 

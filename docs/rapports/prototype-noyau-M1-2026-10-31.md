@@ -157,6 +157,31 @@ Première étape de l'intégration : le domaine (Features, Entities, Application
 - **La Foundation n'est plus requise par `Application`** pendant M6.1 (I33 suspendu) ; `foundation` n'est plus une option. Le test de bout en bout du panier (`tests/e2e/strate-0.cart-round-trip.test.ts`) est suspendu jusqu'à M6.2.
 - **Dette de documentation.** `feature.md`, `entity.md` et `application.md` portent une section « Livré sur le noyau » qui fait foi ; leurs exemples antérieurs (`this.emit`, `this.entity.mutate`, `bootstrap()`) sont à réécrire en M6.2. La lane `requests` et les handlers `on…Request` gardent leur nom jusque-là.
 
+## 3 septies. Lot M6.2 — Foundation, Composer et View sur le noyau (1er novembre 2026)
+
+Deuxième étape : la couche concrète tourne sur le noyau et le parcours complet du panier passe dans jsdom (clic → fait admis → `trigger` → Command → `mutate` → Event → projection), test de bout en bout réactivé. Suite complète à 339 tests verts, `tsc` propre ; quatre mutations de contrôle sur le Composer et la View, dont une n'était pas couverte et a donné un test.
+
+**Réalisé.**
+
+- **Description par symbole** : `DESCRIBE` et `describeComponent` dans `@bonsai/event` ; chaque classe (Foundation, Composer, View) sait se décrire au noyau, sans que les paquets s'importent à l'exécution (une View déclare des Composers, un Composer crée des Views).
+- **Foundation** : `composers` → emplacements `{ slot, composer }` adoptés dans l'ancre (`body` par défaut, option `anchor`) ; `Application` reçoit `foundation`, `document`, `anchor`.
+- **Composer** : `features`, `views`, `resolve(ctx)` avec `query` seul ; composition ordonnée `{ view, key, params? }` ; réconciliation par clé (garder / détruire puis recréer / détruire) ; ordre explicite ; registre interne annulable avec l'unité.
+- **View** : `template`, `composers`, handlers de faits `(fact, ctx)` avec `trigger` et `query`, handlers d'Events `(payload, ctx)` avec `query` seul (D18), `getUI` qui prépare des effets liés à l'unité, `params`.
+- **Noyau** : un `spec.dom` accepte des sélecteurs de clés (`{ local, keys }`) et la part peut être un emplacement existant (`part.host`, exactement un élément).
+- **Renommage** : `requests` → `queries` (voies de contrat, `TFlatQueries`, `TQueryParamsFor`, `TQueryResultFor`, handlers `on…Query`). `TQueryableContract` permet au Composer, sans voie `triggers`, de poser des Queries typées.
+- **Tests** : `tests/unit/domain/{view,composer,foundation}.test.ts` remplacent `view.basic`, `composer.basic`, `foundation.basic` ; tests de types de la View repris avec les contextes.
+
+**Constats et décisions.**
+
+- **Une erreur de slot n'arrête pas le démarrage.** La matérialisation est un effet engagé après validation (C.3) : un sélecteur qui ne correspond pas à un seul élément est rapporté dans la trace, pas par une `StartupError`. À trancher : faire de l'adoption d'un slot une vérification de l'unité.
+- **Destruction logique d'une View dont l'élément échoue** : non faite (limite déjà connue en C.3).
+- **Écriture dans le contenu d'un emplacement par une projection** : non vérifiée par construction.
+- **`template`** est un emplacement provisoire, en attendant le rendu du §4.5.
+- **`queries` sert encore de dépendance de démarrage** : question toujours ouverte (scinder dépendances de démarrage et Queries ordinaires ?).
+- **Foundation facultative** : I33 reste suspendu.
+- **Dette de documentation.** `view.md`, `composer.md`, `foundation.md` portent une section « Livré sur le noyau » qui fait foi ; leurs exemples antérieurs, comme ceux de `feature.md`, `entity.md` et `application.md`, restent à réécrire.
+- **Branche `documentation-big-bang`** : elle ne porte pas les modifications de docs de M6.1 et M6.2, seulement `feature/noyau-m1`.
+
 ## 4. Hors périmètre
 
 Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignations et DOM (M3–M4) ; qualification des sources par le monde fermé et D18 (M5) ; remplacement de `Channel` et `Radio`, et branchement des classes de base (M6).
@@ -171,5 +196,5 @@ Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignat
 6. ~~Lot M5~~ : fait (section 3 quinquies).
 7. ~~Compléter ADR-35 et le guide avec les deux constats de M5~~ : fait, avec l'ordre explicite dans Composer §1.3.
 8. ~~Lot M6.1~~ : fait (section 3 sexies).
-9. Lot M6.2 : `Foundation`, `Composer`, `View` sur le noyau ; parcours complet dans jsdom ; renommage `requests` → `queries` ; exemples de `feature.md`, `entity.md`, `application.md`.
+9. ~~Lot M6.2~~ : fait (section 3 septies). Reste : réécrire les exemples des specs `feature`, `entity`, `application`, `view`, `composer`, `foundation`.
 10. Lot M6.3 : routeur et adaptateur historique ; retrait de `Channel` et `Radio`.

@@ -54,7 +54,7 @@ type TDef = {
     emitThenFail: null;
   };
   events: { changed: { count: number } };
-  requests: { state: { params: null; result: TState }; notifications: { params: null; result: string[] } };
+  queries: { state: { params: null; result: TState }; notifications: { params: null; result: string[] } };
 };
 
 /** Observations made by handlers, outside the Feature (no mutable field in a component, A0.c). */
@@ -127,8 +127,8 @@ class CounterFeature extends Feature<CounterEntity, TDef, "counter"> {
     if (handlerBehaviour === "loop") ctx.mutate("loop", (d) => { d.count += 1; });
   }
 
-  onStateRequest(_p: null, _c: TFeatureQueryContext): TState { return this.entity.state; }
-  onNotificationsRequest(): string[] { return [...log]; }
+  onStateQuery(_p: null, _c: TFeatureQueryContext): TState { return this.entity.state; }
+  onNotificationsQuery(): string[] { return [...log]; }
 }
 
 const features = { counter: CounterFeature };

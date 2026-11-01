@@ -21,7 +21,7 @@
  *     génériques de View, TFeatureContract, TUIContract, TChannelToken sont
  *     strictement typés (le fichier compile sous `--strict` sans cast).
  *   - I76 : `Channel<TDef>` accepte uniquement `keyof TDef['commands' |
- *     'events' | 'requests']` — testé indirectement via les `@ts-expect-error`
+ *     'events' | 'queries']` — testé indirectement via les `@ts-expect-error`
  *     sur `trigger`/`request` qui dépendent structurellement de `Channel<TDef>`.
  *   - I77 : `View.trigger("ns:cmd")` rejette toute clé hors `TFlatTriggers<F>`
  *     (cf. callKO_triggerUnknownNamespace/UnknownCommand/ListenAsTrigger).
@@ -51,7 +51,10 @@ import {
   type TViewContract,
   type TViewCallbacks,
   type TUIContract,
-  type TUIElements
+  type TUIElements,
+  type TFact,
+  type TFactContext,
+  type TEventContext
 } from "@bonsai/view";
 
 // ─── Fixtures : deux Features factices avec leurs TChannelDef ───────────────
@@ -59,13 +62,13 @@ import {
 type TCartChannelDef = {
   readonly commands: { addItem: { productId: string; qty: number } };
   readonly events: { itemAdded: { productId: string } };
-  readonly requests: { getCount: { params: void; result: number } };
+  readonly queries: { getCount: { params: void; result: number } };
 };
 
 type TUserChannelDef = {
   readonly commands: { signIn: { email: string } };
   readonly events: { signedIn: { userId: string } };
-  readonly requests: { getProfile: { params: void; result: { name: string } } };
+  readonly queries: { getProfile: { params: void; result: { name: string } } };
 };
 
 class CartFeature {
@@ -87,7 +90,7 @@ const cartOnlyFeatures = {
     feature: CartFeature,
     listens: ["itemAdded"] as const,
     triggers: ["addItem"] as const,
-    requests: ["getCount"] as const
+    queries: ["getCount"] as const
   }
 } satisfies TFeatureContract;
 
@@ -119,47 +122,47 @@ class CartOnlyView
   }
 
   // ── trigger() — clé namespacée déclarée, payload bien typé ─────────────
-  callOK_trigger(): void {
-    this.trigger("cart:addItem", { productId: "abc", qty: 1 }); // ✅
+  callOK_trigger(ctx: TFactContext<TCartOnlyContract>): void {
+    ctx.trigger("cart:addItem", { productId: "abc", qty: 1 }); // ✅
   }
 
-  callKO_triggerUnknownNamespace(): void {
+  callKO_triggerUnknownNamespace(ctx: TFactContext<TCartOnlyContract>): void {
     // @ts-expect-error — "user:signIn" n'est pas dans features.user (user absent).
-    this.trigger("user:signIn", { email: "x@y" });
+    ctx.trigger("user:signIn", { email: "x@y" });
   }
 
-  callKO_triggerUnknownCommand(): void {
+  callKO_triggerUnknownCommand(ctx: TFactContext<TCartOnlyContract>): void {
     // @ts-expect-error — "cart:noSuchCommand" n'existe pas dans cart.triggers.
-    this.trigger("cart:noSuchCommand", { productId: "x", qty: 1 });
+    ctx.trigger("cart:noSuchCommand", { productId: "x", qty: 1 });
   }
 
-  callKO_triggerWrongPayload(): void {
+  callKO_triggerWrongPayload(ctx: TFactContext<TCartOnlyContract>): void {
     // @ts-expect-error — qty doit être un number.
-    this.trigger("cart:addItem", { productId: "x", qty: "1" });
+    ctx.trigger("cart:addItem", { productId: "x", qty: "1" });
   }
 
-  callKO_triggerListenAsTrigger(): void {
+  callKO_triggerListenAsTrigger(ctx: TFactContext<TCartOnlyContract>): void {
     // @ts-expect-error — "cart:itemAdded" est dans listens, pas triggers.
-    this.trigger("cart:itemAdded", { productId: "x" });
+    ctx.trigger("cart:itemAdded", { productId: "x" });
   }
 
   // ── request() — clé namespacée déclarée, params + result typés ─────────
-  callOK_request(): number | null {
-    return this.request("cart:getCount", undefined); // ✅
+  callOK_request(ctx: TFactContext<TCartOnlyContract>): number {
+    return ctx.query("cart:getCount", undefined); // ✅
   }
 
-  callKO_requestUnknownNamespace(): void {
-    // @ts-expect-error — "user:getProfile" n'est pas déclaré dans cart.requests.
-    this.request("user:getProfile", undefined);
+  callKO_requestUnknownNamespace(ctx: TFactContext<TCartOnlyContract>): void {
+    // @ts-expect-error — "user:getProfile" n'est pas déclaré dans cart.queries.
+    ctx.query("user:getProfile", undefined);
   }
 
-  callKO_requestUnknownName(): void {
-    // @ts-expect-error — "cart:nope" n'est pas dans cart.requests.
-    this.request("cart:nope", undefined);
+  callKO_requestUnknownName(ctx: TFactContext<TCartOnlyContract>): void {
+    // @ts-expect-error — "cart:nope" n'est pas dans cart.queries.
+    ctx.query("cart:nope", undefined);
   }
 
   // ── handler channel — payload inféré depuis TCartChannelDef.events.itemAdded ─
-  onCartItemAddedEvent(payload: { productId: string }): void {
+  onCartItemAddedEvent(payload: { productId: string }, _ctx: TEventContext<TCartOnlyContract>): void {
     this.getUI("count").text(payload.productId);
   }
 }
@@ -171,7 +174,7 @@ const listenOnlyFeatures = {
     feature: CartFeature,
     listens: ["itemAdded"] as const,
     triggers: [] as const,
-    requests: [] as const
+    queries: [] as const
   }
 } satisfies TFeatureContract;
 
@@ -199,12 +202,12 @@ class ListenOnlyView
     return listenOnlyUiElements;
   }
 
-  callKO_anyTrigger(): void {
+  callKO_anyTrigger(ctx: TFactContext<TListenOnlyContract>): void {
     // @ts-expect-error — features.cart.triggers est vide, aucune clé valide.
-    this.trigger("cart:addItem", { productId: "x", qty: 1 });
+    ctx.trigger("cart:addItem", { productId: "x", qty: 1 });
   }
 
-  onCartItemAddedEvent(_payload: { productId: string }): void {}
+  onCartItemAddedEvent(_payload: { productId: string }, _ctx: TEventContext<TListenOnlyContract>): void {}
 }
 
 // ─── Handler payload mismatch détecté par implements TViewCallbacks ───────
@@ -214,7 +217,7 @@ const handlerFeatures = {
     feature: CartFeature,
     listens: ["itemAdded"] as const,
     triggers: [] as const,
-    requests: [] as const
+    queries: [] as const
   }
 } satisfies TFeatureContract;
 
@@ -317,7 +320,7 @@ class UIHandlerOK
     return uiHandlerUiElements;
   }
 
-  onSaveBtnClick(_e: MouseEvent): void {}
+  onSaveBtnClick(_fact: TFact, _ctx: TFactContext<TUIHandlerContract>): void {}
 }
 
 // Régression : handler DOM manquant alors que events: ["click"] déclaré → rejet compile (I84/I88).
@@ -346,7 +349,7 @@ class UIHandlerMissing
 // L'enforcement de I87 se fait au site d'**usage** : si la clé d'objet ne
 // correspond pas au namespace de la Feature référencée, les helpers
 // `TCommandPayloadFor` / `TFlatTriggers` / `TEventPayloadFor` retournent
-// `never` lors de l'extraction, ce qui rejette l'appel `this.trigger(...)`
+// `never` lors de l'extraction, ce qui rejette l'appel `ctx.trigger(...)`
 // au compile-time.
 //
 // Le test `callKO_triggerListenAsTrigger` ci-dessus illustre ce mécanisme :
@@ -357,7 +360,7 @@ const _key_ns_loose = {
     feature: CartFeature,
     listens: [] as const,
     triggers: [] as const,
-    requests: [] as const
+    queries: [] as const
   }
 } satisfies TFeatureContract;
 

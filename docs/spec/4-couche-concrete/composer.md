@@ -1,5 +1,7 @@
 # Composer -- Décideur de composition
 
+> 🟠 **Partiellement aligné sur la théorie V0.9.5 : livré sur le noyau (lot M6.2, 1er novembre 2026).** La section « Livré sur le noyau » ci-dessous fait foi ; les paragraphes qui la contredisent (`resolve(event)`, `mount()`, `rootElement`, `this.trigger`, `this.request`, `element()`, hooks `onAttach`/`onDetach`) montrent l'ancienne forme, liste dans le [rapport du prototype](../../rapports/prototype-noyau-M1-2026-10-31.md). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
+
 > **Propriétaire du contenu attribué d'un slot et de l'existence de ses Views ; composition structurelle, jamais rendu de présentation supplémentaire**
 
 [<- Retour couche concrete](README.md) | [<- Foundation](foundation.md) | [-> View](view.md)
@@ -27,6 +29,17 @@
 > | Recalcul | `performResolve(event)` existe ; aucune écoute Channel ne le déclenche en application | Contrat Feature, écoute et `request()` Composer non livrés |
 > | États | Champ privé `#state: "idle" \| "active"` | Pas de destruction logique, cascade, rollback structurel ni occurrences de vie instrumentées |
 > | Composition imbriquée | Aucun `View.composers` livré | Désignations, restitutions, réservations et nettoyage post-validation restent à concevoir |
+
+---
+
+## Livré sur le noyau (lot M6.2)
+
+- **Forme** : `get features()` (Events qui le font décider à nouveau, Queries qu'il lit ; pas de `triggers`, D12), `get views()` (catalogue fini), `resolve(ctx)` avec `ctx = { query }` seul. `resolve` ne reçoit jamais l'Event déclencheur : la composition est recalculée depuis l'état du domaine.
+- **Composition** : tableau ordonné de `{ view, key, params? }` ; la clé est unique dans la composition (sinon l'unité échoue) et la View doit appartenir au catalogue.
+- **Réconciliation (T3)** : même clé, même View, `params` égaux (comparaison stable) → l'instance est gardée ; sinon elle est détruite puis recréée ; une clé disparue est détruite avec ses descendants. Une View nouvelle est placée avant la prochaine View conservée (ordre explicite) ; le registre interne est annulé avec l'unité qui échoue (G7).
+- **Exécution** : à l'initialisation, dans l'unité de son créateur, puis dans l'unité de chaque Event déclaré dans `features[Ns].listens`.
+- **Limite connue (C.3)** : une View dont l'élément n'a pas pu être créé n'est pas encore détruite logiquement ; l'échec figure dans la trace du noyau. Le typage des `params` de composition est générique.
+- **Disparus** : `resolve(event)`, `TResolveResult`, `rootElement`, `TComposerOptions`.
 
 ---
 

@@ -30,3 +30,5 @@ export {
 } from "./kernel";
 export type { TTransportErrorCode } from "./kernel";
 export type * from "./kernel/types";
+export { DESCRIBE, describeComponent } from "./component";
+export type { TDescribable } from "./component";

@@ -4,9 +4,9 @@
  * Implements:
  *   - ADR-08: authority, uniqueness and conformity of Feature namespaces.
  *   - ADR-14: modular consumer contract — Feature-grouped `TFeatureContract`
- *     + flattening helpers (`TFlatListens`, `TFlatTriggers`, `TFlatRequests`)
+ *     + flattening helpers (`TFlatListens`, `TFlatTriggers`, `TFlatQueries`)
  *     + payload extractors (`TEventPayloadFor`, `TCommandPayloadFor`,
- *     `TRequestParamsFor`, `TRequestResultFor`) + `TChannelCallbacks`
+ *     `TQueryParamsFor`, `TQueryResultFor`) + `TChannelCallbacks`
  *     (required handlers derived from the contract).
  *
  * This module has three roles:
@@ -225,13 +225,13 @@ export type TFeatureRefForNS<NS extends string> = TFeatureRef<
  *
  * For each Feature:
  *   - `feature`  : runtime ref (`typeof XxxFeature`) — channel/events/
- *                  commands/requests are extracted through its token
+ *                  commands/queries are extracted through its token
  *   - `listens`  : event names without namespace prefix (the key IS the NS)
  *   - `triggers` : command names without namespace prefix
- *   - `requests` : request names without namespace prefix
+ *   - `queries`  : query names without namespace prefix
  *
  * Known gap (ADR-14): the three lists are typed `readonly string[]`, so a
- * typo is not caught here. In `triggers`/`requests` it surfaces at the call
+ * typo is not caught here. In `triggers`/`queries` it surfaces at the call
  * site (payload `never`); in `listens` it compiles and the handler is never
  * called.
  *
@@ -243,13 +243,13 @@ export type TFeatureRefForNS<NS extends string> = TFeatureRef<
  *     feature:  CartFeature,
  *     listens:  ["itemAdded"]  as const,
  *     triggers: ["addItem"]    as const,
- *     requests: []             as const,
+ *     queries: []             as const,
  *   },
  *   user: {
  *     feature:  UserFeature,
  *     listens:  ["profileUpdated"] as const,
  *     triggers: []                 as const,
- *     requests: ["getProfile"]     as const,
+ *     queries: ["getProfile"]     as const,
  *   },
  * } satisfies TFeatureContract;
  * ```
@@ -263,7 +263,7 @@ export type TFeatureContract = {
     readonly feature: TFeatureRefForNS<NS>;
     readonly listens: readonly string[];
     readonly triggers: readonly string[];
-    readonly requests: readonly string[];
+    readonly queries: readonly string[];
   };
 };
 
@@ -293,9 +293,20 @@ export type TFlatTriggers<F extends TFeatureContract> = {
     : never;
 }[keyof F & string];
 
-/** Flattens every `requests` into a union of `"ns:req"` keys. */
-export type TFlatRequests<F extends TFeatureContract> = {
-  [NS in keyof F & string]: F[NS]["requests"][number] extends infer R
+/**
+ * Minimal contract needed to ask Queries: a Feature reference and its `queries`.
+ * A Composer (no `triggers`, D12) satisfies it as much as a View does.
+ */
+export type TQueryableContract = {
+  readonly [NS in string]: {
+    readonly feature: TFeatureRefForNS<NS>;
+    readonly queries: readonly string[];
+  };
+};
+
+/** Flattens every `queries` into a union of `"ns:req"` keys. */
+export type TFlatQueries<F extends TQueryableContract> = {
+  [NS in keyof F & string]: F[NS]["queries"][number] extends infer R
     ? R extends string
       ? `${NS}:${R}`
       : never
@@ -340,28 +351,28 @@ export type TCommandPayloadFor<
   : never;
 
 /** Params of a request from a `"ns:req"` key. */
-export type TRequestParamsFor<
-  F extends TFeatureContract,
+export type TQueryParamsFor<
+  F extends TQueryableContract,
   K extends string
 > = K extends `${infer NS}:${infer R}`
   ? NS extends keyof F
     ? F[NS]["feature"]["channel"] extends TChannelToken<infer D, NS>
-      ? R extends keyof D["requests"]
-        ? D["requests"][R]["params"]
+      ? R extends keyof D["queries"]
+        ? D["queries"][R]["params"]
         : never
       : never
     : never
   : never;
 
 /** Result of a request from a `"ns:req"` key. */
-export type TRequestResultFor<
-  F extends TFeatureContract,
+export type TQueryResultFor<
+  F extends TQueryableContract,
   K extends string
 > = K extends `${infer NS}:${infer R}`
   ? NS extends keyof F
     ? F[NS]["feature"]["channel"] extends TChannelToken<infer D, NS>
-      ? R extends keyof D["requests"]
-        ? D["requests"][R]["result"]
+      ? R extends keyof D["queries"]
+        ? D["queries"][R]["result"]
         : never
       : never
     : never
@@ -417,12 +428,12 @@ export type TFeatureQueryContext = {
   query<
     TDef extends TChannelDefinition,
     TNS extends string,
-    K extends keyof TDef["requests"] & string
+    K extends keyof TDef["queries"] & string
   >(
     token: TChannelToken<TDef, TNS>,
     name: K,
-    params: TDef["requests"][K]["params"]
-  ): TDef["requests"][K]["result"];
+    params: TDef["queries"][K]["params"]
+  ): TDef["queries"][K]["result"];
 };
 
 /**
@@ -479,17 +490,17 @@ export type TCommandCallbacks<
 };
 
 /**
- * Request handlers REQUIRED by a concrete Feature.
+ * Query handlers REQUIRED by a concrete Feature.
  *
- * I48 request convention: `on{Req}Request` (`Request` suffix).
- * For each request `K ∈ keyof TDef["requests"]`, requires the method
- * `onKRequest(params: TDef["requests"][K]["params"]): TDef["requests"][K]["result"]`.
+ * I48 request convention: `on{Req}Query` (`Query` suffix).
+ * For each request `K ∈ keyof TDef["queries"]`, requires the method
+ * `onKQuery(params: TDef["queries"][K]["params"]): TDef["queries"][K]["result"]`.
  */
-export type TRequestCallbacks<TDef extends TChannelDefinition> = {
-  [K in keyof TDef["requests"] & string as `on${Capitalize<K>}Request`]: (
-    params: TDef["requests"][K]["params"],
+export type TQueryCallbacks<TDef extends TChannelDefinition> = {
+  [K in keyof TDef["queries"] & string as `on${Capitalize<K>}Query`]: (
+    params: TDef["queries"][K]["params"],
     ctx: TFeatureQueryContext
-  ) => TDef["requests"][K]["result"];
+  ) => TDef["queries"][K]["result"];
 };
 
 /**
@@ -529,7 +540,7 @@ export type TListenCallbacks<
  * `implements TFeatureCallbacks<TDef, TListens>` makes the compiler require
  * the presence and exact signature of ALL derived handlers:
  *   - `onXxxCommand`        for each `K ∈ keyof TDef["commands"]`
- *   - `onXxxRequest`        for each `K ∈ keyof TDef["requests"]`
+ *   - `onXxxQuery`        for each `K ∈ keyof TDef["queries"]`
  *   - `on{NS}{Evt}Event`    for each `(token, event) ∈ TListens`
  *
  * Missing handler → TS2515; wrong signature → TS2416.
@@ -548,7 +559,7 @@ export type TFeatureCallbacks<
     readonly [],
   TEntity extends Entity<TJsonSerializable> = Entity<TJsonSerializable>
 > = TCommandCallbacks<TDef, TEntity> &
-  TRequestCallbacks<TDef> &
+  TQueryCallbacks<TDef> &
   TListenCallbacks<TListens, TDef, TEntity>;
 
 // ─── Runtime safety net ─────────────────────────────────────────────────────

@@ -1,5 +1,7 @@
 # View — Composant de rendu et d'interaction UI
 
+> 🟠 **Partiellement aligné sur la théorie V0.9.5 : livré sur le noyau (lot M6.2, 1er novembre 2026).** La section « Livré sur le noyau » ci-dessous fait foi ; les paragraphes qui la contredisent (`resolve(event)`, `mount()`, `rootElement`, `this.trigger`, `this.request`, `element()`, hooks `onAttach`/`onDetach`) montrent l'ancienne forme, liste dans le [rapport du prototype](../../rapports/prototype-noyau-M1-2026-10-31.md). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
+
 > **Projection DOM réactive (N1 livré), contrat modulaire `TUIContract`/`TUIElements` typé, localState (cible)**
 
 [<- Retour couche concrète](README.md) | [-> Behavior](behavior.md) | [5-rendu.md (PDR complète)](../5-rendu.md)
@@ -41,6 +43,18 @@
 > - `TEventsFor<TEl>` : la branche de repli « union large » est inatteignable, `ui<HTMLElement>()(["input"])` est refusé ; et **`TUIContract` n'accepte que les événements de base et de défilement** : `ui<HTMLInputElement>()(["input"])`, `submit`, `toggle`, `play`… compilent seuls mais sont rejetés par `satisfies TUIContract` et `TViewContract` (ADR-15) ;
 > - l'auto-discovery DOM ne lit que le prototype direct : un handler hérité d'une View parente est déclaré manquant (ADR-15) ;
 > - pas de `onDetach()` : une View remplacée garde ses listeners (ADR-03).
+
+## Livré sur le noyau (lot M6.2)
+
+- **Déclarations lues une fois** : `get features()`, `get uiEvents()`, `get uiElements()`, et en option `get template()` (contenu initial de la partie, HTML) et `get composers()` (emplacements `{ slot, composer }` de la partie, clés disjointes des clés UI). `template` est un emplacement provisoire du rendu §4.5.
+- **Handlers à contexte** (D18). Fait de l'hôte : `on{Clé}{Événement}(fact, ctx)` avec `fact = { type, ui }` (donnée, sans l'événement natif) et `ctx = { query, trigger }`. Event d'une Feature : `on{Ns}{Event}Event(payload, ctx)` avec `ctx = { query }` seul : un Event n'ouvre pas le droit de commander.
+- **Projection** : `getUI(clé)` prépare des effets (`text`, `attr`, `toggleClass`, `visible`, `style`) liés à l'unité du handler en cours ; ils sont engagés après validation (C.3) et jamais si l'unité échoue (G7). `getUI` et `params` ne s'utilisent que dans un handler. `element()` est supprimé (I39).
+- **Paramètres de création** : getter protégé `params`, copie gelée de ce que le Composer a donné.
+- **Faits admis** : la View déclare à `spec.dom` chaque événement hôte avec les sélecteurs de ses clés ; seul un fait dont la partie la plus interne est la sienne est admis, et un fait sur un élément sans clé ou sans cet événement est ignoré.
+- **Disparus** : `this.trigger`, `this.request`, `mount()`, `onAttach()`, `rootElement`.
+- **Limite connue** : une projection reçoit toute la partie, contenu des emplacements compris ; y écrire est interdit par revue, pas par construction.
+
+---
 
 ## Table des matières
 
