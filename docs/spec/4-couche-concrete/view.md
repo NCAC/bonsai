@@ -666,6 +666,8 @@ Avantages :
 
 ### 4.4 getUI() — Primitive de projection typée
 
+> **Limite connue — écriture dans le contenu des slots.** L'élément qu'une projection reçoit est celui de la part entière de la View, y compris les éléments de slot dont le contenu est attribué à ses Composers et lui est donc soustrait (6.5). Rien n'empêche mécaniquement une projection d'écrire dans ce contenu, ce qui empiéterait sur la part d'un autre propriétaire (T7). La règle est : une projection n'agit que sur les clés UI déclarées par la View et ses Behaviors, résolues hors du contenu des slots ; elle relève de la revue ([gardes](../../gardes.md), parts non vérifiables automatiquement). Le contrôle par construction supposerait de ne confier à la View que la portion qui lui reste ; constat du prototype du noyau, lot M4.
+
 > ⚠️ **§4.4–4.8 décrivent la cible strate 1c (cf. bandeau de périmètre)** —
 > ce qui est **livré aujourd'hui** (`packages/view/src/bonsai-view.ts`) :
 > `getUI(key): TProjectionNode<TEl>` **uniquement** (pas d'union avec
