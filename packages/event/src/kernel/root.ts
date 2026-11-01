@@ -114,6 +114,8 @@ interface Unit {
   readonly touched: Set<ComponentRecord>;
   /** Restitutions performed by provisional destructions, traced at commit. */
   readonly restitutions: TTraceEntry[];
+  /** D18: whether the trigger of this unit grants the right to command. */
+  readonly right: boolean;
   poisoned: { error: unknown } | null;
 }
 
@@ -127,6 +129,10 @@ export class Root {
   readonly #longMs: number;
   readonly #now: () => number;
   readonly #document: Document | null;
+  /** D18: right to command, by message context (the trigger of a treatment). */
+  readonly #rights = new Map<string, boolean>();
+  /** C.4: instrumented simulation in progress, if any. */
+  #simulating: { element: Element; type: string; token: TCorrelationToken } | null = null;
   readonly #registry = new Map<string, ChannelRecord>();
   readonly #subscriptions: SubscriptionRecord[] = [];
   readonly #components = new Map<string, ComponentRecord>();
@@ -253,8 +259,12 @@ export class Root {
         return;
       }
       context = child;
+      // A correlated result continues the reaction that armed it, with its right (D18).
+      this.#rights.set(context.id, this.#rights.get(admission.token.context.id) ?? false);
     } else {
       context = this.#origin(admission.kind === "independent" ? "spontaneous" : "unknown");
+      // Only an established independent fact grants the right to command (D18, C.4).
+      this.#rights.set(context.id, admission.kind === "independent");
     }
     this.#queue.push({ kind: "local", target: record, name: local, payload: capture(payload), context });
     this.#drain();
@@ -262,9 +272,9 @@ export class Root {
 
   // ── Units ──────────────────────────────────────────────────────────────────
 
-  #runUnit(owner: ComponentRecord, cause: TCausalContext, body: (ctx: TUnitContext) => void): { error: unknown } | null {
+  #runUnit(owner: ComponentRecord, cause: TCausalContext, body: (ctx: TUnitContext) => void, right = false): { error: unknown } | null {
     const startedAt = this.#now();
-    const unit: Unit = { open: true, staged: [], undo: [], effects: [], touched: new Set(), restitutions: [], poisoned: null };
+    const unit: Unit = { open: true, staged: [], undo: [], effects: [], touched: new Set(), restitutions: [], right, poisoned: null };
     this.#unit = unit;
     this.#active.push(owner);
     let failure: { error: unknown } | null = null;
@@ -416,7 +426,10 @@ export class Root {
     if (handler === undefined) return this.#abandon("no declared handler", delivery);
     this.#push({ type: "delivered", kind: delivery.kind, to: owner.handle.name, name: delivery.name, context: delivery.context });
     const run = handler;
-    this.#runUnit(owner, delivery.context, (ctx) => run(delivery.payload, ctx));
+    // D18: an Event never grants the right; a Command or a local message carries its producer's.
+    if (delivery.kind === "event") this.#rights.set(delivery.context.id, false);
+    const right = this.#rights.get(delivery.context.id) ?? false;
+    this.#runUnit(owner, delivery.context, (ctx) => run(delivery.payload, ctx), right);
   }
 
   #abandon(reason: string, delivery: Delivery): void {
@@ -440,6 +453,7 @@ export class Root {
       if (child.depth > this.#bound) {
         fail(new TransportError("CAUSAL_BOUND", `depth ${child.depth} exceeds bound ${this.#bound}`));
       }
+      this.#rights.set(child.id, unit.right);
       return child;
     };
 
@@ -455,6 +469,9 @@ export class Root {
         const channel = this.#registry.get(namespace);
         if (channel === undefined || !channel.alive) fail(new TransportError("UNKNOWN_TARGET", `no Channel "${namespace}" in this root`));
         if (channel!.owner.spec.channel?.commands?.[command] === undefined) fail(new TransportError("UNDECLARED_MESSAGE", `command "${namespace}:${command}" not declared`));
+        if (self.spec.ui === true && !unit.right) {
+          fail(new TransportError("NOT_AUTHORIZED", `${self.handle.name} may not command: the trigger of this reaction grants no right (D18)`));
+        }
         const context = submit();
         unit.staged.push({ kind: "command", channel: channel!, name: command, payload: this.#capture(payload, unit), context });
       },
@@ -525,6 +542,32 @@ export class Root {
           }
         });
       },
+      simulate: (resource, type) => {
+        guard();
+        const record = this.#resources.get(resource.id);
+        if (record === undefined || !record.alive || record.owner !== self) fail(new TransportError("NOT_OWNER", `${self.handle.name} does not own resource ${resource.label} (A1.b)`));
+        this.#rights.set(cause.id, unit.right);
+        const token: TCorrelationToken = Object.freeze({ kind: "correlation", occurrence: self.handle.occurrence, context: cause });
+        unit.effects.push({
+          owner: self,
+          label: `simulate ${type}`,
+          context: cause,
+          run: () => {
+            const element = record!.element;
+            if (element === null) throw new Error(`${record!.handle.label} is not materialized (9.10)`);
+            this.#simulating = { element, type, token };
+            try {
+              // dispatchEvent, not element.click(): the drain may run inside the host's own dispatch of a
+              // click on this element, and the host ignores a nested click() while one is in progress.
+              const view = element.ownerDocument.defaultView!;
+              const event = type === "click" ? new view.MouseEvent(type, { bubbles: true }) : new view.Event(type, { bubbles: true });
+              element.dispatchEvent(event);
+            } finally {
+              this.#simulating = null;
+            }
+          }
+        });
+      },
       attributed: (resource) => {
         const record = this.#resources.get(resource.id);
         if (record === undefined || !record.alive || record.owner !== self) fail(new TransportError("NOT_OWNER", `${self.handle.name} does not own resource ${resource.label}`));
@@ -562,6 +605,7 @@ export class Root {
       },
       correlate: (): TCorrelationToken => {
         guard();
+        this.#rights.set(cause.id, unit.right);
         return Object.freeze({ kind: "correlation", occurrence: self.handle.occurrence, context: cause });
       }
     };
@@ -588,6 +632,7 @@ export class Root {
       resolve: forbidden("resolve"),
       attributed: forbidden("attributed"),
       project: forbidden("project"),
+      simulate: forbidden("simulate"),
       trigger: forbidden("trigger"),
       emit: forbidden("emit"),
       local: forbidden("local"),
@@ -697,6 +742,19 @@ export class Root {
             const before = options.part!.before === undefined ? null : container!.portions.get(options.part!.before)?.element ?? null;
             host.insertBefore(element, before !== null && before.parentNode === host ? before : null);
             part.element = element;
+            // Host sources of the part (D10, B.4): registered by Bonsai, admitted by the part's owner only.
+            for (const [type, local] of Object.entries(record.spec.dom ?? {})) {
+              element.addEventListener(type, (event) => {
+                const target = event.target as Element | null;
+                if (target === null || target.closest("[data-bonsai-part]") !== element) return; // innermost part only (A5.d)
+                const pending = this.#simulating;
+                // Closed world (C.4): an occurrence no instrumented operation could have produced is independent.
+                const admission: TAdmission = pending !== null && pending.element === element && pending.type === type
+                  ? { kind: "correlated", token: pending.token }
+                  : { kind: "independent" };
+                this.admit(record.handle, local, { type, ui: target.getAttribute("data-ui") }, admission);
+              });
+            }
           }
         });
       }

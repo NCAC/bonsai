@@ -113,6 +113,29 @@ Vérifier, par du code exécutable, que les garanties de l'infrastructure de com
 - **Remettre l'élément seulement à l'engagement suffit à empêcher l'écriture pendant le traitement.** C'est une garde par construction de C.3 pour la View. En revanche, une projection peut encore écrire dans le contenu des slots de sa part ; ce point reste à la revue, ou à un futur découpage de l'élément confié.
 - **La matérialisation est un effet du parent, la projection un effet de l'enfant.** Le bilan de chacun lui revient : c'est la règle de C.3, et le prototype montre qu'elle découle simplement du propriétaire de l'effet.
 
+## 3 quinquies. Lot M5 — Admission dans les parts, monde fermé et D18 (1er novembre 2026)
+
+**Réalisé.** Un composant déclare les événements de l'hôte qu'il admet dans sa part (`dom: { click: "click" }`, D10, D16). Bonsai enregistre l'écouteur à la matérialisation de la part (B.4) ; une occurrence n'est admise que par le propriétaire de la **part la plus intérieure** qui la contient, une seule fois (A5.d). Qualification par le monde fermé (C.4) : une occurrence produite par `ctx.simulate`, opération instrumentée engagée après validation, est corrélée au traitement qui l'a demandée ; toute autre est un fait indépendant. Droit de commander (D18) : il est attaché au contexte causal de chaque message. Un fait indépendant l'accorde ; un Event, une observation d'antécédent inconnu et le démarrage ne l'accordent pas ; une Command, un message local ou un résultat corrélé portent celui du traitement qui les a produits ou armés. Un composant marqué `ui` qui adresse une Command sans ce droit fait échouer son unité (`NOT_AUTHORIZED`).
+
+| Porte de sortie du lot M5 (rapport de migration) | Test |
+| --- | --- |
+| Aucun parent inventé, aucun lien connu effacé | clic simulé dans une réaction à un Event : continuation de la chaîne, pas une nouvelle origine |
+| Aucune permission blanchie | Event → Command ; Event → message local → Command ; Event → clic simulé → Command : tous refusés |
+| Query conservant la permission de son auteur | clic → Query → Command : permis |
+| Résultat corrélé | armé dans une réaction autorisée : peut commander ; armé dans une réaction à un Event : refusé |
+| Observation d'antécédent inconnu | Command refusée |
+| Admission unique, dans la part la plus intérieure | clic dans la View intérieure : admis par elle seule ; clic dans la View extérieure hors du slot : admis par elle seule |
+| Limite documentée (B.2) | un `dispatchEvent` brut, hors de Bonsai, est indiscernable d'un clic de l'utilisateur |
+
+D9 pendant l'unité et au préambule était déjà couvert au lot M1. 60 tests du noyau, suite complète (337 tests) réussie. Quatre mutations vérifiées (contrôle D18 désactivé, simulation qualifiée indépendante, admission hors de la part la plus intérieure, droit non retiré à la délivrance d'un Event) : chacune fait échouer au moins un test, la première et la dernière presque tous, car la boucle Event → Command repart alors jusqu'à la borne D9.
+
+**Ce que le lot M5 apprend.**
+
+- **Le droit de commander se réalise simplement comme une propriété du contexte causal.** Il naît à l'admission, se transmet avec les messages produits, et une seule règle le retire : la délivrance d'un Event. Toutes les variantes de « blanchiment » (relais local, Query, effet hôte corrélé) échouent sans règle particulière, parce qu'elles continuent la même chaîne.
+- **Le noyau s'exécute à l'intérieur de la propagation de l'événement de l'hôte.** Avec le vidage synchrone (ADR-35), tout le traitement d'un clic, effets compris, a lieu pendant que le navigateur propage encore ce clic. Le navigateur ignore alors un `element.click()` imbriqué sur le même élément (« click in progress ») : la première version de `simulate` ne produisait rien. Elle passe désormais par `dispatchEvent`. Plus largement, les actions par défaut de l'hôte (soumission d'un formulaire, déplacement du focus) ont lieu **après** les effets engagés. **À ajouter aux conséquences d'ADR-35.**
+- **Une View créée par un Composer en réaction à un Event n'a pas le droit de commander à son initialisation.** Charger les données d'une page à son montage ne peut donc pas venir de la View : c'est la Feature qui réagit à `router:routeChanged` (chorégraphie, D17). Le prototype confirme la règle de D18 ; **le guide doit le dire explicitement**, car c'est le premier réflexe d'un développeur venant d'un autre framework.
+- **La carte des droits par contexte n'est jamais purgée.** Comme les jetons de corrélation (R5), sa durée de vie doit suivre celle des contextes conservés (C.2).
+
 ## 4. Hors périmètre
 
 Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignations et DOM (M3–M4) ; qualification des sources par le monde fermé et D18 (M5) ; remplacement de `Channel` et `Radio`, et branchement des classes de base (M6).
@@ -124,4 +147,6 @@ Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignat
 3. ~~Lot M2~~ : fait (section 3 bis).
 4. ~~Lot M3~~ : fait (section 3 ter).
 5. ~~Lot M4~~ : fait (section 3 quater).
-6. Lot M5 : admission des faits DOM dans les parts (D10), qualification par le monde fermé (C.4) et droit de Command selon le déclencheur (D18).
+6. ~~Lot M5~~ : fait (section 3 quinquies).
+7. Compléter ADR-35 et le guide avec les deux constats de M5.
+8. Lot M6 : intégration (classes de base, contrats publics, parcours panier, multiracine, catalogue d'adaptateurs).

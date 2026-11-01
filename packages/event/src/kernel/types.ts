@@ -86,6 +86,17 @@ export interface TComponentSpec {
   readonly locals?: Readonly<Record<string, TDeferredHandler>>;
   /** Initialisation, executed inside the creator's validation unit (§2.5). */
   readonly init?: (ctx: TUnitContext) => void;
+  /**
+   * The component belongs to the user interface (11.1): its Commands are
+   * restricted by D18 to reactions whose trigger grants the right.
+   */
+  readonly ui?: boolean;
+  /**
+   * Host events admitted in the component's part, by type, with the local
+   * message that receives them (D10, D16). Only occurrences whose innermost
+   * part is the component's own are admitted.
+   */
+  readonly dom?: Readonly<Record<string, string>>;
   /** Entity owned by the component (D4: exactly one for a Feature). */
   readonly entity?: TEntityDefinition<any>;
 }
@@ -167,6 +178,12 @@ export interface TUnitContext extends TReadContext {
    * a part not yet materialized makes the effect fail.
    */
   project(resource: TResourceHandle, label: string, write: (element: Element) => void): void;
+  /**
+   * Instrumented simulation of a host event on a resource owned by self (C.4):
+   * engaged after validation; the occurrence it produces is correlated with
+   * the current treatment, never qualified as independent.
+   */
+  simulate(resource: TResourceHandle, type: string): void;
   /** Controlled resolution: valid only for a living attribution owned by self (9.10). */
   resolve(designation: TDesignation): TResourceHandle;
   /** Portions currently attributed within a resource owned by self (T7). */
