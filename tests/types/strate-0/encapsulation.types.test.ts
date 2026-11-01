@@ -8,7 +8,7 @@
  *   I80    — `Channel` n'est pas exposé par `@bonsai/core` : le Channel reste
  *            privé derrière sa Feature.
  *
- * `Radio` et `Channel` restent exportés par `@bonsai/event` pour l'usage
+ * `Radio` et `Channel` n'existent plus (lot M6.3b) ; les messages passent par `Root`, exporté par `@bonsai/event` pour l'usage
  * inter-packages du framework (ADR-28) ; le développeur applicatif importe
  * exclusivement depuis `@bonsai/core`.
  *

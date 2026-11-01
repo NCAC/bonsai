@@ -19,6 +19,7 @@
  * | #5   | 2026-04-20 | entity.basic                                     |
  * | #7   | 2026-04-20 | feature.basic (ex feature.core)                  |
  * | #8   | 2026-04-20 | view.basic (ex view.core)                        |
+ * | M6.3b | 2026-11-01 | channel.basic, radio.singleton, channel.class, radio.singleton (unit) supprimés avec les classes ; kernel/root.test les remplace |
  * | M6.2 | 2026-11-01 | view.basic, composer.basic, foundation.basic remplacés par domain/{view,composer,foundation}.test |
  * | M6.1 | 2026-11-01 | entity.basic et feature.basic remplacés par       |
  * |      |            | tests/unit/domain/{entity,feature}.test (noyau)  |
@@ -31,9 +32,8 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-// ── PR #2 — Channel tri-lane + Radio singleton ────────────────────────
-import "./channel.basic.test";
-import "./radio.singleton.test";
+// ── PR #2 — Channel tri-lane + Radio : retirés au profit du noyau (lot M6.3b) ──
+import "../kernel/root.test";
 
 // ── PR #5 / #7 — Entity et Feature : migrés sur le noyau (lot M6.1) ─────
 import "../domain/entity.test";

@@ -35,6 +35,9 @@ importers:
       '@bonsai/immer':
         specifier: workspace:^
         version: link:packages/immer
+      '@bonsai/router':
+        specifier: workspace:^
+        version: link:packages/router
       '@bonsai/rxjs':
         specifier: workspace:^
         version: link:packages/rxjs
@@ -204,6 +207,9 @@ importers:
       '@bonsai/foundation':
         specifier: workspace:^
         version: link:../foundation
+      '@bonsai/router':
+        specifier: workspace:^
+        version: link:../router
 
   packages/composer:
     dependencies:
@@ -228,15 +234,9 @@ importers:
 
   packages/event:
     dependencies:
-      '@bonsai/error':
-        specifier: workspace:^
-        version: link:../error
       '@bonsai/immer':
         specifier: workspace:^
         version: link:../immer
-      '@bonsai/rxjs':
-        specifier: workspace:^
-        version: link:../rxjs
       '@bonsai/types':
         specifier: workspace:^
         version: link:../types
@@ -267,6 +267,18 @@ importers:
       immer:
         specifier: ^11.1.4
         version: 11.1.4
+
+  packages/router:
+    dependencies:
+      '@bonsai/entity':
+        specifier: workspace:^
+        version: link:../entity
+      '@bonsai/event':
+        specifier: workspace:^
+        version: link:../event
+      '@bonsai/feature':
+        specifier: workspace:^
+        version: link:../feature
 
   packages/rxjs: {}
 

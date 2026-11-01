@@ -206,9 +206,25 @@ Le paquet `@bonsai/router` livre la Feature de navigation (D15) et l'adaptateur 
 - **Pas de destruction de racine** : `stop()` ne retire que les observateurs de l'hôte (B.2).
 - **Spec.** `router.md` est réécrit et aligné ; la fiche `historique.md` renvoie à l'implémentation.
 
+## 3 nonies. Lot M6.3b — Retrait de `Channel` et `Radio` (1er novembre 2026)
+
+Les classes `Channel` et `Radio`, qui portaient les messages avant le noyau, sont supprimées. Plus aucun paquet ne les importe ; les messages passent par `Root`. Suite à 313 tests verts (46 tests de l'ancienne infrastructure retirés avec elle), `tsc` propre.
+
+**Réalisé.**
+
+- `channel.class.ts` et `radio.singleton.ts` supprimés ; les types de contrat (`TChannelDefinition`, `TChannelToken`, `TTokenDef`, `TAnyEventPayload`) vivent dans `channel-types.ts` et restent exportés par `@bonsai/event`.
+- Tests supprimés : `channel.class`, `radio.singleton` (unitaires) et `channel.basic`, `radio.singleton` (strate 0). Le test de régression de la strate 0 importe `kernel/root.test` à leur place.
+- `@bonsai/event` ne dépend plus de `@bonsai/rxjs` ni de `@bonsai/error` ; le verrou `pnpm` est mis à jour (paquet `@bonsai/router` compris).
+
+**Constats.**
+
+- **Couverture reprise par le noyau.** Les invariants que les tests supprimés exerçaient sur l'ancien Channel (une Command a un seul gestionnaire, un Event va à tous, une Query est synchrone) ont leurs équivalents dans `tests/unit/kernel/`, sous la formulation de la théorie (G1–G8, D8, D16) ; la correspondance n'a pas été établie test par test. Les cas propres à `Radio` (singleton, `channelFor`) n'ont plus d'objet.
+- **Erreurs orphelines.** `ListenerError`, `NoHandlerError` et `DuplicateHandlerError` de `@bonsai/error` ne sont plus levées par personne ; `TransportError` du noyau les remplace. Leur retrait relève de la spécification des erreurs, non faite.
+- **Dette de documentation.** Les specs `communication`, `lifecycle`, `distribution`, `validation`, `devtools`, les références (`glossaire`, `invariants`, `types-index`, `anti-patterns`) et `1-philosophie` parlent encore de `Channel`/`Radio` ; elles sont déjà signalées comme non alignées. Leur réécriture suit la théorie, pas le code.
+
 ## 4. Hors périmètre
 
-Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignations et DOM (M3–M4) ; qualification des sources par le monde fermé et D18 (M5) ; remplacement de `Channel` et `Radio`, et branchement des classes de base (M6).
+Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignations et DOM (M3–M4) ; qualification des sources par le monde fermé et D18 (M5) ; branchement des classes de base et remplacement de `Channel` et `Radio` (M6, fait).
 
 ## 5. Suite proposée
 
@@ -222,4 +238,6 @@ Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignat
 8. ~~Lot M6.1~~ : fait (section 3 sexies).
 9. ~~Lot M6.2~~ : fait (section 3 septies). Reste : réécrire les exemples des specs `feature`, `entity`, `application`, `view`, `composer`, `foundation`.
 10. ~~Lot M6.3a~~ : routeur et adaptateur historique, fait (section 3 octies).
-11. Lot M6.3b : retrait de `Channel` et `Radio`.
+11. ~~Lot M6.3b~~ : retrait de `Channel` et `Radio`, fait (section 3 nonies).
+12. Réécrire les specs et références qui décrivent encore `Channel`/`Radio`, et les exemples de `feature`, `entity`, `application`, `view`, `composer`, `foundation`.
+13. Trancher les questions ouvertes : adoption d'un slot comme vérification de l'unité, scission de `queries`, destruction logique d'une View dont l'élément échoue, garde d'abonnement A4.b.

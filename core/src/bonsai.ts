@@ -80,9 +80,9 @@ export * from "@bonsai/valibot";
 // Its types (Draft, Patch, etc.) are wrapped in the `Immer` namespace.
 export * from "@bonsai/immer";
 
-// @bonsai/event — contract types only. `Radio` and `Channel` stay internal to
-// the framework (I15, I80): exported by `@bonsai/event` for cross-package use,
-// never re-exported in the application-facing surface.
+// @bonsai/event — contract types only. The communication kernel (`Root`) stays
+// internal to the framework (I15, I80): exported by `@bonsai/event` for
+// cross-package use, never re-exported in the application-facing surface.
 export type {
   TChannelDefinition,
   TChannelToken,

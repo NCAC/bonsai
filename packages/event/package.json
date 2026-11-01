@@ -19,8 +19,6 @@
   "src": "./src/bonsai-event.ts",
   "dependencies": {
     "@bonsai/types": "workspace:^",
-    "@bonsai/error": "workspace:^",
-    "@bonsai/immer": "workspace:^",
-    "@bonsai/rxjs": "workspace:^"
+    "@bonsai/immer": "workspace:^"
   }
 }
