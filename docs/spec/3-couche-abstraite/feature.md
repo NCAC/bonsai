@@ -55,7 +55,8 @@ class CartFeature
 
   // Channels externes dont elle reçoit les Events, et dont elle lit les Queries.
   get listens() { return cartListens; }
-  get queries() { return [PricingFeature.channel] as const; }   // aussi : dépendances initiales (C.1)
+  get queries() { return [PricingFeature.channel] as const; }     // permission d'interroger
+  get dependsOn() { return [PricingFeature.channel] as const; }   // facultatif : interrogée pendant onInit (C.1)
 
   protected get Entity() { return CartEntity; }                 // liaison Feature → Entity (ADR-09)
 
@@ -118,9 +119,12 @@ Chacun s'exécute dans sa **propre unité**, après celle qui a muté. Un handle
 
 `Application.start()` décrit chaque Feature au noyau (`describeFeature`) et crée la racine. La Feature est créée dans l'**unité de démarrage** (§2.5) : l'Entity existe, les handlers sont enregistrés, puis `onInit(ctx)` s'exécute avec le même contexte qu'un handler (I56). Si le démarrage échoue, le modèle en construction est abandonné (`StartupError`).
 
-`queries` déclare les **dépendances initiales** (C.1) : une Feature démarre après celles qu'elle interroge, quel que soit l'ordre du Manifest. Une Query adressée à une Feature qui n'est pas prête est refusée (`TARGET_NOT_READY`). Un cycle, ou une cible inconnue, est refusé avant tout démarrage (`ManifestError`). `listens` ne crée aucune dépendance.
+`queries` est une **permission** d'interroger ; elle ne fixe aucun ordre. Deux Features peuvent se déclarer mutuellement en `queries` sans cycle.
 
-> Limite connue : `queries` sert à la fois de déclaration de dépendance de démarrage et de permission d'interroger ; deux Features qui se déclarent mutuellement forment un cycle refusé, même si aucune ne s'interroge à l'initialisation.
+`dependsOn` déclare les **dépendances initiales** (C.1) : les Features que celle-ci interroge **pendant son unité de démarrage**. Une Feature démarre après celles dont elle dépend, quel que soit l'ordre du Manifest ; à défaut, l'ordre du Manifest décide. Chaque entrée de `dependsOn` doit figurer aussi dans `queries` (`FEATURE_DEPENDENCY_NOT_QUERIED` sinon). Un cycle de `dependsOn`, ou une cible inconnue, est refusé avant tout démarrage (`ManifestError`, `NAMESPACE_UNKNOWN_REFERENCE`). `listens` ne crée aucune dépendance.
+
+Une Query adressée pendant l'initialisation à une Feature qui n'est pas prête, faute de `dependsOn`, est refusée (`TARGET_NOT_READY`) et fait échouer le démarrage.
+
 
 ## 6. Manifest et identité
 

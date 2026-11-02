@@ -105,6 +105,7 @@ class CartFeature
   };
   get listens() { return noListens; }
   get queries() { return [PRICING] as const; }
+  get dependsOn(): readonly TChannelToken<TPricingDef, "pricing">[] { return [PRICING]; }
   protected get Entity() { return CartEntity; }
 
   onInit(ctx: TFeatureContext<TCartDef, CartEntity>): void {
@@ -298,7 +299,16 @@ describe("Feature on the kernel — lot M6.1", () => {
     });
   });
 
-  describe("onInit() and C.1 — start order by initial Query dependencies", () => {
+  describe("onInit() and C.1 — start order by initial dependencies (`dependsOn`)", () => {
+    it("a Feature that queries during onInit without declaring the dependency fails at startup", () => {
+      class CartWithoutDependency extends CartFeature {
+        get dependsOn(): readonly TChannelToken<TPricingDef, "pricing">[] { return []; }
+      }
+      PricingFeature.started = [];
+      // `queries` alone is a permission: cart starts first, and pricing is not ready (C.1).
+      expect(() => drive({ cart: CartWithoutDependency, pricing: PricingFeature })).toThrow();
+    });
+
     it("a Feature runs onInit after the Features it queries, even when declared first", () => {
       PricingFeature.started = [];
       // cart is declared before pricing, yet queries it in onInit.

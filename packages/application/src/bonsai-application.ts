@@ -6,10 +6,10 @@
  *   - start() — phased bootstrap on the communication kernel (migration lot M6.1):
  *       Phase 0a: namespace format validation (assertValidNamespace)
  *       Phase 0b: pure instantiation of the Features (inert ctor — I94)
- *       Phase 0c: read instance.listens/queries — cross-reference validation (I70)
+ *       Phase 0c: read instance.listens/queries/dependsOn — cross-reference validation (I70)
  *       Phase 1: kernel startup — one `Root` per Application (G6); the Features
  *                become its children in an order that respects their initial
- *                Query dependencies (`queries`, C.1); each creates its Entity,
+ *                initial dependencies (`dependsOn`, C.1); each creates its Entity,
  *                registers its handlers and runs `onInit()` inside the startup
  *                unit (§2.5, I56)
  *       Then the Foundation (if any), which creates its Composers, which
@@ -198,7 +198,17 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
     for (let i = 0; i < entries.length; i++) {
       const [ownNs] = entries[i]!;
       const instance = this.#featureInstances[i]!;
-      const refs = [...instance.listens, ...instance.queries].map(
+      const queried = new Set(instance.queries.map((t) => t.namespace));
+      for (const dependency of instance.dependsOn) {
+        // C.1: an initial dependency is a Query made at startup, so it must be a declared one.
+        if (!queried.has(dependency.namespace)) {
+          throw new BonsaiNamespaceError(
+            "FEATURE_DEPENDENCY_NOT_QUERIED",
+            `Feature "${ownNs}" depends on "${dependency.namespace}" for its startup but does not declare it in \`queries\`.`
+          );
+        }
+      }
+      const refs = [...instance.listens, ...instance.queries, ...instance.dependsOn].map(
         (t) => t.namespace
       );
       for (const ref of refs) {

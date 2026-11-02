@@ -30,12 +30,13 @@ const order: string[] = [];
 beforeEach(() => { order.length = 0; });
 
 /** Builds a Feature class that records its onInit and declares its dependencies. */
-function feature(ns: string, deps: { listens?: string[]; queries?: string[] } = {}, init?: () => void) {
+function feature(ns: string, deps: { listens?: string[]; queries?: string[]; dependsOn?: string[] } = {}, init?: () => void) {
   const token = (n: string): TChannelToken<TDef, string> => ({ namespace: n });
   class F extends Feature<EmptyEntity, TDef, string> {
     static readonly channel: TChannelToken<TDef, string> = { namespace: ns };
     get listens() { return (deps.listens ?? []).map(token); }
     get queries() { return (deps.queries ?? []).map(token); }
+    get dependsOn() { return (deps.dependsOn ?? []).map(token); }
     protected get Entity() { return EmptyEntity; }
     onInit(_ctx: TFeatureContext<TDef, EmptyEntity>): void {
       order.push(ns);
@@ -120,12 +121,12 @@ describe("Application on the kernel — lot M6.1", () => {
     });
   });
 
-  describe("C.1 — start order by initial Query dependencies", () => {
+  describe("C.1 — start order by initial dependencies (`dependsOn`)", () => {
     it("starts a Feature after those it queries, whatever the declaration order", () => {
       new Application({
         features: {
-          top: feature("top", { queries: ["middle"] }),
-          middle: feature("middle", { queries: ["base"] }),
+          top: feature("top", { queries: ["middle"], dependsOn: ["middle"] }),
+          middle: feature("middle", { queries: ["base"], dependsOn: ["base"] }),
           base: feature("base")
         }
       }).start();
@@ -142,10 +143,30 @@ describe("Application on the kernel — lot M6.1", () => {
       expect(order).toEqual(["listener", "source"]);
     });
 
-    it("cyclic dependencies are refused before anything starts", () => {
+    it("querying creates no start dependency: Features may query each other during their life", () => {
       const features = { a: feature("a", { queries: ["b"] }), b: feature("b", { queries: ["a"] }) };
+      new Application({ features }).start();
+      expect(order).toEqual(["a", "b"]);
+    });
+
+    it("cyclic initial dependencies are refused before anything starts", () => {
+      const features = {
+        a: feature("a", { queries: ["b"], dependsOn: ["b"] }),
+        b: feature("b", { queries: ["a"], dependsOn: ["a"] })
+      };
       expect(() => new Application({ features }).start()).toThrow(ManifestError);
       expect(order).toEqual([]);
+    });
+
+    it("an initial dependency must be a declared Query", () => {
+      const features = { a: feature("a", { dependsOn: ["b"] }), b: feature("b") };
+      expect(() => new Application({ features }).start()).toThrow(/FEATURE_DEPENDENCY_NOT_QUERIED/);
+      expect(order).toEqual([]);
+    });
+
+    it("an unknown initial dependency is refused before anything starts", () => {
+      const features = { a: feature("a", { queries: ["ghost"], dependsOn: ["ghost"] }) };
+      expect(() => new Application({ features }).start()).toThrow(/NAMESPACE_UNKNOWN_REFERENCE/);
     });
   });
 

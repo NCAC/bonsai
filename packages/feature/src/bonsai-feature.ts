@@ -203,10 +203,21 @@ export abstract class Feature<
    * Tokens of the external Channels this Feature queries (C5 — I17,
    * ADR-14, ADR-09 — I93).
    *
-   * Also the declaration of its **initial Query dependencies** (C.1): the
-   * kernel starts the Feature after the Features it queries.
+   * This is a permission to query, not an order of startup: two Features may
+   * query each other during their life. The order of startup comes from
+   * `dependsOn`.
    */
   abstract get queries(): readonly TChannelToken<TChannelDefinition, string>[];
+
+  /**
+   * Tokens of the Features this Feature queries **during its own initial
+   * unit** (C.1): the kernel starts the Feature after them, whatever the order
+   * of the Manifest. Optional (none by default). Each must also be declared in
+   * `queries`; a cycle is refused before startup.
+   */
+  get dependsOn(): readonly TChannelToken<TChannelDefinition, string>[] {
+    return [];
+  }
 
   readonly #namespace: TSelfNS;
   #entity: TEntity | null = null;
@@ -336,7 +347,7 @@ export abstract class Feature<
       },
       entity: definition,
       init: (c) => this.#run(c, () => this.onInit(this.#featureContext(c))),
-      dependsOn: this.queries.map((t) => t.namespace)
+      dependsOn: this.dependsOn.map((t) => t.namespace)
     };
   }
 

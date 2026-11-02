@@ -228,6 +228,13 @@ Réécrites sur le livré : `feature.md`, `entity.md`, `application.md`, `founda
 
 Limites : les passages historiques de `5-rendu.md`, `devtools.md`, `validation.md` et `conventions-typage.md` portent une bannière mais ne sont pas réécrits ; I94 est marqué partiel (sentinel Radio retiré sans remplaçant).
 
+## 3 undecies. Questions ouvertes (a) à (d) (2 novembre 2026)
+
+- **(a) Slot sans correspondance** : conforme tel quel (théorie 9.7 et C.3 : la résolution de l'élément est un effet après validation, son échec est rapporté sans annuler). Aucun changement.
+- **(b) `dependsOn`** : `queries` n'est plus qu'une permission ; l'ordre de démarrage vient de `Feature.dependsOn` (facultatif, inclus dans `queries`, code `FEATURE_DEPENDENCY_NOT_QUERIED`). Deux Features peuvent désormais s'interroger mutuellement sans cycle. Une Feature qui interroge dans `onInit` sans `dependsOn` échoue au démarrage (`TARGET_NOT_READY`). Changement d'API des Features : à répercuter dans tout code qui interrogeait dans `onInit`.
+- **(c) View sans élément** : conforme à A1.b (seul le parent détruit un enfant) ; la View reste vivante, l'échec figure dans le résultat corrélé. Non modifié ; la tolérance de ses handlers à l'absence d'élément n'est pas testée.
+- **(d) A4.b côté réception** : un composant non UI ne peut plus s'abonner aux Events d'un composant UI (`NOT_AUTHORIZED`), quel que soit l'ordre de création ; deux tests échouent sans le garde. Les tests de ce lot passent à 322.
+
 ## 4. Hors périmètre
 
 Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignations et DOM (M3–M4) ; qualification des sources par le monde fermé et D18 (M5) ; branchement des classes de base et remplacement de `Channel` et `Radio` (M6, fait).

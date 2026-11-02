@@ -11,6 +11,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import {
   Root,
+  StartupError,
   TransportError,
   type TComponentHandle,
   type TComponentSpec,
@@ -217,5 +218,53 @@ describe("M5 — closed world (C.4): a simulated occurrence is correlated, never
     const { element, count } = setup();
     element("inner").dispatchEvent(new window.Event("click", { bubbles: true }));  // raw call, outside Bonsai
     expect(count()).toBe(1);
+  });
+});
+
+describe("A4.b — the domain neither addresses nor receives a Channel of the user interface", () => {
+  const uiAdapter: TComponentSpec = { name: "adapter", ui: true, channel: { namespace: "ui", events: ["changed"] } };
+
+  function startupCode(build: (ctx: Parameters<Parameters<Root["start"]>[0]>[0]) => void): string {
+    const root = new Root({ causalBound: 10 });
+    try {
+      root.start(build);
+    } catch (error) {
+      if (error instanceof StartupError) return (error.cause as TransportError).code;
+      throw error;
+    }
+    return "started";
+  }
+
+  it("refuses a domain component that subscribes to a Channel of the interface created before it", () => {
+    const code = startupCode((ctx) => {
+      ctx.create(uiAdapter);
+      ctx.create({ name: "feature", listens: [{ namespace: "ui", event: "changed", handler: () => undefined }] });
+    });
+    expect(code).toBe("NOT_AUTHORIZED");
+  });
+
+  it("refuses it as well when the Channel of the interface is created after the subscription", () => {
+    const code = startupCode((ctx) => {
+      ctx.create({ name: "feature", listens: [{ namespace: "ui", event: "changed", handler: () => undefined }] });
+      ctx.create(uiAdapter);
+    });
+    expect(code).toBe("NOT_AUTHORIZED");
+  });
+
+  it("accepts a component of the interface that subscribes to a Channel of the interface", () => {
+    const code = startupCode((ctx) => {
+      ctx.create(uiAdapter);
+      ctx.create({ name: "view", ui: true, listens: [{ namespace: "ui", event: "changed", handler: () => undefined }] });
+    });
+    expect(code).toBe("started");
+  });
+
+  it("accepts a domain component that subscribes to a Channel of the domain, and a View that subscribes to the domain", () => {
+    const code = startupCode((ctx) => {
+      ctx.create({ name: "cart", channel: { namespace: "cart", events: ["added"] } });
+      ctx.create({ name: "promo", listens: [{ namespace: "cart", event: "added", handler: () => undefined }] });
+      ctx.create({ name: "view", ui: true, listens: [{ namespace: "cart", event: "added", handler: () => undefined }] });
+    });
+    expect(code).toBe("started");
   });
 });

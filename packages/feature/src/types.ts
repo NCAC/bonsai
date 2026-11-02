@@ -158,7 +158,8 @@ export type TBonsaiNamespaceErrorCode =
   | "NAMESPACE_DUPLICATE"
   | "NAMESPACE_UNKNOWN_REFERENCE"
   | "FEATURE_MISSING_CHANNEL"
-  | "FEATURE_CHANNEL_NAMESPACE_MISMATCH";
+  | "FEATURE_CHANNEL_NAMESPACE_MISMATCH"
+  | "FEATURE_DEPENDENCY_NOT_QUERIED";
 
 /**
  * Typed error for any violation detected at runtime.

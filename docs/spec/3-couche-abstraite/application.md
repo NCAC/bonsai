@@ -69,7 +69,7 @@ Les phases 0 n'ont **aucun effet de bord** : un Manifest invalide échoue avant 
 | --- | --- | --- |
 | **0a** | Format et réservation de chaque clé ; `static channel` présent ; `channel.namespace` = clé | I21, I22, I57, I71, I73 |
 | **0b** | Instanciation de chaque Feature (constructeur inerte) | I94 |
-| **0c** | Lecture de `listens` et `queries` ; tout namespace référencé existe dans le Manifest (`router` s'il est activé) | I70, I93 |
+| **0c** | Lecture de `listens`, `queries` et `dependsOn` ; tout namespace référencé existe dans le Manifest (`router` s'il est activé) ; toute dépendance initiale est une Query déclarée | I70, I93 |
 | **1** | Une `Root` ; dans **une seule unité de démarrage** (§2.5), création des enfants, dans cet ordre : Features (et `router`), adaptateurs, Foundation, `components` ; les Features respectent leurs dépendances initiales `queries` (C.1) | I56, G6 |
 
 - Chaque Feature est créée avec son Entity, ses handlers, puis `onInit(ctx)` (I56) ; la Foundation admet son ancre et crée ses Composers, qui créent leurs Views.

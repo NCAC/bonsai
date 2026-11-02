@@ -49,7 +49,7 @@ Règles complémentaires :
 
 - Un **Command** a un seul handler, la Feature propriétaire (I10). Un Command vers un namespace absent de la racine, ou non déclaré par le contrat de la Feature, fait échouer l'unité (`UNKNOWN_TARGET`, `UNDECLARED_MESSAGE`).
 - Une **Query** s'exécute sans effet : un handler de Query ne peut ni émettre ni muter, ni interroger à son tour (A3.g).
-- Un composant **non UI** qui déclenche un Command sur le namespace d'un composant UI est refusé avec `NOT_AUTHORIZED` (A4.b).
+- Un composant **non UI** qui déclenche un Command sur le namespace d'un composant UI, ou qui s'abonne à un Event de ce namespace, est refusé avec `NOT_AUTHORIZED` (A4.b). L'abonnement est contrôlé à la création, quel que soit l'ordre de création des deux composants ; un refus ne laisse aucun abonnement.
 - Les View et Behaviors n'ont pas d'Entity : l'état d'une Feature ne se lit que par une Query (I6).
 - **Livré** : la déclaration est vérifiée à la compilation (`TFeatureContract`, I81) **et** à l'exécution par la racine (message hors contrat → `UNDECLARED_MESSAGE`). Le filet d'exécution de la dépendance `listens` ne porte que sur le jeton, non sur les noms d'Events (voir [feature.md §3](../3-couche-abstraite/feature.md#3-handlers-et-contextes)).
 

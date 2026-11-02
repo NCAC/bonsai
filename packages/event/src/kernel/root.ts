@@ -713,8 +713,28 @@ export class Root {
         unit.poisoned = unit.poisoned ?? { error };
         throw error;
       }
+      // A4.b (reception): a Channel of the user interface is not received by a component of the domain,
+      // including a subscription made before this Channel exists.
+      if (spec.ui === true) {
+        const foreign = this.#subscriptions.find((s) => s.alive && s.namespace === spec.channel!.namespace && s.owner.spec.ui !== true);
+        if (foreign !== undefined) {
+          const error = new TransportError("NOT_AUTHORIZED", `${foreign.owner.handle.name} is not a component of the user interface: it may not receive "${spec.channel.namespace}:${foreign.event}" (A4.b)`);
+          unit.poisoned = unit.poisoned ?? { error };
+          throw error;
+        }
+      }
       record.channel = { namespace: spec.channel.namespace, owner: record, alive: true };
       this.#registry.set(spec.channel.namespace, record.channel);
+    }
+    // A4.b (reception): only a component of the user interface subscribes to a Channel of the interface.
+    // Checked before any subscription is registered, so a refusal leaves nothing behind.
+    for (const listen of spec.listens ?? []) {
+      const target = this.#registry.get(listen.namespace);
+      if (target !== undefined && target.alive && target.owner.spec.ui === true && spec.ui !== true) {
+        const error = new TransportError("NOT_AUTHORIZED", `${spec.name} is not a component of the user interface: it may not receive "${listen.namespace}:${listen.event}" (A4.b)`);
+        unit.poisoned = unit.poisoned ?? { error };
+        throw error;
+      }
     }
     for (const listen of spec.listens ?? []) {
       const subscription: SubscriptionRecord = { owner: record, namespace: listen.namespace, event: listen.event, handler: listen.handler, alive: true };
