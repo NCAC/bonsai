@@ -292,4 +292,52 @@ describe("View on the kernel", () => {
     expect(document.querySelector("#main .slot")!.textContent).toBe("inner");
     expect(d.failures()).toEqual([]);
   });
+
+  describe("a View whose element cannot be created stays alive (A1.b, C.3)", () => {
+    class Probing extends CounterView {
+      static reactions = 0;
+      onCounterChangedEvent(payload: { n: number }, ctx: TEventContext<TContract>): void {
+        Probing.reactions++;
+        super.onCounterChangedEvent(payload, ctx);
+      }
+    }
+    const probingViews = { counter: Probing };
+    type TProbing = TComposerContract<typeof composerFeatures, typeof probingViews>;
+    class ProbingComposer extends Composer<TProbing> {
+      get features() { return composerFeatures; }
+      get views() { return probingViews; }
+      resolve(_ctx: TComposeContext<TProbing>): TComposition<TProbing> { return [{ view: "counter", key: "c" }]; }
+    }
+    class TwoSlots extends Foundation {
+      get composers() {
+        return {
+          lost: { slot: "#nowhere", composer: ProbingComposer },
+          main: { slot: "#main", composer: ProbingComposer }
+        } as const;
+      }
+    }
+    const failedMessages = (d: ReturnType<typeof drive>): string[] =>
+      d.root.trace.flatMap((t) =>
+        t.type === "effects" ? t.report.filter((r) => r.outcome === "failed").map((r) => String((r.error as Error).message)) : []
+      );
+
+    it("keeps reacting to Events: no unit fails, only effects do", () => {
+      Probing.reactions = 0;
+      const d = drive({ counter: CounterFeature }, { foundation: TwoSlots, document });
+      expect(failedMessages(d).join()).toMatch(/matches 0 elements/);   // the element was never created
+      d.send("counter", "inc");
+      expect(Probing.reactions).toBe(2);                                // both Views reacted, the lost one included
+      d.send("counter", "inc");
+      expect(Probing.reactions).toBe(4);                                // and again: nothing destroyed it
+      expect(d.failures()).toEqual([]);                                 // no unit failed: the projections of the lost View are failed or unattempted effects
+    });
+
+    it("C.3 — the first failed engagement leaves the sibling slot unmaterialized (documented consequence)", () => {
+      const d = drive({ counter: CounterFeature }, { foundation: TwoSlots, document });
+      const outcomes = d.root.trace.flatMap((t) => (t.type === "effects" ? t.report.map((r) => [r.label, r.outcome]) : []));
+      expect(outcomes[0]).toEqual(["materialize body/lost", "failed"]);
+      expect(outcomes[1]).toEqual(["materialize body/main", "not-attempted"]);
+      expect(document.querySelector("#main")!.children).toHaveLength(0);   // the sibling View is alive but has no element
+    });
+  });
 });

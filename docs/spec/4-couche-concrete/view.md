@@ -175,7 +175,8 @@ Passif : une View n'a ni `mount()` ni hook de cycle de vie. Elle naît quand son
 
 ## 9. Limites connues
 
-- Une View dont l'élément n'a pas pu être créé n'est pas encore détruite logiquement ; l'échec figure dans la trace du noyau (C.3).
+- Une View dont l'élément n'a pas pu être créé **reste vivante** : seul son parent peut détruire son existence (A1.b), et la racine ne le fait pas à sa place. Elle continue de recevoir ses Events, ses handlers s'exécutent, et ses projections sont des effets en échec ou non tentés, rapportés dans la trace (C.3) ; aucune unité n'échoue (`tests/unit/domain/view.test.ts`). Un Composer qui voudrait la retirer le décide à partir du résultat corrélé, par un nouveau message.
+- Le premier engagement en échec laisse non tentés les effets suivants de la même liste (C.3) : un slot de Foundation introuvable empêche la matérialisation des slots déclarés après lui.
 - Une projection peut écrire dans le contenu d'un slot (non vérifié par construction).
 - `template` est provisoire en attendant le rendu (annexe A) ; pas de Behaviors (package absent), pas de `localState` (annexe B).
 

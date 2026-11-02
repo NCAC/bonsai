@@ -232,7 +232,7 @@ Limites : les passages historiques de `5-rendu.md`, `devtools.md`, `validation.m
 
 - **(a) Slot sans correspondance** : conforme tel quel (théorie 9.7 et C.3 : la résolution de l'élément est un effet après validation, son échec est rapporté sans annuler). Aucun changement.
 - **(b) `dependsOn`** : `queries` n'est plus qu'une permission ; l'ordre de démarrage vient de `Feature.dependsOn` (facultatif, inclus dans `queries`, code `FEATURE_DEPENDENCY_NOT_QUERIED`). Deux Features peuvent désormais s'interroger mutuellement sans cycle. Une Feature qui interroge dans `onInit` sans `dependsOn` échoue au démarrage (`TARGET_NOT_READY`). Changement d'API des Features : à répercuter dans tout code qui interrogeait dans `onInit`.
-- **(c) View sans élément** : conforme à A1.b (seul le parent détruit un enfant) ; la View reste vivante, l'échec figure dans le résultat corrélé. Non modifié ; la tolérance de ses handlers à l'absence d'élément n'est pas testée.
+- **(c) View sans élément** : conforme à A1.b (seul le parent détruit un enfant). Testé (2 tests) : la View reste vivante, reçoit ses Events, aucune unité n'échoue. Constat associé : le premier engagement en échec laisse non tentés les effets suivants (C.3), donc un slot de Foundation introuvable empêche aussi la matérialisation des slots déclarés après lui. Conforme à la théorie ; à signaler comme question de conception (matérialisation par slot indépendante), sans modification.
 - **(d) A4.b côté réception** : un composant non UI ne peut plus s'abonner aux Events d'un composant UI (`NOT_AUTHORIZED`), quel que soit l'ordre de création ; deux tests échouent sans le garde. Les tests de ce lot passent à 322.
 
 ## 4. Hors périmètre
