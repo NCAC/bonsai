@@ -1,11 +1,8 @@
 /**
  * @bonsai/entity - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-09-30T06:19:04.880Z
+ * Date: 2026-11-02T15:48:08.579Z
  */
-import { Immer } from '@bonsai/immer';
-import { EntityReentrancyError, MutationError } from '@bonsai/error';
-
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
 
@@ -44,28 +41,63 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 /**
  * @bonsai/entity — Entity base class
  *
- * Implements ADR-10:
- *   - mutate(intent, params?, recipe) through Immer produceWithPatches
- *   - changedKeys derived from the patches (first path segment)
- *   - No-op detection (no patch produced → no notification)
- *   - Catch-all notification onAnyEntityUpdated (I51) — enriched event
- *     (patches, inversePatches, payload, metas)
- *   - FIFO re-entrance bounded by maxEntityNotificationDepth (I98,
- *     stratum 1a) — see docs/spec/3-couche-abstraite/entity.md
- *   - MutationError when the recipe throws (automatic Immer rollback,
- *     ADR-05)
- *   - initialState getter (ADR-10)
+ * The Entity describes the domain state of a Feature (theory 11.3, A4.a):
+ *   - its initial state (`defineInitialState`)
+ *   - its business invariants (`invariants`), verified by the kernel at the
+ *     successful end of every validation unit that touched the state
+ *   - its read methods (`query`-style getters), which read the current state
  *
- * NOTE: per-key `on<Key>EntityUpdated` handlers are NOT dispatched here —
- * that is the job of `Feature#registerEntityHandlers` (I96), which
- * subscribes to `onAnyEntityUpdated` and routes internally. An Entity never
- * knows its Feature (I6).
+ * The state itself is **owned by the kernel** (migration lot M6.1): it lives in
+ * the root, is mutated only through the handler context (`ctx.mutate`), and is
+ * journaled so that a failed unit leaves it intact (G7). The Entity holds no
+ * mutable state and no `mutate` method: a mutation outside a unit is not
+ * expressible (A5.a).
+ *
+ * `state` is readable only while a handler of the owning Feature is running
+ * (the Feature binds the Entity to the kernel's current state for the duration
+ * of the handler). Anywhere else it throws: the current state is observed
+ * through a Query (G5), never by holding the Entity.
+ *
+ * Notifications `on<Key>EntityUpdated` / `onAnyEntityUpdated` are not sent by
+ * the Entity any more: after a mutation the Feature delivers them to itself as
+ * a deferred local message (G5, D8). An Entity never knows its Feature (I6).
  */
-var _Entity_instances, _Entity_state, _Entity_initialState, _Entity_listeners, _Entity_initialized, _Entity_draining, _Entity_cycleDepth, _Entity_queue, _Entity_ensureInitialized, _Entity_runCycle;
-Immer.enablePatches();
+var _Entity_initialState;
+// ─── Internal binding to the kernel state ────────────────────────────────────
+const stateSources = new WeakMap();
+/**
+ * @internal Framework use only (`@bonsai/feature`).
+ *
+ * Binds an Entity to the kernel's current state for the duration of a handler.
+ * Returns the function that restores the previous binding (bindings nest when
+ * a Query reaches the same Feature again).
+ */
+function bindEntityState(entity, source) {
+    const previous = stateSources.get(entity);
+    stateSources.set(entity, source);
+    return () => {
+        if (previous === undefined)
+            stateSources.delete(entity);
+        else
+            stateSources.set(entity, previous);
+    };
+}
+/**
+ * @internal Framework use only (`@bonsai/feature`).
+ *
+ * What the kernel needs to own the state of an Entity: its name, its initial
+ * state and its invariants.
+ */
+function describeEntity(entity) {
+    return {
+        name: entity.constructor.name,
+        initial: entity.initialState,
+        invariants: entity.invariants
+    };
+}
 // ─── Abstract Entity class ───────────────────────────────────────────────────
 /**
- * Entity — immutable state container of a Feature (I6, I22, I46).
+ * Entity — description of the domain state of a Feature (I6, I22, I46).
  *
  * Abstract class: subclasses must implement `defineInitialState()`.
  *
@@ -73,145 +105,42 @@ Immer.enablePatches();
  */
 class Entity {
     constructor() {
-        _Entity_instances.add(this);
-        /**
-         * Current Entity state. Readable by subclasses and by any code holding a
-         * reference to the Entity.
-         */
-        _Entity_state.set(this, void 0);
         /**
          * Copy of the initial state, returned by `initialState` (ADR-10).
          */
         _Entity_initialState.set(this, void 0);
-        /**
-         * Catch-all listeners (I51).
-         */
-        _Entity_listeners.set(this, []);
-        /**
-         * Initialisation flag (lazy init, to work around the abstract-member restriction).
-         */
-        _Entity_initialized.set(this, false);
-        // ─── FIFO re-entrance (I98) ────────────────────────────────────────────
-        /** `true` while a mutate → notify cycle is running (external driver). */
-        _Entity_draining.set(this, false);
-        /** Depth of the current cycle (1 = external call, incremented on each dequeue). */
-        _Entity_cycleDepth.set(this, 0);
-        /** FIFO queue of mutations triggered during a notification. */
-        _Entity_queue.set(this, []);
-        // Actual initialisation happens in #ensureInitialized(), because
-        // TS forbids accessing abstract members in the constructor.
-        __classPrivateFieldGet(this, _Entity_instances, "m", _Entity_ensureInitialized).call(this);
+        __classPrivateFieldSet(this, _Entity_initialState, this.defineInitialState(), "f");
     }
     // ─── Overridable configuration ─────────────────────────────────────────
     /**
-     * Maximum re-entrance depth (I98, stratum 1a — default 3).
-     * A concrete subclass may override it for advanced use cases.
+     * Business invariants (11.3, A4.a). Verified by the kernel at the end of
+     * every validation unit that touched the state and at the end of startup;
+     * a violation fails the unit, which is rolled back (G7).
      */
-    get maxEntityNotificationDepth() {
-        return 3;
+    get invariants() {
+        return [];
     }
     // ─── Public API ──────────────────────────────────────────────────────
     /**
-     * Current state (read-only from outside).
+     * Current state, frozen, while a handler of the owning Feature is running.
+     *
+     * @throws outside a handler: the current state is observed through a Query.
      */
     get state() {
-        return __classPrivateFieldGet(this, _Entity_state, "f");
+        const source = stateSources.get(this);
+        if (source === undefined) {
+            throw new Error(`[Bonsai Entity] "${this.constructor.name}".state is readable only inside a handler of its Feature. ` +
+                "Observe the current state through a Query (G5, I6).");
+        }
+        return source();
     }
     /**
      * Returns the initial state as defined at construction (ADR-10).
-     * Public, for reset or comparison.
      */
     get initialState() {
         return __classPrivateFieldGet(this, _Entity_initialState, "f");
     }
-    mutate(intent, paramsOrRecipe, maybeRecipe) {
-        // Overload resolution
-        let params = null;
-        let recipe;
-        if (typeof paramsOrRecipe === "function") {
-            recipe = paramsOrRecipe;
-        }
-        else {
-            params = paramsOrRecipe;
-            recipe = maybeRecipe;
-        }
-        // Re-entrance: a cycle is already running — enqueue (I98)
-        if (__classPrivateFieldGet(this, _Entity_draining, "f")) {
-            const wouldBeDepth = __classPrivateFieldGet(this, _Entity_cycleDepth, "f") + __classPrivateFieldGet(this, _Entity_queue, "f").length + 1;
-            if (wouldBeDepth > this.maxEntityNotificationDepth) {
-                throw new EntityReentrancyError(`Entity re-entrance exceeded maxEntityNotificationDepth (${this.maxEntityNotificationDepth}) — intent "${intent}"`, "I98", "Entity", "Check that no entity handler triggers a cascading mutation loop.");
-            }
-            __classPrivateFieldGet(this, _Entity_queue, "f").push({ intent, params, recipe });
-            return null;
-        }
-        // External call — this mutate() drives the whole cycle (first + queue)
-        __classPrivateFieldSet(this, _Entity_draining, true, "f");
-        __classPrivateFieldSet(this, _Entity_cycleDepth, 1, "f");
-        try {
-            const firstEvent = __classPrivateFieldGet(this, _Entity_instances, "m", _Entity_runCycle).call(this, intent, params, recipe);
-            while (__classPrivateFieldGet(this, _Entity_queue, "f").length > 0) {
-                __classPrivateFieldSet(this, _Entity_cycleDepth, __classPrivateFieldGet(this, _Entity_cycleDepth, "f") + 1, "f");
-                const next = __classPrivateFieldGet(this, _Entity_queue, "f").shift();
-                __classPrivateFieldGet(this, _Entity_instances, "m", _Entity_runCycle).call(this, next.intent, next.params, next.recipe);
-            }
-            return firstEvent;
-        }
-        finally {
-            __classPrivateFieldSet(this, _Entity_draining, false, "f");
-            __classPrivateFieldSet(this, _Entity_cycleDepth, 0, "f");
-            __classPrivateFieldGet(this, _Entity_queue, "f").length = 0;
-        }
-    }
-    /**
-     * Registers a catch-all listener (I51).
-     * Called after every non no-op mutation. No error isolation here — a
-     * listener exception propagates up to the external caller of `mutate()`
-     * (I98 relies on that propagation). `BroadcastError` isolation is the
-     * responsibility of the Feature dispatch (I96).
-     */
-    onAnyEntityUpdated(listener) {
-        __classPrivateFieldGet(this, _Entity_listeners, "f").push(listener);
-    }
 }
-_Entity_state = new WeakMap(), _Entity_initialState = new WeakMap(), _Entity_listeners = new WeakMap(), _Entity_initialized = new WeakMap(), _Entity_draining = new WeakMap(), _Entity_cycleDepth = new WeakMap(), _Entity_queue = new WeakMap(), _Entity_instances = new WeakSet(), _Entity_ensureInitialized = function _Entity_ensureInitialized() {
-    if (!__classPrivateFieldGet(this, _Entity_initialized, "f")) {
-        __classPrivateFieldSet(this, _Entity_initialState, this.defineInitialState(), "f");
-        __classPrivateFieldSet(this, _Entity_state, __classPrivateFieldGet(this, _Entity_initialState, "f"), "f");
-        __classPrivateFieldSet(this, _Entity_initialized, true, "f");
-    }
-}, _Entity_runCycle = function _Entity_runCycle(intent, params, recipe) {
-    const previousState = __classPrivateFieldGet(this, _Entity_state, "f");
-    let nextState;
-    let patches;
-    let inversePatches;
-    try {
-        [nextState, patches, inversePatches] = Immer.produceWithPatches(previousState, recipe);
-    }
-    catch (error) {
-        throw new MutationError(`Recipe threw for intent "${intent}" — state kept (Immer rollback)`, "ADR-05", "Entity", error instanceof Error ? error.message : String(error));
-    }
-    if (patches.length === 0) {
-        // No-op — no notification
-        return null;
-    }
-    // changedKeys derived from the first path segment of each patch (I97)
-    const changedKeys = [...new Set(patches.map((p) => String(p.path[0])))];
-    __classPrivateFieldSet(this, _Entity_state, nextState, "f");
-    const event = {
-        intent,
-        payload: params?.payload,
-        metas: params?.metas,
-        changedKeys,
-        patches,
-        inversePatches,
-        previousState,
-        nextState,
-        timestamp: Date.now()
-    };
-    for (const listener of __classPrivateFieldGet(this, _Entity_listeners, "f")) {
-        listener(event);
-    }
-    return event;
-};
+_Entity_initialState = new WeakMap();
 
-export { Entity };
+export { Entity, bindEntityState, describeEntity };

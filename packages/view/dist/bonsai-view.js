@@ -1,9 +1,9 @@
 /**
  * @bonsai/view - Version 0.0.1
  * Bundled by Bonsai Build System
- * Date: 2026-09-24T20:13:10.578Z
+ * Date: 2026-11-02T15:48:10.471Z
  */
-import { Radio } from '@bonsai/event';
+import { DESCRIBE, describeComponent } from '@bonsai/kernel';
 
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -41,55 +41,53 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 };
 
 /**
- * @bonsai/view — View base class (ADR-14)
+ * @bonsai/view — View base class (ADR-14, migration lot M6.2)
  *
- * Capabilities:
- *   - trigger("ns:cmd", payload) → sends a typed Command through the Channel
- *   - request("ns:req", params)  → queries a typed Channel
- *   - getUI(key) → TProjectionNode<TEl>, typed to the HTMLElement subtype (phantom)
- *   - I48 channel auto-discovery: on{NS}{Event}Event → channel.listen
- *   - I48 UI auto-discovery     : on{UIKey}{DomEvent} → addEventListener
- *   - onAttach() lifecycle hook
+ * A View projects the domain onto the part of the document its Composer
+ * attributed to it. It is a child of a Composer only (D11).
  *
- * ADR-14 modular pattern:
- *   1. `const features satisfies TFeatureContract` — Feature-grouped
- *   2. `const uiEvents satisfies TUIContract`      — DOM events + phantom TEl
- *   3. `const uiElements satisfies TUIElements<typeof uiEvents>` — selectors
- *   4. `type TVC = TViewContract<typeof features, typeof uiEvents>`
- *   5. `class XxxView extends View<TVC> implements TViewCallbacks<TVC>`
+ * Every handler receives a context as its second argument (D18):
+ *   - `on{UiKey}{DomEvent}(fact, ctx: TFactContext)` — a fact of the host
+ *     admitted in the View's part: `ctx.query` and `ctx.trigger`
+ *   - `on{Ns}{Event}Event(payload, ctx: TEventContext)` — an Event of a Feature:
+ *     `ctx.query` only. No `trigger`: an Event grants no right to command.
  *
- * Three abstract getters:
- *   - `get features()`   → Feature refs + lanes (structural, not overridable)
- *   - `get uiEvents()`   → DOM events + phantom TEl (structural)
- *   - `get uiElements()` → CSS selectors (overridable by the Composer, ADR-21 — not delivered)
+ * A handler runs inside a validation unit (G7). Its projections (`getUI(key)`)
+ * are *prepared* during the unit and engaged after it validates (C.3); a
+ * handler therefore never reads the document.
  *
- * The Channel stays private behind its Feature (I80) — no `TChannelToken` in
- * the public surface.
+ * Declarations (read once, when the View is described to the kernel):
+ *   1. `get features()`   — Features it listens to, queries and addresses
+ *   2. `get uiEvents()`   — UI keys, their element subtype and host events
+ *   3. `get uiElements()` — CSS selector of each key, inside the View's part
+ *   4. `get template()`   — initial content of the part (HTML string; default empty)
+ *   5. `get composers()`  — slots of the part and the Composer of each
+ *
+ * Removed with this lot: `this.trigger`, `this.request`, `mount()`, `onAttach()`,
+ * and `TProjectionNode.element()` (a raw element contradicts I39 and cannot be
+ * given before engagement).
  *
  * Invariants:
  *   I4  — A View NEVER has emit() — absent from the type
- *   I31 — rootElement is a CSS selector string injected at mount
- *   I36 — A View never composes other Views directly
- *   I39 — DOM access only through getUI(key)
- *   I40 — DOM scope: resolution inside rootElement only
+ *   I36 — A View never composes other Views directly (only declares Composers)
+ *   I39 — DOM access only through getUI(key), as prepared effects
  *   I48 — Handlers are auto-discovered by naming convention
- *   I75 — No `any` in the public surface; internal casts are documented
  *   I80 — No TChannelToken in the consumer public surface
  *   I81 — `features` / `uiEvents` / `uiElements` are the sources of truth
  *   I82 — Missing handler → compile error through `implements TViewCallbacks`
- *   I83 — Reusable modular `T{Component}Contract` pattern
  *   I84 — A non-empty `events: [E, ...]` requires the matching DOM handlers
  *   I85 — `ui<TEl>()(events)` is the only TUIEntry helper (curried form)
- *   I86 — `events` is always present in TUIEntry (never optional); ReadonlyArray<TEventsFor<TEl>> without duplicates
+ *   I86 — `events` is always present in TUIEntry (never optional)
  *   I87 — object key ≡ namespace of the referenced Feature
  *   I88 — Contract/Callbacks symmetry
- *   I89 — every declared event name belongs to TEventsFor<TEl> ⊆ keyof HTMLElementEventMap (ADR-15)
- *   I90 — no duplicate in TUIEntry["events"] — double binding forbidden (ADR-15)
- *   I91 — TEventsFor<TEl> is Bonsai's official element → events mapping (ADR-15)
+ *   I89–I91 — events belong to TEventsFor<TEl> ⊆ keyof HTMLElementEventMap (ADR-15)
+ *
+ * Known limit (view.md §4.4): a projection receives the whole part, slot
+ * contents included; writing there is forbidden by review, not by construction.
  *
  * @packageDocumentation
  */
-var _View_instances, _View_rootElement, _View_rootEl, _View_mounted, _View_uiSelectors, _View_uiDomEvents, _View_features, _View_registerUIHandlers, _View_registerChannelListeners;
+var _View_instances, _a, _View_current, _View_selectors, _View_unit, _View_run, _View_methodNames, _View_eventContext, _View_factContext;
 /**
  * Builder of a UI entry (I85 — the only mechanism).
  *
@@ -109,33 +107,8 @@ var _View_instances, _View_rootElement, _View_rootEl, _View_mounted, _View_uiSel
 function ui() {
     return (events) => ({ events });
 }
-// ─── ProjectionNode factory ──────────────────────────────────────────────────
-function createProjectionNode(el) {
-    return {
-        text(value) {
-            el.textContent = value;
-        },
-        attr(name, value) {
-            el.setAttribute(name, value);
-        },
-        toggleClass(className, force) {
-            el.classList.toggle(className, force);
-        },
-        visible(show) {
-            el.style.display = show ? "" : "none";
-        },
-        style(property, value) {
-            el.style.setProperty(property, value);
-        },
-        element() {
-            return el;
-        }
-    };
-}
 // ─── Internal helpers ────────────────────────────────────────────────────────
-function capitalize(s) {
-    return s.length === 0 ? s : s[0].toUpperCase() + s.slice(1);
-}
+const capitalize = (s) => (s.length === 0 ? s : s[0].toUpperCase() + s.slice(1));
 function parseNSKey(key) {
     const idx = key.indexOf(":");
     if (idx <= 0 || idx === key.length - 1) {
@@ -147,38 +120,7 @@ function parseNSKey(key) {
 /**
  * View — presentation layer parameterised by a single generic: `TViewContract`.
  *
- * Usage pattern:
- *
  * ```ts
- * import { CartFeature } from "../Cart/cart.feature";
- * import { View, ui, type TViewContract, type TViewCallbacks,
- *   type TFeatureContract, type TUIContract, type TUIElements
- * } from "@bonsai/view";
- *
- * const cartViewFeatures = {
- *   cart: {
- *     feature:  CartFeature,
- *     listens:  ["itemAdded"]  as const,
- *     triggers: ["addItem"]    as const,
- *     requests: []             as const,
- *   },
- * } satisfies TFeatureContract;
- *
- * const cartViewUiEvents = {
- *   total:  ui<HTMLSpanElement>()([]),
- *   addBtn: ui<HTMLButtonElement>()(["click"]),
- * } satisfies TUIContract;
- *
- * const cartViewUiElements = {
- *   total:  ".cart-total",
- *   addBtn: "#add-btn",
- * } satisfies TUIElements<typeof cartViewUiEvents>;
- *
- * type TCartViewContract = TViewContract<
- *   typeof cartViewFeatures,
- *   typeof cartViewUiEvents
- * >;
- *
  * class CartView
  *   extends View<TCartViewContract>
  *   implements TViewCallbacks<TCartViewContract>
@@ -186,12 +128,13 @@ function parseNSKey(key) {
  *   get features()   { return cartViewFeatures; }
  *   get uiEvents()   { return cartViewUiEvents; }
  *   get uiElements() { return cartViewUiElements; }
+ *   get template()   { return `<button data-ui="addButton">Add</button><span data-ui="itemCount"></span>`; }
  *
- *   onCartItemAddedEvent(p: { id: string; qty: number }): void {
- *     this.getUI("total").text(`${p.qty} items`);  // → TProjectionNode<HTMLSpanElement>
+ *   onAddButtonClick(_fact: TFact, ctx: TFactContext<TCartViewContract>): void {
+ *     ctx.trigger("cart:addItem", { productId: "p1", qty: 1, price: 10 });
  *   }
- *   onAddBtnClick(e: MouseEvent): void {
- *     this.trigger("cart:addItem", { id: "p1", qty: 1 });  // ✅ inferred payload
+ *   onCartItemAddedEvent(payload: { item: TCartItem }, ctx: TEventContext<TCartViewContract>): void {
+ *     this.getUI("itemCount").text(String(ctx.query("cart:getItemCount", null)));
  *   }
  * }
  * ```
@@ -199,155 +142,170 @@ function parseNSKey(key) {
 class View {
     constructor() {
         _View_instances.add(this);
-        _View_rootElement.set(this, null);
-        _View_rootEl.set(this, null);
-        _View_mounted.set(this, false);
-        _View_uiSelectors.set(this, {});
-        _View_uiDomEvents.set(this, {});
-        _View_features.set(this, {});
+        /** The unit context of the handler being run, for `getUI` and `params`. */
+        _View_current.set(this, null);
+        _View_selectors.set(this, {});
     }
-    // ─── Public API ────────────────────────────────────────────────────────
-    /** The rootElement selector injected at mount (I31). */
-    get rootElement() {
-        return __classPrivateFieldGet(this, _View_rootElement, "f");
+    // ─── Optional declarations ──────────────────────────────────────────
+    /** Initial content of the part (HTML). Projected when the part exists. */
+    get template() {
+        return "";
     }
     /**
-     * Root DOM element after mount. Available in onAttach() and in handlers —
-     * lets subclasses read data-* attributes (I34).
+     * Slots of the part and their Composers (Composer §1.3). Keys are disjoint
+     * from the UI keys; each slot selector matches exactly one element of the
+     * part, in the content produced by `template`.
      */
-    get el() {
-        return __classPrivateFieldGet(this, _View_rootEl, "f");
+    get composers() {
+        return {};
+    }
+    // ─── Handler-only API ───────────────────────────────────────────────
+    /** Creation parameters given by the Composer, frozen (6.2). Only inside a handler. */
+    get params() {
+        return (__classPrivateFieldGet(this, _View_instances, "m", _View_unit).call(this, "params").params() ?? {});
     }
     /**
-     * Mounts the View on a rootElement. Called by the Composer.
-     * - Reads `get features()` / `get uiEvents()` / `get uiElements()` once (ADR-14)
-     * - Resolves the rootElement in the DOM (whole document today, not the
-     *   Composer's slot — ADR-19 gap)
-     * - Auto-discovers the UI handlers (I48 UI — driven by uiEvents[k].events)
-     * - Auto-discovers the Channel listeners (I48 channel — driven by features[NS].listens)
-     * - Calls onAttach()
-     */
-    mount(rootSelector) {
-        if (__classPrivateFieldGet(this, _View_mounted, "f"))
-            return;
-        __classPrivateFieldSet(this, _View_mounted, true, "f");
-        // ADR-14: contract modules are read once
-        __classPrivateFieldSet(this, _View_features, this.features, "f");
-        __classPrivateFieldSet(this, _View_uiSelectors, this.uiElements, "f");
-        // Extract DOM events per UI key (runtime, ADR-15)
-        const uiEvents = this.uiEvents;
-        const domEventsMap = {};
-        for (const key of Object.keys(uiEvents)) {
-            domEventsMap[key] = uiEvents[key].events;
-        }
-        __classPrivateFieldSet(this, _View_uiDomEvents, domEventsMap, "f");
-        __classPrivateFieldSet(this, _View_rootElement, rootSelector, "f");
-        __classPrivateFieldSet(this, _View_rootEl, document.querySelector(rootSelector), "f");
-        // I34: rootElement must not be document.body itself
-        if (__classPrivateFieldGet(this, _View_rootEl, "f") === document.body) {
-            throw new Error(`[Bonsai View] I34 — rootElement cannot be document.body. Provide a child element selector.`);
-        }
-        // Auto-discovery
-        __classPrivateFieldGet(this, _View_instances, "m", _View_registerUIHandlers).call(this);
-        __classPrivateFieldGet(this, _View_instances, "m", _View_registerChannelListeners).call(this);
-        // Lifecycle
-        this.onAttach();
-    }
-    /**
-     * I39 — typed DOM access through `getUI(key)`. Resolves inside the
-     * rootElement scope (I40; slot exclusion not delivered yet).
-     * Returns `TProjectionNode<TEl>`, where `TEl` comes from the `_el?` phantom
-     * of the declared UI entry — `element()` returns the actual HTML subtype.
+     * I39 — typed projection on a UI key. Every operation is *prepared*: it is
+     * engaged after the unit validates (C.3). Only inside a handler.
      */
     getUI(key) {
-        const selector = __classPrivateFieldGet(this, _View_uiSelectors, "f")[key];
-        if (!selector) {
-            throw new Error(`[Bonsai View] Unknown UI key "${key}". Declared keys: ${Object.keys(__classPrivateFieldGet(this, _View_uiSelectors, "f")).join(", ")}`);
+        const c = __classPrivateFieldGet(this, _View_instances, "m", _View_unit).call(this, `getUI("${key}")`);
+        const selector = __classPrivateFieldGet(this, _View_selectors, "f")[key];
+        if (selector === undefined) {
+            throw new Error(`[Bonsai View] Unknown UI key "${key}". Declared keys: ${Object.keys(__classPrivateFieldGet(this, _View_selectors, "f")).join(", ")}`);
         }
-        const el = __classPrivateFieldGet(this, _View_rootEl, "f").querySelector(selector);
-        if (!el) {
-            throw new Error(`[Bonsai View] UI element "${key}" not found with selector "${selector}" in rootElement "${__classPrivateFieldGet(this, _View_rootElement, "f")}"`);
+        const part = c.resolve(c.designation());
+        const write = (label, apply) => {
+            c.project(part, `${key}.${label}`, (root) => {
+                const el = root.querySelector(selector);
+                if (el === null)
+                    throw new Error(`[Bonsai View] UI element "${key}" not found with selector "${selector}" in the part`);
+                apply(el);
+            });
+        };
+        return {
+            text: (value) => write("text", (el) => { el.textContent = value; }),
+            attr: (name, value) => write(`attr:${name}`, (el) => { el.setAttribute(name, value); }),
+            toggleClass: (className, force) => write(`class:${className}`, (el) => { el.classList.toggle(className, force); }),
+            visible: (show) => write("visible", (el) => { el.style.display = show ? "" : "none"; }),
+            style: (property, value) => write(`style:${property}`, (el) => { el.style.setProperty(property, value); })
+        };
+    }
+    // ─── Kernel description (internal) ─────────────────────────────────
+    /** @internal Description given to the kernel by the Composer that creates the View. */
+    [(_View_current = new WeakMap(), _View_selectors = new WeakMap(), _View_instances = new WeakSet(), DESCRIBE)]() {
+        const features = this.features;
+        const uiEvents = this.uiEvents;
+        const selectors = this.uiElements;
+        __classPrivateFieldSet(this, _View_selectors, selectors, "f");
+        const methods = __classPrivateFieldGet(this, _View_instances, "m", _View_methodNames).call(this);
+        const self = this;
+        // I48 UI — one handler per declared (key, event); a missing one is a safety net (I84).
+        const domTypes = new Map();
+        for (const [uiKey, entry] of Object.entries(uiEvents)) {
+            if (entry.events.length === 0)
+                continue;
+            const selector = selectors[uiKey];
+            if (selector === undefined) {
+                throw new Error(`[Bonsai View] UI key "${uiKey}" declared in uiEvents but missing in uiElements.`);
+            }
+            for (const domEvent of entry.events) {
+                const handlerName = `on${capitalize(uiKey)}${capitalize(domEvent)}`;
+                if (!methods.includes(handlerName)) {
+                    throw new Error(`[Bonsai View] Missing handler "${handlerName}" for declared event "${domEvent}" on ui.${uiKey}. ` +
+                        `Add the method or remove "${domEvent}" from uiEvents.${uiKey}.events.`);
+                }
+                const keys = domTypes.get(domEvent) ?? {};
+                keys[uiKey] = selector;
+                domTypes.set(domEvent, keys);
+            }
         }
-        return createProjectionNode(el);
-    }
-    /**
-     * Sends a typed Command through the Channel (I4 — a View can only send).
-     *
-     * `key` is a namespaced `"ns:cmd"` key; it must belong to
-     * `TFlatTriggers<TVC["features"]>`, otherwise a compile error.
-     * `protected` — subclasses call it from their UI handlers.
-     */
-    trigger(key, payload) {
-        const { namespace, name } = parseNSKey(key);
-        // Cast to the untyped Channel to register by string (I75).
-        const ch = Radio.me().channel(namespace);
-        ch.trigger(name, payload);
-    }
-    /**
-     * Performs a typed synchronous Request to a declared Channel.
-     * Returns the typed result, or `null` when the owning Feature registered
-     * no replier (ADR-02).
-     *
-     * `key` is a namespaced `"ns:req"` key; it must belong to
-     * `TFlatRequests<TVC["features"]>`, otherwise a compile error.
-     */
-    request(key, params) {
-        const { namespace, name } = parseNSKey(key);
-        // Cast to the untyped Channel to register by string (I75).
-        const ch = Radio.me().channel(namespace);
-        return ch.request(name, params);
-    }
-    // ─── Lifecycle hooks ───────────────────────────────────────────────────
-    /** Hook called after mount. Override it in subclasses. */
-    onAttach() {
-        // Default no-op
+        const dom = {};
+        for (const [type, keys] of domTypes)
+            dom[type] = { local: "fact", keys };
+        // I48 channel — on{NS}{Event}Event for each listened Event.
+        const listens = [];
+        for (const [namespace, entry] of Object.entries(features)) {
+            for (const event of entry.listens) {
+                const handlerName = `on${capitalize(namespace)}${capitalize(event)}Event`;
+                if (typeof self[handlerName] !== "function") {
+                    throw new Error(`[Bonsai View] Missing handler "${handlerName}" for declared listen "${namespace}:${event}". ` +
+                        `Add the method or remove "${event}" from features.${namespace}.listens.`);
+                }
+                listens.push({
+                    namespace,
+                    event,
+                    handler: (payload, c) => __classPrivateFieldGet(this, _View_instances, "m", _View_run).call(this, c, () => self[handlerName](payload, __classPrivateFieldGet(this, _View_instances, "m", _View_eventContext).call(this, c)))
+                });
+            }
+        }
+        return {
+            name: this.constructor.name,
+            ui: true,
+            dom,
+            listens,
+            locals: {
+                fact: (payload, c) => {
+                    const fact = payload;
+                    if (fact.ui === null || !uiEvents[fact.ui]?.events.includes(fact.type))
+                        return;
+                    const handlerName = `on${capitalize(fact.ui)}${capitalize(fact.type)}`;
+                    __classPrivateFieldGet(this, _View_instances, "m", _View_run).call(this, c, () => self[handlerName](fact, __classPrivateFieldGet(this, _View_instances, "m", _View_factContext).call(this, c)));
+                }
+            },
+            init: (c) => {
+                __classPrivateFieldGet(this, _View_instances, "m", _View_run).call(this, c, () => {
+                    const part = c.resolve(c.designation());
+                    const template = this.template;
+                    if (template !== "")
+                        c.project(part, "template", (el) => { el.innerHTML = template; });
+                    for (const [key, { slot, composer }] of Object.entries(this.composers)) {
+                        if (key in uiEvents)
+                            throw new Error(`[Bonsai View] slot key "${key}" collides with a UI key (D13)`);
+                        const ComposerClass = composer;
+                        c.create(describeComponent(new ComposerClass()), { part: { resource: part, portion: key, host: slot } });
+                    }
+                });
+            }
+        };
     }
 }
-_View_rootElement = new WeakMap(), _View_rootEl = new WeakMap(), _View_mounted = new WeakMap(), _View_uiSelectors = new WeakMap(), _View_uiDomEvents = new WeakMap(), _View_features = new WeakMap(), _View_instances = new WeakSet(), _View_registerUIHandlers = function _View_registerUIHandlers() {
-    const proto = Object.getPrototypeOf(this);
-    const methods = Object.getOwnPropertyNames(proto);
-    for (const uiKey of Object.keys(__classPrivateFieldGet(this, _View_uiDomEvents, "f"))) {
-        const events = __classPrivateFieldGet(this, _View_uiDomEvents, "f")[uiKey];
-        if (events.length === 0)
-            continue; // non-interactive
-        const uiKeyPascal = capitalize(uiKey);
-        const selector = __classPrivateFieldGet(this, _View_uiSelectors, "f")[uiKey];
-        if (!selector) {
-            throw new Error(`[Bonsai View] UI key "${uiKey}" declared in uiEvents but missing in uiElements.`);
-        }
-        const el = __classPrivateFieldGet(this, _View_rootEl, "f").querySelector(selector);
-        if (!el)
-            continue; // no element = no listener (silent)
-        for (const domEvent of events) {
-            const handlerName = `on${uiKeyPascal}${capitalize(domEvent)}`;
-            if (!methods.includes(handlerName)) {
-                throw new Error(`[Bonsai View] Missing handler "${handlerName}" for declared event "${domEvent}" on ui.${uiKey}. ` +
-                    `Add the method or remove "${domEvent}" from uiEvents.${uiKey}.events.`);
-            }
-            el.addEventListener(domEvent, (event) => {
-                this[handlerName](event);
-            });
-        }
+_a = View, _View_unit = function _View_unit(operation) {
+    if (__classPrivateFieldGet(this, _View_current, "f") === null) {
+        throw new Error(`[Bonsai View] ${operation} is usable only inside a handler of the View (C.3)`);
     }
-}, _View_registerChannelListeners = function _View_registerChannelListeners() {
-    for (const namespace of Object.keys(__classPrivateFieldGet(this, _View_features, "f"))) {
-        const entry = __classPrivateFieldGet(this, _View_features, "f")[namespace];
-        const listens = entry.listens;
-        if (listens.length === 0)
-            continue;
-        const ch = Radio.me().channel(namespace);
-        for (const eventName of listens) {
-            const handlerName = `on${capitalize(namespace)}${capitalize(eventName)}Event`;
-            const handler = this[handlerName];
-            if (typeof handler !== "function") {
-                throw new Error(`[Bonsai View] Missing handler "${handlerName}" for declared listen "${namespace}:${eventName}". ` +
-                    `Add the method or remove "${eventName}" from features.${namespace}.listens.`);
-            }
-            ch.listen(eventName, (payload) => {
-                handler.call(this, payload);
-            });
-        }
+    return __classPrivateFieldGet(this, _View_current, "f");
+}, _View_run = function _View_run(c, fn) {
+    const previous = __classPrivateFieldGet(this, _View_current, "f");
+    __classPrivateFieldSet(this, _View_current, c, "f");
+    try {
+        return fn();
     }
+    finally {
+        __classPrivateFieldSet(this, _View_current, previous, "f");
+    }
+}, _View_methodNames = function _View_methodNames() {
+    const names = new Set();
+    for (let proto = Object.getPrototypeOf(this); proto !== null && proto !== _a.prototype; proto = Object.getPrototypeOf(proto)) {
+        for (const name of Object.getOwnPropertyNames(proto))
+            names.add(name);
+    }
+    return [...names];
+}, _View_eventContext = function _View_eventContext(c) {
+    return {
+        query: ((key, params) => {
+            const { namespace, name } = parseNSKey(key);
+            return c.query(namespace, name, params);
+        })
+    };
+}, _View_factContext = function _View_factContext(c) {
+    return {
+        ...__classPrivateFieldGet(this, _View_instances, "m", _View_eventContext).call(this, c),
+        trigger: ((key, payload) => {
+            const { namespace, name } = parseNSKey(key);
+            c.trigger(namespace, name, payload);
+        })
+    };
 };
 
 export { View, ui };
