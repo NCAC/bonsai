@@ -35,7 +35,7 @@ import {
   describeComponent,
   type TComponentSpec,
   type TUnitContext
-} from "@bonsai/event";
+} from "@bonsai/kernel";
 import type {
   TFeatureRefForNS,
   TFlatQueries,

@@ -1,0 +1,24 @@
+{
+  "name": "@bonsai/kernel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Execution kernel of Bonsai — validation units, deferred delivery, Queries, parts and host effects (theory §13, annex C)",
+  "type": "module",
+  "author": {
+    "name": "NCAC",
+    "email": "dev.ncac@gmail.com"
+  },
+  "main": "./src/bonsai-kernel.ts",
+  "types": "./src/bonsai-kernel.ts",
+  "exports": {
+    ".": {
+      "types": "./src/bonsai-kernel.ts",
+      "default": "./src/bonsai-kernel.ts"
+    }
+  },
+  "src": "./src/bonsai-kernel.ts",
+  "dependencies": {
+    "@bonsai/types": "workspace:^",
+    "@bonsai/immer": "workspace:^"
+  }
+}

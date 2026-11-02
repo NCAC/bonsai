@@ -43,7 +43,7 @@
  */
 
 import { describe, it } from "@jest/globals";
-import { type TChannelToken, type TChannelDefinition } from "@bonsai/event";
+import { type TChannelToken, type TChannelDefinition } from "@bonsai/kernel";
 import type { TFeatureContract } from "@bonsai/feature";
 import {
   View,

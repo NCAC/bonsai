@@ -16,7 +16,7 @@
  */
 
 import { Entity } from "@bonsai/entity";
-import { type TChannelToken } from "@bonsai/event";
+import { type TChannelToken } from "@bonsai/kernel";
 import {
   Feature,
   type TFeatureContract,

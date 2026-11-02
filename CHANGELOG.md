@@ -21,6 +21,7 @@ Depuis le tag `v0.1.0-strate-0` (l'historique complet est dans `git log`).
 
 ### Changed
 
+- **`@bonsai/event` renommé `@bonsai/kernel`** : le package ne contient plus que le noyau d'exécution (`Root`) et les types de contrat des Channels depuis le retrait de `Channel` et `Radio` (lot M6.3b) ; ADR-28 mis à jour
 - JSDoc et commentaires de `packages/` et `core/` traduits en anglais (ADR-34)
 - Documentation alignée sur le code livré : les écarts connus sont consignés dans la ligne **Livré** de chaque ADR
 

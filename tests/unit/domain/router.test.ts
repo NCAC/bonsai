@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from "@jest/globals";
 import { Application } from "@bonsai/application";
 import { HistoryAdapter, parseLocation, serializeRoute, canonicalLocation, type TRoute } from "@bonsai/router";
-import type { TComponentHandle } from "@bonsai/event";
+import type { TComponentHandle } from "@bonsai/kernel";
 import { drive, type TDrive } from "../../helpers/drive";
 import { until } from "../../helpers/dom-setup";
 

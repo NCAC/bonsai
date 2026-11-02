@@ -151,7 +151,7 @@ foundation/ → @bonsai/foundation
 composer/ → @bonsai/composer
 view/ → @bonsai/view
 behavior/ → @bonsai/behavior
-event/ → @bonsai/event (réécriture complète — marionext abandonné)
+kernel/ → @bonsai/kernel (réécriture complète — marionext abandonné)
 types/ → @bonsai/types
 rxjs/ → @bonsai/rxjs (wrapper — imports nommés pour tree-shaking)
 valibot/ → @bonsai/valibot (wrapper — Tier 1, exporté publiquement comme namespace Valibot)
@@ -279,7 +279,7 @@ Le code custom existait parce que `rollup-plugin-dts` ne fonctionnait pas pour l
 3. **Phase 2 — Validation** : tests Vitest, intégration VC1–VC8 en CI, mise à jour documentation
 4. **Phase 3 — Propagation** : renommer `VALIBOT` → `Valibot`, créer `TDraft<T>`, MAJ ADR-11
 
-- **Code legacy** : `packages/event/src/` actuel = héritage marionext, nul et non avenu (ADR-28)
+- **Code legacy** : `packages/kernel/src/` actuel = héritage marionext, nul et non avenu (ADR-28)
 
 ### Impact d'ADR-28 + ADR-29 sur le build
 
@@ -290,7 +290,7 @@ Le code custom existait parce que `rollup-plugin-dts` ne fonctionnait pas pour l
 | `Builder` | Bundling DTS custom (5 893 lignes) | 2 passes Rollup (JS + DTS via `rollup-plugin-dts`) |
 | `external` Rollup (framework) | N/A | `[]` — tout inliné (valibot, immer, rxjs) |
 | Artefact framework | Variable | `bonsai.esm.js` + `bonsai.d.ts` (ESM, autonome) |
-| `jest.config.ts` moduleNameMapper | `@bonsai/event`, `@bonsai/types` | +8 entries (un par composant) |
+| `jest.config.ts` moduleNameMapper | `@bonsai/kernel`, `@bonsai/types` | +8 entries (un par composant) |
 | Bundle DTS | Custom ts-morph + regex | `rollup-plugin-dts` → `bonsai.d.ts` (zéro import tiers/interne) |
 
 ### ADRs directement applicables au build

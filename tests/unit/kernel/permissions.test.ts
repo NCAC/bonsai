@@ -17,7 +17,7 @@ import {
   type TComponentSpec,
   type TCorrelationToken,
   type TResourceHandle
-} from "../../../packages/event/src/kernel";
+} from "../../../packages/kernel/src/kernel";
 
 beforeEach(() => {
   document.body.innerHTML = `<div id="app"></div>`;

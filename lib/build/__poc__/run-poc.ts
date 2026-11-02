@@ -147,8 +147,8 @@ async function main() {
               "@bonsai/valibot": [
                 "./lib/build/__poc__/out/packages/valibot/src/valibot"
               ],
-              "@bonsai/event": [
-                "./lib/build/__poc__/out/packages/event/src/bonsai-event"
+              "@bonsai/kernel": [
+                "./lib/build/__poc__/out/packages/kernel/src/bonsai-kernel"
               ]
             }
           },

@@ -13,7 +13,7 @@ import type {
   TComponentHandle,
   TManifestEntry,
   TTraceEntry
-} from "@bonsai/event";
+} from "@bonsai/kernel";
 
 export type TDrive = {
   readonly application: Application;

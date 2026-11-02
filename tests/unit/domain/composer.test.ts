@@ -9,7 +9,7 @@ import { drive } from "../../helpers/drive";
 import { resetDOM } from "../../helpers/dom-setup";
 import { Entity } from "@bonsai/entity";
 import { Feature, type TFeatureCallbacks, type TFeatureContext } from "@bonsai/feature";
-import type { TChannelToken } from "@bonsai/event";
+import type { TChannelToken } from "@bonsai/kernel";
 import { Composer, type TComposerContract, type TComposeContext, type TComposition } from "@bonsai/composer";
 import { Foundation } from "@bonsai/foundation";
 import { View, type TViewContract } from "@bonsai/view";

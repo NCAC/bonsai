@@ -17,7 +17,7 @@ import { describe, it, expect, beforeEach } from "@jest/globals";
 import { Application } from "@bonsai/application";
 import { Feature, BonsaiNamespaceError, type TFeatureContext } from "@bonsai/feature";
 import { Entity } from "@bonsai/entity";
-import { ManifestError, StartupError, type TChannelDefinition, type TChannelToken } from "@bonsai/event";
+import { ManifestError, StartupError, type TChannelDefinition, type TChannelToken } from "@bonsai/kernel";
 
 // ─── Fixtures ──────────────────────────────────────────────────────────────
 

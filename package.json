@@ -46,7 +46,7 @@
     "@bonsai/core": "workspace:^",
     "@bonsai/entity": "workspace:^",
     "@bonsai/error": "workspace:^",
-    "@bonsai/event": "workspace:^",
+    "@bonsai/kernel": "workspace:^",
     "@bonsai/feature": "workspace:^",
     "@bonsai/foundation": "workspace:^",
     "@bonsai/router": "workspace:^",

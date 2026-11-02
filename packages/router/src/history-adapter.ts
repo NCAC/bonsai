@@ -43,7 +43,7 @@ import {
   type TComponentSpec,
   type TCorrelationToken,
   type TUnitContext
-} from "@bonsai/event";
+} from "@bonsai/kernel";
 import { canonicalLocation, parseLocation, serializeRoute, type TNavigationMode, type TRoute } from "./location";
 
 /** What the adapter has integrated about the address (C.5). */

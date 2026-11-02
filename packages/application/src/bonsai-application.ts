@@ -46,7 +46,7 @@ import {
   type TChannelDefinition,
   type TChannelToken,
   type TManifestEntry
-} from "@bonsai/event";
+} from "@bonsai/kernel";
 import {
   Feature,
   BonsaiNamespaceError,

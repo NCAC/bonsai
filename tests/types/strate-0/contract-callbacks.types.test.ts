@@ -16,7 +16,7 @@
  */
 
 import { describe, it } from "@jest/globals";
-import type { TChannelToken } from "@bonsai/event";
+import type { TChannelToken } from "@bonsai/kernel";
 import type { TFeatureCallbacks, TFeatureContract } from "@bonsai/feature";
 import {
   ui,

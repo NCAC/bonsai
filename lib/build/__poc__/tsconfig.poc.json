@@ -16,7 +16,7 @@
       "@bonsai/rxjs": ["./packages/rxjs/src/rxjs"],
       "@bonsai/immer": ["./packages/immer/src/immer"],
       "@bonsai/valibot": ["./packages/valibot/src/valibot"],
-      "@bonsai/event": ["./packages/event/src/bonsai-event"]
+      "@bonsai/kernel": ["./packages/kernel/src/bonsai-kernel"]
     }
   },
   "include": [
@@ -24,6 +24,6 @@
     "../../../packages/rxjs/src/**/*.ts",
     "../../../packages/immer/src/**/*.ts",
     "../../../packages/valibot/src/**/*.ts",
-    "../../../packages/event/src/**/*.ts"
+    "../../../packages/kernel/src/**/*.ts"
   ]
 }

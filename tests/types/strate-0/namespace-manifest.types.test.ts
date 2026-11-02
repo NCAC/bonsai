@@ -21,7 +21,7 @@
 
 import { describe, it } from "@jest/globals";
 import { Entity } from "@bonsai/entity";
-import { type TChannelDefinition, type TChannelToken } from "@bonsai/event";
+import { type TChannelDefinition, type TChannelToken } from "@bonsai/kernel";
 import {
   Feature,
   type StrictManifest,

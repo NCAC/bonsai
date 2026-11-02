@@ -19,7 +19,7 @@
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { Feature, type TFeatureContext, type TFeatureQueryContext } from "@bonsai/feature";
 import { Entity, type TEntityEvent } from "@bonsai/entity";
-import type { TChannelToken } from "@bonsai/event";
+import type { TChannelToken } from "@bonsai/kernel";
 import { drive } from "../../helpers/drive";
 
 // ─── Fixtures ──────────────────────────────────────────────────────────────

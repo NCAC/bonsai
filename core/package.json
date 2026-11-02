@@ -10,7 +10,7 @@
     "@bonsai/types": "workspace:^",
     "@bonsai/rxjs": "workspace:^",
     "@bonsai/valibot": "workspace:^",
-    "@bonsai/event": "workspace:^",
+    "@bonsai/kernel": "workspace:^",
     "@bonsai/immer": "workspace:^"
   }
 }

@@ -13,7 +13,7 @@ import {
   type TCausalContext,
   type TComponentHandle,
   type TUnitContext
-} from "../../../packages/event/src/kernel";
+} from "../../../packages/kernel/src/kernel";
 
 /** Starts a root and returns handles created by `build`. */
 function boot<T>(build: (ctx: TUnitContext) => T, causalBound = 50): { root: Root; handles: T } {

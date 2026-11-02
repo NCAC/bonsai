@@ -1,8 +1,8 @@
 /**
- * @bonsai/event — communication kernel of the Bonsai framework.
+ * @bonsai/kernel — execution kernel of the Bonsai framework.
  *
  * Exports:
- * - `Root` and the kernel types: the communication kernel (theory §13, annex C)
+ * - `Root` and the kernel types: the execution kernel (theory §13, annex C)
  * - Channel contract types: `TChannelDefinition`, `TChannelToken`, `TTokenDef`, `TAnyEventPayload`
  *
  * @packageDocumentation
@@ -15,7 +15,7 @@ export type {
   TAnyEventPayload
 } from "./channel-types";
 
-// ── Communication kernel (migration lot M6) ──────────────────────────────────
+// ── Execution kernel (migration lot M6) ──────────────────────────────────
 export {
   Root,
   capture,

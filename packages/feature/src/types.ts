@@ -37,7 +37,7 @@
  */
 
 import type { Entity, TEntityState, TJsonSerializable, TEntityEvent, TEntityRecipe, TMutationParams } from "@bonsai/entity";
-import type { TChannelDefinition, TChannelToken } from "@bonsai/event";
+import type { TChannelDefinition, TChannelToken } from "@bonsai/kernel";
 import type { CamelCase, UnionToIntersection } from "@bonsai/types";
 import type { Feature } from "./bonsai-feature";
 

@@ -173,7 +173,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 **Viole** : I14, I15, I16
 
-**Détection** : `[Compile]` — `Radio` n'est pas exporté par `@bonsai/core`, seule surface applicative : `import { Radio } from "@bonsai/core"` produit `TS2305` (« Module '"@bonsai/core"' has no exported member 'Radio' »). `@bonsai/event` l'exporte pour l'usage inter-packages du framework ; l'importer depuis du code applicatif viole la convention d'import (cf. [distribution.md §4](../2-architecture/distribution.md#4-topologie-des-packages-adr-28)) — `[Code review]`. Preuve : `tests/types/strate-0/encapsulation.types.test.ts`.
+**Détection** : `[Compile]` — `Radio` n'est pas exporté par `@bonsai/core`, seule surface applicative : `import { Radio } from "@bonsai/core"` produit `TS2305` (« Module '"@bonsai/core"' has no exported member 'Radio' »). `Radio` n'existe plus depuis le lot M6.3b ; son successeur, `Root`, est exporté par `@bonsai/kernel` pour l'usage inter-packages du framework, et l'importer depuis du code applicatif viole la convention d'import (cf. [distribution.md §4](../2-architecture/distribution.md#4-topologie-des-packages-adr-28)) — `[Code review]`. Preuve : `tests/types/strate-0/encapsulation.types.test.ts`.
 
 **Alternative** : Déclarer les Channels externes dans `get listens()`/`get queries()` (Feature, ADR-09) ou dans `get features()` (View/Behavior, ADR-14).
 

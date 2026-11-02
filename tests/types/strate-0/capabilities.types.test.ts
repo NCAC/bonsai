@@ -23,7 +23,7 @@ import { describe, it } from "@jest/globals";
 import type { Application } from "@bonsai/application";
 import type { Composer } from "@bonsai/composer";
 import { Entity } from "@bonsai/entity";
-import { type TChannelToken } from "@bonsai/event";
+import { type TChannelToken } from "@bonsai/kernel";
 import { Feature, type TFeatureContext } from "@bonsai/feature";
 import type { Foundation } from "@bonsai/foundation";
 import type { View } from "@bonsai/view";

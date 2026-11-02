@@ -31,7 +31,7 @@ La plupart des frameworks frontend te _laissent_ structurer une app. Bonsai te *
 | `@bonsai/composer` | 🟢 Stable | 96 % |
 | `@bonsai/foundation` | 🟢 Stable | 89 % |
 | `@bonsai/application` | 🟢 Stable | 100 % |
-| `@bonsai/event` (Channel/Radio) | 🟢 Stable | 94 % |
+| `@bonsai/kernel` (noyau d'exécution) | 🟢 Stable | 94 % |
 | `@bonsai/behavior` | ⏳ Absent (strate 2) | — |
 
 **Gate E2E** vert : un cart round-trip complet (click → trigger → handle → mutate → emit → DOM) traverse les six composants sans aucun mock. Voir [`tests/e2e/strate-0.cart-round-trip.test.ts`](tests/e2e/strate-0.cart-round-trip.test.ts).

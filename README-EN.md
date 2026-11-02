@@ -33,7 +33,7 @@ Most frontend frameworks let you _structure_ an app. Bonsai **forces** you to st
 | `@bonsai/composer` | 🟢 Stable | 96 % |
 | `@bonsai/foundation` | 🟢 Stable | 89 % |
 | `@bonsai/application` | 🟢 Stable | 100 % |
-| `@bonsai/event` (Channel/Radio) | 🟢 Stable | 94 % |
+| `@bonsai/kernel` (execution kernel) | 🟢 Stable | 94 % |
 | `@bonsai/behavior` | ⏳ Absent (strate 2) | — |
 
 **E2E gate** is green: a full cart round-trip (click → trigger → handle → mutate → emit → DOM) traverses the six components without a single mock. See [`tests/e2e/strate-0.cart-round-trip.test.ts`](tests/e2e/strate-0.cart-round-trip.test.ts).

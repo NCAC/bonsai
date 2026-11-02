@@ -15,7 +15,7 @@ import {
   type TComponentHandle,
   type TComponentSpec,
   type TResourceHandle
-} from "../../../packages/event/src/kernel";
+} from "../../../packages/kernel/src/kernel";
 
 const click = { kind: "independent" } as const;
 

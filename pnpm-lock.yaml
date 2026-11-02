@@ -23,9 +23,6 @@ importers:
       '@bonsai/error':
         specifier: workspace:^
         version: link:packages/error
-      '@bonsai/event':
-        specifier: workspace:^
-        version: link:packages/event
       '@bonsai/feature':
         specifier: workspace:^
         version: link:packages/feature
@@ -35,6 +32,9 @@ importers:
       '@bonsai/immer':
         specifier: workspace:^
         version: link:packages/immer
+      '@bonsai/kernel':
+        specifier: workspace:^
+        version: link:packages/kernel
       '@bonsai/router':
         specifier: workspace:^
         version: link:packages/router
@@ -180,12 +180,12 @@ importers:
 
   core:
     dependencies:
-      '@bonsai/event':
-        specifier: workspace:^
-        version: link:../packages/event
       '@bonsai/immer':
         specifier: workspace:^
         version: link:../packages/immer
+      '@bonsai/kernel':
+        specifier: workspace:^
+        version: link:../packages/kernel
       '@bonsai/rxjs':
         specifier: workspace:^
         version: link:../packages/rxjs
@@ -198,15 +198,15 @@ importers:
 
   packages/application:
     dependencies:
-      '@bonsai/event':
-        specifier: workspace:^
-        version: link:../event
       '@bonsai/feature':
         specifier: workspace:^
         version: link:../feature
       '@bonsai/foundation':
         specifier: workspace:^
         version: link:../foundation
+      '@bonsai/kernel':
+        specifier: workspace:^
+        version: link:../kernel
       '@bonsai/router':
         specifier: workspace:^
         version: link:../router
@@ -232,15 +232,6 @@ importers:
         specifier: workspace:^
         version: link:../types
 
-  packages/event:
-    dependencies:
-      '@bonsai/immer':
-        specifier: workspace:^
-        version: link:../immer
-      '@bonsai/types':
-        specifier: workspace:^
-        version: link:../types
-
   packages/feature:
     dependencies:
       '@bonsai/entity':
@@ -249,9 +240,9 @@ importers:
       '@bonsai/error':
         specifier: workspace:^
         version: link:../error
-      '@bonsai/event':
+      '@bonsai/kernel':
         specifier: workspace:^
-        version: link:../event
+        version: link:../kernel
       '@bonsai/types':
         specifier: workspace:^
         version: link:../types
@@ -268,17 +259,26 @@ importers:
         specifier: ^11.1.4
         version: 11.1.4
 
+  packages/kernel:
+    dependencies:
+      '@bonsai/immer':
+        specifier: workspace:^
+        version: link:../immer
+      '@bonsai/types':
+        specifier: workspace:^
+        version: link:../types
+
   packages/router:
     dependencies:
       '@bonsai/entity':
         specifier: workspace:^
         version: link:../entity
-      '@bonsai/event':
-        specifier: workspace:^
-        version: link:../event
       '@bonsai/feature':
         specifier: workspace:^
         version: link:../feature
+      '@bonsai/kernel':
+        specifier: workspace:^
+        version: link:../kernel
 
   packages/rxjs: {}
 
@@ -288,9 +288,9 @@ importers:
 
   packages/view:
     dependencies:
-      '@bonsai/event':
+      '@bonsai/kernel':
         specifier: workspace:^
-        version: link:../event
+        version: link:../kernel
 
 packages:
 

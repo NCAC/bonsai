@@ -114,7 +114,7 @@ Le Channel est **minimal** : seule la soumission est un Command. Aucun message p
 
 ```typescript
 import { Feature, type TFeatureCallbacks } from "@bonsai/feature";
-import { type TChannelToken } from "@bonsai/event";
+import { type TChannelToken } from "@bonsai/kernel";
 import { Entity } from "@bonsai/entity";
 
 // ─── Contrat Channel (ADR-14) ──────────────────────────────────────────────

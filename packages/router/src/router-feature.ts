@@ -18,7 +18,7 @@
  */
 
 import { Entity } from "@bonsai/entity";
-import type { TChannelToken } from "@bonsai/event";
+import type { TChannelToken } from "@bonsai/kernel";
 import { Feature, type TFeatureCallbacks, type TFeatureContext, type TFeatureQueryContext } from "@bonsai/feature";
 import { parseLocation, type TNavigationMode, type TRoute } from "./location";
 

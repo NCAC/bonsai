@@ -91,13 +91,13 @@ dans les `package.json` :
 ```text
 @bonsai/types      @bonsai/immer    @bonsai/rxjs    @bonsai/valibot   (feuilles)
 @bonsai/error      → types
-@bonsai/event      → types, error, rxjs
+@bonsai/kernel     → types, immer      (noyau d'exécution, hors composants)
 @bonsai/entity     → error, immer
-@bonsai/feature    → entity, error, event, types
-@bonsai/view       → event
+@bonsai/feature    → entity, error, kernel, types
+@bonsai/view       → kernel
 @bonsai/composer   → view
 @bonsai/foundation → composer
-@bonsai/application→ event, feature, foundation
+@bonsai/application→ kernel, feature, foundation
 @bonsai/core       → barrel : ré-exporte les packages publics
 ```
 
@@ -129,7 +129,7 @@ import { Entity } from "@bonsai/entity";
 // ✅ Import depuis le package du composant — dépendance explicite
 import { Entity } from "@bonsai/entity";
 import { Feature } from "@bonsai/feature";
-import { Root } from "@bonsai/event"; // noyau (Channel et Radio sont retirés)
+import { Root } from "@bonsai/kernel"; // noyau d'exécution
 
 // ❌ Interdit — crée des dépendances circulaires et masque le DAG
 import { Entity } from "@bonsai/core";

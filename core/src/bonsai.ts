@@ -68,7 +68,7 @@ export type {
 
 // @bonsai/rxjs — Tier 3 opaque (ADR-29)
 // RxJS types are wrapped in the `RXJS` namespace and are not part of the
-// documented public API. They are re-exported because @bonsai/event types
+// documented public API. They are re-exported because @bonsai/kernel types
 // (ThisMapEvents, etc.) reference RXJS.Subject<T>.
 export * from "@bonsai/rxjs";
 
@@ -80,15 +80,15 @@ export * from "@bonsai/valibot";
 // Its types (Draft, Patch, etc.) are wrapped in the `Immer` namespace.
 export * from "@bonsai/immer";
 
-// @bonsai/event — contract types only. The communication kernel (`Root`) stays
-// internal to the framework (I15, I80): exported by `@bonsai/event` for
+// @bonsai/kernel — contract types only. The communication kernel (`Root`) stays
+// internal to the framework (I15, I80): exported by `@bonsai/kernel` for
 // cross-package use, never re-exported in the application-facing surface.
 export type {
   TChannelDefinition,
   TChannelToken,
   TTokenDef,
   TAnyEventPayload
-} from "@bonsai/event";
+} from "@bonsai/kernel";
 
 // @bonsai/feature — Feature base class, BonsaiNamespaceError, TFeatureContract, etc.
 export * from "@bonsai/feature";

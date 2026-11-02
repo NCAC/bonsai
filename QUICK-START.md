@@ -63,7 +63,7 @@ Extrait de la fixture de la gate E2E
 
 ```ts
 import { Entity } from "@bonsai/entity";           // ⚠️ @bonsai/core ne ré-exporte pas encore Entity (ADR-28)
-import { type TChannelToken } from "@bonsai/event";
+import { type TChannelToken } from "@bonsai/kernel";
 import { Feature, type TFeatureCallbacks } from "@bonsai/feature";
 
 type TCartState = { items: TCartItem[]; total: number };

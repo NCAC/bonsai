@@ -20,7 +20,7 @@ import type {
   TCommandCallbacks,
   TQueryCallbacks
 } from "@bonsai/feature";
-import type { TChannelToken } from "@bonsai/event";
+import type { TChannelToken } from "@bonsai/kernel";
 
 // ─── ChannelDef concrets ──────────────────────────────────────────────────
 

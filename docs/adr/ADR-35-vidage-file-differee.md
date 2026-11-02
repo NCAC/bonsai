@@ -3,7 +3,7 @@
 | Champ | Valeur |
 | --- | --- |
 | **Statut** | 🟢 Accepted — 1er novembre 2026 |
-| **Livré** | ⚠️ prototype du noyau (`packages/event/src/kernel/`, branche `feature/noyau-m1`) : vidage synchrone et mesure des durées ; non branché sur les classes de base |
+| **Livré** | ⚠️ prototype du noyau (`packages/kernel/src/kernel/`, branche `feature/noyau-m1`) : vidage synchrone et mesure des durées ; non branché sur les classes de base |
 | **Spec** | [Théorie](../theorie.md) G5, G7, D8, D9, O1, O2, C.3 ; [rapport du prototype M1](../rapports/prototype-noyau-M1-2026-10-31.md), point R3 |
 
 ## Contexte

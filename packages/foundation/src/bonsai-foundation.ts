@@ -27,7 +27,7 @@ import {
   DESCRIBE,
   describeComponent,
   type TComponentSpec
-} from "@bonsai/event";
+} from "@bonsai/kernel";
 import type { TComposerClass } from "@bonsai/composer";
 
 // ─── Types ───────────────────────────────────────────────────────────────────

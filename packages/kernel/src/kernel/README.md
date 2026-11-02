@@ -1,10 +1,10 @@
-# Kernel prototype (migration lot M1)
+# Execution kernel
 
-Prototype of the communication kernel required by the theory
-([docs/theorie.md](../../../../docs/theorie.md), §13 and annex C). It lives
-beside the legacy `Channel` and `Radio` (still used by the concrete layers until
-lot M6.2) and is exported by `@bonsai/event`: the domain layer (`Feature`,
-`Entity`, `Application`) runs on it since lot M6.1.
+Execution kernel required by the theory
+([docs/theorie.md](../../../../docs/theorie.md), §13 and annex C), exported by
+`@bonsai/kernel`. Started as the prototype of migration lot M1; the domain layer
+(`Feature`, `Entity`, `Application`) runs on it since lot M6.1, the concrete
+layers since M6.2, and the legacy `Channel` and `Radio` were removed in M6.3b.
 
 | File | Content |
 | --- | --- |

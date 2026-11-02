@@ -209,7 +209,7 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 
 ### README
 
-- Chaque package doit avoir son propre README.md (⚠️ aujourd'hui seuls `@bonsai/event` et `@bonsai/types` en ont un)
+- Chaque package doit avoir son propre README.md (⚠️ aujourd'hui seuls `@bonsai/kernel` et `@bonsai/types` en ont un)
 - Inclure une brève description, les fonctionnalités, l'installation et l'utilisation
 - Fournir des exemples de code pour les API principales
 

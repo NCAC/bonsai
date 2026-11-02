@@ -51,7 +51,7 @@ import {
   describeComponent,
   type TComponentSpec,
   type TUnitContext
-} from "@bonsai/event";
+} from "@bonsai/kernel";
 import { type UnionToIntersection } from "@bonsai/types";
 import type {
   TFeatureContract,

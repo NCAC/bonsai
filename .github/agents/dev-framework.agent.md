@@ -77,7 +77,7 @@ Je suis votre assistant spécialisé pour le développement du **Framework Bonsa
 - **Scope v1 gelé** (ADR-31) : strates 0+1+2 complètes, hors VirtualizedList/FormBehavior/ESM BonsaiRegistry
 - **Topologie monorepo** : 1 package par composant (ADR-28) — `@bonsai/core` barrel + packages individuels
 - **Tests** : Structure `tests/unit/strate-{0,1,2}/` + `tests/e2e/` — preuve d'architecture (ADR-32)
-- **Code legacy** : `packages/event/src/` actuel = héritage marionext, nul et non avenu (ADR-28)
+- **Code legacy** : `packages/kernel/src/` actuel = héritage marionext, nul et non avenu (ADR-28)
 
 ### Topologie des packages (ADR-28 — Option D retenue)
 
@@ -92,7 +92,7 @@ Je suis votre assistant spécialisé pour le développement du **Framework Bonsa
 - `@bonsai/composer` : Décideur de composition, `resolve(event)`, N-instances (ADR-18)
 - `@bonsai/view` : PDR, UIMap typée, localState (ADR-17)
 - `@bonsai/behavior` : Plugin UI réutilisable, handlers auto-dérivés (ADR-14)
-- `@bonsai/event` : Channel tri-lane, Radio singleton (réécriture complète — marionext abandonné)
+- `@bonsai/kernel` : Channel tri-lane, Radio singleton (réécriture complète — marionext abandonné)
 - `@bonsai/types` : Types utilitaires TypeScript avancés
 - `@bonsai/rxjs` / `@bonsai/remeda` / `@bonsai/zod` : Intégrations tierces (hors scope v1)
 
@@ -174,7 +174,7 @@ Je suis votre assistant spécialisé pour le développement du **Framework Bonsa
 ### Code source principal
 - `/core/src/bonsai.ts` — Barrel `@bonsai/core` (ré-export de tous les composants)
 - `/packages/application/`, `/packages/feature/`, `/packages/entity/`, etc. — 1 package par composant (ADR-28)
-- `/packages/event/src/` — Channel tri-lane + Radio (réécriture — marionext abandonné)
+- `/packages/kernel/src/` — Channel tri-lane + Radio (réécriture — marionext abandonné)
 - `/lib/build/` — Pipeline de build (orchestration, bundling, cache, plugins Rollup)
 - `/tests/unit/strate-{0,1,2}/` + `/tests/e2e/` — Suite preuve d'architecture (ADR-32)
 

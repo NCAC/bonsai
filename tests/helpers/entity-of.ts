@@ -7,7 +7,7 @@
  */
 
 import type { Entity, TJsonSerializable } from "@bonsai/entity";
-import type { TChannelDefinition } from "@bonsai/event";
+import type { TChannelDefinition } from "@bonsai/kernel";
 import type { Feature } from "@bonsai/feature";
 
 export function entityOf<TEntity extends Entity<TJsonSerializable>>(

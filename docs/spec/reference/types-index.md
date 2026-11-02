@@ -49,7 +49,7 @@
 
 | Type | Definition | État | Source |
 | --- | --- | --- | --- |
-| `Channel<TDef>` | 🗑️ Classe retirée (lot M6.3b). Types conservés : `TChannelDefinition`, `TChannelToken`, `TTokenDef`, `TAnyEventPayload` (`packages/event/src/channel-types.ts`). | 🗑️ | [communication.md](../2-architecture/communication.md) |
+| `Channel<TDef>` | 🗑️ Classe retirée (lot M6.3b). Types conservés : `TChannelDefinition`, `TChannelToken`, `TTokenDef`, `TAnyEventPayload` (`packages/kernel/src/channel-types.ts`). | 🗑️ | [communication.md](../2-architecture/communication.md) |
 | `TChannelToken<TDef, NS>` | Token discriminant `{ namespace: NS }` typé par `TDef`. Exposé par `Feature.channel` static (ADR-14). C'est l'unique pont entre la classe Feature et son contrat de communication | ✅ | [feature.md](../3-couche-abstraite/feature.md), [communication.md](../2-architecture/communication.md) |
 | `TCommandCallbacks<TDef>` / `TRequestCallbacks<TDef>` / `TListenCallbacks<TListens>` | Composants de `TFeatureCallbacks` (ADR-09) — absents de cet index jusqu'à cette correction | ✅ | [feature.md](../3-couche-abstraite/feature.md) |
 | `TFeatureCallbacks<TDef, TListens>` | Clause `implements` unique d'une Feature (ADR-09, I92) : `TCommandCallbacks<TDef> & TRequestCallbacks<TDef> & TListenCallbacks<TListens>`. Handler manquant → `TS2515` ; signature fautive → `TS2416` | ✅ | [feature.md](../3-couche-abstraite/feature.md) |
@@ -143,7 +143,7 @@
 | --- | --- | --- | --- |
 | `Application` | Classe orchestrant le bootstrap — `new Application({ foundation, features })` | ✅ | [application.md](../3-couche-abstraite/application.md) |
 | `Foundation` | Classe abstraite, point d'ancrage unique sur `<body>` | ✅ | [foundation.md](../4-couche-concrete/foundation.md) |
-| `Radio` | Singleton interne de câblage des Channels — exporté par `@bonsai/event`, **non** par `@bonsai/core` (I15, I80) | ✅ | [communication.md](../2-architecture/communication.md) |
+| `Radio` | 🗑️ Singleton retiré (lot M6.3b) : les messages passent par `Root` (`@bonsai/kernel`), jamais exporté par `@bonsai/core` (I15, I80) | 🗑️ | [communication.md](../2-architecture/communication.md) |
 | `BonsaiError` et sa hiérarchie (`MutationError`, `EntityReentrancyError`, `CommandError`, `RequestError`, `BroadcastError`, `ListenerError`, `NoHandlerError`, `DuplicateHandlerError`, `RenderError`, `BehaviorError`) | Classe de base concrète (pas abstraite) : `(message, invariantId, component?, suggestion?)`. 10 sous-classes — certaines jamais levées (`CommandError`, `RequestError`, `RenderError`, `BehaviorError`), cf. [feature.md §8.4](../3-couche-abstraite/feature.md#84-modèle-derreurs--hiérarchie-bonsaierror) pour le détail | ✅ (type) — usage réel variable par sous-classe | `@bonsai/error` |
 | `invariant` / `hardInvariant` / `warning` | Fonctions de validation runtime — `(condition, message, invariantId?, component?)` pour les deux premières, `(condition, message)` pour `warning` | ✅ | `@bonsai/error` |
 | `BonsaiNamespaceError` / `TBonsaiNamespaceErrorCode` | Erreur de bootstrap à code stable (`NAMESPACE_INVALID_FORMAT`, `NAMESPACE_RESERVED`, `NAMESPACE_UNKNOWN_REFERENCE`, `FEATURE_MISSING_CHANNEL`, `FEATURE_CHANNEL_NAMESPACE_MISMATCH` ; `NAMESPACE_DUPLICATE` déclaré mais jamais levé). Étend `Error`, **pas** `BonsaiError` | ✅ | [reference/invariants.md](invariants.md) |

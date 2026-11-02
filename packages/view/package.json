@@ -13,6 +13,6 @@
   },
   "src": "./src/bonsai-view.ts",
   "dependencies": {
-    "@bonsai/event": "workspace:^"
+    "@bonsai/kernel": "workspace:^"
   }
 }

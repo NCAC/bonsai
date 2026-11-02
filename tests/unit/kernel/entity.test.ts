@@ -14,7 +14,7 @@ import {
   type TComponentHandle,
   type TEntityDefinition,
   type TManifestEntry
-} from "../../../packages/event/src/kernel";
+} from "../../../packages/kernel/src/kernel";
 
 type TCart = { lines: number[]; total: number };
 

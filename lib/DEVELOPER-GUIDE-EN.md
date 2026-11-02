@@ -99,7 +99,7 @@ libraries:
 # Internal packages (sequential build)
 packages:
   - "@bonsai/types" # Utility types
-  - "@bonsai/event" # Event system
+  - "@bonsai/kernel" # Execution kernel
 ```
 
 **Order matters:** Packages are built in declaration order.
@@ -174,7 +174,7 @@ EOF
 packages:
   - "@bonsai/types"
   - "@bonsai/my-types" # New types package
-  - "@bonsai/event"
+  - "@bonsai/kernel"
   - "@bonsai/my-new-package" # New regular package
 ```
 
@@ -335,8 +335,8 @@ The system automatically displays:
 🔍 Analyzing packages...
 📝 Package @bonsai/types detected as types-only
 ⚡ Package @bonsai/rxjs is up to date (cache hit)
-🔨 Building package: @bonsai/event
-✅ Built @bonsai/event in 234ms
+🔨 Building package: @bonsai/kernel
+✅ Built @bonsai/kernel in 234ms
 🎯 Generating flat framework .d.ts bundle...
 🏁 Framework built successfully in 1.2s
 ```
@@ -389,7 +389,7 @@ head -20 core/dist/bonsai.d.ts
 
 - **Convention:** `@bonsai/package-name`
 - **Types:** Always plural (`@bonsai/types`)
-- **Features:** Descriptive name (`@bonsai/event`)
+- **Features:** Descriptive name (`@bonsai/kernel`)
 
 ### File Structure
 
@@ -410,4 +410,4 @@ packages/package-name/
 
 ---
 
-> 💡 **Tip:** Start with existing package examples (`@bonsai/types`, `@bonsai/event`) to understand established patterns.
+> 💡 **Tip:** Start with existing package examples (`@bonsai/types`, `@bonsai/kernel`) to understand established patterns.

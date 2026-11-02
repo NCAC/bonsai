@@ -39,7 +39,7 @@ const config: Config = {
     // ── Packages composants framework (ADR-28 Option D) ──
     "^@bonsai/entity$": "<rootDir>/packages/entity/src/bonsai-entity.ts",
     "^@bonsai/feature$": "<rootDir>/packages/feature/src/bonsai-feature.ts",
-    "^@bonsai/event$": "<rootDir>/packages/event/src/bonsai-event.ts",
+    "^@bonsai/kernel$": "<rootDir>/packages/kernel/src/bonsai-kernel.ts",
     "^@bonsai/error$": "<rootDir>/packages/error/src/bonsai-error.ts",
     "^@bonsai/view$": "<rootDir>/packages/view/src/bonsai-view.ts",
     "^@bonsai/composer$": "<rootDir>/packages/composer/src/bonsai-composer.ts",
@@ -123,7 +123,7 @@ const config: Config = {
       functions: 90
     },
     // ── Plomberie événementielle — exigence haute ──
-    "packages/event/src/**/*.ts": {
+    "packages/kernel/src/**/*.ts": {
       statements: 85,
       lines: 85,
       branches: 80,

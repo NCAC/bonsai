@@ -14,7 +14,7 @@
   "src": "./src/bonsai-router.ts",
   "dependencies": {
     "@bonsai/entity": "workspace:^",
-    "@bonsai/event": "workspace:^",
+    "@bonsai/kernel": "workspace:^",
     "@bonsai/feature": "workspace:^"
   }
 }

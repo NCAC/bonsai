@@ -43,7 +43,7 @@ libraries:
 # Packages internes (avec dépendances possibles)
 packages:
   - "@bonsai/types"
-  - "@bonsai/event"
+  - "@bonsai/kernel"
 ```
 
 ## Détection automatique des packages types-only

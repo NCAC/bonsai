@@ -68,7 +68,7 @@ import type {
   TManifestEntry,
   TReadContext,
   TUnitContext
-} from "@bonsai/event";
+} from "@bonsai/kernel";
 import { hardInvariant } from "@bonsai/error";
 import {
   assertValidNamespace,

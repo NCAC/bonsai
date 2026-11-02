@@ -26,7 +26,7 @@ import {
   type TFeatureQueryContext
 } from "@bonsai/feature";
 import { Entity } from "@bonsai/entity";
-import type { TChannelDefinition, TChannelToken } from "@bonsai/event";
+import type { TChannelDefinition, TChannelToken } from "@bonsai/kernel";
 import { drive } from "../../helpers/drive";
 
 // ─── Fixtures ──────────────────────────────────────────────────────────────

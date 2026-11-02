@@ -13,7 +13,7 @@
   },
   "src": "./src/bonsai-application.ts",
   "dependencies": {
-    "@bonsai/event": "workspace:^",
+    "@bonsai/kernel": "workspace:^",
     "@bonsai/feature": "workspace:^",
     "@bonsai/foundation": "workspace:^",
     "@bonsai/router": "workspace:^"
