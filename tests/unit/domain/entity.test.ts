@@ -5,8 +5,8 @@
  *   I6   — the state is reachable only inside a handler of the owning Feature
  *   I46  — the state is JSON-serialisable (compile-time, see tests/types)
  *   I51  — catch-all notification `onAnyEntityUpdated`
- *   I96  — per-key handlers in alphabetical order, then the catch-all;
- *          unknown key → startup error
+ *   I96  — per-key handlers in alphabetical order, then the catch-all
+ *   I53  — unknown key in on<Key>EntityUpdated → startup error (sub-case of I96)
  *   I97  — patches, inverse patches and changedKeys derive from the recipe
  *   A4.a — business invariants checked at the end of the unit, not before
  *   G5   — a notification is a deferred message, delivered after the unit
@@ -235,7 +235,7 @@ describe("Entity on the kernel — lot M6.1", () => {
       expect(d.ask<TState>("counter", "state", null).count).toBe(2);
     });
 
-    it("an unknown key in on<Key>EntityUpdated is refused before any unit runs (I96)", () => {
+    it("an unknown key in on<Key>EntityUpdated is refused before any unit runs (I53, I96)", () => {
       class Bad extends CounterFeature {
         onNothingEntityUpdated(): void { /* no such key */ }
       }

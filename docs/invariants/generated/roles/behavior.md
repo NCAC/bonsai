@@ -21,11 +21,11 @@ tests : `R` runtime · `T` type · `·` aucun.
   > Livré : primitives de projection View et montage Composer ; pas de contrôle complet des parts.
   > Non livré : exclusion des slots, Foundation configurable/bornée et imputation Behavior.
   > Lot 3 : spécialisations I33/I34/I45 alignées ; contrôles complets toujours non livrés.
-- `D` I80 — Les composants consommateurs déclarent leurs dépendances via des classes Feature dans `TFeatureContract`, jamais via un `TChannelToken` direct. ⟨type · ⚠️ · R T⟩
+- `D` I80 — Les composants consommateurs déclarent leurs dépendances via des classes Feature dans `TFeatureContract`, jamais via un `TChannelToken` direct. ⟨type · ⚠️ · T⟩
   > Livré pour la View (`TFeatureContract`) ; le Behavior n'existe pas encore (strate 2b).
-- `D` I81 — Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, au `mount()`. ⟨boot · ⚠️ · R⟩
+- `D` I81 — Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, au `mount()`. ⟨boot · ⚠️ · ·⟩
   > Livré pour la View (`mount()`) ; le Behavior n'existe pas encore (strate 2b).
-- `C` I87 — La clé d'un `TFeatureContract` est le namespace de la Feature référencée. ⟨type · ⚠️ · R T⟩
+- `C` I87 — La clé d'un `TFeatureContract` est le namespace de la Feature référencée. ⟨type · ⚠️ · T⟩
 - `E` I99 — La Foundation opère dans son élément admis, le Composer dans le contenu du slot attribué et la View dans sa part attribuée ; chacun exclut les portions attribuées à ses enfants. Le Behavior agit dans la part de sa View, sans part autonome. ⟨run · ⚠️ · ·⟩
   > V0.9.4 : A2, §16.4–§16.7 ; l'admission Foundation n'est pas une attribution par un parent DOM.
   > Livré : montage et résolution locaux partiels ; aucun contrôle complet des parts et de leur durée.
@@ -44,7 +44,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 ### P2 — Dépendances déclarées
 
-- `D` I80 — Les composants consommateurs déclarent leurs dépendances via des classes Feature dans `TFeatureContract`, jamais via un `TChannelToken` direct. ⟨type · ⚠️ · R T⟩
+- `D` I80 — Les composants consommateurs déclarent leurs dépendances via des classes Feature dans `TFeatureContract`, jamais via un `TChannelToken` direct. ⟨type · ⚠️ · T⟩
 
 ### P3 — Sémantique des trois voies
 
@@ -64,11 +64,11 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 ### P8 — Identités et déclarations par racine
 
-- `C` I87 — La clé d'un `TFeatureContract` est le namespace de la Feature référencée. ⟨type · ⚠️ · R T⟩
+- `C` I87 — La clé d'un `TFeatureContract` est le namespace de la Feature référencée. ⟨type · ⚠️ · T⟩
 
 ### P9 — Garantie au plus tôt
 
-- `D` I81 — Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, au `mount()`. ⟨boot · ⚠️ · R⟩
+- `D` I81 — Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, au `mount()`. ⟨boot · ⚠️ · ·⟩
 - `D` I83 — Tous les composants consommateurs composent leur contrat selon le même pattern modulaire (`TFeatureContract`, `TUIContract`, `TUIElements`). ⟨revue · 📐 · R⟩
 
 ## Règles transversales

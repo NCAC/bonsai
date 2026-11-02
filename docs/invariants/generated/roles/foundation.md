@@ -13,11 +13,11 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 ## Écarts
 
-- `C` I20 — Une View n'est enfant que d'un Composer ; la Foundation et les Views ne sont parents que de Composers. Le parent est seul propriétaire de l'existence de ses enfants et leur destruction entraîne celle de leurs descendants. ⟨run · ⚠️ · R⟩
+- `C` I20 — Une View n'est enfant que d'un Composer ; la Foundation et les Views ne sont parents que de Composers. Le parent est seul propriétaire de l'existence de ses enfants et leur destruction entraîne celle de leurs descendants. ⟨run · ⚠️ · ·⟩
   > Écart à P9 : règle structurelle non garantie avant l'exécution. `View` est exportée avec un
   > constructeur public et un `mount()` public : le code applicatif peut instancier et monter une
   > View lui-même. À remonter au compile-time (création réservée au Composer).
-- `C` I33 — Unique par racine, la Foundation admet l'élément configuré par le Manifest, `body` par défaut, et reste bornée à cet élément hors contenu attribué aux Composers. Elle n'admet ni l'en-tête ni les sources de niveau document, réservés à l'adaptateur correspondant ; ses résultats instrumentés propres restent régis par C.3. ⟨run · ⚠️ · R⟩
+- `C` I33 — Unique par racine, la Foundation admet l'élément configuré par le Manifest, `body` par défaut, et reste bornée à cet élément hors contenu attribué aux Composers. Elle n'admet ni l'en-tête ni les sources de niveau document, réservés à l'adaptateur correspondant ; ses résultats instrumentés propres restent régis par C.3. ⟨run · ⚠️ · ·⟩
   > Livré : attachement à body et garde par instance ; html exposé, configuration et confinement absents.
 - `C` I38 — Les droits de modification de l'interface respectent les parts attribuées et les rôles ; la View projette dans sa part hors contenu des slots, les opérations du Behavior lui sont imputées, la Foundation reste bornée à son élément admis hors parts attribuées, et le Composer ne modifie son contenu que pour la composition définie par I35. ⟨run · ⚠️ · ·⟩
   > V0.9.4, 2026-10-30 : droits corrigés ; état partiel conservé, mode run pour les parts effectives.
@@ -35,11 +35,11 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 - `E` I99 — La Foundation opère dans son élément admis, le Composer dans le contenu du slot attribué et la View dans sa part attribuée ; chacun exclut les portions attribuées à ses enfants. Le Behavior agit dans la part de sa View, sans part autonome. ⟨run · ⚠️ · ·⟩
 - `C` I38 — Les droits de modification de l'interface respectent les parts attribuées et les rôles ; la View projette dans sa part hors contenu des slots, les opérations du Behavior lui sont imputées, la Foundation reste bornée à son élément admis hors parts attribuées, et le Composer ne modifie son contenu que pour la composition définie par I35. ⟨run · ⚠️ · ·⟩
-- `C` I33 — Unique par racine, la Foundation admet l'élément configuré par le Manifest, `body` par défaut, et reste bornée à cet élément hors contenu attribué aux Composers. Elle n'admet ni l'en-tête ni les sources de niveau document, réservés à l'adaptateur correspondant ; ses résultats instrumentés propres restent régis par C.3. ⟨run · ⚠️ · R⟩
+- `C` I33 — Unique par racine, la Foundation admet l'élément configuré par le Manifest, `body` par défaut, et reste bornée à cet élément hors contenu attribué aux Composers. Elle n'admet ni l'en-tête ni les sources de niveau document, réservés à l'adaptateur correspondant ; ses résultats instrumentés propres restent régis par C.3. ⟨run · ⚠️ · ·⟩
 
 ### P7 — Cycle de vie hétéronome
 
-- `C` I20 — Une View n'est enfant que d'un Composer ; la Foundation et les Views ne sont parents que de Composers. Le parent est seul propriétaire de l'existence de ses enfants et leur destruction entraîne celle de leurs descendants. ⟨run · ⚠️ · R⟩
+- `C` I20 — Une View n'est enfant que d'un Composer ; la Foundation et les Views ne sont parents que de Composers. Le parent est seul propriétaire de l'existence de ses enfants et leur destruction entraîne celle de leurs descendants. ⟨run · ⚠️ · ·⟩
 - `D` I67 — La structure de la Foundation est stable — `get composers()` est lu une seule fois au bootstrap et n'est jamais modifié. ⟨type+boot · ⚠️ · ·⟩
 
 ## Règles transversales

@@ -32,7 +32,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 - `C` I101 — Une Entity ne porte aucune logique métier : elle garde l'état, applique les mutations que sa Feature lui fournit et expose des lectures pures ; toute décision (validation métier, transformation, refus d'une intention) appartient à la Feature. ⟨revue · 📐 · ·⟩
 - `C` I63 — Un schema Entity ne contient ni `v.transform()` ni coercion — c'est un garde-fou en lecture, la transformation reste dans le command handler. ⟨revue · ⏳ · ·⟩
-- `D` I52 — L'Entity expose des méthodes query pures (lecture seule). ⟨revue · 📐 · R⟩
+- `D` I52 — L'Entity expose des méthodes query pures (lecture seule). ⟨revue · 📐 · ·⟩
 
 ## Règles transversales
 

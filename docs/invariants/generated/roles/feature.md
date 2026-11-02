@@ -15,7 +15,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 - `C` I17 — Une Feature ne `request` que sur les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect. ⟨type · ⚠️ · R⟩
   > `Feature.request()` accepte tout token typé, sans contrôle contre `queries` (même écart que I14).
-- `E` I27 — Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé. ⟨run · ⚠️ · R⟩
+- `E` I27 — Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé. ⟨run · ⚠️ · ·⟩
   > Les tests prouvent seulement : Command sans handler → throw, Event sans abonné → ignoré.
   > Aucun mécanisme de refus d'un Command par son handler n'est testé.
 - `D` I28 — Le Router est une Feature interne, de namespace réservé `router`, instanciée par Application et non par le développeur. ⟨type+boot · ⚠️ · T⟩
@@ -40,7 +40,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 ### P3 — Sémantique des trois voies
 
 - `E` I10 — Un Command a un seul handler — la Feature propriétaire du Channel. ⟨boot · ✅ · R⟩
-- `E` I27 — Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé. ⟨run · ⚠️ · R⟩
+- `E` I27 — Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé. ⟨run · ⚠️ · ·⟩
 - `C` I1 — Une Feature n'émet (`emit`) que sur son propre Channel — aucune émission cross-domain, et seule la Feature propriétaire utilise `emit()`. ⟨type · ✅ · R T⟩
 - `C` I3 — Une Feature ne répond (`reply`) que sur son propre Channel. ⟨boot · ✅ · R⟩
 - `C` I17 — Une Feature ne `request` que sur les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect. ⟨type · ⚠️ · R⟩
@@ -49,7 +49,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 ### P7 — Cycle de vie hétéronome
 
 - `D` I28 — Le Router est une Feature interne, de namespace réservé `router`, instanciée par Application et non par le développeur. ⟨type+boot · ⚠️ · T⟩
-- `D` I94 — Le constructeur d'une Feature est inerte — aucun side-effect au-delà de la validation et de l'assignation du namespace. ⟨boot · ✅ · R⟩
+- `D` I94 — Le constructeur d'une Feature est inerte — aucun side-effect au-delà de la validation et de l'assignation du namespace. ⟨boot · ✅ · R T⟩
 
 ### P8 — Identités et déclarations par racine
 
@@ -60,13 +60,13 @@ tests : `R` runtime · `T` type · `·` aucun.
 ### P9 — Garantie au plus tôt
 
 - `C` I75 — Aucun `any` ni `unknown` dans les signatures publiques de `Channel`, `Feature` ou `View`. ⟨revue · ⚠️ · T⟩
-- `C` I79 — `Feature.request()` n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre. ⟨type · ✅ · R T⟩
+- `C` I79 — `Feature.request()` n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre. ⟨type · ✅ · T⟩
 - `D` I48 — Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Request`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework. ⟨boot · ✅ · R⟩
 - `D` I88 — Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis. ⟨type · ✅ · T⟩
 - `D` I92 — Toute Feature concrète `implements TFeatureCallbacks<TDef, TListens>` ; un handler absent ou mal signé est une erreur de compilation. ⟨type · ✅ · T⟩
 - `D` I73 — Chaque Feature déclare `static readonly channel` — son contrat de communication typé, unique pont entre la classe et son Channel. ⟨type · ✅ · R T⟩
 - `D` I74 — La définition du Channel, le type d'état et la classe Feature sont co-localisés dans le fichier `*.feature.ts` du domaine. ⟨revue · 📐 · R⟩
-- `D` I93 — `listens` et `queries` sont des `abstract get` d'instance que toute Feature concrète implémente. ⟨type · ✅ · R T⟩
+- `D` I93 — `listens` et `queries` sont des `abstract get` d'instance que toute Feature concrète implémente. ⟨type · ✅ · T⟩
 
 ## Règles transversales
 

@@ -28,8 +28,8 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `E` I14 — Tout composant déclare statiquement les Channels avec lesquels il interagit. ⟨type+boot · ⚠️ · ·⟩
   - `V` I16 — Un accès à un Channel non déclaré est une erreur (compilation ou bootstrap). ⟨type+boot · ⚠️ · ·⟩
 - `C` I2 — Une Feature écoute (`listen`) uniquement les Events des Channels externes qu'elle a déclarés. ⟨boot · ✅ · R⟩
-- `C` I15 = I50 — Radio est une infrastructure interne, non exposée par `@bonsai/core` — un bus ambiant serait un canal non déclaré. ⟨type · ✅ · R T⟩
-- `D` I80 — Les composants consommateurs déclarent leurs dépendances via des classes Feature dans `TFeatureContract`, jamais via un `TChannelToken` direct. ⟨type · ⚠️ · R T⟩
+- `C` I15 = I50 — Radio est une infrastructure interne, non exposée par `@bonsai/core` — un bus ambiant serait un canal non déclaré. ⟨type · ✅ · T⟩
+- `D` I80 — Les composants consommateurs déclarent leurs dépendances via des classes Feature dans `TFeatureContract`, jamais via un `TChannelToken` direct. ⟨type · ⚠️ · T⟩
 - `V` I70 — Toute référence à un namespace externe (`listens`, `queries`, `request`) est validée contre le manifest au bootstrap. ↔ P8 ⟨boot · ✅ · R⟩
 
 *Rattachés en second parent :* I4, I17, I77, I79, I89
@@ -40,16 +40,16 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 
 - `E` I10 — Un Command a un seul handler — la Feature propriétaire du Channel. ⟨boot · ✅ · R⟩
 - `E` I11 — Un Event peut avoir N abonnés. ⟨run · ✅ · R⟩
-- `E` I27 — Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé. ⟨run · ⚠️ · R⟩
+- `E` I27 — Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé. ⟨run · ⚠️ · ·⟩
 - `C` I1 = I12 = I26 — Une Feature n'émet (`emit`) que sur son propre Channel — aucune émission cross-domain, et seule la Feature propriétaire utilise `emit()`. ⟨type · ✅ · R T⟩
 - `C` I25 — Une Command vise un Channel déclaré dans les limites des parties ; une Feature n'en adresse pas à une autre Feature, mais peut en adresser à un adaptateur du domaine. Le domaine n'adresse rien à un adaptateur de l'interface et n'en reçoit rien. Les Commands de l'interface restent soumises à I13 ; le Behavior agit au nom de sa View, et le Composer n'adresse aucune Command. ↔ P5 ⟨run · ⚠️ · R T⟩
 - `C` I4 — Une View ou un Behavior peut `trigger`, `listen` et `request` uniquement sur les Channels déclarés — jamais `emit()`. ↔ P2 ⟨type · ⚠️ · R T⟩
 - `C` I13 — Un composant de l'interface n'adresse une Command que pendant une réaction à un fait admis d'indépendance établie ou une continuation corrélée déjà autorisée à commander, sous réserve des interdictions de son rôle. Event, relais local d'Event, résultat d'effet corrélé à un Event et observation d'antécédent inconnu n'accordent aucune permission. Une Query préalable conserve la permission de son auteur sans l'accorder au traitement consulté, toujours en lecture seule ; sa réponse n'est pas un déclencheur autonome. ↔ P5 ⟨run · ⏳ · ·⟩
 - `C` I3 — Une Feature ne répond (`reply`) que sur son propre Channel. ⟨boot · ✅ · R⟩
 - `C` I17 — Une Feature ne `request` que sur les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect. ↔ P2 ⟨type · ⚠️ · R⟩
-- `C` I29 — Une Query rend synchroniquement une valeur du type de résultat déclaré, sans Promise ; ni l'absence de répondant ni une erreur technique ne sont converties en null. Une valeur null n'est admise que si le contrat métier la prévoit. ⟨run · ⚠️ · R⟩
+- `C` I29 — Une Query rend synchroniquement une valeur du type de résultat déclaré, sans Promise ; ni l'absence de répondant ni une erreur technique ne sont converties en null. Une valeur null n'est admise que si le contrat métier la prévoit. ⟨run · ⚠️ · ·⟩
   - `C` I64 — Aucun I/O (`fetch`, `Promise`, `setTimeout`, `async/await`) dans un replier. ⟨revue · 📐 · ·⟩
-  - `C` I55 — L'erreur technique d'une Query se propage à son auteur et entraîne l'échec de l'unité modifiante ou d'initialisation englobante selon G7 ; aucune réponse de substitution ni capture applicative ne peut transformer cet échec en validation réussie. ⟨run · ⏳ · R⟩
+  - `C` I55 — L'erreur technique d'une Query se propage à son auteur et entraîne l'échec de l'unité modifiante ou d'initialisation englobante selon G7 ; aucune réponse de substitution ni capture applicative ne peut transformer cet échec en validation réussie. ⟨run · ⏳ · ·⟩
     - `C` I65 — Toute erreur technique de Query est signalée avec son contexte causal, hors réponse et transport applicatif ; ce signalement ne remplace ni n'empêche la propagation et l'échec de l'unité exigés par I55. ↔ I102 ⟨run · ⏳ · ·⟩
 
 *Rattachés en second parent :* I76
@@ -80,16 +80,16 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 **Chaque ressource du modèle a un propriétaire unique et immuable, seul à exécuter ses opérations exclusives. Dans l'interface, les attributions de parts disjointes soustraient les portions attribuées à l'accès du contenant ; leur restitution n'est pas un transfert. Cette propriété ne se confond pas avec celle du support DOM extérieur ; les effets sur ce support restent bornés par les ressources et désignations autorisées.**
 
 - `E` I99 — La Foundation opère dans son élément admis, le Composer dans le contenu du slot attribué et la View dans sa part attribuée ; chacun exclut les portions attribuées à ses enfants. Le Behavior agit dans la part de sa View, sans part autonome. ↔ P7 ⟨run · ⚠️ · ·⟩
-  - `C` I40 — La View conserve son élément racine et les éléments de ses slots, mais le contenu attribué à ses Composers est soustrait à sa part ; toute lecture, écriture ou admission respecte cette exclusion pendant l'attribution. ⟨run · ⚠️ · R⟩
-  - `C` I34 — L'élément racine d'une View appartient à la part que son Composer lui attribue dans le contenu de son slot ; il ne se confond pas avec l'élément du slot. Aucune contrainte universelle de descendance de `body` ne remplace cette vérification de propriété. ⟨run · ⚠️ · R⟩
+  - `C` I40 — La View conserve son élément racine et les éléments de ses slots, mais le contenu attribué à ses Composers est soustrait à sa part ; toute lecture, écriture ou admission respecte cette exclusion pendant l'attribution. ⟨run · ⚠️ · ·⟩
+  - `C` I34 — L'élément racine d'une View appartient à la part que son Composer lui attribue dans le contenu de son slot ; il ne se confond pas avec l'élément du slot. Aucune contrainte universelle de descendance de `body` ne remplace cette vérification de propriété. ⟨run · ⚠️ · ·⟩
   - `D` I31 — Le Composer fournit à la création de la View une désignation de sa part, jamais un élément de l'hôte ; sa résolution contrôlée vérifie la propriété et sa validité pour cette seule attribution, sans réactivation par réattribution du même emplacement. ⟨run · ⚠️ · R⟩
   - `C` I58 — Le Composer reçoit à sa création la désignation du contenu attribué pour son occurrence de vie ; il ne transfère ni ne déplace cette attribution. Son parent le détruit avant de retirer l'élément du slot ; une réutilisation du même emplacement ne réactive ni l'ancien Composer ni sa désignation. ↔ I20 ⟨run · ⏳ · ·⟩
 - `C` I41 — Chaque clé `@ui` a une source de mutation unique — son template ou `getUI()`, jamais les deux. ⟨type · ⏳ · ·⟩
 - `C` I43 — Les noms des clés de la View et de chacun de ses Behaviors sont tous disjoints, y compris entre Behaviors ; des noms distincts peuvent désigner le même élément, sans multiplier l'admission du fait par la View. ⟨boot · ⏳ · ·⟩
 - `C` I44 — Le code d'un Behavior ne désigne ni la View qui le déclare ni les clés de celle-ci ; ses accès déclarés et ses messages sont imputés à cette View, jamais à un composant autonome. ↔ P10 ⟨type · ⏳ · ·⟩
 - `C` I38 = I18 — Les droits de modification de l'interface respectent les parts attribuées et les rôles ; la View projette dans sa part hors contenu des slots, les opérations du Behavior lui sont imputées, la Foundation reste bornée à son élément admis hors parts attribuées, et le Composer ne modifie son contenu que pour la composition définie par I35. ⟨run · ⚠️ · ·⟩
-  - `C` I35 — Le Composer ne modifie le contenu de son slot que pour attribuer ou restituer les parts de ses Views, créer ou retirer les éléments correspondants ; il ne réalise aucun rendu supplémentaire, ne tient aucun état local indépendant et n'adresse aucune Command. Il admet les seuls résultats instrumentés de ses propres effets de composition, déclarés avec leurs traitements locaux, jamais une notification générale de l'hôte. ↔ P10 ⟨run · ⚠️ · R⟩
-  - `C` I33 — Unique par racine, la Foundation admet l'élément configuré par le Manifest, `body` par défaut, et reste bornée à cet élément hors contenu attribué aux Composers. Elle n'admet ni l'en-tête ni les sources de niveau document, réservés à l'adaptateur correspondant ; ses résultats instrumentés propres restent régis par C.3. ⟨run · ⚠️ · R⟩
+  - `C` I35 — Le Composer ne modifie le contenu de son slot que pour attribuer ou restituer les parts de ses Views, créer ou retirer les éléments correspondants ; il ne réalise aucun rendu supplémentaire, ne tient aucun état local indépendant et n'adresse aucune Command. Il admet les seuls résultats instrumentés de ses propres effets de composition, déclarés avec leurs traitements locaux, jamais une notification générale de l'hôte. ↔ P10 ⟨run · ⚠️ · ·⟩
+  - `C` I33 — Unique par racine, la Foundation admet l'élément configuré par le Manifest, `body` par défaut, et reste bornée à cet élément hors contenu attribué aux Composers. Elle n'admet ni l'en-tête ni les sources de niveau document, réservés à l'adaptateur correspondant ; ses résultats instrumentés propres restent régis par C.3. ⟨run · ⚠️ · ·⟩
   - `C` I32 — La View ne détruit ni ne remplace son élément racine ; elle peut en modifier les attributs et dispose de son contenu hors contenu attribué aux Composers. Avant de retirer un élément de slot, elle détruit le Composer concerné pour en obtenir restitution. ⟨run · ⏳ · ·⟩
   - `D` I39 — La View accède au DOM exclusivement via `getUI(key)` ; aucun `querySelector` ni accès DOM brut ne lui est exposé. ⟨type · ⚠️ · R⟩
   - `C` I45 — Un Behavior n'a ni existence, ni identité, ni part propres ; ses opérations et son état local appartiennent à sa View et restent hors contenu des slots de celle-ci. Il ne dispose ni d'une racine autonome ni d'une capacité de créer des Composers. ↔ P10 ⟨run · ⏳ · ·⟩
@@ -101,13 +101,13 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 **Chaque composant a une existence unique ; hors racine, son parent est propriétaire de cette existence et décide de sa création ou de sa destruction. La structure est finie et enracinée ; la fin du parent entraîne celle de ses descendants et de leurs ressources, avec restitutions de bas en haut. L'existence et la fin de la racine sont extérieures au modèle ; la vie logique ne se confond pas avec la matérialisation DOM.**
 
 - `E` I19 — La View ne décide ni de sa création, ni de sa destruction, ni de son remplacement ; son existence appartient exclusivement à son Composer parent, y compris pendant une cascade annulable de destruction. ⟨run · ⚠️ · ·⟩
-- `C` I20 — Une View n'est enfant que d'un Composer ; la Foundation et les Views ne sont parents que de Composers. Le parent est seul propriétaire de l'existence de ses enfants et leur destruction entraîne celle de leurs descendants. ⟨run · ⚠️ · R⟩
-  - `C` I36 — La View déclare les slots dont elle attribue le contenu à ses Composers enfants, jamais des Views enfants ; seuls ces Composers décident quelles Views occupent leurs parts. ↔ P10 ⟨run · ⚠️ · R⟩
-  - `D` I37 — Un seul type d'API Composer exprime la composition de 0..N Views hétérogènes dans le contenu qui lui est attribué, sans recouvrement des parts ; cette multiplicité n'autorise ni transfert de part ni lecture des portions attribuées. ⟨type · ⚠️ · R⟩
+- `C` I20 — Une View n'est enfant que d'un Composer ; la Foundation et les Views ne sont parents que de Composers. Le parent est seul propriétaire de l'existence de ses enfants et leur destruction entraîne celle de leurs descendants. ⟨run · ⚠️ · ·⟩
+  - `C` I36 — La View déclare les slots dont elle attribue le contenu à ses Composers enfants, jamais des Views enfants ; seuls ces Composers décident quelles Views occupent leurs parts. ↔ P10 ⟨run · ⚠️ · ·⟩
+  - `D` I37 — Un seul type d'API Composer exprime la composition de 0..N Views hétérogènes dans le contenu qui lui est attribué, sans recouvrement des parts ; cette multiplicité n'autorise ni transfert de part ni lecture des portions attribuées. ⟨type · ⚠️ · ·⟩
 - `D` I67 — La structure de la Foundation est stable — `get composers()` est lu une seule fois au bootstrap et n'est jamais modifié. ↔ P10 ⟨type+boot · ⚠️ · ·⟩
 - `D` I23 — Application est dormante au runtime — aucune logique métier ni rôle actif entre le bootstrap et le shutdown. ↔ P10 ⟨type · ✅ · R T⟩
 - `D` I28 — Le Router est une Feature interne, de namespace réservé `router`, instanciée par Application et non par le développeur. ↔ P8 ⟨type+boot · ⚠️ · T⟩
-- `D` I94 — Le constructeur d'une Feature est inerte — aucun side-effect au-delà de la validation et de l'assignation du namespace. ↔ P9 ⟨boot · ✅ · R⟩
+- `D` I94 — Le constructeur d'une Feature est inerte — aucun side-effect au-delà de la validation et de l'assignation du namespace. ↔ P9 ⟨boot · ✅ · R T⟩
 
 *Rattachés en second parent :* I99
 
@@ -118,7 +118,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `E` I69 — Le manifest est l'unique source de vérité de l'identité d'une Feature. ⟨type · ✅ · R T⟩
   - `C` I68 — Aucune classe Feature ne déclare de `static namespace`. ⟨type · ✅ · R T⟩
   - `C` I72 — `TSelfNS` est la clé de la Feature dans le manifest. ⟨type · ✅ · R T⟩
-  - `C` I87 — La clé d'un `TFeatureContract` est le namespace de la Feature référencée. ⟨type · ⚠️ · R T⟩
+  - `C` I87 — La clé d'un `TFeatureContract` est le namespace de la Feature référencée. ⟨type · ⚠️ · T⟩
   - `V` I95 — Chaque entrée du manifest est contrainte par `TStrictFeatureClass<NS>`. ⟨type · ✅ · T⟩
 - `D` I21 = I24 — Toute Feature est enregistrée dans le manifest sous une clé `camelCase` sans chiffre. ⟨type+boot · ✅ · R T⟩
 - `D` I71 — Les namespaces `local` et `router` sont réservés (`RESERVED_NAMESPACES`). ⟨type+boot · ✅ · R T⟩
@@ -136,7 +136,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
   - `D` I103 — Les clés de Commands, d'Events et de Requests d'un `TChannelDefinition` sont en `camelCase` plat, lettres uniquement. ↔ I21 ⟨type · ⏳ · ·⟩
 - `C` I77 — `View.trigger()` n'accepte qu'une clé `"ns:cmd"` validée contre le contrat de la View. ↔ P2 ⟨type · ✅ · T⟩
 - `C` I78 — `View.getUI(key)` n'accepte qu'une clé déclarée dans le `TUIContract` de la View. ↔ P6 ⟨type · ✅ · T⟩
-- `C` I79 — `Feature.request()` n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre. ↔ P2 ⟨type · ✅ · R T⟩
+- `C` I79 — `Feature.request()` n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre. ↔ P2 ⟨type · ✅ · T⟩
 - `D` I48 — Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Request`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework. ⟨boot · ✅ · R⟩
   - `D` I88 — Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis. ⟨type · ✅ · T⟩
     - `D` I92 — Toute Feature concrète `implements TFeatureCallbacks<TDef, TListens>` ; un handler absent ou mal signé est une erreur de compilation. ⟨type · ✅ · T⟩
@@ -144,8 +144,8 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
       - `C` I84 — Un élément UI déclaré avec `events` non vide exige ses handlers DOM ; `events` vide déclare un élément non interactif. ⟨type+boot · ✅ · R T⟩
 - `D` I73 = I47 — Chaque Feature déclare `static readonly channel` — son contrat de communication typé, unique pont entre la classe et son Channel. ⟨type · ✅ · R T⟩
 - `D` I74 = I49 — La définition du Channel, le type d'état et la classe Feature sont co-localisés dans le fichier `*.feature.ts` du domaine. ⟨revue · 📐 · R⟩
-- `D` I93 — `listens` et `queries` sont des `abstract get` d'instance que toute Feature concrète implémente. ⟨type · ✅ · R T⟩
-- `D` I81 — Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, au `mount()`. ⟨boot · ⚠️ · R⟩
+- `D` I93 — `listens` et `queries` sont des `abstract get` d'instance que toute Feature concrète implémente. ⟨type · ✅ · T⟩
+- `D` I81 — Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, au `mount()`. ⟨boot · ⚠️ · ·⟩
 - `D` I83 — Tous les composants consommateurs composent leur contrat selon le même pattern modulaire (`TFeatureContract`, `TUIContract`, `TUIElements`). ⟨revue · 📐 · R⟩
 - `D` I85 — `ui<TEl>()(events)` est le helper officiel pour construire une `TUIEntry`. ⟨revue · 📐 · R T⟩
   - `D` I86 — Le champ `events` d'une `TUIEntry` est toujours présent, tableau (éventuellement vide) sans doublons. ⟨type · ✅ · R T⟩
@@ -162,6 +162,6 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `E` I100 — Chaque rôle porte une seule responsabilité : Entity garde et mute l'état, Feature décide du métier, View projette, Composer décide du placement, Behavior enrichit le comportement, Foundation porte le layout racine, Application amorce. ⟨revue · 📐 · ·⟩
   - `C` I101 — Une Entity ne porte aucune logique métier : elle garde l'état, applique les mutations que sa Feature lui fournit et expose des lectures pures ; toute décision (validation métier, transformation, refus d'une intention) appartient à la Feature. ↔ P1 ⟨revue · 📐 · ·⟩
     - `C` I63 — Un schema Entity ne contient ni `v.transform()` ni coercion — c'est un garde-fou en lecture, la transformation reste dans le command handler. ↔ P1 ⟨revue · ⏳ · ·⟩
-    - `D` I52 — L'Entity expose des méthodes query pures (lecture seule). ↔ P1 ⟨revue · 📐 · R⟩
+    - `D` I52 — L'Entity expose des méthodes query pures (lecture seule). ↔ P1 ⟨revue · 📐 · ·⟩
 
 *Rattachés en second parent :* I22, I44, I35, I45, I36, I67, I23

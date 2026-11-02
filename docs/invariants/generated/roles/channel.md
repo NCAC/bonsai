@@ -13,16 +13,16 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 ## Écarts
 
-- `E` I27 — Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé. ⟨run · ⚠️ · R⟩
+- `E` I27 — Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé. ⟨run · ⚠️ · ·⟩
   > Les tests prouvent seulement : Command sans handler → throw, Event sans abonné → ignoré.
   > Aucun mécanisme de refus d'un Command par son handler n'est testé.
-- `C` I29 — Une Query rend synchroniquement une valeur du type de résultat déclaré, sans Promise ; ni l'absence de répondant ni une erreur technique ne sont converties en null. Une valeur null n'est admise que si le contrat métier la prévoit. ⟨run · ⚠️ · R⟩
+- `C` I29 — Une Query rend synchroniquement une valeur du type de résultat déclaré, sans Promise ; ni l'absence de répondant ni une erreur technique ne sont converties en null. Une valeur null n'est admise que si le contrat métier la prévoit. ⟨run · ⚠️ · ·⟩
   > V0.9.4, 2026-10-30 : livre → partiel ; appel direct livré, contrat complet non réalisé.
   > Channel.request() retourne encore null sans répondant et après exception ; une Promise est acceptée.
   > Les citations historiques d'I29 testent l'ancien contrat, pas la conformité du présent énoncé.
 - `C` I75 — Aucun `any` ni `unknown` dans les signatures publiques de `Channel`, `Feature` ou `View`. ⟨revue · ⚠️ · T⟩
   > Tests de type seulement ; aucune configuration ESLint dans le dépôt.
-- `C` I55 — L'erreur technique d'une Query se propage à son auteur et entraîne l'échec de l'unité modifiante ou d'initialisation englobante selon G7 ; aucune réponse de substitution ni capture applicative ne peut transformer cet échec en validation réussie. ⟨run · ⏳ · R⟩
+- `C` I55 — L'erreur technique d'une Query se propage à son auteur et entraîne l'échec de l'unité modifiante ou d'initialisation englobante selon G7 ; aucune réponse de substitution ni capture applicative ne peut transformer cet échec en validation réussie. ⟨run · ⏳ · ·⟩
   > V0.9.4, 2026-10-30 : règle historique inversée ; livre → cible.
   > Channel.request() absorbe encore l'exception ; aucune unité de rollback englobante n'est livrée.
   > Les anciens tests citant I55 prouvent le comportement désormais interdit, pas cette cible.
@@ -39,15 +39,15 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 ### P2 — Dépendances déclarées
 
-- `C` I15 — Radio est une infrastructure interne, non exposée par `@bonsai/core` — un bus ambiant serait un canal non déclaré. ⟨type · ✅ · R T⟩
+- `C` I15 — Radio est une infrastructure interne, non exposée par `@bonsai/core` — un bus ambiant serait un canal non déclaré. ⟨type · ✅ · T⟩
 
 ### P3 — Sémantique des trois voies
 
 - `E` I10 — Un Command a un seul handler — la Feature propriétaire du Channel. ⟨boot · ✅ · R⟩
 - `E` I11 — Un Event peut avoir N abonnés. ⟨run · ✅ · R⟩
-- `E` I27 — Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé. ⟨run · ⚠️ · R⟩
-- `C` I29 — Une Query rend synchroniquement une valeur du type de résultat déclaré, sans Promise ; ni l'absence de répondant ni une erreur technique ne sont converties en null. Une valeur null n'est admise que si le contrat métier la prévoit. ⟨run · ⚠️ · R⟩
-- `C` I55 — L'erreur technique d'une Query se propage à son auteur et entraîne l'échec de l'unité modifiante ou d'initialisation englobante selon G7 ; aucune réponse de substitution ni capture applicative ne peut transformer cet échec en validation réussie. ⟨run · ⏳ · R⟩
+- `E` I27 — Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé. ⟨run · ⚠️ · ·⟩
+- `C` I29 — Une Query rend synchroniquement une valeur du type de résultat déclaré, sans Promise ; ni l'absence de répondant ni une erreur technique ne sont converties en null. Une valeur null n'est admise que si le contrat métier la prévoit. ⟨run · ⚠️ · ·⟩
+- `C` I55 — L'erreur technique d'une Query se propage à son auteur et entraîne l'échec de l'unité modifiante ou d'initialisation englobante selon G7 ; aucune réponse de substitution ni capture applicative ne peut transformer cet échec en validation réussie. ⟨run · ⏳ · ·⟩
 - `C` I65 — Toute erreur technique de Query est signalée avec son contexte causal, hors réponse et transport applicatif ; ce signalement ne remplace ni n'empêche la propagation et l'échec de l'unité exigés par I55. ⟨run · ⏳ · ·⟩
 
 ### P9 — Garantie au plus tôt

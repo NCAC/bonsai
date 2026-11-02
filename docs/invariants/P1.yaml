@@ -102,7 +102,7 @@
   enonce: Une clé de handler `on<Key>EntityUpdated` inconnue du state de l'Entity est rejetée au bootstrap.
   mode: boot
   etat: livre
-  preuves: [tests/unit/strate-1/feature.entity-handlers.test.ts]
+  preuves: [tests/unit/domain/entity.test.ts]
 
 - id: I98
   nature: D

@@ -18,16 +18,16 @@ tests : `R` runtime · `T` type · `·` aucun.
 - `E` I19 — La View ne décide ni de sa création, ni de sa destruction, ni de son remplacement ; son existence appartient exclusivement à son Composer parent, y compris pendant une cascade annulable de destruction. ⟨run · ⚠️ · ·⟩
   > View n'expose que `mount()`, appelé par le Composer ; aucune destruction n'existe encore
   > (une View remplacée n'est pas détruite, cf. I20). Aucun test ne cite I19.
-- `C` I20 — Une View n'est enfant que d'un Composer ; la Foundation et les Views ne sont parents que de Composers. Le parent est seul propriétaire de l'existence de ses enfants et leur destruction entraîne celle de leurs descendants. ⟨run · ⚠️ · R⟩
+- `C` I20 — Une View n'est enfant que d'un Composer ; la Foundation et les Views ne sont parents que de Composers. Le parent est seul propriétaire de l'existence de ses enfants et leur destruction entraîne celle de leurs descendants. ⟨run · ⚠️ · ·⟩
   > Écart à P9 : règle structurelle non garantie avant l'exécution. `View` est exportée avec un
   > constructeur public et un `mount()` public : le code applicatif peut instancier et monter une
   > View lui-même. À remonter au compile-time (création réservée au Composer).
 - `C` I30 — Une View et un Behavior ne portent aucun domain state — seul un state local de présentation borné (I42) est toléré. ⟨type · ⚠️ · ·⟩
 - `D` I31 — Le Composer fournit à la création de la View une désignation de sa part, jamais un élément de l'hôte ; sa résolution contrôlée vérifie la propriété et sa validité pour cette seule attribution, sans réactivation par réattribution du même emplacement. ⟨run · ⚠️ · R⟩
   > Livré : string fournie par Composer ; résolution globale et aucune durée d'attribution vérifiée.
-- `C` I34 — L'élément racine d'une View appartient à la part que son Composer lui attribue dans le contenu de son slot ; il ne se confond pas avec l'élément du slot. Aucune contrainte universelle de descendance de `body` ne remplace cette vérification de propriété. ⟨run · ⚠️ · R⟩
+- `C` I34 — L'élément racine d'une View appartient à la part que son Composer lui attribue dans le contenu de son slot ; il ne se confond pas avec l'élément du slot. Aucune contrainte universelle de descendance de `body` ne remplace cette vérification de propriété. ⟨run · ⚠️ · ·⟩
   > V0.9.4 : livre → partiel ; le montage via document.querySelector ne prouve pas le confinement.
-- `C` I36 — La View déclare les slots dont elle attribue le contenu à ses Composers enfants, jamais des Views enfants ; seuls ces Composers décident quelles Views occupent leurs parts. ⟨run · ⚠️ · R⟩
+- `C` I36 — La View déclare les slots dont elle attribue le contenu à ses Composers enfants, jamais des Views enfants ; seuls ces Composers décident quelles Views occupent leurs parts. ⟨run · ⚠️ · ·⟩
   > View n'a aucune méthode de composition ; la déclaration des slots (`get composers()`) n'est pas
   > livrée. Seul l'en-tête de view.basic.test.ts cite I36 : aucun test ne le prouve.
 - `C` I38 — Les droits de modification de l'interface respectent les parts attribuées et les rôles ; la View projette dans sa part hors contenu des slots, les opérations du Behavior lui sont imputées, la Foundation reste bornée à son élément admis hors parts attribuées, et le Composer ne modifie son contenu que pour la composition définie par I35. ⟨run · ⚠️ · ·⟩
@@ -36,15 +36,15 @@ tests : `R` runtime · `T` type · `·` aucun.
   > Non livré : exclusion des slots, Foundation configurable/bornée et imputation Behavior.
   > Lot 3 : spécialisations I33/I34/I45 alignées ; contrôles complets toujours non livrés.
 - `D` I39 — La View accède au DOM exclusivement via `getUI(key)` ; aucun `querySelector` ni accès DOM brut ne lui est exposé. ⟨type · ⚠️ · R⟩
-- `C` I40 — La View conserve son élément racine et les éléments de ses slots, mais le contenu attribué à ses Composers est soustrait à sa part ; toute lecture, écriture ou admission respecte cette exclusion pendant l'attribution. ⟨run · ⚠️ · R⟩
+- `C` I40 — La View conserve son élément racine et les éléments de ses slots, mais le contenu attribué à ses Composers est soustrait à sa part ; toute lecture, écriture ou admission respecte cette exclusion pendant l'attribution. ⟨run · ⚠️ · ·⟩
   > Résolution UI locale livrée ; slots enfants et exclusion dynamique absents.
 - `C` I75 — Aucun `any` ni `unknown` dans les signatures publiques de `Channel`, `Feature` ou `View`. ⟨revue · ⚠️ · T⟩
   > Tests de type seulement ; aucune configuration ESLint dans le dépôt.
-- `D` I80 — Les composants consommateurs déclarent leurs dépendances via des classes Feature dans `TFeatureContract`, jamais via un `TChannelToken` direct. ⟨type · ⚠️ · R T⟩
+- `D` I80 — Les composants consommateurs déclarent leurs dépendances via des classes Feature dans `TFeatureContract`, jamais via un `TChannelToken` direct. ⟨type · ⚠️ · T⟩
   > Livré pour la View (`TFeatureContract`) ; le Behavior n'existe pas encore (strate 2b).
-- `D` I81 — Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, au `mount()`. ⟨boot · ⚠️ · R⟩
+- `D` I81 — Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, au `mount()`. ⟨boot · ⚠️ · ·⟩
   > Livré pour la View (`mount()`) ; le Behavior n'existe pas encore (strate 2b).
-- `C` I87 — La clé d'un `TFeatureContract` est le namespace de la Feature référencée. ⟨type · ⚠️ · R T⟩
+- `C` I87 — La clé d'un `TFeatureContract` est le namespace de la Feature référencée. ⟨type · ⚠️ · T⟩
 - `D` I89 — Tout événement déclaré dans `events` appartient à `TEventsFor<TEl>` ; les `CustomEvent` arbitraires sont exclus. ⟨type · ⚠️ · T⟩
 - `D` I91 — `TEventsFor<TEl>` est la table officielle entre sous-types d'éléments HTML et événements DOM cohérents. ⟨type · ⚠️ · T⟩
 - `E` I99 — La Foundation opère dans son élément admis, le Composer dans le contenu du slot attribué et la View dans sa part attribuée ; chacun exclut les portions attribuées à ses enfants. Le Behavior agit dans la part de sa View, sans part autonome. ⟨run · ⚠️ · ·⟩
@@ -64,7 +64,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 ### P2 — Dépendances déclarées
 
-- `D` I80 — Les composants consommateurs déclarent leurs dépendances via des classes Feature dans `TFeatureContract`, jamais via un `TChannelToken` direct. ⟨type · ⚠️ · R T⟩
+- `D` I80 — Les composants consommateurs déclarent leurs dépendances via des classes Feature dans `TFeatureContract`, jamais via un `TChannelToken` direct. ⟨type · ⚠️ · T⟩
 
 ### P3 — Sémantique des trois voies
 
@@ -78,8 +78,8 @@ tests : `R` runtime · `T` type · `·` aucun.
 ### P6 — Propriété et parts de l'interface
 
 - `E` I99 — La Foundation opère dans son élément admis, le Composer dans le contenu du slot attribué et la View dans sa part attribuée ; chacun exclut les portions attribuées à ses enfants. Le Behavior agit dans la part de sa View, sans part autonome. ⟨run · ⚠️ · ·⟩
-- `C` I40 — La View conserve son élément racine et les éléments de ses slots, mais le contenu attribué à ses Composers est soustrait à sa part ; toute lecture, écriture ou admission respecte cette exclusion pendant l'attribution. ⟨run · ⚠️ · R⟩
-- `C` I34 — L'élément racine d'une View appartient à la part que son Composer lui attribue dans le contenu de son slot ; il ne se confond pas avec l'élément du slot. Aucune contrainte universelle de descendance de `body` ne remplace cette vérification de propriété. ⟨run · ⚠️ · R⟩
+- `C` I40 — La View conserve son élément racine et les éléments de ses slots, mais le contenu attribué à ses Composers est soustrait à sa part ; toute lecture, écriture ou admission respecte cette exclusion pendant l'attribution. ⟨run · ⚠️ · ·⟩
+- `C` I34 — L'élément racine d'une View appartient à la part que son Composer lui attribue dans le contenu de son slot ; il ne se confond pas avec l'élément du slot. Aucune contrainte universelle de descendance de `body` ne remplace cette vérification de propriété. ⟨run · ⚠️ · ·⟩
 - `D` I31 — Le Composer fournit à la création de la View une désignation de sa part, jamais un élément de l'hôte ; sa résolution contrôlée vérifie la propriété et sa validité pour cette seule attribution, sans réactivation par réattribution du même emplacement. ⟨run · ⚠️ · R⟩
 - `C` I41 — Chaque clé `@ui` a une source de mutation unique — son template ou `getUI()`, jamais les deux. ⟨type · ⏳ · ·⟩
 - `C` I43 — Les noms des clés de la View et de chacun de ses Behaviors sont tous disjoints, y compris entre Behaviors ; des noms distincts peuvent désigner le même élément, sans multiplier l'admission du fait par la View. ⟨boot · ⏳ · ·⟩
@@ -90,12 +90,12 @@ tests : `R` runtime · `T` type · `·` aucun.
 ### P7 — Cycle de vie hétéronome
 
 - `E` I19 — La View ne décide ni de sa création, ni de sa destruction, ni de son remplacement ; son existence appartient exclusivement à son Composer parent, y compris pendant une cascade annulable de destruction. ⟨run · ⚠️ · ·⟩
-- `C` I20 — Une View n'est enfant que d'un Composer ; la Foundation et les Views ne sont parents que de Composers. Le parent est seul propriétaire de l'existence de ses enfants et leur destruction entraîne celle de leurs descendants. ⟨run · ⚠️ · R⟩
-- `C` I36 — La View déclare les slots dont elle attribue le contenu à ses Composers enfants, jamais des Views enfants ; seuls ces Composers décident quelles Views occupent leurs parts. ⟨run · ⚠️ · R⟩
+- `C` I20 — Une View n'est enfant que d'un Composer ; la Foundation et les Views ne sont parents que de Composers. Le parent est seul propriétaire de l'existence de ses enfants et leur destruction entraîne celle de leurs descendants. ⟨run · ⚠️ · ·⟩
+- `C` I36 — La View déclare les slots dont elle attribue le contenu à ses Composers enfants, jamais des Views enfants ; seuls ces Composers décident quelles Views occupent leurs parts. ⟨run · ⚠️ · ·⟩
 
 ### P8 — Identités et déclarations par racine
 
-- `C` I87 — La clé d'un `TFeatureContract` est le namespace de la Feature référencée. ⟨type · ⚠️ · R T⟩
+- `C` I87 — La clé d'un `TFeatureContract` est le namespace de la Feature référencée. ⟨type · ⚠️ · T⟩
 
 ### P9 — Garantie au plus tôt
 
@@ -106,7 +106,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 - `D` I88 — Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis. ⟨type · ✅ · T⟩
 - `D` I82 — `implements TViewCallbacks<TVC>` rend obligatoires les handlers d'Event et les handlers DOM déclarés ; un filet au `mount()` couvre les contournements. ⟨type+boot · ✅ · R⟩
 - `C` I84 — Un élément UI déclaré avec `events` non vide exige ses handlers DOM ; `events` vide déclare un élément non interactif. ⟨type+boot · ✅ · R T⟩
-- `D` I81 — Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, au `mount()`. ⟨boot · ⚠️ · R⟩
+- `D` I81 — Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, au `mount()`. ⟨boot · ⚠️ · ·⟩
 - `D` I83 — Tous les composants consommateurs composent leur contrat selon le même pattern modulaire (`TFeatureContract`, `TUIContract`, `TUIElements`). ⟨revue · 📐 · R⟩
 - `D` I85 — `ui<TEl>()(events)` est le helper officiel pour construire une `TUIEntry`. ⟨revue · 📐 · R T⟩
 - `D` I86 — Le champ `events` d'une `TUIEntry` est toujours présent, tableau (éventuellement vide) sans doublons. ⟨type · ✅ · R T⟩
