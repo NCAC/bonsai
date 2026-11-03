@@ -450,6 +450,33 @@ describe("Startup — deferred messages wait for its success", () => {
     expect(delivered).toBe(false);
   });
 
+  it("starts once: a started or abandoned root cannot start again", () => {
+    const { root } = boot(() => undefined);
+    expect(() => root.start(() => undefined)).toThrow(/root cannot start from state "started"/);
+    const abandoned = new Root({ causalBound: 10 });
+    expect(() => abandoned.start(() => { throw new Error("init failed"); })).toThrow(StartupError);
+    expect(() => abandoned.start(() => undefined)).toThrow(/root cannot start from state "abandoned"/);
+  });
+
+  it("refuses two living Channels of one namespace in a root", () => {
+    const root = new Root({ causalBound: 10 });
+    let cause: unknown;
+    try {
+      root.start((ctx) => {
+        ctx.create({ name: "a", channel: { namespace: "cart" } });
+        ctx.create({ name: "b", channel: { namespace: "cart" } });
+      });
+    } catch (error) {
+      cause = (error as StartupError).cause;
+    }
+    expect((cause as TransportError).code).toBe("DUPLICATE_NAMESPACE");
+  });
+
+  it("refuses the admission of a local message the component does not declare", () => {
+    const { root, handles } = boot((ctx) => ctx.create({ name: "a", locals: { go: () => undefined } }));
+    expect(() => root.admit(handles, "missing", {}, click)).toThrow(/local "missing" not declared by a/);
+  });
+
   it("refuses an initial Query towards a target that is still initialising", () => {
     const root = new Root({ causalBound: 10 });
     expect(() =>
@@ -531,6 +558,25 @@ describe("C.3 — effects engaged after validation, in order", () => {
 });
 
 // ── A5.a ─────────────────────────────────────────────────────────────────────
+
+describe("C.3 and D9 — the engagement report is bounded too", () => {
+  it("abandons the $effects admission beyond the causal bound, and keeps the line in the trace", () => {
+    const received: unknown[] = [];
+    const { root, handles } = boot((ctx) =>
+      ctx.create({
+        name: "client",
+        locals: {
+          go: (_p, c) => { c.prepareEffect("send", () => undefined); },
+          $effects: (p) => { received.push(p); }
+        }
+      }), 0);
+    root.admit(handles, "go", {}, click);
+    expect(received).toEqual([]);
+    expect(root.trace.filter((e) => e.type === "admission-abandoned")).toEqual([{ type: "admission-abandoned", reason: "causal bound", name: "$effects" }]);
+    const report = root.trace.find((e) => e.type === "effects") as Extract<(typeof root.trace)[number], { type: "effects" }>;
+    expect(report.report.map((l) => [l.label, l.outcome, l.admitted])).toEqual([["send", "engaged", false]]);
+  });
+});
 
 describe("A5.a — no operation outside a validation unit", () => {
   it("refuses a context kept and used after its unit (e.g. in a .then())", () => {

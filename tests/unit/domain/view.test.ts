@@ -189,6 +189,31 @@ describe("View on the kernel", () => {
     expect(document.querySelector("[data-ui='label']")!.textContent).toBe("0");
   });
 
+  it("without a template the part starts empty; a key without namespace fails the unit", () => {
+    class BareView extends View<TContract> implements TViewCallbacks<TContract> {
+      get features() { return features; }
+      get uiEvents() { return uiEvents; }
+      get uiElements() { return uiElements; }
+      onButtonClick(_fact: TFact, ctx: TFactContext<TContract>): void {
+        (ctx.trigger as (key: string, payload: unknown) => void)("inc", null);
+      }
+      onCounterChangedEvent(): void {}
+    }
+    class BareComposer extends HostComposer {
+      override get views() { return { counter: BareView }; }
+    }
+    class BarePage extends Foundation {
+      get composers() { return { main: { slot: "#main", composer: BareComposer } } as const; }
+    }
+    const d = drive({ counter: CounterFeature }, { foundation: BarePage, document });
+    const part = document.querySelector("#main > [data-bonsai-part]") as HTMLElement;
+    expect(part.innerHTML).toBe("");
+    part.insertAdjacentHTML("beforeend", `<button data-ui="button">+</button>`);
+    (part.querySelector("[data-ui='button']") as HTMLElement).click();
+    expect(String(d.failures()[0]!.error)).toMatch(/Malformed namespaced key "inc"/);
+    expect(d.ask<number>("counter", "get", null)).toBe(0);
+  });
+
   it("getUI and params are usable only inside a handler", () => {
     class Probe extends CounterView {
       read() { return this.getUI("label"); }

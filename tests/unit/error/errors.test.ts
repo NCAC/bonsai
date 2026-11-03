@@ -62,6 +62,19 @@ describe("Validation helpers (ADR-06)", () => {
     expect(isDev()).toBe(true);
   });
 
+  it("in production (__DEV__ false), isDev is false and invariant no longer checks; hardInvariant still does", () => {
+    const scope = globalThis as { __DEV__?: boolean };
+    scope.__DEV__ = false;
+    try {
+      expect(isDev()).toBe(false);
+      expect(() => invariant(false, "dev only")).not.toThrow();
+      expect(() => hardInvariant(false, "structural")).toThrow(BonsaiError);
+    } finally {
+      delete scope.__DEV__;
+    }
+    expect(isDev()).toBe(true);
+  });
+
   it("invariant and hardInvariant throw a BonsaiError only when the condition is false", () => {
     expect(() => invariant(true, "never")).not.toThrow();
     expect(() => hardInvariant(1, "never")).not.toThrow();

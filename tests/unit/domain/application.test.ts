@@ -13,11 +13,11 @@
  *   §2.5      — a startup failure abandons the model under construction
  */
 
-import { describe, it, expect, beforeEach } from "@jest/globals";
+import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { Application } from "@bonsai/application";
 import { Feature, BonsaiNamespaceError, type TFeatureContext } from "@bonsai/feature";
 import { Entity } from "@bonsai/entity";
-import { ManifestError, StartupError, type TChannelDefinition, type TChannelToken } from "@bonsai/kernel";
+import { DESCRIBE, ManifestError, StartupError, type TChannelDefinition, type TChannelToken, type TComponentHandle, type TComponentSpec } from "@bonsai/kernel";
 
 // ─── Fixtures ──────────────────────────────────────────────────────────────
 
@@ -212,5 +212,56 @@ describe("Application on the kernel — lot M6.1", () => {
         expect(app[name]).toBeUndefined();
       }
     });
+  });
+});
+
+describe("Application — technical sink and adapters of the host", () => {
+  /** An Application whose component `crash` fails on `go`, admitted after startup. */
+  function crashing(): { app: Application; go: () => void } {
+    let handle!: TComponentHandle;
+    const app = new Application({
+      components: [{ name: "crash", init: (c) => { handle = c.self; }, locals: { go: () => { throw new Error("boom"); } } }]
+    });
+    app.start();
+    return { app, go: () => app.root!.admit(handle, "go", null, { kind: "independent" }) };
+  }
+
+  it("reports failures on the console by default in development, and has no sink in production (O2, ADR-06)", () => {
+    const error = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      crashing().go();
+      expect(error).toHaveBeenCalledTimes(1);
+
+      const scope = globalThis as { __DEV__?: boolean };
+      scope.__DEV__ = false;
+      let production: ReturnType<typeof crashing>;
+      try {
+        production = crashing();
+      } finally {
+        delete scope.__DEV__;
+      }
+      production.go(); // the sink was chosen at construction: none
+      expect(error).toHaveBeenCalledTimes(1);
+      expect(production.app.root!.trace.some((e) => e.type === "unit-failed")).toBe(true);
+    } finally {
+      error.mockRestore();
+    }
+  });
+
+  it("an adapter that requires no Feature starts without the router and receives its options", () => {
+    const received: Record<string, unknown>[] = [];
+    class Clock {
+      static readonly category = "clock";
+      [DESCRIBE](options: Record<string, unknown>): TComponentSpec {
+        received.push(options);
+        return { name: "Clock" };
+      }
+    }
+    const host = {} as Document; // this file runs without a DOM: the Clock never reads its host
+    const app = new Application({ document: host, adapters: [Clock], adapterOptions: { clock: { tick: 5 } } });
+    app.start();
+    expect(received).toHaveLength(1);
+    expect(received[0]).toMatchObject({ tick: 5, document: host, root: app.root });
+    app.stop();
   });
 });

@@ -9,7 +9,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, jest } from "@jest/globals";
 import { Application } from "@bonsai/application";
-import { HistoryAdapter, parseLocation, serializeRoute, canonicalLocation, type TRoute } from "@bonsai/router";
+import { HistoryAdapter, RouterFeature, RouteEntity, parseLocation, serializeRoute, canonicalLocation, type TRoute } from "@bonsai/router";
 import type { TComponentHandle } from "@bonsai/kernel";
 import { drive, type TDrive } from "../../helpers/drive";
 import { until } from "../../helpers/dom-setup";
@@ -190,6 +190,62 @@ describe("Navigation on the kernel", () => {
     d.application.stop();
   });
 
+  it("history:forward and history:replace requested by the interface", async () => {
+    const d = start();
+    d.send("router", "navigate", { location: "/a", mode: "push" });
+    d.send("router", "navigate", { location: "/b", mode: "push" });
+    d.send("history", "back");
+    await until(() => route(d).path === "/a");
+    d.send("history", "forward");
+    await until(() => route(d).path === "/b");
+    expect(events(d, "navigated").at(-1)).toMatchObject({ location: "/b", mode: "pop", classification: "correlated" });
+
+    const length = window.history.length;
+    d.send("history", "replace", { location: "/c" });
+    expect(here()).toBe("/c");
+    expect(window.history.length).toBe(length);
+    expect(d.ask<{ location: string; mode: string }>("history", "location", null)).toMatchObject({ location: "/c", mode: "replace" });
+    expect(events(d, "requestResult").at(-1)).toEqual({ operation: "replace", location: "/c" });
+    expect(d.failures()).toEqual([]);
+    d.application.stop();
+  });
+
+  it("a host that refuses to write an entry: a `failed` Event, the observation unchanged", () => {
+    const d = start();
+    jest.spyOn(window.history, "pushState").mockImplementation(() => { throw new Error("quota exceeded"); });
+    d.send("history", "push", { location: "/a" });
+    expect(events(d, "failed")).toEqual([{ operation: "push", reason: "quota exceeded" }]);
+    expect(events(d, "requestResult")).toEqual([]);
+    expect(d.ask<{ location: string; mode: string }>("history", "location", null)).toMatchObject({ location: "/", mode: "initial" });
+    expect(d.failures()).toEqual([]);
+    d.application.stop();
+  });
+
+  it("a host that refuses a traversal fails it at once and leaves nothing engaged", async () => {
+    const d = start({ timeout: 15 });
+    d.send("router", "navigate", { location: "/a", mode: "push" });
+    const back = jest.spyOn(window.history, "back").mockImplementation(() => { throw new Error("no entry"); });
+    d.send("history", "back");
+    expect(events(d, "failed")).toEqual([{ operation: "back", reason: "no entry" }]);
+    await tick(60); // past the window: nothing was left engaged, no late failure
+    expect(events(d, "failed")).toHaveLength(1);
+    back.mockRestore();
+    window.history.back(); // the user: not mistaken for the refused traversal
+    await until(() => events(d, "navigated").some((e) => e.mode === "pop"));
+    expect(events(d, "navigated").at(-1)).toMatchObject({ location: "/", classification: "independent" });
+    d.application.stop();
+  });
+
+  it("a result whose unit fails leaves the observation as it was (G7)", () => {
+    // The result of a push requested at depth 1 is admitted at depth 2: announcing it exceeds the bound.
+    const d = drive({}, { document, router: true, causalBound: 2, adapters: [HistoryAdapter] });
+    d.send("history", "push", { location: "/a" });
+    expect(here()).toBe("/a"); // the host was written: the effect was engaged
+    expect(String(d.failures()[0]!.error)).toMatch(/CAUSAL_BOUND/);
+    expect(d.ask<{ location: string; mode: string; sequence: number }>("history", "location", null)).toEqual({ location: "/", mode: "initial", sequence: 1 });
+    d.application.stop();
+  });
+
   it("refresh integrates the host address and announces it", () => {
     const d = start();
     window.history.replaceState(null, "", "/moved-by-someone-else"); // not notified by the host
@@ -265,6 +321,12 @@ describe("Navigation on the kernel", () => {
     expect(() => new Application({ document, adapters: [HistoryAdapter] })).toThrow(/needs the Feature "router"/);
     expect(() => new Application({ document, router: true, adapters: [HistoryAdapter, HistoryAdapter] })).toThrow(/two adapters of the category "history"/);
     expect(() => new Application({ router: true, adapters: [HistoryAdapter] })).toThrow(/need the host `document`/);
+  });
+
+  it("the router Feature consults no other Feature and starts at the root location (D15)", () => {
+    const router = new RouterFeature("router");
+    expect([router.listens, router.queries]).toEqual([[], []]);
+    expect(new RouteEntity().initialState).toEqual({ path: "/", query: {}, hash: "" });
   });
 
   it("`router` stays reserved for application Features", () => {
