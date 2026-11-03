@@ -200,6 +200,68 @@ describe("M6.2 — declared slots and UI keys", () => {
   });
 });
 
+describe("D20 — the host's default action is cancelled by declaration, at capture", () => {
+  /** A View whose part holds two links, `go` declared cancelled; `inner` optionally hosts a nested part. */
+  function links(options: { onFact?: () => void; inner?: boolean } = {}): Root {
+    document.body.innerHTML = `<div id="app"></div>`;
+    const root = new Root({ causalBound: 10, document });
+    root.start((ctx) => {
+      ctx.create({
+        name: "foundation",
+        init: (c) => {
+          const app = c.admitDistributable("#app");
+          c.create({
+            name: "view",
+            ui: true,
+            dom: { click: { local: "fact", keys: { go: "a.go", stay: "a.stay", nested: "section a" }, cancelDefault: ["go", "nested"] } },
+            locals: { fact: () => { options.onFact?.(); } },
+            init: (cc) => {
+              const part = cc.resolve(cc.designation()!);
+              cc.project(part, "fill", (el) => { el.innerHTML = `<a class="go" href="/go"><b>go</b></a><a class="stay" href="/stay">stay</a><section></section>`; });
+              if (options.inner === true) {
+                cc.create({
+                  name: "inner",
+                  ui: true,
+                  dom: { click: "fact" },
+                  locals: { fact: () => undefined },
+                  init: (i) => { i.project(i.resolve(i.designation()!), "fill", (el) => { el.innerHTML = `<a href="/inner">inner</a>`; }); }
+                }, { part: { resource: part, portion: "inner", host: "section" } });
+              }
+            }
+          }, { part: { resource: app, portion: "v" } });
+        }
+      });
+    });
+    return root;
+  }
+  /** Dispatches a cancelable click; true when its default action was cancelled. */
+  const cancelled = (selector: string): boolean =>
+    !document.querySelector(selector)!.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+
+  it("cancels it for the declared keys only, a target inside the key's element included", () => {
+    links();
+    expect(cancelled("a.go")).toBe(true);
+    expect(cancelled("a.go b")).toBe(true);
+    expect(cancelled("a.stay")).toBe(false);
+  });
+
+  it("cancels it before the treatment and whatever its outcome (G7)", () => {
+    let current: Event | undefined;
+    let seenByTreatment: boolean | undefined;
+    const root = links({ onFact: () => { seenByTreatment = current?.defaultPrevented; throw new Error("boom"); } });
+    document.addEventListener("click", (event) => { current = event; }, { capture: true });
+    expect(cancelled("a.go")).toBe(true);
+    expect(seenByTreatment).toBe(true);
+    expect(root.trace.filter((e) => e.type === "unit-failed")).toHaveLength(1);
+  });
+
+  it("follows the declaration of the admitter: an occurrence in a nested part is not cancelled by its container (A5.d)", () => {
+    links({ inner: true });
+    expect(document.querySelector("section a")!.getAttribute("href")).toBe("/inner");
+    expect(cancelled("section a")).toBe(false);
+  });
+});
+
 /** Outcomes of every engagement of the trace, as "label:outcome", in trace order. */
 function outcomes(root: Root): string[] {
   return root.trace.flatMap((e) => (e.type === "effects" ? e.report.map((r) => `${r.label}:${r.outcome}`) : []));

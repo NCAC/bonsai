@@ -1,7 +1,7 @@
 /**
  * @bonsai/view - Version 0.0.1
  * Bundled by Bonsai Build System
- * Date: 2026-11-02T15:48:10.471Z
+ * Date: 2026-11-03T14:28:55.959Z
  */
 import { DESCRIBE, describeComponent } from '@bonsai/kernel';
 
@@ -103,9 +103,12 @@ var _View_instances, _a, _View_current, _View_selectors, _View_unit, _View_run, 
  * @example ui<HTMLButtonElement>()(["click"])           // interactive
  * @example ui<HTMLSpanElement>()([])                    // explicitly non-interactive
  * @example ui<HTMLInputElement>()(["input", "change"])  // 2 required handlers
+ * @example ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] }) // link relayed to the router (D20)
  */
 function ui() {
-    return (events) => ({ events });
+    return (events, options) => (options === undefined || options.cancelDefault.length === 0
+        ? { events }
+        : { events, cancelDefault: options.cancelDefault });
 }
 // ─── Internal helpers ────────────────────────────────────────────────────────
 const capitalize = (s) => (s.length === 0 ? s : s[0].toUpperCase() + s.slice(1));
@@ -202,6 +205,7 @@ class View {
         const self = this;
         // I48 UI — one handler per declared (key, event); a missing one is a safety net (I84).
         const domTypes = new Map();
+        const cancelled = new Map();
         for (const [uiKey, entry] of Object.entries(uiEvents)) {
             if (entry.events.length === 0)
                 continue;
@@ -219,10 +223,21 @@ class View {
                 keys[uiKey] = selector;
                 domTypes.set(domEvent, keys);
             }
+            // D20 — the default action is cancelled by declaration only, for a declared event.
+            for (const domEvent of entry.cancelDefault ?? []) {
+                if (!entry.events.includes(domEvent)) {
+                    throw new Error(`[Bonsai View] ui.${uiKey} cancels the default action of "${domEvent}", which it does not declare in events (D20).`);
+                }
+                const keys = cancelled.get(domEvent) ?? [];
+                keys.push(uiKey);
+                cancelled.set(domEvent, keys);
+            }
         }
         const dom = {};
-        for (const [type, keys] of domTypes)
-            dom[type] = { local: "fact", keys };
+        for (const [type, keys] of domTypes) {
+            const cancelDefault = cancelled.get(type);
+            dom[type] = cancelDefault === undefined ? { local: "fact", keys } : { local: "fact", keys, cancelDefault };
+        }
         // I48 channel — on{NS}{Event}Event for each listened Event.
         const listens = [];
         for (const [namespace, entry] of Object.entries(features)) {

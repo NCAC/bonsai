@@ -58,7 +58,7 @@ class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartVi
 | Getter | Obligatoire | Rôle |
 | --- | --- | --- |
 | `features` | oui | Contrat vers les Features (I81) |
-| `uiEvents` | oui | `TUIContract` : clé → `ui<TEl>()([événements])` (I85, I86) |
+| `uiEvents` | oui | `TUIContract` : clé → `ui<TEl>()([événements])` (I85, I86), avec `{ cancelDefault: [événements] }` en option (§5, D20) |
 | `uiElements` | oui | `TUIElements` : clé → sélecteur (ADR-21) ; une clé de `uiEvents` à événements doit y figurer |
 | `template` | non | HTML du contenu initial de la part, projeté à la création ; vide par défaut. Emplacement provisoire du rendu (annexe A) |
 | `composers` | non | Slots de la part (§6) |
@@ -118,6 +118,8 @@ La View déclare à la description chaque événement hôte de `uiEvents` avec l
 - Un fait survenu hors de la part de la View ne lui parvient pas.
 - Le fait est **indépendant** (origine spontanée, droit de commander) s'il n'a pas été produit par une simulation instrumentée du modèle ; sinon il est corrélé et continue la réaction qui l'a simulé (C.4).
 - Un raccourci de niveau document ou un clic hors View n'est admis par aucune View (18.30).
+- **Action par défaut (D20).** Suivre un lien ou soumettre un formulaire n'est pas un effet de la View : l'hôte l'exécute après la propagation du fait, donc après les effets engagés. Une clé déclare son annulation, pour des événements qu'elle déclare : `ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] })`. Le noyau l'annule à la capture, avant le handler et quelle que soit l'issue de l'unité ; le handler n'en décide pas, il ne reçoit que la donnée `{ type, ui }`. L'annulation vaut pour les faits que la View admet sous cette clé, y compris sur un élément contenu dans celui de la clé, et pour toutes leurs occurrences : un clic avec modificateur (ouverture dans un autre onglet) est annulé aussi (18.36). Annuler l'événement d'une clé qui ne le déclare pas ne compile pas, et la description de la View le refuse.
+- Un lien relayé à `router:navigate` **doit** déclarer l'annulation de son clic : sinon l'hôte charge l'adresse du lien après le relais, ce qui met fin à l'application.
 
 ## 6. Composition : slots et Composers
 

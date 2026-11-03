@@ -254,6 +254,16 @@ Les deux questions laissées ouvertes en 3 duodecies relèvent du code : la trac
 - **`__DEV__` (ADR-06)** : la pipeline remplace désormais `__DEV__` dans l'AST (`lib/build/plugins/rollup-plugin-define.ts`) et publie deux bundles, `core/dist/bonsai.js` (`true`) et `core/dist/bonsai.prod.js` (`false`), choisis par la condition `production` de `exports`. Dans le bundle de production, `isDev()` et `reportToConsole` sont éliminés. Vérifié en exécutant les deux bundles : seul le bundle de développement signale en console. `isDev()` est simplifié en une expression repliable.
 - **Tests** : 11 ajoutés (`tests/unit/kernel/report.test.ts`, `foundation.test.ts`), plus 3 sur les artefacts (`tests/integration/bundles-dev-prod.test.ts`). Deux mutants vérifiés : le regroupement par propriétaire et `admitted` toujours faux font chacun échouer les tests. Suite à 347 tests verts, `tsc` propre.
 
+## 3 quaterdecies. Action par défaut déclarée — D20 (3 novembre 2026)
+
+Constat : dans le test de bout en bout de la navigation, le clic sur un lien `<a href>` était relayé à `router:navigate`, l'adaptateur historique écrivait l'entrée et la View projetait la route ; puis jsdom tentait de suivre le lien (« Not implemented: navigation »). Le test passait parce que jsdom n'implémente pas la navigation. Dans un navigateur, l'hôte aurait chargé l'adresse du lien après les effets engagés (ADR-35), mettant fin à l'application. Ni la théorie ni le code ne disaient qui peut annuler l'action par défaut d'un fait : le handler ne reçoit qu'une donnée (`TFact`), et le noyau n'annulait rien.
+
+- **Théorie** : décision D20 (amendement du 3 novembre 2026). L'action par défaut n'est pas un effet du modèle ; l'admetteur déclare son annulation pour un fait de son contrat (D16), pour une View un événement d'une clé, Bonsai l'applique à la capture (B.4), avant tout traitement et quelle qu'en soit l'issue. Réponse 18.35 ; l'annulation conditionnée par les données de l'occurrence (clic avec modificateur) est ouverte en 18.36. Mentions en 16.5 et B.4.
+- **Code** : `ui<TEl>()(events, { cancelDefault })`, limité aux événements déclarés de la clé à la compilation (`NoInfer`) et à la description de la View. `TDomAdmission.cancelDefault` liste les clés concernées ; l'observateur de la part appelle `preventDefault()` quand l'occurrence est attribuée à l'une d'elles, avant `admit`. Les liens du test de navigation déclarent l'annulation.
+- **Non livré** : l'annulation pour les sources de niveau document de l'adaptateur du document (D10), que D20 couvre aussi.
+- **Tests** : 7 ajoutés (3 noyau, 3 View rejoués par la régression strate 0, 1 de types), le test de navigation vérifie l'annulation. Mutant vérifié : sans l'appel à `preventDefault()`, les deux tests positifs du noyau échouent. Suite à 357 tests verts, `tsc` propre, plus aucune erreur jsdom dans la sortie.
+- **Documentation** : `gardes.md`, `tracabilite.md`, guide pédagogique, specs `view` et `router`, ADR-15, ADR-35, index.
+
 ## 4. Hors périmètre
 
 Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignations et DOM (M3–M4) ; qualification des sources par le monde fermé et D18 (M5) ; branchement des classes de base et remplacement de `Channel` et `Radio` (M6, fait).
@@ -274,3 +284,4 @@ Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignat
 12. Réécrire les specs et références qui décrivent encore `Channel`/`Radio`, et les exemples de `feature`, `entity`, `application`, `view`, `composer`, `foundation`.
 13. ~~Trancher les questions ouvertes~~ : (a) à (d), section 3 undecies ; conséquence de C.3 sur les slots sœurs arbitrée, section 3 duodecies.
 14. ~~Signalement par défaut d'un échec d'engagement sans `$effects`, et trace des effets dans l'ordre réel d'engagement~~ : fait (section 3 terdecies).
+15. ~~Action par défaut d'un lien relayé au routeur~~ : D20, fait (section 3 quaterdecies). Reste : annulation pour les sources de niveau document, et 18.36.

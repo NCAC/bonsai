@@ -44,7 +44,7 @@ L’alignement est **obligatoire**, sa réalisation peut être **progressive** :
 
 | Document | Rôle |
 | --- | --- |
-| [theorie.md](theorie.md) | V0.9.5 : 55 termes, axiomes A0–A5, garanties G1–G8, conséquences, objectifs, décisions D1–D19 (D5 retirée), rôles, gardes, annexes A et B (navigateur) et C (protocole d’exécution) |
+| [theorie.md](theorie.md) | V0.9.5 : 55 termes, axiomes A0–A5, garanties G1–G8, conséquences, objectifs, décisions D1–D20 (D5 retirée), rôles, gardes, annexes A et B (navigateur) et C (protocole d’exécution) |
 | [theorie-explication-pedagogique.md](theorie-explication-pedagogique.md) | Guide d'initiation, avec un exemple de boutique filé de bout en bout |
 | [tracabilite.md](tracabilite.md) | Chaque élément de la théorie : catégorie, statut, dépendances, justification |
 | [gardes.md](gardes.md) | Obligations, niveaux de garde, invariants et scénarios de conformité requis, dont P01–P20 ; aucune exécution de test présumée |

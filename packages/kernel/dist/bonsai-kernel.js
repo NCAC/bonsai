@@ -1,7 +1,7 @@
 /**
  * @bonsai/kernel - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-03T08:44:09.915Z
+ * Date: 2026-11-03T14:28:53.046Z
  */
 import { Immer } from '@bonsai/immer';
 
@@ -904,6 +904,7 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
                     for (const [type, admission] of Object.entries(record.spec.dom ?? {})) {
                         const local = typeof admission === "string" ? admission : admission.local;
                         const keys = typeof admission === "string" ? undefined : admission.keys;
+                        const cancelDefault = typeof admission === "string" ? undefined : admission.cancelDefault;
                         element.addEventListener(type, (event) => {
                             const target = event.target;
                             if (target === null || target.closest("[data-bonsai-part]") !== element)
@@ -919,6 +920,9 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
                                     }
                                 }
                             }
+                            // D20: cancelled at capture by declaration, never by the treatment, whatever its outcome.
+                            if (ui !== null && cancelDefault?.includes(ui) === true)
+                                event.preventDefault();
                             const pending = __classPrivateFieldGet(this, _Root_simulating, "f");
                             // Closed world (C.4): an occurrence no instrumented operation could have produced is independent.
                             const admission = pending !== null && pending.element === element && pending.type === type

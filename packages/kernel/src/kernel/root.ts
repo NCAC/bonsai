@@ -846,6 +846,7 @@ export class Root {
             for (const [type, admission] of Object.entries(record.spec.dom ?? {})) {
               const local = typeof admission === "string" ? admission : admission.local;
               const keys = typeof admission === "string" ? undefined : admission.keys;
+              const cancelDefault = typeof admission === "string" ? undefined : admission.cancelDefault;
               element.addEventListener(type, (event) => {
                 const target = event.target as Element | null;
                 if (target === null || target.closest("[data-bonsai-part]") !== element) return; // innermost part only (A5.d)
@@ -857,6 +858,8 @@ export class Root {
                     if (hit !== null && element.contains(hit)) { ui = key; break; }
                   }
                 }
+                // D20: cancelled at capture by declaration, never by the treatment, whatever its outcome.
+                if (ui !== null && cancelDefault?.includes(ui) === true) event.preventDefault();
                 const pending = this.#simulating;
                 // Closed world (C.4): an occurrence no instrumented operation could have produced is independent.
                 const admission: TAdmission = pending !== null && pending.element === element && pending.type === type

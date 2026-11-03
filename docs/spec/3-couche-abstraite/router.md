@@ -65,6 +65,7 @@ Fiche : [`docs/adaptateurs/historique.md`](../../adaptateurs/historique.md).
 
 ```text
 1. View (clic, droit de commander) → trigger(router:navigate, { location: "/products/42", mode: "push" })
+   le lien déclare { cancelDefault: ["click"] } : l'hôte ne charge pas son adresse (D20)
 2. RouterFeature : mutate(route), emit(routeChanged, { route, mode })
 3. HistoryAdapter ← routeChanged : écrit l'entrée (effet après validation), puis intègre le résultat
 4. Features et Views abonnées à routeChanged réagissent (chorégraphie, ADR-01) ;

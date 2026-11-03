@@ -51,6 +51,7 @@ import {
   type TViewContract,
   type TViewCallbacks,
   type TUIContract,
+  type TUIEntry,
   type TUIElements,
   type TFact,
   type TFactContext,
@@ -397,6 +398,21 @@ const _semantic_ko_2 = ui<HTMLInputElement>()(["scroll"]);
 // @ts-expect-error — "play" n'est pas dans TUIBaseEvents (HTMLButtonElement — I91).
 const _semantic_ko_3 = ui<HTMLButtonElement>()(["play"]);
 
+// ─── D20 : annulation déclarée de l'action par défaut ───────────────────────
+
+const _cancel_ok = ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] });
+const _cancel_ok_entry: TUIEntry<HTMLAnchorElement, readonly ["click"]> = _cancel_ok;
+
+// @ts-expect-error — "keydown" n'est pas un événement déclaré de la clé (D20).
+const _cancel_ko_undeclared = ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["keydown"] });
+
+// @ts-expect-error — "clic" n'est pas un événement (I89).
+const _cancel_ko_typo = ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["clic"] });
+
+const _cancel_contract = {
+  go: ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] })
+} satisfies TUIContract;
+
 // ─── Tests Jest factices — la vraie preuve est compile-time ─────────────────
 
 describe("View contract — compile-time enforcement (ADR-14)", () => {
@@ -416,6 +432,14 @@ describe("View contract — compile-time enforcement (ADR-14)", () => {
   it("ADR-15 : HasNoDuplicates — doublons dans events[] → erreur compile (I90)", () => {
     void _duplicates_ko;
     void _duplicates_ok;
+  });
+
+  it("D20 : cancelDefault limité aux événements déclarés de la clé", () => {
+    void _cancel_ok;
+    void _cancel_ok_entry;
+    void _cancel_ko_undeclared;
+    void _cancel_ko_typo;
+    void _cancel_contract;
   });
 
   it("ADR-15 : TEventsFor<TEl> — restriction sémantique par sous-type (I89/I91)", () => {

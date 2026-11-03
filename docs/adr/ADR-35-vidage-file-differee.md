@@ -47,5 +47,5 @@ const root = new Root({ causalBound: 50, longUnitMs: 50 });
 - La trace des unités longues désigne l'unité à réécrire.
 - Le noyau s'exécute **pendant la propagation** du fait de l'hôte qui l'a déclenché : tout le traitement d'un clic, effets engagés compris, a lieu avant que le navigateur ait fini de propager ce clic (constat du prototype, lot M5). Deux conséquences :
   - le navigateur ignore un `element.click()` imbriqué sur l'élément dont le clic est en cours ; une simulation instrumentée (`simulate`, C.4) passe donc par `dispatchEvent` ;
-  - les actions par défaut de l'hôte (soumission d'un formulaire, déplacement du focus, suivi d'un lien) ont lieu **après** les effets engagés. Un effet qui dépend de leur résultat doit attendre un fait ultérieur, admis normalement ; il ne peut pas le supposer acquis.
+  - les actions par défaut de l'hôte (soumission d'un formulaire, déplacement du focus, suivi d'un lien) ont lieu **après** les effets engagés. Un effet qui dépend de leur résultat doit attendre un fait ultérieur, admis normalement ; il ne peut pas le supposer acquis. Une View peut déclarer leur annulation par clé (D20) : elle est appliquée à la capture, sans dépendre de ce vidage.
 - Un vidage par tranches reste possible plus tard sans toucher à la théorie : G5 ne l'interdit pas. Il demanderait un nouvel ADR remplaçant celui-ci.

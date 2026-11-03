@@ -37,7 +37,10 @@ const uiElements = { total: ".cart-total", addBtn: "#add-btn", qty: "#qty" }
    mapping sémantique élément → catégories (pointeur, focus, clavier, valeur,
    formulaire, média, défilement, bascule…). `"clic"` et `"play"` sur un bouton ne compilent pas.
 4. **Pas de doublon** (I90) : `HasNoDuplicates<TEvts>` rend le paramètre `never`.
-5. **Auto-discovery** (I48, I84) : `addBtn` + `"click"` → méthode `onAddBtnClick(e: MouseEvent)`,
+5. **Action par défaut** (D20) : `ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] })`
+   annule à la capture l'action par défaut de l'hôte pour les événements cités, qui
+   doivent être déclarés par la clé (compilation, puis description de la View).
+6. **Auto-discovery** (I48, I84) : `addBtn` + `"click"` → méthode `onAddBtnClick(e: MouseEvent)`,
    imposée par `TViewCallbacks` ; au `mount()`, la View câble `addEventListener`
    et lève une erreur si la méthode manque. Pas de suffixe, contrairement aux
    handlers de Channel `on{NS}{Event}Event` (ADR-14).
@@ -51,6 +54,7 @@ périmètre : la communication entre composants passe par les Channels.
 - **Map manuelle `get uiEvents() { return { "click #add": "onAdd" } }`** — mapping redondant avec la déclaration.
 - **Décorateurs `@OnClick('addBtn')`** — dépendance stage 3, magie implicite.
 - **`events: readonly string[]`** — fautes de frappe silencieuses.
+- **`preventDefault()` dans le handler** — exigerait de lui transmettre l'événement de l'hôte (A3.c) ; un handler en échec laisserait l'action s'exécuter (D20).
 - **`keyof HTMLElementEventMap` uniforme** — accepte `"play"` sur un bouton ; `lib.dom` n'offre pas de map par élément.
 - **Règle ESLint dédiée** — contrôle hors compilateur, contournable, à maintenir à part.
 

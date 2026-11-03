@@ -50,6 +50,7 @@ import {
   DESCRIBE,
   describeComponent,
   type TComponentSpec,
+  type TDomAdmission,
   type TUnitContext
 } from "@bonsai/kernel";
 import { type UnionToIntersection } from "@bonsai/types";
@@ -279,6 +280,9 @@ export type HasNoDuplicates<
  * - `events`: declared DOM events (REQUIRED — I86)
  *             `[]` = explicitly non-interactive element (projection only).
  *             Constrained to `TEventsFor<TEl>` — valid names + semantic consistency (I89 / I91).
+ * - `cancelDefault?`: declared events whose host default action (following a
+ *             link, submitting a form) is cancelled at capture, before the
+ *             handler and whatever the unit's outcome (D20). Absent = none.
  * - `_el?`  : phantom TEl (compile time only, never allocated at runtime).
  *             Types the events of the key (`TEventsFor<TEl>`).
  *
@@ -289,7 +293,17 @@ export type TUIEntry<
   TEvts extends ReadonlyArray<TEventsFor<TEl>> = ReadonlyArray<TEventsFor<TEl>>
 > = {
   readonly events: TEvts;
+  readonly cancelDefault?: ReadonlyArray<TEvts[number]>;
   readonly _el?: TEl;
+};
+
+/**
+ * Options of a UI entry. `cancelDefault` names declared events of the key whose
+ * host default action is cancelled (D20): the handler never decides it, since
+ * it receives a fact as data, not the host event (A3.c).
+ */
+export type TUIEntryOptions<TEvt extends string> = {
+  readonly cancelDefault: ReadonlyArray<TEvt>;
 };
 
 /**
@@ -307,14 +321,21 @@ export type TUIEntry<
  * @example ui<HTMLButtonElement>()(["click"])           // interactive
  * @example ui<HTMLSpanElement>()([])                    // explicitly non-interactive
  * @example ui<HTMLInputElement>()(["input", "change"])  // 2 required handlers
+ * @example ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] }) // link relayed to the router (D20)
  */
 export function ui<TEl extends HTMLElement = HTMLElement>(): <
   const TEvts extends ReadonlyArray<TEventsFor<TEl>>
 >(
-  events: HasNoDuplicates<TEvts> extends true ? TEvts : never
+  events: HasNoDuplicates<TEvts> extends true ? TEvts : never,
+  options?: TUIEntryOptions<NoInfer<TEvts[number]>>
 ) => TUIEntry<TEl, TEvts> {
-  return <const TEvts extends ReadonlyArray<TEventsFor<TEl>>>(events: TEvts) =>
-    ({ events }) as TUIEntry<TEl, TEvts>;
+  return <const TEvts extends ReadonlyArray<TEventsFor<TEl>>>(
+    events: TEvts,
+    options?: TUIEntryOptions<TEvts[number]>
+  ) =>
+    (options === undefined || options.cancelDefault.length === 0
+      ? { events }
+      : { events, cancelDefault: options.cancelDefault }) as TUIEntry<TEl, TEvts>;
 }
 
 /**
@@ -599,6 +620,7 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
 
     // I48 UI — one handler per declared (key, event); a missing one is a safety net (I84).
     const domTypes = new Map<string, Record<string, string>>();
+    const cancelled = new Map<string, string[]>();
     for (const [uiKey, entry] of Object.entries(uiEvents)) {
       if (entry.events.length === 0) continue;
       const selector = selectors[uiKey];
@@ -617,9 +639,23 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
         keys[uiKey] = selector;
         domTypes.set(domEvent, keys);
       }
+      // D20 — the default action is cancelled by declaration only, for a declared event.
+      for (const domEvent of entry.cancelDefault ?? []) {
+        if (!entry.events.includes(domEvent)) {
+          throw new Error(
+            `[Bonsai View] ui.${uiKey} cancels the default action of "${domEvent}", which it does not declare in events (D20).`
+          );
+        }
+        const keys = cancelled.get(domEvent) ?? [];
+        keys.push(uiKey);
+        cancelled.set(domEvent, keys);
+      }
     }
-    const dom: Record<string, { local: string; keys: Record<string, string> }> = {};
-    for (const [type, keys] of domTypes) dom[type] = { local: "fact", keys };
+    const dom: Record<string, TDomAdmission> = {};
+    for (const [type, keys] of domTypes) {
+      const cancelDefault = cancelled.get(type);
+      dom[type] = cancelDefault === undefined ? { local: "fact", keys } : { local: "fact", keys, cancelDefault };
+    }
 
     // I48 channel — on{NS}{Event}Event for each listened Event.
     const listens: NonNullable<TComponentSpec["listens"]>[number][] = [];

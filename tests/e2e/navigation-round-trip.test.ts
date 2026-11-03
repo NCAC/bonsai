@@ -5,6 +5,9 @@
  *   `routeChanged` → history adapter writes the entry → View projects the route
  *   → the user goes back → independent fact → `navigate { pop }` → View projects.
  *
+ * The links declare the cancellation of their default action (D20): without it,
+ * the host would load the link's address after the round trip, ending the model.
+ *
  * @jest-environment jsdom
  */
 
@@ -32,8 +35,8 @@ const features = {
 } satisfies TFeatureContract;
 const uiEvents = {
   current: ui<HTMLElement>()([]),
-  toA: ui<HTMLAnchorElement>()(["click"]),
-  toB: ui<HTMLAnchorElement>()(["click"])
+  toA: ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] }),
+  toB: ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] })
 } satisfies TUIContract;
 const uiElements = {
   current: "[data-ui='current']",
@@ -86,12 +89,15 @@ describe("Navigation — from the click to the address and back", () => {
     const app = new Application({ document, foundation: Page, router: true, adapters: [HistoryAdapter] });
     app.start();
     const q = <T extends Element>(selector: string): T => document.querySelector(selector) as T;
+    /** Clicks a link as the user does; true when the host's default action was cancelled (D20). */
+    const follow = (selector: string): boolean =>
+      !q(selector).dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
 
-    q<HTMLElement>("[data-ui='toA']").click();
+    expect(follow("[data-ui='toA']")).toBe(true);
     expect(here()).toBe("/a");
     expect(q("[data-ui='current']").textContent).toBe("/a");
 
-    q<HTMLElement>("[data-ui='toB']").click();
+    expect(follow("[data-ui='toB']")).toBe(true);
     expect(here()).toBe("/b?x=1");
     expect(q("[data-ui='current']").textContent).toBe("/b");
 

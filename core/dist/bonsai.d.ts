@@ -24795,6 +24795,11 @@ interface TComponentSpec {
 interface TDomAdmission {
     readonly local: string;
     readonly keys?: Readonly<Record<string, string>>;
+    /**
+     * UI keys whose occurrences of this type have the host's default action
+     * cancelled at capture, before any treatment and whatever its outcome (D20).
+     */
+    readonly cancelDefault?: readonly string[];
 }
 /** Entry of a Manifest: a child of the root and its initial Query dependencies (C.1). */
 interface TManifestEntry extends TComponentSpec {
@@ -25919,6 +25924,9 @@ type HasNoDuplicates<T extends readonly unknown[], Seen extends readonly unknown
  * - `events`: declared DOM events (REQUIRED — I86)
  *             `[]` = explicitly non-interactive element (projection only).
  *             Constrained to `TEventsFor<TEl>` — valid names + semantic consistency (I89 / I91).
+ * - `cancelDefault?`: declared events whose host default action (following a
+ *             link, submitting a form) is cancelled at capture, before the
+ *             handler and whatever the unit's outcome (D20). Absent = none.
  * - `_el?`  : phantom TEl (compile time only, never allocated at runtime).
  *             Types the events of the key (`TEventsFor<TEl>`).
  *
@@ -25926,7 +25934,16 @@ type HasNoDuplicates<T extends readonly unknown[], Seen extends readonly unknown
  */
 type TUIEntry<TEl extends HTMLElement = HTMLElement, TEvts extends ReadonlyArray<TEventsFor<TEl>> = ReadonlyArray<TEventsFor<TEl>>> = {
     readonly events: TEvts;
+    readonly cancelDefault?: ReadonlyArray<TEvts[number]>;
     readonly _el?: TEl;
+};
+/**
+ * Options of a UI entry. `cancelDefault` names declared events of the key whose
+ * host default action is cancelled (D20): the handler never decides it, since
+ * it receives a fact as data, not the host event (A3.c).
+ */
+type TUIEntryOptions<TEvt extends string> = {
+    readonly cancelDefault: ReadonlyArray<TEvt>;
 };
 /**
  * Builder of a UI entry (I85 — the only mechanism).
@@ -25943,8 +25960,9 @@ type TUIEntry<TEl extends HTMLElement = HTMLElement, TEvts extends ReadonlyArray
  * @example ui<HTMLButtonElement>()(["click"])           // interactive
  * @example ui<HTMLSpanElement>()([])                    // explicitly non-interactive
  * @example ui<HTMLInputElement>()(["input", "change"])  // 2 required handlers
+ * @example ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] }) // link relayed to the router (D20)
  */
-declare function ui<TEl extends HTMLElement = HTMLElement>(): <const TEvts extends ReadonlyArray<TEventsFor<TEl>>>(events: HasNoDuplicates<TEvts> extends true ? TEvts : never) => TUIEntry<TEl, TEvts>;
+declare function ui<TEl extends HTMLElement = HTMLElement>(): <const TEvts extends ReadonlyArray<TEventsFor<TEl>>>(events: HasNoDuplicates<TEvts> extends true ? TEvts : never, options?: TUIEntryOptions<NoInfer<TEvts[number]>>) => TUIEntry<TEl, TEvts>;
 /**
  * UI contract module — keys → typed entries (ADR-14).
  * A View or Behavior composes it with a `TFeatureContract`.
@@ -26276,4 +26294,4 @@ declare class Application<M extends TFeaturesManifest = TFeaturesManifest> {
 }
 
 export { Application, BonsaiNamespaceError, Composer, Feature, Foundation, Immer, RESERVED_NAMESPACES, RXJS, Valibot, View, assertValidNamespace, describeFeature, isCamelCaseNamespace, isReservedNamespace, ui };
-export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, CamelCaseNamespace, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, ReservedNamespace, StrictArrayOfKeys, StrictArrayOfValues, StrictManifest, StringDigit, StringHash, TAdapterClass, TAllLetters, TAnyEventPayload, TApplicationOptions, TBonsaiNamespaceErrorCode, TChannelCallbacks, TChannelDefinition, TChannelHandlerName, TChannelToken, TClass, TCommandCallbacks, TCommandPayloadFor, TComposeContext, TComposed, TComposerClass, TComposerContract, TComposerFeatures, TComposition, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntries, TEventCallbacks, TEventContext, TEventPayloadFor, TEventsFor, TExcludeKeys, TExcludeValues, TFact, TFactContext, TFalsy, TFeatureCallbacks, TFeatureClass, TFeatureContext, TFeatureContract, TFeatureQueryContext, TFeatureRef, TFeatureRefForNS, TFeaturesManifest, TFlatListens, TFlatQueries, TFlatTriggers, TFoundationOptions, TFoundationSlots, TFunctionPropertyNames, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonValue, TListenCallbacks, TLookup, TLowerLetter, TMapEntry, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TParameters, TPrimitive, TProjectionNode, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TQueryCallbacks, TQueryContext, TQueryParamsFor, TQueryResultFor, TSetEntry, TSlotDeclaration, TStrictFeatureClass, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewCatalog, TViewClass, TViewContract, TViewSlotDeclaration, TuplifyUnion, UnionToIntersection, ValidatedManifest, ValuesType, Whitespace };
+export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, CamelCaseNamespace, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, ReservedNamespace, StrictArrayOfKeys, StrictArrayOfValues, StrictManifest, StringDigit, StringHash, TAdapterClass, TAllLetters, TAnyEventPayload, TApplicationOptions, TBonsaiNamespaceErrorCode, TChannelCallbacks, TChannelDefinition, TChannelHandlerName, TChannelToken, TClass, TCommandCallbacks, TCommandPayloadFor, TComposeContext, TComposed, TComposerClass, TComposerContract, TComposerFeatures, TComposition, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntries, TEventCallbacks, TEventContext, TEventPayloadFor, TEventsFor, TExcludeKeys, TExcludeValues, TFact, TFactContext, TFalsy, TFeatureCallbacks, TFeatureClass, TFeatureContext, TFeatureContract, TFeatureQueryContext, TFeatureRef, TFeatureRefForNS, TFeaturesManifest, TFlatListens, TFlatQueries, TFlatTriggers, TFoundationOptions, TFoundationSlots, TFunctionPropertyNames, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonValue, TListenCallbacks, TLookup, TLowerLetter, TMapEntry, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TParameters, TPrimitive, TProjectionNode, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TQueryCallbacks, TQueryContext, TQueryParamsFor, TQueryResultFor, TSetEntry, TSlotDeclaration, TStrictFeatureClass, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIEntryOptions, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewCatalog, TViewClass, TViewContract, TViewSlotDeclaration, TuplifyUnion, UnionToIntersection, ValidatedManifest, ValuesType, Whitespace };

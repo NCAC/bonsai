@@ -235,6 +235,42 @@ describe("View on the kernel", () => {
     expect(startupCause(() => drive({ counter: CounterFeature }, { foundation: P, document }))).toMatch(/missing in uiElements/);
   });
 
+  describe("D20 — the default action of a fact is cancelled by declaration", () => {
+    const clickButton = (): boolean =>
+      !document.querySelector("[data-ui='button']")!.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+
+    it("a key declaring cancelDefault has the default action of its event cancelled; the handler still receives the fact", () => {
+      class Cancelling extends CounterView {
+        override get uiEvents() {
+          return { label: uiEvents.label, button: ui<HTMLButtonElement>()(["click"], { cancelDefault: ["click"] }) } as never;
+        }
+      }
+      class C extends HostComposer { override get views() { return { counter: Cancelling as never }; } }
+      class P extends Foundation { get composers() { return { main: { slot: "#main", composer: C } } as const; } }
+      const d = drive({ counter: CounterFeature }, { foundation: P, document });
+      expect(clickButton()).toBe(true);
+      expect(seen.fact).toEqual({ type: "click", ui: "button" });
+      expect(d.ask<number>("counter", "get", null)).toBe(1);
+    });
+
+    it("without the declaration, the default action is left to the host", () => {
+      page();
+      expect(clickButton()).toBe(false);
+      expect(seen.fact).toEqual({ type: "click", ui: "button" });
+    });
+
+    it("cancelling the default action of an undeclared event is refused when the View is described (O2)", () => {
+      class Undeclared extends CounterView {
+        override get uiEvents() { return { label: uiEvents.label, button: { events: ["click"], cancelDefault: ["keydown"] } } as never; }
+      }
+      class C extends HostComposer { override get views() { return { counter: Undeclared as never }; } }
+      class P extends Foundation { get composers() { return { main: { slot: "#main", composer: C } } as const; } }
+      expect(startupCause(() => drive({ counter: CounterFeature }, { foundation: P, document }))).toMatch(
+        /ui\.button cancels the default action of "keydown", which it does not declare in events \(D20\)/
+      );
+    });
+  });
+
   it("an unknown UI key in getUI is an error", () => {
     class Bad extends CounterView {
       override onCounterChangedEvent(): void { (this as unknown as { getUI(k: string): unknown }).getUI("nope"); }

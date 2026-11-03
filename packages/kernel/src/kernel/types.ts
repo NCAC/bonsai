@@ -110,6 +110,11 @@ export interface TComponentSpec {
 export interface TDomAdmission {
   readonly local: string;
   readonly keys?: Readonly<Record<string, string>>;
+  /**
+   * UI keys whose occurrences of this type have the host's default action
+   * cancelled at capture, before any treatment and whatever its outcome (D20).
+   */
+  readonly cancelDefault?: readonly string[];
 }
 
 /** Entry of a Manifest: a child of the root and its initial Query dependencies (C.1). */
