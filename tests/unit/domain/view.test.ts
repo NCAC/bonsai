@@ -307,6 +307,34 @@ describe("View on the kernel", () => {
     expect(d.failures().some((f) => /Unknown UI key "nope"/.test(String((f.error as Error).message)))).toBe(true);
   });
 
+  it("a UI element missing from the part fails its projection, not the unit (C.3)", () => {
+    const d = page();
+    document.querySelector("[data-ui='label']")!.remove();
+    (document.querySelector("[data-ui='button']") as HTMLElement).click();
+    expect(d.failures()).toEqual([]);
+    expect(d.ask<number>("counter", "get", null)).toBe(1); // the validated state stays (C.3)
+    const lines = d.root.trace.flatMap((e) => (e.type === "effects" ? e.report : []));
+    const failed = lines.find((l) => l.outcome === "failed")!;
+    expect(failed.label).toBe("label.text");
+    expect(String(failed.error)).toMatch(/UI element "label" not found with selector "\[data-ui='label'\]" in the part/);
+  });
+
+  it("D13 — a slot key that is also a UI key is refused when the View is created", () => {
+    class Empty extends Composer<TComposerContract<Record<string, never>, Record<string, never>>> {
+      get features() { return {}; }
+      get views() { return {}; }
+      resolve() { return []; }
+    }
+    class Colliding extends CounterView {
+      override get composers() { return { label: { slot: "[data-ui='label']", composer: Empty } } as const; }
+    }
+    class C extends HostComposer { override get views() { return { counter: Colliding }; } }
+    class P extends Foundation { get composers() { return { main: { slot: "#main", composer: C } } as const; } }
+    expect(startupCause(() => drive({ counter: CounterFeature }, { foundation: P, document }))).toMatch(
+      /slot key "label" collides with a UI key \(D13\)/
+    );
+  });
+
   it("creation params are readable in handlers", () => {
     const got: unknown[] = [];
     class WithParams extends CounterView {

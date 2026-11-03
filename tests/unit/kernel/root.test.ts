@@ -578,6 +578,126 @@ describe("C.3 and D9 — the engagement report is bounded too", () => {
   });
 });
 
+describe("Refusals of the unit context: the author's unit fails (G7)", () => {
+  const codes = (root: Root): string[] => failures(root).map((e) => (e as TransportError).code);
+
+  it("a Command to a namespace that has no Channel in this root (UNKNOWN_TARGET)", () => {
+    const { root, handles } = boot((ctx) => ctx.create({ name: "a", locals: { go: (_p, c) => c.trigger("nowhere", "hit") } }));
+    root.admit(handles, "go", {}, click);
+    expect(codes(root)).toEqual(["UNKNOWN_TARGET"]);
+  });
+
+  it("an emit without a Channel of one's own, or of an Event its Channel does not declare (A3.e, D16)", () => {
+    const { root, handles } = boot((ctx) => ({
+      bare: ctx.create({ name: "bare", locals: { go: (_p, c) => c.emit("e") } }),
+      silent: ctx.create({ name: "silent", channel: { namespace: "silent" }, locals: { go: (_p, c) => c.emit("e") } })
+    }));
+    root.admit(handles.bare, "go", {}, click);
+    root.admit(handles.silent, "go", {}, click);
+    expect(codes(root)).toEqual(["NOT_OWNER", "UNDECLARED_MESSAGE"]);
+  });
+
+  it("a local message the component does not declare, sent from a unit", () => {
+    const { root, handles } = boot((ctx) => ctx.create({ name: "a", locals: { go: (_p, c) => c.local("missing") } }));
+    root.admit(handles, "go", {}, click);
+    expect(codes(root)).toEqual(["UNDECLARED_MESSAGE"]);
+  });
+
+  it("projecting on, simulating on or reading the attributions of a resource one does not own (A1.b)", () => {
+    const { root, handles } = boot((ctx) => {
+      let child!: TComponentHandle;
+      ctx.create({
+        name: "parent",
+        init: (c) => {
+          const resource = c.admitDistributable("#app");
+          child = c.create({
+            name: "child",
+            locals: {
+              project: (_p, cc) => { cc.project(resource, "write", () => undefined); },
+              simulate: (_p, cc) => { cc.simulate(resource, "click"); },
+              attributed: (_p, cc) => { cc.attributed(resource); }
+            }
+          });
+        }
+      });
+      return () => child;
+    });
+    for (const local of ["project", "simulate", "attributed"]) root.admit(handles(), local, {}, click);
+    expect(codes(root)).toEqual(["NOT_OWNER", "NOT_OWNER", "NOT_OWNER"]);
+  });
+
+  it("reading or mutating a state without an Entity; in a Query handler too (16.2)", () => {
+    const { root, handles } = boot((ctx) => ({
+      bare: ctx.create({
+        name: "bare",
+        channel: { namespace: "bare", queries: { v: (_p, c) => c.state() } },
+        locals: { read: (_p, c) => { c.state(); }, mutate: (_p, c) => { c.mutate(() => undefined); } }
+      }),
+      asker: ctx.create({ name: "asker", locals: { ask: (_p, c) => { c.query("bare", "v"); } } })
+    }));
+    root.admit(handles.bare, "read", {}, click);
+    root.admit(handles.bare, "mutate", {}, click);
+    root.admit(handles.asker, "ask", {}, click);
+    expect(codes(root)).toEqual(["NOT_OWNER", "NOT_OWNER", "READ_ONLY"]);
+    expect(String(failures(root)[2])).toMatch(/state without Entity/);
+  });
+
+  it("a Query beyond the causal bound (D9)", () => {
+    const { root, handles } = boot((ctx) => ({
+      asker: ctx.create({ name: "asker", locals: { ask: (_p, c) => { c.query("answer", "v"); } } }),
+      answer: ctx.create({ name: "answer", channel: { namespace: "answer", queries: { v: () => 1 } } })
+    }), 0);
+    root.admit(handles.asker, "ask", {}, click);
+    expect(codes(root)).toEqual(["CAUSAL_BOUND"]);
+  });
+});
+
+describe("C.6 — a delivery whose target is gone is abandoned, not run", () => {
+  it("a Command whose Channel was destroyed before its delivery", () => {
+    let hits = 0;
+    let child!: TComponentHandle;
+    const { root, handles } = boot((ctx) =>
+      ctx.create({
+        name: "parent",
+        init: (c) => { child = c.create({ name: "child", channel: { namespace: "child", commands: { hit: () => { hits++; } } } }); },
+        locals: {
+          go: (_p, c) => {
+            c.trigger("child", "hit");
+            c.destroy(child);
+          }
+        }
+      })
+    );
+    root.admit(handles, "go", {}, click);
+    expect(hits).toBe(0);
+    expect(root.trace.filter((e) => e.type === "delivery-abandoned").map((e) => (e as { reason: string }).reason)).toEqual(["channel destroyed"]);
+    expect(failures(root)).toEqual([]);
+  });
+
+  it("a local message whose recipient was destroyed by a delivery that came before it", () => {
+    let next = 0;
+    let child!: TComponentHandle;
+    const { root } = boot((ctx) =>
+      ctx.create({
+        name: "parent",
+        channel: { namespace: "parent", commands: { kill: (_p, c) => c.destroy(child) } },
+        init: (c) => {
+          child = c.create({
+            name: "child",
+            locals: {
+              go: (_p, cc) => { cc.trigger("parent", "kill"); cc.local("next"); },
+              next: () => { next++; }
+            }
+          });
+        }
+      })
+    );
+    root.admit(child, "go", {}, click);
+    expect(next).toBe(0);
+    expect(root.trace.filter((e) => e.type === "delivery-abandoned").map((e) => (e as { reason: string }).reason)).toEqual(["recipient destroyed"]);
+  });
+});
+
 describe("A5.a — no operation outside a validation unit", () => {
   it("refuses a context kept and used after its unit (e.g. in a .then())", () => {
     let kept!: TUnitContext;

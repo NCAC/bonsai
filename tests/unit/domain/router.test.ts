@@ -323,6 +323,12 @@ describe("Navigation on the kernel", () => {
     expect(() => new Application({ router: true, adapters: [HistoryAdapter] })).toThrow(/need the host `document`/);
   });
 
+  it("a document without a window gives no history to adapt: refused when the adapter is described", () => {
+    const detached = document.implementation.createHTMLDocument("detached"); // defaultView is null
+    const app = new Application({ document: detached, router: true, adapters: [HistoryAdapter], onTrace: null });
+    expect(() => app.start()).toThrow(/the document has no window: the history is not reachable/);
+  });
+
   it("the router Feature consults no other Feature and starts at the root location (D15)", () => {
     const router = new RouterFeature("router");
     expect([router.listens, router.queries]).toEqual([[], []]);
