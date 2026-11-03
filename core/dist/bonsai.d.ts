@@ -24907,8 +24907,18 @@ interface TUnitContext extends TReadContext {
      * that would fail the unit.
      */
     mayCommand(): boolean;
-    /** Prepares an effect, engaged only after the unit validates (C.3). */
-    prepareEffect(label: string, run: () => void): void;
+    /**
+     * Prepares an effect, engaged only after the unit validates (C.3).
+     *
+     * `target` names the resource of the host the effect modifies, or the
+     * request it sends to an external system: a synchronous failure closes that
+     * target only, later effects aiming at it are not attempted, the others are
+     * engaged. Each request to an external system takes its own target. Without
+     * `target`, every effect of the component aims at one and the same resource.
+     */
+    prepareEffect(label: string, run: () => void, options?: {
+        readonly target?: string;
+    }): void;
     /** Captures the current causal context for a later provoked fact (G8). */
     correlate(): TCorrelationToken;
 }
@@ -24998,7 +25008,8 @@ interface TRootOptions {
  * - D8  production order; subscription order; rank fixed at emission.
  * - D9  causal depth checked before any submission.
  * - C.3 effects prepared during the unit, engaged in order after it
- *       validates, stopping at the first synchronous failure.
+ *       validates; a synchronous failure closes the resource the effect
+ *       aims at (and, for a part, the parts below it), the rest goes on.
  *
  * Out of scope for M1: Entity integration (M2), structural parts and DOM
  * (M3–M4), closed-world qualification of host sources and D18 (M5).

@@ -169,8 +169,10 @@ describe("M6.2 — declared slots and UI keys", () => {
       });
     });
     const failed = root.trace.filter((e) => e.type === "effects").flatMap((e) => (e.type === "effects" ? e.report : []));
-    expect(failed.map((r) => `${r.label}:${r.outcome}`)).toEqual(["materialize #app/main:failed", "materialize #app/other:not-attempted"]);
+    // Sibling parts are disjoint (T7): the first failure does not prevent the second attempt (C.3).
+    expect(failed.map((r) => `${r.label}:${r.outcome}`)).toEqual(["materialize #app/main:failed", "materialize #app/other:failed"]);
     expect(String((failed[0] as { error?: unknown }).error)).toMatch(/matches 2 elements/);
+    expect(String((failed[1] as { error?: unknown }).error)).toMatch(/matches 0 elements/);
   });
 
   it("attributes a host event to the UI key whose selector matches, else null", () => {
@@ -195,5 +197,135 @@ describe("M6.2 — declared slots and UI keys", () => {
     const part = document.querySelector("[data-bonsai-part='v']")!;
     for (const selector of ["b", "span", "p"]) part.querySelector(selector)!.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
     expect(seen).toEqual([{ type: "click", ui: "add" }, { type: "click", ui: "row" }, { type: "click", ui: null }]);
+  });
+});
+
+/** Outcomes of every engagement of the trace, as "label:outcome", in trace order. */
+function outcomes(root: Root): string[] {
+  return root.trace.flatMap((e) => (e.type === "effects" ? e.report.map((r) => `${r.label}:${r.outcome}`) : []));
+}
+
+describe("C.3 — a synchronous failure closes the resource it aims at, not the rest of the list", () => {
+  it("a failing part does not deprive its sibling, whatever the declaration order", () => {
+    for (const order of [["lost", "main"], ["main", "lost"]] as const) {
+      document.body.innerHTML = `<div id="app"><section data-slot="main"></section></div>`;
+      const root = new Root({ causalBound: 10, document });
+      root.start((ctx) => {
+        ctx.create({
+          name: "foundation",
+          init: (c) => {
+            const app = c.admitDistributable("#app");
+            for (const name of order) {
+              c.create(
+                { name, init: (cc) => { cc.project(cc.resolve(cc.designation()!), "fill", (el) => { el.append(name); }); } },
+                { part: { resource: app, portion: name, host: `[data-slot='${name}']` } }
+              );
+            }
+          }
+        });
+      });
+      expect(document.querySelector("section")!.textContent).toBe("main");
+      expect(outcomes(root)).toContain("materialize #app/main:engaged");
+      expect(outcomes(root)).toContain("materialize #app/lost:failed");
+    }
+  });
+
+  it("closes the parts below a failing part: their materialization and writes are not attempted", () => {
+    document.body.innerHTML = `<div id="app"></div>`;
+    const root = new Root({ causalBound: 10, document });
+    root.start((ctx) => {
+      ctx.create({
+        name: "foundation",
+        init: (c) => {
+          const app = c.admitDistributable("#app");
+          c.create({
+            name: "composer",
+            init: (cc) => {
+              const slot = cc.resolve(cc.designation()!);
+              cc.create(
+                { name: "view", init: (v) => { v.project(v.resolve(v.designation()!), "render", (el) => { el.append("view"); }); } },
+                { part: { resource: slot, portion: "v" } }
+              );
+            }
+          }, { part: { resource: app, portion: "lost", host: "[data-slot='absent']" } });
+          c.create(
+            { name: "other", init: (o) => { o.project(o.resolve(o.designation()!), "render", (el) => { el.append("other"); }); } },
+            { part: { resource: app, portion: "other" } }
+          );
+        }
+      });
+    });
+    expect(outcomes(root)).toEqual(expect.arrayContaining([
+      "materialize #app/lost:failed",
+      "materialize #app/lost/v:not-attempted",
+      "render:not-attempted",
+      "materialize #app/other:engaged",
+      "render:engaged"
+    ]));
+    expect(document.querySelector("#app")!.textContent).toBe("other");
+  });
+
+  it("any failed effect closes its part: a later write into the same part is not attempted, a sibling's is", () => {
+    document.body.innerHTML = `<div id="app"></div>`;
+    const root = new Root({ causalBound: 10, document });
+    root.start((ctx) => {
+      ctx.create({
+        name: "foundation",
+        init: (c) => {
+          const app = c.admitDistributable("#app");
+          c.create({
+            name: "broken",
+            init: (b) => {
+              const part = b.resolve(b.designation()!);
+              b.project(part, "first", () => { throw new Error("half-written"); });
+              b.project(part, "second", (el) => { el.append("never"); });
+            }
+          }, { part: { resource: app, portion: "broken" } });
+          c.create(
+            { name: "sound", init: (o) => { o.project(o.resolve(o.designation()!), "third", (el) => { el.append("sound"); }); } },
+            { part: { resource: app, portion: "sound" } }
+          );
+        }
+      });
+    });
+    expect(outcomes(root)).toEqual(expect.arrayContaining(["first:failed", "second:not-attempted", "third:engaged"]));
+    expect(document.querySelector("#app")!.textContent).toBe("sound");
+  });
+
+  it("an effect on a resource of the host that fails at startup does not prevent the user interface", () => {
+    document.body.innerHTML = `<div id="app"></div>`;
+    const root = new Root({ causalBound: 10, document });
+    root.start((ctx) => {
+      ctx.create({ name: "adapter", init: (a) => { a.prepareEffect("history.observe", () => { throw new Error("no history"); }); } });
+      ctx.create({
+        name: "foundation",
+        init: (c) => {
+          const app = c.admitDistributable("#app");
+          c.create(
+            { name: "view", init: (v) => { v.project(v.resolve(v.designation()!), "render", (el) => { el.append("shown"); }); } },
+            { part: { resource: app, portion: "main" } }
+          );
+        }
+      });
+    });
+    expect(outcomes(root)).toEqual(["history.observe:failed", "materialize #app/main:engaged", "render:engaged"]);
+    expect(document.querySelector("#app")!.textContent).toBe("shown");
+  });
+
+  it("a part placed before an unmaterialized sibling goes to the end of its container, without failing", () => {
+    document.body.innerHTML = `<div id="app"><p id="first"></p></div>`;
+    const root = new Root({ causalBound: 10, document });
+    root.start((ctx) => {
+      ctx.create({
+        name: "foundation",
+        init: (c) => {
+          const app = c.admitDistributable("#app");
+          c.create({ name: "lost" }, { part: { resource: app, portion: "lost", host: "[data-slot='absent']" } });
+          c.create({ name: "placed" }, { part: { resource: app, portion: "placed", before: "lost" } });
+        }
+      });
+    });
+    expect(outcomes(root)).toEqual(["materialize #app/lost:failed", "materialize #app/placed:engaged"]);
+    expect(document.querySelector("#app")!.lastElementChild!.getAttribute("data-bonsai-part")).toBe("placed");
   });
 });

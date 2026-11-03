@@ -18,7 +18,8 @@
  * - D8  production order; subscription order; rank fixed at emission.
  * - D9  causal depth checked before any submission.
  * - C.3 effects prepared during the unit, engaged in order after it
- *       validates, stopping at the first synchronous failure.
+ *       validates; a synchronous failure closes the resource the effect
+ *       aims at (and, for a part, the parts below it), the rest goes on.
  *
  * Out of scope for M1: Entity integration (M2), structural parts and DOM
  * (M3–M4), closed-world qualification of host sources and D18 (M5).
@@ -101,11 +102,21 @@ type Delivery =
   | { readonly kind: "event"; readonly subscription: SubscriptionRecord; readonly name: string; readonly payload: unknown; readonly context: TCausalContext }
   | { readonly kind: "local"; readonly target: ComponentRecord; readonly name: string; readonly payload: unknown; readonly context: TCausalContext };
 
+/**
+ * What an effect aims at (C.3, 11.8): a part it materializes or writes into,
+ * or a resource of the host (or a request to an external system) named by
+ * its owner.
+ */
+type TEffectTarget =
+  | { readonly part: ResourceRecord }
+  | { readonly owner: ComponentRecord; readonly key: string };
+
 interface PreparedEffect {
   readonly owner: ComponentRecord;
   readonly label: string;
   readonly run: () => void;
   readonly context: TCausalContext;
+  readonly target: TEffectTarget;
 }
 
 interface Unit {
@@ -338,15 +349,40 @@ export class Root {
     return null;
   }
 
-  /** C.3: engage in preparation order, stop at the first synchronous failure. */
+  /**
+   * C.3: engage in preparation order. A synchronous failure closes the
+   * resource the effect aims at and, for a part, every part below it: later
+   * effects aiming at a closed resource are not attempted, the others are
+   * engaged. Sibling parts are disjoint (T7), so one failing slot does not
+   * deprive the others, whatever their declaration order.
+   */
   #engage(effects: readonly PreparedEffect[]): void {
     if (effects.length === 0) return;
     const reports = new Map<ComponentRecord, Array<{ label: string; outcome: TEffectOutcome; error?: unknown }>>();
-    let stopped = false;
+    const closedParts = new Set<ResourceRecord>();
+    const closedKeys = new Map<ComponentRecord, Set<string>>();
+    const closed = (target: TEffectTarget): boolean => {
+      if ("part" in target) {
+        for (let part: ResourceRecord | null = target.part; part !== null; part = part.container?.resource ?? null) {
+          if (closedParts.has(part)) return true;
+        }
+        return false;
+      }
+      return closedKeys.get(target.owner)?.has(target.key) ?? false;
+    };
+    const close = (target: TEffectTarget): void => {
+      if ("part" in target) {
+        closedParts.add(target.part);
+        return;
+      }
+      const keys = closedKeys.get(target.owner) ?? new Set<string>();
+      keys.add(target.key);
+      closedKeys.set(target.owner, keys);
+    };
     for (const effect of effects) {
       const list = reports.get(effect.owner) ?? [];
       reports.set(effect.owner, list);
-      if (stopped) {
+      if (closed(effect.target)) {
         list.push({ label: effect.label, outcome: "not-attempted" });
         continue;
       }
@@ -355,7 +391,7 @@ export class Root {
         list.push({ label: effect.label, outcome: "engaged" });
       } catch (error) {
         list.push({ label: effect.label, outcome: "failed", error });
-        stopped = true;
+        close(effect.target);
       }
     }
     for (const [owner, report] of reports) {
@@ -542,6 +578,7 @@ export class Root {
           owner: self,
           label,
           context: cause,
+          target: { part: record! },
           run: () => {
             if (!record!.alive) return;
             if (record!.element === null) throw new Error(`${record!.handle.label} is not materialized (9.10)`);
@@ -559,6 +596,7 @@ export class Root {
           owner: self,
           label: `simulate ${type}`,
           context: cause,
+          target: { part: record! },
           run: () => {
             const element = record!.element;
             if (element === null) throw new Error(`${record!.handle.label} is not materialized (9.10)`);
@@ -611,9 +649,9 @@ export class Root {
         guard();
         return unit.right;
       },
-      prepareEffect: (label, run) => {
+      prepareEffect: (label, run, options) => {
         guard();
-        unit.effects.push({ owner: self, label, run, context: cause });
+        unit.effects.push({ owner: self, label, run, context: cause, target: { owner: self, key: options?.target ?? "" } });
       },
       correlate: (): TCorrelationToken => {
         guard();
@@ -765,6 +803,7 @@ export class Root {
           owner: parent,
           label: `materialize ${part.handle.label}`,
           context: cause,
+          target: { part },
           run: () => {
             if (!part.alive) return;
             const host = container!.element;
@@ -902,6 +941,7 @@ export class Root {
         owner: resource.container.resource.owner,
         label: `remove ${resource.handle.label}`,
         context: cause,
+        target: { part: resource },
         run: () => { resource.element?.remove(); resource.element = null; }
       });
     }

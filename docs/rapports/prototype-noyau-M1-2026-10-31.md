@@ -235,6 +235,16 @@ Limites : les passages historiques de `5-rendu.md`, `devtools.md`, `validation.m
 - **(c) View sans élément** : conforme à A1.b (seul le parent détruit un enfant). Testé (2 tests) : la View reste vivante, reçoit ses Events, aucune unité n'échoue. Constat associé : le premier engagement en échec laisse non tentés les effets suivants (C.3), donc un slot de Foundation introuvable empêche aussi la matérialisation des slots déclarés après lui. Conforme à la théorie ; à signaler comme question de conception (matérialisation par slot indépendante), sans modification.
 - **(d) A4.b côté réception** : un composant non UI ne peut plus s'abonner aux Events d'un composant UI (`NOT_AUTHORIZED`), quel que soit l'ordre de création ; deux tests échouent sans le garde. Les tests de ce lot passent à 322.
 
+## 3 duodecies. Arbitrage C.3 — fermeture par ressource visée (2 novembre 2026)
+
+Le constat (c) ci-dessus est arbitré par un amendement de la théorie (C.3, B.5, 18.31). Une erreur synchrone d'engagement ne rend plus non tenté tout le reste de la liste : elle ferme la ressource visée par l'effet en échec et, pour une part, les parts qui en descendent. Toute erreur ferme sa ressource, pas seulement l'échec d'une matérialisation. Chaque requête à un système extérieur est une ressource distincte.
+
+- **Noyau** : chaque effet préparé porte ce qu'il vise (la part pour `materialize`, `project`, `simulate` et `remove` ; une clé nommée par son propriétaire pour `prepareEffect`, option `target`, par défaut une seule ressource par composant). `Root.#engage` tient l'ensemble des ressources fermées au lieu d'un booléen d'arrêt.
+- **Tests** : deux tests inversés (`host.test.ts`, `view.test.ts`) ; six ajoutés : slots sœurs dans les deux ordres de déclaration, parts descendantes d'une part en échec, écriture après échec sur la même part, adaptateur en échec au démarrage, part placée avant une sœur non matérialisée, cibles nommées de `prepareEffect`. Deux mutants vérifiés : l'arrêt global fait échouer les huit tests, la fermeture sans les descendants en fait échouer deux. Suite à 333 tests verts, `tsc` propre.
+- **Documentation** : `gardes.md`, `tracabilite.md`, guide pédagogique, specs `foundation`, `view`, `composer`, fiches d'adaptateurs.
+
+Restent ouverts, indépendamment de cet arbitrage : le signalement par défaut d'un bilan d'engagement en échec sans gestionnaire `$effects`, et la lisibilité de la trace, qui regroupe les entrées `effects` par propriétaire et masque l'ordre réel d'engagement.
+
 ## 4. Hors périmètre
 
 Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignations et DOM (M3–M4) ; qualification des sources par le monde fermé et D18 (M5) ; branchement des classes de base et remplacement de `Channel` et `Radio` (M6, fait).
@@ -253,4 +263,5 @@ Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignat
 10. ~~Lot M6.3a~~ : routeur et adaptateur historique, fait (section 3 octies).
 11. ~~Lot M6.3b~~ : retrait de `Channel` et `Radio`, fait (section 3 nonies).
 12. Réécrire les specs et références qui décrivent encore `Channel`/`Radio`, et les exemples de `feature`, `entity`, `application`, `view`, `composer`, `foundation`.
-13. Trancher les questions ouvertes : adoption d'un slot comme vérification de l'unité, scission de `queries`, destruction logique d'une View dont l'élément échoue, garde d'abonnement A4.b.
+13. ~~Trancher les questions ouvertes~~ : (a) à (d), section 3 undecies ; conséquence de C.3 sur les slots sœurs arbitrée, section 3 duodecies.
+14. Signalement par défaut d'un échec d'engagement sans `$effects`, et trace des effets dans l'ordre réel d'engagement (questions distinctes, non arbitrées).

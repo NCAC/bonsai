@@ -332,12 +332,32 @@ describe("View on the kernel", () => {
       expect(d.failures()).toEqual([]);                                 // no unit failed: the projections of the lost View are failed or unattempted effects
     });
 
-    it("C.3 — the first failed engagement leaves the sibling slot unmaterialized (documented consequence)", () => {
-      const d = drive({ counter: CounterFeature }, { foundation: TwoSlots, document });
-      const outcomes = d.root.trace.flatMap((t) => (t.type === "effects" ? t.report.map((r) => [r.label, r.outcome]) : []));
-      expect(outcomes[0]).toEqual(["materialize body/lost", "failed"]);
-      expect(outcomes[1]).toEqual(["materialize body/main", "not-attempted"]);
-      expect(document.querySelector("#main")!.children).toHaveLength(0);   // the sibling View is alive but has no element
+    class MainFirst extends Foundation {
+      get composers() {
+        return {
+          main: { slot: "#main", composer: ProbingComposer },
+          lost: { slot: "#nowhere", composer: ProbingComposer }
+        } as const;
+      }
+    }
+
+    it("C.3 — a failing slot does not deprive its sibling, whatever the declaration order", () => {
+      for (const foundation of [TwoSlots, MainFirst]) {
+        resetDOM();
+        document.body.innerHTML = `<div id="main"></div>`;
+        const d = drive({ counter: CounterFeature }, { foundation, document });
+        const outcomes = d.root.trace.flatMap((t) => (t.type === "effects" ? t.report.map((r) => `${r.label}:${r.outcome}`) : []));
+        expect(outcomes).toEqual(expect.arrayContaining([
+          "materialize body/lost:failed",
+          "materialize body/lost/c:not-attempted",   // the View of the failing slot lies below it
+          "materialize body/main:engaged",
+          "materialize body/main/c:engaged"
+        ]));
+        expect(document.querySelector("#main [data-ui='label']")!.textContent).toBe("0");
+        d.send("counter", "inc");
+        expect(document.querySelector("#main [data-ui='label']")!.textContent).toBe("1");
+        expect(d.failures()).toEqual([]);
+      }
     });
   });
 });

@@ -126,7 +126,7 @@ Les séquences suivantes sont les **obligations de la théorie** ; le noyau les 
 5. Les validations portent sur l'unité complète, pas sur chaque opération intermédiaire. Les existences, abonnements, attributions, restitutions et messages différés sont provisoires jusqu'à sa réussite. Un échec les annule ensemble ; les créations abandonnées et leurs désignations ne sont pas publiées.
 6. Les effets physiques préparés ne sont engagés **qu'après validation interne**, dans l'ordre de préparation, avant la délivrance différée suivante. Le démarrage ne publie aucune application partiellement démarrée.
 
-Cette projection n'est pas une transaction hôte : les écritures peuvent réussir partiellement. Au premier échec synchrone d'engagement, les suivantes sont non tentées ; les engagements précédents ne sont pas annulés. Les résultats capturés sont admis par de nouveaux messages vers l'occurrence vivante concernée, sans réentrance ni annonce anticipée de réussite. L'ordre des engagements ne garantit pas celui des achèvements asynchrones (C.3).
+Cette projection n'est pas une transaction hôte : les écritures peuvent réussir partiellement. Un échec synchrone d'engagement ferme la part visée et celles qui en descendent : les écritures suivantes qui les visent sont non tentées, les autres restent engagées ; les engagements précédents ne sont pas annulés. Les résultats capturés sont admis par de nouveaux messages vers l'occurrence vivante concernée, sans réentrance ni annonce anticipée de réussite. L'ordre des engagements ne garantit pas celui des achèvements asynchrones (C.3).
 
 ### 4.2 Sequence de detachement (normative)
 

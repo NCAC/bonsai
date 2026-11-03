@@ -15039,7 +15039,8 @@ function capture(value) {
  * - D8  production order; subscription order; rank fixed at emission.
  * - D9  causal depth checked before any submission.
  * - C.3 effects prepared during the unit, engaged in order after it
- *       validates, stopping at the first synchronous failure.
+ *       validates; a synchronous failure closes the resource the effect
+ *       aims at (and, for a part, the parts below it), the rest goes on.
  *
  * Out of scope for M1: Entity integration (M2), structural parts and DOM
  * (M3–M4), closed-world qualification of host sources and D18 (M5).
@@ -15261,11 +15262,31 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
     if (effects.length === 0)
         return;
     const reports = new Map();
-    let stopped = false;
+    const closedParts = new Set();
+    const closedKeys = new Map();
+    const closed = (target) => {
+        if ("part" in target) {
+            for (let part = target.part; part !== null; part = part.container?.resource ?? null) {
+                if (closedParts.has(part))
+                    return true;
+            }
+            return false;
+        }
+        return closedKeys.get(target.owner)?.has(target.key) ?? false;
+    };
+    const close = (target) => {
+        if ("part" in target) {
+            closedParts.add(target.part);
+            return;
+        }
+        const keys = closedKeys.get(target.owner) ?? new Set();
+        keys.add(target.key);
+        closedKeys.set(target.owner, keys);
+    };
     for (const effect of effects) {
         const list = reports.get(effect.owner) ?? [];
         reports.set(effect.owner, list);
-        if (stopped) {
+        if (closed(effect.target)) {
             list.push({ label: effect.label, outcome: "not-attempted" });
             continue;
         }
@@ -15275,7 +15296,7 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
         }
         catch (error) {
             list.push({ label: effect.label, outcome: "failed", error });
-            stopped = true;
+            close(effect.target);
         }
     }
     for (const [owner, report] of reports) {
@@ -15464,6 +15485,7 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
                 owner: self,
                 label,
                 context: cause,
+                target: { part: record },
                 run: () => {
                     if (!record.alive)
                         return;
@@ -15484,6 +15506,7 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
                 owner: self,
                 label: `simulate ${type}`,
                 context: cause,
+                target: { part: record },
                 run: () => {
                     const element = record.element;
                     if (element === null)
@@ -15543,9 +15566,9 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
             guard();
             return unit.right;
         },
-        prepareEffect: (label, run) => {
+        prepareEffect: (label, run, options) => {
             guard();
-            unit.effects.push({ owner: self, label, run, context: cause });
+            unit.effects.push({ owner: self, label, run, context: cause, target: { owner: self, key: options?.target ?? "" } });
         },
         correlate: () => {
             guard();
@@ -15699,6 +15722,7 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
                 owner: parent,
                 label: `materialize ${part.handle.label}`,
                 context: cause,
+                target: { part },
                 run: () => {
                     if (!part.alive)
                         return;
@@ -15851,6 +15875,7 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
             owner: resource.container.resource.owner,
             label: `remove ${resource.handle.label}`,
             context: cause,
+            target: { part: resource },
             run: () => { resource.element?.remove(); resource.element = null; }
         });
     }

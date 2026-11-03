@@ -154,7 +154,7 @@ new Application({ features, document, foundation: AppFoundation, anchor: "body" 
 | `Foundation.composers`, ancre, adoption des slots, création des Composers | Livré (`tests/unit/domain/foundation.test.ts`) |
 | Foundation facultative | Oui : I33 suspendu |
 | Disjonction des périmètres entre racines d'un même document (B.2) | Non vérifiée au démarrage |
-| Slot en échec | Les effets suivants de la même liste sont marqués non tentés (C.3) : les slots déclarés après lui ne sont pas matérialisés, et les Composers et Views déjà créés restent vivants sans élément. Conforme à la théorie ; cette conséquence est signalée, non corrigée |
+| Slot en échec | Sa matérialisation échoue ; les effets qui le visent ou visent une part qui en descend (les Views de son Composer) sont marqués non tentés (C.3). Les autres slots sont matérialisés, quel que soit leur ordre de déclaration (T7). Le Composer et ses Views restent vivants sans élément ; l'échec n'apparaît que dans la trace, faute de gestionnaire `$effects` |
 | Élément d'ancrage déclaré dans un Manifest de modules | Option d'`Application` seulement |
 | Évolution de la composition de premier niveau | Exclue en V1 (§3.bis) |
 

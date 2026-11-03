@@ -476,7 +476,7 @@ describe("C.3 — effects engaged after validation, in order", () => {
     expect(written).toBe(false);
   });
 
-  it("stops at the first synchronous failure and reports the rest as not attempted", () => {
+  it("closes the resource of a synchronous failure: later effects on the same resource are not attempted", () => {
     const order: string[] = [];
     let report: unknown = null;
     const { root, handles } = boot((ctx) =>
@@ -499,6 +499,33 @@ describe("C.3 — effects engaged after validation, in order", () => {
       { label: "e1", outcome: "engaged" },
       { label: "e2", outcome: "failed" },
       { label: "e3", outcome: "not-attempted" }
+    ]);
+  });
+
+  it("keeps engaging effects on other resources: each named target, such as one request, is closed alone", () => {
+    const order: string[] = [];
+    let report: unknown = null;
+    const { root, handles } = boot((ctx) =>
+      ctx.create({
+        name: "client",
+        locals: {
+          go: (_p, c) => {
+            c.prepareEffect("request 1", () => { throw new Error("refused"); }, { target: "request-1" });
+            c.prepareEffect("request 1 again", () => order.push("request 1 again"), { target: "request-1" });
+            c.prepareEffect("request 2", () => order.push("request 2"), { target: "request-2" });
+            c.prepareEffect("unnamed", () => order.push("unnamed"));
+          },
+          $effects: (p) => { report = p; }
+        }
+      })
+    );
+    root.admit(handles, "go", {}, click);
+    expect(order).toEqual(["request 2", "unnamed"]);
+    expect(report).toEqual([
+      { label: "request 1", outcome: "failed" },
+      { label: "request 1 again", outcome: "not-attempted" },
+      { label: "request 2", outcome: "engaged" },
+      { label: "unnamed", outcome: "engaged" }
     ]);
   });
 });
