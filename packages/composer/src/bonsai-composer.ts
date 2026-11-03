@@ -1,260 +1,196 @@
 /**
- * @bonsai/composer — Composer abstract base class
+ * @bonsai/composer — Composer abstract base class (migration lot M6.2)
  *
- * Strate 0 — Capacités :
- *   - resolve(event | null) → TResolveResult | null (0/1 View)
- *   - Slot DOM immutable fourni par le parent (Foundation ou View)
- *   - Machine à états minimal : idle → active → idle
- *   - Création d'élément DOM si absent (D30)
- *   - Diff de transitions §3.1 (5 cas Same/New/null) sans recréation inutile
+ * A Composer decides which Views exist in one slot, and in which order. It is
+ * a child of a Foundation or of a View; it is the only creator of Views (D11).
  *
- * Invariants :
- *   I20  — Seuls Foundation/Composers créent/détruisent des Views
- *   I35  — Composer n'a aucune écriture DOM (lecture scope autorisée)
- *   I37  — Un seul type de Composer, gère 0/1 Views en strate 0
- *   I40  — Scope DOM d'une View exclut les sous-arbres des slots déclarés
+ *   - `get features()` — the Channels it listens to and queries (no `triggers`: D12)
+ *   - `get views()`    — the finite catalogue of Views it can create
+ *   - `resolve(ctx)`   — one pure decision: the ordered composition, from Queries only
  *
- * ADRs :
- *   ADR-0024 — get params() value-first (strate 0 : pas de listen/request)
- *   ADR-0025 — Pas de lifecycle hooks (ni onMount, ni onUnmount, ni onAttach)
- *   ADR-0026 — rootElement = string CSS selector only
- *   ADR-0027 — resolve(event) unique point d'entrée, pas de state local
+ * `resolve` runs twice at most per cause, only by the framework: during the
+ * Composer's initialisation (in its creator's validation unit), then in the
+ * unit of each Event declared in `features[NS].listens`. It never receives the
+ * triggering Event: the composition is recomputed from the domain's state.
  *
- * Diff §3.1 (RFC composer.md) :
- *   | resolve() retourne | View montée         | Action                                    |
- *   | ------------------ | ------------------- | ----------------------------------------- |
- *   | SameView+SameRoot  | SameView instance   | **No-op** (instance conservée)            |
- *   | NewView (ou root)  | OldView instance    | **Detach** OldView → **Attach** NewView   |
- *   | NewView            | null                | **Attach** NewView                        |
- *   | null               | OldView instance    | **Detach** OldView                        |
- *   | null               | null                | **No-op**                                 |
+ * Reconciliation (T3): same `key` and same View with equal `params` → the
+ * instance is kept; otherwise it is destroyed, then created again; a `key`
+ * that disappeared is destroyed with its descendants. The array order is the
+ * order in the slot, placed explicitly (no dependence on history).
+ *
+ * Invariants:
+ *   D11  — Views are created and destroyed only by Composers
+ *   D12  — no Command, no Channel of its own, no state independent of its Views
+ *   I35  — the Composer's structural writes are the attribution of parts
+ *   T7   — parts are disjoint
+ *
+ * Known limit (C.3): a View whose element could not be created is not yet
+ * destroyed logically; the failure is reported in the kernel trace (and on
+ * the console in development, through `onTrace`).
  *
  * @packageDocumentation
  */
 
-import { View, type TViewClass } from "@bonsai/view";
+import {
+  DESCRIBE,
+  describeComponent,
+  type TComponentSpec,
+  type TUnitContext
+} from "@bonsai/kernel";
+import type {
+  TFeatureRefForNS,
+  TFlatQueries,
+  TQueryParamsFor,
+  TQueryResultFor
+} from "@bonsai/feature";
+import type { TViewClass } from "@bonsai/view";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Contract types ──────────────────────────────────────────────────────────
 
 /**
- * Résultat de resolve() — décrit la View à instancier.
- *
- * Strate 0 (ADR-0028) : pas de tableau (N-instances reportées en strate 1),
- * pas d'options (D34 reporté).
- *
- * Le champ `view` (et non `viewClass`) est l'identifiant officiel
- * du contrat — alignement RFC composer.md §1.1 + ADR-0020 §6.2 + ADR-0026.
- *
- * `TViewClass` est volontairement structurel (variance permissive) — le
- * Composer ne dépend pas des `TDeps`/`TContract` spécifiques de la View
- * concrète, seulement de sa surface de mount (cf. ADR-0041 + bonsai-view.ts).
+ * Features a Composer depends on: Events that make it decide again, Queries it
+ * reads. No `triggers` lane: a Composer addresses no Command (D12).
  */
-export type TResolveResult = {
-  /** La classe View concrète à instancier */
-  readonly view: TViewClass;
-  /** Sélecteur CSS de l'élément root de la View — dans le scope du Composer (ADR-0026) */
-  readonly rootElement: string;
+export type TComposerFeatures = {
+  readonly [NS in string]: {
+    readonly feature: TFeatureRefForNS<NS>;
+    readonly listens: readonly string[];
+    readonly queries: readonly string[];
+  };
+};
+
+/** Finite catalogue of the Views a Composer can create. */
+export type TViewCatalog = Readonly<Record<string, TViewClass>>;
+
+/** The whole contract of a Composer: its Features and its Views. */
+export type TComposerContract<
+  F extends TComposerFeatures = TComposerFeatures,
+  V extends TViewCatalog = TViewCatalog
+> = {
+  readonly features: F;
+  readonly views: V;
 };
 
 /**
- * Options de construction du Composer — fournies par le framework.
+ * What `resolve` can do: ask Queries. Nothing else — no Command, no Event, no
+ * state (D12).
  */
-export type TComposerOptions = {
-  /** Sélecteur CSS du slot DOM du Composer — fourni par Foundation ou View parent */
-  readonly rootElement: string;
+export type TComposeContext<TCC extends TComposerContract> = {
+  query<K extends TFlatQueries<TCC["features"]> & string>(
+    key: K,
+    params: TQueryParamsFor<TCC["features"], K>
+  ): TQueryResultFor<TCC["features"], K>;
 };
+
+/**
+ * One View of the composition: which View of the catalogue, under which
+ * `key` (unique in the composition), with which creation `params` (values only,
+ * A3.d).
+ */
+export type TComposed<TCC extends TComposerContract> = {
+  [K in keyof TCC["views"] & string]: {
+    readonly view: K;
+    readonly key: string;
+    readonly params?: Readonly<Record<string, unknown>>;
+  };
+}[keyof TCC["views"] & string];
+
+/** Ordered composition: the Views of the slot, in display order. */
+export type TComposition<TCC extends TComposerContract> = ReadonlyArray<TComposed<TCC>>;
+
+/** Structural type of a concrete Composer class, independent of its contract. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type TComposerClass = abstract new (...args: any[]) => Composer<any>;
 
 // ─── Composer abstract class ─────────────────────────────────────────────────
 
-export abstract class Composer {
-  /** Sélecteur CSS du slot DOM — immutable (ADR-0020) */
-  #rootElement: string;
+type TPresent = {
+  readonly handle: ReturnType<TUnitContext["create"]>;
+  readonly view: string;
+  readonly params: string;
+};
 
-  /** Référence au slot DOM résolu */
-  #slot: HTMLElement | null = null;
+const stable = (value: unknown): string => JSON.stringify(value ?? null, (_k, v: unknown) =>
+  v !== null && typeof v === "object" && !Array.isArray(v)
+    ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : 1)))
+    : v
+);
 
-  /** La View actuellement montée (null si resolve() a retourné null) */
-  #currentView: View | null = null;
+export abstract class Composer<TCC extends TComposerContract = TComposerContract> {
+  /** Features it listens to and queries (no `triggers`, D12). */
+  abstract get features(): TCC["features"];
 
-  /**
-   * Dernier résultat retourné par resolve() — sert de référence pour le diff §3.1.
-   * Null si la dernière sortie était null (ou avant le premier resolve).
-   */
-  #currentResult: TResolveResult | null = null;
-
-  /** Machine à états minimal : idle → active → idle */
-  #state: "idle" | "active" = "idle";
-
-  constructor(options: TComposerOptions) {
-    this.#rootElement = options.rootElement;
-  }
-
-  // ─── Public API (framework only) ────────────────────────────────────
+  /** Finite catalogue of the Views it can create. */
+  abstract get views(): TCC["views"];
 
   /**
-   * Le sélecteur rootElement (ADR-0026).
+   * The single decision: the ordered composition, computed from Queries only.
+   * Called by the framework, never by application code.
    */
-  get rootElement(): string {
-    return this.#rootElement;
-  }
+  abstract resolve(ctx: TComposeContext<TCC>): TComposition<TCC>;
 
-  /**
-   * Référence au slot DOM résolu. Null avant attach().
-   */
-  get slot(): HTMLElement | null {
-    return this.#slot;
-  }
+  /** @internal Description given to the kernel by the creator (Foundation or View). */
+  [DESCRIBE](): TComponentSpec {
+    const features = this.features as TComposerFeatures;
+    const views = this.views as TViewCatalog;
+    // Views present in the slot, by key — structural bookkeeping, rolled back with the unit (G7).
+    const present = new Map<string, TPresent>();
 
-  /**
-   * La View actuellement montée, ou null.
-   */
-  get currentView(): View | null {
-    return this.#currentView;
-  }
+    const reconcile = (c: TUnitContext): void => {
+      const slot = c.resolve(c.designation()!);
+      const composition = this.resolve({
+        query: ((key: string, params: unknown) => {
+          const idx = key.indexOf(":");
+          return c.query(key.slice(0, idx), key.slice(idx + 1), params);
+        }) as TComposeContext<TCC>["query"]
+      });
 
-  /**
-   * Attache le Composer à son slot DOM.
-   * Appelé par le framework (Foundation ou Composer parent).
-   * Résout le slot dans le DOM, puis appelle initialResolve().
-   */
-  attach(parentElement: HTMLElement): void {
-    const el = parentElement.querySelector(
-      this.#rootElement
-    ) as HTMLElement | null;
+      const keys = new Set<string>();
+      for (const entry of composition) {
+        if (keys.has(entry.key)) throw new Error(`[Bonsai Composer] duplicate key "${entry.key}" in a composition (T3)`);
+        keys.add(entry.key);
+        if (views[entry.view] === undefined) throw new Error(`[Bonsai Composer] View "${entry.view}" is not in the catalogue of ${this.constructor.name}`);
+      }
 
-    if (!el) {
-      // D30 — Créer l'élément si absent
-      const created = this.#createElementFromSelector(this.#rootElement);
-      parentElement.appendChild(created);
-      this.#slot = created;
-    } else {
-      this.#slot = el;
+      // Destroy what disappeared or changed (T3); the previous Views stay until the unit validates.
+      const kept = new Set<string>();
+      for (const [key, current] of [...present]) {
+        const wanted = composition.find((e) => e.key === key);
+        if (wanted !== undefined && wanted.view === current.view && stable(wanted.params) === current.params) {
+          kept.add(key);
+          continue;
+        }
+        c.destroy(current.handle);
+        present.delete(key);
+        c.journal(() => { present.set(key, current); });
+      }
+
+      // Create what is new, placing each View before the next one that already stays (explicit order).
+      composition.forEach((entry, index) => {
+        if (kept.has(entry.key)) return;
+        const next = composition.slice(index + 1).find((e) => kept.has(e.key));
+        const ViewClass = views[entry.view] as unknown as new () => object;
+        const handle = c.create(describeComponent(new ViewClass()), {
+          params: entry.params,
+          part: { resource: slot, portion: entry.key, ...(next === undefined ? {} : { before: next.key }) }
+        });
+        const created: TPresent = { handle, view: entry.view, params: stable(entry.params) };
+        present.set(entry.key, created);
+        c.journal(() => { present.delete(entry.key); });
+      });
+    };
+
+    const listens: NonNullable<TComponentSpec["listens"]>[number][] = [];
+    for (const [namespace, entry] of Object.entries(features)) {
+      for (const event of entry.listens) {
+        listens.push({ namespace, event, handler: (_payload, c) => reconcile(c) });
+      }
     }
 
-    // Initial resolve — null event = bootstrap
-    this.#performResolve(null);
-  }
-
-  /**
-   * Appelé par le framework quand un Event est dispatché sur un Channel écouté.
-   * En strate 0, pas de listen déclaré — cette méthode est un point d'extension.
-   */
-  performResolve(event: unknown | null): void {
-    this.#performResolve(event);
-  }
-
-  // ─── Abstract ──────────────────────────────────────────────────────────
-
-  /**
-   * Unique point d'entrée — décide quelle View instancier (ADR-0027).
-   *
-   * @param event — l'Event déclencheur (null au premier montage / bootstrap)
-   * @returns TResolveResult pour monter une View, null pour vider le scope
-   */
-  abstract resolve(event: unknown | null): TResolveResult | null;
-
-  // ─── Private ───────────────────────────────────────────────────────────
-
-  /**
-   * Diff §3.1 (RFC composer.md) — applique la transition entre l'état précédent
-   * (`#currentView` + `#currentResult`) et la nouvelle décision retournée par
-   * `resolve(event)`. 5 transitions possibles, aucune recréation inutile.
-   */
-  #performResolve(event: unknown | null): void {
-    const next = this.resolve(event);
-    const prev = this.#currentResult;
-
-    // Transition 5 : null + null → no-op
-    if (next === null && prev === null) {
-      return;
-    }
-
-    // Transition 4 : null + instance → detach
-    if (next === null) {
-      this.#detachCurrent();
-      return;
-    }
-
-    // À ce stade, next !== null
-
-    // Transition 1 : SameView + SameRoot + currentView → no-op
-    // (instance conservée, aucun remount)
-    if (
-      prev !== null &&
-      this.#currentView !== null &&
-      prev.view === next.view &&
-      prev.rootElement === next.rootElement
-    ) {
-      return;
-    }
-
-    // Transition 3 : NewView + null → attach simple
-    if (this.#currentView === null) {
-      this.#attachNew(next);
-      return;
-    }
-
-    // Transition 2 : NewView (ou même viewClass mais rootElement différent)
-    //                + instance existante → detach + attach
-    this.#detachCurrent();
-    this.#attachNew(next);
-  }
-
-  /**
-   * Instancie la View décrite par `result`, la monte sur son rootElement,
-   * et met à jour l'état interne. Appelée par `#performResolve()` uniquement.
-   */
-  #attachNew(result: TResolveResult): void {
-    const ViewClass = result.view;
-    const view = new (ViewClass as unknown as new () => View)();
-    view.mount(result.rootElement);
-    this.#currentView = view;
-    this.#currentResult = result;
-    this.#state = "active";
-  }
-
-  /**
-   * Détache la View courante. En strate 0, le Composer n'a pas de subscription
-   * propre à libérer (ADR-0025) — il libère simplement la référence. La RFC §4.2
-   * prévoit `view.onDetach()` en strates ultérieures.
-   *
-   * Note : l'élément DOM créé par D30 (slot du Composer) reste en place — c'est
-   * le slot, pas le rootElement de la View. Seule la View mountée est libérée.
-   */
-  #detachCurrent(): void {
-    this.#currentView = null;
-    this.#currentResult = null;
-    this.#state = "idle";
-  }
-
-  /**
-   * D30 — Parse un sélecteur CSS et crée un élément DOM correspondant.
-   * Simplifié en strate 0 : supporte [attr], [attr='value'], .class, #id, tag.
-   */
-  #createElementFromSelector(selector: string): HTMLElement {
-    let tag = "div";
-    const el = document.createElement(tag);
-
-    // [attr='value'] or [attr="value"]
-    const attrMatches = selector.matchAll(
-      /\[([^\]=]+)(?:=["']([^"']*)["'])?\]/g
-    );
-    for (const match of attrMatches) {
-      el.setAttribute(match[1], match[2] ?? "");
-    }
-
-    // .class
-    const classMatch = selector.match(/\.([a-zA-Z0-9_-]+)/);
-    if (classMatch) {
-      el.classList.add(classMatch[1]);
-    }
-
-    // #id
-    const idMatch = selector.match(/#([a-zA-Z0-9_-]+)/);
-    if (idMatch) {
-      el.id = idMatch[1];
-    }
-
-    return el;
+    return {
+      name: this.constructor.name,
+      listens,
+      init: (c) => reconcile(c)
+    };
   }
 }

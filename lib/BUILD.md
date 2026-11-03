@@ -11,19 +11,24 @@ Le système de build Bonsai est conçu pour gérer de manière automatique et in
 
 ### Architecture
 
-```
+```text
 lib/build/
-├── core/                    # Classes centrales du système
+├── core/                    # Classes centrales
 │   ├── path-manager.class.ts    # Gestion des chemins
-│   └── main.ts                  # Point d'entrée principal
+│   └── build-cache.class.ts
 ├── initializing/            # Phase d'initialisation
+│   ├── build-options.class.ts
 │   └── components-registry.ts   # Analyse et détection des packages
 ├── building/                # Phase de compilation
-│   └── builder.class.ts         # Logique de build par package
-├── bundling/                # Phase de bundling
-│   └── generate-flat-framework-dts.ts  # Génération du bundle de types
-└── monitoring/              # Outils de monitoring
-    └── logger.class.ts          # Système de logs
+│   ├── build-orchestrator.class.ts  # Ordonnancement (tri topologique, parallélisme)
+│   ├── builder.class.ts         # Build par package : passe JS puis passe DTS
+│   └── dts-config.ts            # Configuration rollup-plugin-dts + post-traitement
+├── cache/                   # PackageCache, LibraryCache
+├── plugins/                 # rollup-plugin-postprocess, rollup-plugin-define (__DEV__, ADR-06)
+├── utils/
+├── monitoring/              # Outils de monitoring
+│   └── logger.class.ts          # Système de logs
+└── __poc__/                 # PoC ADR-29 (historique, ne passe plus)
 ```
 
 ## Configuration
@@ -38,7 +43,7 @@ libraries:
 # Packages internes (avec dépendances possibles)
 packages:
   - "@bonsai/types"
-  - "@bonsai/event"
+  - "@bonsai/kernel"
 ```
 
 ## Détection automatique des packages types-only
@@ -125,11 +130,13 @@ async buildPackage(package: TPackage): Promise<void> {
 
 ### 3. Phase de bundling
 
-Génération du bundle framework final (`core/dist/bonsai.d.ts`) avec :
+Passe JS : deux bundles ESM du framework, `core/dist/bonsai.js` (développement) et `core/dist/bonsai.prod.js` (production). Le plugin `plugins/rollup-plugin-define.ts` remplace `__DEV__` dans l'AST (`true`, puis `false`) ; Rollup élimine ensuite les branches mortes (ADR-06). `core/package.json` les expose par les conditions `default` et `production` de `exports`.
 
-- **Extraction AST** : Utilisation de `ts-morph` pour analyser les types
-- **Déduplication** : Évite les conflits de noms de types
-- **Export plat** : Tous les types disponibles au niveau framework
+Passe DTS : génération du bundle de déclarations (`core/dist/bonsai.d.ts`) avec :
+
+- **`tsc --emitDeclarationOnly`** : un `.d.ts` par fichier source, dans `.dts-temp/`
+- **`rollup` + `rollup-plugin-dts`** : un seul `bonsai.d.ts` plat, `external: []` — tout inliné, aucune dépendance transitive (ADR-29)
+- **Post-traitement** : suppression des directives triple-slash, renommage des namespaces tiers (`Valibot`…)
 
 ```typescript
 // Au lieu de :
@@ -163,7 +170,7 @@ import { MyType } from "bonsai";
 
 Le système fournit des logs détaillés :
 
-```
+```text
 📝 Package @bonsai/types detected as types-only
 🔨 Building types-only package: @bonsai/types
 ✅ Types-only package @bonsai/types built successfully

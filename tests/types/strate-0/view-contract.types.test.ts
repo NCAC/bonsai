@@ -1,9 +1,9 @@
 /**
- * Tests de type — Verrou compile-time du contrat View (ADR-0040 + ADR-0042 + ADR-0044 + ADR-0045)
+ * Tests de type — Verrou compile-time du contrat View (ADR-14 + ADR-15)
  *
  * Ces tests ne s'exécutent **pas** au runtime — ils vérifient que TypeScript
  * rejette correctement tout usage de View qui sort du contrat modulaire
- * déclaré dans le pattern ADR-0042. Si un `@ts-expect-error` ne déclenche
+ * déclaré dans le pattern ADR-14. Si un `@ts-expect-error` ne déclenche
  * plus d'erreur (parce que le typage a été relâché), le compilateur lève
  * « Unused '@ts-expect-error' directive » → la régression est détectée immédiatement.
  *
@@ -21,7 +21,7 @@
  *     génériques de View, TFeatureContract, TUIContract, TChannelToken sont
  *     strictement typés (le fichier compile sous `--strict` sans cast).
  *   - I76 : `Channel<TDef>` accepte uniquement `keyof TDef['commands' |
- *     'events' | 'requests']` — testé indirectement via les `@ts-expect-error`
+ *     'events' | 'queries']` — testé indirectement via les `@ts-expect-error`
  *     sur `trigger`/`request` qui dépendent structurellement de `Channel<TDef>`.
  *   - I77 : `View.trigger("ns:cmd")` rejette toute clé hors `TFlatTriggers<F>`
  *     (cf. callKO_triggerUnknownNamespace/UnknownCommand/ListenAsTrigger).
@@ -35,15 +35,15 @@
  *   - I86 : champ `events` toujours présent (tableau, possiblement vide),
  *     sous-typé à `TEventsFor<TEl>` sans doublons (cf. I89/I90/I91 ci-dessous).
  *   - I87 : clé d'objet ≡ namespace de la Feature référencée.
- *   - I90 (ADR-0044) : doublons dans events[] → HasNoDuplicates retourne never.
- *   - I89/I91 (ADR-0045) : TEventsFor<TEl> — events incohérents avec le
+ *   - I90 (ADR-15) : doublons dans events[] → HasNoDuplicates retourne never.
+ *   - I89/I91 (ADR-15) : TEventsFor<TEl> — events incohérents avec le
  *     sous-type d'élément → erreur compile ; fallback HTMLElement permissif.
  *
  * @jest-environment node
  */
 
 import { describe, it } from "@jest/globals";
-import { type TChannelToken, type TChannelDefinition } from "@bonsai/event";
+import { type TChannelToken, type TChannelDefinition } from "@bonsai/kernel";
 import type { TFeatureContract } from "@bonsai/feature";
 import {
   View,
@@ -51,7 +51,11 @@ import {
   type TViewContract,
   type TViewCallbacks,
   type TUIContract,
-  type TUIElements
+  type TUIEntry,
+  type TUIElements,
+  type TFact,
+  type TFactContext,
+  type TEventContext
 } from "@bonsai/view";
 
 // ─── Fixtures : deux Features factices avec leurs TChannelDef ───────────────
@@ -59,13 +63,13 @@ import {
 type TCartChannelDef = {
   readonly commands: { addItem: { productId: string; qty: number } };
   readonly events: { itemAdded: { productId: string } };
-  readonly requests: { getCount: { params: void; result: number } };
+  readonly queries: { getCount: { params: void; result: number } };
 };
 
 type TUserChannelDef = {
   readonly commands: { signIn: { email: string } };
   readonly events: { signedIn: { userId: string } };
-  readonly requests: { getProfile: { params: void; result: { name: string } } };
+  readonly queries: { getProfile: { params: void; result: { name: string } } };
 };
 
 class CartFeature {
@@ -87,7 +91,7 @@ const cartOnlyFeatures = {
     feature: CartFeature,
     listens: ["itemAdded"] as const,
     triggers: ["addItem"] as const,
-    requests: ["getCount"] as const
+    queries: ["getCount"] as const
   }
 } satisfies TFeatureContract;
 
@@ -119,47 +123,47 @@ class CartOnlyView
   }
 
   // ── trigger() — clé namespacée déclarée, payload bien typé ─────────────
-  callOK_trigger(): void {
-    this.trigger("cart:addItem", { productId: "abc", qty: 1 }); // ✅
+  callOK_trigger(ctx: TFactContext<TCartOnlyContract>): void {
+    ctx.trigger("cart:addItem", { productId: "abc", qty: 1 }); // ✅
   }
 
-  callKO_triggerUnknownNamespace(): void {
+  callKO_triggerUnknownNamespace(ctx: TFactContext<TCartOnlyContract>): void {
     // @ts-expect-error — "user:signIn" n'est pas dans features.user (user absent).
-    this.trigger("user:signIn", { email: "x@y" });
+    ctx.trigger("user:signIn", { email: "x@y" });
   }
 
-  callKO_triggerUnknownCommand(): void {
+  callKO_triggerUnknownCommand(ctx: TFactContext<TCartOnlyContract>): void {
     // @ts-expect-error — "cart:noSuchCommand" n'existe pas dans cart.triggers.
-    this.trigger("cart:noSuchCommand", { productId: "x", qty: 1 });
+    ctx.trigger("cart:noSuchCommand", { productId: "x", qty: 1 });
   }
 
-  callKO_triggerWrongPayload(): void {
+  callKO_triggerWrongPayload(ctx: TFactContext<TCartOnlyContract>): void {
     // @ts-expect-error — qty doit être un number.
-    this.trigger("cart:addItem", { productId: "x", qty: "1" });
+    ctx.trigger("cart:addItem", { productId: "x", qty: "1" });
   }
 
-  callKO_triggerListenAsTrigger(): void {
+  callKO_triggerListenAsTrigger(ctx: TFactContext<TCartOnlyContract>): void {
     // @ts-expect-error — "cart:itemAdded" est dans listens, pas triggers.
-    this.trigger("cart:itemAdded", { productId: "x" });
+    ctx.trigger("cart:itemAdded", { productId: "x" });
   }
 
   // ── request() — clé namespacée déclarée, params + result typés ─────────
-  callOK_request(): number | null {
-    return this.request("cart:getCount", undefined); // ✅
+  callOK_request(ctx: TFactContext<TCartOnlyContract>): number {
+    return ctx.query("cart:getCount", undefined); // ✅
   }
 
-  callKO_requestUnknownNamespace(): void {
-    // @ts-expect-error — "user:getProfile" n'est pas déclaré dans cart.requests.
-    this.request("user:getProfile", undefined);
+  callKO_requestUnknownNamespace(ctx: TFactContext<TCartOnlyContract>): void {
+    // @ts-expect-error — "user:getProfile" n'est pas déclaré dans cart.queries.
+    ctx.query("user:getProfile", undefined);
   }
 
-  callKO_requestUnknownName(): void {
-    // @ts-expect-error — "cart:nope" n'est pas dans cart.requests.
-    this.request("cart:nope", undefined);
+  callKO_requestUnknownName(ctx: TFactContext<TCartOnlyContract>): void {
+    // @ts-expect-error — "cart:nope" n'est pas dans cart.queries.
+    ctx.query("cart:nope", undefined);
   }
 
   // ── handler channel — payload inféré depuis TCartChannelDef.events.itemAdded ─
-  onCartItemAddedEvent(payload: { productId: string }): void {
+  onCartItemAddedEvent(payload: { productId: string }, _ctx: TEventContext<TCartOnlyContract>): void {
     this.getUI("count").text(payload.productId);
   }
 }
@@ -171,7 +175,7 @@ const listenOnlyFeatures = {
     feature: CartFeature,
     listens: ["itemAdded"] as const,
     triggers: [] as const,
-    requests: [] as const
+    queries: [] as const
   }
 } satisfies TFeatureContract;
 
@@ -199,12 +203,12 @@ class ListenOnlyView
     return listenOnlyUiElements;
   }
 
-  callKO_anyTrigger(): void {
+  callKO_anyTrigger(ctx: TFactContext<TListenOnlyContract>): void {
     // @ts-expect-error — features.cart.triggers est vide, aucune clé valide.
-    this.trigger("cart:addItem", { productId: "x", qty: 1 });
+    ctx.trigger("cart:addItem", { productId: "x", qty: 1 });
   }
 
-  onCartItemAddedEvent(_payload: { productId: string }): void {}
+  onCartItemAddedEvent(_payload: { productId: string }, _ctx: TEventContext<TListenOnlyContract>): void {}
 }
 
 // ─── Handler payload mismatch détecté par implements TViewCallbacks ───────
@@ -214,7 +218,7 @@ const handlerFeatures = {
     feature: CartFeature,
     listens: ["itemAdded"] as const,
     triggers: [] as const,
-    requests: [] as const
+    queries: [] as const
   }
 } satisfies TFeatureContract;
 
@@ -317,7 +321,7 @@ class UIHandlerOK
     return uiHandlerUiElements;
   }
 
-  onSaveBtnClick(_e: MouseEvent): void {}
+  onSaveBtnClick(_fact: TFact, _ctx: TFactContext<TUIHandlerContract>): void {}
 }
 
 // Régression : handler DOM manquant alors que events: ["click"] déclaré → rejet compile (I84/I88).
@@ -346,7 +350,7 @@ class UIHandlerMissing
 // L'enforcement de I87 se fait au site d'**usage** : si la clé d'objet ne
 // correspond pas au namespace de la Feature référencée, les helpers
 // `TCommandPayloadFor` / `TFlatTriggers` / `TEventPayloadFor` retournent
-// `never` lors de l'extraction, ce qui rejette l'appel `this.trigger(...)`
+// `never` lors de l'extraction, ce qui rejette l'appel `ctx.trigger(...)`
 // au compile-time.
 //
 // Le test `callKO_triggerListenAsTrigger` ci-dessus illustre ce mécanisme :
@@ -357,11 +361,11 @@ const _key_ns_loose = {
     feature: CartFeature,
     listens: [] as const,
     triggers: [] as const,
-    requests: [] as const
+    queries: [] as const
   }
 } satisfies TFeatureContract;
 
-// ─── ADR-0044 — HasNoDuplicates : doublons dans events[] → never ────────────
+// ─── ADR-15 — HasNoDuplicates : doublons dans events[] → never ────────────
 
 // ❌ Doublon → HasNoDuplicates<TEvts> extends false → paramètre de type never (I90).
 // @ts-expect-error — "submit" apparaît deux fois → never.
@@ -370,7 +374,7 @@ const _duplicates_ko = ui<HTMLFormElement>()(["submit", "submit"]);
 // ✅ Pas de doublon → compilation normale.
 const _duplicates_ok = ui<HTMLFormElement>()(["submit", "reset"]);
 
-// ─── ADR-0045 — TEventsFor<TEl> : restriction sémantique par sous-type ──────
+// ─── ADR-15 — TEventsFor<TEl> : restriction sémantique par sous-type ──────
 
 // ✅ Cas positifs — events cohérents avec le sous-type déclaré.
 // La vérification est que ces lignes compilent sans erreur.
@@ -394,9 +398,24 @@ const _semantic_ko_2 = ui<HTMLInputElement>()(["scroll"]);
 // @ts-expect-error — "play" n'est pas dans TUIBaseEvents (HTMLButtonElement — I91).
 const _semantic_ko_3 = ui<HTMLButtonElement>()(["play"]);
 
+// ─── D20 : annulation déclarée de l'action par défaut ───────────────────────
+
+const _cancel_ok = ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] });
+const _cancel_ok_entry: TUIEntry<HTMLAnchorElement, readonly ["click"]> = _cancel_ok;
+
+// @ts-expect-error — "keydown" n'est pas un événement déclaré de la clé (D20).
+const _cancel_ko_undeclared = ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["keydown"] });
+
+// @ts-expect-error — "clic" n'est pas un événement (I89).
+const _cancel_ko_typo = ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["clic"] });
+
+const _cancel_contract = {
+  go: ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] })
+} satisfies TUIContract;
+
 // ─── Tests Jest factices — la vraie preuve est compile-time ─────────────────
 
-describe("View contract — compile-time enforcement (ADR-0040 + ADR-0042)", () => {
+describe("View contract — compile-time enforcement (ADR-14)", () => {
   it("trigger/request/listen + DOM contracts hold at the type level", () => {
     // Si ce fichier compile, toutes les contraintes ci-dessus sont satisfaites.
     // Les @ts-expect-error attestent les rejets côté TypeScript.
@@ -410,12 +429,20 @@ describe("View contract — compile-time enforcement (ADR-0040 + ADR-0042)", () 
     void _key_ns_loose;
   });
 
-  it("ADR-0044 : HasNoDuplicates — doublons dans events[] → erreur compile (I90)", () => {
+  it("ADR-15 : HasNoDuplicates — doublons dans events[] → erreur compile (I90)", () => {
     void _duplicates_ko;
     void _duplicates_ok;
   });
 
-  it("ADR-0045 : TEventsFor<TEl> — restriction sémantique par sous-type (I89/I91)", () => {
+  it("D20 : cancelDefault limité aux événements déclarés de la clé", () => {
+    void _cancel_ok;
+    void _cancel_ok_entry;
+    void _cancel_ko_undeclared;
+    void _cancel_ko_typo;
+    void _cancel_contract;
+  });
+
+  it("ADR-15 : TEventsFor<TEl> — restriction sémantique par sous-type (I89/I91)", () => {
     void _semantic_btn_ok;
     void _semantic_input_ok;
     void _semantic_video_ok;

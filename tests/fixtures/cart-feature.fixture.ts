@@ -2,7 +2,7 @@
  * Fixture — CartFeature, CartEntity, CartView, MainComposer, AppFoundation
  *
  * Mini-domaine "panier" conforme au contrat strate 0 (post-audit 2026-04-21,
- * ADR-0037, ADR-0038, ADR-0040, ADR-0041). Sert de gate E2E
+ * ADR-09, ADR-20, ADR-14). Sert de gate E2E
  * (cf. strate-0.cart-round-trip.test.ts).
  *
  * Flux complet illustré :
@@ -16,11 +16,13 @@
  */
 
 import { Entity } from "@bonsai/entity";
-import { type TChannelToken } from "@bonsai/event";
+import { type TChannelToken } from "@bonsai/kernel";
 import {
   Feature,
   type TFeatureContract,
-  type TFeatureCallbacks
+  type TFeatureCallbacks,
+  type TFeatureContext,
+  type TFeatureQueryContext
 } from "@bonsai/feature";
 import {
   View,
@@ -28,12 +30,16 @@ import {
   type TViewContract,
   type TViewCallbacks,
   type TUIContract,
-  type TUIElements
+  type TUIElements,
+  type TFact,
+  type TFactContext,
+  type TEventContext
 } from "@bonsai/view";
 import {
   Composer,
-  type TResolveResult,
-  type TComposerOptions
+  type TComposerContract,
+  type TComposeContext,
+  type TComposition
 } from "@bonsai/composer";
 import { Foundation } from "@bonsai/foundation";
 
@@ -65,7 +71,7 @@ export class CartEntity extends Entity<TCartState> {
   }
 }
 
-// ─── Channel definition (ADR-0040 — I74 : co-localisé dans le fichier feature) ─
+// ─── Channel definition (ADR-14 — I74 : co-localisé dans le fichier feature) ─
 
 export type TCartChannelDef = {
   commands: {
@@ -74,8 +80,9 @@ export type TCartChannelDef = {
   events: {
     itemAdded: { item: TCartItem };
   };
-  requests: {
+  queries: {
     getItemCount: { params: null; result: number };
+    getTotal: { params: null; result: number };
   };
 };
 
@@ -85,14 +92,15 @@ const cartListens = [] as const;
 
 /**
  * CartFeature — `TSelfNS = "cart"` ancre la classe à la clé du manifest
- * applicatif (ADR-0039 — I72). Plus de `static namespace`.
+ * applicatif (ADR-08 — I72). Plus de `static namespace`.
  */
 export class CartFeature
   extends Feature<CartEntity, TCartChannelDef, "cart">
-  implements TFeatureCallbacks<TCartChannelDef, typeof cartListens>
+  implements TFeatureCallbacks<TCartChannelDef, typeof cartListens, CartEntity>
 {
   static readonly channel: TChannelToken<TCartChannelDef, "cart"> = {
-    namespace: "cart"
+    namespace: "cart",
+    events: ["itemAdded"]
   };
   get listens() {
     return cartListens;
@@ -106,22 +114,26 @@ export class CartFeature
   }
 
   // C2 — Command handler auto-discovered (I48)
-  onAddItemCommand(payload: TCartItem): void {
-    this.entity.mutate("addItem", (draft) => {
+  onAddItemCommand(payload: TCartItem, ctx: TFeatureContext<TCartChannelDef, CartEntity>): void {
+    ctx.mutate("addItem", (draft) => {
       draft.items.push(payload);
       draft.total += payload.price * payload.qty;
     });
     // C1 — emit on own Channel
-    this.emit("itemAdded", { item: payload });
+    ctx.emit("itemAdded", { item: payload });
   }
 
   // C4 — Reply auto-discovered
-  onGetItemCountRequest(_params: null): number {
+  onGetItemCountQuery(_params: null, _ctx: TFeatureQueryContext): number {
     return this.entity.query.getItemCount();
+  }
+
+  onGetTotalQuery(_params: null, _ctx: TFeatureQueryContext): number {
+    return this.entity.query.getTotal();
   }
 }
 
-// ─── View (ADR-0042 — pattern modulaire) ────────────────────────────────────
+// ─── View (ADR-14 — pattern modulaire) ────────────────────────────────────
 
 // Étape 1 — Feature contract (Feature-groupé)
 const cartViewFeatures = {
@@ -129,7 +141,7 @@ const cartViewFeatures = {
     feature: CartFeature,
     listens: ["itemAdded"] as const,
     triggers: ["addItem"] as const,
-    requests: [] as const
+    queries: ["getItemCount", "getTotal"] as const
   }
 } satisfies TFeatureContract;
 
@@ -141,7 +153,7 @@ const cartViewUiEvents = {
   emptyMessage: ui<HTMLElement>()([])
 } satisfies TUIContract;
 
-// Étape 3 — sélecteurs CSS (overridable D34)
+// Étape 3 — sélecteurs CSS (overridable ADR-21)
 const cartViewUiElements = {
   itemCount: "[data-ui='itemCount']",
   total: "[data-ui='total']",
@@ -160,10 +172,6 @@ export class CartView
   extends View<TCartViewContract>
   implements TViewCallbacks<TCartViewContract>
 {
-  // Compteur local — la Feature est source de vérité, la View ne stocke
-  // qu'un cache d'affichage minimal.
-  #itemCount = 0;
-
   get features() {
     return cartViewFeatures;
   }
@@ -174,47 +182,66 @@ export class CartView
     return cartViewUiElements;
   }
 
-  // D48 UI — handler requis par TViewCallbacks (events: ["click"] sur addButton)
-  onAddButtonClick(_event: MouseEvent): void {
-    this.trigger("cart:addItem", {
-      productId: `prod-${this.#itemCount + 1}`,
-      qty: 1,
-      price: 9.99
-    });
+  // Contenu initial de la partie attribuée par le Composer.
+  get template() {
+    return (
+      `<span data-ui="itemCount">0</span>` +
+      `<span data-ui="total">0.00</span>` +
+      `<button data-ui="addButton">Add Item</button>` +
+      `<div data-ui="emptyMessage">Cart is empty</div>`
+    );
   }
 
-  // D48 channel — handler requis par TViewCallbacks (cart.listens: ["itemAdded"])
-  onCartItemAddedEvent(_payload: { item: TCartItem }): void {
-    this.#itemCount += 1;
-    this.getUI("itemCount").text(String(this.#itemCount));
-    this.getUI("total").text((this.#itemCount * 9.99).toFixed(2));
+  // I48 UI — fait de l'hôte admis dans la partie (events: ["click"] sur addButton)
+  onAddButtonClick(_fact: TFact, ctx: TFactContext<TCartViewContract>): void {
+    ctx.trigger("cart:addItem", { productId: "prod", qty: 1, price: 9.99 });
+  }
+
+  // I48 channel — la View projette ce que la Feature a décidé ; elle ne tient pas d'état
+  onCartItemAddedEvent(_payload: { item: TCartItem }, ctx: TEventContext<TCartViewContract>): void {
+    this.getUI("itemCount").text(String(ctx.query("cart:getItemCount", null)));
+    this.getUI("total").text(ctx.query("cart:getTotal", null).toFixed(2));
     this.getUI("emptyMessage").visible(false);
   }
 }
 
 // ─── Composer ───────────────────────────────────────────────────────────────
 
-export class MainComposer extends Composer {
-  constructor(options: TComposerOptions) {
-    super(options);
+const mainComposerFeatures = {
+  cart: {
+    feature: CartFeature,
+    listens: [] as const,
+    queries: [] as const
+  }
+};
+
+const mainComposerViews = { cart: CartView };
+
+type TMainComposerContract = TComposerContract<
+  typeof mainComposerFeatures,
+  typeof mainComposerViews
+>;
+
+export class MainComposer extends Composer<TMainComposerContract> {
+  get features() {
+    return mainComposerFeatures;
+  }
+  get views() {
+    return mainComposerViews;
   }
 
-  resolve(_event: unknown | null): TResolveResult | null {
-    return {
-      view: CartView,
-      rootElement: "[data-view='cart']"
-    };
+  resolve(_ctx: TComposeContext<TMainComposerContract>): TComposition<TMainComposerContract> {
+    return [{ view: "cart", key: "cart" }];
   }
 }
 
 // ─── Foundation ─────────────────────────────────────────────────────────────
 
 export class AppFoundation extends Foundation {
-  // ADR-0038 — Record<string, typeof Composer> ; clés = sélecteurs CSS dans <body>.
-  // Layout stable : un seul slot principal en strate 0.
+  // ADR-20 — un emplacement existant de l'ancre, et le Composer qui le remplit.
   get composers() {
     return {
-      "[data-region='main']": MainComposer
+      main: { slot: "[data-region='main']", composer: MainComposer }
     } as const;
   }
 }

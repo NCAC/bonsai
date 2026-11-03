@@ -36,15 +36,16 @@ const config: Config = {
 
   // Module aliases (consistent with tsconfig.json)
   moduleNameMapper: {
-    // ── Packages composants framework (ADR-0031 Option D) ──
+    // ── Packages composants framework (ADR-28 Option D) ──
     "^@bonsai/entity$": "<rootDir>/packages/entity/src/bonsai-entity.ts",
     "^@bonsai/feature$": "<rootDir>/packages/feature/src/bonsai-feature.ts",
-    "^@bonsai/event$": "<rootDir>/packages/event/src/bonsai-event.ts",
+    "^@bonsai/kernel$": "<rootDir>/packages/kernel/src/bonsai-kernel.ts",
     "^@bonsai/error$": "<rootDir>/packages/error/src/bonsai-error.ts",
     "^@bonsai/view$": "<rootDir>/packages/view/src/bonsai-view.ts",
     "^@bonsai/composer$": "<rootDir>/packages/composer/src/bonsai-composer.ts",
     "^@bonsai/foundation$":
       "<rootDir>/packages/foundation/src/bonsai-foundation.ts",
+    "^@bonsai/router$": "<rootDir>/packages/router/src/bonsai-router.ts",
     "^@bonsai/behavior$": "<rootDir>/packages/behavior/src/bonsai-behavior.ts",
     "^@bonsai/application$":
       "<rootDir>/packages/application/src/bonsai-application.ts",
@@ -78,7 +79,7 @@ const config: Config = {
 
   // Coverage thresholds — baseline figée à la livraison strate 0 (2026-04-21).
   // Toute régression sous ces seuils fait échouer la CI.
-  // Cf. ADR-0028 (gate strate 0) et bilan coverage post-livraison.
+  // Cf. ADR-31 (gate strate 0) et bilan coverage post-livraison.
   //
   // NB Jest : un fichier matché par un seuil path-specific est EXCLU du calcul
   // global. Les seuils ci-dessous couvrent donc explicitement chaque package
@@ -122,7 +123,7 @@ const config: Config = {
       functions: 90
     },
     // ── Plomberie événementielle — exigence haute ──
-    "packages/event/src/**/*.ts": {
+    "packages/kernel/src/**/*.ts": {
       statements: 85,
       lines: 85,
       branches: 80,

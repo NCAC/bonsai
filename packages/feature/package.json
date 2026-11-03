@@ -15,7 +15,7 @@
   "dependencies": {
     "@bonsai/entity": "workspace:^",
     "@bonsai/error": "workspace:^",
-    "@bonsai/event": "workspace:^",
+    "@bonsai/kernel": "workspace:^",
     "@bonsai/types": "workspace:^"
   }
 }

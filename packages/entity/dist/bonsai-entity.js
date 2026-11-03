@@ -1,11 +1,8 @@
 /**
  * @bonsai/entity - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-09-14T16:47:58.565Z
+ * Date: 2026-11-02T15:48:08.579Z
  */
-import { Immer } from '@bonsai/immer';
-import { EntityReentrancyError, MutationError } from '@bonsai/error';
-
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
 
@@ -44,174 +41,106 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 /**
  * @bonsai/entity — Entity base class
  *
- * Implémentation ADR-0001 (🔵 Tested) :
- *   - mutate(intent, params?, recipe) via Immer produceWithPatches
- *   - changedKeys dérivées depuis les patches (1er segment de path)
- *   - Détection no-op (aucun patch produit → pas de notification)
- *   - Notification catch-all onAnyEntityUpdated (I51) — event enrichi
- *     (patches, inversePatches, payload, metas)
- *   - Ré-entrance FIFO bornée par maxEntityNotificationDepth (I98,
- *     ADR-0028 strate 1a) — cf. RFC entity.md §Ré-entrance
- *   - MutationError si la recipe throw (rollback Immer automatique,
- *     ADR-0002)
- *   - initialState getter (D17)
+ * The Entity describes the domain state of a Feature (theory 11.3, A4.a):
+ *   - its initial state (`defineInitialState`)
+ *   - its business invariants (`invariants`), verified by the kernel at the
+ *     successful end of every validation unit that touched the state
+ *   - its read methods (`query`-style getters), which read the current state
  *
- * NOTE : les handlers per-key `on<Key>EntityUpdated` ne sont PAS dispatchés
- * ici — c'est la responsabilité de `Feature#registerEntityHandlers` (I96),
- * qui s'abonne à `onAnyEntityUpdated` et route en interne. Entity ne connaît
- * jamais sa Feature (I5, I6).
+ * The state itself is **owned by the kernel** (migration lot M6.1): it lives in
+ * the root, is mutated only through the handler context (`ctx.mutate`), and is
+ * journaled so that a failed unit leaves it intact (G7). The Entity holds no
+ * mutable state and no `mutate` method: a mutation outside a unit is not
+ * expressible (A5.a).
+ *
+ * `state` is readable only while a handler of the owning Feature is running
+ * (the Feature binds the Entity to the kernel's current state for the duration
+ * of the handler). Anywhere else it throws: the current state is observed
+ * through a Query (G5), never by holding the Entity.
+ *
+ * Notifications `on<Key>EntityUpdated` / `onAnyEntityUpdated` are not sent by
+ * the Entity any more: after a mutation the Feature delivers them to itself as
+ * a deferred local message (G5, D8). An Entity never knows its Feature (I6).
  */
-var _Entity_instances, _Entity_state, _Entity_initialState, _Entity_listeners, _Entity_initialized, _Entity_draining, _Entity_cycleDepth, _Entity_queue, _Entity_ensureInitialized, _Entity_runCycle;
-Immer.enablePatches();
-// ─── Classe abstraite Entity ─────────────────────────────────────────────────
+var _Entity_initialState;
+// ─── Internal binding to the kernel state ────────────────────────────────────
+const stateSources = new WeakMap();
 /**
- * Entity — Conteneur d'état immutable d'une Feature (I6, I22, I46).
+ * @internal Framework use only (`@bonsai/feature`).
  *
- * Classe abstraite : les sous-classes doivent implémenter `get initialState()`.
+ * Binds an Entity to the kernel's current state for the duration of a handler.
+ * Returns the function that restores the previous binding (bindings nest when
+ * a Query reaches the same Feature again).
+ */
+function bindEntityState(entity, source) {
+    const previous = stateSources.get(entity);
+    stateSources.set(entity, source);
+    return () => {
+        if (previous === undefined)
+            stateSources.delete(entity);
+        else
+            stateSources.set(entity, previous);
+    };
+}
+/**
+ * @internal Framework use only (`@bonsai/feature`).
  *
- * @template TStructure - Le type du state, contraint à TJsonSerializable.
+ * What the kernel needs to own the state of an Entity: its name, its initial
+ * state and its invariants.
+ */
+function describeEntity(entity) {
+    return {
+        name: entity.constructor.name,
+        initial: entity.initialState,
+        invariants: entity.invariants
+    };
+}
+// ─── Abstract Entity class ───────────────────────────────────────────────────
+/**
+ * Entity — description of the domain state of a Feature (I6, I22, I46).
+ *
+ * Abstract class: subclasses must implement `defineInitialState()`.
+ *
+ * @template TStructure - The state type, constrained to TJsonSerializable.
  */
 class Entity {
     constructor() {
-        _Entity_instances.add(this);
         /**
-         * State courant de l'Entity. Accessible en lecture par les sous-classes
-         * et par le code qui détient une référence à l'Entity.
-         */
-        _Entity_state.set(this, void 0);
-        /**
-         * Copie du state initial pour pouvoir le retourner via `initialState` (D17).
+         * Copy of the initial state, returned by `initialState` (ADR-10).
          */
         _Entity_initialState.set(this, void 0);
-        /**
-         * Listeners catch-all (I51).
-         */
-        _Entity_listeners.set(this, []);
-        /**
-         * Flag d'initialisation (lazy init pour contourner la restriction abstraite).
-         */
-        _Entity_initialized.set(this, false);
-        // ─── Ré-entrance FIFO (I98) ────────────────────────────────────────────
-        /** `true` pendant qu'un cycle mutate → notify est en cours (pilote externe). */
-        _Entity_draining.set(this, false);
-        /** Profondeur du cycle en cours (1 = appel externe, incrémenté par dépilement). */
-        _Entity_cycleDepth.set(this, 0);
-        /** File FIFO des mutations déclenchées pendant une notification. */
-        _Entity_queue.set(this, []);
-        // L'initialisation réelle est faite dans #ensureInitialized()
-        // car TS interdit l'accès aux propriétés abstraites dans le constructeur.
-        __classPrivateFieldGet(this, _Entity_instances, "m", _Entity_ensureInitialized).call(this);
+        __classPrivateFieldSet(this, _Entity_initialState, this.defineInitialState(), "f");
     }
-    // ─── Configuration overridable ─────────────────────────────────────────
+    // ─── Overridable configuration ─────────────────────────────────────────
     /**
-     * Profondeur maximale de ré-entrance (I98, ADR-0028 strate 1a — défaut 3).
-     * Overridable par une sous-classe concrète pour un cas d'usage avancé.
+     * Business invariants (11.3, A4.a). Verified by the kernel at the end of
+     * every validation unit that touched the state and at the end of startup;
+     * a violation fails the unit, which is rolled back (G7).
      */
-    get maxEntityNotificationDepth() {
-        return 3;
+    get invariants() {
+        return [];
     }
     // ─── Public API ──────────────────────────────────────────────────────
     /**
-     * State courant (lecture seule depuis l'extérieur).
+     * Current state, frozen, while a handler of the owning Feature is running.
+     *
+     * @throws outside a handler: the current state is observed through a Query.
      */
     get state() {
-        return __classPrivateFieldGet(this, _Entity_state, "f");
+        const source = stateSources.get(this);
+        if (source === undefined) {
+            throw new Error(`[Bonsai Entity] "${this.constructor.name}".state is readable only inside a handler of its Feature. ` +
+                "Observe the current state through a Query (G5, I6).");
+        }
+        return source();
     }
     /**
-     * Retourne l'état initial tel que défini à la construction (D17).
-     * Accessible publiquement pour reset ou comparaison.
+     * Returns the initial state as defined at construction (ADR-10).
      */
     get initialState() {
         return __classPrivateFieldGet(this, _Entity_initialState, "f");
     }
-    mutate(intent, paramsOrRecipe, maybeRecipe) {
-        // Résolution des overloads
-        let params = null;
-        let recipe;
-        if (typeof paramsOrRecipe === "function") {
-            recipe = paramsOrRecipe;
-        }
-        else {
-            params = paramsOrRecipe;
-            recipe = maybeRecipe;
-        }
-        // Ré-entrance : un cycle est déjà en cours — mise en file (I98)
-        if (__classPrivateFieldGet(this, _Entity_draining, "f")) {
-            const wouldBeDepth = __classPrivateFieldGet(this, _Entity_cycleDepth, "f") + __classPrivateFieldGet(this, _Entity_queue, "f").length + 1;
-            if (wouldBeDepth > this.maxEntityNotificationDepth) {
-                throw new EntityReentrancyError(`Ré-entrance Entity au-delà de maxEntityNotificationDepth (${this.maxEntityNotificationDepth}) — intent "${intent}"`, "I98", "Entity", "Vérifier qu'un handler entity ne déclenche pas une boucle de mutations en cascade.");
-            }
-            __classPrivateFieldGet(this, _Entity_queue, "f").push({ intent, params, recipe });
-            return null;
-        }
-        // Appel externe — ce mutate() pilote tout le cycle (premier + file)
-        __classPrivateFieldSet(this, _Entity_draining, true, "f");
-        __classPrivateFieldSet(this, _Entity_cycleDepth, 1, "f");
-        try {
-            const firstEvent = __classPrivateFieldGet(this, _Entity_instances, "m", _Entity_runCycle).call(this, intent, params, recipe);
-            while (__classPrivateFieldGet(this, _Entity_queue, "f").length > 0) {
-                __classPrivateFieldSet(this, _Entity_cycleDepth, __classPrivateFieldGet(this, _Entity_cycleDepth, "f") + 1, "f");
-                const next = __classPrivateFieldGet(this, _Entity_queue, "f").shift();
-                __classPrivateFieldGet(this, _Entity_instances, "m", _Entity_runCycle).call(this, next.intent, next.params, next.recipe);
-            }
-            return firstEvent;
-        }
-        finally {
-            __classPrivateFieldSet(this, _Entity_draining, false, "f");
-            __classPrivateFieldSet(this, _Entity_cycleDepth, 0, "f");
-            __classPrivateFieldGet(this, _Entity_queue, "f").length = 0;
-        }
-    }
-    /**
-     * Enregistre un listener catch-all (I51).
-     * Appelé après chaque mutation non no-op. Pas d'isolation d'erreur ici —
-     * les exceptions d'un listener se propagent jusqu'à l'appelant externe de
-     * `mutate()` (I98 s'appuie sur cette propagation). L'isolation
-     * `BroadcastError` est une responsabilité du dispatch Feature (I96).
-     */
-    onAnyEntityUpdated(listener) {
-        __classPrivateFieldGet(this, _Entity_listeners, "f").push(listener);
-    }
 }
-_Entity_state = new WeakMap(), _Entity_initialState = new WeakMap(), _Entity_listeners = new WeakMap(), _Entity_initialized = new WeakMap(), _Entity_draining = new WeakMap(), _Entity_cycleDepth = new WeakMap(), _Entity_queue = new WeakMap(), _Entity_instances = new WeakSet(), _Entity_ensureInitialized = function _Entity_ensureInitialized() {
-    if (!__classPrivateFieldGet(this, _Entity_initialized, "f")) {
-        __classPrivateFieldSet(this, _Entity_initialState, this.defineInitialState(), "f");
-        __classPrivateFieldSet(this, _Entity_state, __classPrivateFieldGet(this, _Entity_initialState, "f"), "f");
-        __classPrivateFieldSet(this, _Entity_initialized, true, "f");
-    }
-}, _Entity_runCycle = function _Entity_runCycle(intent, params, recipe) {
-    const previousState = __classPrivateFieldGet(this, _Entity_state, "f");
-    let nextState;
-    let patches;
-    let inversePatches;
-    try {
-        [nextState, patches, inversePatches] = Immer.produceWithPatches(previousState, recipe);
-    }
-    catch (error) {
-        throw new MutationError(`Recipe throw pour l'intent "${intent}" — state conservé (rollback Immer)`, "ADR-0002", "Entity", error instanceof Error ? error.message : String(error));
-    }
-    if (patches.length === 0) {
-        // No-op — pas de notification
-        return null;
-    }
-    // changedKeys dérivées du 1er segment de path des patches (I97)
-    const changedKeys = [...new Set(patches.map((p) => String(p.path[0])))];
-    __classPrivateFieldSet(this, _Entity_state, nextState, "f");
-    const event = {
-        intent,
-        payload: params?.payload,
-        metas: params?.metas,
-        changedKeys,
-        patches,
-        inversePatches,
-        previousState,
-        nextState,
-        timestamp: Date.now()
-    };
-    for (const listener of __classPrivateFieldGet(this, _Entity_listeners, "f")) {
-        listener(event);
-    }
-    return event;
-};
+_Entity_initialState = new WeakMap();
 
-export { Entity };
+export { Entity, bindEntityState, describeEntity };

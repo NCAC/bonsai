@@ -55,18 +55,18 @@ export type TOneLetter =
 export type TNonEmptyString<T extends string> = "" extends T ? never : T;
 
 /**
- * Lettre minuscule unique (a–z). Dérivée de `TOneLetter`.
+ * Single lowercase letter (a–z). Derived from `TOneLetter`.
  */
 export type TLowerLetter = Lowercase<TOneLetter>;
 
 /**
- * Lettre majuscule unique (A–Z). Dérivée de `TOneLetter`.
+ * Single uppercase letter (A–Z). Derived from `TOneLetter`.
  */
 export type TUpperLetter = Uppercase<TOneLetter>;
 
 /**
- * Vrai si `S` est composée exclusivement de lettres (a–z ou A–Z).
- * `""` est considérée comme valide (cas terminal de la récursion).
+ * True if `S` consists only of letters (a–z or A–Z).
+ * `""` is considered valid (terminal case of the recursion).
  */
 export type TAllLetters<S extends string> = S extends ""
   ? true
@@ -77,13 +77,13 @@ export type TAllLetters<S extends string> = S extends ""
     : false;
 
 /**
- * camelCase plat — première lettre minuscule, reste exclusivement lettres.
+ * Flat camelCase — lowercase first letter, letters only afterwards.
  *
- * Retourne `S` si `S` est camelCase, sinon `never`. Conçu pour être utilisé
- * dans un mapped type afin de rejeter au compile-time les clés non
- * conformes (typiquement : clés d'un manifest applicatif).
+ * Returns `S` if `S` is camelCase, `never` otherwise. Designed for use in a
+ * mapped type to reject non-conforming keys at compile time (typically the
+ * keys of an application manifest).
  *
- * | Entrée          | Résultat        |
+ * | Input           | Result          |
  * | --------------- | --------------- |
  * | `"cart"`        | `"cart"`        |
  * | `"userProfile"` | `"userProfile"` |
@@ -93,10 +93,9 @@ export type TAllLetters<S extends string> = S extends ""
  * | `"cart2"`       | `never`         |
  * | `""`            | `never`         |
  *
- * Si tolérer les chiffres après la première lettre devient nécessaire,
- * étendre via une nouvelle variante (`CamelCaseAlnum<S>`) plutôt que
- * d'élargir ce type — préserver la garantie « lettres seules » pour les
- * appelants existants.
+ * If digits after the first letter ever need to be allowed, add a new
+ * variant (`CamelCaseAlnum<S>`) rather than widening this type, to keep
+ * the "letters only" guarantee for existing callers.
  */
 export type CamelCase<S extends string> =
   S extends `${infer First}${infer Rest}`

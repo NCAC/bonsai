@@ -1,0 +1,175 @@
+# Branche P6 — Propriété et parts de l'interface.
+#
+# Champs : voir P8.yaml pour la légende complète.
+# Structure : le scope (I99) rend l'exclusivité vérifiable ; les droits de chaque rôle
+# (I38 et ses déclinaisons) restent subordonnés à la théorie, même si d'anciens énoncés divergent.
+# V0.9.4 : le support hôte n'est pas une ressource du modèle ; l'accès exclut les parts attribuées.
+# Lots 1 et 3 : droits et attributions réalignés ; aucune garantie runtime ajoutée.
+
+- id: I99
+  nature: E
+  parents: [P6, P7]
+  roles: [View, Behavior, Composer, Foundation]
+  enonce: La Foundation opère dans son élément admis, le Composer dans le contenu du slot attribué et la View dans sa part attribuée ; chacun exclut les portions attribuées à ses enfants. Le Behavior agit dans la part de sa View, sans part autonome.
+  # V0.9.4 : A2, §16.4–§16.7 ; l'admission Foundation n'est pas une attribution par un parent DOM.
+  # Livré : montage et résolution locaux partiels ; aucun contrôle complet des parts et de leur durée.
+  mode: run
+  etat: partiel
+
+- id: I40
+  nature: C
+  parents: [I99]
+  roles: [View]
+  enonce: La View conserve son élément racine et les éléments de ses slots, mais le contenu attribué à ses Composers est soustrait à sa part ; toute lecture, écriture ou admission respecte cette exclusion pendant l'attribution.
+  # Résolution UI locale livrée ; slots enfants et exclusion dynamique absents.
+  mode: run
+  etat: partiel
+
+- id: I34
+  nature: C
+  parents: [I99]
+  roles: [View]
+  enonce: L'élément racine d'une View appartient à la part que son Composer lui attribue dans le contenu de son slot ; il ne se confond pas avec l'élément du slot. Aucune contrainte universelle de descendance de `body` ne remplace cette vérification de propriété.
+  # V0.9.4 : livre → partiel ; le montage via document.querySelector ne prouve pas le confinement.
+  mode: run
+  etat: partiel
+
+- id: I31
+  nature: D
+  parents: [I99]
+  roles: [View, Composer]
+  enonce: Le Composer fournit à la création de la View une désignation de sa part, jamais un élément de l'hôte ; sa résolution contrôlée vérifie la propriété et sa validité pour cette seule attribution, sans réactivation par réattribution du même emplacement.
+  pourquoi: >
+    §16.5–§16.6 et §8.5 imposent la désignation et son confinement. Le sélecteur CSS string
+    de l'ADR-19 reste un choix de représentation compatible, pas une autorité en soi ;
+    l'existence logique n'exige pas un élément déjà matérialisé dans le document.
+  # Livré : string fournie par Composer ; résolution globale et aucune durée d'attribution vérifiée.
+  mode: run
+  etat: partiel
+
+- id: I58
+  nature: C
+  parents: [I99, I20]
+  roles: [Composer]
+  enonce: Le Composer reçoit à sa création la désignation du contenu attribué pour son occurrence de vie ; il ne transfère ni ne déplace cette attribution. Son parent le détruit avant de retirer l'élément du slot ; une réutilisation du même emplacement ne réactive ni l'ancien Composer ni sa désignation.
+  pourquoi: >
+    A2, T3 et §16.6 lient attribution et existence logique, non présence physique du DOM.
+    Les créations et destructions provisoires restent annulables avec l'unité (§2.5, C.2) ;
+    la disparition physique ne définit aucune suspension ou résurrection implicite.
+  # Aucun protocole d'attribution, de destruction ou d'occurrence de vie livré.
+  mode: run
+  etat: cible
+
+- id: I41
+  nature: C
+  parents: [P6]
+  roles: [View]
+  enonce: Chaque clé `@ui` a une source de mutation unique — son template ou `getUI()`, jamais les deux.
+  mode: type
+  etat: cible
+
+- id: I43
+  nature: C
+  parents: [P6]
+  roles: [View, Behavior]
+  enonce: Les noms des clés de la View et de chacun de ses Behaviors sont tous disjoints, y compris entre Behaviors ; des noms distincts peuvent désigner le même élément, sans multiplier l'admission du fait par la View.
+  mode: boot
+  etat: cible
+
+- id: I44
+  nature: C
+  parents: [P6, P10]
+  roles: [Behavior]
+  enonce: Le code d'un Behavior ne désigne ni la View qui le déclare ni les clés de celle-ci ; ses accès déclarés et ses messages sont imputés à cette View, jamais à un composant autonome.
+  pourquoi: >
+    D13 impose l'aveuglement du code réutilisable ; §16.7 impose l'imputation à la View.
+    Des clés distinctes peuvent viser le même élément, sans créer de propriété autonome.
+  # Aucun package Behavior n'existe (strate 2b).
+  mode: type
+  etat: cible
+
+# I18 fusionné ici : « la View a le monopole du rendu » se réduit, une fois corrigé, à la
+# répartition des droits par rôle, sans part autonome du Behavior.
+- id: I38
+  nature: C
+  parents: [P6]
+  roles: [View, Behavior, Composer, Foundation]
+  alias: [I18]
+  enonce: Les droits de modification de l'interface respectent les parts attribuées et les rôles ; la View projette dans sa part hors contenu des slots, les opérations du Behavior lui sont imputées, la Foundation reste bornée à son élément admis hors parts attribuées, et le Composer ne modifie son contenu que pour la composition définie par I35.
+  pourquoi: >
+    A1, A2, A3.c et §16.4–§16.7 fixent les autorités sur les ressources de l'interface.
+    D3 n'accorde pas à la Foundation tout le document ; D12 autorise la composition structurelle
+    du Composer sans rendu supplémentaire. Les niveaux N1/N2/N3 restent des choix d'API
+    subordonnés à ces frontières, jamais une extension de propriété ou un accès aux parts d'autrui.
+  # V0.9.4, 2026-10-30 : droits corrigés ; état partiel conservé, mode run pour les parts effectives.
+  # Livré : primitives de projection View et montage Composer ; pas de contrôle complet des parts.
+  # Non livré : exclusion des slots, Foundation configurable/bornée et imputation Behavior.
+  # Lot 3 : spécialisations I33/I34/I45 alignées ; contrôles complets toujours non livrés.
+  mode: run
+  etat: partiel
+
+- id: I35
+  nature: C
+  parents: [I38, P10]
+  roles: [Composer]
+  enonce: Le Composer ne modifie le contenu de son slot que pour attribuer ou restituer les parts de ses Views, créer ou retirer les éléments correspondants ; il ne réalise aucun rendu supplémentaire, ne tient aucun état local indépendant et n'adresse aucune Command. Il admet les seuls résultats instrumentés de ses propres effets de composition, déclarés avec leurs traitements locaux, jamais une notification générale de l'hôte.
+  pourquoi: >
+    D12, §16.6 et C.3 distinguent la composition structurelle autorisée de la présentation.
+    L'interdiction absolue d'écriture de l'ADR-18 est trop large. Les opérations structurelles
+    restent dans l'unité de validation ; les effets hôte sont engagés après sa réussite, sans
+    transaction extérieure. Les résultats propres n'ouvrent ni source générale ni droit de Command.
+  # V0.9.4, 2026-10-30 : livre → partiel ; mode run, la revue seule ne prouve pas ces frontières.
+  # Livré : décision 0/1 View, conservation si sélection identique, absence de trigger dans l'API.
+  # Non livré : attributions/restitutions annulables, retrait complet et résultats propres instrumentés.
+  # La création immédiate d'un slot manquant ne prouve pas le protocole de composition V0.9.4.
+  mode: run
+  etat: partiel
+
+- id: I33
+  nature: C
+  parents: [I38]
+  roles: [Foundation]
+  enonce: Unique par racine, la Foundation admet l'élément configuré par le Manifest, `body` par défaut, et reste bornée à cet élément hors contenu attribué aux Composers. Elle n'admet ni l'en-tête ni les sources de niveau document, réservés à l'adaptateur correspondant ; ses résultats instrumentés propres restent régis par C.3.
+  pourquoi: >
+    D1, D3 et §16.4 fixent l'admission et ses limites ; l'ADR-20 ne confère pas d'autorité
+    générale sur html, document ou window. Le support hôte n'est pas lui-même une ressource interne.
+  # Livré : attachement à body et garde par instance ; html exposé, configuration et confinement absents.
+  mode: run
+  etat: partiel
+
+- id: I32
+  nature: C
+  parents: [I38]
+  roles: [View]
+  enonce: La View ne détruit ni ne remplace son élément racine ; elle peut en modifier les attributs et dispose de son contenu hors contenu attribué aux Composers. Avant de retirer un élément de slot, elle détruit le Composer concerné pour en obtenir restitution.
+  pourquoi: >
+    A2.d et §16.5 interdisent de mettre fin à la part d'un enfant encore vivant.
+    La cascade et la restitution précèdent logiquement le retrait, dans l'unité annulable ;
+    les effets physiques suivent sa validation, sans atomicité de l'hôte.
+  # Aucun mécanisme : `protected get el()` expose le nœud brut, la View peut le retirer du DOM.
+  mode: run
+  etat: cible
+
+- id: I39
+  nature: D
+  parents: [I38]
+  roles: [View]
+  enonce: La View accède au DOM exclusivement via `getUI(key)` ; aucun `querySelector` ni accès DOM brut ne lui est exposé.
+  pourquoi: >
+    Un point d'accès unique empêche la View d'accumuler des sélecteurs ad hoc qui échapperaient au
+    scope calculé (I40) et à la source de mutation unique (I41) (ADR-16).
+  mode: type
+  etat: partiel
+
+- id: I45
+  nature: C
+  parents: [I38, P10]
+  roles: [Behavior]
+  enonce: Un Behavior n'a ni existence, ni identité, ni part propres ; ses opérations et son état local appartiennent à sa View et restent hors contenu des slots de celle-ci. Il ne dispose ni d'une racine autonome ni d'une capacité de créer des Composers.
+  pourquoi: >
+    §16.7 et D13 définissent une partie de code imputée à la View, pas un composant enfant.
+    Les niveaux N1/N2 de l'ADR-21 sont un choix d'API subordonné à cette imputation,
+    jamais une propriété sur des nœuds ; les réactions au même fait partagent son admission.
+  # Aucun package Behavior n'existe (strate 2b).
+  mode: run
+  etat: cible

@@ -1,31 +1,31 @@
-// Interface commune pour les stratégies de cache du build Bonsai
-// Permet d'unifier l'utilisation des caches library et package
+// Common interface for the Bonsai build cache strategies
+// Unifies the use of the library and package caches
 
 export interface ICacheStrategy<T = any> {
   /**
-   * Vérifie si le cache est valide pour la cible donnée (package ou library)
-   * @param target Infos sur le package ou la librairie
-   * @returns true si le cache est valide, false sinon
+   * Checks whether the cache is valid for the given target (package or library)
+   * @param target Package or library information
+   * @returns true when the cache is valid, false otherwise
    */
   isValid(target: T): Promise<boolean>;
 
   /**
-   * Récupère les artefacts du cache (si valides)
-   * @param target Infos sur le package ou la librairie
-   * @returns true si récupération réussie, false sinon
+   * Restores the artifacts from the cache (when valid)
+   * @param target Package or library information
+   * @returns true when the restore succeeded, false otherwise
    */
   read(target: T): Promise<boolean>;
 
   /**
-   * Écrit les artefacts dans le cache
-   * @param target Infos sur le package ou la librairie
-   * @returns true si écriture réussie, false sinon
+   * Writes the artifacts to the cache
+   * @param target Package or library information
+   * @returns true when the write succeeded, false otherwise
    */
   write(target: T): Promise<boolean>;
 
   /**
-   * Vide le cache pour la cible donnée
-   * @param target Infos sur le package ou la librairie
+   * Clears the cache for the given target
+   * @param target Package or library information
    */
   clear(target: T): Promise<void>;
 }

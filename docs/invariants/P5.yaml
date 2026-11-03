@@ -1,0 +1,40 @@
+# Branche P5 — La couche concrète projette, elle ne décide pas.
+#
+# Migration depuis docs/reorganisation-sept-2026/arbre-invariants-precision.md.
+# Champs : voir P8.yaml pour la légende complète.
+# I30 (View sans domain state) relève aussi de P5 : déclaré dans P1.yaml, second parent P5.
+# I18 (« monopole du rendu ») fusionné dans I38 (P6.yaml) le 30/09 : View et Behavior projettent
+# tous deux le domaine ; ce qui distingue la View (posséder et structurer un scope) relève de P6.
+# P5 n'a donc plus d'énoncé (E) propre.
+
+- id: I56
+  nature: C
+  parents: [P5]
+  roles: [Application]
+  enonce: La couche abstraite (Features, Entities) est active avant la couche concrète (Views).
+  # Testé : onInit() de chaque Feature précède l'attachement de la Foundation.
+  mode: boot
+  etat: livre
+
+- id: I42
+  nature: D
+  parents: [P5]
+  roles: [View, Behavior]
+  enonce: Une View peut déclarer un state local de présentation — typé, réactif, encapsulé, non diffusable, détruit avec elle.
+  pourquoi: >
+    Sans exception encadrée, tout état purement visuel (menu ouvert, onglet actif) finirait dans une
+    Entity par réflexe et polluerait le domain state. Le rendre non diffusable l'empêche de devenir
+    un canal de communication ; dès qu'un autre composant en a besoin, il migre vers une Entity (ADR-17).
+  mode: type+boot
+  etat: cible
+
+- id: I57
+  nature: D
+  parents: [I42, P8]
+  roles: [Application, View]
+  enonce: Le namespace `local` est réservé au mécanisme de state local ; aucun Channel, Feature ou Entity ne peut le déclarer.
+  pourquoi: >
+    Le framework injecte les données du state local sous la clé `local` : une Feature applicative
+    qui revendiquerait ce namespace entrerait en collision avec elles (ADR-17).
+  mode: type+boot
+  etat: livre

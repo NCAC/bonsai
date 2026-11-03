@@ -4,7 +4,7 @@
  * Fournit des factories pour monter une Application Bonsai minimale
  * dans un contexte de test, avec des Feature/View/Entity de test.
  *
- * Ces helpers sont internes au framework (pas les helpers publics d'ADR-0006).
+ * Ces helpers sont internes au framework (pas les helpers publics @bonsai/testing, piste post-v1).
  * Ils servent à prouver les invariants architecturaux.
  */
 

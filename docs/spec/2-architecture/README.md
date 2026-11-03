@@ -1,0 +1,70 @@
+# Architecture — Vue d'ensemble
+
+> ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
+
+> **Taxonomie des composants, organisation en couches et principes structurants**
+
+[← Retour à l'index](../README.md)
+
+---
+
+## Introduction
+
+Bonsai repose sur **10 composants** organisés en deux couches :
+
+- **Couche abstraite** (6 composants) — persistante, indépendante du DOM
+- **Couche concrète** (4 composants) — éphémère, liée au cycle de vie du DOM
+
+Cette séparation est le fondement architectural de Bonsai : la logique métier (abstraite) survit aux changements d'interface (concrète).
+
+---
+
+## Taxonomie des 10 composants
+
+### Couche abstraite (6 composants — persistante)
+
+Composants indépendants du DOM et du cycle de vie visuel.
+Portent la logique métier et les données.
+
+| Composant | Rôle | Détail |
+| --- | --- | --- |
+| **Application** | Orchestration boot/shutdown, configuration globale | [application.md](../3-couche-abstraite/application.md) |
+| **Feature** | Unité métier — orchestre, réagit, communique via 5 capacités (C1-C5) | [feature.md](../3-couche-abstraite/feature.md) |
+| **Entity** | Structure de données encapsulée — state, mutations, query | [entity.md](../3-couche-abstraite/entity.md) |
+| **Channel** | Contrat typé d'une Feature (commands, events, queries) ; plus une classe d'exécution | [communication.md](communication.md) §5 |
+| **Router** | Spécialisation Feature pour la navigation (namespace réservé `router`) | [router.md](../3-couche-abstraite/router.md) |
+| **Root** | Noyau : racine unique par Application, unités de validation, file différée, trace | [communication.md](communication.md) §6 |
+
+### Couche concrète (4 composants — éphémère)
+
+Composants liés à l'interface utilisateur et au cycle de vie visuel.
+
+| Composant | Rôle | Détail |
+| --- | --- | --- |
+| **Foundation** | Point d'ancrage unique sur `<body>`, droits N1 sur `<html>`/`<body>`, capacités Channel | [foundation.md](../4-couche-concrete/foundation.md) |
+| **Composer** | Décideur de composition — `resolve()` → quelle View instancier, capacités Channel, aucun droit DOM | [composer.md](../4-couche-concrete/composer.md) |
+| **View** | Projection pure — seul composant à posséder un scope de rendu (I38, I99), aucun domain state (localState I42 autorisé) | [view.md](../4-couche-concrete/view.md) |
+| **Behavior** | Plugin UI réutilisable et aveugle attaché à une View, aucun domain state (ADR-21) | [behavior.md](../4-couche-concrete/behavior.md) |
+
+> Pour le détail complet (responsabilités, limites, ownership, relations) de chaque composant,
+> suivre les liens ci-dessus vers les documents dédiés de la [couche abstraite](../3-couche-abstraite/README.md)
+> et de la [couche concrète](../4-couche-concrete/README.md).
+
+---
+
+## Documents de cette section
+
+| Document | Sujet |
+| --- | --- |
+| [communication.md](communication.md) | Flux unidirectionnel, Commands/Events/Queries, racine, namespaces |
+| [state.md](state.md) | Entity encapsulée, ownership, store distribué |
+| [lifecycle.md](lifecycle.md) | Bootstrap 6 phases, shutdown, persistance |
+| [distribution.md](distribution.md) | Mode IIFE vs ESM modulaire |
+| [metas.md](metas.md) | Métadonnées causales, traçabilité |
+| [erreurs.md](erreurs.md) | Catégories, propagation, diagnostics |
+
+---
+
+## Lecture suivante
+
+→ [Communication et flux](communication.md) — comment les composants communiquent

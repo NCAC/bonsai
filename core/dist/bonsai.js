@@ -14382,14 +14382,119 @@ var immer$1 = /*#__PURE__*/Object.freeze({
 });
 
 /**
- * BonsaiError — Classe de base pour toutes les erreurs structurées du framework.
+ * @bonsai/entity — Entity base class
  *
- * Chaque erreur Bonsai fournit :
- * - `invariantId` : identifiant de l'invariant ou ADR violé (ex: "I10", "ADR-0002")
- * - `component` : namespace ou nom du composant concerné
- * - `suggestion` : message actionnable pour le développeur
+ * The Entity describes the domain state of a Feature (theory 11.3, A4.a):
+ *   - its initial state (`defineInitialState`)
+ *   - its business invariants (`invariants`), verified by the kernel at the
+ *     successful end of every validation unit that touched the state
+ *   - its read methods (`query`-style getters), which read the current state
  *
- * @see ADR-0002 — Error Propagation Strategy (taxonomie complète)
+ * The state itself is **owned by the kernel** (migration lot M6.1): it lives in
+ * the root, is mutated only through the handler context (`ctx.mutate`), and is
+ * journaled so that a failed unit leaves it intact (G7). The Entity holds no
+ * mutable state and no `mutate` method: a mutation outside a unit is not
+ * expressible (A5.a).
+ *
+ * `state` is readable only while a handler of the owning Feature is running
+ * (the Feature binds the Entity to the kernel's current state for the duration
+ * of the handler). Anywhere else it throws: the current state is observed
+ * through a Query (G5), never by holding the Entity.
+ *
+ * Notifications `on<Key>EntityUpdated` / `onAnyEntityUpdated` are not sent by
+ * the Entity any more: after a mutation the Feature delivers them to itself as
+ * a deferred local message (G5, D8). An Entity never knows its Feature (I6).
+ */
+var _Entity_initialState;
+// ─── Internal binding to the kernel state ────────────────────────────────────
+const stateSources = new WeakMap();
+/**
+ * @internal Framework use only (`@bonsai/feature`).
+ *
+ * Binds an Entity to the kernel's current state for the duration of a handler.
+ * Returns the function that restores the previous binding (bindings nest when
+ * a Query reaches the same Feature again).
+ */
+function bindEntityState(entity, source) {
+    const previous = stateSources.get(entity);
+    stateSources.set(entity, source);
+    return () => {
+        if (previous === undefined)
+            stateSources.delete(entity);
+        else
+            stateSources.set(entity, previous);
+    };
+}
+/**
+ * @internal Framework use only (`@bonsai/feature`).
+ *
+ * What the kernel needs to own the state of an Entity: its name, its initial
+ * state and its invariants.
+ */
+function describeEntity(entity) {
+    return {
+        name: entity.constructor.name,
+        initial: entity.initialState,
+        invariants: entity.invariants
+    };
+}
+// ─── Abstract Entity class ───────────────────────────────────────────────────
+/**
+ * Entity — description of the domain state of a Feature (I6, I22, I46).
+ *
+ * Abstract class: subclasses must implement `defineInitialState()`.
+ *
+ * @template TStructure - The state type, constrained to TJsonSerializable.
+ */
+class Entity {
+    constructor() {
+        /**
+         * Copy of the initial state, returned by `initialState` (ADR-10).
+         */
+        _Entity_initialState.set(this, void 0);
+        __classPrivateFieldSet(this, _Entity_initialState, this.defineInitialState(), "f");
+    }
+    // ─── Overridable configuration ─────────────────────────────────────────
+    /**
+     * Business invariants (11.3, A4.a). Verified by the kernel at the end of
+     * every validation unit that touched the state and at the end of startup;
+     * a violation fails the unit, which is rolled back (G7).
+     */
+    get invariants() {
+        return [];
+    }
+    // ─── Public API ──────────────────────────────────────────────────────
+    /**
+     * Current state, frozen, while a handler of the owning Feature is running.
+     *
+     * @throws outside a handler: the current state is observed through a Query.
+     */
+    get state() {
+        const source = stateSources.get(this);
+        if (source === undefined) {
+            throw new Error(`[Bonsai Entity] "${this.constructor.name}".state is readable only inside a handler of its Feature. ` +
+                "Observe the current state through a Query (G5, I6).");
+        }
+        return source();
+    }
+    /**
+     * Returns the initial state as defined at construction (ADR-10).
+     */
+    get initialState() {
+        return __classPrivateFieldGet(this, _Entity_initialState, "f");
+    }
+}
+_Entity_initialState = new WeakMap();
+
+/**
+ * BonsaiError — base class for all structured framework errors.
+ *
+ * Every Bonsai error provides:
+ * - `invariantId`: id of the violated invariant or ADR (e.g. "I10", "ADR-05")
+ * - `component`: namespace or name of the component involved
+ * - `suggestion`: actionable message for the developer
+ *
+ * @see ADR-05 — error propagation (full taxonomy)
  */
 class BonsaiError extends Error {
     constructor(message, invariantId, component = "", suggestion = "") {
@@ -14400,67 +14505,28 @@ class BonsaiError extends Error {
         this.name = "BonsaiError";
     }
 }
-/**
- * `onXxxEntityUpdated()` handler a throw — state conservé, notification continue.
- */
-class BroadcastError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "BroadcastError";
-    }
-}
-// ═══════════════════════════════════════════════════════════════
-// Channel Layer (Communication)
-// ═══════════════════════════════════════════════════════════════
-/**
- * Event listener a throw — erreur isolée, les autres listeners continuent.
- */
-class ListenerError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "ListenerError";
-    }
-}
-/**
- * `trigger()` sans `handle()` enregistré, ou `request()` sans `reply()`.
- */
-class NoHandlerError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "NoHandlerError";
-    }
-}
-/**
- * `handle()` ou `reply()` appelé deux fois pour le même message (I10).
- */
-class DuplicateHandlerError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "DuplicateHandlerError";
-    }
-}
 
 /**
- * Fonctions de validation du framework Bonsai.
+ * Validation functions of the Bonsai framework.
  *
- * - `invariant()` : assertion runtime, strippable en prod via `__DEV__`
- * - `hardInvariant()` : assertion NON-strippable — erreurs structurelles fatales
- * - `warning()` : log conditionnel `__DEV__` only, ne throw jamais
+ * - `invariant()`: runtime assertion, strippable in production via `__DEV__`
+ * - `hardInvariant()`: NON-strippable assertion — fatal structural errors
+ * - `warning()`: `__DEV__`-only conditional log, never throws
  *
- * @see ADR-0004 — Validation Modes
+ * @see ADR-06 — validation modes
  */
 /**
- * Assertion NON-strippable — reste en production.
+ * NON-strippable assertion — kept in production.
  *
- * Utiliser pour les erreurs structurelles fatales détectées au bootstrap
- * (namespace dupliqué I21, handler Command dupliqué I10, etc.).
- * Un `hardInvariant` qui échoue signifie que le framework est dans un
- * état incohérent — il DOIT throw, même en production.
+ * Use it for fatal structural errors detected at bootstrap (duplicate
+ * namespace I21, duplicate Command handler I10, etc.). A failing
+ * `hardInvariant` means the framework is in an inconsistent state — it
+ * MUST throw, even in production.
  *
- * @param condition - Si `false`, throw une `BonsaiError`
- * @param message - Message d'erreur descriptif
- * @param invariantId - Identifiant de l'invariant violé
- * @param component - Namespace ou nom du composant concerné (optionnel)
+ * @param condition - When `false`, throws a `BonsaiError`
+ * @param message - Descriptive error message
+ * @param invariantId - Id of the violated invariant
+ * @param component - Namespace or name of the component involved (optional)
  */
 function hardInvariant(condition, message, invariantId = "", component = "") {
     if (!condition) {
@@ -14469,346 +14535,58 @@ function hardInvariant(condition, message, invariantId = "", component = "") {
 }
 
 /**
- * Channel tri-lane — infrastructure de communication interne Bonsai.
- *
- * Un Channel est un contrat de communication à 3 lanes :
- * - **Command Lane** : `handle()` / `trigger()` — 1:1 (un seul handler)
- * - **Event Lane** : `listen()` / `unlisten()` / `emit()` — 1:N (broadcast)
- * - **Request Lane** : `reply()` / `unreply()` / `request()` — 1:1 synchrone, T | null
- *
- * Le Channel émet automatiquement un événement `any` après chaque `emit()`.
- *
- * `Channel` est générique sur `TDef extends TChannelDefinition` (ADR-0040).
- * La valeur par défaut `TChannelDefinition` (toutes lanes `Record<string, unknown>`)
- * assure une rétrocompatibilité totale avec le code non-paramétré.
- *
- * @see RFC 2-architecture/communication.md
- * @see ADR-0003 — Sémantiques runtime Channel
- * @see ADR-0023 — request() synchrone
- * @see ADR-0040 — API TypeScript-First : TChannelDefinition, TChannelToken
- */
-var _Channel_commandHandlers, _Channel_eventSubjects, _Channel_eventSubscriptions, _Channel_requestRepliers, _Channel_anySubject, _Channel_anySubscriptions;
-// ── Channel ──────────────────────────────────────────────────────────────────
-class Channel {
-    constructor(name) {
-        this.name = name;
-        // ── Lane 1 — Commands (1:1) ──────────────────────────────────────────────
-        _Channel_commandHandlers.set(this, new Map());
-        // ── Lane 2 — Events (1:N via RxJS Subject) ───────────────────────────────
-        _Channel_eventSubjects.set(this, new Map());
-        _Channel_eventSubscriptions.set(this, new Map());
-        // ── Lane 3 — Requests (1:1 sync) ─────────────────────────────────────────
-        _Channel_requestRepliers.set(this, new Map());
-        // ── Événement technique `any` ─────────────────────────────────────────────
-        _Channel_anySubject.set(this, new Subject());
-        _Channel_anySubscriptions.set(this, new Map());
-    }
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Lane 1 — Commands
-    // ═══════════════════════════════════════════════════════════════════════════
-    /**
-     * Enregistre le handler unique pour un Command (I10 — un seul handler).
-     * @throws DuplicateHandlerError si un handler est déjà enregistré.
-     */
-    handle(commandName, handler) {
-        if (__classPrivateFieldGet(this, _Channel_commandHandlers, "f").has(commandName)) {
-            throw new DuplicateHandlerError(`Command "${this.name}:${commandName}" already has a handler`, "I10", this.name, "Each Command must have exactly one handler (the owning Feature).");
-        }
-        __classPrivateFieldGet(this, _Channel_commandHandlers, "f").set(commandName, handler);
-    }
-    /**
-     * Émet un Command vers son handler unique.
-     * @throws NoHandlerError si aucun handler n'est enregistré.
-     */
-    trigger(commandName, payload) {
-        const handler = __classPrivateFieldGet(this, _Channel_commandHandlers, "f").get(commandName);
-        if (!handler) {
-            throw new NoHandlerError(`No handler for command "${this.name}:${commandName}"`, "I10", this.name, `Register a handler with channel.handle("${commandName}", handler)`);
-        }
-        handler(payload);
-    }
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Lane 2 — Events
-    // ═══════════════════════════════════════════════════════════════════════════
-    /**
-     * Enregistre un listener pour un Event (I11 — N listeners autorisés).
-     */
-    listen(eventName, listener) {
-        if (!__classPrivateFieldGet(this, _Channel_eventSubjects, "f").has(eventName)) {
-            __classPrivateFieldGet(this, _Channel_eventSubjects, "f").set(eventName, new Subject());
-            __classPrivateFieldGet(this, _Channel_eventSubscriptions, "f").set(eventName, new Map());
-        }
-        const subject = __classPrivateFieldGet(this, _Channel_eventSubjects, "f").get(eventName);
-        const subscription = subject.subscribe({
-            next: (payload) => {
-                try {
-                    listener(payload);
-                }
-                catch (error) {
-                    console.error(new ListenerError(`Listener error on "${this.name}:${eventName}"`, "ADR-0002", this.name), error);
-                }
-            }
-        });
-        __classPrivateFieldGet(this, _Channel_eventSubscriptions, "f").get(eventName).set(listener, subscription);
-    }
-    /**
-     * Supprime un listener spécifique pour un Event.
-     */
-    unlisten(eventName, listener) {
-        const subsMap = __classPrivateFieldGet(this, _Channel_eventSubscriptions, "f").get(eventName);
-        if (subsMap) {
-            const subscription = subsMap.get(listener);
-            if (subscription) {
-                subscription.unsubscribe();
-                subsMap.delete(listener);
-            }
-        }
-    }
-    /**
-     * Émet un Event vers tous les listeners (1:N).
-     * Silencieux si aucun listener. Émet `any` automatiquement après.
-     */
-    emit(eventName, payload) {
-        const subject = __classPrivateFieldGet(this, _Channel_eventSubjects, "f").get(eventName);
-        if (subject) {
-            subject.next(payload);
-        }
-        __classPrivateFieldGet(this, _Channel_anySubject, "f").next({
-            event: eventName,
-            changes: payload && typeof payload === "object"
-                ? payload
-                : {}
-        });
-    }
-    /**
-     * Enregistre un listener pour l'événement technique `any`.
-     */
-    listenAny(listener) {
-        const subscription = __classPrivateFieldGet(this, _Channel_anySubject, "f").subscribe({
-            next: (payload) => {
-                try {
-                    listener(payload);
-                }
-                catch (error) {
-                    console.error(new ListenerError(`Listener error on "${this.name}:any"`, "ADR-0002", this.name), error);
-                }
-            }
-        });
-        __classPrivateFieldGet(this, _Channel_anySubscriptions, "f").set(listener, subscription);
-    }
-    /**
-     * Supprime un listener `any`.
-     */
-    unlistenAny(listener) {
-        const subscription = __classPrivateFieldGet(this, _Channel_anySubscriptions, "f").get(listener);
-        if (subscription) {
-            subscription.unsubscribe();
-            __classPrivateFieldGet(this, _Channel_anySubscriptions, "f").delete(listener);
-        }
-    }
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Lane 3 — Requests (synchrone, T | null)
-    // ═══════════════════════════════════════════════════════════════════════════
-    /**
-     * Enregistre le replier unique pour un type de Request.
-     * @throws DuplicateHandlerError si un replier est déjà enregistré.
-     */
-    reply(requestName, replier) {
-        if (__classPrivateFieldGet(this, _Channel_requestRepliers, "f").has(requestName)) {
-            throw new DuplicateHandlerError(`Request "${this.name}:${requestName}" already has a replier`, "I10", this.name, "Each Request must have exactly one replier.");
-        }
-        __classPrivateFieldGet(this, _Channel_requestRepliers, "f").set(requestName, replier);
-    }
-    /**
-     * Supprime un replier.
-     */
-    unreply(requestName) {
-        __classPrivateFieldGet(this, _Channel_requestRepliers, "f").delete(requestName);
-    }
-    /**
-     * Effectue une Request synchrone. Retourne `TDef['requests'][K]['result'] | null`.
-     * - Pas de replier → null (ADR-0023, D44)
-     * - Replier qui throw → null, erreur loguée (I55)
-     */
-    request(requestName, params) {
-        const replier = __classPrivateFieldGet(this, _Channel_requestRepliers, "f").get(requestName);
-        if (!replier) {
-            return null;
-        }
-        try {
-            return replier(params);
-        }
-        catch (error) {
-            console.error(`[Bonsai] Request replier error on "${this.name}:${requestName}"`, error);
-            return null;
-        }
-    }
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Lifecycle
-    // ═══════════════════════════════════════════════════════════════════════════
-    /**
-     * Supprime tous les handlers, listeners et repliers.
-     * Complète les Subjects RxJS.
-     */
-    clear() {
-        __classPrivateFieldGet(this, _Channel_commandHandlers, "f").clear();
-        for (const [, subsMap] of __classPrivateFieldGet(this, _Channel_eventSubscriptions, "f")) {
-            for (const [, sub] of subsMap) {
-                sub.unsubscribe();
-            }
-        }
-        __classPrivateFieldGet(this, _Channel_eventSubscriptions, "f").clear();
-        for (const [, subject] of __classPrivateFieldGet(this, _Channel_eventSubjects, "f")) {
-            subject.complete();
-        }
-        __classPrivateFieldGet(this, _Channel_eventSubjects, "f").clear();
-        for (const [, sub] of __classPrivateFieldGet(this, _Channel_anySubscriptions, "f")) {
-            sub.unsubscribe();
-        }
-        __classPrivateFieldGet(this, _Channel_anySubscriptions, "f").clear();
-        __classPrivateFieldGet(this, _Channel_anySubject, "f").complete();
-        __classPrivateFieldGet(this, _Channel_requestRepliers, "f").clear();
-    }
-}
-_Channel_commandHandlers = new WeakMap(), _Channel_eventSubjects = new WeakMap(), _Channel_eventSubscriptions = new WeakMap(), _Channel_requestRepliers = new WeakMap(), _Channel_anySubject = new WeakMap(), _Channel_anySubscriptions = new WeakMap();
-
-/**
- * Radio — Singleton registre des Channels.
- *
- * Radio est le point central de câblage des communications Bonsai.
- * Il gère les instances Channel par namespace (get-or-create).
- *
- * I15 — Radio n'est jamais exposé au développeur d'application.
- *
- * @see RFC 2-architecture/communication.md §8
- */
-var _a, _Radio_instance, _Radio_constructing, _Radio_channels;
-class Radio {
-    /** Constructeur privé — force le pattern singleton via `me()`. */
-    constructor() {
-        _Radio_channels.set(this, new Map());
-        if (!__classPrivateFieldGet(_a, _a, "f", _Radio_constructing)) {
-            throw new Error("Radio is a singleton — use Radio.me() to get the instance.");
-        }
-    }
-    /** Retourne l'instance unique du Radio. */
-    static me() {
-        if (!__classPrivateFieldGet(_a, _a, "f", _Radio_instance)) {
-            __classPrivateFieldSet(_a, _a, true, "f", _Radio_constructing);
-            __classPrivateFieldSet(_a, _a, new _a(), "f", _Radio_instance);
-            __classPrivateFieldSet(_a, _a, false, "f", _Radio_constructing);
-        }
-        return __classPrivateFieldGet(_a, _a, "f", _Radio_instance);
-    }
-    /**
-     * Obtient ou crée un Channel par namespace (API interne).
-     * Retourne `Channel<TChannelDefinition>` — toutes lanes `Record<string, unknown>`.
-     * Pour un accès typé depuis l'extérieur, utiliser `channelFor(token)`.
-     */
-    channel(name) {
-        if (!__classPrivateFieldGet(this, _Radio_channels, "f").has(name)) {
-            __classPrivateFieldGet(this, _Radio_channels, "f").set(name, new Channel(name));
-        }
-        return __classPrivateFieldGet(this, _Radio_channels, "f").get(name);
-    }
-    /**
-     * Obtient ou crée un Channel typé via son token (ADR-0040, I77, I79).
-     *
-     * Le cast `as Channel<TDef>` est sûr par I22 : un namespace ne peut être
-     * associé qu'à une seule Feature et donc à un seul `TDef`.
-     */
-    channelFor(token) {
-        return this.channel(token.namespace);
-    }
-    /** Vérifie si un Channel existe pour ce namespace. */
-    hasChannel(name) {
-        return __classPrivateFieldGet(this, _Radio_channels, "f").has(name);
-    }
-    /** Liste tous les namespaces enregistrés. */
-    getChannelNames() {
-        return Array.from(__classPrivateFieldGet(this, _Radio_channels, "f").keys());
-    }
-    /**
-     * Supprime un Channel. Appelle `clear()` sur le Channel avant suppression.
-     * @returns `true` si le Channel existait, `false` sinon
-     */
-    removeChannel(name) {
-        const channel = __classPrivateFieldGet(this, _Radio_channels, "f").get(name);
-        if (channel) {
-            channel.clear();
-            return __classPrivateFieldGet(this, _Radio_channels, "f").delete(name);
-        }
-        return false;
-    }
-    /** Reset complet — détruit le singleton. Usage : tests uniquement. */
-    static reset() {
-        if (__classPrivateFieldGet(_a, _a, "f", _Radio_instance)) {
-            for (const [, channel] of __classPrivateFieldGet(__classPrivateFieldGet(_a, _a, "f", _Radio_instance), _Radio_channels, "f")) {
-                channel.clear();
-            }
-            __classPrivateFieldGet(__classPrivateFieldGet(_a, _a, "f", _Radio_instance), _Radio_channels, "f").clear();
-        }
-        __classPrivateFieldSet(_a, _a, undefined, "f", _Radio_instance);
-    }
-}
-_a = Radio, _Radio_channels = new WeakMap();
-_Radio_instance = { value: void 0 };
-_Radio_constructing = { value: false };
-
-/**
  * @bonsai/feature — Types & runtime helpers
  *
- * Implémente :
- *   - ADR-0039 : autorité, unicité et conformité des namespaces de Feature.
- *   - ADR-0042 : pattern modulaire de contrat consommateur — `TFeatureContract`
- *     Feature-groupé + helpers d'aplatissement (`TFlatListens`, `TFlatTriggers`,
- *     `TFlatRequests`) + extracteurs de payload (`TEventPayloadFor`,
- *     `TCommandPayloadFor`, `TRequestParamsFor`, `TRequestResultFor`) +
- *     `TChannelCallbacks` (handlers requis dérivés du contrat).
+ * Implements:
+ *   - ADR-08: authority, uniqueness and conformity of Feature namespaces.
+ *   - ADR-14: modular consumer contract — Feature-grouped `TFeatureContract`
+ *     + flattening helpers (`TFlatListens`, `TFlatTriggers`, `TFlatQueries`)
+ *     + payload extractors (`TEventPayloadFor`, `TCommandPayloadFor`,
+ *     `TQueryParamsFor`, `TQueryResultFor`) + `TChannelCallbacks`
+ *     (required handlers derived from the contract).
  *
- * Trois rôles assumés par ce module :
- *   1. Types compile-time (`CamelCaseNamespace<S>`, `StrictManifest<M>`,
- *      `ValidatedManifest<M>`) qui encodent les invariants I68–I72.
- *   2. Constante framework `RESERVED_NAMESPACES` (I71) — non configurable
- *      par l'application.
- *   3. Filet de sécurité runtime (`assertValidNamespace`,
- *      `BonsaiNamespaceError`) pour les cas où le compile-time est contourné
- *      (cast `as any`, code JS, manifest dynamique).
+ * This module has three roles:
+ *   1. Compile-time types (`CamelCaseNamespace<S>`, `StrictManifest<M>`,
+ *      `ValidatedManifest<M>`) encoding invariants I68–I72.
+ *   2. The framework constant `RESERVED_NAMESPACES` (I71) — not configurable
+ *      by the application.
+ *   3. A runtime safety net (`assertValidNamespace`, `BonsaiNamespaceError`)
+ *      for when compile-time checks are bypassed (`as any` cast, plain JS,
+ *      dynamic manifest).
  *
- * Invariants couverts :
- *   I21 (amendé) — namespace unique camelCase plat
- *   I24 (amendé) — Application valide format + réservés au bootstrap
- *   I57          — `local` réservé (ADR-0015)
- *   I68          — namespace porté par le manifest, pas par un `static`
- *   I69          — manifest = unique source de vérité de l'identité
- *   I70          — toute référence à un namespace externe DOIT être validée
- *   I71          — `RESERVED_NAMESPACES` est une constante framework
- *   I72          — `TSelfNS` doit correspondre à la clé du manifest
- *   I81 (ADR-0042) — `get features()` est la source de vérité runtime
- *   I82 (ADR-0042) — `implements TViewCallbacks<TVC>` impose les handlers
- *   I83 (ADR-0042) — pattern modulaire `T{Component}Contract` réutilisable
- *   I87 (ADR-0042) — clé d'objet ≡ namespace de la Feature référencée
- *   I88 (ADR-0042) — symétrie Contract/Callbacks
+ * Invariants covered:
+ *   I21          — unique, flat camelCase namespace; Application re-validates
+ *                  format + reserved names at bootstrap
+ *   I57          — `local` is reserved (ADR-17)
+ *   I68          — the namespace is carried by the manifest, not by a `static`
+ *   I69          — the manifest is the single source of truth for identity
+ *   I70          — every reference to an external namespace MUST be validated
+ *   I71          — `RESERVED_NAMESPACES` is a framework constant
+ *   I72          — `TSelfNS` must match the manifest key
+ *   I81 (ADR-14) — `get features()` is the runtime source of truth
+ *   I82 (ADR-14) — `implements TViewCallbacks<TVC>` enforces the handlers
+ *   I83 (ADR-14) — reusable modular `T{Component}Contract` pattern
+ *   I87 (ADR-14) — object key ≡ namespace of the referenced Feature
+ *   I88 (ADR-14) — Contract/Callbacks symmetry
  *
  * @packageDocumentation
  */
-// ─── Mots réservés (I71, ADR-0015) ──────────────────────────────────────────
+// ─── Reserved words (I71, ADR-17) ─────────────────────────────────────────
 /**
- * Namespaces réservés par le framework — interdits à toute Feature applicative.
+ * Namespaces reserved by the framework — forbidden to application Features.
  *
- *   - `local`  : clé du localState dans les données namespacées (I57, ADR-0015)
- *   - `router` : Feature framework de navigation, instanciée par Application (I28, D8)
+ *   - `local`  : localState key in namespaced data (I57, ADR-17)
+ *   - `router` : framework navigation Feature, instantiated by Application (I28, ADR-13)
  *
- * Constante framework non configurable. Toute extension future se fera par
- * modification de cette constante, propagée par le typage dérivé (I71).
+ * Non-configurable framework constant. Any future extension changes this
+ * constant and propagates through the derived types (I71).
  */
 const RESERVED_NAMESPACES = ["local", "router"];
 /**
- * Erreur typée pour toute violation détectée au runtime.
+ * Typed error for any violation detected at runtime.
  *
- * Étend la hiérarchie d'erreurs framework évoquée par ADR-0003
- * (`BonsaiRegistryError`). Les codes sont stables et destinés à être
- * matchables par les consommateurs.
+ * Belongs to the framework error family (ADR-05). Codes are stable and
+ * meant to be matched by consumers.
  */
 class BonsaiNamespaceError extends Error {
     constructor(code, message) {
@@ -14817,32 +14595,32 @@ class BonsaiNamespaceError extends Error {
         this.code = code;
     }
 }
-// ─── Filet runtime ──────────────────────────────────────────────────────────
+// ─── Runtime safety net ─────────────────────────────────────────────────────
 const CAMEL_CASE_REGEX = /^[a-z][a-zA-Z]*$/;
-// ─── Filet runtime ──────────────────────────────────────────────────────────
-/** Test runtime du format camelCase. */
+// ─── Runtime safety net ─────────────────────────────────────────────────────
+/** Runtime camelCase format check. */
 function isCamelCaseNamespace(ns) {
     return CAMEL_CASE_REGEX.test(ns);
 }
-/** Test runtime de réservation. */
+/** Runtime reserved-name check. */
 function isReservedNamespace(ns) {
     return RESERVED_NAMESPACES.includes(ns);
 }
 /**
- * Filet de sécurité — vérifie format + réservation au runtime.
+ * Safety net — checks format + reservation at runtime.
  *
- * Appelé par le constructeur de `Feature` (immuabilité dès construction) et
- * par `Application.start()` (validation du manifest entier). Lève
- * `BonsaiNamespaceError` avec un code stable.
+ * Called by the `Feature` constructor (immutable from construction) and by
+ * `Application.start()` (whole-manifest validation). Throws
+ * `BonsaiNamespaceError` with a stable code.
  */
-function assertValidNamespace(ns) {
+function assertValidNamespace(ns, options) {
     if (typeof ns !== "string" || ns.length === 0) {
         throw new BonsaiNamespaceError("NAMESPACE_INVALID_FORMAT", `Namespace must be a non-empty string, received: ${String(ns)}`);
     }
     if (!isCamelCaseNamespace(ns)) {
         throw new BonsaiNamespaceError("NAMESPACE_INVALID_FORMAT", `Namespace "${ns}" must be camelCase (lowercase first letter, letters only)`);
     }
-    if (isReservedNamespace(ns)) {
+    if (isReservedNamespace(ns) && options?.framework !== true) {
         throw new BonsaiNamespaceError("NAMESPACE_RESERVED", `Namespace "${ns}" is reserved by the framework`);
     }
 }
@@ -14850,222 +14628,269 @@ function assertValidNamespace(ns) {
 /**
  * @bonsai/feature — Feature base class
  *
- * Strate 0 — Les 5 capacités :
- *   C1 — emit(event, payload) sur son propre Channel (typé TChannelDef, ADR-0040)
- *   C2 — handle(command) via auto-discovery des méthodes on{Name}Command
- *   C3 — listen(event) sur Channels externes déclarés via on{Channel}{EventName}Event
- *   C4 — reply(request) via auto-discovery des méthodes on{Name}Request
- *   C5 — request(token, name, params) vers Channels déclarés (typé via token, ADR-0040)
+ * The 5 capabilities (ADR-01), realised on the kernel (migration lot M6.1):
+ *   C1 — ctx.emit(event, payload) on its own Channel (typed by TChannelDef, ADR-14)
+ *   C2 — handle(command) through auto-discovered on{Name}Command(payload, ctx) methods
+ *   C3 — listen(event) on declared external Channels through on{Channel}{EventName}Event(payload, ctx)
+ *   C4 — reply(query) through auto-discovered on{Name}Query(params, ctx) methods
+ *   C5 — ctx.query(token, name, params) to declared Channels (typed by the token, ADR-14)
  *
- * Invariants :
- *   I1  — Feature ne peut emit() que sur son propre Channel
- *   I2  — Feature peut listen les Events des Channels externes déclarés
- *   I3  — Feature ne peut reply que sur son propre Channel
- *   I5  — Entity n'est accessible que par sa Feature propriétaire
- *   I12 — Aucune Feature ne peut emit sur le Channel d'une autre
- *   I21 — Chaque Feature DOIT être enregistrée dans le manifest applicatif
- *         sous une clé namespace unique camelCase plat (amendé ADR-0039)
- *   I22 — Relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte
- *   I48 — Handlers auto-découverts par convention de nommage
- *   I68 — Le namespace est porté par le manifest applicatif, pas par
- *         un `static` sur la classe Feature (ADR-0039)
- *   I72 — `TSelfNS` doit correspondre exactement à la clé sous laquelle
- *         la Feature est enregistrée dans le manifest (ADR-0039)
- *   I73 — Chaque Feature concrète DOIT exposer `static readonly channel:
- *         TChannelToken<TChannelDef, TSelfNS>` — pont entre la classe et son
- *         Channel typé (ADR-0040)
- *   I74 — `TChannelDef` co-localisé dans le fichier `.feature.ts` du domaine
- *         (pas de `.channel.ts` séparé) (ADR-0040)
- *   I75 — Aucun `any`/`unknown` dans la surface publique de Channel/Feature/
- *         View ; casts internes documentés et délimités (ADR-0040)
- *   I76 — `Channel.{trigger,emit,request,handle,listen,reply}` strictement
- *         typés par `TDef` — clé = `keyof TDef[lane]`, jamais `string` libre
- *         (ADR-0040)
- *   I79 — `Feature.request()` accepte uniquement un `TChannelToken` typé ;
- *         `abstract get listens()`/`abstract get queries()` portent ces tokens
- *         comme déclarations instance (ADR-0040, amendé ADR-0046 — I93)
- *   I93 — `listens` et `queries` sont des `abstract get` instance sur Feature
- *         (ADR-0046 — TS2515 si absent sur une classe concrète)
- *   I94 — Le constructeur de Feature est inerte : assertValidNamespace + #namespace
- *         uniquement. Aucun side-effect Radio/Entity.
- *   I96 — Handlers Entity `on<Key>EntityUpdated`/`onAnyEntityUpdated` auto-
- *         découverts sur la Feature (même mécanisme que I48), dispatchés par
- *         ordre alphabétique des `changedKeys` puis catch-all. Clé inconnue
- *         → erreur bootstrap. Handler qui throw → isolé (BroadcastError,
- *         ADR-0002), notification suivante non interrompue (ADR-0028 strate 1a)
+ * Every handler receives a context as second argument: there is no `this.emit`,
+ * `this.request` or `this.entity.mutate` any more. A handler runs inside a
+ * validation unit of the kernel (G7): its mutations and emissions are
+ * applied together or not at all. A Feature never addresses a Command (D17).
+ *
+ * Invariants:
+ *   I1  — A Feature can only emit() on its own Channel, never on another Feature's
+ *   I2  — A Feature can listen to Events of declared external Channels
+ *   I3  — A Feature can only reply on its own Channel
+ *   I6  — An Entity is only accessible to its owning Feature
+ *   I21 — Every Feature MUST be registered in the application manifest under
+ *         a unique, flat camelCase namespace key (ADR-08)
+ *   I22 — namespace ↔ Feature ↔ Entity is a strict 1:1:1 relation
+ *   I48 — Handlers are auto-discovered by naming convention
+ *   I68 — The namespace is carried by the application manifest, not by a
+ *         `static` on the Feature class (ADR-08)
+ *   I72 — `TSelfNS` must match exactly the key the Feature is registered
+ *         under in the manifest (ADR-08)
+ *   I73 — Every concrete Feature MUST expose `static readonly channel:
+ *         TChannelToken<TChannelDef, TSelfNS>` — the bridge between the class
+ *         and its typed Channel (ADR-14)
+ *   I74 — `TChannelDef` is co-located in the domain's `.feature.ts` file
+ *         (no separate `.channel.ts`) (ADR-14)
+ *   I75 — No `any`/`unknown` in the public surface of Channel/Feature/View;
+ *         internal casts are documented and contained (ADR-14)
+ *   I76 — `Channel.{trigger,emit,request,handle,listen,reply}` are strictly
+ *         typed by `TDef` — key = `keyof TDef[lane]`, never a free `string`
+ *         (ADR-14)
+ *   I79 — `Feature.request()` only accepts a typed `TChannelToken`;
+ *         `abstract get listens()`/`abstract get queries()` carry these tokens
+ *         as instance declarations (ADR-14, ADR-09 — I93)
+ *   I93 — `listens` and `queries` are instance `abstract get` on Feature
+ *         (ADR-09 — TS2515 when missing on a concrete class)
+ *   I94 — The Feature constructor is inert: assertValidNamespace + #namespace
+ *         only. No kernel/Entity side effect.
+ *   I96 — Entity handlers `on<Key>EntityUpdated`/`onAnyEntityUpdated` are
+ *         auto-discovered on the Feature (same mechanism as I48), dispatched
+ *         in alphabetical order of `changedKeys`, then the catch-all. Unknown
+ *         key → bootstrap error. The notification is a deferred local message
+ *         the Feature sends to itself after the mutation (G5, D8): a throwing
+ *         handler fails its own unit, never the one that mutated.
  *
  * @packageDocumentation
  */
-var _Feature_instances, _Feature_namespace, _Feature_entity, _Feature_channel, _Feature_bootstrapped, _Feature_registerCommandHandlers, _Feature_registerRequestRepliers, _Feature_registerEventListeners, _Feature_registerEntityHandlers, _Feature_dispatchEntityEvent;
+var _Feature_instances, _a$1, _Feature_namespace, _Feature_entity, _Feature_methodNames, _Feature_run, _Feature_queryContext, _Feature_featureContext, _Feature_checkEntityHandlers, _Feature_dispatchEntityEvent;
+// ─── Framework description of a Feature ──────────────────────────────────────
+const DESCRIBE$1 = Symbol("bonsai.feature.describe");
+/** Name of the local message a Feature sends itself after a mutation (I96). */
+const ENTITY_UPDATED = "entityUpdated";
+/**
+ * @internal Framework use only (`Application`).
+ *
+ * Builds the description the kernel needs to create the Feature as a child of
+ * the root: its Channel, subscriptions, local message, Entity and initial
+ * Query dependencies (D16, C.1). Creates the Entity (I22).
+ */
+function describeFeature(feature) {
+    return feature[DESCRIBE$1]();
+}
+const lowerFirst = (s) => s[0].toLowerCase() + s.slice(1);
 // ─── Feature abstract class ──────────────────────────────────────────────────
 /**
- * Feature — unité métier paramétrée par sa classe Entity, son contrat Channel
- * et son namespace.
+ * Feature — business unit parameterised by its Entity class, its Channel
+ * contract and its namespace.
  *
- * Paramètres de type :
- *   - `TEntity`     : la classe Entity (ADR-0037 — encode I22 au type-level)
- *   - `TChannelDef` : le contrat du Channel propre — types de commandes, events,
- *                     requests (ADR-0040 — I74, I76). Par défaut `TChannelDefinition`
- *                     (toutes lanes `Record<string, unknown>`) pour une utilisation
- *                     non paramétrée rétrocompatible.
- *   - `TSelfNS`     : le namespace sous lequel cette Feature s'attend à être
- *                     enregistrée dans le manifest applicatif (ADR-0039 — I72).
- *                     Par défaut `string` pour les sous-classes non paramétrées.
+ * Type parameters:
+ *   - `TEntity`     : the Entity class (ADR-09 — encodes I22 at type level)
+ *   - `TChannelDef` : the contract of its own Channel — command, event and
+ *                     request types (ADR-14 — I74, I76). Defaults to
+ *                     `TChannelDefinition` (all lanes `Record<string, unknown>`)
+ *                     for untyped use.
+ *   - `TSelfNS`     : the namespace this Feature expects to be registered
+ *                     under in the application manifest (ADR-08 — I72).
+ *                     Defaults to `string` for unparameterised subclasses.
  *
- * **Le namespace n'est plus déclaré sur la classe** (`static namespace`
- * supprimé, ADR-0039 — I68). Il est :
- *   - injecté par le constructeur (immuabilité dès construction)
- *   - dérivé de la clé du manifest applicatif (source de vérité — I69)
- *   - validé au compile-time par `StrictManifest<M>` au `satisfies`
- *   - validé au runtime par `assertValidNamespace()` (filet — I71)
+ * **The namespace is not declared on the class** (no `static namespace`,
+ * ADR-08 — I68). It is:
+ *   - injected by the constructor (immutable from construction)
+ *   - derived from the application manifest key (source of truth — I69)
+ *   - checked at compile time by `StrictManifest<M>` through `satisfies`
+ *   - checked at runtime by `assertValidNamespace()` (safety net — I71)
+ *
+ * **The Events a Feature may emit are declared on its `static readonly
+ * channel` token** (`events`, D16): the kernel refuses an emission that was
+ * not declared.
  */
 class Feature {
+    /**
+     * Tokens of the Features this Feature queries **during its own initial
+     * unit** (C.1): the kernel starts the Feature after them, whatever the order
+     * of the Manifest. Optional (none by default). Each must also be declared in
+     * `queries`; a cycle is refused before startup.
+     */
+    get dependsOn() {
+        return [];
+    }
     // ─── Constructor ───────────────────────────────────────────────────────
     /**
-     * Crée une Feature attachée au namespace passé en paramètre.
+     * Creates a Feature bound to the given namespace.
      *
-     * Appelé exclusivement par `Application.start()` qui transmet la clé du
-     * manifest. L'instanciation manuelle (tests) doit aussi passer le namespace.
+     * Called only by `Application.start()`, which passes the manifest key.
      *
-     * @throws `BonsaiNamespaceError` si le namespace est invalide ou réservé.
+     * @throws `BonsaiNamespaceError` when the namespace is invalid or reserved.
      */
     constructor(namespace) {
         _Feature_instances.add(this);
         _Feature_namespace.set(this, void 0);
-        _Feature_entity.set(this, void 0);
-        // Canal propre — assigné au bootstrap, cast sûr par I22 (1 namespace = 1 TDef).
-        _Feature_channel.set(this, void 0);
-        _Feature_bootstrapped.set(this, false);
-        assertValidNamespace(namespace);
+        _Feature_entity.set(this, null);
+        // A class provided by the framework (static `framework`, e.g. the router) may take a reserved namespace.
+        // The Application manifest still refuses a reserved key: only the Application instantiates it (I71).
+        assertValidNamespace(namespace, { framework: new.target.framework === true });
         __classPrivateFieldSet(this, _Feature_namespace, namespace, "f");
     }
     // ─── Public API ────────────────────────────────────────────────────────
     /**
-     * Le namespace de cette instance — immuable, défini au constructeur.
-     * Typé `TSelfNS` (string littéral si la Feature est paramétrée).
+     * Namespace of this instance — immutable, set by the constructor.
      */
     get namespace() {
         return __classPrivateFieldGet(this, _Feature_namespace, "f");
     }
     /**
-     * Accès à l'Entity (I5, I6 — propriétaire exclusif).
-     * `protected` : seules la Feature et ses sous-classes y accèdent.
-     * Typée par la classe concrète (TEntity) grâce à ADR-0037.
+     * Access to the Entity description and read methods (I6 — exclusive owner).
+     * `protected`: only the Feature and its subclasses reach it. Its `state` is
+     * readable only inside a handler; mutation goes through `ctx.mutate`.
      */
     get entity() {
+        if (__classPrivateFieldGet(this, _Feature_entity, "f") === null) {
+            throw new Error(`[Bonsai Feature] "${__classPrivateFieldGet(this, _Feature_namespace, "f")}": the Entity exists only once the Feature is started by its Application (I94).`);
+        }
         return __classPrivateFieldGet(this, _Feature_entity, "f");
-    }
-    /**
-     * Bootstrap : crée l'Entity, enregistre les handlers sur le Channel,
-     * et appelle onInit(). Appelé par Application ou manuellement en test.
-     */
-    bootstrap() {
-        if (__classPrivateFieldGet(this, _Feature_bootstrapped, "f"))
-            return;
-        __classPrivateFieldSet(this, _Feature_bootstrapped, true, "f");
-        // Cast sûr par I22 : 1 namespace = 1 Feature = 1 TDef (I75).
-        __classPrivateFieldSet(this, _Feature_channel, Radio.me().channel(__classPrivateFieldGet(this, _Feature_namespace, "f")), "f");
-        // I22 — Création de l'Entity 1:1 via le getter Entity (D17 amendé par ADR-0037)
-        const EntityCtor = this.Entity;
-        __classPrivateFieldSet(this, _Feature_entity, new EntityCtor(), "f");
-        // Auto-discovery des handlers (I48)
-        __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerCommandHandlers).call(this);
-        __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerRequestRepliers).call(this);
-        __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerEventListeners).call(this);
-        __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_registerEntityHandlers).call(this);
-        // Lifecycle
-        this.onInit();
-    }
-    // ─── Capacités (C1–C5) ─────────────────────────────────────────────────
-    /**
-     * C1 — Émet un Event typé sur le propre Channel de cette Feature (I1, I12, ADR-0040).
-     */
-    emit(eventName, payload) {
-        __classPrivateFieldGet(this, _Feature_channel, "f").emit(eventName, payload);
-    }
-    /**
-     * C5 — Effectue une Request typée vers un Channel déclaré (I17, ADR-0040).
-     * Retourne le résultat typé ou null (ADR-0023).
-     */
-    request(token, requestName, params) {
-        return Radio.me().channelFor(token).request(requestName, params);
     }
     // ─── Lifecycle hooks ───────────────────────────────────────────────────
     /**
-     * Hook appelé après le bootstrap. Override dans les sous-classes.
+     * Hook called inside the startup unit, after the Entity exists (I56).
+     * Override it in subclasses. It receives the same context as a handler.
      */
-    onInit() {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    onInit(_ctx) {
         // Default no-op — subclasses override
     }
-}
-_Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_channel = new WeakMap(), _Feature_bootstrapped = new WeakMap(), _Feature_instances = new WeakSet(), _Feature_registerCommandHandlers = function _Feature_registerCommandHandlers() {
-    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
-    const ch = __classPrivateFieldGet(this, _Feature_channel, "f");
-    const proto = Object.getPrototypeOf(this);
-    const methods = Object.getOwnPropertyNames(proto);
-    for (const method of methods) {
-        const match = method.match(/^on([A-Z][a-zA-Z]*)Command$/);
-        if (match) {
-            const commandName = match[1][0].toLowerCase() + match[1].slice(1);
-            ch.handle(commandName, (payload) => {
-                this[method](payload);
-            });
-        }
-    }
-}, _Feature_registerRequestRepliers = function _Feature_registerRequestRepliers() {
-    // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
-    const ch = __classPrivateFieldGet(this, _Feature_channel, "f");
-    const proto = Object.getPrototypeOf(this);
-    const methods = Object.getOwnPropertyNames(proto);
-    for (const method of methods) {
-        const match = method.match(/^on([A-Z][a-zA-Z]*)Request$/);
-        if (match) {
-            const requestName = match[1][0].toLowerCase() + match[1].slice(1);
-            ch.reply(requestName, (params) => {
-                return this[method](params);
-            });
-        }
-    }
-}, _Feature_registerEventListeners = function _Feature_registerEventListeners() {
-    const listenTokens = this.listens;
-    if (listenTokens.length === 0)
-        return;
-    const proto = Object.getPrototypeOf(this);
-    const methods = Object.getOwnPropertyNames(proto);
-    for (const token of listenTokens) {
-        const channelName = token.namespace;
-        const channelPascal = channelName[0].toUpperCase() + channelName.slice(1);
-        const prefix = `on${channelPascal}`;
-        const suffix = "Event";
-        // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
-        const ch = Radio.me().channel(channelName);
+    // ─── Framework description (internal) ──────────────────────────────────
+    [(_Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_instances = new WeakSet(), DESCRIBE$1)]() {
+        const namespace = __classPrivateFieldGet(this, _Feature_namespace, "f");
+        // I22 — 1:1 Entity creation through the Entity getter (ADR-09)
+        const EntityCtor = this.Entity;
+        const entity = new EntityCtor();
+        __classPrivateFieldSet(this, _Feature_entity, entity, "f");
+        const definition = describeEntity(entity);
+        const methods = __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_methodNames).call(this);
+        __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_checkEntityHandlers).call(this, methods, definition.initial);
+        const token = this.constructor.channel;
+        const events = token?.events ?? [];
+        const commands = {};
+        const queries = {};
+        const listens = [];
+        const self = this;
+        // Handler auto-discovery (I48)
         for (const method of methods) {
-            if (method.startsWith(prefix) && method.endsWith(suffix)) {
-                const eventPascal = method.slice(prefix.length, -suffix.length);
+            let match = method.match(/^on([A-Z][a-zA-Z]*)Command$/);
+            if (match) {
+                commands[lowerFirst(match[1])] = (payload, c) => __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_run).call(this, c, () => self[method](payload, __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_featureContext).call(this, c)));
+                continue;
+            }
+            match = method.match(/^on([A-Z][a-zA-Z]*)Query$/);
+            if (match) {
+                queries[lowerFirst(match[1])] = (params, c) => __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_run).call(this, c, () => self[method](params, __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_queryContext).call(this, c)));
+            }
+        }
+        // Subscriptions to the declared external Channels (C3, I2, I48)
+        for (const external of this.listens) {
+            const channelPascal = external.namespace[0].toUpperCase() + external.namespace.slice(1);
+            const prefix = `on${channelPascal}`;
+            for (const method of methods) {
+                if (!method.startsWith(prefix) || !method.endsWith("Event"))
+                    continue;
+                const eventPascal = method.slice(prefix.length, -"Event".length);
                 if (eventPascal.length === 0)
                     continue;
-                const eventName = eventPascal[0].toLowerCase() + eventPascal.slice(1);
-                ch.listen(eventName, (payload) => {
-                    this[method](payload);
+                listens.push({
+                    namespace: external.namespace,
+                    event: lowerFirst(eventPascal),
+                    handler: (payload, c) => __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_run).call(this, c, () => self[method](payload, __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_featureContext).call(this, c)))
                 });
             }
         }
+        return {
+            name: namespace,
+            channel: { namespace, events, commands, queries },
+            listens,
+            locals: {
+                [ENTITY_UPDATED]: (event, c) => __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_run).call(this, c, () => __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_dispatchEntityEvent).call(this, event, __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_featureContext).call(this, c)))
+            },
+            entity: definition,
+            init: (c) => __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_run).call(this, c, () => this.onInit(__classPrivateFieldGet(this, _Feature_instances, "m", _Feature_featureContext).call(this, c))),
+            dependsOn: this.dependsOn.map((t) => t.namespace)
+        };
     }
-}, _Feature_registerEntityHandlers = function _Feature_registerEntityHandlers() {
-    const proto = Object.getPrototypeOf(this);
-    const methods = Object.getOwnPropertyNames(proto);
-    const stateKeys = new Set(Object.keys(__classPrivateFieldGet(this, _Feature_entity, "f").state));
+}
+_a$1 = Feature, _Feature_methodNames = function _Feature_methodNames() {
+    const names = new Set();
+    for (let proto = Object.getPrototypeOf(this); proto !== null && proto !== _a$1.prototype; proto = Object.getPrototypeOf(proto)) {
+        for (const name of Object.getOwnPropertyNames(proto))
+            names.add(name);
+    }
+    return [...names];
+}, _Feature_run = function _Feature_run(c, fn) {
+    const entity = __classPrivateFieldGet(this, _Feature_entity, "f");
+    const restore = bindEntityState(entity, () => c.state());
+    try {
+        return fn();
+    }
+    finally {
+        restore();
+    }
+}, _Feature_queryContext = function _Feature_queryContext(c) {
+    return {
+        query: (token, name, params) => c.query(token.namespace, name, params)
+    };
+}, _Feature_featureContext = function _Feature_featureContext(c) {
+    const mutate = (intent, paramsOrRecipe, maybeRecipe) => {
+        const params = typeof paramsOrRecipe === "function" ? null : paramsOrRecipe;
+        const recipe = typeof paramsOrRecipe === "function" ? paramsOrRecipe : maybeRecipe;
+        const change = c.mutate(recipe);
+        if (change === null)
+            return null; // no-op: no notification
+        const event = {
+            intent,
+            payload: params?.payload,
+            metas: params?.metas,
+            // Keys derived from the first path segment of each patch (I97)
+            changedKeys: [...new Set(change.patches.map((p) => String(p.path[0])))],
+            patches: [...change.patches],
+            inversePatches: [...change.inversePatches],
+            previousState: change.previous,
+            nextState: change.next,
+            timestamp: Date.now()
+        };
+        // The notification is a deferred local message (G5, D8).
+        c.local(ENTITY_UPDATED, event);
+        return event;
+    };
+    return {
+        ...__classPrivateFieldGet(this, _Feature_instances, "m", _Feature_queryContext).call(this, c),
+        emit: (event, payload) => c.emit(event, payload),
+        mutate: mutate
+    };
+}, _Feature_checkEntityHandlers = function _Feature_checkEntityHandlers(methods, initial) {
+    const stateKeys = new Set(Object.keys(initial));
     for (const method of methods) {
         const match = method.match(/^on([A-Z][a-zA-Z]*)EntityUpdated$/);
         if (!match || match[1] === "Any")
             continue;
-        const key = match[1][0].toLowerCase() + match[1].slice(1);
+        const key = lowerFirst(match[1]);
         hardInvariant(stateKeys.has(key), `Feature "${__classPrivateFieldGet(this, _Feature_namespace, "f")}" declares entity handler "${method}" for unknown key "${key}"`, "I96", __classPrivateFieldGet(this, _Feature_namespace, "f"));
     }
-    __classPrivateFieldGet(this, _Feature_entity, "f").onAnyEntityUpdated((event) => {
-        __classPrivateFieldGet(this, _Feature_instances, "m", _Feature_dispatchEntityEvent).call(this, event);
-    });
-}, _Feature_dispatchEntityEvent = function _Feature_dispatchEntityEvent(event) {
+}, _Feature_dispatchEntityEvent = function _Feature_dispatchEntityEvent(event, ctx) {
     const self = this;
     for (const key of [...event.changedKeys].sort()) {
         const handlerName = `on${key[0].toUpperCase()}${key.slice(1)}EntityUpdated`;
@@ -15074,120 +14899,1210 @@ _Feature_namespace = new WeakMap(), _Feature_entity = new WeakMap(), _Feature_ch
         const keyPatches = event.patches.filter((p) => String(p.path[0]) === key);
         const prev = event.previousState[key];
         const next = event.nextState[key];
-        try {
-            self[handlerName](prev, next, keyPatches);
-        }
-        catch (error) {
-            console.error(new BroadcastError(`Entity handler "${handlerName}" threw for intent "${event.intent}"`, "ADR-0002", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
-        }
+        self[handlerName](prev, next, keyPatches, ctx);
     }
     if (typeof self["onAnyEntityUpdated"] === "function") {
-        try {
-            self["onAnyEntityUpdated"](event);
-        }
-        catch (error) {
-            console.error(new BroadcastError(`Entity handler "onAnyEntityUpdated" threw for intent "${event.intent}"`, "ADR-0002", __classPrivateFieldGet(this, _Feature_namespace, "f")), error);
-        }
+        self["onAnyEntityUpdated"](event, ctx);
     }
 };
 
 /**
- * @bonsai/view — View base class (ADR-0042)
+ * Kernel prototype — transport errors (G5, G7, D9).
  *
- * Strate 1 — Capacités :
- *   - trigger("ns:cmd", payload) → envoie un Command typé via Channel
- *   - request("ns:req", params)  → interroge un Channel typé
- *   - getUI(key) → TProjectionNode<TEl> typé au sous-type HTMLElement (phantom)
- *   - Auto-discovery D48 channel : on{NS}{Event}Event → channel.listen
- *   - Auto-discovery D48 UI      : on{UIKey}{DomEvent} → addEventListener
- *   - onAttach() lifecycle hook
+ * A transport error is not a business answer: it interrupts the author and
+ * propagates to the outermost validation unit, which then fails (G7).
+ */
+class TransportError extends Error {
+    constructor(code, message, cause) {
+        super(`[${code}] ${message}`);
+        this.name = "TransportError";
+        this.code = code;
+        if (cause !== undefined)
+            this.cause = cause;
+    }
+}
+/** Raised by `Root.start()` when the startup unit fails (§2.5, C.1). */
+class StartupError extends Error {
+    constructor(cause) {
+        super("Startup failed: the model under construction was abandoned");
+        this.name = "StartupError";
+        this.cause = cause;
+    }
+}
+/**
+ * A business invariant is violated at the end of a validation unit (A4.a).
+ * Not a transport error: the unit fails and is rolled back (G7).
+ */
+class InvariantError extends Error {
+    constructor(entity, invariant) {
+        super(`Invariant "${invariant}" of entity "${entity}" violated at the end of the validation unit (A4.a)`);
+        this.name = "InvariantError";
+        this.entity = entity;
+        this.invariant = invariant;
+    }
+}
+/** The Manifest cannot be ordered: unknown or cyclic initial dependency (C.1). */
+class ManifestError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = "ManifestError";
+    }
+}
+
+/**
+ * Kernel prototype — capture of transmitted values (G2, C.5, A3.d).
  *
- * Pattern modulaire ADR-0042 :
- *   1. `const features satisfies TFeatureContract` — Feature-groupé
- *   2. `const uiEvents satisfies TUIContract`      — events DOM + phantom TEl
- *   3. `const uiElements satisfies TUIElements<typeof uiEvents>` — sélecteurs
- *   4. `type TVC = TViewContract<typeof features, typeof uiEvents>`
- *   5. `class XxxView extends View<TVC> implements TViewCallbacks<TVC>`
+ * A value is captured when it is submitted to the transport: a detached deep
+ * copy, then deeply frozen. Neither the author nor any recipient keeps a
+ * mutable alias on the transmitted value.
  *
- * Trois getters abstraits :
- *   - `get features()`   → Feature refs + lanes (structurel, non-overridable)
- *   - `get uiEvents()`   → events DOM + phantom TEl (structurel)
- *   - `get uiElements()` → sélecteurs CSS (overridable par Composer D34)
+ * The copier is the kernel's own, identical on every host (some test hosts,
+ * such as jsdom, lack `structuredClone`). It accepts data only: primitives,
+ * arrays, plain objects, `Date`, `Map`, `Set`. Anything else — a function, a
+ * host element, an instance of a class — would carry a reference and is
+ * refused (A3.d).
+ */
+function refuse(what) {
+    throw new TransportError("NOT_CAPTURABLE", `value cannot be captured by copy: ${what} (A3.d)`);
+}
+function copy(value, seen) {
+    if (value === null || value === undefined)
+        return value;
+    switch (typeof value) {
+        case "string":
+        case "number":
+        case "boolean":
+        case "bigint":
+            return value;
+        case "function":
+            return refuse("function");
+        case "symbol":
+            return refuse("symbol");
+    }
+    const source = value;
+    if (seen.has(source))
+        return seen.get(source);
+    if (Array.isArray(source)) {
+        const target = [];
+        seen.set(source, target);
+        for (const item of source)
+            target.push(copy(item, seen));
+        return Object.freeze(target);
+    }
+    if (source instanceof Date)
+        return Object.freeze(new Date(source.getTime()));
+    if (source instanceof Map) {
+        const target = new Map();
+        seen.set(source, target);
+        for (const [k, v] of source)
+            target.set(copy(k, seen), copy(v, seen));
+        return Object.freeze(target);
+    }
+    if (source instanceof Set) {
+        const target = new Set();
+        seen.set(source, target);
+        for (const v of source)
+            target.add(copy(v, seen));
+        return Object.freeze(target);
+    }
+    const prototype = Object.getPrototypeOf(source);
+    if (prototype !== Object.prototype && prototype !== null) {
+        return refuse(`instance of ${source.constructor?.name ?? "a class"}`);
+    }
+    const target = {};
+    seen.set(source, target);
+    for (const key of Object.keys(source))
+        target[key] = copy(source[key], seen);
+    return Object.freeze(target);
+}
+function capture(value) {
+    return copy(value, new Map());
+}
+
+/**
+ * Kernel prototype (migration lot M1) — one Root per model.
  *
- * Channel reste privé derrière sa Feature (I80) — aucun `TChannelToken` dans
- * la surface publique.
+ * Realises, for testing, the guarantees of the communication infrastructure
+ * (docs/theorie.md §13 and annex C):
  *
- * Invariants :
- *   I4  — View n'a JAMAIS emit() — absent du type
- *   I31 — rootElement est un sélecteur CSS string injecté au mount
- *   I36 — View ne compose jamais d'autres Views directement
- *   I39 — Accès DOM exclusivement via getUI(key)
- *   I40 — Scope DOM : résolution dans rootElement uniquement
- *   I48 — Handlers auto-découverts par convention de nommage
- *   I75 — Aucun `any` dans la surface publique ; casts internes documentés
- *   I80 — Aucun TChannelToken dans la surface publique consommateur
- *   I81 — `features` / `uiEvents` / `uiElements` sont les sources de vérité
- *   I82 — Handler manquant → erreur compile via `implements TViewCallbacks`
- *   I83 — Pattern modulaire `T{Component}Contract` réutilisable
- *   I84 — `events: [E, ...]` non-vide impose les handlers DOM correspondants
- *   I85 — `ui<TEl>()(events)` est l'unique helper pour TUIEntry (forme curryfiée)
- *   I86 — `events` toujours présent dans TUIEntry (pas d'optionnel) ; ReadonlyArray<TEventsFor<TEl>> sans doublons
- *   I87 — clé d'objet ≡ namespace de la Feature référencée
- *   I88 — symétrie Contract/Callbacks
- *   I89 — tout nom d'event déclaré appartient à TEventsFor<TEl> ⊆ keyof HTMLElementEventMap (ADR-0044/0045)
- *   I90 — pas de doublons dans TUIEntry["events"] — double-binding interdit (ADR-0044)
- *   I91 — TEventsFor<TEl> est le mapping sémantique officiel Bonsai élément→events (ADR-0045)
+ * - G1  delivery to the Channel owner, to subscription owners, to the author
+ *       of a local message; responses to the author only.
+ * - G2  values captured by copy at submission, responses at return (C.5).
+ * - G3  no delivery to a destroyed Channel, subscription or component;
+ *       reservations bound to a determined subscription (C.2, C.6).
+ * - G5  deferred messages delivered only after the producing unit validates;
+ *       Queries synchronous, refused towards a target not ready or active.
+ * - G6  one registry per Root: no message crosses roots.
+ * - G7  a failing unit restores what it journaled, drops its creations,
+ *       destructions and deferred messages; Query errors poison the unit.
+ * - G8  causal contexts created and propagated by the kernel only.
+ * - D8  production order; subscription order; rank fixed at emission.
+ * - D9  causal depth checked before any submission.
+ * - C.3 effects prepared during the unit, engaged in order after it
+ *       validates; a synchronous failure closes the resource the effect
+ *       aims at (and, for a part, the parts below it), the rest goes on.
+ *
+ * Out of scope for M1: Entity integration (M2), structural parts and DOM
+ * (M3–M4), closed-world qualification of host sources and D18 (M5).
+ */
+var _Root_instances, _Root_id, _Root_bound, _Root_longMs, _Root_now, _Root_document, _Root_onTrace, _Root_rights, _Root_simulating, _Root_registry, _Root_subscriptions, _Root_components, _Root_resources, _Root_queue, _Root_active, _Root_trace, _Root_counter, _Root_unit, _Root_draining, _Root_state, _Root_record, _Root_runUnit, _Root_checkInvariants, _Root_engage, _Root_drain, _Root_measure, _Root_deliver, _Root_abandon, _Root_unitContext, _Root_readContext, _Root_query, _Root_create, _Root_destroy, _Root_capture, _Root_origin, _Root_child, _Root_nextId, _Root_push;
+enablePatches();
+let rootCounter = 0;
+// ── Root ─────────────────────────────────────────────────────────────────────
+class Root {
+    constructor(options) {
+        _Root_instances.add(this);
+        _Root_id.set(this, void 0);
+        _Root_bound.set(this, void 0);
+        _Root_longMs.set(this, void 0);
+        _Root_now.set(this, void 0);
+        _Root_document.set(this, void 0);
+        _Root_onTrace.set(this, void 0);
+        /** D18: right to command, by message context (the trigger of a treatment). */
+        _Root_rights.set(this, new Map());
+        /** C.4: instrumented simulation in progress, if any. */
+        _Root_simulating.set(this, null);
+        _Root_registry.set(this, new Map());
+        _Root_subscriptions.set(this, []);
+        _Root_components.set(this, new Map());
+        _Root_resources.set(this, new Map());
+        _Root_queue.set(this, []);
+        _Root_active.set(this, []);
+        _Root_trace.set(this, []);
+        _Root_counter.set(this, 0);
+        _Root_unit.set(this, null);
+        _Root_draining.set(this, false);
+        _Root_state.set(this, "created");
+        _Root_record.set(this, void 0);
+        __classPrivateFieldSet(this, _Root_id, `r${++rootCounter}`, "f");
+        __classPrivateFieldSet(this, _Root_bound, options.causalBound, "f");
+        __classPrivateFieldSet(this, _Root_longMs, options.longUnitMs ?? 50, "f");
+        __classPrivateFieldSet(this, _Root_now, options.now ?? (() => performance.now()), "f");
+        __classPrivateFieldSet(this, _Root_document, options.document ?? null, "f");
+        __classPrivateFieldSet(this, _Root_onTrace, options.onTrace, "f");
+        // The root's existence is provided by the host, not admitted (A0.d, 7.4).
+        __classPrivateFieldSet(this, _Root_record, {
+            handle: Object.freeze({ occurrence: __classPrivateFieldGet(this, _Root_instances, "m", _Root_nextId).call(this, "c"), name: "root" }),
+            spec: { name: "root" },
+            parent: null,
+            children: [],
+            status: "ready",
+            channel: null,
+            subscriptions: [],
+            entity: null,
+            resources: [],
+            params: undefined,
+            designation: null
+        }, "f");
+    }
+    /** Technical trace, outside the application transport. */
+    get trace() {
+        return __classPrivateFieldGet(this, _Root_trace, "f");
+    }
+    /**
+     * Startup: an exceptional validation unit whose cause is an origin (§2.5).
+     * Deferred messages and admissions wait for its success; its failure
+     * abandons the model under construction (C.1).
+     */
+    start(init) {
+        if (__classPrivateFieldGet(this, _Root_state, "f") !== "created") {
+            throw new TransportError("ROOT_ABANDONED", `root cannot start from state "${__classPrivateFieldGet(this, _Root_state, "f")}"`);
+        }
+        __classPrivateFieldSet(this, _Root_state, "starting", "f");
+        const cause = __classPrivateFieldGet(this, _Root_instances, "m", _Root_origin).call(this, "startup");
+        const error = __classPrivateFieldGet(this, _Root_instances, "m", _Root_runUnit).call(this, __classPrivateFieldGet(this, _Root_record, "f"), cause, (ctx) => init(ctx));
+        if (error !== null) {
+            __classPrivateFieldSet(this, _Root_state, "abandoned", "f");
+            __classPrivateFieldGet(this, _Root_registry, "f").clear();
+            __classPrivateFieldGet(this, _Root_subscriptions, "f").length = 0;
+            __classPrivateFieldGet(this, _Root_queue, "f").length = 0;
+            throw new StartupError(error.error);
+        }
+        __classPrivateFieldSet(this, _Root_state, "started", "f");
+        __classPrivateFieldGet(this, _Root_instances, "m", _Root_drain).call(this);
+    }
+    /**
+     * Starts from a Manifest (16.9, D14): the root creates its declared children
+     * in an order that respects their initial Query dependencies; among children
+     * without remaining dependency, declaration order decides; a cycle or an
+     * unknown dependency is refused before startup (C.1).
+     */
+    startFromManifest(entries) {
+        const byNamespace = new Map();
+        for (const entry of entries) {
+            if (entry.channel !== undefined)
+                byNamespace.set(entry.channel.namespace, entry);
+        }
+        for (const entry of entries) {
+            for (const dependency of entry.dependsOn ?? []) {
+                if (!byNamespace.has(dependency))
+                    throw new ManifestError(`${entry.name} depends on unknown namespace "${dependency}"`);
+            }
+        }
+        const ordered = [];
+        const placed = new Set();
+        while (ordered.length < entries.length) {
+            const next = entries.find((entry) => !placed.has(entry) && (entry.dependsOn ?? []).every((d) => placed.has(byNamespace.get(d))));
+            if (next === undefined) {
+                const blocked = entries.filter((entry) => !placed.has(entry)).map((entry) => entry.name);
+                throw new ManifestError(`cyclic initial dependencies between ${blocked.join(", ")} (C.1)`);
+            }
+            ordered.push(next);
+            placed.add(next);
+        }
+        this.start((ctx) => {
+            for (const entry of ordered)
+                ctx.create(entry);
+        });
+    }
+    /**
+     * Admission of an occurrence of the host or of an external system (A5.c).
+     * The preamble mutates nothing: it checks the occurrence of life, qualifies
+     * the context (C.4), captures the payload and queues a local message.
+     */
+    admit(target, local, payload, admission) {
+        if (__classPrivateFieldGet(this, _Root_state, "f") === "abandoned") {
+            __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, { type: "admission-abandoned", reason: "root abandoned", name: local });
+            return;
+        }
+        const record = __classPrivateFieldGet(this, _Root_components, "f").get(target.occurrence);
+        if (record === undefined || record.status === "destroyed") {
+            __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, { type: "admission-abandoned", reason: "occurrence no longer alive", name: local });
+            return;
+        }
+        if (record.spec.locals?.[local] === undefined) {
+            throw new TransportError("UNDECLARED_MESSAGE", `local "${local}" not declared by ${record.handle.name}`);
+        }
+        let context;
+        if (admission.kind === "correlated") {
+            if (admission.token.occurrence !== record.handle.occurrence) {
+                __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, { type: "admission-abandoned", reason: "result routed to another occurrence", name: local });
+                return;
+            }
+            const child = __classPrivateFieldGet(this, _Root_instances, "m", _Root_child).call(this, admission.token.context);
+            if (child.depth > __classPrivateFieldGet(this, _Root_bound, "f")) {
+                // Refused at the preamble: no treatment starts, nothing is revoked (D9).
+                __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, { type: "admission-abandoned", reason: "causal bound", name: local });
+                return;
+            }
+            context = child;
+            // A correlated result continues the reaction that armed it, with its right (D18).
+            __classPrivateFieldGet(this, _Root_rights, "f").set(context.id, __classPrivateFieldGet(this, _Root_rights, "f").get(admission.token.context.id) ?? false);
+        }
+        else {
+            context = __classPrivateFieldGet(this, _Root_instances, "m", _Root_origin).call(this, admission.kind === "independent" ? "spontaneous" : "unknown");
+            // Only an established independent fact grants the right to command (D18, C.4).
+            __classPrivateFieldGet(this, _Root_rights, "f").set(context.id, admission.kind === "independent");
+        }
+        __classPrivateFieldGet(this, _Root_queue, "f").push({ kind: "local", target: record, name: local, payload: capture(payload), context });
+        __classPrivateFieldGet(this, _Root_instances, "m", _Root_drain).call(this);
+    }
+}
+_Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMap(), _Root_now = new WeakMap(), _Root_document = new WeakMap(), _Root_onTrace = new WeakMap(), _Root_rights = new WeakMap(), _Root_simulating = new WeakMap(), _Root_registry = new WeakMap(), _Root_subscriptions = new WeakMap(), _Root_components = new WeakMap(), _Root_resources = new WeakMap(), _Root_queue = new WeakMap(), _Root_active = new WeakMap(), _Root_trace = new WeakMap(), _Root_counter = new WeakMap(), _Root_unit = new WeakMap(), _Root_draining = new WeakMap(), _Root_state = new WeakMap(), _Root_record = new WeakMap(), _Root_instances = new WeakSet(), _Root_runUnit = function _Root_runUnit(owner, cause, body, right = false) {
+    const startedAt = __classPrivateFieldGet(this, _Root_now, "f").call(this);
+    const unit = { open: true, staged: [], undo: [], effects: [], touched: new Set(), restitutions: [], right, poisoned: null };
+    __classPrivateFieldSet(this, _Root_unit, unit, "f");
+    __classPrivateFieldGet(this, _Root_active, "f").push(owner);
+    let failure = null;
+    try {
+        body(__classPrivateFieldGet(this, _Root_instances, "m", _Root_unitContext).call(this, owner, cause, unit));
+    }
+    catch (error) {
+        failure = { error };
+    }
+    finally {
+        __classPrivateFieldGet(this, _Root_active, "f").pop();
+        unit.open = false;
+        __classPrivateFieldSet(this, _Root_unit, null, "f");
+    }
+    // A Query error or a refused submission cannot be recovered locally (G7).
+    if (failure === null && unit.poisoned !== null) {
+        // The author intercepted a Query failure: the unit fails anyway (G7).
+        failure = {
+            error: new TransportError("UNRECOVERABLE", "Query refusée ou en échec : l'unité est annulée et ne peut pas reprendre localement (G7)", unit.poisoned.error)
+        };
+    }
+    if (failure === null)
+        failure = __classPrivateFieldGet(this, _Root_instances, "m", _Root_checkInvariants).call(this, unit);
+    if (failure !== null) {
+        for (let i = unit.undo.length - 1; i >= 0; i--) {
+            try {
+                unit.undo[i]();
+            }
+            catch {
+                // Undo must not throw; a failing undo is a kernel defect.
+            }
+        }
+        __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, { type: "unit-failed", owner: owner.handle.name, context: cause, error: failure.error });
+        __classPrivateFieldGet(this, _Root_instances, "m", _Root_measure).call(this, "long-unit", startedAt, { owner: owner.handle.name, context: cause });
+        return failure;
+    }
+    for (const entry of unit.restitutions)
+        __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, entry);
+    __classPrivateFieldGet(this, _Root_queue, "f").push(...unit.staged);
+    __classPrivateFieldGet(this, _Root_instances, "m", _Root_engage).call(this, unit.effects);
+    __classPrivateFieldGet(this, _Root_instances, "m", _Root_measure).call(this, "long-unit", startedAt, { owner: owner.handle.name, context: cause });
+    return null;
+}, _Root_checkInvariants = function _Root_checkInvariants(unit) {
+    for (const record of unit.touched) {
+        if (record.status === "destroyed" || record.entity === null)
+            continue;
+        for (const invariant of record.entity.def.invariants ?? []) {
+            let satisfied;
+            try {
+                satisfied = invariant.check(record.entity.state);
+            }
+            catch (error) {
+                return { error };
+            }
+            if (!satisfied)
+                return { error: new InvariantError(record.entity.def.name, invariant.name) };
+        }
+    }
+    return null;
+}, _Root_engage = function _Root_engage(effects) {
+    if (effects.length === 0)
+        return;
+    const lines = [];
+    // Closed resources, each with the index of the failed line that closed it.
+    const closedParts = new Map();
+    const closedKeys = new Map();
+    const closedBy = (target) => {
+        if ("part" in target) {
+            for (let part = target.part; part !== null; part = part.container?.resource ?? null) {
+                const index = closedParts.get(part);
+                if (index !== undefined)
+                    return index;
+            }
+            return undefined;
+        }
+        return closedKeys.get(target.owner)?.get(target.key);
+    };
+    const close = (target, index) => {
+        if ("part" in target) {
+            closedParts.set(target.part, index);
+            return;
+        }
+        const keys = closedKeys.get(target.owner) ?? new Map();
+        keys.set(target.key, index);
+        closedKeys.set(target.owner, keys);
+    };
+    for (const effect of effects) {
+        const by = closedBy(effect.target);
+        if (by !== undefined) {
+            lines.push({ effect, outcome: "not-attempted", closedBy: by });
+            continue;
+        }
+        try {
+            effect.run();
+            lines.push({ effect, outcome: "engaged" });
+        }
+        catch (error) {
+            close(effect.target, lines.length);
+            lines.push({ effect, outcome: "failed", error });
+        }
+    }
+    // The engagement report is admitted to each living owner that declares it, as a
+    // correlated result carrying its own lines only (C.3); the trace keeps the whole list.
+    const owners = [...new Set(lines.map((line) => line.effect.owner))];
+    const admitted = new Set();
+    const abandoned = [];
+    for (const owner of owners) {
+        if (owner.status === "destroyed" || owner.spec.locals?.["$effects"] === undefined)
+            continue;
+        const own = lines.filter((line) => line.effect.owner === owner);
+        const child = __classPrivateFieldGet(this, _Root_instances, "m", _Root_child).call(this, own[0].effect.context);
+        if (child.depth > __classPrivateFieldGet(this, _Root_bound, "f")) {
+            abandoned.push({ type: "admission-abandoned", reason: "causal bound", name: "$effects" });
+            continue;
+        }
+        admitted.add(owner);
+        __classPrivateFieldGet(this, _Root_queue, "f").push({ kind: "local", target: owner, name: "$effects", payload: capture(own.map(({ effect, outcome }) => ({ label: effect.label, outcome }))), context: child });
+    }
+    __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, {
+        type: "effects",
+        report: lines.map(({ effect, outcome, error, closedBy: by }) => ({
+            owner: effect.owner.handle.name,
+            label: effect.label,
+            outcome,
+            ...(outcome === "failed" ? { error } : {}),
+            ...(by === undefined ? {} : { closedBy: by }),
+            context: effect.context,
+            admitted: admitted.has(effect.owner)
+        }))
+    });
+    for (const entry of abandoned)
+        __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, entry);
+}, _Root_drain = function _Root_drain() {
+    if (__classPrivateFieldGet(this, _Root_draining, "f") || __classPrivateFieldGet(this, _Root_unit, "f") !== null || __classPrivateFieldGet(this, _Root_state, "f") !== "started")
+        return;
+    __classPrivateFieldSet(this, _Root_draining, true, "f");
+    // ADR-35: the queue is drained in one go, without yielding to the host.
+    const startedAt = __classPrivateFieldGet(this, _Root_now, "f").call(this);
+    const context = __classPrivateFieldGet(this, _Root_queue, "f")[0]?.context;
+    let units = 0;
+    try {
+        while (__classPrivateFieldGet(this, _Root_queue, "f").length > 0) {
+            const delivery = __classPrivateFieldGet(this, _Root_queue, "f").shift();
+            __classPrivateFieldGet(this, _Root_instances, "m", _Root_deliver).call(this, delivery);
+            units++;
+        }
+    }
+    finally {
+        __classPrivateFieldSet(this, _Root_draining, false, "f");
+        if (context !== undefined)
+            __classPrivateFieldGet(this, _Root_instances, "m", _Root_measure).call(this, "long-drain", startedAt, { units, context });
+    }
+}, _Root_measure = function _Root_measure(type, startedAt, data) {
+    const durationMs = __classPrivateFieldGet(this, _Root_now, "f").call(this) - startedAt;
+    if (durationMs <= __classPrivateFieldGet(this, _Root_longMs, "f"))
+        return;
+    if (type === "long-unit") {
+        __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, { type, owner: data.owner, context: data.context, durationMs });
+    }
+    else {
+        __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, { type, units: data.units, context: data.context, durationMs });
+    }
+}, _Root_deliver = function _Root_deliver(delivery) {
+    let owner;
+    let handler;
+    switch (delivery.kind) {
+        case "command":
+            if (!delivery.channel.alive)
+                return __classPrivateFieldGet(this, _Root_instances, "m", _Root_abandon).call(this, "channel destroyed", delivery);
+            owner = delivery.channel.owner;
+            handler = owner.spec.channel?.commands?.[delivery.name];
+            break;
+        case "event":
+            if (!delivery.subscription.alive)
+                return __classPrivateFieldGet(this, _Root_instances, "m", _Root_abandon).call(this, "subscription destroyed", delivery);
+            owner = delivery.subscription.owner;
+            handler = delivery.subscription.handler;
+            break;
+        case "local":
+            owner = delivery.target;
+            handler = owner.spec.locals?.[delivery.name];
+            break;
+    }
+    if (owner.status === "destroyed")
+        return __classPrivateFieldGet(this, _Root_instances, "m", _Root_abandon).call(this, "recipient destroyed", delivery);
+    if (handler === undefined)
+        return __classPrivateFieldGet(this, _Root_instances, "m", _Root_abandon).call(this, "no declared handler", delivery);
+    __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, { type: "delivered", kind: delivery.kind, to: owner.handle.name, name: delivery.name, context: delivery.context });
+    const run = handler;
+    // D18: an Event never grants the right; a Command or a local message carries its producer's.
+    if (delivery.kind === "event")
+        __classPrivateFieldGet(this, _Root_rights, "f").set(delivery.context.id, false);
+    const right = __classPrivateFieldGet(this, _Root_rights, "f").get(delivery.context.id) ?? false;
+    __classPrivateFieldGet(this, _Root_instances, "m", _Root_runUnit).call(this, owner, delivery.context, (ctx) => run(delivery.payload, ctx), right);
+}, _Root_abandon = function _Root_abandon(reason, delivery) {
+    __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, { type: "delivery-abandoned", reason, name: delivery.name, context: delivery.context });
+}, _Root_unitContext = function _Root_unitContext(self, cause, unit) {
+    const guard = () => {
+        if (__classPrivateFieldGet(this, _Root_unit, "f") !== unit || !unit.open) {
+            throw new TransportError("NO_UNIT", "context used outside its validation unit (A5.a)");
+        }
+    };
+    const fail = (error) => {
+        unit.poisoned = unit.poisoned ?? { error };
+        throw error;
+    };
+    const submit = () => {
+        const child = __classPrivateFieldGet(this, _Root_instances, "m", _Root_child).call(this, cause);
+        if (child.depth > __classPrivateFieldGet(this, _Root_bound, "f")) {
+            fail(new TransportError("CAUSAL_BOUND", `depth ${child.depth} exceeds bound ${__classPrivateFieldGet(this, _Root_bound, "f")}`));
+        }
+        __classPrivateFieldGet(this, _Root_rights, "f").set(child.id, unit.right);
+        return child;
+    };
+    return {
+        self: self.handle,
+        cause,
+        query: (namespace, name, params) => {
+            guard();
+            return __classPrivateFieldGet(this, _Root_instances, "m", _Root_query).call(this, namespace, name, params, cause, unit);
+        },
+        trigger: (namespace, command, payload) => {
+            guard();
+            const channel = __classPrivateFieldGet(this, _Root_registry, "f").get(namespace);
+            if (channel === undefined || !channel.alive)
+                fail(new TransportError("UNKNOWN_TARGET", `no Channel "${namespace}" in this root`));
+            if (channel.owner.spec.channel?.commands?.[command] === undefined)
+                fail(new TransportError("UNDECLARED_MESSAGE", `command "${namespace}:${command}" not declared`));
+            // A4.b: only a component of the user interface addresses a Command to an adapter of the interface.
+            if (channel.owner.spec.ui === true && self.spec.ui !== true) {
+                fail(new TransportError("NOT_AUTHORIZED", `${self.handle.name} is not a component of the user interface: it may not address "${namespace}:${command}" (A4.b)`));
+            }
+            if (self.spec.ui === true && !unit.right) {
+                fail(new TransportError("NOT_AUTHORIZED", `${self.handle.name} may not command: the trigger of this reaction grants no right (D18)`));
+            }
+            const context = submit();
+            unit.staged.push({ kind: "command", channel: channel, name: command, payload: __classPrivateFieldGet(this, _Root_instances, "m", _Root_capture).call(this, payload, unit), context });
+        },
+        emit: (event, payload) => {
+            guard();
+            const channel = self.channel;
+            if (channel === null || !channel.alive)
+                fail(new TransportError("NOT_OWNER", `${self.handle.name} owns no Channel to emit on (A3.e)`));
+            if (!(self.spec.channel?.events ?? []).includes(event))
+                fail(new TransportError("UNDECLARED_MESSAGE", `event "${event}" not declared by ${self.handle.name}`));
+            const context = submit();
+            const value = __classPrivateFieldGet(this, _Root_instances, "m", _Root_capture).call(this, payload, unit);
+            // D8 / C.6: reservations fixed now, on the subscriptions present now.
+            for (const subscription of __classPrivateFieldGet(this, _Root_subscriptions, "f")) {
+                if (subscription.alive && subscription.namespace === channel.namespace && subscription.event === event) {
+                    unit.staged.push({ kind: "event", subscription, name: event, payload: value, context });
+                }
+            }
+        },
+        local: (name, payload) => {
+            guard();
+            if (self.spec.locals?.[name] === undefined)
+                fail(new TransportError("UNDECLARED_MESSAGE", `local "${name}" not declared`));
+            const context = submit();
+            unit.staged.push({ kind: "local", target: self, name, payload: __classPrivateFieldGet(this, _Root_instances, "m", _Root_capture).call(this, payload, unit), context });
+        },
+        create: (spec, options) => {
+            guard();
+            return __classPrivateFieldGet(this, _Root_instances, "m", _Root_create).call(this, self, spec, cause, unit, options);
+        },
+        params: () => self.params,
+        designation: () => self.designation,
+        admitDistributable: (label) => {
+            guard();
+            let element = null;
+            if (__classPrivateFieldGet(this, _Root_document, "f") !== null) {
+                element = __classPrivateFieldGet(this, _Root_document, "f").querySelector(label);
+                if (element === null)
+                    fail(new TransportError("HOST_NOT_FOUND", `no host element matches "${label}" (D3)`));
+            }
+            const resource = { handle: Object.freeze({ id: __classPrivateFieldGet(this, _Root_instances, "m", _Root_nextId).call(this, "res"), label }), owner: self, container: null, portions: new Map(), alive: true, element };
+            __classPrivateFieldGet(this, _Root_resources, "f").set(resource.handle.id, resource);
+            self.resources.push(resource);
+            unit.undo.push(() => {
+                resource.alive = false;
+                __classPrivateFieldGet(this, _Root_resources, "f").delete(resource.handle.id);
+                self.resources.splice(self.resources.indexOf(resource), 1);
+            });
+            return resource.handle;
+        },
+        resolve: (designation) => {
+            guard();
+            const part = __classPrivateFieldGet(this, _Root_resources, "f").get(designation.attribution);
+            const valid = part !== undefined && part.alive && part.owner === self && part.container !== null
+                && part.container.resource.handle.id === designation.resource && part.container.portion === designation.portion
+                && part.container.resource.portions.get(designation.portion) === part;
+            if (!valid)
+                fail(new TransportError("INVALID_DESIGNATION", `designation of portion "${designation.portion}" does not resolve to a living part owned by ${self.handle.name} (8.5, 9.10)`));
+            return part.handle;
+        },
+        project: (resource, label, write) => {
+            guard();
+            const record = __classPrivateFieldGet(this, _Root_resources, "f").get(resource.id);
+            if (record === undefined || !record.alive || record.owner !== self)
+                fail(new TransportError("NOT_OWNER", `${self.handle.name} does not own resource ${resource.label} (A1.b)`));
+            unit.effects.push({
+                owner: self,
+                label,
+                context: cause,
+                target: { part: record },
+                run: () => {
+                    if (!record.alive)
+                        return;
+                    if (record.element === null)
+                        throw new Error(`${record.handle.label} is not materialized (9.10)`);
+                    write(record.element);
+                }
+            });
+        },
+        simulate: (resource, type) => {
+            guard();
+            const record = __classPrivateFieldGet(this, _Root_resources, "f").get(resource.id);
+            if (record === undefined || !record.alive || record.owner !== self)
+                fail(new TransportError("NOT_OWNER", `${self.handle.name} does not own resource ${resource.label} (A1.b)`));
+            __classPrivateFieldGet(this, _Root_rights, "f").set(cause.id, unit.right);
+            const token = Object.freeze({ kind: "correlation", occurrence: self.handle.occurrence, context: cause });
+            unit.effects.push({
+                owner: self,
+                label: `simulate ${type}`,
+                context: cause,
+                target: { part: record },
+                run: () => {
+                    const element = record.element;
+                    if (element === null)
+                        throw new Error(`${record.handle.label} is not materialized (9.10)`);
+                    __classPrivateFieldSet(this, _Root_simulating, { element, type, token }, "f");
+                    try {
+                        // dispatchEvent, not element.click(): the drain may run inside the host's own dispatch of a
+                        // click on this element, and the host ignores a nested click() while one is in progress.
+                        const view = element.ownerDocument.defaultView;
+                        const event = type === "click" ? new view.MouseEvent(type, { bubbles: true }) : new view.Event(type, { bubbles: true });
+                        element.dispatchEvent(event);
+                    }
+                    finally {
+                        __classPrivateFieldSet(this, _Root_simulating, null, "f");
+                    }
+                }
+            });
+        },
+        attributed: (resource) => {
+            const record = __classPrivateFieldGet(this, _Root_resources, "f").get(resource.id);
+            if (record === undefined || !record.alive || record.owner !== self)
+                fail(new TransportError("NOT_OWNER", `${self.handle.name} does not own resource ${resource.label}`));
+            return [...record.portions.keys()];
+        },
+        destroy: (child) => {
+            guard();
+            const record = __classPrivateFieldGet(this, _Root_components, "f").get(child.occurrence);
+            if (record === undefined || record.parent !== self)
+                fail(new TransportError("NOT_OWNER", `${self.handle.name} is not the parent of ${child.name} (A1.b, T1)`));
+            __classPrivateFieldGet(this, _Root_instances, "m", _Root_destroy).call(this, record, unit, cause);
+        },
+        state: () => {
+            if (self.entity === null)
+                fail(new TransportError("NOT_OWNER", `${self.handle.name} owns no Entity`));
+            return self.entity.state;
+        },
+        mutate: (recipe) => {
+            guard();
+            const entity = self.entity;
+            if (entity === null)
+                fail(new TransportError("NOT_OWNER", `${self.handle.name} owns no Entity (16.2)`));
+            const previous = entity.state;
+            const [next, patches, inversePatches] = produceWithPatches(previous, recipe);
+            if (next === previous)
+                return null;
+            entity.state = next;
+            // Immutable states: restoring the previous reference is an exact undo (G7).
+            unit.undo.push(() => { entity.state = previous; });
+            unit.touched.add(self);
+            return { previous, next, patches, inversePatches };
+        },
+        journal: (undo) => {
+            guard();
+            unit.undo.push(undo);
+        },
+        mayCommand: () => {
+            guard();
+            return unit.right;
+        },
+        prepareEffect: (label, run, options) => {
+            guard();
+            unit.effects.push({ owner: self, label, run, context: cause, target: { owner: self, key: options?.target ?? "" } });
+        },
+        correlate: () => {
+            guard();
+            __classPrivateFieldGet(this, _Root_rights, "f").set(cause.id, unit.right);
+            return Object.freeze({ kind: "correlation", occurrence: self.handle.occurrence, context: cause });
+        }
+    };
+}, _Root_readContext = function _Root_readContext(self, cause, unit) {
+    const forbidden = (operation) => () => {
+        const error = new TransportError("READ_ONLY", `${operation} forbidden while answering a Query (A3.g)`);
+        unit.poisoned = unit.poisoned ?? { error };
+        throw error;
+    };
+    return {
+        self: self.handle,
+        cause,
+        query: (namespace, name, params) => __classPrivateFieldGet(this, _Root_instances, "m", _Root_query).call(this, namespace, name, params, cause, unit),
+        state: () => {
+            if (self.entity === null)
+                return forbidden("state without Entity")();
+            return self.entity.state;
+        },
+        mutate: forbidden("mutate"),
+        params: forbidden("params"),
+        designation: forbidden("designation"),
+        admitDistributable: forbidden("admitDistributable"),
+        resolve: forbidden("resolve"),
+        attributed: forbidden("attributed"),
+        project: forbidden("project"),
+        simulate: forbidden("simulate"),
+        trigger: forbidden("trigger"),
+        emit: forbidden("emit"),
+        local: forbidden("local"),
+        create: forbidden("create"),
+        destroy: forbidden("destroy"),
+        journal: forbidden("journal"),
+        prepareEffect: forbidden("prepareEffect"),
+        mayCommand: forbidden("mayCommand"),
+        correlate: forbidden("correlate")
+    };
+}, _Root_query = function _Root_query(namespace, name, params, cause, unit) {
+    const fail = (error) => {
+        unit.poisoned = unit.poisoned ?? { error };
+        throw error;
+    };
+    const channel = __classPrivateFieldGet(this, _Root_registry, "f").get(namespace);
+    if (channel === undefined || !channel.alive)
+        return fail(new TransportError("UNKNOWN_TARGET", `no Channel "${namespace}" in this root`));
+    const target = channel.owner;
+    const handler = target.spec.channel?.queries?.[name];
+    if (handler === undefined)
+        return fail(new TransportError("UNDECLARED_MESSAGE", `query "${namespace}:${name}" not declared`));
+    if (target.status !== "ready")
+        return fail(new TransportError("TARGET_NOT_READY", `${target.handle.name} is not ready (C.1)`));
+    if (__classPrivateFieldGet(this, _Root_active, "f").includes(target))
+        return fail(new TransportError("TARGET_ACTIVE", `${target.handle.name} has an execution in progress (G5)`));
+    const context = __classPrivateFieldGet(this, _Root_instances, "m", _Root_child).call(this, cause);
+    if (context.depth > __classPrivateFieldGet(this, _Root_bound, "f"))
+        return fail(new TransportError("CAUSAL_BOUND", `depth ${context.depth} exceeds bound ${__classPrivateFieldGet(this, _Root_bound, "f")}`));
+    const value = __classPrivateFieldGet(this, _Root_instances, "m", _Root_capture).call(this, params, unit);
+    __classPrivateFieldGet(this, _Root_active, "f").push(target);
+    try {
+        const result = handler(value, __classPrivateFieldGet(this, _Root_instances, "m", _Root_readContext).call(this, target, context, unit));
+        return __classPrivateFieldGet(this, _Root_instances, "m", _Root_capture).call(this, result, unit);
+    }
+    catch (error) {
+        // Any Query failure interrupts the author's unit; no local recovery (G7).
+        unit.poisoned = unit.poisoned ?? { error };
+        throw error;
+    }
+    finally {
+        __classPrivateFieldGet(this, _Root_active, "f").pop();
+    }
+}, _Root_create = function _Root_create(parent, spec, cause, unit, options = {}) {
+    const record = {
+        handle: Object.freeze({ occurrence: __classPrivateFieldGet(this, _Root_instances, "m", _Root_nextId).call(this, "c"), name: spec.name }),
+        spec,
+        parent,
+        children: [],
+        status: "initializing",
+        channel: null,
+        subscriptions: [],
+        entity: null,
+        resources: [],
+        params: undefined,
+        designation: null
+    };
+    if (spec.entity !== undefined) {
+        // Initial state captured by copy and frozen; checked at the end of the unit (A4.a).
+        record.entity = { def: spec.entity, state: capture(spec.entity.initial) };
+        unit.touched.add(record);
+    }
+    if (spec.channel !== undefined) {
+        const existing = __classPrivateFieldGet(this, _Root_registry, "f").get(spec.channel.namespace);
+        if (existing !== undefined && existing.alive) {
+            const error = new TransportError("DUPLICATE_NAMESPACE", `namespace "${spec.channel.namespace}" already used in this root`);
+            unit.poisoned = unit.poisoned ?? { error };
+            throw error;
+        }
+        // A4.b (reception): a Channel of the user interface is not received by a component of the domain,
+        // including a subscription made before this Channel exists.
+        if (spec.ui === true) {
+            const foreign = __classPrivateFieldGet(this, _Root_subscriptions, "f").find((s) => s.alive && s.namespace === spec.channel.namespace && s.owner.spec.ui !== true);
+            if (foreign !== undefined) {
+                const error = new TransportError("NOT_AUTHORIZED", `${foreign.owner.handle.name} is not a component of the user interface: it may not receive "${spec.channel.namespace}:${foreign.event}" (A4.b)`);
+                unit.poisoned = unit.poisoned ?? { error };
+                throw error;
+            }
+        }
+        record.channel = { namespace: spec.channel.namespace, owner: record, alive: true };
+        __classPrivateFieldGet(this, _Root_registry, "f").set(spec.channel.namespace, record.channel);
+    }
+    // A4.b (reception): only a component of the user interface subscribes to a Channel of the interface.
+    // Checked before any subscription is registered, so a refusal leaves nothing behind.
+    for (const listen of spec.listens ?? []) {
+        const target = __classPrivateFieldGet(this, _Root_registry, "f").get(listen.namespace);
+        if (target !== undefined && target.alive && target.owner.spec.ui === true && spec.ui !== true) {
+            const error = new TransportError("NOT_AUTHORIZED", `${spec.name} is not a component of the user interface: it may not receive "${listen.namespace}:${listen.event}" (A4.b)`);
+            unit.poisoned = unit.poisoned ?? { error };
+            throw error;
+        }
+    }
+    for (const listen of spec.listens ?? []) {
+        const subscription = { owner: record, namespace: listen.namespace, event: listen.event, handler: listen.handler, alive: true };
+        record.subscriptions.push(subscription);
+        __classPrivateFieldGet(this, _Root_subscriptions, "f").push(subscription);
+    }
+    record.params = __classPrivateFieldGet(this, _Root_instances, "m", _Root_capture).call(this, options.params, unit);
+    if (options.part !== undefined) {
+        // Attribution (6.5): only by the container's owner (A1.b), only to a child (A2.d), never overlapping (T7).
+        const container = __classPrivateFieldGet(this, _Root_resources, "f").get(options.part.resource.id);
+        const fail = (error) => { unit.poisoned = unit.poisoned ?? { error }; throw error; };
+        if (container === undefined || !container.alive || container.owner !== parent)
+            fail(new TransportError("NOT_OWNER", `${parent.handle.name} does not own resource ${options.part.resource.label} (A1.b)`));
+        if (container.portions.has(options.part.portion))
+            fail(new TransportError("PORTION_TAKEN", `portion "${options.part.portion}" of ${options.part.resource.label} is already attributed (T7)`));
+        const part = {
+            handle: Object.freeze({ id: __classPrivateFieldGet(this, _Root_instances, "m", _Root_nextId).call(this, "part"), label: `${container.handle.label}/${options.part.portion}` }),
+            owner: record,
+            container: { resource: container, portion: options.part.portion },
+            portions: new Map(),
+            alive: true,
+            element: null
+        };
+        container.portions.set(options.part.portion, part);
+        // Materialization of the part: an effect of the container's owner, engaged after validation (D12, C.3).
+        if (__classPrivateFieldGet(this, _Root_document, "f") !== null) {
+            const document = __classPrivateFieldGet(this, _Root_document, "f");
+            const portion = options.part.portion;
+            unit.effects.push({
+                owner: parent,
+                label: `materialize ${part.handle.label}`,
+                context: cause,
+                target: { part },
+                run: () => {
+                    if (!part.alive)
+                        return;
+                    const host = container.element;
+                    if (host === null)
+                        throw new Error(`${container.handle.label} is not materialized (9.10)`);
+                    let element;
+                    if (options.part.host !== undefined) {
+                        // A declared slot: exactly one existing element of the container (Foundation §3).
+                        const matches = host.querySelectorAll(options.part.host);
+                        if (matches.length !== 1)
+                            throw new Error(`slot "${options.part.host}" matches ${matches.length} elements of ${container.handle.label}, expected exactly one`);
+                        element = matches[0];
+                        element.setAttribute("data-bonsai-part", portion);
+                    }
+                    else {
+                        element = document.createElement("div");
+                        element.setAttribute("data-bonsai-part", portion);
+                        // Order is explicit: before the part named by `before`, otherwise at the end (Composer §1.3).
+                        const before = options.part.before === undefined ? null : container.portions.get(options.part.before)?.element ?? null;
+                        host.insertBefore(element, before !== null && before.parentNode === host ? before : null);
+                    }
+                    part.element = element;
+                    // Host sources of the part (D10, B.4): registered by Bonsai, admitted by the part's owner only.
+                    for (const [type, admission] of Object.entries(record.spec.dom ?? {})) {
+                        const local = typeof admission === "string" ? admission : admission.local;
+                        const keys = typeof admission === "string" ? undefined : admission.keys;
+                        const cancelDefault = typeof admission === "string" ? undefined : admission.cancelDefault;
+                        element.addEventListener(type, (event) => {
+                            const target = event.target;
+                            if (target === null || target.closest("[data-bonsai-part]") !== element)
+                                return; // innermost part only (A5.d)
+                            let ui = target.getAttribute("data-ui");
+                            if (keys !== undefined) {
+                                ui = null;
+                                for (const [key, selector] of Object.entries(keys)) {
+                                    const hit = target.closest(selector);
+                                    if (hit !== null && element.contains(hit)) {
+                                        ui = key;
+                                        break;
+                                    }
+                                }
+                            }
+                            // D20: cancelled at capture by declaration, never by the treatment, whatever its outcome.
+                            if (ui !== null && cancelDefault?.includes(ui) === true)
+                                event.preventDefault();
+                            const pending = __classPrivateFieldGet(this, _Root_simulating, "f");
+                            // Closed world (C.4): an occurrence no instrumented operation could have produced is independent.
+                            const admission = pending !== null && pending.element === element && pending.type === type
+                                ? { kind: "correlated", token: pending.token }
+                                : { kind: "independent" };
+                            this.admit(record.handle, local, { type, ui }, admission);
+                        });
+                    }
+                }
+            });
+        }
+        __classPrivateFieldGet(this, _Root_resources, "f").set(part.handle.id, part);
+        record.resources.push(part);
+        record.designation = Object.freeze({ resource: container.handle.id, portion: options.part.portion, attribution: part.handle.id });
+        unit.undo.push(() => {
+            part.alive = false;
+            if (container.portions.get(options.part.portion) === part)
+                container.portions.delete(options.part.portion);
+            __classPrivateFieldGet(this, _Root_resources, "f").delete(part.handle.id);
+        });
+    }
+    parent.children.push(record);
+    __classPrivateFieldGet(this, _Root_components, "f").set(record.handle.occurrence, record);
+    unit.undo.push(() => {
+        // An abandoned creation is never published (§2.5, C.7).
+        record.status = "destroyed";
+        if (record.channel !== null) {
+            record.channel.alive = false;
+            if (__classPrivateFieldGet(this, _Root_registry, "f").get(record.channel.namespace) === record.channel)
+                __classPrivateFieldGet(this, _Root_registry, "f").delete(record.channel.namespace);
+        }
+        for (const subscription of record.subscriptions) {
+            subscription.alive = false;
+            const index = __classPrivateFieldGet(this, _Root_subscriptions, "f").indexOf(subscription);
+            if (index >= 0)
+                __classPrivateFieldGet(this, _Root_subscriptions, "f").splice(index, 1);
+        }
+        const index = parent.children.indexOf(record);
+        if (index >= 0)
+            parent.children.splice(index, 1);
+        __classPrivateFieldGet(this, _Root_components, "f").delete(record.handle.occurrence);
+    });
+    if (spec.init !== undefined) {
+        // The child's initialisation belongs to its creator's unit (§2.5).
+        __classPrivateFieldGet(this, _Root_active, "f").push(record);
+        try {
+            spec.init(__classPrivateFieldGet(this, _Root_instances, "m", _Root_unitContext).call(this, record, cause, unit));
+        }
+        finally {
+            __classPrivateFieldGet(this, _Root_active, "f").pop();
+        }
+    }
+    record.status = "ready";
+    return record.handle;
+}, _Root_destroy = function _Root_destroy(record, unit, cause) {
+    const order = [];
+    const visit = (node) => {
+        for (const child of node.children)
+            visit(child);
+        order.push(node);
+    };
+    visit(record);
+    const parent = record.parent;
+    const position = parent.children.indexOf(record);
+    const saved = order.map((node) => ({
+        node,
+        status: node.status,
+        channelAlive: node.channel?.alive ?? false,
+        subscriptions: node.subscriptions.map((s) => ({ s, alive: s.alive, index: __classPrivateFieldGet(this, _Root_subscriptions, "f").indexOf(s) }))
+    }));
+    const snapshots = new Map();
+    const ended = [];
+    for (const node of order) {
+        // Bottom-up: each restitution is imputed to the container's owner, still present here (§2.5, T3).
+        for (const resource of node.resources) {
+            if (resource.container !== null && resource.container.resource.portions.get(resource.container.portion) === resource) {
+                const { resource: container, portion } = resource.container;
+                if (!snapshots.has(container))
+                    snapshots.set(container, [...container.portions.entries()]);
+                container.portions.delete(portion);
+                unit.restitutions.push({ type: "restitution", portion, container: container.handle.label, imputedTo: container.owner.handle.name, endedOwner: node.handle.name });
+            }
+            if (resource.alive) {
+                resource.alive = false;
+                ended.push(resource);
+            }
+        }
+        node.status = "destroyed";
+        if (node.channel !== null) {
+            node.channel.alive = false;
+            if (__classPrivateFieldGet(this, _Root_registry, "f").get(node.channel.namespace) === node.channel)
+                __classPrivateFieldGet(this, _Root_registry, "f").delete(node.channel.namespace);
+        }
+        for (const subscription of node.subscriptions) {
+            subscription.alive = false;
+            const index = __classPrivateFieldGet(this, _Root_subscriptions, "f").indexOf(subscription);
+            if (index >= 0)
+                __classPrivateFieldGet(this, _Root_subscriptions, "f").splice(index, 1);
+        }
+    }
+    parent.children.splice(position, 1);
+    // Physical cleanup, post-validation (C.7): only parts whose container survives; nested elements go with them.
+    const destroyed = new Set(order);
+    for (const resource of ended) {
+        if (resource.container === null || destroyed.has(resource.container.resource.owner))
+            continue;
+        unit.effects.push({
+            owner: resource.container.resource.owner,
+            label: `remove ${resource.handle.label}`,
+            context: cause,
+            target: { part: resource },
+            run: () => { resource.element?.remove(); resource.element = null; }
+        });
+    }
+    unit.undo.push(() => {
+        // Cancellation keeps the same occurrences, Channels and reservations (C.2).
+        parent.children.splice(position, 0, record);
+        const restored = saved.flatMap((entry) => entry.subscriptions).filter((x) => x.index >= 0).sort((a, b) => a.index - b.index);
+        for (const entry of saved) {
+            entry.node.status = entry.status;
+            if (entry.node.channel !== null) {
+                entry.node.channel.alive = entry.channelAlive;
+                if (entry.channelAlive)
+                    __classPrivateFieldGet(this, _Root_registry, "f").set(entry.node.channel.namespace, entry.node.channel);
+            }
+        }
+        for (const { s, alive, index } of restored) {
+            s.alive = alive;
+            __classPrivateFieldGet(this, _Root_subscriptions, "f").splice(index, 0, s);
+        }
+        // Same parts and designations as before: neither a new creation nor a transfer (C.7).
+        for (const resource of ended)
+            resource.alive = true;
+        // Exact restoration, order of attribution included.
+        for (const [container, entries] of snapshots) {
+            container.portions.clear();
+            for (const [portion, part] of entries)
+                container.portions.set(portion, part);
+        }
+    });
+}, _Root_capture = function _Root_capture(value, unit) {
+    try {
+        return capture(value);
+    }
+    catch (error) {
+        unit.poisoned = unit.poisoned ?? { error };
+        throw error;
+    }
+}, _Root_origin = function _Root_origin(kind) {
+    const id = __classPrivateFieldGet(this, _Root_instances, "m", _Root_nextId).call(this, "m");
+    return Object.freeze({ id, parentId: null, originId: id, originKind: kind, depth: 0 });
+}, _Root_child = function _Root_child(parent) {
+    return Object.freeze({
+        id: __classPrivateFieldGet(this, _Root_instances, "m", _Root_nextId).call(this, "m"),
+        parentId: parent.id,
+        originId: parent.originId,
+        originKind: parent.originKind,
+        depth: parent.depth + 1
+    });
+}, _Root_nextId = function _Root_nextId(prefix) {
+    var _a;
+    return `${__classPrivateFieldGet(this, _Root_id, "f")}:${prefix}${__classPrivateFieldSet(this, _Root_counter, (_a = __classPrivateFieldGet(this, _Root_counter, "f"), ++_a), "f")}`;
+}, _Root_push = function _Root_push(entry) {
+    __classPrivateFieldGet(this, _Root_trace, "f").push(entry);
+    if (__classPrivateFieldGet(this, _Root_onTrace, "f") === undefined)
+        return;
+    try {
+        __classPrivateFieldGet(this, _Root_onTrace, "f").call(this, entry);
+    }
+    catch {
+        // The sink is technical: its failure changes nothing in the model (O2).
+    }
+};
+
+/**
+ * Default technical sink of the trace (O2): reports on the console the failures
+ * that no component receives. Outside the application transport, it admits
+ * nothing.
+ *
+ * Reported:
+ * - a failed unit after startup (a failed startup is thrown by `start()`);
+ * - a failed effect whose owner does not receive it in an `$effects` result
+ *   (C.3), with the effects it left not attempted;
+ * - a message or an admission abandoned at the causal bound (D9).
+ */
+/** Name of the startup unit's owner: its failure is thrown, not reported. */
+const STARTUP_OWNER = "root";
+function reportToConsole(entry, output = console) {
+    switch (entry.type) {
+        case "unit-failed":
+            if (entry.owner === STARTUP_OWNER)
+                return;
+            output.error(`[Bonsai] a treatment of "${entry.owner}" failed and was rolled back (G7)`, entry.error);
+            return;
+        case "effects":
+            entry.report.forEach((line, index) => {
+                if (line.outcome !== "failed" || line.admitted)
+                    return;
+                const skipped = entry.report
+                    .filter((later) => later.closedBy === index)
+                    .map((later) => `"${later.label}" (${later.owner})`);
+                const suffix = skipped.length === 0 ? "" : `; not attempted because of it: ${skipped.join(", ")}`;
+                output.warn(`[Bonsai] effect "${line.label}" of "${line.owner}" failed (C.3)${suffix}`, line.error);
+            });
+            return;
+        case "delivery-abandoned":
+        case "admission-abandoned":
+            if (entry.reason !== "causal bound")
+                return;
+            output.warn(`[Bonsai] "${entry.name}" abandoned: causal bound reached (D9)`);
+            return;
+        default:
+            return;
+    }
+}
+
+/**
+ * Describing a component to the kernel (migration lot M6.2).
+ *
+ * Feature, Foundation, Composer and View are classes written by developers;
+ * the kernel works on component descriptions (`TComponentSpec`). Each class
+ * knows how to describe itself through the shared `DESCRIBE` symbol, so that
+ * the packages need not import one another at run time (a View declares
+ * Composers, a Composer creates Views).
+ */
+/** Registered symbol: the same in every package that holds a copy of this module. */
+const DESCRIBE = Symbol.for("bonsai.component.describe");
+/**
+ * @internal Framework use only.
+ *
+ * Builds the kernel description of a component instance.
+ *
+ * @throws when the instance is not a Bonsai component.
+ */
+function describeComponent(instance, options) {
+    const describe = instance[DESCRIBE];
+    if (typeof describe !== "function") {
+        throw new Error(`[Bonsai] ${instance.constructor.name} is not a Bonsai component and cannot be created by the framework`);
+    }
+    return describe.call(instance, options);
+}
+
+/**
+ * @bonsai/view — View base class (ADR-14, migration lot M6.2)
+ *
+ * A View projects the domain onto the part of the document its Composer
+ * attributed to it. It is a child of a Composer only (D11).
+ *
+ * Every handler receives a context as its second argument (D18):
+ *   - `on{UiKey}{DomEvent}(fact, ctx: TFactContext)` — a fact of the host
+ *     admitted in the View's part: `ctx.query` and `ctx.trigger`
+ *   - `on{Ns}{Event}Event(payload, ctx: TEventContext)` — an Event of a Feature:
+ *     `ctx.query` only. No `trigger`: an Event grants no right to command.
+ *
+ * A handler runs inside a validation unit (G7). Its projections (`getUI(key)`)
+ * are *prepared* during the unit and engaged after it validates (C.3); a
+ * handler therefore never reads the document.
+ *
+ * Declarations (read once, when the View is described to the kernel):
+ *   1. `get features()`   — Features it listens to, queries and addresses
+ *   2. `get uiEvents()`   — UI keys, their element subtype and host events
+ *   3. `get uiElements()` — CSS selector of each key, inside the View's part
+ *   4. `get template()`   — initial content of the part (HTML string; default empty)
+ *   5. `get composers()`  — slots of the part and the Composer of each
+ *
+ * Removed with this lot: `this.trigger`, `this.request`, `mount()`, `onAttach()`,
+ * and `TProjectionNode.element()` (a raw element contradicts I39 and cannot be
+ * given before engagement).
+ *
+ * Invariants:
+ *   I4  — A View NEVER has emit() — absent from the type
+ *   I36 — A View never composes other Views directly (only declares Composers)
+ *   I39 — DOM access only through getUI(key), as prepared effects
+ *   I48 — Handlers are auto-discovered by naming convention
+ *   I80 — No TChannelToken in the consumer public surface
+ *   I81 — `features` / `uiEvents` / `uiElements` are the sources of truth
+ *   I82 — Missing handler → compile error through `implements TViewCallbacks`
+ *   I84 — A non-empty `events: [E, ...]` requires the matching DOM handlers
+ *   I85 — `ui<TEl>()(events)` is the only TUIEntry helper (curried form)
+ *   I86 — `events` is always present in TUIEntry (never optional)
+ *   I87 — object key ≡ namespace of the referenced Feature
+ *   I88 — Contract/Callbacks symmetry
+ *   I89–I91 — events belong to TEventsFor<TEl> ⊆ keyof HTMLElementEventMap (ADR-15)
+ *
+ * Known limit (view.md §4.4): a projection receives the whole part, slot
+ * contents included; writing there is forbidden by review, not by construction.
  *
  * @packageDocumentation
  */
-var _View_instances, _View_rootElement, _View_rootEl, _View_mounted, _View_uiSelectors, _View_uiDomEvents, _View_features, _View_registerUIHandlers, _View_registerChannelListeners;
+var _View_instances, _a, _View_current, _View_selectors, _View_unit, _View_run, _View_methodNames, _View_eventContext, _View_factContext;
 /**
- * Helper de construction d'une entrée UI (I85 — unique mécanisme).
+ * Builder of a UI entry (I85 — the only mechanism).
  *
- * Encode le sous-type TEl via le phantom `_el?` et capture les events runtime.
- * Forme curryfiée nécessaire pour préserver l'inférence littérale de `events`
- * tout en spécifiant `TEl` explicitement (limitation TypeScript : `const T`
- * sur un paramètre ne préserve pas le littéral si un autre paramètre est
- * passé explicitement avec un défaut).
+ * Encodes the TEl subtype through the `_el?` phantom and captures the runtime
+ * events. The curried form keeps literal inference of `events` while `TEl` is
+ * given explicitly (TypeScript limitation: `const T` on a parameter loses the
+ * literal when another type parameter is passed explicitly with a default).
  *
- * Contraintes (ADR-0044 + ADR-0045) :
- *  - `TEvts` ⊆ `TEventsFor<TEl>` — noms valides + sémantique cohérente
- *  - `HasNoDuplicates<TEvts>` — interdit le double-binding addEventListener
+ * Constraints (ADR-15):
+ *  - `TEvts` ⊆ `TEventsFor<TEl>` — valid names + consistent semantics
+ *  - `HasNoDuplicates<TEvts>` — forbids double addEventListener binding
  *
- * @example ui<HTMLButtonElement>()(["click"])           // interactif
- * @example ui<HTMLSpanElement>()([])                    // non-interactif explicite
- * @example ui<HTMLInputElement>()(["input", "change"])  // 2 handlers requis
+ * @example ui<HTMLButtonElement>()(["click"])           // interactive
+ * @example ui<HTMLSpanElement>()([])                    // explicitly non-interactive
+ * @example ui<HTMLInputElement>()(["input", "change"])  // 2 required handlers
+ * @example ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] }) // link relayed to the router (D20)
  */
 function ui() {
-    return (events) => ({ events });
+    return (events, options) => (options === undefined || options.cancelDefault.length === 0
+        ? { events }
+        : { events, cancelDefault: options.cancelDefault });
 }
-// ─── ProjectionNode factory ──────────────────────────────────────────────────
-function createProjectionNode(el) {
-    return {
-        text(value) {
-            el.textContent = value;
-        },
-        attr(name, value) {
-            el.setAttribute(name, value);
-        },
-        toggleClass(className, force) {
-            el.classList.toggle(className, force);
-        },
-        visible(show) {
-            el.style.display = show ? "" : "none";
-        },
-        style(property, value) {
-            el.style.setProperty(property, value);
-        },
-        element() {
-            return el;
-        }
-    };
-}
-// ─── Helpers internes ────────────────────────────────────────────────────────
-function capitalize(s) {
-    return s.length === 0 ? s : s[0].toUpperCase() + s.slice(1);
-}
+// ─── Internal helpers ────────────────────────────────────────────────────────
+const capitalize = (s) => (s.length === 0 ? s : s[0].toUpperCase() + s.slice(1));
 function parseNSKey(key) {
     const idx = key.indexOf(":");
     if (idx <= 0 || idx === key.length - 1) {
@@ -15195,42 +16110,11 @@ function parseNSKey(key) {
     }
     return { namespace: key.slice(0, idx), name: key.slice(idx + 1) };
 }
-// ─── View abstract class (ADR-0042) ─────────────────────────────────────────
+// ─── View abstract class (ADR-14) ─────────────────────────────────────────
 /**
- * View — couche présentation paramétrée par un seul générique : `TViewContract`.
- *
- * Pattern d'usage :
+ * View — presentation layer parameterised by a single generic: `TViewContract`.
  *
  * ```ts
- * import { CartFeature } from "../Cart/cart.feature";
- * import { View, ui, type TViewContract, type TViewCallbacks,
- *   type TFeatureContract, type TUIContract, type TUIElements
- * } from "@bonsai/view";
- *
- * const cartViewFeatures = {
- *   cart: {
- *     feature:  CartFeature,
- *     listens:  ["itemAdded"]  as const,
- *     triggers: ["addItem"]    as const,
- *     requests: []             as const,
- *   },
- * } satisfies TFeatureContract;
- *
- * const cartViewUiEvents = {
- *   total:  ui<HTMLSpanElement>()([]),
- *   addBtn: ui<HTMLButtonElement>()(["click"]),
- * } satisfies TUIContract;
- *
- * const cartViewUiElements = {
- *   total:  ".cart-total",
- *   addBtn: "#add-btn",
- * } satisfies TUIElements<typeof cartViewUiEvents>;
- *
- * type TCartViewContract = TViewContract<
- *   typeof cartViewFeatures,
- *   typeof cartViewUiEvents
- * >;
- *
  * class CartView
  *   extends View<TCartViewContract>
  *   implements TViewCallbacks<TCartViewContract>
@@ -15238,12 +16122,13 @@ function parseNSKey(key) {
  *   get features()   { return cartViewFeatures; }
  *   get uiEvents()   { return cartViewUiEvents; }
  *   get uiElements() { return cartViewUiElements; }
+ *   get template()   { return `<button data-ui="addButton">Add</button><span data-ui="itemCount"></span>`; }
  *
- *   onCartItemAddedEvent(p: { id: string; qty: number }): void {
- *     this.getUI("total").text(`${p.qty} items`);  // → TProjectionNode<HTMLSpanElement>
+ *   onAddButtonClick(_fact: TFact, ctx: TFactContext<TCartViewContract>): void {
+ *     ctx.trigger("cart:addItem", { productId: "p1", qty: 1, price: 10 });
  *   }
- *   onAddBtnClick(e: MouseEvent): void {
- *     this.trigger("cart:addItem", { id: "p1", qty: 1 });  // ✅ payload inféré
+ *   onCartItemAddedEvent(payload: { item: TCartItem }, ctx: TEventContext<TCartViewContract>): void {
+ *     this.getUI("itemCount").text(String(ctx.query("cart:getItemCount", null)));
  *   }
  * }
  * ```
@@ -15251,524 +16136,539 @@ function parseNSKey(key) {
 class View {
     constructor() {
         _View_instances.add(this);
-        _View_rootElement.set(this, null);
-        _View_rootEl.set(this, null);
-        _View_mounted.set(this, false);
-        _View_uiSelectors.set(this, {});
-        _View_uiDomEvents.set(this, {});
-        _View_features.set(this, {});
+        /** The unit context of the handler being run, for `getUI` and `params`. */
+        _View_current.set(this, null);
+        _View_selectors.set(this, {});
     }
-    // ─── Public API ────────────────────────────────────────────────────────
-    /** Le sélecteur rootElement injecté au mount (I31). */
-    get rootElement() {
-        return __classPrivateFieldGet(this, _View_rootElement, "f");
+    // ─── Optional declarations ──────────────────────────────────────────
+    /** Initial content of the part (HTML). Projected when the part exists. */
+    get template() {
+        return "";
     }
     /**
-     * L'élément DOM racine après mount. Disponible dans onAttach() et les
-     * handlers — permet aux sous-classes de lire les data-* attributes (I34).
+     * Slots of the part and their Composers (Composer §1.3). Keys are disjoint
+     * from the UI keys; each slot selector matches exactly one element of the
+     * part, in the content produced by `template`.
      */
-    get el() {
-        return __classPrivateFieldGet(this, _View_rootEl, "f");
+    get composers() {
+        return {};
+    }
+    // ─── Handler-only API ───────────────────────────────────────────────
+    /** Creation parameters given by the Composer, frozen (6.2). Only inside a handler. */
+    get params() {
+        return (__classPrivateFieldGet(this, _View_instances, "m", _View_unit).call(this, "params").params() ?? {});
     }
     /**
-     * Monte la View sur un rootElement. Appelé par le Composer.
-     * - Lit `get features()` / `get uiEvents()` / `get uiElements()` une seule fois (ADR-0024)
-     * - Résout le rootElement dans le DOM
-     * - Auto-discover les UI handlers (D48 UI — pilotés par uiEvents[k].events)
-     * - Auto-discover les Channel listeners (D48 channel — pilotés par features[NS].listens)
-     * - Appelle onAttach()
-     */
-    mount(rootSelector) {
-        if (__classPrivateFieldGet(this, _View_mounted, "f"))
-            return;
-        __classPrivateFieldSet(this, _View_mounted, true, "f");
-        // ADR-0024 : lecture unique des modules contractuels
-        __classPrivateFieldSet(this, _View_features, this.features, "f");
-        __classPrivateFieldSet(this, _View_uiSelectors, this.uiElements, "f");
-        // Extraction des events DOM par clé UI (runtime D48)
-        const uiEvents = this.uiEvents;
-        const domEventsMap = {};
-        for (const key of Object.keys(uiEvents)) {
-            domEventsMap[key] = uiEvents[key].events;
-        }
-        __classPrivateFieldSet(this, _View_uiDomEvents, domEventsMap, "f");
-        __classPrivateFieldSet(this, _View_rootElement, rootSelector, "f");
-        __classPrivateFieldSet(this, _View_rootEl, document.querySelector(rootSelector), "f");
-        // I34: rootElement must not be document.body itself
-        if (__classPrivateFieldGet(this, _View_rootEl, "f") === document.body) {
-            throw new Error(`[Bonsai View] I34 — rootElement cannot be document.body. Provide a child element selector.`);
-        }
-        // Auto-discovery
-        __classPrivateFieldGet(this, _View_instances, "m", _View_registerUIHandlers).call(this);
-        __classPrivateFieldGet(this, _View_instances, "m", _View_registerChannelListeners).call(this);
-        // Lifecycle
-        this.onAttach();
-    }
-    /**
-     * I39 — Accès DOM typé via `getUI(key)`. Résout dans le scope du rootElement (I40).
-     * Le retour est `TProjectionNode<TEl>` où `TEl` est extrait du phantom `_el?`
-     * de l'entrée UI déclarée — `element()` retourne le vrai sous-type HTML.
+     * I39 — typed projection on a UI key. Every operation is *prepared*: it is
+     * engaged after the unit validates (C.3). Only inside a handler.
      */
     getUI(key) {
-        const selector = __classPrivateFieldGet(this, _View_uiSelectors, "f")[key];
-        if (!selector) {
-            throw new Error(`[Bonsai View] Unknown UI key "${key}". Declared keys: ${Object.keys(__classPrivateFieldGet(this, _View_uiSelectors, "f")).join(", ")}`);
+        const c = __classPrivateFieldGet(this, _View_instances, "m", _View_unit).call(this, `getUI("${key}")`);
+        const selector = __classPrivateFieldGet(this, _View_selectors, "f")[key];
+        if (selector === undefined) {
+            throw new Error(`[Bonsai View] Unknown UI key "${key}". Declared keys: ${Object.keys(__classPrivateFieldGet(this, _View_selectors, "f")).join(", ")}`);
         }
-        const el = __classPrivateFieldGet(this, _View_rootEl, "f").querySelector(selector);
-        if (!el) {
-            throw new Error(`[Bonsai View] UI element "${key}" not found with selector "${selector}" in rootElement "${__classPrivateFieldGet(this, _View_rootElement, "f")}"`);
+        const part = c.resolve(c.designation());
+        const write = (label, apply) => {
+            c.project(part, `${key}.${label}`, (root) => {
+                const el = root.querySelector(selector);
+                if (el === null)
+                    throw new Error(`[Bonsai View] UI element "${key}" not found with selector "${selector}" in the part`);
+                apply(el);
+            });
+        };
+        return {
+            text: (value) => write("text", (el) => { el.textContent = value; }),
+            attr: (name, value) => write(`attr:${name}`, (el) => { el.setAttribute(name, value); }),
+            toggleClass: (className, force) => write(`class:${className}`, (el) => { el.classList.toggle(className, force); }),
+            visible: (show) => write("visible", (el) => { el.style.display = show ? "" : "none"; }),
+            style: (property, value) => write(`style:${property}`, (el) => { el.style.setProperty(property, value); })
+        };
+    }
+    // ─── Kernel description (internal) ─────────────────────────────────
+    /** @internal Description given to the kernel by the Composer that creates the View. */
+    [(_View_current = new WeakMap(), _View_selectors = new WeakMap(), _View_instances = new WeakSet(), DESCRIBE)]() {
+        const features = this.features;
+        const uiEvents = this.uiEvents;
+        const selectors = this.uiElements;
+        __classPrivateFieldSet(this, _View_selectors, selectors, "f");
+        const methods = __classPrivateFieldGet(this, _View_instances, "m", _View_methodNames).call(this);
+        const self = this;
+        // I48 UI — one handler per declared (key, event); a missing one is a safety net (I84).
+        const domTypes = new Map();
+        const cancelled = new Map();
+        for (const [uiKey, entry] of Object.entries(uiEvents)) {
+            if (entry.events.length === 0)
+                continue;
+            const selector = selectors[uiKey];
+            if (selector === undefined) {
+                throw new Error(`[Bonsai View] UI key "${uiKey}" declared in uiEvents but missing in uiElements.`);
+            }
+            for (const domEvent of entry.events) {
+                const handlerName = `on${capitalize(uiKey)}${capitalize(domEvent)}`;
+                if (!methods.includes(handlerName)) {
+                    throw new Error(`[Bonsai View] Missing handler "${handlerName}" for declared event "${domEvent}" on ui.${uiKey}. ` +
+                        `Add the method or remove "${domEvent}" from uiEvents.${uiKey}.events.`);
+                }
+                const keys = domTypes.get(domEvent) ?? {};
+                keys[uiKey] = selector;
+                domTypes.set(domEvent, keys);
+            }
+            // D20 — the default action is cancelled by declaration only, for a declared event.
+            for (const domEvent of entry.cancelDefault ?? []) {
+                if (!entry.events.includes(domEvent)) {
+                    throw new Error(`[Bonsai View] ui.${uiKey} cancels the default action of "${domEvent}", which it does not declare in events (D20).`);
+                }
+                const keys = cancelled.get(domEvent) ?? [];
+                keys.push(uiKey);
+                cancelled.set(domEvent, keys);
+            }
         }
-        return createProjectionNode(el);
-    }
-    /**
-     * Envoie un Command typé via Channel (I4 — View ne peut qu'envoyer).
-     *
-     * `key` est une clé namespacée `"ns:cmd"` ; doit appartenir à
-     * `TFlatTriggers<TVC["features"]>`, sinon erreur compile.
-     * Exposé en `protected` — les sous-classes l'appellent depuis les handlers UI.
-     */
-    trigger(key, payload) {
-        const { namespace, name } = parseNSKey(key);
-        // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
-        const ch = Radio.me().channel(namespace);
-        ch.trigger(name, payload);
-    }
-    /**
-     * Effectue une Request synchrone typée vers un Channel déclaré.
-     * Retourne le résultat typé ou `null` si aucun replier n'est enregistré
-     * côté Feature propriétaire (D44).
-     *
-     * `key` est une clé namespacée `"ns:req"` ; doit appartenir à
-     * `TFlatRequests<TVC["features"]>`, sinon erreur compile.
-     */
-    request(key, params) {
-        const { namespace, name } = parseNSKey(key);
-        // Cast vers Channel non paramétré pour l'enregistrement par string (I75).
-        const ch = Radio.me().channel(namespace);
-        return ch.request(name, params);
-    }
-    // ─── Lifecycle hooks ───────────────────────────────────────────────────
-    /** Hook appelé après le mount. Override dans les sous-classes. */
-    onAttach() {
-        // Default no-op
+        const dom = {};
+        for (const [type, keys] of domTypes) {
+            const cancelDefault = cancelled.get(type);
+            dom[type] = cancelDefault === undefined ? { local: "fact", keys } : { local: "fact", keys, cancelDefault };
+        }
+        // I48 channel — on{NS}{Event}Event for each listened Event.
+        const listens = [];
+        for (const [namespace, entry] of Object.entries(features)) {
+            for (const event of entry.listens) {
+                const handlerName = `on${capitalize(namespace)}${capitalize(event)}Event`;
+                if (typeof self[handlerName] !== "function") {
+                    throw new Error(`[Bonsai View] Missing handler "${handlerName}" for declared listen "${namespace}:${event}". ` +
+                        `Add the method or remove "${event}" from features.${namespace}.listens.`);
+                }
+                listens.push({
+                    namespace,
+                    event,
+                    handler: (payload, c) => __classPrivateFieldGet(this, _View_instances, "m", _View_run).call(this, c, () => self[handlerName](payload, __classPrivateFieldGet(this, _View_instances, "m", _View_eventContext).call(this, c)))
+                });
+            }
+        }
+        return {
+            name: this.constructor.name,
+            ui: true,
+            dom,
+            listens,
+            locals: {
+                fact: (payload, c) => {
+                    const fact = payload;
+                    if (fact.ui === null || !uiEvents[fact.ui]?.events.includes(fact.type))
+                        return;
+                    const handlerName = `on${capitalize(fact.ui)}${capitalize(fact.type)}`;
+                    __classPrivateFieldGet(this, _View_instances, "m", _View_run).call(this, c, () => self[handlerName](fact, __classPrivateFieldGet(this, _View_instances, "m", _View_factContext).call(this, c)));
+                }
+            },
+            init: (c) => {
+                __classPrivateFieldGet(this, _View_instances, "m", _View_run).call(this, c, () => {
+                    const part = c.resolve(c.designation());
+                    const template = this.template;
+                    if (template !== "")
+                        c.project(part, "template", (el) => { el.innerHTML = template; });
+                    for (const [key, { slot, composer }] of Object.entries(this.composers)) {
+                        if (key in uiEvents)
+                            throw new Error(`[Bonsai View] slot key "${key}" collides with a UI key (D13)`);
+                        const ComposerClass = composer;
+                        c.create(describeComponent(new ComposerClass()), { part: { resource: part, portion: key, host: slot } });
+                    }
+                });
+            }
+        };
     }
 }
-_View_rootElement = new WeakMap(), _View_rootEl = new WeakMap(), _View_mounted = new WeakMap(), _View_uiSelectors = new WeakMap(), _View_uiDomEvents = new WeakMap(), _View_features = new WeakMap(), _View_instances = new WeakSet(), _View_registerUIHandlers = function _View_registerUIHandlers() {
-    const proto = Object.getPrototypeOf(this);
-    const methods = Object.getOwnPropertyNames(proto);
-    for (const uiKey of Object.keys(__classPrivateFieldGet(this, _View_uiDomEvents, "f"))) {
-        const events = __classPrivateFieldGet(this, _View_uiDomEvents, "f")[uiKey];
-        if (events.length === 0)
-            continue; // C9 — non-interactif
-        const uiKeyPascal = capitalize(uiKey);
-        const selector = __classPrivateFieldGet(this, _View_uiSelectors, "f")[uiKey];
-        if (!selector) {
-            throw new Error(`[Bonsai View] UI key "${uiKey}" declared in uiEvents but missing in uiElements.`);
-        }
-        const el = __classPrivateFieldGet(this, _View_rootEl, "f").querySelector(selector);
-        if (!el)
-            continue; // pas d'élément = pas de listener (silencieux)
-        for (const domEvent of events) {
-            const handlerName = `on${uiKeyPascal}${capitalize(domEvent)}`;
-            if (!methods.includes(handlerName)) {
-                throw new Error(`[Bonsai View] Missing handler "${handlerName}" for declared event "${domEvent}" on ui.${uiKey}. ` +
-                    `Add the method or remove "${domEvent}" from uiEvents.${uiKey}.events.`);
-            }
-            el.addEventListener(domEvent, (event) => {
-                this[handlerName](event);
-            });
-        }
+_a = View, _View_unit = function _View_unit(operation) {
+    if (__classPrivateFieldGet(this, _View_current, "f") === null) {
+        throw new Error(`[Bonsai View] ${operation} is usable only inside a handler of the View (C.3)`);
     }
-}, _View_registerChannelListeners = function _View_registerChannelListeners() {
-    for (const namespace of Object.keys(__classPrivateFieldGet(this, _View_features, "f"))) {
-        const entry = __classPrivateFieldGet(this, _View_features, "f")[namespace];
-        const listens = entry.listens;
-        if (listens.length === 0)
-            continue;
-        const ch = Radio.me().channel(namespace);
-        for (const eventName of listens) {
-            const handlerName = `on${capitalize(namespace)}${capitalize(eventName)}Event`;
-            const handler = this[handlerName];
-            if (typeof handler !== "function") {
-                throw new Error(`[Bonsai View] Missing handler "${handlerName}" for declared listen "${namespace}:${eventName}". ` +
-                    `Add the method or remove "${eventName}" from features.${namespace}.listens.`);
-            }
-            ch.listen(eventName, (payload) => {
-                handler.call(this, payload);
-            });
-        }
+    return __classPrivateFieldGet(this, _View_current, "f");
+}, _View_run = function _View_run(c, fn) {
+    const previous = __classPrivateFieldGet(this, _View_current, "f");
+    __classPrivateFieldSet(this, _View_current, c, "f");
+    try {
+        return fn();
     }
+    finally {
+        __classPrivateFieldSet(this, _View_current, previous, "f");
+    }
+}, _View_methodNames = function _View_methodNames() {
+    const names = new Set();
+    for (let proto = Object.getPrototypeOf(this); proto !== null && proto !== _a.prototype; proto = Object.getPrototypeOf(proto)) {
+        for (const name of Object.getOwnPropertyNames(proto))
+            names.add(name);
+    }
+    return [...names];
+}, _View_eventContext = function _View_eventContext(c) {
+    return {
+        query: ((key, params) => {
+            const { namespace, name } = parseNSKey(key);
+            return c.query(namespace, name, params);
+        })
+    };
+}, _View_factContext = function _View_factContext(c) {
+    return {
+        ...__classPrivateFieldGet(this, _View_instances, "m", _View_eventContext).call(this, c),
+        trigger: ((key, payload) => {
+            const { namespace, name } = parseNSKey(key);
+            c.trigger(namespace, name, payload);
+        })
+    };
 };
 
 /**
- * @bonsai/composer — Composer abstract base class
+ * @bonsai/composer — Composer abstract base class (migration lot M6.2)
  *
- * Strate 0 — Capacités :
- *   - resolve(event | null) → TResolveResult | null (0/1 View)
- *   - Slot DOM immutable fourni par le parent (Foundation ou View)
- *   - Machine à états minimal : idle → active → idle
- *   - Création d'élément DOM si absent (D30)
- *   - Diff de transitions §3.1 (5 cas Same/New/null) sans recréation inutile
+ * A Composer decides which Views exist in one slot, and in which order. It is
+ * a child of a Foundation or of a View; it is the only creator of Views (D11).
  *
- * Invariants :
- *   I20  — Seuls Foundation/Composers créent/détruisent des Views
- *   I35  — Composer n'a aucune écriture DOM (lecture scope autorisée)
- *   I37  — Un seul type de Composer, gère 0/1 Views en strate 0
- *   I40  — Scope DOM d'une View exclut les sous-arbres des slots déclarés
+ *   - `get features()` — the Channels it listens to and queries (no `triggers`: D12)
+ *   - `get views()`    — the finite catalogue of Views it can create
+ *   - `resolve(ctx)`   — one pure decision: the ordered composition, from Queries only
  *
- * ADRs :
- *   ADR-0024 — get params() value-first (strate 0 : pas de listen/request)
- *   ADR-0025 — Pas de lifecycle hooks (ni onMount, ni onUnmount, ni onAttach)
- *   ADR-0026 — rootElement = string CSS selector only
- *   ADR-0027 — resolve(event) unique point d'entrée, pas de state local
+ * `resolve` runs twice at most per cause, only by the framework: during the
+ * Composer's initialisation (in its creator's validation unit), then in the
+ * unit of each Event declared in `features[NS].listens`. It never receives the
+ * triggering Event: the composition is recomputed from the domain's state.
  *
- * Diff §3.1 (RFC composer.md) :
- *   | resolve() retourne | View montée         | Action                                    |
- *   | ------------------ | ------------------- | ----------------------------------------- |
- *   | SameView+SameRoot  | SameView instance   | **No-op** (instance conservée)            |
- *   | NewView (ou root)  | OldView instance    | **Detach** OldView → **Attach** NewView   |
- *   | NewView            | null                | **Attach** NewView                        |
- *   | null               | OldView instance    | **Detach** OldView                        |
- *   | null               | null                | **No-op**                                 |
+ * Reconciliation (T3): same `key` and same View with equal `params` → the
+ * instance is kept; otherwise it is destroyed, then created again; a `key`
+ * that disappeared is destroyed with its descendants. The array order is the
+ * order in the slot, placed explicitly (no dependence on history).
+ *
+ * Invariants:
+ *   D11  — Views are created and destroyed only by Composers
+ *   D12  — no Command, no Channel of its own, no state independent of its Views
+ *   I35  — the Composer's structural writes are the attribution of parts
+ *   T7   — parts are disjoint
+ *
+ * Known limit (C.3): a View whose element could not be created is not yet
+ * destroyed logically; the failure is reported in the kernel trace (and on
+ * the console in development, through `onTrace`).
  *
  * @packageDocumentation
  */
-var _Composer_instances, _Composer_rootElement, _Composer_slot, _Composer_currentView, _Composer_currentResult, _Composer_state, _Composer_performResolve, _Composer_attachNew, _Composer_detachCurrent, _Composer_createElementFromSelector;
-// ─── Composer abstract class ─────────────────────────────────────────────────
+const stable = (value) => JSON.stringify(value ?? null, (_k, v) => v !== null && typeof v === "object" && !Array.isArray(v)
+    ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : 1)))
+    : v);
 class Composer {
-    constructor(options) {
-        _Composer_instances.add(this);
-        /** Sélecteur CSS du slot DOM — immutable (ADR-0020) */
-        _Composer_rootElement.set(this, void 0);
-        /** Référence au slot DOM résolu */
-        _Composer_slot.set(this, null);
-        /** La View actuellement montée (null si resolve() a retourné null) */
-        _Composer_currentView.set(this, null);
-        /**
-         * Dernier résultat retourné par resolve() — sert de référence pour le diff §3.1.
-         * Null si la dernière sortie était null (ou avant le premier resolve).
-         */
-        _Composer_currentResult.set(this, null);
-        /** Machine à états minimal : idle → active → idle */
-        _Composer_state.set(this, "idle");
-        __classPrivateFieldSet(this, _Composer_rootElement, options.rootElement, "f");
-    }
-    // ─── Public API (framework only) ────────────────────────────────────
-    /**
-     * Le sélecteur rootElement (ADR-0026).
-     */
-    get rootElement() {
-        return __classPrivateFieldGet(this, _Composer_rootElement, "f");
-    }
-    /**
-     * Référence au slot DOM résolu. Null avant attach().
-     */
-    get slot() {
-        return __classPrivateFieldGet(this, _Composer_slot, "f");
-    }
-    /**
-     * La View actuellement montée, ou null.
-     */
-    get currentView() {
-        return __classPrivateFieldGet(this, _Composer_currentView, "f");
-    }
-    /**
-     * Attache le Composer à son slot DOM.
-     * Appelé par le framework (Foundation ou Composer parent).
-     * Résout le slot dans le DOM, puis appelle initialResolve().
-     */
-    attach(parentElement) {
-        const el = parentElement.querySelector(__classPrivateFieldGet(this, _Composer_rootElement, "f"));
-        if (!el) {
-            // D30 — Créer l'élément si absent
-            const created = __classPrivateFieldGet(this, _Composer_instances, "m", _Composer_createElementFromSelector).call(this, __classPrivateFieldGet(this, _Composer_rootElement, "f"));
-            parentElement.appendChild(created);
-            __classPrivateFieldSet(this, _Composer_slot, created, "f");
+    /** @internal Description given to the kernel by the creator (Foundation or View). */
+    [DESCRIBE]() {
+        const features = this.features;
+        const views = this.views;
+        // Views present in the slot, by key — structural bookkeeping, rolled back with the unit (G7).
+        const present = new Map();
+        const reconcile = (c) => {
+            const slot = c.resolve(c.designation());
+            const composition = this.resolve({
+                query: ((key, params) => {
+                    const idx = key.indexOf(":");
+                    return c.query(key.slice(0, idx), key.slice(idx + 1), params);
+                })
+            });
+            const keys = new Set();
+            for (const entry of composition) {
+                if (keys.has(entry.key))
+                    throw new Error(`[Bonsai Composer] duplicate key "${entry.key}" in a composition (T3)`);
+                keys.add(entry.key);
+                if (views[entry.view] === undefined)
+                    throw new Error(`[Bonsai Composer] View "${entry.view}" is not in the catalogue of ${this.constructor.name}`);
+            }
+            // Destroy what disappeared or changed (T3); the previous Views stay until the unit validates.
+            const kept = new Set();
+            for (const [key, current] of [...present]) {
+                const wanted = composition.find((e) => e.key === key);
+                if (wanted !== undefined && wanted.view === current.view && stable(wanted.params) === current.params) {
+                    kept.add(key);
+                    continue;
+                }
+                c.destroy(current.handle);
+                present.delete(key);
+                c.journal(() => { present.set(key, current); });
+            }
+            // Create what is new, placing each View before the next one that already stays (explicit order).
+            composition.forEach((entry, index) => {
+                if (kept.has(entry.key))
+                    return;
+                const next = composition.slice(index + 1).find((e) => kept.has(e.key));
+                const ViewClass = views[entry.view];
+                const handle = c.create(describeComponent(new ViewClass()), {
+                    params: entry.params,
+                    part: { resource: slot, portion: entry.key, ...(next === undefined ? {} : { before: next.key }) }
+                });
+                const created = { handle, view: entry.view, params: stable(entry.params) };
+                present.set(entry.key, created);
+                c.journal(() => { present.delete(entry.key); });
+            });
+        };
+        const listens = [];
+        for (const [namespace, entry] of Object.entries(features)) {
+            for (const event of entry.listens) {
+                listens.push({ namespace, event, handler: (_payload, c) => reconcile(c) });
+            }
         }
-        else {
-            __classPrivateFieldSet(this, _Composer_slot, el, "f");
-        }
-        // Initial resolve — null event = bootstrap
-        __classPrivateFieldGet(this, _Composer_instances, "m", _Composer_performResolve).call(this, null);
-    }
-    /**
-     * Appelé par le framework quand un Event est dispatché sur un Channel écouté.
-     * En strate 0, pas de listen déclaré — cette méthode est un point d'extension.
-     */
-    performResolve(event) {
-        __classPrivateFieldGet(this, _Composer_instances, "m", _Composer_performResolve).call(this, event);
+        return {
+            name: this.constructor.name,
+            listens,
+            init: (c) => reconcile(c)
+        };
     }
 }
-_Composer_rootElement = new WeakMap(), _Composer_slot = new WeakMap(), _Composer_currentView = new WeakMap(), _Composer_currentResult = new WeakMap(), _Composer_state = new WeakMap(), _Composer_instances = new WeakSet(), _Composer_performResolve = function _Composer_performResolve(event) {
-    const next = this.resolve(event);
-    const prev = __classPrivateFieldGet(this, _Composer_currentResult, "f");
-    // Transition 5 : null + null → no-op
-    if (next === null && prev === null) {
-        return;
-    }
-    // Transition 4 : null + instance → detach
-    if (next === null) {
-        __classPrivateFieldGet(this, _Composer_instances, "m", _Composer_detachCurrent).call(this);
-        return;
-    }
-    // À ce stade, next !== null
-    // Transition 1 : SameView + SameRoot + currentView → no-op
-    // (instance conservée, aucun remount)
-    if (prev !== null &&
-        __classPrivateFieldGet(this, _Composer_currentView, "f") !== null &&
-        prev.view === next.view &&
-        prev.rootElement === next.rootElement) {
-        return;
-    }
-    // Transition 3 : NewView + null → attach simple
-    if (__classPrivateFieldGet(this, _Composer_currentView, "f") === null) {
-        __classPrivateFieldGet(this, _Composer_instances, "m", _Composer_attachNew).call(this, next);
-        return;
-    }
-    // Transition 2 : NewView (ou même viewClass mais rootElement différent)
-    //                + instance existante → detach + attach
-    __classPrivateFieldGet(this, _Composer_instances, "m", _Composer_detachCurrent).call(this);
-    __classPrivateFieldGet(this, _Composer_instances, "m", _Composer_attachNew).call(this, next);
-}, _Composer_attachNew = function _Composer_attachNew(result) {
-    const ViewClass = result.view;
-    const view = new ViewClass();
-    view.mount(result.rootElement);
-    __classPrivateFieldSet(this, _Composer_currentView, view, "f");
-    __classPrivateFieldSet(this, _Composer_currentResult, result, "f");
-    __classPrivateFieldSet(this, _Composer_state, "active", "f");
-}, _Composer_detachCurrent = function _Composer_detachCurrent() {
-    __classPrivateFieldSet(this, _Composer_currentView, null, "f");
-    __classPrivateFieldSet(this, _Composer_currentResult, null, "f");
-    __classPrivateFieldSet(this, _Composer_state, "idle", "f");
-}, _Composer_createElementFromSelector = function _Composer_createElementFromSelector(selector) {
-    let tag = "div";
-    const el = document.createElement(tag);
-    // [attr='value'] or [attr="value"]
-    const attrMatches = selector.matchAll(/\[([^\]=]+)(?:=["']([^"']*)["'])?\]/g);
-    for (const match of attrMatches) {
-        el.setAttribute(match[1], match[2] ?? "");
-    }
-    // .class
-    const classMatch = selector.match(/\.([a-zA-Z0-9_-]+)/);
-    if (classMatch) {
-        el.classList.add(classMatch[1]);
-    }
-    // #id
-    const idMatch = selector.match(/#([a-zA-Z0-9_-]+)/);
-    if (idMatch) {
-        el.id = idMatch[1];
-    }
-    return el;
-};
 
 /**
- * @bonsai/foundation — Foundation abstract base class
+ * @bonsai/foundation — Foundation abstract base class (migration lot M6.2)
  *
- * Strate 0 — Capacités :
- *   - body  = document.body            (toujours en strate 0, I33)
- *   - html  = document.documentElement (droit d'altération N1, D27)
- *   - Déclare les Composers racines via abstract get composers()
- *     (Readonly<Record<string, typeof Composer>> — ADR-0038)
- *   - Crée et attache les Composers au bootstrap dans l'ordre d'insertion
- *     (ES2015+ Object.entries garantit l'ordre des clés string)
- *   - Hooks onAttach() / onDetach()
+ * One Foundation per root (G6). It is a child of the root, which owns its
+ * existence. It admits one element of the host as a distributable resource —
+ * by default `body` — and attributes the content of its declared slots to
+ * Composers. It creates no View (D11) and has no Channel in V1.
  *
- * Invariants :
- *   I33  — Foundation unique par application — cible <body>
- *   I20  — Seuls Foundation/Composers créent/détruisent des Views
- *   I34  — rootElement d'une View = enfant de <body>, jamais <body>
- *   I67  — Stabilité structurelle de Foundation (ADR-0038)
- *   D27  — Foundation peut altérer html/body en N1 uniquement
+ *   - `get composers()` — the slots of the admitted element, each with the
+ *     Composer that receives its content. Read once, at startup (I67).
  *
- * Strate 0 simplifications (ADR-0028) :
- *   - Pas de TUIMap (ADR-0018 Suspended)
- *   - Pas d'event delegation globale (strate 1)
- *   - Pas de params() Channel capabilities (strate 1)
+ * A slot is a selector that must match exactly one element inside the admitted
+ * element; otherwise its materialisation fails and is reported (Foundation §3).
+ *
+ * Removed with this lot: the `body` / `html` getters (the Foundation holds no
+ * host element: theory D3, Foundation §2) and the `onAttach` / `onDetach`
+ * hooks (global DOM listeners are a matter for adapters, D7).
+ *
+ * Invariants:
+ *   I20  — Only Composers create or destroy Views
+ *   I67  — Structural stability of the Foundation's first level (ADR-20)
  *
  * @packageDocumentation
  */
-var _Foundation_body, _Foundation_html, _Foundation_composerInstances, _Foundation_attached;
 // ─── Foundation abstract class ───────────────────────────────────────────────
 class Foundation {
-    constructor() {
-        /** Référence à <body> — toujours document.body en strate 0 (I33) */
-        _Foundation_body.set(this, void 0);
-        /** Référence à <html> — droit d'altération N1 (D27, RFC foundation.md §2) */
-        _Foundation_html.set(this, void 0);
-        /** Les instances de Composers racines créées au bootstrap */
-        _Foundation_composerInstances.set(this, []);
-        /** Flag : Foundation déjà attachée */
-        _Foundation_attached.set(this, false);
-        __classPrivateFieldSet(this, _Foundation_body, document.body, "f");
-        __classPrivateFieldSet(this, _Foundation_html, document.documentElement, "f");
-    }
-    // ─── Public API ────────────────────────────────────────────────────────
-    /**
-     * Référence à <body> — alignement RFC foundation.md §1.
-     * Le développeur peut altérer en N1 (classes, attributs) — D27.
-     */
-    get body() {
-        return __classPrivateFieldGet(this, _Foundation_body, "f");
-    }
-    /**
-     * Référence à <html> — alignement RFC foundation.md §1.
-     * Le développeur peut altérer en N1 (classes, attributs) — D27.
-     */
-    get html() {
-        return __classPrivateFieldGet(this, _Foundation_html, "f");
-    }
-    /**
-     * Les Composer instances créées.
-     */
-    get composerInstances() {
-        return __classPrivateFieldGet(this, _Foundation_composerInstances, "f");
-    }
-    /**
-     * Attache la Foundation : résout et crée les Composers racines.
-     * Appelé une seule fois par Application.start().
-     *
-     * Itère sur Object.entries(this.composers) — l'ordre d'insertion des
-     * clés string non numériques est garanti par ES2015+ (§9.1.12).
-     */
-    attach() {
-        if (__classPrivateFieldGet(this, _Foundation_attached, "f")) {
-            throw new Error("[Bonsai Foundation] Foundation already attached — I33 singleton violated");
-        }
-        __classPrivateFieldSet(this, _Foundation_attached, true, "f");
-        const composersMap = this.composers;
-        for (const [selector, ComposerCtor] of Object.entries(composersMap)) {
-            const ComposerClass = ComposerCtor;
-            const instance = new ComposerClass({ rootElement: selector });
-            instance.attach(__classPrivateFieldGet(this, _Foundation_body, "f"));
-            __classPrivateFieldGet(this, _Foundation_composerInstances, "f").push(instance);
-        }
-        this.onAttach();
-    }
-    // ─── Lifecycle hooks ───────────────────────────────────────────────────
-    /**
-     * Hook appelé après résolution des Composers racines.
-     * Surcharger pour brancher des écouteurs DOM globaux (resize, scroll, etc.).
-     * Default no-op.
-     */
-    onAttach() {
-        // Default no-op
-    }
-    /**
-     * Hook appelé au shutdown — symétrique de onAttach().
-     * Surcharger pour débrancher les écouteurs DOM globaux installés dans onAttach().
-     * Default no-op.
-     *
-     * NB : non invoqué automatiquement en strate 0 (pas de shutdown formalisé) ;
-     * point d'extension pour la strate 1.
-     */
-    onDetach() {
-        // Default no-op
+    /** @internal Description given to the kernel by the Application. */
+    [DESCRIBE](options) {
+        return {
+            name: this.constructor.name,
+            init: (c) => {
+                const anchor = c.admitDistributable(options?.anchor ?? "body");
+                for (const [key, { slot, composer }] of Object.entries(this.composers)) {
+                    const ComposerClass = composer;
+                    c.create(describeComponent(new ComposerClass()), {
+                        part: { resource: anchor, portion: key, host: slot }
+                    });
+                }
+            }
+        };
     }
 }
-_Foundation_body = new WeakMap(), _Foundation_html = new WeakMap(), _Foundation_composerInstances = new WeakMap(), _Foundation_attached = new WeakMap();
+
+/**
+ * Locations and routes of the navigation (D15).
+ *
+ * A location is the address inside the application, written as the host
+ * writes it: path, query and fragment (`/products/42?tab=2#top`). A route is
+ * its parsed form, kept by the Feature of navigation.
+ */
+const BASE = "http://bonsai.invalid";
+/**
+ * Parses a location of the application.
+ *
+ * @throws when it is not a path of the application (`/…`, not `//host`).
+ */
+function parseLocation(location) {
+    if (typeof location !== "string" || !location.startsWith("/") || location.startsWith("//")) {
+        throw new Error(`[Bonsai Router] "${String(location)}" is not a location of the application (expected "/path?query#hash")`);
+    }
+    const url = new URL(location, BASE);
+    const query = {};
+    url.searchParams.forEach((value, key) => {
+        query[key] = value;
+    });
+    return { path: url.pathname, query, hash: url.hash };
+}
+
+/**
+ * RouterFeature — the Feature of navigation provided by the framework (D15).
+ *
+ * Namespace `router`, reserved (I71): the Application instantiates it when
+ * its Manifest activates navigation; it is not declared among the application
+ * Features. It owns the navigation state only. The address belongs to the
+ * history adapter (D7): this Feature never touches the host.
+ *
+ * Contract (the one the history adapter projects, B.5):
+ *   - Command `router:navigate { location, mode }`
+ *   - Event   `router:routeChanged { route, mode }`
+ *   - Query   `router:currentRoute`
+ *
+ * A return or an advance is requested from the history adapter by a View
+ * (`history:back`, `history:forward`, A4.b); the adapter then relays the
+ * traversal here as `navigate` with the mode `"pop"`, when it is established
+ * independent (C.4).
+ */
+class RouteEntity extends Entity {
+    defineInitialState() {
+        return { path: "/", query: {}, hash: "" };
+    }
+}
+const routerListens = [];
+class RouterFeature extends Feature {
+    get listens() {
+        return routerListens;
+    }
+    get queries() {
+        return [];
+    }
+    get Entity() {
+        return RouteEntity;
+    }
+    /**
+     * Updates the navigation state, then announces it with the mode of the
+     * navigation. The Event goes out even when the route is unchanged: a push
+     * to the current address is a request for a new entry (B.5).
+     */
+    onNavigateCommand(payload, ctx) {
+        const route = parseLocation(payload.location);
+        ctx.mutate("navigate", (draft) => {
+            draft.path = route.path;
+            draft.query = route.query;
+            draft.hash = route.hash;
+        });
+        ctx.emit("routeChanged", { route, mode: payload.mode });
+    }
+    onCurrentRouteQuery(_params, _ctx) {
+        return this.entity.state;
+    }
+}
+/** Framework class: may take the reserved namespace `router` (I71). */
+RouterFeature.framework = true;
+RouterFeature.channel = {
+    namespace: "router",
+    events: ["routeChanged"]
+};
 
 /**
  * @bonsai/application — Application class
  *
- * Strate 0 (refondu ADR-0039) — Capacités :
- *   - constructor({ foundation, features }) — déclare le manifest applicatif
- *   - start() — bootstrap en phases réordonnées (ADR-0046) :
- *       Phase 0a: Validation format namespace (assertValidNamespace)
- *       Phase 0b: Instanciation pure des Features (ctor inerte — I94) + sentinel
- *       Phase 0c: Lecture instance.listens/queries — validation références croisées (I70)
- *       Phase 1: Channels (crée les channels de chaque Feature)
- *       Phase 2: Entities (instanciées par les Features)
- *       Phase 3: Features (bootstrap() + onInit() sur les instances Phase 0b)
- *       Phase 4: Foundation (composers → views, attach)
+ * Capabilities (ADR-07, ADR-08, ADR-09):
+ *   - constructor({ features, components?, causalBound? }) — declares the application manifest
+ *   - start() — phased bootstrap on the communication kernel (migration lot M6.1):
+ *       Phase 0a: namespace format validation (assertValidNamespace)
+ *       Phase 0b: pure instantiation of the Features (inert ctor — I94)
+ *       Phase 0c: read instance.listens/queries/dependsOn — cross-reference validation (I70)
+ *       Phase 1: kernel startup — one `Root` per Application (G6); the Features
+ *                become its children in an order that respects their initial
+ *                initial dependencies (`dependsOn`, C.1); each creates its Entity,
+ *                registers its handlers and runs `onInit()` inside the startup
+ *                unit (§2.5, I56)
+ *       Then the Foundation (if any), which creates its Composers, which
+ *       create the Views (lot M6.2)
  *
- * Invariants :
- *   I23  — Application est dormante au runtime (pas de handle/emit/listen/request)
- *   I24  — Le manifest garantit l'unicité au compile-time ; Application valide
- *          format + réservés + cohérence des `channels` au bootstrap (amendé ADR-0039)
- *   I33  — Application sans Foundation ne peut rien afficher
- *   I56  — onInit() de chaque Feature appelé avant la création de la Foundation
- *   I68  — Le namespace est porté par le manifest, pas par un static (ADR-0039)
- *   I69  — Le manifest est l'unique source de vérité de l'identité (ADR-0039)
- *   I70  — Toute référence à un namespace externe DOIT être validée contre
- *          le manifest — lue depuis instance.listens/queries (amendé ADR-0046)
- *   I71  — `RESERVED_NAMESPACES` est une constante framework (ADR-0039)
- *   I94  — Le constructeur de Feature est inerte : sentinel Phase 0b détecte
- *          tout side-effect Radio inattendu (ADR-0046)
+ * Invariants:
+ *   I23  — Application is dormant at runtime (no handle/emit/listen/request)
+ *   I21  — The manifest guarantees uniqueness at compile time; Application
+ *          validates format, reserved names and `channel` consistency at bootstrap
+ *   I33  — An Application without a Foundation cannot render anything
+ *          (still not enforced: the Foundation stays optional — a headless
+ *          Application is legitimate in tests)
+ *   I56  — Every Feature's onInit() runs before the Foundation is created
+ *   I68  — The namespace is carried by the manifest, not by a static (ADR-08)
+ *   I69  — The manifest is the single source of truth for identity (ADR-08)
+ *   I70  — Every reference to an external namespace MUST be validated against
+ *          the manifest — read from instance.listens/queries (ADR-09)
+ *   I71  — `RESERVED_NAMESPACES` is a framework constant (ADR-08)
+ *   I94  — The Feature constructor is inert: it creates no Entity and
+ *          touches no kernel; everything happens at startup (ADR-09)
  *
- * Strate 0 simplifications :
- *   - Pas de stop()
- *   - Pas de SSR (serverState)
- *   - Pas de DevTools
- *   - Pas de BonsaiRegistry ESM
+ * Not delivered yet:
+ *   - stop()
+ *   - SSR (serverState)
+ *   - DevTools
+ *   - ESM BonsaiRegistry
  *
  * @packageDocumentation
  */
-var _Application_instances, _Application_manifest, _Application_started, _Application_foundationClass, _Application_foundationInstance, _Application_featureInstances, _Application_validateManifest;
+var _Application_instances, _Application_manifest, _Application_components, _Application_causalBound, _Application_onTrace, _Application_foundation, _Application_document, _Application_anchor, _Application_router, _Application_adapters, _Application_adapterOptions, _Application_stop, _Application_started, _Application_root, _Application_featureInstances, _Application_validateManifest;
 // ─── Application class ───────────────────────────────────────────────────────
 class Application {
     constructor(options) {
         _Application_instances.add(this);
         _Application_manifest.set(this, void 0);
+        _Application_components.set(this, void 0);
+        _Application_causalBound.set(this, void 0);
+        _Application_onTrace.set(this, void 0);
+        _Application_foundation.set(this, void 0);
+        _Application_document.set(this, void 0);
+        _Application_anchor.set(this, void 0);
+        _Application_router.set(this, void 0);
+        _Application_adapters.set(this, void 0);
+        _Application_adapterOptions.set(this, void 0);
+        _Application_stop.set(this, new AbortController());
         _Application_started.set(this, false);
-        _Application_foundationClass.set(this, void 0);
-        _Application_foundationInstance.set(this, null);
+        _Application_root.set(this, null);
         _Application_featureInstances.set(this, []);
-        __classPrivateFieldSet(this, _Application_foundationClass, options?.foundation ?? null, "f");
         __classPrivateFieldSet(this, _Application_manifest, options?.features ?? {}, "f");
+        __classPrivateFieldSet(this, _Application_components, options?.components ?? [], "f");
+        __classPrivateFieldSet(this, _Application_causalBound, options?.causalBound ?? 50, "f");
+        __classPrivateFieldSet(this, _Application_onTrace, options?.onTrace === undefined ? ((entry) => reportToConsole(entry) ) : options.onTrace, "f");
+        __classPrivateFieldSet(this, _Application_foundation, options?.foundation ?? null, "f");
+        __classPrivateFieldSet(this, _Application_document, options?.document, "f");
+        __classPrivateFieldSet(this, _Application_anchor, options?.anchor, "f");
+        __classPrivateFieldSet(this, _Application_router, options?.router ?? false, "f");
+        __classPrivateFieldSet(this, _Application_adapters, options?.adapters ?? [], "f");
+        __classPrivateFieldSet(this, _Application_adapterOptions, options?.adapterOptions ?? {}, "f");
+        if (__classPrivateFieldGet(this, _Application_foundation, "f") !== null && __classPrivateFieldGet(this, _Application_document, "f") === undefined) {
+            throw new Error("[Bonsai Application] a `foundation` needs the host `document` it renders in");
+        }
+        if (__classPrivateFieldGet(this, _Application_adapters, "f").length > 0 && __classPrivateFieldGet(this, _Application_document, "f") === undefined) {
+            throw new Error("[Bonsai Application] `adapters` need the host `document` they observe");
+        }
+        const categories = new Set();
+        for (const adapter of __classPrivateFieldGet(this, _Application_adapters, "f")) {
+            if (categories.has(adapter.category)) {
+                throw new Error(`[Bonsai Application] two adapters of the category "${adapter.category}": a source of the host is admitted by one instance only (A5.d, D7)`);
+            }
+            categories.add(adapter.category);
+            for (const needed of adapter.requires ?? []) {
+                if (needed === "router" && !__classPrivateFieldGet(this, _Application_router, "f")) {
+                    throw new Error(`[Bonsai Application] the adapter "${adapter.category}" needs the Feature "${needed}": activate it with \`router: true\``);
+                }
+            }
+        }
     }
     // ─── Public API ────────────────────────────────────────────────────────
     /**
-     * Bootstrap en phases réordonnées (ADR-0046 — M1).
-     * Ne peut être appelé qu'une seule fois.
+     * Phased bootstrap (ADR-07, ADR-09). Can only be called once.
      *
-     * Phases :
-     *   Phase 0a — Validation format namespace (assertValidNamespace + I73/I22)
-     *   Phase 0b — Instanciation pure (ctor inerte I94) + sentinel Radio
-     *   Phase 0c — Lecture instance.listens/queries — validation références (I70)
-     *   Phase 1  — Channels  : `Radio.channel(namespace)` pour chaque Feature
-     *   Phase 3  — Features  : `bootstrap()` sur les instances de Phase 0b (I56)
-     *   Phase 4  — Foundation: `Foundation.attach()` (Composers → Views)
-     *
-     * @throws si appelée deux fois (strate 0 : pas de re-bootstrap)
-     * @throws `BonsaiNamespaceError` si le manifest viole les invariants (filet
-     *   runtime — le compile-time est censé l'avoir déjà attrapé via
-     *   `StrictManifest<M>`).
-     * @throws si aucune Foundation n'a été fournie au constructeur (I33).
+     * @throws when called twice (no re-bootstrap)
+     * @throws `BonsaiNamespaceError` when the manifest breaks the invariants
+     *   (runtime safety net — compile time should already have caught it
+     *   through `StrictManifest<M>`).
+     * @throws `ManifestError` when the initial Query dependencies are cyclic (C.1).
+     * @throws `StartupError` when a Feature fails during startup: the model
+     *   under construction is abandoned (§2.5).
      */
     start() {
         if (__classPrivateFieldGet(this, _Application_started, "f")) {
             throw new Error("[Bonsai Application] Cannot start() — already started");
         }
-        if (__classPrivateFieldGet(this, _Application_foundationClass, "f") === null) {
-            throw new Error("[Bonsai Application] Cannot start() — no Foundation provided. " +
-                "Pass { foundation: MyFoundation } to the Application constructor (I33).");
-        }
-        // ── Phase 0a — Validation format + channel (ADR-0039 — I70/I71/I73) ───
+        // ── Phase 0a — format + channel validation (ADR-08 — I70/I71/I73) ───
         __classPrivateFieldGet(this, _Application_instances, "m", _Application_validateManifest).call(this);
         __classPrivateFieldSet(this, _Application_started, true, "f");
         const entries = Object.entries(__classPrivateFieldGet(this, _Application_manifest, "f"));
-        // ── Phase 0b — Instanciation pure + sentinel I94 ─────────────────────────
-        // Le ctor de Feature est inerte (I94) : assertValidNamespace + #namespace.
-        // Sentinel : aucun Channel ne doit être créé/supprimé dans Radio pendant le new.
+        // ── Phase 0b — pure instantiation ───────────────────────────────────
+        // The Feature ctor is inert (I94): assertValidNamespace + #namespace.
         for (const [namespace, FeatureClass] of entries) {
-            const nssBefore = Radio.me().getChannelNames();
-            const instance = new FeatureClass(namespace);
-            const nssAfter = Radio.me().getChannelNames();
-            if (nssBefore.length !== nssAfter.length) {
-                throw new Error(`[Bonsai Application] Feature "${namespace}" constructor is not inert —` +
-                    ` Radio was mutated during new ${FeatureClass.name}("${namespace}").` +
-                    ` Move all Radio/Entity calls out of the constructor (I94 — ADR-0046).`);
-            }
-            __classPrivateFieldGet(this, _Application_featureInstances, "f").push(instance);
+            __classPrivateFieldGet(this, _Application_featureInstances, "f").push(new FeatureClass(namespace));
         }
-        // ── Phase 0c — Validation références croisées via instance (I70 amendé) ───
-        // listens + queries lus depuis les instances (abstract get — I93).
-        // Exécuté AVANT Phase 1 (création des Channels) — aucun side-effect Radio.
+        // ── Phase 0c — cross-reference validation from the instances (I70) ───
         const known = new Set(entries.map(([ns]) => ns));
+        if (__classPrivateFieldGet(this, _Application_router, "f"))
+            known.add("router");
         for (let i = 0; i < entries.length; i++) {
             const [ownNs] = entries[i];
             const instance = __classPrivateFieldGet(this, _Application_featureInstances, "f")[i];
-            const refs = [...instance.listens, ...instance.queries].map((t) => t.namespace);
+            const queried = new Set(instance.queries.map((t) => t.namespace));
+            for (const dependency of instance.dependsOn) {
+                // C.1: an initial dependency is a Query made at startup, so it must be a declared one.
+                if (!queried.has(dependency.namespace)) {
+                    throw new BonsaiNamespaceError("FEATURE_DEPENDENCY_NOT_QUERIED", `Feature "${ownNs}" depends on "${dependency.namespace}" for its startup but does not declare it in \`queries\`.`);
+                }
+            }
+            const refs = [...instance.listens, ...instance.queries, ...instance.dependsOn].map((t) => t.namespace);
             for (const ref of refs) {
                 if (!known.has(ref)) {
                     throw new BonsaiNamespaceError("NAMESPACE_UNKNOWN_REFERENCE", `Feature "${ownNs}" declares unknown channel "${ref}". ` +
@@ -15776,32 +16676,50 @@ class Application {
                 }
             }
         }
-        // Phase 1: Channels — crée le channel de chaque Feature dans Radio
-        for (const [namespace] of entries) {
-            Radio.me().channel(namespace);
-        }
-        // Phase 3: Features — bootstrap sur les instances de Phase 0b
-        // (auto-discovery handlers I48, entity, onInit I56)
-        for (const instance of __classPrivateFieldGet(this, _Application_featureInstances, "f")) {
-            instance.bootstrap();
-        }
-        // Phase 4: Views — Foundation → Composers → Views
-        const FoundationClass = __classPrivateFieldGet(this, _Application_foundationClass, "f");
-        __classPrivateFieldSet(this, _Application_foundationInstance, new FoundationClass(), "f");
-        __classPrivateFieldGet(this, _Application_foundationInstance, "f").attach();
+        // The Feature of navigation is provided by the framework, outside the manifest (D15, I71).
+        const framework = __classPrivateFieldGet(this, _Application_router, "f") ? [new RouterFeature("router")] : [];
+        // ── Phase 1 — kernel startup (§2.5, C.1) ─────────────────────────────
+        __classPrivateFieldSet(this, _Application_root, new Root({
+            causalBound: __classPrivateFieldGet(this, _Application_causalBound, "f"),
+            ...(__classPrivateFieldGet(this, _Application_onTrace, "f") === null ? {} : { onTrace: __classPrivateFieldGet(this, _Application_onTrace, "f") }),
+            ...(__classPrivateFieldGet(this, _Application_document, "f") === undefined ? {} : { document: __classPrivateFieldGet(this, _Application_document, "f") })
+        }), "f");
+        // Features first (I56), then the adapters of the host, then the Foundation, then the other components.
+        const adapters = __classPrivateFieldGet(this, _Application_adapters, "f").map((Adapter) => describeComponent(new Adapter(), {
+            ...__classPrivateFieldGet(this, _Application_adapterOptions, "f")[Adapter.category],
+            root: __classPrivateFieldGet(this, _Application_root, "f"),
+            document: __classPrivateFieldGet(this, _Application_document, "f"),
+            signal: __classPrivateFieldGet(this, _Application_stop, "f").signal
+        }));
+        const foundation = __classPrivateFieldGet(this, _Application_foundation, "f") === null
+            ? []
+            : [describeComponent(new (__classPrivateFieldGet(this, _Application_foundation, "f"))(), { anchor: __classPrivateFieldGet(this, _Application_anchor, "f") })];
+        __classPrivateFieldGet(this, _Application_root, "f").startFromManifest([
+            ...[...__classPrivateFieldGet(this, _Application_featureInstances, "f"), ...framework].map((instance) => describeFeature(instance)),
+            ...adapters,
+            ...foundation,
+            ...__classPrivateFieldGet(this, _Application_components, "f")
+        ]);
     }
-    /** La Foundation instanciée (après start). */
-    get foundation() {
-        return __classPrivateFieldGet(this, _Application_foundationInstance, "f");
+    /** The communication root (one per Application, G6); `null` before start(). */
+    get root() {
+        return __classPrivateFieldGet(this, _Application_root, "f");
     }
-    /** Indique si l'application a démarré. */
+    /**
+     * Removes the observers that Bonsai registered on the host (B.2). The model
+     * is not destroyed: this is the only part of a stop that exists yet.
+     */
+    stop() {
+        __classPrivateFieldGet(this, _Application_stop, "f").abort();
+    }
+    /** Whether the application has started. */
     get started() {
         return __classPrivateFieldGet(this, _Application_started, "f");
     }
 }
-_Application_manifest = new WeakMap(), _Application_started = new WeakMap(), _Application_foundationClass = new WeakMap(), _Application_foundationInstance = new WeakMap(), _Application_featureInstances = new WeakMap(), _Application_instances = new WeakSet(), _Application_validateManifest = function _Application_validateManifest() {
+_Application_manifest = new WeakMap(), _Application_components = new WeakMap(), _Application_causalBound = new WeakMap(), _Application_onTrace = new WeakMap(), _Application_foundation = new WeakMap(), _Application_document = new WeakMap(), _Application_anchor = new WeakMap(), _Application_router = new WeakMap(), _Application_adapters = new WeakMap(), _Application_adapterOptions = new WeakMap(), _Application_stop = new WeakMap(), _Application_started = new WeakMap(), _Application_root = new WeakMap(), _Application_featureInstances = new WeakMap(), _Application_instances = new WeakSet(), _Application_validateManifest = function _Application_validateManifest() {
     const namespaces = Object.keys(__classPrivateFieldGet(this, _Application_manifest, "f"));
-    // I21/I57/I71 — délègue à assertValidNamespace
+    // I21/I57/I71 — delegates to assertValidNamespace
     for (const ns of namespaces) {
         assertValidNamespace(ns);
     }
@@ -15813,7 +16731,7 @@ _Application_manifest = new WeakMap(), _Application_started = new WeakMap(), _Ap
             typeof token !== "object" ||
             typeof token.namespace !== "string") {
             throw new BonsaiNamespaceError("FEATURE_MISSING_CHANNEL", `Feature "${ownNs}" does not declare \`static readonly channel: ` +
-                `TChannelToken<TDef, "${ownNs}">\` (I73 — ADR-0040). Add ` +
+                `TChannelToken<TDef, "${ownNs}">\` (I73 — ADR-14). Add ` +
                 `\`static readonly channel = { namespace: "${ownNs}" }\` ` +
                 `to the class.`);
         }
@@ -15826,4 +16744,4 @@ _Application_manifest = new WeakMap(), _Application_started = new WeakMap(), _Ap
     }
 };
 
-export { Application, BonsaiNamespaceError, Composer, Feature, Foundation, immer$1 as Immer, RESERVED_NAMESPACES, index$1 as RXJS, index as Valibot, View, assertValidNamespace, isCamelCaseNamespace, isReservedNamespace, ui };
+export { Application, BonsaiNamespaceError, Composer, Feature, Foundation, immer$1 as Immer, RESERVED_NAMESPACES, index$1 as RXJS, index as Valibot, View, assertValidNamespace, describeFeature, isCamelCaseNamespace, isReservedNamespace, ui };

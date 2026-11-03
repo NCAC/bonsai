@@ -1,0 +1,66 @@
+# Branche P4 — Causalité observable et segments bornés.
+#
+# Migration depuis docs/reorganisation-sept-2026/arbre-invariants-precision.md.
+# Champs : voir P8.yaml pour la légende complète.
+# Alignement V0.9.4, lot 2, 2026-10-30 : contrats cibles, aucun mécanisme causal livré.
+# Les rôles transversaux couvrent aussi les locaux, admissions, adaptateurs et effets instrumentés.
+# Les anciens champs d'ADR-04 et le nom MAX_HOPS ne sont pas un contrat de représentation imposé par la théorie.
+
+- id: I7
+  nature: E
+  parents: [P4]
+  roles: ["*"]
+  enonce: Tout message, Command, Query, Event ou local, porte le contexte de son déclenchement observable ; chaque message hors origine a exactement un parent établi, et chaque origine conserve sa qualification démarrage, spontanée ou observation d'antécédent inconnu. Une réponse de Query n'est pas un message et ne crée aucun contexte propre.
+  # A5.b, G8, §9.11, §10.2/§10.5 et C.4 ; aucun format de champs n'est prescrit ici.
+  # V0.9.4 : boot → run ; l'intégrité du contexte doit être assurée pendant toute l'exécution.
+  # Non livré : handlers à un paramètre, messages sans contexte ; metas Entity libre ne réalise pas G8.
+  mode: run
+  etat: cible
+
+- id: I8
+  nature: C
+  parents: [P4, I102]
+  roles: ["*"]
+  enonce: L'infrastructure de communication établit l'origine de démarrage et qualifie chaque admission selon son protocole déclaré en résultat corrélé, fait indépendant établi ou observation d'antécédent inconnu. Elle conserve les liens connus ; ni le code applicatif ni une sélection D19 ne peuvent inventer un parent, effacer un lien ou transformer l'inconnu en indépendance établie.
+  # G8, C.4 et D19 : un appel trigger n'est pas à lui seul une origine spontanée.
+  # Dernier effet, proximité temporelle, égalité de valeur et isTrusted seul ne prouvent aucun lien.
+  # Non livré : aucun protocole de qualification/corrélation des admissions ni contrôle des sélections.
+  mode: run
+  etat: cible
+
+- id: I9
+  nature: C
+  parents: [P4, I102]
+  roles: ["*"]
+  enonce: La borne causale fixée par le Manifest, commune à la racine, limite la profondeur des segments de continuations connues ; l'infrastructure la contrôle avant toute soumission de Command, Query, Event ou local, et avant toute réservation des branches d'un Event. Un refus pendant un traitement ou une initialisation fait échouer l'unité extérieure selon G7 ; au préambule d'admission, l'occurrence est abandonnée et signalée techniquement sans traitement ni révocation du passé. Aucun nouveau contrôle D9 n'est reporté à la délivrance d'un message accepté.
+  pourquoi: >
+    D9 et ses précisions, G7/G8 et §16.9 imposent cette borne et ses frontières de refus.
+    La profondeur ne borne ni la largeur, ni le travail total, ni les boucles traversant
+    une coupure non corrélable ; aucun lien connu ne peut être perdu pour repartir à zéro.
+    L'erreur dans l'unité annule ses opérations internes et différés, et empêche l'engagement
+    de ses effets préparés ; le diagnostic hors transport applicatif ne crée aucun message
+    ni origine de contournement. Un résultat post-validation ne révoque pas l'unité validée.
+  # V0.9.4 : D → C ; l'obligation est fixée par la théorie, pas par le mécanisme historique hop/MAX_HOPS.
+  # Fan-out : les branches d'un Event partagent sa profondeur, le nombre d'abonnés ne l'incrémente pas.
+  # Minuterie armée une fois : expirations sœurs ; réarmement en réaction : continuation, sans remise à zéro.
+  # Non livré : ni borne au Manifest, ni garde de soumission, ni refus transactionnel ; I98 ne prouve pas I9.
+  mode: run
+  etat: cible
+
+- id: I54
+  nature: D
+  parents: [P4]
+  roles: ["*"]
+  enonce: Les métadonnées causales sont établies et dérivées par l'infrastructure de communication ; le code applicatif les reçoit et les propage explicitement sans les fabriquer ni les remplacer. Le contexte des opérations corrélables est conservé jusqu'au résultat, à l'annulation ou à la clôture de l'occurrence de vie, même après un échec ; une Query restitue à son auteur son contexte sans le remplacer.
+  pourquoi: >
+    G8, C.2/C.4 et §9.11 imposent l'établissement, la conservation et la restitution
+    du contexte. La propagation explicite conserve le choix compatible de l'ADR-04 plutôt
+    qu'un contexte implicite applicatif ; elle ne permet pas de choisir soi-même un parent.
+    Un oubli de propagation n'ouvre jamais une nouvelle origine. Les formes exactes de l'API,
+    du type opaque éventuel et du stockage interne restent à spécifier sous ces contraintes.
+  # V0.9.4 : D conservé pour le choix de propagation explicite ; type → run pour l'authenticité et la durée de conservation.
+  # Non livré : pas de contexte causal contrôlé ; Entity.mutate() accepte encore metas?: Record<string, unknown>.
+  # Un brand TypeScript seul ne prouve ni l'authenticité runtime ni la durée de conservation.
+  # Une minuterie instrumentée continue son armement ; elle ne crée pas une origine sys- à chaque rappel.
+  mode: run
+  etat: cible

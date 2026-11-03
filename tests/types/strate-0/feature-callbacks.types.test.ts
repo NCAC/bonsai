@@ -1,11 +1,11 @@
 /**
- * Tests de type — TListenCallbacks + UnionToIntersection (ADR-0046, I92)
+ * Tests de type — TListenCallbacks + UnionToIntersection (ADR-09, I92)
  *
  * Ces tests vérifient que TypeScript enforce correctement la couverture
  * exhaustive des handlers de listen via `TFeatureCallbacks<TDef, TListens>`.
  *
  * Origine : POC-Q7-tlisten-callbacks.ts (racine) — supprimé après validation
- * empirique de l'hypothèse Q7 (ADR-0046 §Q7 résolu).
+ * empirique de l'hypothèse Q7 (ADR-09 résolu).
  *
  * Hypothèse validée (I92) :
  *   Avec UnionToIntersection dans TListenCallbacks, on obtient l'INTERSECTION
@@ -18,22 +18,22 @@ import type {
   TFeatureCallbacks,
   TListenCallbacks,
   TCommandCallbacks,
-  TRequestCallbacks
+  TQueryCallbacks
 } from "@bonsai/feature";
-import type { TChannelToken } from "@bonsai/event";
+import type { TChannelToken } from "@bonsai/kernel";
 
 // ─── ChannelDef concrets ──────────────────────────────────────────────────
 
 type TCartChannelDef = {
   commands: { addItem: { id: string } };
   events: { itemAdded: { id: string }; itemRemoved: { id: string } };
-  requests: { getTotal: { params: null; result: number } };
+  queries: { getTotal: { params: null; result: number } };
 };
 
 type TWishlistChannelDef = {
   commands: { addToWishlist: { sku: string } };
   events: { productSaved: { sku: string } };
-  requests: Record<never, never>;
+  queries: Record<never, never>;
 };
 
 const cartListens = [
@@ -46,7 +46,7 @@ type AssertTrue<T extends true> = T;
 
 // ─── Tests ────────────────────────────────────────────────────────────────
 
-describe("TFeatureCallbacks — I92 (ADR-0046)", () => {
+describe("TFeatureCallbacks — I92 (ADR-09)", () => {
   it("TListenCallbacks produit une intersection (toutes clés requises)", () => {
     type TFixed = TListenCallbacks<TCartListenerListens>;
     type FixedKeys = keyof TFixed;
@@ -72,10 +72,10 @@ describe("TFeatureCallbacks — I92 (ADR-0046)", () => {
     void (null as unknown as _1);
   });
 
-  it("TRequestCallbacks dérive les handlers Request (repliers)", () => {
-    type TCartRequests = TRequestCallbacks<TCartChannelDef>;
+  it("TQueryCallbacks dérive les handlers Request (repliers)", () => {
+    type TCartRequests = TQueryCallbacks<TCartChannelDef>;
     type _1 = AssertTrue<
-      "onGetTotalRequest" extends keyof TCartRequests ? true : false
+      "onGetTotalQuery" extends keyof TCartRequests ? true : false
     >;
     void (null as unknown as _1);
   });
@@ -84,7 +84,7 @@ describe("TFeatureCallbacks — I92 (ADR-0046)", () => {
     type TFull = TFeatureCallbacks<TCartChannelDef, TCartListenerListens>;
     type Keys = keyof TFull;
     type _1 = AssertTrue<"onAddItemCommand" extends Keys ? true : false>;
-    type _2 = AssertTrue<"onGetTotalRequest" extends Keys ? true : false>;
+    type _2 = AssertTrue<"onGetTotalQuery" extends Keys ? true : false>;
     type _3 = AssertTrue<"onCartItemAddedEvent" extends Keys ? true : false>;
     type _4 = AssertTrue<"onCartItemRemovedEvent" extends Keys ? true : false>;
     type _5 = AssertTrue<
@@ -121,7 +121,7 @@ describe("TFeatureCallbacks — I92 (ADR-0046)", () => {
     type TFull = TFeatureCallbacks<TCartChannelDef, TCartListenerListens>;
     // @ts-expect-error TS2420 — manque onAddItemCommand
     class MissingCommandFeature implements TFull {
-      onGetTotalRequest(_params: null): number {
+      onGetTotalQuery(_params: null): number {
         return 0;
       }
       onCartItemAddedEvent(_: { id: string }): void {}

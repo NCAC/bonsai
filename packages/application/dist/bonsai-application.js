@@ -1,10 +1,12 @@
 /**
  * @bonsai/application - Version 0.0.1
  * Bundled by Bonsai Build System
- * Date: 2026-09-16T10:43:27.802Z
+ * Date: 2026-11-03T08:44:13.716Z
  */
-import { Radio } from '@bonsai/event';
-import { BonsaiNamespaceError, assertValidNamespace } from '@bonsai/feature';
+import { isDev } from '@bonsai/error';
+import { reportToConsole, Root, describeComponent } from '@bonsai/kernel';
+import { BonsaiNamespaceError, describeFeature, assertValidNamespace } from '@bonsai/feature';
+import { RouterFeature } from '@bonsai/router';
 
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -44,105 +46,132 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 /**
  * @bonsai/application — Application class
  *
- * Strate 0 (refondu ADR-0039) — Capacités :
- *   - constructor({ foundation, features }) — déclare le manifest applicatif
- *   - start() — bootstrap en phases réordonnées (ADR-0046) :
- *       Phase 0a: Validation format namespace (assertValidNamespace)
- *       Phase 0b: Instanciation pure des Features (ctor inerte — I94) + sentinel
- *       Phase 0c: Lecture instance.listens/queries — validation références croisées (I70)
- *       Phase 1: Channels (crée les channels de chaque Feature)
- *       Phase 2: Entities (instanciées par les Features)
- *       Phase 3: Features (bootstrap() + onInit() sur les instances Phase 0b)
- *       Phase 4: Foundation (composers → views, attach)
+ * Capabilities (ADR-07, ADR-08, ADR-09):
+ *   - constructor({ features, components?, causalBound? }) — declares the application manifest
+ *   - start() — phased bootstrap on the communication kernel (migration lot M6.1):
+ *       Phase 0a: namespace format validation (assertValidNamespace)
+ *       Phase 0b: pure instantiation of the Features (inert ctor — I94)
+ *       Phase 0c: read instance.listens/queries/dependsOn — cross-reference validation (I70)
+ *       Phase 1: kernel startup — one `Root` per Application (G6); the Features
+ *                become its children in an order that respects their initial
+ *                initial dependencies (`dependsOn`, C.1); each creates its Entity,
+ *                registers its handlers and runs `onInit()` inside the startup
+ *                unit (§2.5, I56)
+ *       Then the Foundation (if any), which creates its Composers, which
+ *       create the Views (lot M6.2)
  *
- * Invariants :
- *   I23  — Application est dormante au runtime (pas de handle/emit/listen/request)
- *   I24  — Le manifest garantit l'unicité au compile-time ; Application valide
- *          format + réservés + cohérence des `channels` au bootstrap (amendé ADR-0039)
- *   I33  — Application sans Foundation ne peut rien afficher
- *   I56  — onInit() de chaque Feature appelé avant la création de la Foundation
- *   I68  — Le namespace est porté par le manifest, pas par un static (ADR-0039)
- *   I69  — Le manifest est l'unique source de vérité de l'identité (ADR-0039)
- *   I70  — Toute référence à un namespace externe DOIT être validée contre
- *          le manifest — lue depuis instance.listens/queries (amendé ADR-0046)
- *   I71  — `RESERVED_NAMESPACES` est une constante framework (ADR-0039)
- *   I94  — Le constructeur de Feature est inerte : sentinel Phase 0b détecte
- *          tout side-effect Radio inattendu (ADR-0046)
+ * Invariants:
+ *   I23  — Application is dormant at runtime (no handle/emit/listen/request)
+ *   I21  — The manifest guarantees uniqueness at compile time; Application
+ *          validates format, reserved names and `channel` consistency at bootstrap
+ *   I33  — An Application without a Foundation cannot render anything
+ *          (still not enforced: the Foundation stays optional — a headless
+ *          Application is legitimate in tests)
+ *   I56  — Every Feature's onInit() runs before the Foundation is created
+ *   I68  — The namespace is carried by the manifest, not by a static (ADR-08)
+ *   I69  — The manifest is the single source of truth for identity (ADR-08)
+ *   I70  — Every reference to an external namespace MUST be validated against
+ *          the manifest — read from instance.listens/queries (ADR-09)
+ *   I71  — `RESERVED_NAMESPACES` is a framework constant (ADR-08)
+ *   I94  — The Feature constructor is inert: it creates no Entity and
+ *          touches no kernel; everything happens at startup (ADR-09)
  *
- * Strate 0 simplifications :
- *   - Pas de stop()
- *   - Pas de SSR (serverState)
- *   - Pas de DevTools
- *   - Pas de BonsaiRegistry ESM
+ * Not delivered yet:
+ *   - stop()
+ *   - SSR (serverState)
+ *   - DevTools
+ *   - ESM BonsaiRegistry
  *
  * @packageDocumentation
  */
-var _Application_instances, _Application_manifest, _Application_started, _Application_foundationClass, _Application_foundationInstance, _Application_featureInstances, _Application_validateManifest;
+var _Application_instances, _Application_manifest, _Application_components, _Application_causalBound, _Application_onTrace, _Application_foundation, _Application_document, _Application_anchor, _Application_router, _Application_adapters, _Application_adapterOptions, _Application_stop, _Application_started, _Application_root, _Application_featureInstances, _Application_validateManifest;
 // ─── Application class ───────────────────────────────────────────────────────
 class Application {
     constructor(options) {
         _Application_instances.add(this);
         _Application_manifest.set(this, void 0);
+        _Application_components.set(this, void 0);
+        _Application_causalBound.set(this, void 0);
+        _Application_onTrace.set(this, void 0);
+        _Application_foundation.set(this, void 0);
+        _Application_document.set(this, void 0);
+        _Application_anchor.set(this, void 0);
+        _Application_router.set(this, void 0);
+        _Application_adapters.set(this, void 0);
+        _Application_adapterOptions.set(this, void 0);
+        _Application_stop.set(this, new AbortController());
         _Application_started.set(this, false);
-        _Application_foundationClass.set(this, void 0);
-        _Application_foundationInstance.set(this, null);
+        _Application_root.set(this, null);
         _Application_featureInstances.set(this, []);
-        __classPrivateFieldSet(this, _Application_foundationClass, options?.foundation ?? null, "f");
         __classPrivateFieldSet(this, _Application_manifest, options?.features ?? {}, "f");
+        __classPrivateFieldSet(this, _Application_components, options?.components ?? [], "f");
+        __classPrivateFieldSet(this, _Application_causalBound, options?.causalBound ?? 50, "f");
+        __classPrivateFieldSet(this, _Application_onTrace, options?.onTrace === undefined ? (isDev() ? (entry) => reportToConsole(entry) : null) : options.onTrace, "f");
+        __classPrivateFieldSet(this, _Application_foundation, options?.foundation ?? null, "f");
+        __classPrivateFieldSet(this, _Application_document, options?.document, "f");
+        __classPrivateFieldSet(this, _Application_anchor, options?.anchor, "f");
+        __classPrivateFieldSet(this, _Application_router, options?.router ?? false, "f");
+        __classPrivateFieldSet(this, _Application_adapters, options?.adapters ?? [], "f");
+        __classPrivateFieldSet(this, _Application_adapterOptions, options?.adapterOptions ?? {}, "f");
+        if (__classPrivateFieldGet(this, _Application_foundation, "f") !== null && __classPrivateFieldGet(this, _Application_document, "f") === undefined) {
+            throw new Error("[Bonsai Application] a `foundation` needs the host `document` it renders in");
+        }
+        if (__classPrivateFieldGet(this, _Application_adapters, "f").length > 0 && __classPrivateFieldGet(this, _Application_document, "f") === undefined) {
+            throw new Error("[Bonsai Application] `adapters` need the host `document` they observe");
+        }
+        const categories = new Set();
+        for (const adapter of __classPrivateFieldGet(this, _Application_adapters, "f")) {
+            if (categories.has(adapter.category)) {
+                throw new Error(`[Bonsai Application] two adapters of the category "${adapter.category}": a source of the host is admitted by one instance only (A5.d, D7)`);
+            }
+            categories.add(adapter.category);
+            for (const needed of adapter.requires ?? []) {
+                if (needed === "router" && !__classPrivateFieldGet(this, _Application_router, "f")) {
+                    throw new Error(`[Bonsai Application] the adapter "${adapter.category}" needs the Feature "${needed}": activate it with \`router: true\``);
+                }
+            }
+        }
     }
     // ─── Public API ────────────────────────────────────────────────────────
     /**
-     * Bootstrap en phases réordonnées (ADR-0046 — M1).
-     * Ne peut être appelé qu'une seule fois.
+     * Phased bootstrap (ADR-07, ADR-09). Can only be called once.
      *
-     * Phases :
-     *   Phase 0a — Validation format namespace (assertValidNamespace + I73/I22)
-     *   Phase 0b — Instanciation pure (ctor inerte I94) + sentinel Radio
-     *   Phase 0c — Lecture instance.listens/queries — validation références (I70)
-     *   Phase 1  — Channels  : `Radio.channel(namespace)` pour chaque Feature
-     *   Phase 3  — Features  : `bootstrap()` sur les instances de Phase 0b (I56)
-     *   Phase 4  — Foundation: `Foundation.attach()` (Composers → Views)
-     *
-     * @throws si appelée deux fois (strate 0 : pas de re-bootstrap)
-     * @throws `BonsaiNamespaceError` si le manifest viole les invariants (filet
-     *   runtime — le compile-time est censé l'avoir déjà attrapé via
-     *   `StrictManifest<M>`).
-     * @throws si aucune Foundation n'a été fournie au constructeur (I33).
+     * @throws when called twice (no re-bootstrap)
+     * @throws `BonsaiNamespaceError` when the manifest breaks the invariants
+     *   (runtime safety net — compile time should already have caught it
+     *   through `StrictManifest<M>`).
+     * @throws `ManifestError` when the initial Query dependencies are cyclic (C.1).
+     * @throws `StartupError` when a Feature fails during startup: the model
+     *   under construction is abandoned (§2.5).
      */
     start() {
         if (__classPrivateFieldGet(this, _Application_started, "f")) {
             throw new Error("[Bonsai Application] Cannot start() — already started");
         }
-        if (__classPrivateFieldGet(this, _Application_foundationClass, "f") === null) {
-            throw new Error("[Bonsai Application] Cannot start() — no Foundation provided. " +
-                "Pass { foundation: MyFoundation } to the Application constructor (I33).");
-        }
-        // ── Phase 0a — Validation format + channel (ADR-0039 — I70/I71/I73) ───
+        // ── Phase 0a — format + channel validation (ADR-08 — I70/I71/I73) ───
         __classPrivateFieldGet(this, _Application_instances, "m", _Application_validateManifest).call(this);
         __classPrivateFieldSet(this, _Application_started, true, "f");
         const entries = Object.entries(__classPrivateFieldGet(this, _Application_manifest, "f"));
-        // ── Phase 0b — Instanciation pure + sentinel I94 ─────────────────────────
-        // Le ctor de Feature est inerte (I94) : assertValidNamespace + #namespace.
-        // Sentinel : aucun Channel ne doit être créé/supprimé dans Radio pendant le new.
+        // ── Phase 0b — pure instantiation ───────────────────────────────────
+        // The Feature ctor is inert (I94): assertValidNamespace + #namespace.
         for (const [namespace, FeatureClass] of entries) {
-            const nssBefore = Radio.me().getChannelNames();
-            const instance = new FeatureClass(namespace);
-            const nssAfter = Radio.me().getChannelNames();
-            if (nssBefore.length !== nssAfter.length) {
-                throw new Error(`[Bonsai Application] Feature "${namespace}" constructor is not inert —` +
-                    ` Radio was mutated during new ${FeatureClass.name}("${namespace}").` +
-                    ` Move all Radio/Entity calls out of the constructor (I94 — ADR-0046).`);
-            }
-            __classPrivateFieldGet(this, _Application_featureInstances, "f").push(instance);
+            __classPrivateFieldGet(this, _Application_featureInstances, "f").push(new FeatureClass(namespace));
         }
-        // ── Phase 0c — Validation références croisées via instance (I70 amendé) ───
-        // listens + queries lus depuis les instances (abstract get — I93).
-        // Exécuté AVANT Phase 1 (création des Channels) — aucun side-effect Radio.
+        // ── Phase 0c — cross-reference validation from the instances (I70) ───
         const known = new Set(entries.map(([ns]) => ns));
+        if (__classPrivateFieldGet(this, _Application_router, "f"))
+            known.add("router");
         for (let i = 0; i < entries.length; i++) {
             const [ownNs] = entries[i];
             const instance = __classPrivateFieldGet(this, _Application_featureInstances, "f")[i];
-            const refs = [...instance.listens, ...instance.queries].map((t) => t.namespace);
+            const queried = new Set(instance.queries.map((t) => t.namespace));
+            for (const dependency of instance.dependsOn) {
+                // C.1: an initial dependency is a Query made at startup, so it must be a declared one.
+                if (!queried.has(dependency.namespace)) {
+                    throw new BonsaiNamespaceError("FEATURE_DEPENDENCY_NOT_QUERIED", `Feature "${ownNs}" depends on "${dependency.namespace}" for its startup but does not declare it in \`queries\`.`);
+                }
+            }
+            const refs = [...instance.listens, ...instance.queries, ...instance.dependsOn].map((t) => t.namespace);
             for (const ref of refs) {
                 if (!known.has(ref)) {
                     throw new BonsaiNamespaceError("NAMESPACE_UNKNOWN_REFERENCE", `Feature "${ownNs}" declares unknown channel "${ref}". ` +
@@ -150,32 +179,50 @@ class Application {
                 }
             }
         }
-        // Phase 1: Channels — crée le channel de chaque Feature dans Radio
-        for (const [namespace] of entries) {
-            Radio.me().channel(namespace);
-        }
-        // Phase 3: Features — bootstrap sur les instances de Phase 0b
-        // (auto-discovery handlers I48, entity, onInit I56)
-        for (const instance of __classPrivateFieldGet(this, _Application_featureInstances, "f")) {
-            instance.bootstrap();
-        }
-        // Phase 4: Views — Foundation → Composers → Views
-        const FoundationClass = __classPrivateFieldGet(this, _Application_foundationClass, "f");
-        __classPrivateFieldSet(this, _Application_foundationInstance, new FoundationClass(), "f");
-        __classPrivateFieldGet(this, _Application_foundationInstance, "f").attach();
+        // The Feature of navigation is provided by the framework, outside the manifest (D15, I71).
+        const framework = __classPrivateFieldGet(this, _Application_router, "f") ? [new RouterFeature("router")] : [];
+        // ── Phase 1 — kernel startup (§2.5, C.1) ─────────────────────────────
+        __classPrivateFieldSet(this, _Application_root, new Root({
+            causalBound: __classPrivateFieldGet(this, _Application_causalBound, "f"),
+            ...(__classPrivateFieldGet(this, _Application_onTrace, "f") === null ? {} : { onTrace: __classPrivateFieldGet(this, _Application_onTrace, "f") }),
+            ...(__classPrivateFieldGet(this, _Application_document, "f") === undefined ? {} : { document: __classPrivateFieldGet(this, _Application_document, "f") })
+        }), "f");
+        // Features first (I56), then the adapters of the host, then the Foundation, then the other components.
+        const adapters = __classPrivateFieldGet(this, _Application_adapters, "f").map((Adapter) => describeComponent(new Adapter(), {
+            ...__classPrivateFieldGet(this, _Application_adapterOptions, "f")[Adapter.category],
+            root: __classPrivateFieldGet(this, _Application_root, "f"),
+            document: __classPrivateFieldGet(this, _Application_document, "f"),
+            signal: __classPrivateFieldGet(this, _Application_stop, "f").signal
+        }));
+        const foundation = __classPrivateFieldGet(this, _Application_foundation, "f") === null
+            ? []
+            : [describeComponent(new (__classPrivateFieldGet(this, _Application_foundation, "f"))(), { anchor: __classPrivateFieldGet(this, _Application_anchor, "f") })];
+        __classPrivateFieldGet(this, _Application_root, "f").startFromManifest([
+            ...[...__classPrivateFieldGet(this, _Application_featureInstances, "f"), ...framework].map((instance) => describeFeature(instance)),
+            ...adapters,
+            ...foundation,
+            ...__classPrivateFieldGet(this, _Application_components, "f")
+        ]);
     }
-    /** La Foundation instanciée (après start). */
-    get foundation() {
-        return __classPrivateFieldGet(this, _Application_foundationInstance, "f");
+    /** The communication root (one per Application, G6); `null` before start(). */
+    get root() {
+        return __classPrivateFieldGet(this, _Application_root, "f");
     }
-    /** Indique si l'application a démarré. */
+    /**
+     * Removes the observers that Bonsai registered on the host (B.2). The model
+     * is not destroyed: this is the only part of a stop that exists yet.
+     */
+    stop() {
+        __classPrivateFieldGet(this, _Application_stop, "f").abort();
+    }
+    /** Whether the application has started. */
     get started() {
         return __classPrivateFieldGet(this, _Application_started, "f");
     }
 }
-_Application_manifest = new WeakMap(), _Application_started = new WeakMap(), _Application_foundationClass = new WeakMap(), _Application_foundationInstance = new WeakMap(), _Application_featureInstances = new WeakMap(), _Application_instances = new WeakSet(), _Application_validateManifest = function _Application_validateManifest() {
+_Application_manifest = new WeakMap(), _Application_components = new WeakMap(), _Application_causalBound = new WeakMap(), _Application_onTrace = new WeakMap(), _Application_foundation = new WeakMap(), _Application_document = new WeakMap(), _Application_anchor = new WeakMap(), _Application_router = new WeakMap(), _Application_adapters = new WeakMap(), _Application_adapterOptions = new WeakMap(), _Application_stop = new WeakMap(), _Application_started = new WeakMap(), _Application_root = new WeakMap(), _Application_featureInstances = new WeakMap(), _Application_instances = new WeakSet(), _Application_validateManifest = function _Application_validateManifest() {
     const namespaces = Object.keys(__classPrivateFieldGet(this, _Application_manifest, "f"));
-    // I21/I57/I71 — délègue à assertValidNamespace
+    // I21/I57/I71 — delegates to assertValidNamespace
     for (const ns of namespaces) {
         assertValidNamespace(ns);
     }
@@ -187,7 +234,7 @@ _Application_manifest = new WeakMap(), _Application_started = new WeakMap(), _Ap
             typeof token !== "object" ||
             typeof token.namespace !== "string") {
             throw new BonsaiNamespaceError("FEATURE_MISSING_CHANNEL", `Feature "${ownNs}" does not declare \`static readonly channel: ` +
-                `TChannelToken<TDef, "${ownNs}">\` (I73 — ADR-0040). Add ` +
+                `TChannelToken<TDef, "${ownNs}">\` (I73 — ADR-14). Add ` +
                 `\`static readonly channel = { namespace: "${ownNs}" }\` ` +
                 `to the class.`);
         }

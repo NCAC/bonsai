@@ -1,47 +1,47 @@
 /**
- * Fonctions de validation du framework Bonsai.
+ * Validation functions of the Bonsai framework.
  *
- * - `invariant()` : assertion runtime, strippable en prod via `__DEV__`
- * - `hardInvariant()` : assertion NON-strippable — erreurs structurelles fatales
- * - `warning()` : log conditionnel `__DEV__` only, ne throw jamais
+ * - `invariant()`: runtime assertion, strippable in production via `__DEV__`
+ * - `hardInvariant()`: NON-strippable assertion — fatal structural errors
+ * - `warning()`: `__DEV__`-only conditional log, never throws
  *
- * @see ADR-0004 — Validation Modes
+ * @see ADR-06 — validation modes
  */
 
 import { BonsaiError } from "./bonsai-error.class";
 
 /**
- * Déclare la variable globale `__DEV__` injectée par le bundler.
- * En développement : `true`. En production : `false` (tree-shaken).
+ * Compile-time constant replaced by the build (ADR-06): `true` in
+ * `core/dist/bonsai.js`, `false` in `core/dist/bonsai.prod.js`, where the
+ * development branches are dropped. Left free in the package bundles and in
+ * the sources run by the tests.
  */
 declare const __DEV__: boolean;
 
 /**
- * Retourne `true` si on est en mode développement.
- * Fallback : `true` si `__DEV__` n'est pas défini (sécurité — on préfère
- * montrer les erreurs plutôt que les masquer).
+ * Returns `true` in development mode.
+ * Fallback: `true` when `__DEV__` is not defined (safe default — better to
+ * surface errors than to hide them). `typeof` never throws on an undeclared
+ * identifier, and the expression folds to a constant once `__DEV__` is
+ * replaced.
  */
-function isDev(): boolean {
-  try {
-    return typeof __DEV__ !== "undefined" ? __DEV__ : true;
-  } catch {
-    return true;
-  }
+export function isDev(): boolean {
+  return typeof __DEV__ === "undefined" || __DEV__;
 }
 
 /**
- * Assertion runtime — throw `BonsaiError` si la condition est fausse.
+ * Runtime assertion — throws a `BonsaiError` when the condition is false.
  *
- * **Strippable en production** : les appels `invariant()` sont éliminés
- * par le bundler quand `__DEV__ === false`. Utiliser pour les validations
- * de développement (vérifications de type, gardes-fous DX).
+ * **Strippable in production**: `invariant()` calls are removed by the
+ * bundler when `__DEV__ === false`. Use it for development checks (type
+ * checks, DX guards).
  *
- * Pour les violations structurelles qui doivent rester en prod → `hardInvariant()`.
+ * For structural violations that must stay in production → `hardInvariant()`.
  *
- * @param condition - Si `false`, throw une `BonsaiError`
- * @param message - Message d'erreur descriptif
- * @param invariantId - Identifiant de l'invariant violé (ex: "I10")
- * @param component - Namespace ou nom du composant concerné (optionnel)
+ * @param condition - When `false`, throws a `BonsaiError`
+ * @param message - Descriptive error message
+ * @param invariantId - Id of the violated invariant (e.g. "I10")
+ * @param component - Namespace or name of the component involved (optional)
  *
  * @example
  * ```typescript
@@ -62,17 +62,17 @@ export function invariant(
 }
 
 /**
- * Assertion NON-strippable — reste en production.
+ * NON-strippable assertion — kept in production.
  *
- * Utiliser pour les erreurs structurelles fatales détectées au bootstrap
- * (namespace dupliqué I21, handler Command dupliqué I10, etc.).
- * Un `hardInvariant` qui échoue signifie que le framework est dans un
- * état incohérent — il DOIT throw, même en production.
+ * Use it for fatal structural errors detected at bootstrap (duplicate
+ * namespace I21, duplicate Command handler I10, etc.). A failing
+ * `hardInvariant` means the framework is in an inconsistent state — it
+ * MUST throw, even in production.
  *
- * @param condition - Si `false`, throw une `BonsaiError`
- * @param message - Message d'erreur descriptif
- * @param invariantId - Identifiant de l'invariant violé
- * @param component - Namespace ou nom du composant concerné (optionnel)
+ * @param condition - When `false`, throws a `BonsaiError`
+ * @param message - Descriptive error message
+ * @param invariantId - Id of the violated invariant
+ * @param component - Namespace or name of the component involved (optional)
  */
 export function hardInvariant(
   condition: unknown,
@@ -86,13 +86,13 @@ export function hardInvariant(
 }
 
 /**
- * Log conditionnel en développement — ne throw jamais.
+ * Development-only conditional log — never throws.
  *
- * Strippé en production (`__DEV__ === false`).
- * Utiliser pour les avertissements non-bloquants (ex: `request()` sans replier en prod).
+ * Stripped in production (`__DEV__ === false`).
+ * Use it for non-blocking warnings.
  *
- * @param condition - Si `false`, log un warning
- * @param message - Message d'avertissement
+ * @param condition - When `false`, logs a warning
+ * @param message - Warning message
  */
 export function warning(condition: unknown, message: string): void {
   if (isDev()) {
