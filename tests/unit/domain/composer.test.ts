@@ -51,8 +51,13 @@ class RowView extends View<TNoContract> {
   get uiElements() { return {}; }
   get template() { return "row"; }
 }
+/** When set, creating an OtherView fails inside the Composer's unit (C.1). */
+let failOther = false;
 class OtherView extends RowView {
-  override get template() { return "other"; }
+  override get template() {
+    if (failOther) throw new Error("other cannot render");
+    return "other";
+  }
 }
 
 const features = { list: { feature: ListFeature, listens: ["changed"] as const, queries: ["rows"] as const } };
@@ -60,11 +65,12 @@ const views = { row: RowView, other: OtherView };
 type TC = TComposerContract<typeof features, typeof views>;
 
 let viewOf: (row: TRow) => "row" | "other" = () => "row";
+let paramsOf: (row: TRow) => Record<string, string> = (r) => ({ variant: r.variant });
 class ListComposer extends Composer<TC> {
   get features() { return features; }
   get views() { return views; }
   resolve(ctx: TComposeContext<TC>): TComposition<TC> {
-    return ctx.query("list:rows", null).map((r) => ({ view: viewOf(r), key: r.id, params: { variant: r.variant } }));
+    return ctx.query("list:rows", null).map((r) => ({ view: viewOf(r), key: r.id, params: paramsOf(r) }));
   }
 }
 class Page extends Foundation {
@@ -81,6 +87,8 @@ describe("Composer on the kernel", () => {
     document.body.innerHTML = `<div id="main"></div>`;
     created.length = 0;
     viewOf = () => "row";
+    paramsOf = (r) => ({ variant: r.variant });
+    failOther = false;
   });
 
   it("creates the Views of the initial composition, in order", () => {
@@ -155,6 +163,42 @@ describe("Composer on the kernel", () => {
     d.send("list", "set", [{ id: "a", variant: "x" }, { id: "a", variant: "y" }]); // fails
     d.send("list", "set", [{ id: "a", variant: "x" }, { id: "b", variant: "x" }, { id: "c", variant: "x" }]);
     expect(keys()).toEqual(["a", "b", "c"]);
+  });
+
+  it("a unit failing after it destroyed and created Views restores the bookkeeping (G7)", () => {
+    const d = setup();
+    const [a, b] = parts();
+    failOther = true;
+    viewOf = (r) => (r.id === "c" ? "other" : "row");
+    // b changes variant (destroyed, then created again), n is new, c fails to render: the unit fails.
+    d.send("list", "set", [{ id: "a", variant: "x" }, { id: "b", variant: "y" }, { id: "n", variant: "x" }, { id: "c", variant: "x" }]);
+    const failed = d.failures().length;
+    expect(failed).toBeGreaterThan(0);
+    expect(parts()).toEqual([a, b]);
+    // Reconciled against what really exists: a and b unchanged are kept, n and c are created for real.
+    failOther = false;
+    d.send("list", "set", [{ id: "a", variant: "x" }, { id: "b", variant: "x" }, { id: "n", variant: "x" }, { id: "c", variant: "x" }]);
+    expect(d.failures()).toHaveLength(failed);
+    expect(keys()).toEqual(["a", "b", "n", "c"]);
+    expect(parts()[0]).toBe(a);
+    expect(parts()[1]).toBe(b);
+    // And b changing variant now is a plain replacement.
+    d.send("list", "set", [{ id: "a", variant: "x" }, { id: "b", variant: "y" }, { id: "n", variant: "x" }, { id: "c", variant: "x" }]);
+    expect(d.failures()).toHaveLength(failed);
+    expect(keys()).toEqual(["a", "b", "n", "c"]);
+    expect(parts()[1]).not.toBe(b);
+  });
+
+  it("compares params by value: the same params with keys in another order keep the View", () => {
+    let flip = false;
+    paramsOf = (r) => (flip ? { variant: r.variant, id: r.id } : { id: r.id, variant: r.variant });
+    const d = setup();
+    const [a, b] = parts();
+    flip = true;
+    d.send("list", "set", [{ id: "a", variant: "x" }, { id: "b", variant: "x" }]);
+    expect(parts()[0]).toBe(a);
+    expect(parts()[1]).toBe(b);
+    expect(d.failures()).toEqual([]);
   });
 
   it("has no triggers lane and no emit: a Composer addresses nothing (D12)", () => {

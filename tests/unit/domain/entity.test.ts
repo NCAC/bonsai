@@ -18,7 +18,7 @@
 
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { Feature, type TFeatureContext, type TFeatureQueryContext } from "@bonsai/feature";
-import { Entity, type TEntityEvent } from "@bonsai/entity";
+import { Entity, bindEntityState, type TEntityEvent } from "@bonsai/entity";
 import type { TChannelToken } from "@bonsai/kernel";
 import { drive } from "../../helpers/drive";
 
@@ -153,6 +153,17 @@ describe("Entity on the kernel — lot M6.1", () => {
       const d = drive(features);
       d.send("counter", "inc", { by: 3 });
       expect(entity.initialState).toEqual({ count: 0, label: "start", tags: [] });
+    });
+
+    it("state bindings nest: restoring the inner one brings back the outer one, then none", () => {
+      const entity = new CounterEntity();
+      const restoreOuter = bindEntityState(entity, () => ({ count: 1, label: "outer", tags: [] }));
+      const restoreInner = bindEntityState(entity, () => ({ count: 2, label: "inner", tags: [] }));
+      expect(entity.state.label).toBe("inner");
+      restoreInner();
+      expect(entity.state.label).toBe("outer");
+      restoreOuter();
+      expect(() => entity.state).toThrow(/readable only inside a handler/);
     });
   });
 
