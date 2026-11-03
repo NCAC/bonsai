@@ -4,7 +4,7 @@
  * @jest-environment jsdom
  */
 
-import { describe, it, expect, beforeEach } from "@jest/globals";
+import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import { Application } from "@bonsai/application";
 import { resetDOM } from "../../helpers/dom-setup";
 import { Composer, type TComposerContract, type TComposition } from "@bonsai/composer";
@@ -26,7 +26,7 @@ class LeafComposer extends Composer<TC> {
 }
 
 const foundationOf = (slots: Record<string, string>) =>
-  class extends Foundation {
+  class Page extends Foundation {
     get composers() {
       return Object.fromEntries(Object.entries(slots).map(([key, slot]) => [key, { slot, composer: LeafComposer }])) as never;
     }
@@ -59,15 +59,29 @@ describe("Foundation on the kernel", () => {
     expect(document.querySelector("#outside")!.textContent).toBe("");
   });
 
-  it("a slot that matches no element is reported as a failed effect", () => {
+  it("a slot that matches no element is reported as a failed effect, on the console in development (O2)", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
     const app = new Application({ foundation: foundationOf({ main: "#nope" }), document });
     app.start();
     expect(failedEffects(app).join()).toMatch(/matches 0 elements/);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]![0]).toBe(
+      `[Bonsai] effect "materialize body/main" of "Page" failed (C.3); not attempted because of it: "materialize body/main/l" (LeafComposer), "template" (Leaf)`
+    );
+  });
+
+  it("the trace sink is an Application option: a sink of one's own, or none", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    const seen: string[] = [];
+    new Application({ foundation: foundationOf({ main: "#nope" }), document, onTrace: (e) => seen.push(e.type) }).start();
+    new Application({ foundation: foundationOf({ main: "#nope" }), document, onTrace: null }).start();
+    expect(seen).toContain("effects");
+    expect(warn).not.toHaveBeenCalled();
   });
 
   it("a slot that matches several elements is reported as a failed effect", () => {
     document.body.innerHTML = `<main class="m"></main><main class="m"></main>`;
-    const app = new Application({ foundation: foundationOf({ main: ".m" }), document });
+    const app = new Application({ foundation: foundationOf({ main: ".m" }), document, onTrace: null });
     app.start();
     expect(failedEffects(app).join()).toMatch(/matches 2 elements/);
   });

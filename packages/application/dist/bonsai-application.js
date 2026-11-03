@@ -1,9 +1,10 @@
 /**
  * @bonsai/application - Version 0.0.1
  * Bundled by Bonsai Build System
- * Date: 2026-11-02T15:48:15.300Z
+ * Date: 2026-11-03T08:44:13.716Z
  */
-import { Root, describeComponent } from '@bonsai/kernel';
+import { isDev } from '@bonsai/error';
+import { reportToConsole, Root, describeComponent } from '@bonsai/kernel';
 import { BonsaiNamespaceError, describeFeature, assertValidNamespace } from '@bonsai/feature';
 import { RouterFeature } from '@bonsai/router';
 
@@ -83,7 +84,7 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
  *
  * @packageDocumentation
  */
-var _Application_instances, _Application_manifest, _Application_components, _Application_causalBound, _Application_foundation, _Application_document, _Application_anchor, _Application_router, _Application_adapters, _Application_adapterOptions, _Application_stop, _Application_started, _Application_root, _Application_featureInstances, _Application_validateManifest;
+var _Application_instances, _Application_manifest, _Application_components, _Application_causalBound, _Application_onTrace, _Application_foundation, _Application_document, _Application_anchor, _Application_router, _Application_adapters, _Application_adapterOptions, _Application_stop, _Application_started, _Application_root, _Application_featureInstances, _Application_validateManifest;
 // ─── Application class ───────────────────────────────────────────────────────
 class Application {
     constructor(options) {
@@ -91,6 +92,7 @@ class Application {
         _Application_manifest.set(this, void 0);
         _Application_components.set(this, void 0);
         _Application_causalBound.set(this, void 0);
+        _Application_onTrace.set(this, void 0);
         _Application_foundation.set(this, void 0);
         _Application_document.set(this, void 0);
         _Application_anchor.set(this, void 0);
@@ -104,6 +106,7 @@ class Application {
         __classPrivateFieldSet(this, _Application_manifest, options?.features ?? {}, "f");
         __classPrivateFieldSet(this, _Application_components, options?.components ?? [], "f");
         __classPrivateFieldSet(this, _Application_causalBound, options?.causalBound ?? 50, "f");
+        __classPrivateFieldSet(this, _Application_onTrace, options?.onTrace === undefined ? (isDev() ? (entry) => reportToConsole(entry) : null) : options.onTrace, "f");
         __classPrivateFieldSet(this, _Application_foundation, options?.foundation ?? null, "f");
         __classPrivateFieldSet(this, _Application_document, options?.document, "f");
         __classPrivateFieldSet(this, _Application_anchor, options?.anchor, "f");
@@ -181,6 +184,7 @@ class Application {
         // ── Phase 1 — kernel startup (§2.5, C.1) ─────────────────────────────
         __classPrivateFieldSet(this, _Application_root, new Root({
             causalBound: __classPrivateFieldGet(this, _Application_causalBound, "f"),
+            ...(__classPrivateFieldGet(this, _Application_onTrace, "f") === null ? {} : { onTrace: __classPrivateFieldGet(this, _Application_onTrace, "f") }),
             ...(__classPrivateFieldGet(this, _Application_document, "f") === undefined ? {} : { document: __classPrivateFieldGet(this, _Application_document, "f") })
         }), "f");
         // Features first (I56), then the adapters of the host, then the Foundation, then the other components.
@@ -216,7 +220,7 @@ class Application {
         return __classPrivateFieldGet(this, _Application_started, "f");
     }
 }
-_Application_manifest = new WeakMap(), _Application_components = new WeakMap(), _Application_causalBound = new WeakMap(), _Application_foundation = new WeakMap(), _Application_document = new WeakMap(), _Application_anchor = new WeakMap(), _Application_router = new WeakMap(), _Application_adapters = new WeakMap(), _Application_adapterOptions = new WeakMap(), _Application_stop = new WeakMap(), _Application_started = new WeakMap(), _Application_root = new WeakMap(), _Application_featureInstances = new WeakMap(), _Application_instances = new WeakSet(), _Application_validateManifest = function _Application_validateManifest() {
+_Application_manifest = new WeakMap(), _Application_components = new WeakMap(), _Application_causalBound = new WeakMap(), _Application_onTrace = new WeakMap(), _Application_foundation = new WeakMap(), _Application_document = new WeakMap(), _Application_anchor = new WeakMap(), _Application_router = new WeakMap(), _Application_adapters = new WeakMap(), _Application_adapterOptions = new WeakMap(), _Application_stop = new WeakMap(), _Application_started = new WeakMap(), _Application_root = new WeakMap(), _Application_featureInstances = new WeakMap(), _Application_instances = new WeakSet(), _Application_validateManifest = function _Application_validateManifest() {
     const namespaces = Object.keys(__classPrivateFieldGet(this, _Application_manifest, "f"));
     // I21/I57/I71 — delegates to assertValidNamespace
     for (const ns of namespaces) {

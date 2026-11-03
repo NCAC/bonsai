@@ -216,6 +216,7 @@ describe("Navigation on the kernel", () => {
       document,
       router: true,
       adapters: [HistoryAdapter],
+      onTrace: null,
       components: [
         {
           name: "domainProbe",

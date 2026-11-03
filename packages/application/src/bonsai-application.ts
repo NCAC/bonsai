@@ -40,12 +40,15 @@
  * @packageDocumentation
  */
 
+import { isDev } from "@bonsai/error";
 import {
   Root,
   describeComponent,
+  reportToConsole,
   type TChannelDefinition,
   type TChannelToken,
-  type TManifestEntry
+  type TManifestEntry,
+  type TTraceEntry
 } from "@bonsai/kernel";
 import {
   Feature,
@@ -90,6 +93,10 @@ export type TFeaturesManifest = Readonly<
  *   need `document`. A class lists the namespaces it requires (`requires`).
  * - `causalBound`: the bound on causal chains fixed by the Manifest (D9).
  *   Default 50.
+ * - `onTrace`: technical sink of the kernel trace (O2), outside the
+ *   application transport. Default: `reportToConsole` in development
+ *   (`__DEV__`), which reports the failures no component receives; nothing in
+ *   production. `null` disables it.
  */
 export type TApplicationOptions<
   M extends TFeaturesManifest = TFeaturesManifest
@@ -104,6 +111,7 @@ export type TApplicationOptions<
   /** Serializable creation parameters of the adapters, by category (Manifest, 16.9). */
   readonly adapterOptions?: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
   readonly causalBound?: number;
+  readonly onTrace?: ((entry: TTraceEntry) => void) | null;
 };
 
 /** A built-in adapter class: a category, the namespaces it needs, and its description for the kernel. */
@@ -118,6 +126,7 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
   readonly #manifest: M;
   readonly #components: readonly TManifestEntry[];
   readonly #causalBound: number;
+  readonly #onTrace: ((entry: TTraceEntry) => void) | null;
   readonly #foundation: (new () => Foundation) | null;
   readonly #document: Document | undefined;
   readonly #anchor: string | undefined;
@@ -133,6 +142,7 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
     this.#manifest = options?.features ?? ({} as M);
     this.#components = options?.components ?? [];
     this.#causalBound = options?.causalBound ?? 50;
+    this.#onTrace = options?.onTrace === undefined ? (isDev() ? (entry) => reportToConsole(entry) : null) : options.onTrace;
     this.#foundation = options?.foundation ?? null;
     this.#document = options?.document;
     this.#anchor = options?.anchor;
@@ -228,6 +238,7 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
     // ── Phase 1 — kernel startup (§2.5, C.1) ─────────────────────────────
     this.#root = new Root({
       causalBound: this.#causalBound,
+      ...(this.#onTrace === null ? {} : { onTrace: this.#onTrace }),
       ...(this.#document === undefined ? {} : { document: this.#document })
     });
     // Features first (I56), then the adapters of the host, then the Foundation, then the other components.

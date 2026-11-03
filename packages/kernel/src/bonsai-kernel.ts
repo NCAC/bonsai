@@ -19,12 +19,13 @@ export type {
 export {
   Root,
   capture,
+  reportToConsole,
   TransportError,
   StartupError,
   InvariantError,
   ManifestError
 } from "./kernel";
-export type { TTransportErrorCode } from "./kernel";
+export type { TTransportErrorCode, TTraceConsole } from "./kernel";
 export type * from "./kernel/types";
 export { DESCRIBE, describeComponent } from "./component";
 export type { TDescribable } from "./component";

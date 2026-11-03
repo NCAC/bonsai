@@ -1,7 +1,7 @@
 /**
  * @bonsai/composer - Version 0.0.1
  * Bundled by Bonsai Build System
- * Date: 2026-11-02T15:48:12.399Z
+ * Date: 2026-11-03T08:44:12.151Z
  */
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -1218,7 +1218,8 @@ immer.produce;
  * - D8  production order; subscription order; rank fixed at emission.
  * - D9  causal depth checked before any submission.
  * - C.3 effects prepared during the unit, engaged in order after it
- *       validates, stopping at the first synchronous failure.
+ *       validates; a synchronous failure closes the resource the effect
+ *       aims at (and, for a part, the parts below it), the rest goes on.
  *
  * Out of scope for M1: Entity integration (M2), structural parts and DOM
  * (M3–M4), closed-world qualification of host sources and D18 (M5).
@@ -1278,7 +1279,8 @@ function describeComponent(instance, options) {
  *   T7   — parts are disjoint
  *
  * Known limit (C.3): a View whose element could not be created is not yet
- * destroyed logically; the failure is reported in the kernel trace only.
+ * destroyed logically; the failure is reported in the kernel trace (and on
+ * the console in development, through `onTrace`).
  *
  * @packageDocumentation
  */

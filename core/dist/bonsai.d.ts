@@ -24924,6 +24924,20 @@ interface TUnitContext extends TReadContext {
 }
 /** Outcome of the engagement of one effect (C.3). */
 type TEffectOutcome = "engaged" | "failed" | "not-attempted";
+/** One line of an engagement report in the trace (C.3). */
+type TEngagementLine = {
+    /** Name of the component that prepared the effect. */
+    readonly owner: string;
+    readonly label: string;
+    readonly outcome: TEffectOutcome;
+    readonly error?: unknown;
+    /** For a line not attempted: index, in the same report, of the failed line that closed its resource. */
+    readonly closedBy?: number;
+    /** Causal context of the treatment that prepared the effect. */
+    readonly context: TCausalContext;
+    /** The line was admitted to its owner within its `$effects` result (C.3). */
+    readonly admitted: boolean;
+};
 /** Kernel trace: technical, outside the application transport. */
 type TTraceEntry = {
     readonly type: "delivered";
@@ -24945,15 +24959,11 @@ type TTraceEntry = {
     readonly type: "admission-abandoned";
     readonly reason: string;
     readonly name: string;
-} | {
+}
+/** One engagement list (C.3), lines in their real order of engagement, whatever their owners. */
+ | {
     readonly type: "effects";
-    readonly owner: string;
-    readonly context: TCausalContext;
-    readonly report: ReadonlyArray<{
-        readonly label: string;
-        readonly outcome: TEffectOutcome;
-        readonly error?: unknown;
-    }>;
+    readonly report: ReadonlyArray<TEngagementLine>;
 }
 /** A unit, effects included, longer than the threshold (ADR-35, O2). */
  | {
@@ -24986,6 +24996,13 @@ interface TRootOptions {
     readonly document?: Document;
     /** Clock in milliseconds. Default: `performance.now()`. Injected by tests. */
     readonly now?: () => number;
+    /**
+     * Technical sink, outside the application transport (O2): receives every
+     * trace entry as it is written. It admits nothing and must not drive the
+     * root; an error it throws is ignored. `reportToConsole` is the default
+     * sink of an Application in development.
+     */
+    readonly onTrace?: (entry: TTraceEntry) => void;
 }
 
 /**
@@ -25728,7 +25745,8 @@ declare abstract class Feature<TEntity extends Entity<TJsonSerializable> = Entit
  *   T7   — parts are disjoint
  *
  * Known limit (C.3): a View whose element could not be created is not yet
- * destroyed logically; the failure is reported in the kernel trace only.
+ * destroyed logically; the failure is reported in the kernel trace (and on
+ * the console in development, through `onTrace`).
  *
  * @packageDocumentation
  */
@@ -26208,6 +26226,10 @@ type TFeaturesManifest = Readonly<Record<string, new (namespace: string) => Feat
  *   need `document`. A class lists the namespaces it requires (`requires`).
  * - `causalBound`: the bound on causal chains fixed by the Manifest (D9).
  *   Default 50.
+ * - `onTrace`: technical sink of the kernel trace (O2), outside the
+ *   application transport. Default: `reportToConsole` in development
+ *   (`__DEV__`), which reports the failures no component receives; nothing in
+ *   production. `null` disables it.
  */
 type TApplicationOptions<M extends TFeaturesManifest = TFeaturesManifest> = {
     readonly features?: M;
@@ -26220,6 +26242,7 @@ type TApplicationOptions<M extends TFeaturesManifest = TFeaturesManifest> = {
     /** Serializable creation parameters of the adapters, by category (Manifest, 16.9). */
     readonly adapterOptions?: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
     readonly causalBound?: number;
+    readonly onTrace?: ((entry: TTraceEntry) => void) | null;
 };
 /** A built-in adapter class: a category, the namespaces it needs, and its description for the kernel. */
 type TAdapterClass = (new () => object) & {

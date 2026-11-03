@@ -22,7 +22,7 @@ declare const __DEV__: boolean;
  * Fallback: `true` when `__DEV__` is undefined (safe default — better to
  * surface errors than to hide them).
  */
-function isDev(): boolean {
+export function isDev(): boolean {
   try {
     return typeof __DEV__ !== "undefined" ? __DEV__ : true;
   } catch {

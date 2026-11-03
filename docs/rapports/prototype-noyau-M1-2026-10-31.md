@@ -243,7 +243,15 @@ Le constat (c) ci-dessus est arbitré par un amendement de la théorie (C.3, B.5
 - **Tests** : deux tests inversés (`host.test.ts`, `view.test.ts`) ; six ajoutés : slots sœurs dans les deux ordres de déclaration, parts descendantes d'une part en échec, écriture après échec sur la même part, adaptateur en échec au démarrage, part placée avant une sœur non matérialisée, cibles nommées de `prepareEffect`. Deux mutants vérifiés : l'arrêt global fait échouer les huit tests, la fermeture sans les descendants en fait échouer deux. Suite à 333 tests verts, `tsc` propre.
 - **Documentation** : `gardes.md`, `tracabilite.md`, guide pédagogique, specs `foundation`, `view`, `composer`, fiches d'adaptateurs.
 
-Restent ouverts, indépendamment de cet arbitrage : le signalement par défaut d'un bilan d'engagement en échec sans gestionnaire `$effects`, et la lisibilité de la trace, qui regroupe les entrées `effects` par propriétaire et masque l'ordre réel d'engagement.
+Restent ouverts, indépendamment de cet arbitrage : le signalement par défaut d'un bilan d'engagement en échec sans gestionnaire `$effects`, et la lisibilité de la trace, qui regroupe les entrées `effects` par propriétaire et masque l'ordre réel d'engagement (traités en section 3 terdecies).
+
+## 3 terdecies. Signalement des échecs et trace des engagements (3 novembre 2026)
+
+Les deux questions laissées ouvertes en 3 duodecies relèvent du code : la trace est technique, hors du transport applicatif, et O2 demande déjà de signaler au plus tôt une violation détectable. La théorie n'est pas modifiée.
+
+- **Trace des engagements (6.2)** : une entrée `effects` par liste engagée, et non plus une par propriétaire. Ses lignes suivent l'ordre réel d'engagement, sur lequel C.3 est défini ; chacune porte son propriétaire, son contexte causal, `admitted` (la ligne a été admise au propriétaire dans son résultat `$effects`) et, pour une ligne non tentée, `closedBy`, rang de la ligne en échec qui a fermé sa ressource. Le résultat `$effects` d'un propriétaire ne contient toujours que ses propres lignes.
+- **Signalement (6.1)** : option `onTrace` de `Root` et d'`Application`, puits technique qui reçoit chaque entrée à son écriture ; il n'admet rien, et une erreur qu'il lève est ignorée. Par défaut, en développement (`__DEV__`, `isDev()` exporté par `@bonsai/error`), une `Application` signale en console, par `reportToConsole`, les échecs que personne ne reçoit : traitement en échec après le démarrage (un démarrage en échec est levé par `start()`), effet en échec non admis dans un `$effects`, avec les effets laissés non tentés par lui, abandon à la borne causale (D9). Rien en production ; `onTrace: null` le désactive. Le harnais `drive()` le désactive par défaut.
+- **Tests** : 11 ajoutés (`tests/unit/kernel/report.test.ts`, `foundation.test.ts`). Deux mutants vérifiés : le regroupement par propriétaire et `admitted` toujours faux font chacun échouer les tests. Suite à 344 tests verts, `tsc` propre.
 
 ## 4. Hors périmètre
 
@@ -264,4 +272,4 @@ Intégration de l'Entity et validation de ses invariants (M2) ; parts, désignat
 11. ~~Lot M6.3b~~ : retrait de `Channel` et `Radio`, fait (section 3 nonies).
 12. Réécrire les specs et références qui décrivent encore `Channel`/`Radio`, et les exemples de `feature`, `entity`, `application`, `view`, `composer`, `foundation`.
 13. ~~Trancher les questions ouvertes~~ : (a) à (d), section 3 undecies ; conséquence de C.3 sur les slots sœurs arbitrée, section 3 duodecies.
-14. Signalement par défaut d'un échec d'engagement sans `$effects`, et trace des effets dans l'ordre réel d'engagement (questions distinctes, non arbitrées).
+14. ~~Signalement par défaut d'un échec d'engagement sans `$effects`, et trace des effets dans l'ordre réel d'engagement~~ : fait (section 3 terdecies).

@@ -244,13 +244,29 @@ export interface TUnitContext extends TReadContext {
 /** Outcome of the engagement of one effect (C.3). */
 export type TEffectOutcome = "engaged" | "failed" | "not-attempted";
 
+/** One line of an engagement report in the trace (C.3). */
+export type TEngagementLine = {
+  /** Name of the component that prepared the effect. */
+  readonly owner: string;
+  readonly label: string;
+  readonly outcome: TEffectOutcome;
+  readonly error?: unknown;
+  /** For a line not attempted: index, in the same report, of the failed line that closed its resource. */
+  readonly closedBy?: number;
+  /** Causal context of the treatment that prepared the effect. */
+  readonly context: TCausalContext;
+  /** The line was admitted to its owner within its `$effects` result (C.3). */
+  readonly admitted: boolean;
+};
+
 /** Kernel trace: technical, outside the application transport. */
 export type TTraceEntry =
   | { readonly type: "delivered"; readonly kind: "command" | "event" | "local"; readonly to: string; readonly name: string; readonly context: TCausalContext }
   | { readonly type: "unit-failed"; readonly owner: string; readonly context: TCausalContext; readonly error: unknown }
   | { readonly type: "delivery-abandoned"; readonly reason: string; readonly name: string; readonly context: TCausalContext }
   | { readonly type: "admission-abandoned"; readonly reason: string; readonly name: string }
-  | { readonly type: "effects"; readonly owner: string; readonly context: TCausalContext; readonly report: ReadonlyArray<{ readonly label: string; readonly outcome: TEffectOutcome; readonly error?: unknown }> }
+  /** One engagement list (C.3), lines in their real order of engagement, whatever their owners. */
+  | { readonly type: "effects"; readonly report: ReadonlyArray<TEngagementLine> }
   /** A unit, effects included, longer than the threshold (ADR-35, O2). */
   | { readonly type: "long-unit"; readonly owner: string; readonly context: TCausalContext; readonly durationMs: number }
   /** A portion returned to its container at the end of a part (6.5, T3), imputed to the container's owner. */
@@ -267,4 +283,11 @@ export interface TRootOptions {
   readonly document?: Document;
   /** Clock in milliseconds. Default: `performance.now()`. Injected by tests. */
   readonly now?: () => number;
+  /**
+   * Technical sink, outside the application transport (O2): receives every
+   * trace entry as it is written. It admits nothing and must not drive the
+   * root; an error it throws is ignored. `reportToConsole` is the default
+   * sink of an Application in development.
+   */
+  readonly onTrace?: (entry: TTraceEntry) => void;
 }

@@ -3,7 +3,7 @@
  *
  * Exports:
  * - `BonsaiError` and subclasses (ADR-05 taxonomy)
- * - `invariant()`, `hardInvariant()`, `warning()` (ADR-06 modes)
+ * - `invariant()`, `hardInvariant()`, `warning()`, `isDev()` (ADR-06 modes)
  *
  * @packageDocumentation
  */
@@ -28,4 +28,4 @@ export {
 } from "./bonsai-error.class";
 
 // ── Validation functions ────────────────────────────────────────
-export { invariant, hardInvariant, warning } from "./invariant";
+export { invariant, hardInvariant, warning, isDev } from "./invariant";

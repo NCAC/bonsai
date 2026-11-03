@@ -82,7 +82,7 @@ CartFeature ── emit cart:itemAdded ──► PromoFeature (listens: [cart])
 
 - Une réaction qui doit modifier un autre domaine passe par **son** Event, écouté par ce domaine.
 - Une lecture inter-domaines passe par une **Query** déclarée.
-- La profondeur d'une chaîne de réactions est bornée (`causalBound`, D9) : au-delà, le message n'est pas délivré et l'échec figure dans la trace.
+- La profondeur d'une chaîne de réactions est bornée (`causalBound`, D9) : au-delà, le message n'est pas délivré, l'échec figure dans la trace et, en développement, est signalé en console (§8.4).
 
 ## 5. Le Channel comme contrat
 
@@ -116,7 +116,7 @@ Le mot **Channel** désigne désormais uniquement le **contrat typé** d'une Fea
 | Command vers une cible inconnue ou un message non déclaré | Échec de l'unité (`UNKNOWN_TARGET`, `UNDECLARED_MESSAGE`) |
 | Event sans abonné | Silencieux : un fait sans observateur est valide |
 | Query vers une cible absente, non prête ou occupée | Erreur de transport qui fait échouer l'unité (G7), même interceptée |
-| Handler qui lève | L'unité échoue : mutations, émissions et Commands préparés sont annulés ; l'échec figure dans la trace |
+| Handler qui lève | L'unité échoue : mutations, émissions et Commands préparés sont annulés ; l'échec figure dans la trace et, en développement, est signalé en console (§8.4) |
 | Profondeur causale au-delà de la borne | Non délivré (D9) |
 
 ### 8.2 Ordre et isolation
@@ -129,7 +129,17 @@ Le mot **Channel** désigne désormais uniquement le **contrat typé** d'une Fea
 
 La clôture d'une part (View détruite par son Composer) retire logiquement ses abonnements dans l'unité ; le retrait physique suit la validation, et un Event déjà délivré en file n'est plus remis à un destinataire clos. `Application.stop()` ne retire aujourd'hui que les observateurs de l'hôte ([application.md](../3-couche-abstraite/application.md)).
 
-### 8.4 Non livré
+### 8.4 Trace et signalement
+
+La racine tient une **trace technique**, hors du transport applicatif : unités en échec, délivrances et admissions abandonnées, bilans d'engagement, unités longues (ADR-35). Un bilan d'engagement forme **une entrée par liste engagée**, ses lignes dans l'ordre réel d'engagement (C.3) : propriétaire, libellé, issue, contexte causal, `admitted` (la ligne a été admise au propriétaire dans son résultat `$effects`) et, pour une ligne non tentée, `closedBy`, rang de la ligne en échec qui a fermé sa ressource.
+
+L'option `onTrace` d'`Application` (et de `Root`) reçoit chaque entrée à son écriture. Elle n'admet rien ; une erreur qu'elle lève est ignorée. Par défaut, en développement, `reportToConsole` signale les échecs que personne ne reçoit : traitement en échec après le démarrage, effet en échec non admis dans un `$effects`, abandon à la borne causale (D9). Rien en production ; `onTrace: null` le désactive.
+
+```ts
+new Application({ features, foundation, document, onTrace: (entry) => devtools.push(entry) });
+```
+
+### 8.5 Non livré
 
 | Élément | Statut |
 | --- | --- |

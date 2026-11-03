@@ -143,6 +143,7 @@ export class Root {
   readonly #longMs: number;
   readonly #now: () => number;
   readonly #document: Document | null;
+  readonly #onTrace: ((entry: TTraceEntry) => void) | undefined;
   /** D18: right to command, by message context (the trigger of a treatment). */
   readonly #rights = new Map<string, boolean>();
   /** C.4: instrumented simulation in progress, if any. */
@@ -166,6 +167,7 @@ export class Root {
     this.#longMs = options.longUnitMs ?? 50;
     this.#now = options.now ?? (() => performance.now());
     this.#document = options.document ?? null;
+    this.#onTrace = options.onTrace;
     // The root's existence is provided by the host, not admitted (A0.d, 7.4).
     this.#record = {
       handle: Object.freeze({ occurrence: this.#nextId("c"), name: "root" }),
@@ -358,55 +360,72 @@ export class Root {
    */
   #engage(effects: readonly PreparedEffect[]): void {
     if (effects.length === 0) return;
-    const reports = new Map<ComponentRecord, Array<{ label: string; outcome: TEffectOutcome; error?: unknown }>>();
-    const closedParts = new Set<ResourceRecord>();
-    const closedKeys = new Map<ComponentRecord, Set<string>>();
-    const closed = (target: TEffectTarget): boolean => {
+    const lines: Array<{ effect: PreparedEffect; outcome: TEffectOutcome; error?: unknown; closedBy?: number }> = [];
+    // Closed resources, each with the index of the failed line that closed it.
+    const closedParts = new Map<ResourceRecord, number>();
+    const closedKeys = new Map<ComponentRecord, Map<string, number>>();
+    const closedBy = (target: TEffectTarget): number | undefined => {
       if ("part" in target) {
         for (let part: ResourceRecord | null = target.part; part !== null; part = part.container?.resource ?? null) {
-          if (closedParts.has(part)) return true;
+          const index = closedParts.get(part);
+          if (index !== undefined) return index;
         }
-        return false;
+        return undefined;
       }
-      return closedKeys.get(target.owner)?.has(target.key) ?? false;
+      return closedKeys.get(target.owner)?.get(target.key);
     };
-    const close = (target: TEffectTarget): void => {
+    const close = (target: TEffectTarget, index: number): void => {
       if ("part" in target) {
-        closedParts.add(target.part);
+        closedParts.set(target.part, index);
         return;
       }
-      const keys = closedKeys.get(target.owner) ?? new Set<string>();
-      keys.add(target.key);
+      const keys = closedKeys.get(target.owner) ?? new Map<string, number>();
+      keys.set(target.key, index);
       closedKeys.set(target.owner, keys);
     };
     for (const effect of effects) {
-      const list = reports.get(effect.owner) ?? [];
-      reports.set(effect.owner, list);
-      if (closed(effect.target)) {
-        list.push({ label: effect.label, outcome: "not-attempted" });
+      const by = closedBy(effect.target);
+      if (by !== undefined) {
+        lines.push({ effect, outcome: "not-attempted", closedBy: by });
         continue;
       }
       try {
         effect.run();
-        list.push({ label: effect.label, outcome: "engaged" });
+        lines.push({ effect, outcome: "engaged" });
       } catch (error) {
-        list.push({ label: effect.label, outcome: "failed", error });
-        close(effect.target);
+        close(effect.target, lines.length);
+        lines.push({ effect, outcome: "failed", error });
       }
     }
-    for (const [owner, report] of reports) {
-      const context = effects.find((e) => e.owner === owner)!.context;
-      this.#push({ type: "effects", owner: owner.handle.name, context, report });
-      // The engagement report is admitted as a correlated result when declared (C.3).
-      if (owner.status !== "destroyed" && owner.spec.locals?.["$effects"] !== undefined) {
-        const child = this.#child(context);
-        if (child.depth <= this.#bound) {
-          this.#queue.push({ kind: "local", target: owner, name: "$effects", payload: capture(report.map(({ label, outcome }) => ({ label, outcome }))), context: child });
-        } else {
-          this.#push({ type: "admission-abandoned", reason: "causal bound", name: "$effects" });
-        }
+    // The engagement report is admitted to each living owner that declares it, as a
+    // correlated result carrying its own lines only (C.3); the trace keeps the whole list.
+    const owners = [...new Set(lines.map((line) => line.effect.owner))];
+    const admitted = new Set<ComponentRecord>();
+    const abandoned: TTraceEntry[] = [];
+    for (const owner of owners) {
+      if (owner.status === "destroyed" || owner.spec.locals?.["$effects"] === undefined) continue;
+      const own = lines.filter((line) => line.effect.owner === owner);
+      const child = this.#child(own[0]!.effect.context);
+      if (child.depth > this.#bound) {
+        abandoned.push({ type: "admission-abandoned", reason: "causal bound", name: "$effects" });
+        continue;
       }
+      admitted.add(owner);
+      this.#queue.push({ kind: "local", target: owner, name: "$effects", payload: capture(own.map(({ effect, outcome }) => ({ label: effect.label, outcome }))), context: child });
     }
+    this.#push({
+      type: "effects",
+      report: lines.map(({ effect, outcome, error, closedBy: by }) => ({
+        owner: effect.owner.handle.name,
+        label: effect.label,
+        outcome,
+        ...(outcome === "failed" ? { error } : {}),
+        ...(by === undefined ? {} : { closedBy: by }),
+        context: effect.context,
+        admitted: admitted.has(effect.owner)
+      }))
+    });
+    for (const entry of abandoned) this.#push(entry);
   }
 
   /** Delivers deferred messages one unit at a time, never reentrantly (G5). */
@@ -1002,5 +1021,11 @@ export class Root {
 
   #push(entry: TTraceEntry): void {
     this.#trace.push(entry);
+    if (this.#onTrace === undefined) return;
+    try {
+      this.#onTrace(entry);
+    } catch {
+      // The sink is technical: its failure changes nothing in the model (O2).
+    }
   }
 }

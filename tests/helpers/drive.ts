@@ -40,6 +40,8 @@ export function drive(
     router?: boolean;
     adapters?: ConstructorParameters<typeof Application>[0] extends infer O ? (O extends { adapters?: infer A } ? A : never) : never;
     adapterOptions?: ConstructorParameters<typeof Application>[0] extends infer O ? (O extends { adapterOptions?: infer A } ? A : never) : never;
+    /** Technical sink of the trace; `null` by default, so that failures under test stay off the console. */
+    onTrace?: ((entry: TTraceEntry) => void) | null;
   } = {}
 ): TDrive {
   let probe!: TComponentHandle;
@@ -74,6 +76,7 @@ export function drive(
   const application = new Application({
     features,
     components: [...(options.components ?? []), probeSpec],
+    onTrace: options.onTrace ?? null,
     ...(options.causalBound === undefined ? {} : { causalBound: options.causalBound }),
     ...(options.foundation === undefined ? {} : { foundation: options.foundation }),
     ...(options.document === undefined ? {} : { document: options.document }),

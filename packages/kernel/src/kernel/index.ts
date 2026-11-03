@@ -5,6 +5,8 @@
 
 export { Root } from "./root";
 export { capture } from "./capture";
+export { reportToConsole } from "./report";
+export type { TTraceConsole } from "./report";
 export { TransportError, StartupError, InvariantError, ManifestError } from "./errors";
 export type { TTransportErrorCode } from "./errors";
 export type * from "./types";

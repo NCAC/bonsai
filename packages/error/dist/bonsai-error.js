@@ -1,7 +1,7 @@
 /**
  * @bonsai/error - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-09-24T20:04:50.168Z
+ * Date: 2026-11-03T09:33:31.145Z
  */
 /**
  * BonsaiError — base class for all structured framework errors.
@@ -209,4 +209,4 @@ function warning(condition, message) {
     }
 }
 
-export { BehaviorError, BonsaiError, BroadcastError, CommandError, DuplicateHandlerError, EntityReentrancyError, ListenerError, MutationError, NoHandlerError, RenderError, RequestError, hardInvariant, invariant, warning };
+export { BehaviorError, BonsaiError, BroadcastError, CommandError, DuplicateHandlerError, EntityReentrancyError, ListenerError, MutationError, NoHandlerError, RenderError, RequestError, hardInvariant, invariant, isDev, warning };

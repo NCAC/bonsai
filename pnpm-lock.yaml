@@ -198,6 +198,9 @@ importers:
 
   packages/application:
     dependencies:
+      '@bonsai/error':
+        specifier: workspace:^
+        version: link:../error
       '@bonsai/feature':
         specifier: workspace:^
         version: link:../feature

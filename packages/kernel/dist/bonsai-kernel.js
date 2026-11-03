@@ -1,7 +1,7 @@
 /**
  * @bonsai/kernel - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-02T17:20:21.968Z
+ * Date: 2026-11-03T08:44:09.915Z
  */
 import { Immer } from '@bonsai/immer';
 
@@ -179,7 +179,7 @@ function capture(value) {
  * Out of scope for M1: Entity integration (M2), structural parts and DOM
  * (M3–M4), closed-world qualification of host sources and D18 (M5).
  */
-var _Root_instances, _Root_id, _Root_bound, _Root_longMs, _Root_now, _Root_document, _Root_rights, _Root_simulating, _Root_registry, _Root_subscriptions, _Root_components, _Root_resources, _Root_queue, _Root_active, _Root_trace, _Root_counter, _Root_unit, _Root_draining, _Root_state, _Root_record, _Root_runUnit, _Root_checkInvariants, _Root_engage, _Root_drain, _Root_measure, _Root_deliver, _Root_abandon, _Root_unitContext, _Root_readContext, _Root_query, _Root_create, _Root_destroy, _Root_capture, _Root_origin, _Root_child, _Root_nextId, _Root_push;
+var _Root_instances, _Root_id, _Root_bound, _Root_longMs, _Root_now, _Root_document, _Root_onTrace, _Root_rights, _Root_simulating, _Root_registry, _Root_subscriptions, _Root_components, _Root_resources, _Root_queue, _Root_active, _Root_trace, _Root_counter, _Root_unit, _Root_draining, _Root_state, _Root_record, _Root_runUnit, _Root_checkInvariants, _Root_engage, _Root_drain, _Root_measure, _Root_deliver, _Root_abandon, _Root_unitContext, _Root_readContext, _Root_query, _Root_create, _Root_destroy, _Root_capture, _Root_origin, _Root_child, _Root_nextId, _Root_push;
 Immer.enablePatches();
 let rootCounter = 0;
 // ── Root ─────────────────────────────────────────────────────────────────────
@@ -191,6 +191,7 @@ class Root {
         _Root_longMs.set(this, void 0);
         _Root_now.set(this, void 0);
         _Root_document.set(this, void 0);
+        _Root_onTrace.set(this, void 0);
         /** D18: right to command, by message context (the trigger of a treatment). */
         _Root_rights.set(this, new Map());
         /** C.4: instrumented simulation in progress, if any. */
@@ -212,6 +213,7 @@ class Root {
         __classPrivateFieldSet(this, _Root_longMs, options.longUnitMs ?? 50, "f");
         __classPrivateFieldSet(this, _Root_now, options.now ?? (() => performance.now()), "f");
         __classPrivateFieldSet(this, _Root_document, options.document ?? null, "f");
+        __classPrivateFieldSet(this, _Root_onTrace, options.onTrace, "f");
         // The root's existence is provided by the host, not admitted (A0.d, 7.4).
         __classPrivateFieldSet(this, _Root_record, {
             handle: Object.freeze({ occurrence: __classPrivateFieldGet(this, _Root_instances, "m", _Root_nextId).call(this, "c"), name: "root" }),
@@ -330,7 +332,7 @@ class Root {
         __classPrivateFieldGet(this, _Root_instances, "m", _Root_drain).call(this);
     }
 }
-_Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMap(), _Root_now = new WeakMap(), _Root_document = new WeakMap(), _Root_rights = new WeakMap(), _Root_simulating = new WeakMap(), _Root_registry = new WeakMap(), _Root_subscriptions = new WeakMap(), _Root_components = new WeakMap(), _Root_resources = new WeakMap(), _Root_queue = new WeakMap(), _Root_active = new WeakMap(), _Root_trace = new WeakMap(), _Root_counter = new WeakMap(), _Root_unit = new WeakMap(), _Root_draining = new WeakMap(), _Root_state = new WeakMap(), _Root_record = new WeakMap(), _Root_instances = new WeakSet(), _Root_runUnit = function _Root_runUnit(owner, cause, body, right = false) {
+_Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMap(), _Root_now = new WeakMap(), _Root_document = new WeakMap(), _Root_onTrace = new WeakMap(), _Root_rights = new WeakMap(), _Root_simulating = new WeakMap(), _Root_registry = new WeakMap(), _Root_subscriptions = new WeakMap(), _Root_components = new WeakMap(), _Root_resources = new WeakMap(), _Root_queue = new WeakMap(), _Root_active = new WeakMap(), _Root_trace = new WeakMap(), _Root_counter = new WeakMap(), _Root_unit = new WeakMap(), _Root_draining = new WeakMap(), _Root_state = new WeakMap(), _Root_record = new WeakMap(), _Root_instances = new WeakSet(), _Root_runUnit = function _Root_runUnit(owner, cause, body, right = false) {
     const startedAt = __classPrivateFieldGet(this, _Root_now, "f").call(this);
     const unit = { open: true, staged: [], undo: [], effects: [], touched: new Set(), restitutions: [], right, poisoned: null };
     __classPrivateFieldSet(this, _Root_unit, unit, "f");
@@ -395,58 +397,76 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
 }, _Root_engage = function _Root_engage(effects) {
     if (effects.length === 0)
         return;
-    const reports = new Map();
-    const closedParts = new Set();
+    const lines = [];
+    // Closed resources, each with the index of the failed line that closed it.
+    const closedParts = new Map();
     const closedKeys = new Map();
-    const closed = (target) => {
+    const closedBy = (target) => {
         if ("part" in target) {
             for (let part = target.part; part !== null; part = part.container?.resource ?? null) {
-                if (closedParts.has(part))
-                    return true;
+                const index = closedParts.get(part);
+                if (index !== undefined)
+                    return index;
             }
-            return false;
+            return undefined;
         }
-        return closedKeys.get(target.owner)?.has(target.key) ?? false;
+        return closedKeys.get(target.owner)?.get(target.key);
     };
-    const close = (target) => {
+    const close = (target, index) => {
         if ("part" in target) {
-            closedParts.add(target.part);
+            closedParts.set(target.part, index);
             return;
         }
-        const keys = closedKeys.get(target.owner) ?? new Set();
-        keys.add(target.key);
+        const keys = closedKeys.get(target.owner) ?? new Map();
+        keys.set(target.key, index);
         closedKeys.set(target.owner, keys);
     };
     for (const effect of effects) {
-        const list = reports.get(effect.owner) ?? [];
-        reports.set(effect.owner, list);
-        if (closed(effect.target)) {
-            list.push({ label: effect.label, outcome: "not-attempted" });
+        const by = closedBy(effect.target);
+        if (by !== undefined) {
+            lines.push({ effect, outcome: "not-attempted", closedBy: by });
             continue;
         }
         try {
             effect.run();
-            list.push({ label: effect.label, outcome: "engaged" });
+            lines.push({ effect, outcome: "engaged" });
         }
         catch (error) {
-            list.push({ label: effect.label, outcome: "failed", error });
-            close(effect.target);
+            close(effect.target, lines.length);
+            lines.push({ effect, outcome: "failed", error });
         }
     }
-    for (const [owner, report] of reports) {
-        const context = effects.find((e) => e.owner === owner).context;
-        __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, { type: "effects", owner: owner.handle.name, context, report });
-        // The engagement report is admitted as a correlated result when declared (C.3).
-        if (owner.status !== "destroyed" && owner.spec.locals?.["$effects"] !== undefined) {
-            const child = __classPrivateFieldGet(this, _Root_instances, "m", _Root_child).call(this, context);
-            if (child.depth <= __classPrivateFieldGet(this, _Root_bound, "f")) {
-                __classPrivateFieldGet(this, _Root_queue, "f").push({ kind: "local", target: owner, name: "$effects", payload: capture(report.map(({ label, outcome }) => ({ label, outcome }))), context: child });
-            }
-            else {
-                __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, { type: "admission-abandoned", reason: "causal bound", name: "$effects" });
-            }
+    // The engagement report is admitted to each living owner that declares it, as a
+    // correlated result carrying its own lines only (C.3); the trace keeps the whole list.
+    const owners = [...new Set(lines.map((line) => line.effect.owner))];
+    const admitted = new Set();
+    const abandoned = [];
+    for (const owner of owners) {
+        if (owner.status === "destroyed" || owner.spec.locals?.["$effects"] === undefined)
+            continue;
+        const own = lines.filter((line) => line.effect.owner === owner);
+        const child = __classPrivateFieldGet(this, _Root_instances, "m", _Root_child).call(this, own[0].effect.context);
+        if (child.depth > __classPrivateFieldGet(this, _Root_bound, "f")) {
+            abandoned.push({ type: "admission-abandoned", reason: "causal bound", name: "$effects" });
+            continue;
         }
+        admitted.add(owner);
+        __classPrivateFieldGet(this, _Root_queue, "f").push({ kind: "local", target: owner, name: "$effects", payload: capture(own.map(({ effect, outcome }) => ({ label: effect.label, outcome }))), context: child });
     }
+    __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, {
+        type: "effects",
+        report: lines.map(({ effect, outcome, error, closedBy: by }) => ({
+            owner: effect.owner.handle.name,
+            label: effect.label,
+            outcome,
+            ...(outcome === "failed" ? { error } : {}),
+            ...(by === undefined ? {} : { closedBy: by }),
+            context: effect.context,
+            admitted: admitted.has(effect.owner)
+        }))
+    });
+    for (const entry of abandoned)
+        __classPrivateFieldGet(this, _Root_instances, "m", _Root_push).call(this, entry);
 }, _Root_drain = function _Root_drain() {
     if (__classPrivateFieldGet(this, _Root_draining, "f") || __classPrivateFieldGet(this, _Root_unit, "f") !== null || __classPrivateFieldGet(this, _Root_state, "f") !== "started")
         return;
@@ -1063,7 +1083,57 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
     return `${__classPrivateFieldGet(this, _Root_id, "f")}:${prefix}${__classPrivateFieldSet(this, _Root_counter, (_a = __classPrivateFieldGet(this, _Root_counter, "f"), ++_a), "f")}`;
 }, _Root_push = function _Root_push(entry) {
     __classPrivateFieldGet(this, _Root_trace, "f").push(entry);
+    if (__classPrivateFieldGet(this, _Root_onTrace, "f") === undefined)
+        return;
+    try {
+        __classPrivateFieldGet(this, _Root_onTrace, "f").call(this, entry);
+    }
+    catch {
+        // The sink is technical: its failure changes nothing in the model (O2).
+    }
 };
+
+/**
+ * Default technical sink of the trace (O2): reports on the console the failures
+ * that no component receives. Outside the application transport, it admits
+ * nothing.
+ *
+ * Reported:
+ * - a failed unit after startup (a failed startup is thrown by `start()`);
+ * - a failed effect whose owner does not receive it in an `$effects` result
+ *   (C.3), with the effects it left not attempted;
+ * - a message or an admission abandoned at the causal bound (D9).
+ */
+/** Name of the startup unit's owner: its failure is thrown, not reported. */
+const STARTUP_OWNER = "root";
+function reportToConsole(entry, output = console) {
+    switch (entry.type) {
+        case "unit-failed":
+            if (entry.owner === STARTUP_OWNER)
+                return;
+            output.error(`[Bonsai] a treatment of "${entry.owner}" failed and was rolled back (G7)`, entry.error);
+            return;
+        case "effects":
+            entry.report.forEach((line, index) => {
+                if (line.outcome !== "failed" || line.admitted)
+                    return;
+                const skipped = entry.report
+                    .filter((later) => later.closedBy === index)
+                    .map((later) => `"${later.label}" (${later.owner})`);
+                const suffix = skipped.length === 0 ? "" : `; not attempted because of it: ${skipped.join(", ")}`;
+                output.warn(`[Bonsai] effect "${line.label}" of "${line.owner}" failed (C.3)${suffix}`, line.error);
+            });
+            return;
+        case "delivery-abandoned":
+        case "admission-abandoned":
+            if (entry.reason !== "causal bound")
+                return;
+            output.warn(`[Bonsai] "${entry.name}" abandoned: causal bound reached (D9)`);
+            return;
+        default:
+            return;
+    }
+}
 
 /**
  * Describing a component to the kernel (migration lot M6.2).
@@ -1091,4 +1161,4 @@ function describeComponent(instance, options) {
     return describe.call(instance, options);
 }
 
-export { DESCRIBE, InvariantError, ManifestError, Root, StartupError, TransportError, capture, describeComponent };
+export { DESCRIBE, InvariantError, ManifestError, Root, StartupError, TransportError, capture, describeComponent, reportToConsole };

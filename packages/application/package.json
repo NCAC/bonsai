@@ -13,6 +13,7 @@
   },
   "src": "./src/bonsai-application.ts",
   "dependencies": {
+    "@bonsai/error": "workspace:^",
     "@bonsai/kernel": "workspace:^",
     "@bonsai/feature": "workspace:^",
     "@bonsai/foundation": "workspace:^",

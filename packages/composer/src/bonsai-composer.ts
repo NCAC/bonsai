@@ -25,7 +25,8 @@
  *   T7   — parts are disjoint
  *
  * Known limit (C.3): a View whose element could not be created is not yet
- * destroyed logically; the failure is reported in the kernel trace only.
+ * destroyed logically; the failure is reported in the kernel trace (and on
+ * the console in development, through `onTrace`).
  *
  * @packageDocumentation
  */
