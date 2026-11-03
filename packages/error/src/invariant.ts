@@ -11,23 +11,22 @@
 import { BonsaiError } from "./bonsai-error.class";
 
 /**
- * Declares the global `__DEV__` variable injected by the bundler.
- * Development: `true`. Production: `false` (tree-shaken).
- * Note: the current build does not define it yet (ADR-06).
+ * Compile-time constant replaced by the build (ADR-06): `true` in
+ * `core/dist/bonsai.js`, `false` in `core/dist/bonsai.prod.js`, where the
+ * development branches are dropped. Left free in the package bundles and in
+ * the sources run by the tests.
  */
 declare const __DEV__: boolean;
 
 /**
  * Returns `true` in development mode.
- * Fallback: `true` when `__DEV__` is undefined (safe default — better to
- * surface errors than to hide them).
+ * Fallback: `true` when `__DEV__` is not defined (safe default — better to
+ * surface errors than to hide them). `typeof` never throws on an undeclared
+ * identifier, and the expression folds to a constant once `__DEV__` is
+ * replaced.
  */
 export function isDev(): boolean {
-  try {
-    return typeof __DEV__ !== "undefined" ? __DEV__ : true;
-  } catch {
-    return true;
-  }
+  return typeof __DEV__ === "undefined" || __DEV__;
 }
 
 /**

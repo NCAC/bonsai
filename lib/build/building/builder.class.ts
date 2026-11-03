@@ -12,6 +12,7 @@ import nodeResolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import typescript from "rollup-plugin-typescript2";
 import { createDtsRollupConfig, postProcessDts } from "./dts-config";
+import { define } from "@build/plugins/rollup-plugin-define";
 
 /**
  * Classe principale pour le build des composants
@@ -323,50 +324,58 @@ export class Builder {
 
       await this.ensureOutputDirExists(framework.outJsFile);
 
-      // ── Passe 1 : JS — bundle ESM (ADR-29) ──────────────
-      const jsRollupConfig: RollupOptions = {
-        input: framework.srcFile,
-        output: {
-          file: framework.outJsFile,
-          format: "es",
-          sourcemap: false
-        },
-        plugins: [
-          nodeResolve({
-            extensions: [".ts", ".js", ".json"],
-            preferBuiltins: false
-          }),
-          commonjs(),
-          typescript({
-            tsconfig: join(this.pathManager.rootPath, "tsconfig.json"),
-            tsconfigOverride: {
-              compilerOptions: {
-                declaration: false,
-                target: "es2020",
-                module: "esnext"
+      // ── Passe 1 : JS — bundles ESM (ADR-29), development then production (ADR-06) ──
+      const prodJsFile = framework.outJsFile.replace(/\.js$/, ".prod.js");
+      for (const { dev, file } of [
+        { dev: true, file: framework.outJsFile },
+        { dev: false, file: prodJsFile }
+      ]) {
+        const jsRollupConfig: RollupOptions = {
+          input: framework.srcFile,
+          output: {
+            file,
+            format: "es",
+            sourcemap: false
+          },
+          plugins: [
+            nodeResolve({
+              extensions: [".ts", ".js", ".json"],
+              preferBuiltins: false
+            }),
+            commonjs(),
+            typescript({
+              tsconfig: join(this.pathManager.rootPath, "tsconfig.json"),
+              tsconfigOverride: {
+                compilerOptions: {
+                  declaration: false,
+                  target: "es2020",
+                  module: "esnext"
+                },
+                include: [`${framework.srcPath}/**/*`],
+                exclude: ["node_modules", "**/*.test.ts", "**/*.spec.ts"]
               },
-              include: [`${framework.srcPath}/**/*`],
-              exclude: ["node_modules", "**/*.test.ts", "**/*.spec.ts"]
-            },
-            clean: true
-          })
-        ],
-        // ADR-29 : TOUT inliner — zéro dépendance transitive
-        // valibot (Tier 1), immer (Tier 2), rxjs (Tier 3) + tous les @bonsai/*
-        external: [],
-        onwarn(warning, defaultHandler) {
-          if (warning.code === "CIRCULAR_DEPENDENCY") return;
-          defaultHandler(warning);
-        }
-      };
+              clean: true
+            }),
+            // ADR-06: `__DEV__` is a compile-time constant of each bundle.
+            define({ __DEV__: dev })
+          ],
+          // ADR-29 : TOUT inliner — zéro dépendance transitive
+          // valibot (Tier 1), immer (Tier 2), rxjs (Tier 3) + tous les @bonsai/*
+          external: [],
+          onwarn(warning, defaultHandler) {
+            if (warning.code === "CIRCULAR_DEPENDENCY") return;
+            defaultHandler(warning);
+          }
+        };
 
-      this.logger.info(
-        `Passe JS — Génération du bundle ESM pour ${frameworkName}...`
-      );
-      const jsBundle = await rollup(jsRollupConfig);
-      await jsBundle.write(jsRollupConfig.output as any);
-      await jsBundle.close();
-      this.logger.success(`Passe JS terminée — ${framework.outJsFile}`);
+        this.logger.info(
+          `Passe JS — Génération du bundle ESM ${dev ? "de développement" : "de production"} pour ${frameworkName}...`
+        );
+        const jsBundle = await rollup(jsRollupConfig);
+        await jsBundle.write(jsRollupConfig.output as any);
+        await jsBundle.close();
+        this.logger.success(`Passe JS terminée — ${file}`);
+      }
 
       // ── Passe 2 : DTS — bundle des déclarations TypeScript ──
       this.logger.info("Passe DTS — Bundling des déclarations TypeScript...");

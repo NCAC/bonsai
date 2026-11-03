@@ -22,7 +22,7 @@
 > | `warning()` sur handlers orphelins et messages sans handler | Non planifié par ADR-31 | §2.3, §3.6 |
 > | Test de taille de bundle confirmant l'élimination des assertions | Non planifié par ADR-31 | §3.7 |
 >
-> **Périmètre effectif livré** : garanties compile-time du pattern modulaire et du contrat Feature (ADR-14 → ADR-09), prouvées par `tests/types/` ; au bootstrap, `BonsaiNamespaceError` (Phases 0a et 0c), sentinel du constructeur inerte (I94), filets I82/I84 au `mount()` et `hardInvariant()` pour I96 ; helpers `invariant()`, `hardInvariant()` et `warning()` exportés par `@bonsai/error` avec la signature `(condition, message, invariantId, component?)` — `__DEV__` vaut `true` s'il n'est pas défini par le bundler.
+> **Périmètre effectif livré** : garanties compile-time du pattern modulaire et du contrat Feature (ADR-14 → ADR-09), prouvées par `tests/types/` ; au bootstrap, `BonsaiNamespaceError` (Phases 0a et 0c), sentinel du constructeur inerte (I94), filets I82/I84 au `mount()` et `hardInvariant()` pour I96 ; helpers `invariant()`, `hardInvariant()` et `warning()` exportés par `@bonsai/error` avec la signature `(condition, message, invariantId, component?)` — `__DEV__` est remplacé par la pipeline : `true` dans `core/dist/bonsai.js`, `false` dans `core/dist/bonsai.prod.js` (§3.1) ; libre, il vaut `true`.
 
 ## 1. Validation statique (compile-time)
 
@@ -145,8 +145,8 @@ aujourd'hui) :
 > Décision : [ADR-06](../../adr/ADR-06-modes-validation.md) — assertions conditionnelles
 > inspirées de React/Vue, éliminées du bundle de production.
 >
-> ⚠️ **Écart du livré** : le build ne définit pas `__DEV__`, donc `invariant()`
-> n'est **jamais** éliminé aujourd'hui (ADR-06).
+> **Livré** : la pipeline définit `__DEV__` et publie un bundle de production
+> où les branches de développement sont éliminées (ADR-06, §3.1).
 >
 > Les assertions vivent dans **`@bonsai/error`** (`packages/error/src/invariant.ts`).
 > Signature : `(condition, message, invariantId?, component?)` ; le message est
@@ -155,25 +155,27 @@ aujourd'hui) :
 ### 3.1 Constante globale `__DEV__`
 
 ```typescript
-// Definie par le bundler (Vite, Rollup, esbuild, webpack)
+// packages/error/src/invariant.ts
 declare const __DEV__: boolean;
-
-// Configuration bundler — Vite/Rollup/esbuild
-define: {
-  __DEV__: JSON.stringify(process.env.NODE_ENV !== 'production'),
+export function isDev(): boolean {
+  return typeof __DEV__ === "undefined" || __DEV__;
 }
 
-// En production, le bundler transforme :
-//   if (__DEV__ && !condition) { ... }
-// -> if (false && !condition) { ... }
-// -> dead code elimination -> supprime
+// La pipeline (lib/build/plugins/rollup-plugin-define.ts) remplace __DEV__
+// dans l'AST : `true` pour core/dist/bonsai.js, `false` pour
+// core/dist/bonsai.prod.js. Rollup replie alors la constante :
+//   if (isDev() && !condition) { ... }  ->  supprimé en production
 ```
 
-> **Filet reel** (`packages/error/src/invariant.ts`) : si `__DEV__` n'est pas
-> defini par le bundler (`typeof __DEV__ === "undefined"`), `isDev()` retourne
-> `true` par defaut — choix deliberement conservateur : mieux vaut montrer
-> une erreur qu'un état incoherent silencieux. Ce comportement n'etait pas
-> documente ici jusqu'a cette correction.
+| Bundle | `__DEV__` | Choisi par |
+| --- | --- | --- |
+| `core/dist/bonsai.js` | `true` | condition `default` |
+| `core/dist/bonsai.prod.js` | `false` | condition `production` de `exports` |
+| `packages/*/dist`, sources lancées par Jest | libre → `true` | — |
+
+> **Filet** : si `__DEV__` n'est pas remplacé (`typeof __DEV__ === "undefined"`),
+> `isDev()` retourne `true` — choix délibérément conservateur : mieux vaut
+> montrer une erreur qu'un état incohérent silencieux.
 
 ### 3.2 `invariant()` — assertion fatale, strippable en production
 
@@ -290,19 +292,21 @@ hardInvariant(
 
 Le pattern `if (__DEV__)` est le standard de l'industrie (React, Vue, Angular) pour garantir que le code de validation ne pese rien en production.
 
-**Prerequis bundler** :
+**Prérequis côté application** : `__DEV__` est déjà remplacé dans les bundles
+du framework ; le `define` du bundler applicatif ne s'y applique pas. Le
+bundle de production est choisi par la condition `production` de `exports` :
 
 | Bundler | Configuration |
 | --- | --- |
-| **Vite** | `define: { __DEV__: false }` (mode build) |
-| **Rollup** | `@rollup/plugin-replace: { __DEV__: 'false' }` |
-| **esbuild** | `--define:__DEV__=false` |
-| **webpack** | `DefinePlugin: { __DEV__: false }` |
+| **Vite** | aucune : condition `production` posée en build |
+| **webpack 5** | aucune : condition `production` posée en `mode: "production"` |
+| **esbuild** | `--conditions=production` |
+| **Rollup** | `nodeResolve({ exportConditions: ["production"] })` |
 
-**Validation** : ⏳ un test de taille du bundle confirmant l'elimination des
-assertions serait souhaitable, mais n'est **pas planifie** par ADR-31 (cf.
-bandeau de perimetre en tete de document) — aucun tel test n'existe
-aujourd'hui.
+**Validation** : `tests/integration/bundles-dev-prod.test.ts` vérifie qu'aucun
+bundle ne garde de `__DEV__` libre et que le sink console de la trace (O2)
+est absent du bundle de production. ⏳ Un test de taille du bundle reste non
+planifié par ADR-31.
 
 ---
 

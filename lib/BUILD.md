@@ -24,7 +24,7 @@ lib/build/
 │   ├── builder.class.ts         # Build par package : passe JS puis passe DTS
 │   └── dts-config.ts            # Configuration rollup-plugin-dts + post-traitement
 ├── cache/                   # PackageCache, LibraryCache
-├── plugins/                 # rollup-plugin-postprocess
+├── plugins/                 # rollup-plugin-postprocess, rollup-plugin-define (__DEV__, ADR-06)
 ├── utils/
 ├── monitoring/              # Outils de monitoring
 │   └── logger.class.ts          # Système de logs
@@ -130,7 +130,9 @@ async buildPackage(package: TPackage): Promise<void> {
 
 ### 3. Phase de bundling
 
-Génération du bundle framework final (`core/dist/bonsai.d.ts`) avec :
+Passe JS : deux bundles ESM du framework, `core/dist/bonsai.js` (développement) et `core/dist/bonsai.prod.js` (production). Le plugin `plugins/rollup-plugin-define.ts` remplace `__DEV__` dans l'AST (`true`, puis `false`) ; Rollup élimine ensuite les branches mortes (ADR-06). `core/package.json` les expose par les conditions `default` et `production` de `exports`.
+
+Passe DTS : génération du bundle de déclarations (`core/dist/bonsai.d.ts`) avec :
 
 - **`tsc --emitDeclarationOnly`** : un `.d.ts` par fichier source, dans `.dts-temp/`
 - **`rollup` + `rollup-plugin-dts`** : un seul `bonsai.d.ts` plat, `external: []` — tout inliné, aucune dépendance transitive (ADR-29)

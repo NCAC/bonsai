@@ -14516,19 +14516,6 @@ class BonsaiError extends Error {
  * @see ADR-06 — validation modes
  */
 /**
- * Returns `true` in development mode.
- * Fallback: `true` when `__DEV__` is undefined (safe default — better to
- * surface errors than to hide them).
- */
-function isDev() {
-    try {
-        return typeof __DEV__ !== "undefined" ? __DEV__ : true;
-    }
-    catch {
-        return true;
-    }
-}
-/**
  * NON-strippable assertion — kept in production.
  *
  * Use it for fatal structural errors detected at bootstrap (duplicate
@@ -16597,7 +16584,7 @@ class Application {
         __classPrivateFieldSet(this, _Application_manifest, options?.features ?? {}, "f");
         __classPrivateFieldSet(this, _Application_components, options?.components ?? [], "f");
         __classPrivateFieldSet(this, _Application_causalBound, options?.causalBound ?? 50, "f");
-        __classPrivateFieldSet(this, _Application_onTrace, options?.onTrace === undefined ? (isDev() ? (entry) => reportToConsole(entry) : null) : options.onTrace, "f");
+        __classPrivateFieldSet(this, _Application_onTrace, options?.onTrace === undefined ? ((entry) => reportToConsole(entry) ) : options.onTrace, "f");
         __classPrivateFieldSet(this, _Application_foundation, options?.foundation ?? null, "f");
         __classPrivateFieldSet(this, _Application_document, options?.document, "f");
         __classPrivateFieldSet(this, _Application_anchor, options?.anchor, "f");

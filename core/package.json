@@ -5,6 +5,13 @@
   "private": true,
   "main": "./dist/bonsai.js",
   "types": "./dist/bonsai.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/bonsai.d.ts",
+      "production": "./dist/bonsai.prod.js",
+      "default": "./dist/bonsai.js"
+    }
+  },
   "src": "./src/bonsai.ts",
   "dependencies": {
     "@bonsai/types": "workspace:^",

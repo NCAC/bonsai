@@ -1,7 +1,7 @@
 /**
  * @bonsai/error - Version 0.1.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-03T09:33:31.145Z
+ * Date: 2026-11-03T09:34:12.236Z
  */
 /**
  * BonsaiError — base class for all structured framework errors.
@@ -137,16 +137,13 @@ class BehaviorError extends BonsaiError {
  */
 /**
  * Returns `true` in development mode.
- * Fallback: `true` when `__DEV__` is undefined (safe default — better to
- * surface errors than to hide them).
+ * Fallback: `true` when `__DEV__` is not defined (safe default — better to
+ * surface errors than to hide them). `typeof` never throws on an undeclared
+ * identifier, and the expression folds to a constant once `__DEV__` is
+ * replaced.
  */
 function isDev() {
-    try {
-        return typeof __DEV__ !== "undefined" ? __DEV__ : true;
-    }
-    catch {
-        return true;
-    }
+    return typeof __DEV__ === "undefined" || __DEV__;
 }
 /**
  * Runtime assertion — throws a `BonsaiError` when the condition is false.
