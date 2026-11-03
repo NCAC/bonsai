@@ -33,7 +33,7 @@ Portent la logique métier et les données.
 | **Entity** | Structure de données encapsulée — state, mutations, query | [entity.md](../3-couche-abstraite/entity.md) |
 | **Channel** | Contrat typé d'une Feature (commands, events, queries) ; plus une classe d'exécution | [communication.md](communication.md) §5 |
 | **Router** | Spécialisation Feature pour la navigation (namespace réservé `router`) | [router.md](../3-couche-abstraite/router.md) |
-| **Root** | Noyau : racine unique par Application, unités de validation, file différée, trace (a remplacé Radio) | [communication.md](communication.md) §6 |
+| **Root** | Noyau : racine unique par Application, unités de validation, file différée, trace | [communication.md](communication.md) §6 |
 
 ### Couche concrète (4 composants — éphémère)
 

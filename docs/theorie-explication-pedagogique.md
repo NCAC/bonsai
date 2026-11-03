@@ -46,7 +46,7 @@ Avant de parler de règles, il faut savoir **de quoi** elles parlent. Bonsai dis
 - **L'infrastructure de communication**, c'est le service postal : elle achemine les messages entre composants. Elle ne fait pas partie du modèle non plus : elle n'est propriétaire de rien et ne prend part à aucune conversation.
 - **Les systèmes extérieurs** sont les services avec lesquels l'application échange des informations : une API de paiement, un serveur de données. Ils ne fournissent pas à l'application ses conditions d'existence, comme l'hôte, et ne transportent pas ses messages, comme l'infrastructure de communication.
 
-**Attention : l'infrastructure de communication n'est pas Radio.** Le nom est volontairement celui d'un ensemble : c'est **toute la logique de communication qui n'appartient pas à l'API publique** : Radio, qui en est la pièce centrale, mais aussi la tuyauterie interne des classes de base, celle qui se cache derrière `trigger()`, `query()`, `emit()` ou l'abonnement aux Events. Quand une View écrit `this.trigger("cart:addItem", …)`, elle ne voit jamais Radio : c'est la classe de base `View`, fournie par Bonsai, qui prend le message en charge, y attache son contexte causal et le fait acheminer. Cette tuyauterie fait partie de l'infrastructure de communication.
+**Attention : l'infrastructure de communication n'est pas la seule racine du noyau (`Root`).** Le nom est volontairement celui d'un ensemble : c'est **toute la logique de communication qui n'appartient pas à l'API publique** : la racine du noyau, qui en est la pièce centrale, mais aussi la tuyauterie interne des classes de base, celle qui se cache derrière `trigger()`, `query()`, `emit()` ou l'abonnement aux Events. Quand une View écrit `this.trigger("cart:addItem", …)`, elle ne voit jamais la racine du noyau : c'est la classe de base `View`, fournie par Bonsai, qui prend le message en charge, y attache son contexte causal et le fait acheminer. Cette tuyauterie fait partie de l'infrastructure de communication.
 
 La frontière est simple : **ce que le développeur écrit appartient au modèle ; ce que Bonsai fait pour transporter ses messages appartient à l'infrastructure de communication.** Le développeur ne peut ni la contourner ni la modifier, et c'est ce qui lui permet de tenir ses garanties.
 
@@ -559,7 +559,7 @@ Les **gardes** sont les mécanismes qui détectent ou empêchent une violation d
 
 ### Les quatre niveaux de garde, du meilleur au moins bon
 
-1. **Par construction.** La violation est impossible à écrire, parce que l'outil n'existe pas. Exemple : Radio n'est pas exporté par `@bonsai/core`, donc aucun composant ne peut ouvrir un Channel à la place de son propriétaire (A3.b).
+1. **Par construction.** La violation est impossible à écrire, parce que l'outil n'existe pas. Exemple : la racine du noyau (`Root`) n'est pas exportée par `@bonsai/core`, donc aucun composant ne peut traiter ou émettre sur un Channel à la place de son propriétaire (A3.b).
 2. **Avant l'exécution (statique).** TypeScript, ou à défaut une règle de lint, refuse le code. Exemple : une View déclare les Commands qu'elle peut adresser ; en adresser une autre est une erreur de type.
 3. **Au démarrage.** L'application refuse de se lancer. Exemple : une référence à un namespace inexistant est détectée au bootstrap.
 4. **À l'exécution.** Une erreur est levée au moment de la violation. Exemple : une Query vers un composant dont un traitement est en cours est refusée avec une erreur (G5).
@@ -570,7 +570,7 @@ Les **gardes** sont les mécanismes qui détectent ou empêchent une violation d
 
 | Garde | Niveau | Règle protégée |
 | --- | --- | --- |
-| Radio et Channel non exportés | construction | A3.b, A3.e : seul le propriétaire d'un Channel le désigne, y traite et y émet |
+| Racine du noyau non exportée, pas de constructeur de Channel | construction | A3.b, A3.e : seul le propriétaire d'un Channel le désigne, y traite et y émet |
 | `emit` absent du type de la View | compilation | D6 et A3.e : sans Channel, une View n'a rien sur quoi émettre |
 | Handlers manquants détectés par `implements` | compilation | D16 : un traitement par message ou fait déclaré, et aucun autre |
 | Namespaces vérifiés au bootstrap | démarrage | A2.a, A2.d et D1 : les identités sont attribuées à partir du manifest |

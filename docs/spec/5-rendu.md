@@ -1,6 +1,6 @@
 # Rendu — PDR, compilateur Pug, ProjectionList
 
-> 🗑️ **`Channel` (classe) et `Radio` sont retirés (lot M6.3b, 1er novembre 2026)**. Les passages qui les décrivent sont historiques ; voir [communication.md](./2-architecture/communication.md).
+> 🗑️ **La classe `Channel` est retirée (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau (`Root`, `@bonsai/kernel`). Les passages qui décrivent la classe sont historiques ; voir [communication.md](./2-architecture/communication.md).
 
 
 > ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../theorie.md) prévaut ([règle de confiance](../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
@@ -1121,13 +1121,13 @@ ul.Cart-items
 ### 7.4 Types TypeScript
 
 > ⚠️ **Nom réel et faisabilité structurelle** : le type livré s'appelle
-> `TAnyEventPayload` (`packages/event/src/channel.class.ts`), pas
+> `TAnyEventPayload` (`packages/kernel/src/channel-types.ts`), pas
 > `TChannelAnyPayload` — et son champ `changes` est le **payload de l'Event
 > granulaire tel quel**, pas des « clés changées » (cf.
 > [communication.md §7](2-architecture/communication.md), corrigé). Par
-> ailleurs, `Channel<TDef>` (`packages/event/src/channel.class.ts`) n'a ni
-> `.namespace` (le champ s'appelle `.name`) ni `.state` — **le Channel ne
-> connaît pas l'Entity** (I6, I80). `NamespacedData` telle qu'esquissée
+> ailleurs, un Channel n'est qu'un contrat typé : son token (`TChannelToken`)
+> ne porte que le `namespace` et la liste des Events, pas de `.state` — **le
+> Channel ne connaît pas l'Entity** (I6, I80). `NamespacedData` telle qu'esquissée
 > ci-dessous n'est donc pas seulement non livrée : sa lecture `C['state']`
 > est **structurellement impossible** avec l'encapsulation actuelle sans
 > changer où vit la référence au state (cf. la question ouverte

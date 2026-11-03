@@ -39,13 +39,14 @@ la causalité métier n'y transite pas (I13).
 **Chorégraphie pure** : pas de Feature orchestratrice. Chaque Feature réagit de
 manière autonome aux Events ; les metas (ADR-04) rendent la chaîne causale traçable.
 
-**Radio est interne** : aucun code applicatif n'y accède (`@bonsai/core` ne
+**L'acheminement est interne** : la racine du noyau (`Root`, `@bonsai/kernel`)
+transporte les messages ; aucun code applicatif n'y accède (`@bonsai/core` ne
 l'exporte pas, I15). Toute interaction passe par une déclaration (I14) ; un accès
 non déclaré est une erreur (I16).
 
 ## Alternatives rejetées
 
-- **Radio public** (`Radio.channel('cart')` depuis n'importe où) — couplages cachés, invariants non vérifiables à la compilation.
+- **Bus public** (accès à n'importe quel Channel depuis n'importe où) — couplages cachés, invariants non vérifiables à la compilation.
 - **`trigger()` unique pour Commands et Events** — confond intention et fait ; empêche la règle « seule la Feature propriétaire diffuse ».
 - **Feature orchestratrice (ProcessFeature)** — sous-type privilégié, couplage centralisé.
 - **Typologie de Features (Domain / Integration / UI)** — aucune différence structurelle réelle, rigidité inutile.

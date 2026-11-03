@@ -74,7 +74,7 @@ Contraintes du registry :
 - `collect()` rend un instantané immuable et **verrouille** le registry ; un enregistrement après `collect()` est une erreur en mode strict, ignoré sinon ;
 - déclarer deux fois le même namespace est une erreur (I21) ;
 - `reset()` n'existe que pour les tests ;
-- c'est un singleton runtime (le singleton technique `Radio` est retiré : la racine est propre à chaque Application).
+- c'est un singleton runtime, contrairement à la racine du noyau, propre à chaque Application.
 
 > **Point ouvert** (ADR-27) : un manifest alimenté au runtime ne bénéficie plus
 > de `satisfies StrictManifest` pour les modules chargés tard ; seul le filet

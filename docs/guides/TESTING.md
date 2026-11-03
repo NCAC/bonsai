@@ -4,7 +4,7 @@
 > séparées :
 >
 > - **§1–§8 remaniés : la pratique réellement livrée**, normative — Jest,
->   `tests/unit/strate-N`, `tests/types`, la gate E2E, la traçabilité
+>   `tests/unit/{kernel,domain}`, `tests/types`, la gate E2E, la traçabilité
 >   ADR/invariants. C'est ce qu'un contributeur doit suivre aujourd'hui.
 > - **§10 (ancien §2/§7) : `@bonsai/testing`, un package qui n'existe pas** et
 >   qui ne correspond à **aucune** décision actée (aucun ADR ne le spécifie).
@@ -23,7 +23,7 @@
 | Champ | Valeur |
 | ----- | ------ |
 | **Statut** | 🟢 Normatif pour §1–§9 (pratique Jest livrée) ; §10 explicitement ⏳ cible |
-| **Mis à jour** | 2026-09-25 |
+| **Mis à jour** | 2026-11-02 |
 | **ADR source** | [ADR-32](../adr/ADR-32-tests-preuve-architecture.md) (tests = preuve d'invariant, statut `🔵 Tested`) |
 
 ---
@@ -52,10 +52,10 @@ Chaque composant Bonsai est **testable en isolation** grâce à l'architecture d
 | Composant | Dépendances | Comment on le teste aujourd'hui |
 | --- | --- | --- |
 | **Entity** | Aucune (Immer interne) | Instanciation directe (`new CartEntity()`), `mutate()`, `get query()` |
-| **Feature** | Entity, `Radio` (Channel) | `Radio.reset()` + `new FeatureClass(namespace)` + `.bootstrap()` ; assertions via `Radio.me().channel(ns)` |
-| **Channel** | `Radio` (interne) | `tests/unit/channel.class.test.ts`, `tests/unit/radio.singleton.test.ts` — rarement testé depuis le code applicatif |
-| **View** | DOM (jsdom), `Radio` | `@jest-environment jsdom` en tête de fichier, DOM construit via `document.body.innerHTML`, `view.mount(selector)` |
-| **Composer / Foundation** | DOM, Channels, Views | Même approche jsdom, `tests/unit/strate-0/composer.basic.test.ts` / `foundation.basic.test.ts` |
+| **Feature** | Entity, racine du noyau (`Root`) | `drive(features)` (`tests/helpers/drive.ts`) démarre une vraie `Application` ; `d.send()` adresse une Command, `d.ask()` pose une Query, `d.received` liste les Events reçus |
+| **Noyau (`Root`)** | Aucune | `tests/unit/kernel/*.test.ts` — interne, jamais manipulé par le code applicatif (I15) |
+| **View** | DOM (jsdom), Composer, Foundation | `@jest-environment jsdom` en tête de fichier ; `drive(features, { foundation, document })` monte la Foundation, ses Composers et leurs Views |
+| **Composer / Foundation** | DOM, Features, Views | Même approche jsdom, `tests/unit/domain/composer.test.ts` / `foundation.test.ts` |
 | **Intégration multi-composants** | Tout | `tests/integration/`, gate E2E `tests/e2e/strate-0.cart-round-trip.test.ts` |
 
 ### Écosystème réel
@@ -72,29 +72,32 @@ Chaque composant Bonsai est **testable en isolation** grâce à l'architecture d
 ```text
 tests/
 ├── unit/
-│   ├── strate-0/                    # un fichier par composant, socle strate 0
-│   │   ├── entity.basic.test.ts
-│   │   ├── feature.basic.test.ts
-│   │   ├── feature.ctor-inert.test.ts
-│   │   ├── channel.basic.test.ts
-│   │   ├── radio.singleton.test.ts
-│   │   ├── view.basic.test.ts
-│   │   ├── composer.basic.test.ts
-│   │   ├── foundation.basic.test.ts
-│   │   ├── application.basic.test.ts
-│   │   └── strate-0.regression.test.ts   # suite de non-régression agrégée
-│   ├── strate-1/                    # sophistication métier (patches, ré-entrance)
-│   │   ├── entity.patches.test.ts
-│   │   ├── entity.reentrance.test.ts
-│   │   └── feature.entity-handlers.test.ts
-│   ├── channel.class.test.ts        # tests hors strate (historiques)
-│   └── radio.singleton.test.ts
+│   ├── kernel/                      # noyau d'exécution (Root, @bonsai/kernel)
+│   │   ├── root.test.ts
+│   │   ├── entity.test.ts
+│   │   ├── host.test.ts
+│   │   ├── permissions.test.ts
+│   │   └── structure.test.ts
+│   ├── domain/                      # classes de base branchées sur le noyau
+│   │   ├── application.test.ts
+│   │   ├── entity.test.ts
+│   │   ├── feature.test.ts
+│   │   ├── view.test.ts
+│   │   ├── composer.test.ts
+│   │   ├── foundation.test.ts
+│   │   ├── router.test.ts
+│   │   └── cart-journey.test.ts
+│   └── strate-0/
+│       └── strate-0.regression.test.ts   # suite de non-régression agrégée
 ├── integration/
 │   └── bonsai-core-rxjs.test.ts
 ├── e2e/
-│   └── strate-0.cart-round-trip.test.ts   # GATE strate 0 — ne pas casser
+│   ├── strate-0.cart-round-trip.test.ts   # GATE strate 0 — ne pas casser
+│   └── navigation-round-trip.test.ts
 ├── types/
 │   └── strate-0/                    # tests compile-time (@ts-expect-error)
+│       ├── capabilities.types.test.ts
+│       ├── contract-callbacks.types.test.ts
 │       ├── encapsulation.types.test.ts
 │       ├── feature-callbacks.types.test.ts
 │       ├── namespace-manifest.types.test.ts
@@ -102,6 +105,7 @@ tests/
 ├── fixtures/
 │   └── cart-feature.fixture.ts      # CartEntity/CartFeature/CartView/Composer/Foundation partagés
 ├── helpers/
+│   ├── drive.ts                     # sonde de la racine : send / ask / received / failures
 │   ├── entity-of.ts                 # accès de test à Feature#entity (protected, I6)
 │   ├── create-test-app.ts
 │   └── dom-setup.ts
@@ -186,131 +190,127 @@ describe("CartEntity", () => {
 
 ## 4. Test d'une Feature
 
-Aucun helper `createTestFeature()` n'existe. La pratique réelle instancie la
-Feature directement, contre un `Radio` réinitialisé à chaque test :
+Aucun helper `createTestFeature()` n'existe. La pratique réelle démarre une
+vraie `Application` sur le manifest des Features à tester, avec `drive()`
+(`tests/helpers/drive.ts`). Le helper ajoute à la racine du noyau une **sonde**,
+composant d'interface qui adresse des Commands et pose des Queries comme le
+ferait un clic (faits indépendants, A5.b). Chaque appel à `drive()` crée sa
+propre racine : rien ne fuit d'un test à l'autre.
 
 ```typescript
-import { describe, it, expect, beforeEach, jest } from "@jest/globals";
-import { Feature, type TFeatureCallbacks } from "@bonsai/feature";
+import { describe, it, expect } from "@jest/globals";
+import { Feature, type TFeatureCallbacks, type TFeatureContext } from "@bonsai/feature";
 import { Entity } from "@bonsai/entity";
-import { Radio, type TChannelToken } from "@bonsai/event";
-import { entityOf } from "../../helpers/entity-of"; // Feature#entity est protected (I6)
+import type { TChannelToken } from "@bonsai/kernel";
+import { drive } from "../../helpers/drive";
 
-class CartEntity extends Entity<{ items: unknown[]; total: number }> {
-  protected defineInitialState() {
+type TCartState = { items: { productId: string; price: number }[]; total: number };
+
+class CartEntity extends Entity<TCartState> {
+  protected defineInitialState(): TCartState {
     return { items: [], total: 0 };
-  }
-  get query() {
-    return { getTotal: () => this.state.total };
   }
 }
 
 type TCartDef = {
   commands: { addItem: { productId: string; price: number } };
   events: { itemAdded: { productId: string } };
-  requests: {};
+  queries: { total: { params: null; result: number } };
 };
 
 const cartListens = [] as const;
 
 class CartFeature
   extends Feature<CartEntity, TCartDef, "cart">
-  implements TFeatureCallbacks<TCartDef, typeof cartListens>
+  implements TFeatureCallbacks<TCartDef, typeof cartListens, CartEntity>
 {
-  static readonly channel: TChannelToken<TCartDef, "cart"> = { namespace: "cart" };
+  static readonly channel: TChannelToken<TCartDef, "cart"> = { namespace: "cart", events: ["itemAdded"] };
   get listens() { return cartListens; }
   get queries() { return [] as const; }
   protected get Entity() { return CartEntity; }
 
-  onAddItemCommand(payload: { productId: string; price: number }): void {
-    this.entity.mutate("addItem", (draft) => {
+  onAddItemCommand(payload: TCartDef["commands"]["addItem"], ctx: TFeatureContext<TCartDef, CartEntity>): void {
+    ctx.mutate("addItem", (draft) => {
       draft.items.push(payload);
       draft.total += payload.price;
     });
-    this.emit("itemAdded", { productId: payload.productId });
+    ctx.emit("itemAdded", { productId: payload.productId });
+  }
+
+  onTotalQuery(): number {
+    return this.entity.state.total;
   }
 }
 
 describe("CartFeature", () => {
-  beforeEach(() => {
-    Radio.reset(); // chaque test repart d'un Radio vierge — pas de fuite entre tests
-  });
-
   it("émet itemAdded quand addItem est traité", () => {
-    const feature = new CartFeature("cart");
-    feature.bootstrap();
-    const listener = jest.fn();
-    Radio.me().channel("cart").listen("itemAdded", listener);
+    const d = drive({ cart: CartFeature }, { listen: [{ namespace: "cart", event: "itemAdded" }] });
 
-    Radio.me().channel("cart").trigger("addItem", { productId: "1", price: 10 });
+    d.send("cart", "addItem", { productId: "1", price: 10 });
 
-    expect(listener).toHaveBeenCalledWith({ productId: "1" });
-    expect(entityOf(feature).query.getTotal()).toBe(10);
+    expect(d.received).toEqual([{ namespace: "cart", event: "itemAdded", payload: { productId: "1" } }]);
+    expect(d.ask<number>("cart", "total", null)).toBe(10);
+    expect(d.failures()).toEqual([]);
   });
 });
 ```
 
-> `Feature#entity` est `protected` (I6) — un test qui doit observer l'état
-> après un Command passe par `entityOf(feature)` (`tests/helpers/entity-of.ts`),
-> un cast structurel explicite réservé à `tests/`, jamais utilisé en dehors.
+> L'état de l'Entity n'est lisible que **pendant** un traitement (I6) : un
+> test l'observe en posant une Query (`d.ask()`), jamais en lisant
+> `feature.entity`. `d.failures()` liste les unités échouées (et donc
+> annulées) : un test qui attend un refus l'y cherche.
 
 ---
 
 ## 5. Test d'une View
 
 Le DOM est activé **par fichier** via `/** @jest-environment jsdom */` (le
-`testEnvironment` par défaut de `jest.config.ts` est `"node"`) :
+`testEnvironment` par défaut de `jest.config.ts` est `"node"`). Une View ne se
+monte jamais seule : `drive()` démarre l'Application avec une Foundation, qui
+monte ses Composers, qui montent leurs Views. Le test agit ensuite sur le DOM
+et observe le domaine par des Queries :
 
 ```typescript
 /**
  * @jest-environment jsdom
  */
-import { describe, it, expect, beforeEach, jest } from "@jest/globals";
-import { Radio } from "@bonsai/event";
-import { CartView } from "../../fixtures/cart-feature.fixture";
-
-function setupDOM(): void {
-  document.body.innerHTML = `
-    <div data-view="cart">
-      <span data-ui="itemCount">0</span>
-      <button data-ui="addButton">Add</button>
-    </div>
-  `;
-}
+import { describe, it, expect, beforeEach } from "@jest/globals";
+import { drive } from "../../helpers/drive";
+import { resetDOM } from "../../helpers/dom-setup";
+import { CartFeature, AppFoundation } from "../../fixtures/cart-feature.fixture";
 
 describe("CartView", () => {
   beforeEach(() => {
-    Radio.reset();
-    setupDOM();
+    resetDOM();
+    document.body.innerHTML = `<main data-region="main"></main>`;
   });
 
-  it("déclenche cart:addItem au clic sur addButton", () => {
-    Radio.me().channel("cart"); // Channel doit exister avant mount() en pratique
-    const view = new CartView();
-    view.mount("[data-view='cart']");
+  it("adresse cart:addItem au clic sur addButton", () => {
+    const d = drive({ cart: CartFeature }, { foundation: AppFoundation, document });
 
-    const trigger = jest.spyOn(
-      Radio.me().channel("cart"),
-      "trigger" as never
-    );
     (document.querySelector("[data-ui='addButton']") as HTMLButtonElement).click();
 
-    expect(trigger).toHaveBeenCalled();
+    expect(d.ask<number>("cart", "getItemCount", null)).toBe(1);
+    expect(document.querySelector("[data-ui='itemCount']")!.textContent).toBe("1");
+    expect(d.failures()).toEqual([]);
   });
 });
 ```
 
-> Pas de `userEvent.click(...)` ni de `createTestView()` — `element.click()`
+> Pas de `userEvent.click(...)` ni de `createTestView()` : `element.click()`
 > et les méthodes DOM natives suffisent, jsdom les implémente directement.
+> La fixture partagée (`tests/fixtures/cart-feature.fixture.ts`) est celle de
+> la gate E2E ; `tests/unit/domain/view.test.ts` montre une View déclarée dans
+> le fichier de test lui-même.
 
 ---
 
 ## 6. Tests d'intégration et gate E2E
 
-`tests/integration/` couvre les scénarios cross-package (ex. `@bonsai/rxjs`
-au cœur du Channel). La **gate strate 0** est
+`tests/integration/` couvre les scénarios cross-package (ex. les bibliothèques
+tierces ré-exportées par `@bonsai/core`). La **gate strate 0** est
 `tests/e2e/strate-0.cart-round-trip.test.ts` : elle traverse les six
-composants (Entity, Feature, Channel, View, Composer, Foundation) sans mock,
+composants (Entity, Feature, View, Composer, Foundation, Application) sans mock,
 avec un vrai DOM jsdom, via la fixture partagée `tests/fixtures/cart-feature.fixture.ts`.
 **Ne pas la casser** — c'est le seul test qui prouve que l'assemblage complet
 fonctionne de bout en bout.
@@ -325,7 +325,7 @@ fichiers `tests/` internes au projet, pas un package publié.
 
 `tests/types/strate-0/*.types.test.ts` contient des assertions `@ts-expect-error`
 qui prouvent qu'une violation de contrat **ne compile pas** (ex. accéder à
-`Radio`/`Channel` depuis `@bonsai/core`, omettre un handler requis par
+`Root` depuis `@bonsai/core`, omettre un handler requis par
 `implements TFeatureCallbacks`). Ces fichiers ont l'extension `.test.ts` et
 sont **listés par Jest**, mais Jest (`ts-jest`, `isolatedModules: true`) ne
 type-check pas leur contenu — un `@ts-expect-error` mal formé ou devenu inutile
@@ -351,8 +351,8 @@ pnpm tsc:check:tests   # = tsc --noEmit -p tsconfig.test.json
 | Pattern | Raison |
 | --- | --- |
 | ✅ Un `describe` par composant/invariant, citant l'invariant prouvé en commentaire d'en-tête | ADR-32 — un test documente l'invariant qu'il prouve |
-| ✅ `Radio.reset()` dans `beforeEach` pour les tests Feature/View/Composer | Isole chaque test (Radio est un singleton) |
-| ✅ `entityOf(feature)` pour lire l'Entity depuis un test (jamais `feature.entity` — `protected`) | I6 |
+| ✅ Un `drive()` par test pour les tests Feature/View/Composer | Chaque appel crée sa propre racine du noyau : aucune fuite entre tests |
+| ✅ Observer l'état par une Query (`d.ask()`), jamais par `feature.entity` | I6 — l'état n'est lisible que pendant un traitement |
 | ✅ `@jest-environment jsdom` uniquement sur les fichiers qui en ont besoin | `testEnvironment: "node"` par défaut — coût jsdom évité ailleurs |
 | ✅ Fixtures partagées (`tests/fixtures/`) pour les mini-domaines réutilisés (Cart) | DRY, cohérence avec la gate E2E |
 
@@ -361,9 +361,9 @@ pnpm tsc:check:tests   # = tsc --noEmit -p tsconfig.test.json
 | Anti-pattern | Pourquoi | Alternative |
 | --- | --- | --- |
 | ❌ Croire que `pnpm test` type-check `tests/types/` | `ts-jest` tourne en `isolatedModules: true` — aucun type-check | `pnpm tsc:check:tests` (§7) |
-| ❌ Mocker `Radio` avec un objet fait main | Radio est un singleton simple à réinitialiser | `Radio.reset()` + `Radio.me()` réels |
-| ❌ Accéder à `feature.entity` depuis un test | `protected` (I6) — ne compile pas | `entityOf(feature)` (`tests/helpers/entity-of.ts`) |
-| ❌ Référencer `createTestFeature`/`createTestView`/`MockChannel`/`@bonsai/testing` | N'existe pas dans le code livré | Instanciation directe + `Radio.reset()` (§3–§5) |
+| ❌ Mocker la racine du noyau avec un objet fait main | Le test ne prouverait plus les garanties du noyau (unités, file, annulation) | `drive()` et une vraie `Application` (§4–§5) |
+| ❌ Accéder à `feature.entity` depuis un test | `protected` (I6) — ne compile pas, et l'état est refusé hors traitement | Une Query via `d.ask()` |
+| ❌ Référencer `createTestFeature`/`createTestView`/`MockChannel`/`@bonsai/testing` | N'existe pas dans le code livré | `drive()` (§4–§5) |
 | ❌ Tests de View sans `@jest-environment jsdom` | `document` est `undefined` en environnement `node` | Ajouter le docblock en tête de fichier |
 
 ---
@@ -384,9 +384,9 @@ pnpm tsc:check:tests   # = tsc --noEmit -p tsconfig.test.json
 | ADR | Décision testée | Fichier(s) de test |
 | --- | --- | --- |
 | [ADR-10](../adr/ADR-10-entity-mutation.md) | `mutate()` unique via Immer, détection no-op, notification diff | `tests/unit/strate-0/entity.basic.test.ts` (`describe("mutate() — Immer produce")`, `describe("No-op detection")`) |
-| [ADR-03](../adr/ADR-03-channel-runtime.md) | Tri-lane Channel (commands/events/requests), garde-fous d'enregistrement | `tests/unit/strate-0/channel.basic.test.ts` |
+| [ADR-03](../adr/ADR-03-channel-runtime.md) | Tri-lane (Commands/Events/Queries) porté par la racine du noyau, livraison différée | `tests/unit/kernel/root.test.ts` (`describe("G5 and D8 — deferred delivery in production order")`) |
 | [ADR-07](../adr/ADR-07-application-bootstrap.md) | Ordre de bootstrap et dépendances entre phases | `tests/unit/strate-0/application.basic.test.ts` (`describe("start() — 4-phase bootstrap")`, `describe("Bootstrap guards [I33, I56, ADR-07]")`) |
-| [ADR-02](../adr/ADR-02-request-synchrone.md) | `request()`/`reply()` **synchrones** — pas de `Promise`, `null` si pas de replier ou si le replier throw | `tests/unit/strate-0/channel.basic.test.ts` (`describe("Lane 3 — Requests (request → reply) [I29, I55]")`) |
+| [ADR-02](../adr/ADR-02-request-synchrone.md) | Queries **synchrones** — pas de `Promise` | `tests/unit/kernel/root.test.ts` (`describe("G5 — synchronous Queries towards a ready, inactive target")`) |
 
 > À maintenir manuellement — contrairement à l'annexe A.3 (invariants numérotés),
 > rien ne vérifie automatiquement que ces citations restent à jour si les
@@ -405,14 +405,14 @@ pnpm tsc:check:tests   # = tsc --noEmit -p tsconfig.test.json
 ### Idée générale
 
 Un package `@bonsai/testing` fournirait des helpers pour réduire le
-boilerplate visible en §4–§5 (`Radio.reset()` manuel, câblage DOM manuel) :
+boilerplate visible en §4–§5 (manifest à assembler, câblage DOM manuel) :
 
 ```typescript
 // ⏳ Hypothétique — n'existe pas
 declare function createTestFeature<TFeature extends Feature>(
   FeatureClass: new (namespace: string) => TFeature,
   namespace: string
-): { feature: TFeature; channel: Channel };
+): { feature: TFeature; send: TDrive["send"]; ask: TDrive["ask"] };
 
 declare function createTestView<TView extends View>(
   ViewClass: new () => TView,
@@ -423,8 +423,8 @@ declare function createTestView<TView extends View>(
 
 ### Pourquoi ce n'est pas livré aujourd'hui
 
-Le socle strate 0 privilégie la **simplicité de la primitive** (`Radio.reset()`,
-instanciation directe) plutôt que l'ajout d'un package supplémentaire dont la
+Le socle privilégie la **simplicité de la primitive** (`drive()`, une vraie
+`Application`) plutôt que l'ajout d'un package supplémentaire dont la
 surface devrait elle-même être maintenue et testée. Si le besoin de réduire le
 boilerplate devient pressant à mesure que la base de tests grandit, ce sera
 l'objet d'un ADR dédié — pas d'une extension silencieuse de ce guide.

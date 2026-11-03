@@ -32,7 +32,7 @@ le protocole d'exécution (annexe C) sur lesquels reposent les classes de base.
 - **`core/src/` plat** — aucune frontière, tout peut importer tout.
 - **Deux packages (couche abstraite / couche concrète)** — ni la simplicité du plat, ni la preuve par composant.
 - **Un package, sous-dossiers par couche** — un dossier n'est pas une frontière TypeScript.
-- **Nommer le noyau `event`** — depuis le retrait de `Channel` et `Radio` (M6.3b), il ne contient aucun mécanisme propre aux Events ; le nom faisait croire à un système d'évènements.
+- **Nommer le noyau `event`** — depuis le retrait de la classe `Channel` (M6.3b), il ne contient aucun mécanisme propre aux Events ; le nom faisait croire à un système d'évènements.
 
 ## Conséquences
 

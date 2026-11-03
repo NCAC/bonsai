@@ -111,7 +111,7 @@ suivent le même principe : voir la fixture et le [README](README.md).
 
 ## Points d'attention
 
-- **Radio et Channel sont internes** (I15) : le code applicatif ne les manipule jamais ;
+- **La racine du noyau (`Root`, `@bonsai/kernel`) est interne** (I15) : le code applicatif ne la manipule jamais ;
   il passe par `Feature.emit()`, `Feature.request()`, `View.trigger()` et `View.request()`.
 - **`request()` est synchrone** et retourne `T | null` (ADR-02) : pas de `Promise`.
 - **Le namespace vient du manifest applicatif** (`features = { cart: CartFeature } satisfies StrictManifest<…>`,

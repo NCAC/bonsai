@@ -1,6 +1,6 @@
 # Cycle de vie des composants
 
-> 🗑️ **`Channel` (classe) et `Radio` sont retirés (lot M6.3b, 1er novembre 2026)**. Les passages qui les décrivent sont historiques ; voir [communication.md](../2-architecture/communication.md).
+> 🗑️ **La classe `Channel` est retirée (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau (`Root`, `@bonsai/kernel`). Les passages qui décrivent la classe sont historiques ; voir [communication.md](../2-architecture/communication.md).
 
 
 > **Existence logique, composition, validation et nettoyage physique : contrat V0.9.4 et limites du livré**
@@ -38,7 +38,7 @@ Une part, une identité ou un abonnement sont des ressources, pas des existences
 | **Entity** | Ressource de la Feature, **pas un composant** ; D2 interdit à la Feature de la détruire pour la réinitialiser |
 | **Channel et identité d'une Feature** | Ressources liées à sa vie, non des composants indépendants |
 | **Adaptateur de l'hôte** | Composant déclaré enfant de la racine ; seul admetteur de ses sources selon D7 |
-| **Racine du noyau (`Root`)** | Infrastructure de communication, une par Application (G6) ; remplace `Radio`, dont le singleton est retiré |
+| **Racine du noyau (`Root`)** | Infrastructure de communication, une par Application (G6) |
 | **Navigation** | Rôle de Feature et d'adaptateur selon D15 ; pas un singleton global déduit des axiomes |
 
 Le cycle attach/detach répété de navigation ne s'applique pas aux Features. Le livré appelle `onInit()` une fois pendant le démarrage réussi ordinaire ; il ne fournit ni shutdown ordonné ni garantie de rollback d'un démarrage échoué. Les enfants de la racine sont déclarés dans son Manifest, non enregistrés à la demande (D14).

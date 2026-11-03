@@ -30,7 +30,7 @@ La couche abstraite contient les composants qui **survivent aux changements d'in
 | **Entity** | État encapsulé, `mutate()`, query | 1 par Feature | [entity.md](entity.md) |
 | **Router** | Navigation, Feature framework (⏳ strate 2) | 0–1 | [router.md](router.md) |
 
-> **Note** : Channel et Radio n'ont pas de fichier dédié. Channel est un **contrat déclaré** dans une Feature (voir [feature.md](feature.md) — capacité C2), pas une classe à instancier. Radio est l'infrastructure interne de câblage (voir [communication.md](../2-architecture/communication.md)).
+> **Note** : Channel n'a pas de fichier dédié. C'est un **contrat déclaré** dans une Feature (voir [feature.md](feature.md) — capacité C2), pas une classe à instancier. L'acheminement des messages appartient à la racine du noyau (`Root`), infrastructure interne (voir [communication.md](../2-architecture/communication.md)).
 
 ---
 

@@ -3,7 +3,7 @@
 | Champ | Valeur |
 | --- | --- |
 | **Statut** | 🟢 Accepted |
-| **Livré** | ✅ branches, hooks, CI · ⚠️ jalon strate 0 tagué `v0.1.0-strate-0` (en plus du tag `v0.1.0` de la baseline) au lieu de `v0.2.0` (le `package.json` est resté en `0.1.0`) ; gate de régression limitée à 5 fichiers unitaires de la strate 0 (Channel, Radio, Entity, Feature, View — ni Composer, Foundation, Application) |
+| **Livré** | ✅ branches, hooks, CI · ⚠️ jalon strate 0 tagué `v0.1.0-strate-0` (en plus du tag `v0.1.0` de la baseline) au lieu de `v0.2.0` (le `package.json` est resté en `0.1.0`) ; gate de régression limitée à 6 fichiers unitaires (noyau `kernel/root`, Entity, Feature, View, Composer, Foundation — pas Application) |
 | **Spec** | [CONTRIBUTING.md](../../CONTRIBUTING.md) · [CHANGELOG.md](../../CHANGELOG.md) |
 
 ## Contexte

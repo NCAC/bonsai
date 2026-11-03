@@ -73,5 +73,5 @@ namespaces en notation pointée proposée pour les plugins contredit ADR-08
 | Profiling par handler | prématuré sans utilisateurs réels |
 | Rejeu de session | dépend du time-travel |
 | Rendu serveur Node.js, streaming SSR | la v1 ne fait que l'hydratation côté client (ADR-24) |
-| Plusieurs Applications par page (micro-apps) | isolation Radio par Application, Foundation scopée, Router optionnel |
+| Plusieurs Applications par page (micro-apps) | Foundation scopée, Router optionnel (la racine du noyau est déjà propre à chaque Application, G6) |
 | Transactions distribuées | hors champ |

@@ -38,7 +38,7 @@ Modèle : [TEMPLATE.md](TEMPLATE.md). Correspondance avec l'ancienne numérotati
 
 | ADR | Décision | Statut |
 | --- | --- | --- |
-| [ADR-01](ADR-01-channels-tri-lane.md) | Radio + Channels tri-lane déclaratifs, chorégraphie, `trigger`/`emit` | 🟢 ⚠️ |
+| [ADR-01](ADR-01-channels-tri-lane.md) | Channels tri-lane déclaratifs, chorégraphie, `trigger`/`emit` | 🟢 ⚠️ |
 | [ADR-02](ADR-02-request-synchrone.md) | `request` synchrone → `T \| null` | 🔵 |
 | [ADR-03](ADR-03-channel-runtime.md) | Sémantique runtime du Channel | 🟢 ⚠️ |
 | [ADR-04](ADR-04-metas-explicites.md) | Metas causales explicites `(payload, metas)` | 🟢 ⏳ |

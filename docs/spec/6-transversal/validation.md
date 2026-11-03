@@ -1,6 +1,6 @@
 # Validation statique et dynamique
 
-> 🗑️ **`Channel` (classe) et `Radio` sont retirés (lot M6.3b, 1er novembre 2026)**. Les passages qui les décrivent sont historiques ; voir [communication.md](../2-architecture/communication.md).
+> 🗑️ **La classe `Channel` est retirée (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau (`Root`, `@bonsai/kernel`). Les passages qui décrivent la classe sont historiques ; voir [communication.md](../2-architecture/communication.md).
 
 
 > ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
@@ -74,7 +74,7 @@ Inventaire des patterns TypeScript utilises par le système de types Bonsai.
 **Patterns NON retenus** :
 
 - **F-bounded polymorphism recursif** (`Class<Child extends Class<Child, ...>>`) — pas nécessaire dans Bonsai car les Features ne s'heritent pas.
-- **Cast runtime des Channels exposé au développeur** (`Radio.channel('cart') as Channel<...>`) — c'est exactement ce que fait le code **interne** du framework (`Feature.request()`, `packages/feature/src/bonsai-feature.ts` — cast documenté par I75), mais ce cast n'est **jamais** exposé a la surface developpeur : celle-ci ne manipule que des types statiques (`TChannelDefinition`, `TChannelToken`).
+- **Accès runtime à un Channel exposé au développeur** — l'acheminement des messages appartient à la racine du noyau (`Root`, `@bonsai/kernel`), interne au framework (I15) : la surface développeur ne manipule que des types statiques (`TChannelDefinition`, `TChannelToken`).
 - **Decorateurs (stage 3)** (`@Handle('addItem')`) — rejete (ADR-09) au profit de la convention `onXXX` auto-découverte.
 - **Branded types pour l'unicite du namespace** — non retenu : l'unicite est garantie par `TS1117` (clé d'objet dupliquee dans le manifest litteral), pas par un type nominal brande sur le namespace lui-même.
 
@@ -103,13 +103,13 @@ Les messages d'erreur doivent être :
 - **Contextuels** (quel composant, quel Channel, quel message)
 - **Actionnables** (« did you forget to add X.channel to listen? »)
 
-**Exemple reel, livre** (`NoHandlerError`, `packages/event/src/channel.class.ts`) —
-`inventory:reserve` déclaré dans `get features()` mais sans Command
-`reserve` cote `InventoryFeature` :
+**Exemple reel, livre** (`TransportError`, `packages/kernel/src/kernel/root.ts`) —
+une Command `reserve` adressée à `inventory` alors que le Channel de
+`InventoryFeature` ne la déclare pas ; l'unité qui l'adresse échoue et est
+annulée (G7) :
 
 ```text
-[I10] inventory — No handler for command "inventory:reserve"
-  → Register a handler with channel.handle("reserve", handler)
+[UNDECLARED_MESSAGE] command "inventory:reserve" not declared
 ```
 
 > Le cas « `inventory:reserve` non déclaré du tout dans `get features()` »

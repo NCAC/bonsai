@@ -1,6 +1,6 @@
 # Communication et flux de données
 
-> 🟢 **Aligné sur la théorie V0.9.5 et sur le noyau livré (lots M1 à M6, 1er novembre 2026).** Les messages passent par la racine du noyau (`Root`, théorie 13 et annexe C). `Channel` et `Radio` sont retirés ; leur vocabulaire ne subsiste que dans l'historique des ADR. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
+> 🟢 **Aligné sur la théorie V0.9.5 et sur le noyau livré (lots M1 à M6, 1er novembre 2026).** Les messages passent par la racine du noyau (`Root`, théorie 13 et annexe C). La classe `Channel` est retirée : le mot ne désigne plus que le contrat typé d'une Feature. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
 
 > **Flux unidirectionnel : Commands, Events, Queries, tous délivrés par la racine**
 

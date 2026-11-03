@@ -38,7 +38,7 @@ class WizardView extends View<TVC> {
 - Réactivité duale : callbacks `onLocal{Key}Updated` pour le N1, et selectors
   `data.local.xxx` dans les templates pour le N2/N3 (ADR-22).
 - `local` est une **clé de données réservée** (I57), pas un Channel : rien ne
-  transite par Radio, personne ne peut l'écouter ni le requêter.
+  transite par le noyau, personne ne peut l'écouter ni le requêter.
 - **Critère de migration** : dès qu'un autre composant a besoin de la donnée,
   elle part dans une Feature.
 
@@ -46,7 +46,7 @@ class WizardView extends View<TVC> {
 
 - **I30 strict (tout dans Feature + Entity)** — sur-ingénierie pour un état que personne n'observe.
 - **Propriétés libres `this.xxx`** — state invisible, non réactif, non nettoyé.
-- **Channel `local` scopé** — observable via Radio : une Feature déguisée, viole l'encapsulation.
+- **Channel `local` scopé** — observable via le noyau : une Feature déguisée, viole l'encapsulation.
 - **Callbacks comme mécanisme unique** — redondant avec la re-projection automatique des templates.
 - **Signature positionnelle `(prev, next)`** — sans patches, l'objet nommé `{ previous, actual }` est plus lisible.
 - **localState réservé au Behavior (état éphémère seul)** — les cas légitimes concernent d'abord la View.

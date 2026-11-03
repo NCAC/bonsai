@@ -39,7 +39,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 ### P2 — Dépendances déclarées
 
-- `C` I15 — Radio est une infrastructure interne, non exposée par `@bonsai/core` — un bus ambiant serait un canal non déclaré. ⟨type · ✅ · T⟩
+- `C` I15 — La racine du noyau (`Root`) est une infrastructure interne, non exposée par `@bonsai/core` — un bus ambiant serait un canal non déclaré. ⟨type · ✅ · T⟩
 
 ### P3 — Sémantique des trois voies
 

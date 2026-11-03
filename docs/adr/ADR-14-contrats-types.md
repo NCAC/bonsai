@@ -12,7 +12,7 @@
 « Le type EST le contrat » : un nom de message mal orthographié, un payload
 faux ou un handler oublié doivent échouer à la compilation. Il faut aussi
 qu'un composant puisse référencer le Channel d'un autre sans instance, sans
-Radio public (ADR-01) et sans écrire deux fois la même information (type + valeur).
+bus public (ADR-01) et sans écrire deux fois la même information (type + valeur).
 
 ## Décision
 

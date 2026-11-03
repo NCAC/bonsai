@@ -4,7 +4,7 @@ Execution kernel required by the theory
 ([docs/theorie.md](../../../../docs/theorie.md), §13 and annex C), exported by
 `@bonsai/kernel`. Started as the prototype of migration lot M1; the domain layer
 (`Feature`, `Entity`, `Application`) runs on it since lot M6.1, the concrete
-layers since M6.2, and the legacy `Channel` and `Radio` were removed in M6.3b.
+layers since M6.2, and the legacy `Channel` class was removed in M6.3b.
 
 | File | Content |
 | --- | --- |

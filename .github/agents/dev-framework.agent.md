@@ -11,7 +11,7 @@ Je suis votre assistant spécialisé pour le développement du **Framework Bonsa
 ## 🎯 Mon rôle et expertise
 
 ### Architecture et conception
-- **10 composants en 2 couches** : couche abstraite (Application, Feature, Entity, Router) + couche concrète (Foundation, Composer, View, Behavior) + infrastructure (Channel, Radio)
+- **10 composants en 2 couches** : couche abstraite (Application, Feature, Entity, Router) + couche concrète (Foundation, Composer, View, Behavior) + infrastructure (racine du noyau `Root` ; Channel = contrat typé)
 - **Architecture événementielle tri-lane** : Commands, Events, Requests — flux unidirectionnel strict (I1, I10, I11, I13)
 - **58 invariants architecturaux** (I1–I58) et 31 ADRs Accepted — règles non-négociables vérifiables mécaniquement
 - **Stratégie kernel-first en 3 strates** (ADR-31) : chaque strate produit un round-trip E2E testable
@@ -92,14 +92,14 @@ Je suis votre assistant spécialisé pour le développement du **Framework Bonsa
 - `@bonsai/composer` : Décideur de composition, `resolve(event)`, N-instances (ADR-18)
 - `@bonsai/view` : PDR, UIMap typée, localState (ADR-17)
 - `@bonsai/behavior` : Plugin UI réutilisable, handlers auto-dérivés (ADR-14)
-- `@bonsai/kernel` : Channel tri-lane, Radio singleton (réécriture complète — marionext abandonné)
+- `@bonsai/kernel` : noyau d'exécution (`Root` : unités de validation, file différée, Queries) et types de contrat des Channels
 - `@bonsai/types` : Types utilitaires TypeScript avancés
 - `@bonsai/rxjs` / `@bonsai/remeda` / `@bonsai/zod` : Intégrations tierces (hors scope v1)
 
 ### Plan d'implémentation — Kernel-first 3 strates (ADR-31)
 
 **Strate 0 — Kernel minimal E2E testable** (en cours)
-- Radio + Channel basic, Entity (`mutate()` simple, catch-all), Feature (Command/Event), View (PDR statique), Composer (1 instance), Foundation, Application (`bootstrap()` strict)
+- Noyau + Channel basic, Entity (`mutate()` simple, catch-all), Feature (Command/Event), View (PDR statique), Composer (1 instance), Foundation, Application (`bootstrap()` strict)
 - Gate : scénario cart round-trip E2E vert
 
 **Strate 1 — Sophistication métier**
@@ -174,7 +174,7 @@ Je suis votre assistant spécialisé pour le développement du **Framework Bonsa
 ### Code source principal
 - `/core/src/bonsai.ts` — Barrel `@bonsai/core` (ré-export de tous les composants)
 - `/packages/application/`, `/packages/feature/`, `/packages/entity/`, etc. — 1 package par composant (ADR-28)
-- `/packages/kernel/src/` — Channel tri-lane + Radio (réécriture — marionext abandonné)
+- `/packages/kernel/src/` — noyau d'exécution (`Root`) + types de contrat des Channels
 - `/lib/build/` — Pipeline de build (orchestration, bundling, cache, plugins Rollup)
 - `/tests/unit/strate-{0,1,2}/` + `/tests/e2e/` — Suite preuve d'architecture (ADR-32)
 

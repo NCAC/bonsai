@@ -128,15 +128,15 @@ new Application({
         │                       │
         ▼                       │
 ┌──────────────┐        ┌──────────────┐
-│     View     │ ─────▶ │   Channel    │  ← Radio singleton
-│  (DOM N1)    │        │ (tri-lane)   │     dispatches
+│     View     │ ─────▶ │     Root     │  ← kernel root,
+│  (DOM N1)    │        │ (tri-lane)   │     one per Application
 └──────────────┘        └──────────────┘
 ```
 
 - **Foundation** owns the page layout (`<body>` + composer slots).
 - **Composer** decides which **View** mounts at runtime (with a diff on re-resolve).
 - **View** observes the DOM, triggers **Commands**, listens to **Events**.
-- **Channel** routes Commands / Events / Requests; **Radio** owns one Channel per Feature namespace.
+- **Root**, the kernel root (`@bonsai/kernel`), routes Commands / Events / Queries; one per Application, internal to the framework. A Feature's **Channel** is now only a typed contract.
 - **Feature** is the only entity that **emits Events** and **owns mutable state** (its Entity).
 
 → Full architecture: [docs/spec/1-philosophie.md](docs/spec/1-philosophie.md)

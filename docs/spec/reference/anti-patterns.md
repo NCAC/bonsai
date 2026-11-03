@@ -2,7 +2,7 @@
 
 > ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
 
-> 🗑️ **`Channel` (classe) et `Radio` sont retirés (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau ([communication.md](../2-architecture/communication.md)). Le mot « Channel » ne désigne plus que le **contrat typé** d'une Feature (`TChannelDefinition`, `TChannelToken`). Les lignes qui décrivent la classe ou `Radio` sont historiques.
+> 🗑️ **La classe `Channel` est retirée (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau (`Root`, `@bonsai/kernel` ; [communication.md](../2-architecture/communication.md)). Le mot « Channel » ne désigne plus que le **contrat typé** d'une Feature (`TChannelDefinition`, `TChannelToken`). Les lignes qui décrivent la classe sont historiques.
 
 > **Les patterns explicitement INTERDITS dans Bonsai**
 
@@ -32,7 +32,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 5. [Entity leaking](#-entity-leaking)
 6. [God Feature](#-god-feature)
 7. [Meta-driven logic](#-meta-driven-logic)
-8. [Radio Direct Access](#-radio-direct-access)
+8. [Root Direct Access](#-root-direct-access)
 9. [Undeclared Channel Usage](#-undeclared-channel-usage)
 10. [Stateful View / Stateful Behavior](#-stateful-view--stateful-behavior-domain-state-ou-state-ad-hoc)
 11. [Excessive View Inheritance](#-excessive-view-inheritance)
@@ -158,22 +158,20 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 ---
 
-### ❌ Radio Direct Access
+### ❌ Root Direct Access
 
-> 🗑️ `Radio` est retiré : cet anti-pattern est désormais impossible par construction ; il devient « accéder à la racine du noyau » (`Root`), non exporté par la surface applicative. L'explication ci-dessous est historique.
-
-**Description** : Accéder à un Channel via `Radio.channel('name')` au lieu de le déclarer dans la définition du composant.
+**Description** : Accéder à la racine du noyau (`Root`, `@bonsai/kernel`) depuis du code applicatif pour adresser, écouter ou interroger un Channel au lieu de le déclarer dans la définition du composant.
 
 **Pourquoi c'est dangereux** :
 
 - Couplages cachés dans l'implémentation, invisibles dans la définition
 - Impossible de vérifier les invariants à la compilation
-- Tests nécessitent un Radio complet au lieu des seuls Channels déclarés
+- Le composant contourne les contrôles du noyau sur les Channels déclarés (A3, D16)
 - Le graphe de communication n'est pas lisible statiquement
 
 **Viole** : I14, I15, I16
 
-**Détection** : `[Compile]` — `Radio` n'est pas exporté par `@bonsai/core`, seule surface applicative : `import { Radio } from "@bonsai/core"` produit `TS2305` (« Module '"@bonsai/core"' has no exported member 'Radio' »). `Radio` n'existe plus depuis le lot M6.3b ; son successeur, `Root`, est exporté par `@bonsai/kernel` pour l'usage inter-packages du framework, et l'importer depuis du code applicatif viole la convention d'import (cf. [distribution.md §4](../2-architecture/distribution.md#4-topologie-des-packages-adr-28)) — `[Code review]`. Preuve : `tests/types/strate-0/encapsulation.types.test.ts`.
+**Détection** : `[Compile]` — `Root` n'est pas exporté par `@bonsai/core`, seule surface applicative : `import { Root } from "@bonsai/core"` produit `TS2305` (« Module '"@bonsai/core"' has no exported member 'Root' »). `Root` est exporté par `@bonsai/kernel` pour l'usage inter-packages du framework, et l'importer depuis du code applicatif viole la convention d'import (cf. [distribution.md §4](../2-architecture/distribution.md#4-topologie-des-packages-adr-28)) — `[Code review]`. Preuve : `tests/types/strate-0/encapsulation.types.test.ts`.
 
 **Alternative** : Déclarer les Channels externes dans `get listens()`/`get queries()` (Feature, ADR-09) ou dans `get features()` (View/Behavior, ADR-14).
 

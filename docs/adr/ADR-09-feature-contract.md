@@ -41,7 +41,7 @@ export class CartFeature
 3. **`implements TFeatureCallbacks<TDef, TListens>`** obligatoire (I92) : chaque `on{K}Command`, `on{K}Request`, `on{NS}{Event}Event` dérivé du contrat est imposé avec sa signature. Toute paire `T{X}Contract` a son `T{X}Callbacks` (I88, symétrie avec la View).
 4. **Handlers auto-découverts par convention de nommage** (I48), pas de décorateurs ni d'enregistrement manuel. Le suffixe discrimine la lane.
 5. **Notifications Entity** auto-découvertes : `on{Key}EntityUpdated(prev, next, patches)` par clé racine, `onAnyEntityUpdated(event)` catch-all (I51, I96). Dispatch côté Feature ; un handler qui throw devient une `BroadcastError` isolée.
-6. **Constructeur inerte** (I94) : seulement `assertValidNamespace` + assignation. Sentinel en phase 0b : un side-effect Radio dans le ctor fait échouer `start()`.
+6. **Constructeur inerte** (I94) : seulement `assertValidNamespace` + assignation. ⚠️ Aucun filet d'exécution depuis le lot M6.3b : un side-effect dans le ctor n'est pas détecté.
 7. **`TStrictFeatureClass<NS>`** (I95) : `static channel` présent et `channel.namespace === NS`, vérifié au `satisfies StrictManifest` (ADR-08).
 8. **Capacités** : `emit()` (propre Channel) et `request()` (tokens déclarés) sont `protected` ; handle, listen et reply sont implicites. `entity` est `protected` (I6).
 

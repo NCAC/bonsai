@@ -45,7 +45,7 @@
 
 ## Types Channel et handlers
 
-> 🗑️ **`Channel` (classe) et `Radio` sont retirés (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau ([communication.md](../2-architecture/communication.md)). Le mot « Channel » ne désigne plus que le **contrat typé** d'une Feature (`TChannelDefinition`, `TChannelToken`). Les lignes qui décrivent la classe ou `Radio` sont historiques.
+> 🗑️ **La classe `Channel` est retirée (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau (`Root`, `@bonsai/kernel` ; [communication.md](../2-architecture/communication.md)). Le mot « Channel » ne désigne plus que le **contrat typé** d'une Feature (`TChannelDefinition`, `TChannelToken`). Les lignes qui décrivent la classe sont historiques.
 
 | Type | Definition | État | Source |
 | --- | --- | --- | --- |
@@ -143,7 +143,7 @@
 | --- | --- | --- | --- |
 | `Application` | Classe orchestrant le bootstrap — `new Application({ foundation, features })` | ✅ | [application.md](../3-couche-abstraite/application.md) |
 | `Foundation` | Classe abstraite, point d'ancrage unique sur `<body>` | ✅ | [foundation.md](../4-couche-concrete/foundation.md) |
-| `Radio` | 🗑️ Singleton retiré (lot M6.3b) : les messages passent par `Root` (`@bonsai/kernel`), jamais exporté par `@bonsai/core` (I15, I80) | 🗑️ | [communication.md](../2-architecture/communication.md) |
+| `Root` | Racine du noyau d'exécution, une par Application : achemine les messages (`@bonsai/kernel`), jamais exporté par `@bonsai/core` (I15, I80) | ✅ | [communication.md](../2-architecture/communication.md) |
 | `BonsaiError` et sa hiérarchie (`MutationError`, `EntityReentrancyError`, `CommandError`, `RequestError`, `BroadcastError`, `ListenerError`, `NoHandlerError`, `DuplicateHandlerError`, `RenderError`, `BehaviorError`) | Classe de base concrète (pas abstraite) : `(message, invariantId, component?, suggestion?)`. 10 sous-classes — certaines jamais levées (`CommandError`, `RequestError`, `RenderError`, `BehaviorError`), cf. [feature.md §8.4](../3-couche-abstraite/feature.md#84-modèle-derreurs--hiérarchie-bonsaierror) pour le détail | ✅ (type) — usage réel variable par sous-classe | `@bonsai/error` |
 | `invariant` / `hardInvariant` / `warning` | Fonctions de validation runtime — `(condition, message, invariantId?, component?)` pour les deux premières, `(condition, message)` pour `warning` | ✅ | `@bonsai/error` |
 | `BonsaiNamespaceError` / `TBonsaiNamespaceErrorCode` | Erreur de bootstrap à code stable (`NAMESPACE_INVALID_FORMAT`, `NAMESPACE_RESERVED`, `NAMESPACE_UNKNOWN_REFERENCE`, `FEATURE_MISSING_CHANNEL`, `FEATURE_CHANNEL_NAMESPACE_MISMATCH` ; `NAMESPACE_DUPLICATE` déclaré mais jamais levé). Étend `Error`, **pas** `BonsaiError` | ✅ | [reference/invariants.md](invariants.md) |

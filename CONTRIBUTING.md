@@ -137,7 +137,7 @@ npx tsc --noEmit -p tsconfig.test.json     # type-check de packages/ + tests/ �
   import "./mon-nouveau.test";
   ```
 
-  ⚠️ Aujourd'hui la gate strate 0 n'importe que Channel, Radio, Entity, Feature et View.
+  ⚠️ Aujourd'hui la gate strate 0 n'importe que le noyau (`kernel/root`), Entity, Feature, View, Composer et Foundation.
 - **Seuils de couverture** figés dans `jest.config.ts` : toute régression fait échouer la CI.
 - **Ne pas casser** la gate E2E `tests/e2e/strate-0.cart-round-trip.test.ts`.
 

@@ -2,7 +2,7 @@
 
 > ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
 
-> 🗑️ **`Channel` (classe) et `Radio` sont retirés (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau ([communication.md](../2-architecture/communication.md)). Le mot « Channel » ne désigne plus que le **contrat typé** d'une Feature (`TChannelDefinition`, `TChannelToken`). Les lignes qui décrivent la classe ou `Radio` sont historiques.
+> 🗑️ **La classe `Channel` est retirée (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau (`Root`, `@bonsai/kernel` ; [communication.md](../2-architecture/communication.md)). Le mot « Channel » ne désigne plus que le **contrat typé** d'une Feature (`TChannelDefinition`, `TChannelToken`). Les lignes qui décrivent la classe sont historiques.
 
 > **Terminologie officielle du framework Bonsai**
 >
@@ -89,7 +89,7 @@ référencée dans toute la documentation.
 | **Feature-groupé** | (ADR-14) Forme de déclaration des interactions channel où chaque Feature consommée est une clé d'objet portant ses lanes (`{ cart: { listens: [...], triggers: [...], requests: [...] } }`). Élimine la répétition du préfixe namespace (`"cart:"`) et co-localise tout ce qui concerne une Feature. Remplace la forme lane-groupée d'ADR-14 (`{ listens: ["cart:itemAdded"], triggers: [...] }`). |
 | **Helper `ui<TEl>()(events)`** | (ADR-14 I85) Fonction factory curryfiée qui construit une `TUIEntry<TEl, TEvts>`. `TEl` annoté explicitement, `events` inféré littéralement via `const TEvts`. La forme curryfiée contourne une limitation TypeScript (le `const` modifier ne préserve pas le littéral si un seul type arg explicite + défauts). |
 | **Symétrie Contract/Callbacks** | (ADR-14, I88) Règle universelle : tout package Bonsai exposant un `T{Component}Contract` DOIT exposer un `T{Component}Callbacks<TC>` correspondant. Les composants concrets écrivent toujours la paire `extends X<TXxxContract>` + `implements TXxxCallbacks<TXxxContract>`. « On respecte toujours un contrat signé. » |
-| **Radio** | 🗑️ Retiré (lot M6.3b). Son rôle de câblage est tenu par la racine du noyau (`Root`, G6), non exposée au développeur. |
+| **Racine du noyau (`Root`)** | Infrastructure de communication d'une Application (`@bonsai/kernel`, G6) : registre des composants, unités de validation, file différée des messages. Une par Application, jamais exposée au développeur (I15). |
 | **Reply (C4)** | Capacité d'une Feature à répondre aux Requests sur son propre Channel. Retourne **toujours** `T \| null` **synchrone** ([ADR-02](../../adr/ADR-02-request-synchrone.md)) — le replier lit l'état de son Entity, déjà en mémoire. `null` si le replier throw ou si le Channel n'est pas enregistré (ADR-02). Un replier async est un anti-pattern. |
 | **Request (C5)** | Capacité d'une Feature (ou View/Behavior) à lire le state d'une autre Feature via son Channel. Retourne `T \| null` **synchrone** ([ADR-02](../../adr/ADR-02-request-synchrone.md)). Lecture seule, pas de mutation. Interrogatif : "dis-moi la valeur maintenant". `null` si le replier throw ou si le Channel n'est pas enregistré (ADR-02). Nécessite une déclaration `request` (ADR-01). |
 | **Router** | ⏳ Strate 2 (seul le namespace réservé `router` existe). Composant framework spécialisé pour la navigation. Internement une spécialisation de Feature (modèle C1–C5) avec accès exclusif à l'History API du navigateur (BrowserHistory). Namespace réservé `router`. Entity = état de la route courante. Instancié par Application au bootstrap (ADR-13). |
@@ -123,7 +123,7 @@ référencée dans toute la documentation.
 - Déclaration : **portée par le manifest applicatif typé** (clé d'objet — I68). Aucun `static namespace` sur la classe Feature. Le namespace est passé au constructeur `(namespace) => Feature<...>` lors de la Phase 0b du bootstrap (instanciation pure, ctor inerte — I94)
 - Conformité : `TSelfNS` du paramètre générique de la classe Feature **doit** correspondre à la clé du manifest (I72) — vérifié compile-time par `StrictManifest<AppManifest>`
 - Unicité : garantie par la nature d'objet littéral du manifest (TS1117, I21) — collision impossible compile-time
-- Rôle triple : identité du Channel (`Radio.channel(namespace)`), clé du store logique d'Entity, préfixe des messages (`namespace:messageName`)
+- Rôle triple : identité du Channel (`TChannelToken.namespace`), clé du store logique d'Entity, préfixe des messages (`namespace:messageName`)
 
 ### Nommage des messages
 

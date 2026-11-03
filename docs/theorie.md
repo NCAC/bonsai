@@ -60,7 +60,7 @@ Un mot entre dans le vocabulaire lorsqu'il reçoit un sens propre à Bonsai, mod
 Une notion a un seul terme canonique ; les synonymes sont exclus des énoncés normatifs. Choix retenus :
 
 - `propriétaire` ; « posséder » et « détenir » sont proscrits ;
-- `infrastructure de communication`, et non `médiateur`, `framework` ou `Radio` ; le terme s'emploie toujours sous sa forme complète. « Bonsai » désigne la théorie et le logiciel dans leur ensemble ;
+- `infrastructure de communication`, et non `médiateur` ou `framework` ; le terme s'emploie toujours sous sa forme complète. « Bonsai » désigne la théorie et le logiciel dans leur ensemble ;
 - `interface utilisateur`, et non `couche concrète` ;
 - `Channel`, et non `canal` ;
 - `Query`, et non `Request` ; en français, « consultation ». Une Command demande une action sans réponse et peut être refusée ou sans effet ; une Query demande une connaissance en lecture seule et rend une réponse en cas de succès (A3.g, A3.j, T2) ;

@@ -1,6 +1,6 @@
 # Conventions de typage
 
-> 🗑️ **`Channel` (classe) et `Radio` sont retirés (lot M6.3b, 1er novembre 2026)**. Les passages qui les décrivent sont historiques ; voir [communication.md](../2-architecture/communication.md).
+> 🗑️ **La classe `Channel` est retirée (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau (`Root`, `@bonsai/kernel`). Les passages qui décrivent la classe sont historiques ; voir [communication.md](../2-architecture/communication.md).
 
 
 > **Préfixes, contraintes, patterns TypeScript fondamentaux du framework Bonsai**
@@ -11,7 +11,7 @@
 
 ## 1. Objectifs
 
-> Le cycle de vie des composants, le protocole Radio et les metas sont traités
+> Le cycle de vie des composants, le protocole de transport (racine du noyau) et les metas sont traités
 > ailleurs ([feature.md §7](../3-couche-abstraite/feature.md#7-cycle-de-vie),
 > [communication.md](../2-architecture/communication.md), [metas.md](../2-architecture/metas.md)).
 

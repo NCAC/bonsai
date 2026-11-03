@@ -28,7 +28,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `E` I14 — Tout composant déclare statiquement les Channels avec lesquels il interagit. ⟨type+boot · ⚠️ · ·⟩
   - `V` I16 — Un accès à un Channel non déclaré est une erreur (compilation ou bootstrap). ⟨type+boot · ⚠️ · ·⟩
 - `C` I2 — Une Feature écoute (`listen`) uniquement les Events des Channels externes qu'elle a déclarés. ⟨boot · ✅ · R⟩
-- `C` I15 = I50 — Radio est une infrastructure interne, non exposée par `@bonsai/core` — un bus ambiant serait un canal non déclaré. ⟨type · ✅ · T⟩
+- `C` I15 = I50 — La racine du noyau (`Root`) est une infrastructure interne, non exposée par `@bonsai/core` — un bus ambiant serait un canal non déclaré. ⟨type · ✅ · T⟩
 - `D` I80 — Les composants consommateurs déclarent leurs dépendances via des classes Feature dans `TFeatureContract`, jamais via un `TChannelToken` direct. ⟨type · ⚠️ · T⟩
 - `V` I70 — Toute référence à un namespace externe (`listens`, `queries`, `request`) est validée contre le manifest au bootstrap. ↔ P8 ⟨boot · ✅ · R⟩
 

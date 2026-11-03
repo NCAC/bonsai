@@ -22,7 +22,7 @@ commence pas la strate N+1 sans suite verte sur la strate N.
 
 | Strate | Contenu | Gate E2E |
 | --- | --- | --- |
-| **0** — kernel | Radio, Channel tri-lane, Entity `mutate()`, Feature, View N1, Composer 0/1, Foundation, Application | `strate-0.cart-round-trip` : clic → Command → mutation → Event → projection |
+| **0** — kernel | Noyau (`Root`), Channel tri-lane, Entity `mutate()`, Feature, View N1, Composer 0/1, Foundation, Application | `strate-0.cart-round-trip` : clic → Command → mutation → Event → projection |
 | **1a** | Entity : patches, handlers par clé, ré-entrance FIFO (ADR-10) | — |
 | **1b** | Metas causales (ADR-04), anti-boucle, isolation des erreurs (ADR-05) | — |
 | **1c** | Rendu PDR : templates N2/N3, selectors (ADR-22, ADR-26) | — |

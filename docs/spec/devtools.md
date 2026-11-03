@@ -1,6 +1,6 @@
 # DevTools et outils de debug
 
-> 🗑️ **`Channel` (classe) et `Radio` sont retirés (lot M6.3b, 1er novembre 2026)**. Les passages qui les décrivent sont historiques ; voir [communication.md](./2-architecture/communication.md).
+> 🗑️ **La classe `Channel` est retirée (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau (`Root`, `@bonsai/kernel`). Les passages qui décrivent la classe sont historiques ; voir [communication.md](./2-architecture/communication.md).
 
 
 > ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../theorie.md) prévaut ([règle de confiance](../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
@@ -298,7 +298,7 @@ expect(cartChannel?.requests['total']?.replierMethod).toBe('onTotalRequest');
 ## 5. Inspection et collecte des erreurs
 
 > **Position architecturale** : les erreurs sont une préoccupation d'infrastructure,
-> pas un domaine métier. L'ErrorReporter est transversal (comme Radio).
+> pas un domaine métier. L'ErrorReporter est transversal (comme la racine du noyau, `Root`).
 > Pas de Channel `error`, pas de Feature `error`, pas d'Entity `error`.
 > Voir [ADR-05 § ErrorReporter](../adr/ADR-05-propagation-erreurs.md) pour le raisonnement complet.
 

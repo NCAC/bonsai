@@ -34,7 +34,7 @@
   parents: [P2]
   roles: [Channel]
   alias: [I50]
-  enonce: Radio est une infrastructure interne, non exposée par `@bonsai/core` — un bus ambiant serait un canal non déclaré.
+  enonce: La racine du noyau (`Root`) est une infrastructure interne, non exposée par `@bonsai/core` — un bus ambiant serait un canal non déclaré.
   mode: type
   etat: livre
 
