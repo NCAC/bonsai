@@ -40,7 +40,7 @@
  * @packageDocumentation
  */
 
-import { isDev } from "@bonsai/error";
+import { BonsaiError, isDev } from "@bonsai/error";
 import {
   Root,
   describeComponent,
@@ -150,20 +150,20 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
     this.#adapters = options?.adapters ?? [];
     this.#adapterOptions = options?.adapterOptions ?? {};
     if (this.#foundation !== null && this.#document === undefined) {
-      throw new Error("[Bonsai Application] a `foundation` needs the host `document` it renders in");
+      throw new BonsaiError("MISSING_DOCUMENT", "a `foundation` needs the host `document` it renders in");
     }
     if (this.#adapters.length > 0 && this.#document === undefined) {
-      throw new Error("[Bonsai Application] `adapters` need the host `document` they observe");
+      throw new BonsaiError("MISSING_DOCUMENT", "`adapters` need the host `document` they observe");
     }
     const categories = new Set<string>();
     for (const adapter of this.#adapters) {
       if (categories.has(adapter.category)) {
-        throw new Error(`[Bonsai Application] two adapters of the category "${adapter.category}": a source of the host is admitted by one instance only (A5.d, D7)`);
+        throw new BonsaiError("DUPLICATE_ADAPTER", `two adapters of the category "${adapter.category}": a source of the host is admitted by one instance only (A5.d, D7)`);
       }
       categories.add(adapter.category);
       for (const needed of adapter.requires ?? []) {
         if (needed === "router" && !this.#router) {
-          throw new Error(`[Bonsai Application] the adapter "${adapter.category}" needs the Feature "${needed}": activate it with \`router: true\``);
+          throw new BonsaiError("MISSING_FEATURE", `the adapter "${adapter.category}" needs the Feature "${needed}": activate it with \`router: true\``);
         }
       }
     }
@@ -184,7 +184,7 @@ export class Application<M extends TFeaturesManifest = TFeaturesManifest> {
    */
   start(): void {
     if (this.#started) {
-      throw new Error("[Bonsai Application] Cannot start() — already started");
+      throw new BonsaiError("ALREADY_STARTED", "Cannot start() — already started");
     }
 
     // ── Phase 0a — format + channel validation (ADR-08 — I70/I71/I73) ───

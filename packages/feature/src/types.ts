@@ -39,6 +39,7 @@
 import type { Entity, TEntityState, TJsonSerializable, TEntityEvent, TEntityRecipe, TMutationParams } from "@bonsai/entity";
 import type { TCausalContext, TChannelDefinition, TChannelToken } from "@bonsai/kernel";
 import type { CamelCase, UnionToIntersection } from "@bonsai/types";
+import { BonsaiError } from "@bonsai/error";
 import type { Feature } from "./bonsai-feature";
 
 // ─── Reserved words (I71, ADR-17) ─────────────────────────────────────────
@@ -162,18 +163,16 @@ export type TBonsaiNamespaceErrorCode =
   | "FEATURE_DEPENDENCY_NOT_QUERIED";
 
 /**
- * Typed error for any violation detected at runtime.
+ * Manifest violation detected at runtime (phases 0a–0c, ADR-08).
  *
- * Belongs to the framework error family (ADR-05). Codes are stable and
- * meant to be matched by consumers.
+ * A `BonsaiError` (ADR-05): codes are stable and meant to be matched by consumers.
  */
-export class BonsaiNamespaceError extends Error {
-  readonly code: TBonsaiNamespaceErrorCode;
+export class BonsaiNamespaceError extends BonsaiError {
+  override readonly name: string = "BonsaiNamespaceError";
+  declare readonly code: TBonsaiNamespaceErrorCode;
 
   constructor(code: TBonsaiNamespaceErrorCode, message: string) {
-    super(`[Bonsai] ${code}: ${message}`);
-    this.name = "BonsaiNamespaceError";
-    this.code = code;
+    super(code, message);
   }
 }
 

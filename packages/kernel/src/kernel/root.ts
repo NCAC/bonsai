@@ -29,6 +29,7 @@
 import { Immer } from "@bonsai/immer";
 import type { Draft, Patch } from "immer";
 import { capture } from "./capture";
+import { BonsaiError } from "@bonsai/error";
 import { attachContext, InvariantError, ManifestError, StartupError, TransportError } from "./errors";
 import type {
   TAdmission,
@@ -226,7 +227,7 @@ export class Root {
     }
     for (const entry of entries) {
       for (const dependency of entry.dependsOn ?? []) {
-        if (!byNamespace.has(dependency)) throw new ManifestError(`${entry.name} depends on unknown namespace "${dependency}"`);
+        if (!byNamespace.has(dependency)) throw new ManifestError("UNKNOWN_DEPENDENCY", `${entry.name} depends on unknown namespace "${dependency}" (C.1)`);
       }
     }
     const ordered: TManifestEntry[] = [];
@@ -235,7 +236,7 @@ export class Root {
       const next = entries.find((entry) => !placed.has(entry) && (entry.dependsOn ?? []).every((d) => placed.has(byNamespace.get(d)!)));
       if (next === undefined) {
         const blocked = entries.filter((entry) => !placed.has(entry)).map((entry) => entry.name);
-        throw new ManifestError(`cyclic initial dependencies between ${blocked.join(", ")} (C.1)`);
+        throw new ManifestError("CYCLIC_DEPENDENCIES", `cyclic initial dependencies between ${blocked.join(", ")} (C.1)`);
       }
       ordered.push(next);
       placed.add(next);
@@ -604,7 +605,7 @@ export class Root {
           target: { part: record! },
           run: () => {
             if (!record!.alive) return;
-            if (record!.element === null) throw new Error(`${record!.handle.label} is not materialized (9.10)`);
+            if (record!.element === null) throw new BonsaiError("NOT_MATERIALIZED", `${record!.handle.label} is not materialized (9.10)`);
             write(record!.element);
           }
         });
@@ -622,7 +623,7 @@ export class Root {
           target: { part: record! },
           run: () => {
             const element = record!.element;
-            if (element === null) throw new Error(`${record!.handle.label} is not materialized (9.10)`);
+            if (element === null) throw new BonsaiError("NOT_MATERIALIZED", `${record!.handle.label} is not materialized (9.10)`);
             this.#simulating = { element, type, token };
             try {
               // dispatchEvent, not element.click(): the drain may run inside the host's own dispatch of a
@@ -832,12 +833,12 @@ export class Root {
           run: () => {
             if (!part.alive) return;
             const host = container!.element;
-            if (host === null) throw new Error(`${container!.handle.label} is not materialized (9.10)`);
+            if (host === null) throw new BonsaiError("NOT_MATERIALIZED", `${container!.handle.label} is not materialized (9.10)`);
             let element: Element;
             if (options.part!.host !== undefined) {
               // A declared slot: exactly one existing element of the container (Foundation §3).
               const matches = host.querySelectorAll(options.part!.host);
-              if (matches.length !== 1) throw new Error(`slot "${options.part!.host}" matches ${matches.length} elements of ${container!.handle.label}, expected exactly one`);
+              if (matches.length !== 1) throw new BonsaiError("SLOT_NOT_UNIQUE", `slot "${options.part!.host}" matches ${matches.length} elements of ${container!.handle.label}, expected exactly one`);
               element = matches[0]!;
               element.setAttribute("data-bonsai-part", portion);
             } else {

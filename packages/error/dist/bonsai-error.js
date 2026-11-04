@@ -1,128 +1,33 @@
 /**
  * @bonsai/error - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T12:43:04.305Z
+ * Date: 2026-11-04T20:50:10.119Z
  */
 /**
- * BonsaiError — base class for all structured framework errors.
+ * BonsaiError — root of every error raised by the framework (ADR-05).
  *
- * Every Bonsai error provides:
- * - `invariantId`: id of the violated invariant or ADR (e.g. "I10", "ADR-05")
- * - `component`: namespace or name of the component involved
- * - `suggestion`: actionable message for the developer
+ * `instanceof BonsaiError` separates a violation detected by Bonsai from an
+ * error of application code, which the framework never wraps nor modifies.
  *
- * @see ADR-05 — error propagation (full taxonomy)
+ * - `code`: stable identifier to match on — a symbolic code (`NOT_AUTHORIZED`)
+ *   or the id of the violated invariant (`I96`). Renaming one is a breaking change.
+ * - `component`: namespace or name of the component involved, `""` if none.
+ * - `suggestion`: actionable hint, `""` if none.
+ * - `context`: causal context of the validation unit or Query where the error
+ *   was born, attached by the kernel (ADR-04); absent outside any unit.
  */
 class BonsaiError extends Error {
-    constructor(message, invariantId, component = "", suggestion = "") {
-        super(`[${invariantId}]${component ? ` ${component}` : ""} — ${message}${suggestion ? `\n  → ${suggestion}` : ""}`);
-        this.invariantId = invariantId;
+    constructor(code, message, options = {}) {
+        const component = options.component ?? "";
+        const suggestion = options.suggestion ?? "";
+        super(`[${code}]${component ? ` ${component}` : ""} — ${message}${suggestion ? `\n  → ${suggestion}` : ""}`);
+        this.name = "BonsaiError";
+        this.code = code;
         this.component = component;
         this.suggestion = suggestion;
-        this.name = "BonsaiError";
-    }
-}
-// ═══════════════════════════════════════════════════════════════
-// Entity Layer (State)
-// ═══════════════════════════════════════════════════════════════
-/**
- * The `mutate()` recipe threw → automatic Immer rollback, state intact.
- */
-class MutationError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "MutationError";
-    }
-}
-/**
- * `mutate()` called during a notification cycle while the re-entrance depth
- * exceeds `maxEntityNotificationDepth` (stratum 1a).
- */
-class EntityReentrancyError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "EntityReentrancyError";
-    }
-}
-// ═══════════════════════════════════════════════════════════════
-// Feature Layer (Logic)
-// ═══════════════════════════════════════════════════════════════
-/**
- * An `onXxxCommand()` handler threw (defined, not raised yet — ADR-05).
- */
-class CommandError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "CommandError";
-    }
-}
-/**
- * An `onXxxRequest()` handler threw (defined, not raised yet — ADR-05).
- */
-class RequestError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "RequestError";
-    }
-}
-/**
- * An `onXxxEntityUpdated()` handler threw — state kept, notification continues.
- */
-class BroadcastError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "BroadcastError";
-    }
-}
-// ═══════════════════════════════════════════════════════════════
-// Channel Layer (Communication)
-// ═══════════════════════════════════════════════════════════════
-/**
- * An Event listener threw — error isolated, other listeners still run.
- */
-class ListenerError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "ListenerError";
-    }
-}
-/**
- * `trigger()` with no registered `handle()` (`request()` without a replier returns `null` instead).
- */
-class NoHandlerError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "NoHandlerError";
-    }
-}
-/**
- * `handle()` or `reply()` called twice for the same message (I10).
- */
-class DuplicateHandlerError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "DuplicateHandlerError";
-    }
-}
-// ═══════════════════════════════════════════════════════════════
-// View Layer (UI)
-// ═══════════════════════════════════════════════════════════════
-/**
- * A projection or template threw.
- */
-class RenderError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "RenderError";
-    }
-}
-/**
- * A Behavior threw.
- */
-class BehaviorError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "BehaviorError";
+        if (options.cause !== undefined) {
+            Object.defineProperty(this, "cause", { value: options.cause, enumerable: false, writable: false, configurable: true });
+        }
     }
 }
 
@@ -156,7 +61,7 @@ function isDev() {
  *
  * @param condition - When `false`, throws a `BonsaiError`
  * @param message - Descriptive error message
- * @param invariantId - Id of the violated invariant (e.g. "I10")
+ * @param invariantId - Id of the violated invariant (e.g. "I10"), used as the error `code`
  * @param component - Namespace or name of the component involved (optional)
  *
  * @example
@@ -164,10 +69,10 @@ function isDev() {
  * invariant(handlers.size === 0, "Duplicate command handler", "I10", "cart");
  * ```
  */
-function invariant(condition, message, invariantId = "", component = "") {
+function invariant(condition, message, invariantId = "INVARIANT", component = "") {
     if (isDev()) {
         if (!condition) {
-            throw new BonsaiError(message, invariantId, component);
+            throw new BonsaiError(invariantId, message, { component });
         }
     }
 }
@@ -181,12 +86,12 @@ function invariant(condition, message, invariantId = "", component = "") {
  *
  * @param condition - When `false`, throws a `BonsaiError`
  * @param message - Descriptive error message
- * @param invariantId - Id of the violated invariant
+ * @param invariantId - Id of the violated invariant, used as the error `code`
  * @param component - Namespace or name of the component involved (optional)
  */
-function hardInvariant(condition, message, invariantId = "", component = "") {
+function hardInvariant(condition, message, invariantId = "INVARIANT", component = "") {
     if (!condition) {
-        throw new BonsaiError(message, invariantId, component);
+        throw new BonsaiError(invariantId, message, { component });
     }
 }
 /**
@@ -206,4 +111,4 @@ function warning(condition, message) {
     }
 }
 
-export { BehaviorError, BonsaiError, BroadcastError, CommandError, DuplicateHandlerError, EntityReentrancyError, ListenerError, MutationError, NoHandlerError, RenderError, RequestError, hardInvariant, invariant, isDev, warning };
+export { BonsaiError, hardInvariant, invariant, isDev, warning };

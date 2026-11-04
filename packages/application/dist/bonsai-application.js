@@ -1,9 +1,9 @@
 /**
  * @bonsai/application - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T20:41:21.729Z
+ * Date: 2026-11-04T20:50:24.112Z
  */
-import { isDev } from '@bonsai/error';
+import { isDev, BonsaiError } from '@bonsai/error';
 import { reportToConsole, Root, describeComponent } from '@bonsai/kernel';
 import { BonsaiNamespaceError, describeFeature, assertValidNamespace } from '@bonsai/feature';
 import { RouterFeature } from '@bonsai/router';
@@ -114,20 +114,20 @@ class Application {
         __classPrivateFieldSet(this, _Application_adapters, options?.adapters ?? [], "f");
         __classPrivateFieldSet(this, _Application_adapterOptions, options?.adapterOptions ?? {}, "f");
         if (__classPrivateFieldGet(this, _Application_foundation, "f") !== null && __classPrivateFieldGet(this, _Application_document, "f") === undefined) {
-            throw new Error("[Bonsai Application] a `foundation` needs the host `document` it renders in");
+            throw new BonsaiError("MISSING_DOCUMENT", "a `foundation` needs the host `document` it renders in");
         }
         if (__classPrivateFieldGet(this, _Application_adapters, "f").length > 0 && __classPrivateFieldGet(this, _Application_document, "f") === undefined) {
-            throw new Error("[Bonsai Application] `adapters` need the host `document` they observe");
+            throw new BonsaiError("MISSING_DOCUMENT", "`adapters` need the host `document` they observe");
         }
         const categories = new Set();
         for (const adapter of __classPrivateFieldGet(this, _Application_adapters, "f")) {
             if (categories.has(adapter.category)) {
-                throw new Error(`[Bonsai Application] two adapters of the category "${adapter.category}": a source of the host is admitted by one instance only (A5.d, D7)`);
+                throw new BonsaiError("DUPLICATE_ADAPTER", `two adapters of the category "${adapter.category}": a source of the host is admitted by one instance only (A5.d, D7)`);
             }
             categories.add(adapter.category);
             for (const needed of adapter.requires ?? []) {
                 if (needed === "router" && !__classPrivateFieldGet(this, _Application_router, "f")) {
-                    throw new Error(`[Bonsai Application] the adapter "${adapter.category}" needs the Feature "${needed}": activate it with \`router: true\``);
+                    throw new BonsaiError("MISSING_FEATURE", `the adapter "${adapter.category}" needs the Feature "${needed}": activate it with \`router: true\``);
                 }
             }
         }
@@ -146,7 +146,7 @@ class Application {
      */
     start() {
         if (__classPrivateFieldGet(this, _Application_started, "f")) {
-            throw new Error("[Bonsai Application] Cannot start() — already started");
+            throw new BonsaiError("ALREADY_STARTED", "Cannot start() — already started");
         }
         // ── Phase 0a — format + channel validation (ADR-08 — I70/I71/I73) ───
         __classPrivateFieldGet(this, _Application_instances, "m", _Application_validateManifest).call(this);

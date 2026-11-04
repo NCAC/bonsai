@@ -1,10 +1,10 @@
 /**
  * @bonsai/feature - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T20:36:06.871Z
+ * Date: 2026-11-04T20:50:15.290Z
  */
 import { describeEntity, bindEntityState } from '@bonsai/entity';
-import { hardInvariant } from '@bonsai/error';
+import { BonsaiError, hardInvariant } from '@bonsai/error';
 
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -90,16 +90,14 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
  */
 const RESERVED_NAMESPACES = ["local", "router"];
 /**
- * Typed error for any violation detected at runtime.
+ * Manifest violation detected at runtime (phases 0a–0c, ADR-08).
  *
- * Belongs to the framework error family (ADR-05). Codes are stable and
- * meant to be matched by consumers.
+ * A `BonsaiError` (ADR-05): codes are stable and meant to be matched by consumers.
  */
-class BonsaiNamespaceError extends Error {
+class BonsaiNamespaceError extends BonsaiError {
     constructor(code, message) {
-        super(`[Bonsai] ${code}: ${message}`);
+        super(code, message);
         this.name = "BonsaiNamespaceError";
-        this.code = code;
     }
 }
 // ─── Runtime safety net ─────────────────────────────────────────────────────
@@ -269,7 +267,7 @@ class Feature {
      */
     get entity() {
         if (__classPrivateFieldGet(this, _Feature_entity, "f") === null) {
-            throw new Error(`[Bonsai Feature] "${__classPrivateFieldGet(this, _Feature_namespace, "f")}": the Entity exists only once the Feature is started by its Application (I94).`);
+            throw new BonsaiError("NOT_STARTED", `"${__classPrivateFieldGet(this, _Feature_namespace, "f")}": the Entity exists only once the Feature is started by its Application (I94).`);
         }
         return __classPrivateFieldGet(this, _Feature_entity, "f");
     }

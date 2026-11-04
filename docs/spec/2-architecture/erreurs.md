@@ -1,6 +1,6 @@
 # Modèle d'erreurs et sémantiques opérationnelles
 
-> 🟢 **Aligné sur la théorie V0.9.5 et sur le code livré (noyau M1 à M5, lot M6, 4 novembre 2026).** Les écarts restants sont listés au §5. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
+> 🟢 **Aligné sur la théorie V0.9.5 et sur le code livré (noyau M1 à M6, strate 1b — ADR-04 et ADR-05, 4 novembre 2026).** Les écarts restants sont listés au §5. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
 
 > **Catégories d'erreurs, frontière de l'unité de validation, diagnostics, position SSR v1**
 
@@ -19,7 +19,7 @@
 | **Erreur de contrat** | Compile-time | TypeScript | Command sans handler (`implements TFeatureCallbacks`), payload mal typé, `emit` d'une clé absente de `events`, `ctx.trigger` d'une clé non déclarée dans `features` |
 | **Erreur de Manifest** | `app.start()`, avant toute création | `BonsaiNamespaceError` (avec `code`), `ManifestError` | Namespace invalide ou réservé, `static channel` absent ou incohérent (phase 0a), `listens`/`queries` vers un namespace inconnu (phase 0c), cycle de dépendances initiales (C.1) |
 | **Échec au démarrage** | Unité de démarrage | `StartupError` | `onInit` qui lève, Query initiale vers une cible encore en initialisation |
-| **Échec d'une unité** | Pendant un traitement | l'erreur levée, `TransportError` (code stable), `InvariantError` | Handler ou recette qui lève, refus du noyau (`UNKNOWN_TARGET`, `NOT_AUTHORIZED`, `CAUSAL_BOUND`, `READ_ONLY`…), invariant d'Entity violé en fin d'unité |
+| **Échec d'une unité** | Pendant un traitement | l'erreur levée par le code applicatif (non modifiée), ou une `BonsaiError` : `TransportError`, `InvariantError`, erreur d'un composant | Handler ou recette qui lève, refus du noyau (`UNKNOWN_TARGET`, `NOT_AUTHORIZED`, `CAUSAL_BOUND`, `READ_ONLY`…), invariant d'Entity violé en fin d'unité |
 | **Échec d'un effet** | Après validation, sur l'hôte | consigné dans la trace | Slot introuvable, élément d'interface absent de la part |
 
 ---
@@ -68,9 +68,30 @@ Les effets (projections, matérialisations, retraits) sont engagés après valid
 | --- | --- |
 | **Trace de la racine** (`app.root.trace`) | `delivered`, `unit-failed` {owner, context, error}, `delivery-abandoned`, `admission-abandoned`, `effects`, `restitution`, `long-unit`, `long-drain` : les entrées d'un traitement portent son contexte causal (G8) |
 | **Console en développement** (`reportToConsole`, O2) | Les échecs que personne ne reçoit ; c'est la sortie par défaut de l'option `onTrace` |
-| **Message d'erreur** | Code stable (`TransportError.code`), composant concerné, référence à la théorie (`(A3.e)`, `(D18)`…) |
+| **Message d'erreur** | `[code] composant — message`, avec une référence à la théorie (`(A3.e)`, `(D18)`…) ; champs `code`, `component`, `suggestion`, `context` |
 
-L'option `onTrace` de l'Application remplace la sortie par défaut par un récepteur propre, ou la supprime. Les [DevTools](../devtools.md) (strate 2) s'appuieront sur la même trace.
+L'option `onTrace` de l'Application remplace la sortie par défaut par un récepteur propre, ou la supprime. C'est le récepteur unique des échecs : il n'y a ni hook `onError()` ni `ErrorReporter` (un traitement réagissant à un échec serait un message sans parent, G8 ; [ADR-05](../../adr/ADR-05-propagation-erreurs.md)). Une réaction métier à un échec passe par un fait admis, comme le résultat d'un effet (C.3). Les [DevTools](../devtools.md) (strate 2) s'appuieront sur la même trace.
+
+### 3.1 `BonsaiError`, racine des erreurs du framework
+
+Toute erreur levée par Bonsai dérive de `BonsaiError` (`@bonsai/error`) ; une erreur du code applicatif n'est jamais enveloppée ni modifiée. `instanceof BonsaiError` les distingue donc dans un récepteur `onTrace`.
+
+| Champ | Contenu |
+| --- | --- |
+| `code` | Identifiant stable à comparer : code symbolique ou identifiant d'invariant (`I96`). Le renommer est un changement cassant. |
+| `component` | Namespace ou nom du composant concerné, `""` sinon. |
+| `suggestion` | Indication pour corriger, `""` sinon. |
+| `context` | Contexte causal de l'unité ou de la Query où l'erreur est née, posé par le noyau ([ADR-04](../../adr/ADR-04-metas-explicites.md)) ; l'erreur la plus interne garde le sien ; absent hors unité. |
+| `cause` | Propriété standard `Error.cause` : l'erreur rapportée (`UNRECOVERABLE`, `STARTUP_FAILED`). |
+
+| Classe | Codes |
+| --- | --- |
+| `TransportError` (`@bonsai/kernel`) | `TTransportErrorCode` : `UNKNOWN_TARGET`, `UNDECLARED_MESSAGE`, `TARGET_NOT_READY`, `TARGET_ACTIVE`, `READ_ONLY`, `NOT_OWNER`, `CAUSAL_BOUND`, `NOT_CAPTURABLE`, `DUPLICATE_NAMESPACE`, `NO_UNIT`, `UNRECOVERABLE`, `PORTION_TAKEN`, `INVALID_DESIGNATION`, `HOST_NOT_FOUND`, `NOT_AUTHORIZED`, `ROOT_ABANDONED` |
+| `InvariantError` (`@bonsai/kernel`) | `INVARIANT_VIOLATED` (champs `entity`, `invariant`) |
+| `StartupError` (`@bonsai/kernel`) | `STARTUP_FAILED` (`cause` : l'erreur de l'unité de démarrage) |
+| `ManifestError` (`@bonsai/kernel`) | `UNKNOWN_DEPENDENCY`, `CYCLIC_DEPENDENCIES` |
+| `BonsaiNamespaceError` (`@bonsai/feature`) | `TBonsaiNamespaceErrorCode` (phases 0a–0c) |
+| `BonsaiError` (composants) | `ALREADY_STARTED`, `MISSING_DOCUMENT`, `DUPLICATE_ADAPTER`, `MISSING_FEATURE` (Application) ; `NOT_STARTED` (Feature) ; `OUTSIDE_HANDLER` (Entity, View) ; `MALFORMED_KEY`, `UNKNOWN_UI_KEY`, `UI_ELEMENT_NOT_FOUND`, `MISSING_UI_ELEMENT`, `MISSING_HANDLER`, `UNDECLARED_DEFAULT_CANCEL`, `SLOT_KEY_COLLISION` (View) ; `DUPLICATE_KEY`, `UNKNOWN_VIEW` (Composer) ; `INVALID_LOCATION`, `HOST_UNAVAILABLE` (Router) ; `NOT_A_COMPONENT`, `NOT_MATERIALIZED`, `SLOT_NOT_UNIQUE` (noyau) ; identifiant d'invariant pour `invariant()`/`hardInvariant()` (`INVARIANT` par défaut) |
 
 ---
 
@@ -90,9 +111,8 @@ La doctrine de rendu complète est dans [5-rendu.md](../5-rendu.md) (cible strat
 
 ## 5. Écarts connus
 
-- La hiérarchie `BonsaiError` (`@bonsai/error`) n'est levée que par `hardInvariant` ; ses autres classes (`CommandError`, `RequestError`, `ListenerError`…) sont déclarées mais jamais levées, et les erreurs du noyau (`TransportError`, `StartupError`, `InvariantError`, `ManifestError`) n'en dérivent pas ([ADR-05](../../adr/ADR-05-propagation-erreurs.md), à décider).
-- Pas d'`ErrorReporter` injectable ni de hook `onError()` : la trace et `onTrace` en tiennent lieu ([ADR-03](../../adr/ADR-03-channel-runtime.md)).
-- Le contexte causal est joint aux erreurs du noyau (`TransportError`, `InvariantError` : champ `context`, l'erreur la plus interne gardant le sien) ; une `Error` levée par le code applicatif n'est pas modifiée, son contexte est dans l'entrée `unit-failed` de la trace ([ADR-04](../../adr/ADR-04-metas-explicites.md)).
+- `NAMESPACE_DUPLICATE` est déclaré dans `TBonsaiNamespaceErrorCode` mais n'est jamais levé (le manifest l'empêche à la compilation).
+- Une erreur levée hors de toute unité (par exemple pendant la validation du Manifest ou `admit` d'un local non déclaré) ne porte pas de `context`.
 
 ---
 

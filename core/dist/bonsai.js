@@ -14382,125 +14382,30 @@ var immer$1 = /*#__PURE__*/Object.freeze({
 });
 
 /**
- * BonsaiError — base class for all structured framework errors.
+ * BonsaiError — root of every error raised by the framework (ADR-05).
  *
- * Every Bonsai error provides:
- * - `invariantId`: id of the violated invariant or ADR (e.g. "I10", "ADR-05")
- * - `component`: namespace or name of the component involved
- * - `suggestion`: actionable message for the developer
+ * `instanceof BonsaiError` separates a violation detected by Bonsai from an
+ * error of application code, which the framework never wraps nor modifies.
  *
- * @see ADR-05 — error propagation (full taxonomy)
+ * - `code`: stable identifier to match on — a symbolic code (`NOT_AUTHORIZED`)
+ *   or the id of the violated invariant (`I96`). Renaming one is a breaking change.
+ * - `component`: namespace or name of the component involved, `""` if none.
+ * - `suggestion`: actionable hint, `""` if none.
+ * - `context`: causal context of the validation unit or Query where the error
+ *   was born, attached by the kernel (ADR-04); absent outside any unit.
  */
 class BonsaiError extends Error {
-    constructor(message, invariantId, component = "", suggestion = "") {
-        super(`[${invariantId}]${component ? ` ${component}` : ""} — ${message}${suggestion ? `\n  → ${suggestion}` : ""}`);
-        this.invariantId = invariantId;
+    constructor(code, message, options = {}) {
+        const component = options.component ?? "";
+        const suggestion = options.suggestion ?? "";
+        super(`[${code}]${component ? ` ${component}` : ""} — ${message}${suggestion ? `\n  → ${suggestion}` : ""}`);
+        this.name = "BonsaiError";
+        this.code = code;
         this.component = component;
         this.suggestion = suggestion;
-        this.name = "BonsaiError";
-    }
-}
-// ═══════════════════════════════════════════════════════════════
-// Entity Layer (State)
-// ═══════════════════════════════════════════════════════════════
-/**
- * The `mutate()` recipe threw → automatic Immer rollback, state intact.
- */
-class MutationError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "MutationError";
-    }
-}
-/**
- * `mutate()` called during a notification cycle while the re-entrance depth
- * exceeds `maxEntityNotificationDepth` (stratum 1a).
- */
-class EntityReentrancyError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "EntityReentrancyError";
-    }
-}
-// ═══════════════════════════════════════════════════════════════
-// Feature Layer (Logic)
-// ═══════════════════════════════════════════════════════════════
-/**
- * An `onXxxCommand()` handler threw (defined, not raised yet — ADR-05).
- */
-class CommandError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "CommandError";
-    }
-}
-/**
- * An `onXxxRequest()` handler threw (defined, not raised yet — ADR-05).
- */
-class RequestError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "RequestError";
-    }
-}
-/**
- * An `onXxxEntityUpdated()` handler threw — state kept, notification continues.
- */
-class BroadcastError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "BroadcastError";
-    }
-}
-// ═══════════════════════════════════════════════════════════════
-// Channel Layer (Communication)
-// ═══════════════════════════════════════════════════════════════
-/**
- * An Event listener threw — error isolated, other listeners still run.
- */
-class ListenerError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "ListenerError";
-    }
-}
-/**
- * `trigger()` with no registered `handle()` (`request()` without a replier returns `null` instead).
- */
-class NoHandlerError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "NoHandlerError";
-    }
-}
-/**
- * `handle()` or `reply()` called twice for the same message (I10).
- */
-class DuplicateHandlerError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "DuplicateHandlerError";
-    }
-}
-// ═══════════════════════════════════════════════════════════════
-// View Layer (UI)
-// ═══════════════════════════════════════════════════════════════
-/**
- * A projection or template threw.
- */
-class RenderError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "RenderError";
-    }
-}
-/**
- * A Behavior threw.
- */
-class BehaviorError extends BonsaiError {
-    constructor() {
-        super(...arguments);
-        this.name = "BehaviorError";
+        if (options.cause !== undefined) {
+            Object.defineProperty(this, "cause", { value: options.cause, enumerable: false, writable: false, configurable: true });
+        }
     }
 }
 
@@ -14534,7 +14439,7 @@ function isDev() {
  *
  * @param condition - When `false`, throws a `BonsaiError`
  * @param message - Descriptive error message
- * @param invariantId - Id of the violated invariant (e.g. "I10")
+ * @param invariantId - Id of the violated invariant (e.g. "I10"), used as the error `code`
  * @param component - Namespace or name of the component involved (optional)
  *
  * @example
@@ -14542,10 +14447,10 @@ function isDev() {
  * invariant(handlers.size === 0, "Duplicate command handler", "I10", "cart");
  * ```
  */
-function invariant(condition, message, invariantId = "", component = "") {
+function invariant(condition, message, invariantId = "INVARIANT", component = "") {
     {
         if (!condition) {
-            throw new BonsaiError(message, invariantId, component);
+            throw new BonsaiError(invariantId, message, { component });
         }
     }
 }
@@ -14559,12 +14464,12 @@ function invariant(condition, message, invariantId = "", component = "") {
  *
  * @param condition - When `false`, throws a `BonsaiError`
  * @param message - Descriptive error message
- * @param invariantId - Id of the violated invariant
+ * @param invariantId - Id of the violated invariant, used as the error `code`
  * @param component - Namespace or name of the component involved (optional)
  */
-function hardInvariant(condition, message, invariantId = "", component = "") {
+function hardInvariant(condition, message, invariantId = "INVARIANT", component = "") {
     if (!condition) {
-        throw new BonsaiError(message, invariantId, component);
+        throw new BonsaiError(invariantId, message, { component });
     }
 }
 /**
@@ -14675,7 +14580,7 @@ class Entity {
     get state() {
         const source = stateSources.get(this);
         if (source === undefined) {
-            throw new Error(`[Bonsai Entity] "${this.constructor.name}".state is readable only inside a handler of its Feature. ` +
+            throw new BonsaiError("OUTSIDE_HANDLER", `"${this.constructor.name}".state is readable only inside a handler of its Feature. ` +
                 "Observe the current state through a Query (G5, I6).");
         }
         return source();
@@ -14738,16 +14643,14 @@ _Entity_initialState = new WeakMap();
  */
 const RESERVED_NAMESPACES = ["local", "router"];
 /**
- * Typed error for any violation detected at runtime.
+ * Manifest violation detected at runtime (phases 0a–0c, ADR-08).
  *
- * Belongs to the framework error family (ADR-05). Codes are stable and
- * meant to be matched by consumers.
+ * A `BonsaiError` (ADR-05): codes are stable and meant to be matched by consumers.
  */
-class BonsaiNamespaceError extends Error {
+class BonsaiNamespaceError extends BonsaiError {
     constructor(code, message) {
-        super(`[Bonsai] ${code}: ${message}`);
+        super(code, message);
         this.name = "BonsaiNamespaceError";
-        this.code = code;
     }
 }
 // ─── Runtime safety net ─────────────────────────────────────────────────────
@@ -14917,7 +14820,7 @@ class Feature {
      */
     get entity() {
         if (__classPrivateFieldGet(this, _Feature_entity, "f") === null) {
-            throw new Error(`[Bonsai Feature] "${__classPrivateFieldGet(this, _Feature_namespace, "f")}": the Entity exists only once the Feature is started by its Application (I94).`);
+            throw new BonsaiError("NOT_STARTED", `"${__classPrivateFieldGet(this, _Feature_namespace, "f")}": the Entity exists only once the Feature is started by its Application (I94).`);
         }
         return __classPrivateFieldGet(this, _Feature_entity, "f");
     }
@@ -15062,13 +14965,6 @@ _a$1 = Feature, _Feature_methodNames = function _Feature_methodNames() {
     }
 };
 
-/**
- * Locations and routes of the navigation (D15).
- *
- * A location is the address inside the application, written as the host
- * writes it: path, query and fragment (`/products/42?tab=2#top`). A route is
- * its parsed form, kept by the Feature of navigation.
- */
 const BASE = "http://bonsai.invalid";
 /**
  * Parses a location of the application.
@@ -15077,7 +14973,7 @@ const BASE = "http://bonsai.invalid";
  */
 function parseLocation(location) {
     if (typeof location !== "string" || !location.startsWith("/") || location.startsWith("//")) {
-        throw new Error(`[Bonsai Router] "${String(location)}" is not a location of the application (expected "/path?query#hash")`);
+        throw new BonsaiError("INVALID_LOCATION", `"${String(location)}" is not a location of the application (expected "/path?query#hash")`);
     }
     const url = new URL(location, BASE);
     const query = {};
@@ -15161,55 +15057,49 @@ RouterFeature.channel = {
  * A transport error is not a business answer: it interrupts the author and
  * propagates to the outermost validation unit, which then fails (G7).
  *
- * Errors raised by the kernel during a validation unit or a Query carry the
- * causal context where they were born (`context`, ADR-04). `cause` keeps its
+ * Every kernel error derives from `BonsaiError` (ADR-05): stable `code`, and
+ * the causal context where it was born (`context`, ADR-04). `cause` keeps its
  * standard `Error.cause` meaning: the original error being reported.
  */
-class TransportError extends Error {
+class TransportError extends BonsaiError {
     constructor(code, message, cause) {
-        super(`[${code}] ${message}`);
+        super(code, message, { cause });
         this.name = "TransportError";
-        this.code = code;
-        if (cause !== undefined)
-            this.cause = cause;
     }
 }
 /** Raised by `Root.start()` when the startup unit fails (§2.5, C.1). */
-class StartupError extends Error {
+class StartupError extends BonsaiError {
     constructor(cause) {
-        super("Startup failed: the model under construction was abandoned");
+        super("STARTUP_FAILED", "the model under construction was abandoned (§2.5)", { cause });
         this.name = "StartupError";
-        this.cause = cause;
     }
 }
 /**
  * A business invariant is violated at the end of a validation unit (A4.a).
  * Not a transport error: the unit fails and is rolled back (G7).
  */
-class InvariantError extends Error {
+class InvariantError extends BonsaiError {
     constructor(entity, invariant) {
-        super(`Invariant "${invariant}" of entity "${entity}" violated at the end of the validation unit (A4.a)`);
+        super("INVARIANT_VIOLATED", `invariant "${invariant}" violated at the end of the validation unit (A4.a)`, { component: entity });
         this.name = "InvariantError";
         this.entity = entity;
         this.invariant = invariant;
     }
 }
 /** The Manifest cannot be ordered: unknown or cyclic initial dependency (C.1). */
-class ManifestError extends Error {
-    constructor(message) {
-        super(message);
+class ManifestError extends BonsaiError {
+    constructor(code, message) {
+        super(code, message);
         this.name = "ManifestError";
     }
 }
 /**
- * Attaches the causal context where a kernel error was born (ADR-04). The
+ * Attaches the causal context where a framework error was born (ADR-04). The
  * innermost boundary wins: a context already attached is kept. Errors raised
  * by application code are left untouched — their context is in the trace.
  */
 function attachContext(error, context) {
-    if (!(error instanceof TransportError || error instanceof InvariantError))
-        return;
-    if (error.context !== undefined)
+    if (!(error instanceof BonsaiError) || error.context !== undefined)
         return;
     Object.defineProperty(error, "context", { value: context, enumerable: true, writable: false, configurable: false });
 }
@@ -15402,7 +15292,7 @@ class Root {
         for (const entry of entries) {
             for (const dependency of entry.dependsOn ?? []) {
                 if (!byNamespace.has(dependency))
-                    throw new ManifestError(`${entry.name} depends on unknown namespace "${dependency}"`);
+                    throw new ManifestError("UNKNOWN_DEPENDENCY", `${entry.name} depends on unknown namespace "${dependency}" (C.1)`);
             }
         }
         const ordered = [];
@@ -15411,7 +15301,7 @@ class Root {
             const next = entries.find((entry) => !placed.has(entry) && (entry.dependsOn ?? []).every((d) => placed.has(byNamespace.get(d))));
             if (next === undefined) {
                 const blocked = entries.filter((entry) => !placed.has(entry)).map((entry) => entry.name);
-                throw new ManifestError(`cyclic initial dependencies between ${blocked.join(", ")} (C.1)`);
+                throw new ManifestError("CYCLIC_DEPENDENCIES", `cyclic initial dependencies between ${blocked.join(", ")} (C.1)`);
             }
             ordered.push(next);
             placed.add(next);
@@ -15780,7 +15670,7 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
                     if (!record.alive)
                         return;
                     if (record.element === null)
-                        throw new Error(`${record.handle.label} is not materialized (9.10)`);
+                        throw new BonsaiError("NOT_MATERIALIZED", `${record.handle.label} is not materialized (9.10)`);
                     write(record.element);
                 }
             });
@@ -15800,7 +15690,7 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
                 run: () => {
                     const element = record.element;
                     if (element === null)
-                        throw new Error(`${record.handle.label} is not materialized (9.10)`);
+                        throw new BonsaiError("NOT_MATERIALIZED", `${record.handle.label} is not materialized (9.10)`);
                     __classPrivateFieldSet(this, _Root_simulating, { element, type, token }, "f");
                     try {
                         // dispatchEvent, not element.click(): the drain may run inside the host's own dispatch of a
@@ -16020,13 +15910,13 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
                         return;
                     const host = container.element;
                     if (host === null)
-                        throw new Error(`${container.handle.label} is not materialized (9.10)`);
+                        throw new BonsaiError("NOT_MATERIALIZED", `${container.handle.label} is not materialized (9.10)`);
                     let element;
                     if (options.part.host !== undefined) {
                         // A declared slot: exactly one existing element of the container (Foundation §3).
                         const matches = host.querySelectorAll(options.part.host);
                         if (matches.length !== 1)
-                            throw new Error(`slot "${options.part.host}" matches ${matches.length} elements of ${container.handle.label}, expected exactly one`);
+                            throw new BonsaiError("SLOT_NOT_UNIQUE", `slot "${options.part.host}" matches ${matches.length} elements of ${container.handle.label}, expected exactly one`);
                         element = matches[0];
                         element.setAttribute("data-bonsai-part", portion);
                     }
@@ -16298,7 +16188,7 @@ const DESCRIBE = Symbol.for("bonsai.component.describe");
 function describeComponent(instance, options) {
     const describe = instance[DESCRIBE];
     if (typeof describe !== "function") {
-        throw new Error(`[Bonsai] ${instance.constructor.name} is not a Bonsai component and cannot be created by the framework`);
+        throw new BonsaiError("NOT_A_COMPONENT", `[Bonsai] ${instance.constructor.name} is not a Bonsai component and cannot be created by the framework`);
     }
     return describe.call(instance, options);
 }
@@ -16354,7 +16244,7 @@ class HistoryAdapter {
         const timeout = options.traversalTimeoutMs ?? 2000;
         const view = doc.defaultView;
         if (view === null)
-            throw new Error("[Bonsai HistoryAdapter] the document has no window: the history is not reachable");
+            throw new BonsaiError("HOST_UNAVAILABLE", "the document has no window: the history is not reachable");
         const host = view;
         const canonical = (location) => this.normalize(canonicalLocation(location));
         const readHost = () => canonical(host.location.pathname + host.location.search + host.location.hash);
@@ -16603,7 +16493,7 @@ const capitalize = (s) => (s.length === 0 ? s : s[0].toUpperCase() + s.slice(1))
 function parseNSKey(key) {
     const idx = key.indexOf(":");
     if (idx <= 0 || idx === key.length - 1) {
-        throw new Error(`[Bonsai View] Malformed namespaced key "${key}". Expected "namespace:name".`);
+        throw new BonsaiError("MALFORMED_KEY", `Malformed namespaced key "${key}". Expected "namespace:name".`);
     }
     return { namespace: key.slice(0, idx), name: key.slice(idx + 1) };
 }
@@ -16663,14 +16553,14 @@ class View {
         const c = __classPrivateFieldGet(this, _View_instances, "m", _View_unit).call(this, `getUI("${key}")`);
         const selector = __classPrivateFieldGet(this, _View_selectors, "f")[key];
         if (selector === undefined) {
-            throw new Error(`[Bonsai View] Unknown UI key "${key}". Declared keys: ${Object.keys(__classPrivateFieldGet(this, _View_selectors, "f")).join(", ")}`);
+            throw new BonsaiError("UNKNOWN_UI_KEY", `Unknown UI key "${key}". Declared keys: ${Object.keys(__classPrivateFieldGet(this, _View_selectors, "f")).join(", ")}`);
         }
         const part = c.resolve(c.designation());
         const write = (label, apply) => {
             c.project(part, `${key}.${label}`, (root) => {
                 const el = root.querySelector(selector);
                 if (el === null)
-                    throw new Error(`[Bonsai View] UI element "${key}" not found with selector "${selector}" in the part`);
+                    throw new BonsaiError("UI_ELEMENT_NOT_FOUND", `UI element "${key}" not found with selector "${selector}" in the part`);
                 apply(el);
             });
         };
@@ -16699,12 +16589,12 @@ class View {
                 continue;
             const selector = selectors[uiKey];
             if (selector === undefined) {
-                throw new Error(`[Bonsai View] UI key "${uiKey}" declared in uiEvents but missing in uiElements.`);
+                throw new BonsaiError("MISSING_UI_ELEMENT", `UI key "${uiKey}" declared in uiEvents but missing in uiElements.`);
             }
             for (const domEvent of entry.events) {
                 const handlerName = `on${capitalize(uiKey)}${capitalize(domEvent)}`;
                 if (!methods.includes(handlerName)) {
-                    throw new Error(`[Bonsai View] Missing handler "${handlerName}" for declared event "${domEvent}" on ui.${uiKey}. ` +
+                    throw new BonsaiError("MISSING_HANDLER", `Missing handler "${handlerName}" for declared event "${domEvent}" on ui.${uiKey}. ` +
                         `Add the method or remove "${domEvent}" from uiEvents.${uiKey}.events.`);
                 }
                 const keys = domTypes.get(domEvent) ?? {};
@@ -16714,7 +16604,7 @@ class View {
             // D20 — the default action is cancelled by declaration only, for a declared event.
             for (const domEvent of entry.cancelDefault ?? []) {
                 if (!entry.events.includes(domEvent)) {
-                    throw new Error(`[Bonsai View] ui.${uiKey} cancels the default action of "${domEvent}", which it does not declare in events (D20).`);
+                    throw new BonsaiError("UNDECLARED_DEFAULT_CANCEL", `ui.${uiKey} cancels the default action of "${domEvent}", which it does not declare in events (D20).`);
                 }
                 const keys = cancelled.get(domEvent) ?? [];
                 keys.push(uiKey);
@@ -16732,7 +16622,7 @@ class View {
             for (const event of entry.listens) {
                 const handlerName = `on${capitalize(namespace)}${capitalize(event)}Event`;
                 if (typeof self[handlerName] !== "function") {
-                    throw new Error(`[Bonsai View] Missing handler "${handlerName}" for declared listen "${namespace}:${event}". ` +
+                    throw new BonsaiError("MISSING_HANDLER", `Missing handler "${handlerName}" for declared listen "${namespace}:${event}". ` +
                         `Add the method or remove "${event}" from features.${namespace}.listens.`);
                 }
                 listens.push({
@@ -16764,7 +16654,7 @@ class View {
                         c.project(part, "template", (el) => { el.innerHTML = template; });
                     for (const [key, { slot, composer }] of Object.entries(this.composers)) {
                         if (key in uiEvents)
-                            throw new Error(`[Bonsai View] slot key "${key}" collides with a UI key (D13)`);
+                            throw new BonsaiError("SLOT_KEY_COLLISION", `slot key "${key}" collides with a UI key (D13)`);
                         const ComposerClass = composer;
                         c.create(describeComponent(new ComposerClass()), { part: { resource: part, portion: key, host: slot } });
                     }
@@ -16775,7 +16665,7 @@ class View {
 }
 _a = View, _View_unit = function _View_unit(operation) {
     if (__classPrivateFieldGet(this, _View_current, "f") === null) {
-        throw new Error(`[Bonsai View] ${operation} is usable only inside a handler of the View (C.3)`);
+        throw new BonsaiError("OUTSIDE_HANDLER", `${operation} is usable only inside a handler of the View (C.3)`);
     }
     return __classPrivateFieldGet(this, _View_current, "f");
 }, _View_run = function _View_run(c, fn) {
@@ -16866,10 +16756,10 @@ class Composer {
             const keys = new Set();
             for (const entry of composition) {
                 if (keys.has(entry.key))
-                    throw new Error(`[Bonsai Composer] duplicate key "${entry.key}" in a composition (T3)`);
+                    throw new BonsaiError("DUPLICATE_KEY", `duplicate key "${entry.key}" in a composition (T3)`);
                 keys.add(entry.key);
                 if (views[entry.view] === undefined)
-                    throw new Error(`[Bonsai Composer] View "${entry.view}" is not in the catalogue of ${this.constructor.name}`);
+                    throw new BonsaiError("UNKNOWN_VIEW", `View "${entry.view}" is not in the catalogue of ${this.constructor.name}`);
             }
             // Destroy what disappeared or changed (T3); the previous Views stay until the unit validates.
             const kept = new Set();
@@ -17026,20 +16916,20 @@ class Application {
         __classPrivateFieldSet(this, _Application_adapters, options?.adapters ?? [], "f");
         __classPrivateFieldSet(this, _Application_adapterOptions, options?.adapterOptions ?? {}, "f");
         if (__classPrivateFieldGet(this, _Application_foundation, "f") !== null && __classPrivateFieldGet(this, _Application_document, "f") === undefined) {
-            throw new Error("[Bonsai Application] a `foundation` needs the host `document` it renders in");
+            throw new BonsaiError("MISSING_DOCUMENT", "a `foundation` needs the host `document` it renders in");
         }
         if (__classPrivateFieldGet(this, _Application_adapters, "f").length > 0 && __classPrivateFieldGet(this, _Application_document, "f") === undefined) {
-            throw new Error("[Bonsai Application] `adapters` need the host `document` they observe");
+            throw new BonsaiError("MISSING_DOCUMENT", "`adapters` need the host `document` they observe");
         }
         const categories = new Set();
         for (const adapter of __classPrivateFieldGet(this, _Application_adapters, "f")) {
             if (categories.has(adapter.category)) {
-                throw new Error(`[Bonsai Application] two adapters of the category "${adapter.category}": a source of the host is admitted by one instance only (A5.d, D7)`);
+                throw new BonsaiError("DUPLICATE_ADAPTER", `two adapters of the category "${adapter.category}": a source of the host is admitted by one instance only (A5.d, D7)`);
             }
             categories.add(adapter.category);
             for (const needed of adapter.requires ?? []) {
                 if (needed === "router" && !__classPrivateFieldGet(this, _Application_router, "f")) {
-                    throw new Error(`[Bonsai Application] the adapter "${adapter.category}" needs the Feature "${needed}": activate it with \`router: true\``);
+                    throw new BonsaiError("MISSING_FEATURE", `the adapter "${adapter.category}" needs the Feature "${needed}": activate it with \`router: true\``);
                 }
             }
         }
@@ -17058,7 +16948,7 @@ class Application {
      */
     start() {
         if (__classPrivateFieldGet(this, _Application_started, "f")) {
-            throw new Error("[Bonsai Application] Cannot start() — already started");
+            throw new BonsaiError("ALREADY_STARTED", "Cannot start() — already started");
         }
         // ── Phase 0a — format + channel validation (ADR-08 — I70/I71/I73) ───
         __classPrivateFieldGet(this, _Application_instances, "m", _Application_validateManifest).call(this);
@@ -17159,4 +17049,4 @@ _Application_manifest = new WeakMap(), _Application_components = new WeakMap(), 
     }
 };
 
-export { Application, BehaviorError, BonsaiError, BonsaiNamespaceError, BroadcastError, CommandError, Composer, DuplicateHandlerError, Entity, EntityReentrancyError, Feature, Foundation, HistoryAdapter, immer$1 as Immer, ListenerError, MutationError, NoHandlerError, RESERVED_NAMESPACES, index$1 as RXJS, RenderError, RequestError, RouteEntity, RouterFeature, index as Valibot, View, assertValidNamespace, bindEntityState, canonicalLocation, describeEntity, describeFeature, hardInvariant, invariant, isCamelCaseNamespace, isDev, isReservedNamespace, parseLocation, serializeRoute, ui, warning };
+export { Application, BonsaiError, BonsaiNamespaceError, Composer, Entity, Feature, Foundation, HistoryAdapter, immer$1 as Immer, RESERVED_NAMESPACES, index$1 as RXJS, RouteEntity, RouterFeature, index as Valibot, View, assertValidNamespace, bindEntityState, canonicalLocation, describeEntity, describeFeature, hardInvariant, invariant, isCamelCaseNamespace, isDev, isReservedNamespace, parseLocation, serializeRoute, ui, warning };

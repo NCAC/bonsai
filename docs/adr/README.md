@@ -32,9 +32,9 @@ Modèle : [TEMPLATE.md](TEMPLATE.md). Correspondance avec l'ancienne numérotati
 | --- | --- | --- |
 | [ADR-01](ADR-01-channels-tri-lane.md) | Channels à trois voies déclaratifs, chorégraphie pure | 🟢 ⚠️ |
 | [ADR-02](ADR-02-request-synchrone.md) | Query synchrone : une valeur, jamais une `Promise` ni un `null` de substitution | 🔵 |
-| [ADR-03](ADR-03-channel-runtime.md) | Sémantique d'exécution des messages : l'unité comme frontière d'échec | 🟢 ⚠️ |
+| [ADR-03](ADR-03-channel-runtime.md) | Sémantique d'exécution des messages : l'unité comme frontière d'échec | 🔵 ✅ |
 | [ADR-04](ADR-04-metas-explicites.md) | Contexte causal établi par le noyau, lu par le handler via `ctx.cause` | 🔵 ✅ |
-| [ADR-05](ADR-05-propagation-erreurs.md) | Propagation des erreurs : l'unité de validation comme frontière | 🟢 ⚠️ |
+| [ADR-05](ADR-05-propagation-erreurs.md) | Propagation des erreurs : l'unité de validation comme frontière, racine `BonsaiError` | 🔵 ✅ |
 | [ADR-06](ADR-06-modes-validation.md) | Modes de validation | 🟢 ⚠️ |
 | [ADR-35](ADR-35-vidage-file-differee.md) | Vidage synchrone de la file des messages différés ; unités longues signalées | 🟢 |
 

@@ -1,8 +1,10 @@
 /**
  * @bonsai/composer - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T20:41:17.360Z
+ * Date: 2026-11-04T20:50:20.355Z
  */
+import { BonsaiError } from '@bonsai/error';
+
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
 
@@ -1248,7 +1250,7 @@ const DESCRIBE = Symbol.for("bonsai.component.describe");
 function describeComponent(instance, options) {
     const describe = instance[DESCRIBE];
     if (typeof describe !== "function") {
-        throw new Error(`[Bonsai] ${instance.constructor.name} is not a Bonsai component and cannot be created by the framework`);
+        throw new BonsaiError("NOT_A_COMPONENT", `[Bonsai] ${instance.constructor.name} is not a Bonsai component and cannot be created by the framework`);
     }
     return describe.call(instance, options);
 }
@@ -1307,10 +1309,10 @@ class Composer {
             const keys = new Set();
             for (const entry of composition) {
                 if (keys.has(entry.key))
-                    throw new Error(`[Bonsai Composer] duplicate key "${entry.key}" in a composition (T3)`);
+                    throw new BonsaiError("DUPLICATE_KEY", `duplicate key "${entry.key}" in a composition (T3)`);
                 keys.add(entry.key);
                 if (views[entry.view] === undefined)
-                    throw new Error(`[Bonsai Composer] View "${entry.view}" is not in the catalogue of ${this.constructor.name}`);
+                    throw new BonsaiError("UNKNOWN_VIEW", `View "${entry.view}" is not in the catalogue of ${this.constructor.name}`);
             }
             // Destroy what disappeared or changed (T3); the previous Views stay until the unit validates.
             const kept = new Set();

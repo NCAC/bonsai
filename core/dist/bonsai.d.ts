@@ -833,6 +833,33 @@ type AlwaysParameters<T extends (...args: any) => any> = T extends (
   : any[];
 
 /**
+ * Causal context shared by the kernel and the framework errors (theory G8).
+ *
+ * Declared here, below `@bonsai/kernel` and `@bonsai/error`, so that both can
+ * name it without a package cycle; `@bonsai/kernel` re-exports it (ADR-04, ADR-05).
+ */
+
+/** How the origin of a causal chain was qualified (A5.b, C.4). */
+type TOriginKind = "startup" | "spontaneous" | "unknown";
+
+/**
+ * Causal context carried by every message (10.5, G8).
+ * One triggering parent per message outside an origin.
+ */
+interface TCausalContext {
+  /** Identifier of this message (or of this Query). */
+  readonly id: string;
+  /** Triggering parent; `null` for an origin. */
+  readonly parentId: string | null;
+  /** Identifier of the origin of the chain. */
+  readonly originId: string;
+  /** Qualification of that origin. */
+  readonly originKind: TOriginKind;
+  /** Number of continuations since the origin (D9). Origin = 0. */
+  readonly depth: number;
+}
+
+/**
  * Represents a disposable resource, such as the execution of an Observable. A
  * Subscription has one important method, `unsubscribe`, that takes no argument
  * and just disposes the resource held by the subscription.
@@ -24694,35 +24721,6 @@ type TAnyEventPayload = {
     readonly changes: Record<string, unknown>;
 };
 
-/**
- * Execution kernel — public types (migration lots M1–M6).
- *
- * The kernel realises the communication guarantees of the theory
- * (docs/theorie.md §13, annex C): G1–G3, G5–G8, D8 and D9. Every component
- * base class runs on it since lots M6.1–M6.3; the legacy `Channel`/`Radio`
- * were removed in M6.3b.
- *
- * Vocabulary follows the theory: Command, Query, Event, local message,
- * deferred message (9.12), validation unit (9.13), effect (11.8).
- */
-/** How the origin of a causal chain was qualified (A5.b, C.4). */
-type TOriginKind = "startup" | "spontaneous" | "unknown";
-/**
- * Causal context carried by every message (10.5, G8).
- * One triggering parent per message outside an origin.
- */
-interface TCausalContext {
-    /** Identifier of this message (or of this Query). */
-    readonly id: string;
-    /** Triggering parent; `null` for an origin. */
-    readonly parentId: string | null;
-    /** Identifier of the origin of the chain. */
-    readonly originId: string;
-    /** Qualification of that origin. */
-    readonly originKind: TOriginKind;
-    /** Number of continuations since the origin (D9). Origin = 0. */
-    readonly depth: number;
-}
 /** Opaque handle on a living component occurrence (C.2). */
 interface TComponentHandle {
     /** Non-reusable occurrence identifier. */
@@ -25065,95 +25063,39 @@ declare class Root {
 }
 
 /**
- * Describing a component to the kernel (migration lot M6.2).
- *
- * Feature, Foundation, Composer and View are classes written by developers;
- * the kernel works on component descriptions (`TComponentSpec`). Each class
- * knows how to describe itself through the shared `DESCRIBE` symbol, so that
- * the packages need not import one another at run time (a View declares
- * Composers, a Composer creates Views).
+ * Options of a `BonsaiError`, after its code and message.
  */
-
-/** Registered symbol: the same in every package that holds a copy of this module. */
-declare const DESCRIBE$1: unique symbol;
-
+type TBonsaiErrorOptions = {
+    /** Namespace or name of the component involved. */
+    readonly component?: string;
+    /** Actionable hint for the developer. */
+    readonly suggestion?: string;
+    /** Original error this one reports (standard `Error.cause`). */
+    readonly cause?: unknown;
+};
 /**
- * BonsaiError — base class for all structured framework errors.
+ * BonsaiError — root of every error raised by the framework (ADR-05).
  *
- * Every Bonsai error provides:
- * - `invariantId`: id of the violated invariant or ADR (e.g. "I10", "ADR-05")
- * - `component`: namespace or name of the component involved
- * - `suggestion`: actionable message for the developer
+ * `instanceof BonsaiError` separates a violation detected by Bonsai from an
+ * error of application code, which the framework never wraps nor modifies.
  *
- * @see ADR-05 — error propagation (full taxonomy)
+ * - `code`: stable identifier to match on — a symbolic code (`NOT_AUTHORIZED`)
+ *   or the id of the violated invariant (`I96`). Renaming one is a breaking change.
+ * - `component`: namespace or name of the component involved, `""` if none.
+ * - `suggestion`: actionable hint, `""` if none.
+ * - `context`: causal context of the validation unit or Query where the error
+ *   was born, attached by the kernel (ADR-04); absent outside any unit.
  */
 declare class BonsaiError extends Error {
-    readonly invariantId: string;
+    readonly name: string;
+    readonly code: string;
     readonly component: string;
     readonly suggestion: string;
-    readonly name: string;
-    constructor(message: string, invariantId: string, component?: string, suggestion?: string);
-}
-/**
- * The `mutate()` recipe threw → automatic Immer rollback, state intact.
- */
-declare class MutationError extends BonsaiError {
-    readonly name = "MutationError";
-}
-/**
- * `mutate()` called during a notification cycle while the re-entrance depth
- * exceeds `maxEntityNotificationDepth` (stratum 1a).
- */
-declare class EntityReentrancyError extends BonsaiError {
-    readonly name = "EntityReentrancyError";
-}
-/**
- * An `onXxxCommand()` handler threw (defined, not raised yet — ADR-05).
- */
-declare class CommandError extends BonsaiError {
-    readonly name = "CommandError";
-}
-/**
- * An `onXxxRequest()` handler threw (defined, not raised yet — ADR-05).
- */
-declare class RequestError extends BonsaiError {
-    readonly name = "RequestError";
-}
-/**
- * An `onXxxEntityUpdated()` handler threw — state kept, notification continues.
- */
-declare class BroadcastError extends BonsaiError {
-    readonly name = "BroadcastError";
-}
-/**
- * An Event listener threw — error isolated, other listeners still run.
- */
-declare class ListenerError extends BonsaiError {
-    readonly name = "ListenerError";
-}
-/**
- * `trigger()` with no registered `handle()` (`request()` without a replier returns `null` instead).
- */
-declare class NoHandlerError extends BonsaiError {
-    readonly name = "NoHandlerError";
-}
-/**
- * `handle()` or `reply()` called twice for the same message (I10).
- */
-declare class DuplicateHandlerError extends BonsaiError {
-    readonly name = "DuplicateHandlerError";
-}
-/**
- * A projection or template threw.
- */
-declare class RenderError extends BonsaiError {
-    readonly name = "RenderError";
-}
-/**
- * A Behavior threw.
- */
-declare class BehaviorError extends BonsaiError {
-    readonly name = "BehaviorError";
+    /** Original error, when this one reports it. */
+    readonly cause?: unknown;
+    /** Causal context where the error was born; set once by the kernel (ADR-04). */
+    readonly context?: TCausalContext;
+    constructor(code: string, message: string, options?: TBonsaiErrorOptions);
 }
 
 /**
@@ -25184,7 +25126,7 @@ declare function isDev(): boolean;
  *
  * @param condition - When `false`, throws a `BonsaiError`
  * @param message - Descriptive error message
- * @param invariantId - Id of the violated invariant (e.g. "I10")
+ * @param invariantId - Id of the violated invariant (e.g. "I10"), used as the error `code`
  * @param component - Namespace or name of the component involved (optional)
  *
  * @example
@@ -25203,7 +25145,7 @@ declare function invariant(condition: unknown, message: string, invariantId?: st
  *
  * @param condition - When `false`, throws a `BonsaiError`
  * @param message - Descriptive error message
- * @param invariantId - Id of the violated invariant
+ * @param invariantId - Id of the violated invariant, used as the error `code`
  * @param component - Namespace or name of the component involved (optional)
  */
 declare function hardInvariant(condition: unknown, message: string, invariantId?: string, component?: string): asserts condition;
@@ -25217,6 +25159,19 @@ declare function hardInvariant(condition: unknown, message: string, invariantId?
  * @param message - Warning message
  */
 declare function warning(condition: unknown, message: string): void;
+
+/**
+ * Describing a component to the kernel (migration lot M6.2).
+ *
+ * Feature, Foundation, Composer and View are classes written by developers;
+ * the kernel works on component descriptions (`TComponentSpec`). Each class
+ * knows how to describe itself through the shared `DESCRIBE` symbol, so that
+ * the packages need not import one another at run time (a View declares
+ * Composers, a Composer creates Views).
+ */
+
+/** Registered symbol: the same in every package that holds a copy of this module. */
+declare const DESCRIBE$1: unique symbol;
 
 /**
  * @bonsai/entity — Entity base class
@@ -25471,12 +25426,12 @@ type StrictManifest<M> = {
  */
 type TBonsaiNamespaceErrorCode = "NAMESPACE_INVALID_FORMAT" | "NAMESPACE_RESERVED" | "NAMESPACE_DUPLICATE" | "NAMESPACE_UNKNOWN_REFERENCE" | "FEATURE_MISSING_CHANNEL" | "FEATURE_CHANNEL_NAMESPACE_MISMATCH" | "FEATURE_DEPENDENCY_NOT_QUERIED";
 /**
- * Typed error for any violation detected at runtime.
+ * Manifest violation detected at runtime (phases 0a–0c, ADR-08).
  *
- * Belongs to the framework error family (ADR-05). Codes are stable and
- * meant to be matched by consumers.
+ * A `BonsaiError` (ADR-05): codes are stable and meant to be matched by consumers.
  */
-declare class BonsaiNamespaceError extends Error {
+declare class BonsaiNamespaceError extends BonsaiError {
+    readonly name: string;
     readonly code: TBonsaiNamespaceErrorCode;
     constructor(code: TBonsaiNamespaceErrorCode, message: string);
 }
@@ -26621,5 +26576,5 @@ declare class Application<M extends TFeaturesManifest = TFeaturesManifest> {
     get started(): boolean;
 }
 
-export { Application, BehaviorError, BonsaiError, BonsaiNamespaceError, BroadcastError, CommandError, Composer, DuplicateHandlerError, Entity, EntityReentrancyError, Feature, Foundation, HistoryAdapter, Immer, ListenerError, MutationError, NoHandlerError, RESERVED_NAMESPACES, RXJS, RenderError, RequestError, RouteEntity, RouterFeature, Valibot, View, assertValidNamespace, bindEntityState, canonicalLocation, describeEntity, describeFeature, hardInvariant, invariant, isCamelCaseNamespace, isDev, isReservedNamespace, parseLocation, serializeRoute, ui, warning };
-export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, CamelCaseNamespace, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, ReservedNamespace, StrictArrayOfKeys, StrictArrayOfValues, StrictManifest, StringDigit, StringHash, TAdapterClass, TAllLetters, TAnyEventPayload, TApplicationOptions, TBonsaiNamespaceErrorCode, TChannelCallbacks, TChannelDefinition, TChannelHandlerName, TChannelToken, TClass, TCommandCallbacks, TCommandPayloadFor, TComposeContext, TComposed, TComposerClass, TComposerContract, TComposerFeatures, TComposition, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntityEvent, TEntityInvariant, TEntityRecipe, TEntityState, TEntries, TEventCallbacks, TEventContext, TEventPayloadFor, TEventsFor, TExcludeKeys, TExcludeValues, TFact, TFactContext, TFalsy, TFeatureCallbacks, TFeatureClass, TFeatureContext, TFeatureContract, TFeatureQueryContext, TFeatureRef, TFeatureRefForNS, TFeaturesManifest, TFlatListens, TFlatQueries, TFlatTriggers, TFoundationOptions, TFoundationSlots, TFunctionPropertyNames, THistoryAdapterOptions, THistoryObservation, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonSerializable, TJsonValue, TListenCallbacks, TLookup, TLowerLetter, TMapEntry, TMutationParams, TNavigationMode, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TParameters, TPrimitive, TProjectionNode, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TQueryCallbacks, TQueryContext, TQueryParamsFor, TQueryResultFor, TRoute, TRouterDef, TSetEntry, TSlotDeclaration, TStrictFeatureClass, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIEntryOptions, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewCatalog, TViewClass, TViewContract, TViewSlotDeclaration, TuplifyUnion, UnionToIntersection, ValidatedManifest, ValuesType, Whitespace };
+export { Application, BonsaiError, BonsaiNamespaceError, Composer, Entity, Feature, Foundation, HistoryAdapter, Immer, RESERVED_NAMESPACES, RXJS, RouteEntity, RouterFeature, Valibot, View, assertValidNamespace, bindEntityState, canonicalLocation, describeEntity, describeFeature, hardInvariant, invariant, isCamelCaseNamespace, isDev, isReservedNamespace, parseLocation, serializeRoute, ui, warning };
+export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, CamelCaseNamespace, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, ReservedNamespace, StrictArrayOfKeys, StrictArrayOfValues, StrictManifest, StringDigit, StringHash, TAdapterClass, TAllLetters, TAnyEventPayload, TApplicationOptions, TBonsaiErrorOptions, TBonsaiNamespaceErrorCode, TCausalContext, TChannelCallbacks, TChannelDefinition, TChannelHandlerName, TChannelToken, TClass, TCommandCallbacks, TCommandPayloadFor, TComposeContext, TComposed, TComposerClass, TComposerContract, TComposerFeatures, TComposition, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntityEvent, TEntityInvariant, TEntityRecipe, TEntityState, TEntries, TEventCallbacks, TEventContext, TEventPayloadFor, TEventsFor, TExcludeKeys, TExcludeValues, TFact, TFactContext, TFalsy, TFeatureCallbacks, TFeatureClass, TFeatureContext, TFeatureContract, TFeatureQueryContext, TFeatureRef, TFeatureRefForNS, TFeaturesManifest, TFlatListens, TFlatQueries, TFlatTriggers, TFoundationOptions, TFoundationSlots, TFunctionPropertyNames, THistoryAdapterOptions, THistoryObservation, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonSerializable, TJsonValue, TListenCallbacks, TLookup, TLowerLetter, TMapEntry, TMutationParams, TNavigationMode, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TOriginKind, TParameters, TPrimitive, TProjectionNode, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TQueryCallbacks, TQueryContext, TQueryParamsFor, TQueryResultFor, TRoute, TRouterDef, TSetEntry, TSlotDeclaration, TStrictFeatureClass, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIEntryOptions, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewCatalog, TViewClass, TViewContract, TViewSlotDeclaration, TuplifyUnion, UnionToIntersection, ValidatedManifest, ValuesType, Whitespace };

@@ -61,6 +61,6 @@
   mode: run
   # Réalisé par Root : contexte établi, dérivé et gelé par le noyau ; conservé jusqu'au résultat corrélé ; restitué après une Query.
   # Strate 1b (ADR-04) : reçu par les handlers via `ctx.cause` (Command, Event, Query, fait du DOM, resolve du Composer) ; propagé par `ctx`
-  # par construction ; joint au `TEntityEvent` (`context`) et aux erreurs du noyau (`context`) ; `metas` libre de `ctx.mutate` retiré
+  # par construction ; joint au `TEntityEvent` (`context`) et à toute `BonsaiError` (`context`, ADR-05) ; `metas` libre de `ctx.mutate` retiré
   # (feature.test.ts et view.test.ts, « I54 / ADR-04 » ; entity.test.ts « I54 » ; root.test.ts « ADR-04, I54 »).
   etat: livre

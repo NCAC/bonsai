@@ -2,7 +2,7 @@
 
 > **Unité métier : enfant de la racine, handlers à contexte auto-découverts, état détenu par le noyau**
 
-> 🟢 **Aligné sur la théorie V0.9.5 et sur le code livré (lots M6.1 et M6.3, 1er novembre 2026).** Strate 1b : contexte causal lu par `ctx.cause` (ADR-04). Reste à livrer : `onDestroy`, hook `onError` (voir §9). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
+> 🟢 **Aligné sur la théorie V0.9.5 et sur le code livré (lots M6.1 et M6.3, 1er novembre 2026).** Strate 1b : contexte causal lu par `ctx.cause` (ADR-04). Reste à livrer : `onDestroy` (voir §9) ; pas de hook `onError`, écarté par l'ADR-05. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
 
 [← Retour à la couche abstraite](README.md) · [← Communication](../2-architecture/communication.md)
 
@@ -163,7 +163,7 @@ type TCartChannelDef = {
 | Un handler lève | L'unité échoue : mutations, émissions et Commands préparées sont annulées (G7) ; l'échec figure dans la trace du noyau |
 | Un handler intercepte l'échec d'une `ctx.query` | L'unité échoue quand même (`UNRECOVERABLE`) |
 | Invariant de l'Entity violé | L'unité échoue (`InvariantError`) |
-| Emission non déclarée, Query depuis une Query, hors unité | Erreur de transport (`TransportError`, codes dans [erreurs.md](../2-architecture/erreurs.md)) |
+| Emission non déclarée, Query depuis une Query, hors unité | Erreur de transport (`TransportError`, une `BonsaiError` ; codes dans [erreurs.md](../2-architecture/erreurs.md)) |
 | Handler de notification d'Entity qui lève | Échoue seul ; la mutation reste |
 | Échec au démarrage | La racine est abandonnée (`StartupError`) |
 | Profondeur causale au-delà de la borne | Le message n'est pas délivré (D9) |
@@ -175,7 +175,6 @@ Il n'existe plus d'isolation par `BroadcastError`, `CommandError` ni `RequestErr
 | Élément | Statut |
 | --- | --- |
 | `onDestroy()`, états `destroying`/`destroyed` | Cible |
-| Hook `onError()` et `ErrorReporter` | Cible |
 | `onInit()` asynchrone | Hors périmètre (le démarrage est synchrone) |
 
 ---

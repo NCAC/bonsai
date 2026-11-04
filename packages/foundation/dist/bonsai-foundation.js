@@ -1,7 +1,7 @@
 /**
  * @bonsai/foundation - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T20:41:20.101Z
+ * Date: 2026-11-04T20:50:22.215Z
  */
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -1199,6 +1199,34 @@ var immer = new Immer2();
 immer.produce;
 
 /**
+ * BonsaiError — root of every error raised by the framework (ADR-05).
+ *
+ * `instanceof BonsaiError` separates a violation detected by Bonsai from an
+ * error of application code, which the framework never wraps nor modifies.
+ *
+ * - `code`: stable identifier to match on — a symbolic code (`NOT_AUTHORIZED`)
+ *   or the id of the violated invariant (`I96`). Renaming one is a breaking change.
+ * - `component`: namespace or name of the component involved, `""` if none.
+ * - `suggestion`: actionable hint, `""` if none.
+ * - `context`: causal context of the validation unit or Query where the error
+ *   was born, attached by the kernel (ADR-04); absent outside any unit.
+ */
+class BonsaiError extends Error {
+    constructor(code, message, options = {}) {
+        const component = options.component ?? "";
+        const suggestion = options.suggestion ?? "";
+        super(`[${code}]${component ? ` ${component}` : ""} — ${message}${suggestion ? `\n  → ${suggestion}` : ""}`);
+        this.name = "BonsaiError";
+        this.code = code;
+        this.component = component;
+        this.suggestion = suggestion;
+        if (options.cause !== undefined) {
+            Object.defineProperty(this, "cause", { value: options.cause, enumerable: false, writable: false, configurable: true });
+        }
+    }
+}
+
+/**
  * Execution kernel (migration lots M1–M6) — one Root per model.
  *
  * Realises the guarantees of the communication infrastructure
@@ -1248,7 +1276,7 @@ const DESCRIBE = Symbol.for("bonsai.component.describe");
 function describeComponent(instance, options) {
     const describe = instance[DESCRIBE];
     if (typeof describe !== "function") {
-        throw new Error(`[Bonsai] ${instance.constructor.name} is not a Bonsai component and cannot be created by the framework`);
+        throw new BonsaiError("NOT_A_COMPONENT", `[Bonsai] ${instance.constructor.name} is not a Bonsai component and cannot be created by the framework`);
     }
     return describe.call(instance, options);
 }

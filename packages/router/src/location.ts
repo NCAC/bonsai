@@ -1,3 +1,4 @@
+import { BonsaiError } from "@bonsai/error";
 /**
  * Locations and routes of the navigation (D15).
  *
@@ -28,7 +29,7 @@ const BASE = "http://bonsai.invalid";
  */
 export function parseLocation(location: string): TRoute {
   if (typeof location !== "string" || !location.startsWith("/") || location.startsWith("//")) {
-    throw new Error(`[Bonsai Router] "${String(location)}" is not a location of the application (expected "/path?query#hash")`);
+    throw new BonsaiError("INVALID_LOCATION", `"${String(location)}" is not a location of the application (expected "/path?query#hash")`);
   }
   const url = new URL(location, BASE);
   const query: Record<string, string> = {};

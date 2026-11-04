@@ -9,6 +9,7 @@
  */
 
 import type { TComponentSpec } from "./kernel/types";
+import { BonsaiError } from "@bonsai/error";
 
 /** Registered symbol: the same in every package that holds a copy of this module. */
 export const DESCRIBE: unique symbol = Symbol.for("bonsai.component.describe") as never;
@@ -28,7 +29,7 @@ export type TDescribable<TOptions = undefined> = {
 export function describeComponent(instance: object, options?: unknown): TComponentSpec {
   const describe = (instance as Partial<TDescribable<unknown>>)[DESCRIBE];
   if (typeof describe !== "function") {
-    throw new Error(`[Bonsai] ${instance.constructor.name} is not a Bonsai component and cannot be created by the framework`);
+    throw new BonsaiError("NOT_A_COMPONENT", `[Bonsai] ${instance.constructor.name} is not a Bonsai component and cannot be created by the framework`);
   }
   return describe.call(instance, options);
 }

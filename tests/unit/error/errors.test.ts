@@ -1,59 +1,50 @@
 /**
- * Test — public surface of @bonsai/error: the BonsaiError taxonomy (ADR-05)
+ * Test — public surface of @bonsai/error: BonsaiError, root of every framework error (ADR-05)
  * and the validation helpers (ADR-06), through the package entry point.
  */
 
 import { describe, expect, it, jest } from "@jest/globals";
 import {
   BonsaiError,
-  MutationError,
-  EntityReentrancyError,
-  CommandError,
-  RequestError,
-  BroadcastError,
-  ListenerError,
-  NoHandlerError,
-  DuplicateHandlerError,
-  RenderError,
-  BehaviorError,
   invariant,
   hardInvariant,
   warning,
   isDev
 } from "@bonsai/error";
+import { InvariantError, ManifestError, StartupError, TransportError } from "@bonsai/kernel";
+import { BonsaiNamespaceError } from "@bonsai/feature";
 
-describe("BonsaiError (ADR-05)", () => {
-  it("formats the invariant id, the component and the suggestion when given", () => {
-    const full = new BonsaiError("duplicate handler", "I10", "cart", "remove one of them");
+describe("BonsaiError (ADR-05) — root of every framework error", () => {
+  it("formats the code, the component and the suggestion when given", () => {
+    const full = new BonsaiError("I10", "duplicate handler", { component: "cart", suggestion: "remove one of them" });
     expect(full.message).toBe("[I10] cart — duplicate handler\n  → remove one of them");
-    expect([full.invariantId, full.component, full.suggestion]).toEqual(["I10", "cart", "remove one of them"]);
+    expect([full.code, full.component, full.suggestion]).toEqual(["I10", "cart", "remove one of them"]);
     expect(full.name).toBe("BonsaiError");
+    expect(full.context).toBeUndefined();                       // attached by the kernel only (ADR-04)
 
-    const bare = new BonsaiError("no context", "ADR-05");
-    expect(bare.message).toBe("[ADR-05] — no context");
+    const bare = new BonsaiError("NOT_STARTED", "no context");
+    expect(bare.message).toBe("[NOT_STARTED] — no context");
     expect([bare.component, bare.suggestion]).toEqual(["", ""]);
+    expect("cause" in bare).toBe(false);
   });
 
-  it("names each error of the taxonomy and keeps it a BonsaiError", () => {
-    const classes = [
-      MutationError,
-      EntityReentrancyError,
-      CommandError,
-      RequestError,
-      BroadcastError,
-      ListenerError,
-      NoHandlerError,
-      DuplicateHandlerError,
-      RenderError,
-      BehaviorError
+  it("keeps the reported error as the standard Error.cause", () => {
+    const original = new Error("boom");
+    expect(new BonsaiError("X", "wrapped", { cause: original }).cause).toBe(original);
+  });
+
+  it("every error class of the framework is a BonsaiError with a stable code", () => {
+    const errors = [
+      new TransportError("NOT_AUTHORIZED", "refused"),
+      new InvariantError("cart", "total ≥ 0"),
+      new StartupError(new Error("init failed")),
+      new ManifestError("CYCLIC_DEPENDENCIES", "a ↔ b"),
+      new BonsaiNamespaceError("NAMESPACE_RESERVED", "router")
     ];
-    for (const ErrorClass of classes) {
-      const error = new ErrorClass("failed", "I1", "cart");
-      expect(error).toBeInstanceOf(BonsaiError);
-      expect(error).toBeInstanceOf(Error);
-      expect(error.name).toBe(ErrorClass.name);
-      expect(error.message).toBe("[I1] cart — failed");
-    }
+    expect(errors.map((e) => e instanceof BonsaiError)).toEqual([true, true, true, true, true]);
+    expect(errors.map((e) => e.code)).toEqual(["NOT_AUTHORIZED", "INVARIANT_VIOLATED", "STARTUP_FAILED", "CYCLIC_DEPENDENCIES", "NAMESPACE_RESERVED"]);
+    expect(errors.map((e) => e.name)).toEqual(["TransportError", "InvariantError", "StartupError", "ManifestError", "BonsaiNamespaceError"]);
+    expect(errors[1]!.component).toBe("cart");
   });
 });
 

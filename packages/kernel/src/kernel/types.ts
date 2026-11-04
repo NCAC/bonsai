@@ -1,4 +1,5 @@
 import type { Draft, Patch } from "immer";
+import type { TCausalContext, TOriginKind } from "@bonsai/types";
 
 /**
  * Execution kernel — public types (migration lots M1–M6).
@@ -12,25 +13,9 @@ import type { Draft, Patch } from "immer";
  * deferred message (9.12), validation unit (9.13), effect (11.8).
  */
 
-/** How the origin of a causal chain was qualified (A5.b, C.4). */
-export type TOriginKind = "startup" | "spontaneous" | "unknown";
-
-/**
- * Causal context carried by every message (10.5, G8).
- * One triggering parent per message outside an origin.
- */
-export interface TCausalContext {
-  /** Identifier of this message (or of this Query). */
-  readonly id: string;
-  /** Triggering parent; `null` for an origin. */
-  readonly parentId: string | null;
-  /** Identifier of the origin of the chain. */
-  readonly originId: string;
-  /** Qualification of that origin. */
-  readonly originKind: TOriginKind;
-  /** Number of continuations since the origin (D9). Origin = 0. */
-  readonly depth: number;
-}
+// Causal context (10.5, G8): declared in @bonsai/types so that @bonsai/error
+// can name it without a package cycle; re-exported here unchanged (ADR-04).
+export type { TCausalContext, TOriginKind };
 
 /** Opaque handle on a living component occurrence (C.2). */
 export interface TComponentHandle {

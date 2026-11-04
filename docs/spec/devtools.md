@@ -153,11 +153,11 @@ expect(cart?.queries).toContain("total");
 > pas un domaine métier. Pas de Channel `error`, pas de Feature `error`
 > ([ADR-05](../adr/ADR-05-propagation-erreurs.md)).
 
-Le canal livré est l'entrée `unit-failed` de la trace : elle porte l'erreur, le composant dont l'unité a échoué et son contexte causal. Une API de collecte (`getErrors()`, filtre par code de `TransportError` ou par invariant) s'appuiera sur elle.
+Le canal livré est l'entrée `unit-failed` de la trace : elle porte l'erreur, le composant dont l'unité a échoué et son contexte causal. Une API de collecte (`getErrors()`, filtre par `code` de `BonsaiError`) s'appuiera sur elle.
 
 | Type | Exemple | Canal | DevTools |
 | --- | --- | --- | --- |
-| **Infrastructure** | `TransportError` (`UNKNOWN_TARGET`, `CAUSAL_BOUND`…), `InvariantError`, effet échoué | Trace | ✅ |
+| **Infrastructure** | `BonsaiError` : `TransportError` (`UNKNOWN_TARGET`, `CAUSAL_BOUND`…), `InvariantError`, erreurs des composants (`DUPLICATE_KEY`…) ; effet échoué | Trace | ✅ |
 | **Applicative** | « Article en rupture de stock » | Event métier (`cart:addItemFailed`), projeté par la View | ❌ c'est de l'état du domaine |
 
 ---

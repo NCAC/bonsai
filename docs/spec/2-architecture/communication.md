@@ -143,7 +143,6 @@ new Application({ features, foundation, document, onTrace: (entry) => devtools.p
 
 | Élément | Statut |
 | --- | --- |
-| `ErrorReporter` (I65) et hook `onError()` | Cible |
 | Arrêt complet de la racine (`Application.stop`) | Cible |
 
 ---

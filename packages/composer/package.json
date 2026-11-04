@@ -13,6 +13,7 @@
   },
   "src": "./src/bonsai-composer.ts",
   "dependencies": {
+    "@bonsai/error": "workspace:^",
     "@bonsai/view": "workspace:^"
   }
 }

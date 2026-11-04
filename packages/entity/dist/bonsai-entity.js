@@ -1,8 +1,10 @@
 /**
  * @bonsai/entity - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T20:36:05.601Z
+ * Date: 2026-11-04T20:50:13.522Z
  */
+import { BonsaiError } from '@bonsai/error';
+
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
 
@@ -129,7 +131,7 @@ class Entity {
     get state() {
         const source = stateSources.get(this);
         if (source === undefined) {
-            throw new Error(`[Bonsai Entity] "${this.constructor.name}".state is readable only inside a handler of its Feature. ` +
+            throw new BonsaiError("OUTSIDE_HANDLER", `"${this.constructor.name}".state is readable only inside a handler of its Feature. ` +
                 "Observe the current state through a Query (G5, I6).");
         }
         return source();
