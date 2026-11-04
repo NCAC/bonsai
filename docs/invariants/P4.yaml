@@ -11,22 +11,23 @@
   parents: [P4]
   roles: ["*"]
   enonce: Tout message, Command, Query, Event ou local, porte le contexte de son déclenchement observable ; chaque message hors origine a exactement un parent établi, et chaque origine conserve sa qualification démarrage, spontanée ou observation d'antécédent inconnu. Une réponse de Query n'est pas un message et ne crée aucun contexte propre.
-  # A5.b, G8, §9.11, §10.2/§10.5 et C.4 ; aucun format de champs n'est prescrit ici.
-  # V0.9.4 : boot → run ; l'intégrité du contexte doit être assurée pendant toute l'exécution.
-  # Non livré : handlers à un paramètre, messages sans contexte ; metas Entity libre ne réalise pas G8.
   mode: run
-  etat: cible
+  # A5.b, G8, §9.11, §10.2/§10.5 et C.4 ; aucun format de champs n'est prescrit ici.
+  # Réalisé par Root : contexte gelé créé par le noyau (démarrage, spontané, inconnu), un parent par message,
+  # une Query conserve le contexte de son auteur (root.test.ts, « G8, I7, I8 »).
+  etat: livre
 
 - id: I8
   nature: C
   parents: [P4, I102]
   roles: ["*"]
   enonce: L'infrastructure de communication établit l'origine de démarrage et qualifie chaque admission selon son protocole déclaré en résultat corrélé, fait indépendant établi ou observation d'antécédent inconnu. Elle conserve les liens connus ; ni le code applicatif ni une sélection D19 ne peuvent inventer un parent, effacer un lien ou transformer l'inconnu en indépendance établie.
-  # G8, C.4 et D19 : un appel trigger n'est pas à lui seul une origine spontanée.
-  # Dernier effet, proximité temporelle, égalité de valeur et isTrusted seul ne prouvent aucun lien.
-  # Non livré : aucun protocole de qualification/corrélation des admissions ni contrôle des sélections.
   mode: run
-  etat: cible
+  # G8, C.4 et D19 : un appel trigger n'est pas à lui seul une origine spontanée.
+  # Réalisé par Root : admission qualifiée (corrélée, indépendante, inconnue), jeton de corrélation lié à l'occurrence,
+  # occurrence simulée corrélée, jamais indépendante (permissions.test.ts, « C.4, I8 »).
+  # Aucune politique de sélection D19 n'est livrée : l'interdiction vaut sans mécanisme à contrôler.
+  etat: livre
 
 - id: I9
   nature: C
@@ -40,12 +41,11 @@
     L'erreur dans l'unité annule ses opérations internes et différés, et empêche l'engagement
     de ses effets préparés ; le diagnostic hors transport applicatif ne crée aucun message
     ni origine de contournement. Un résultat post-validation ne révoque pas l'unité validée.
-  # V0.9.4 : D → C ; l'obligation est fixée par la théorie, pas par le mécanisme historique hop/MAX_HOPS.
-  # Fan-out : les branches d'un Event partagent sa profondeur, le nombre d'abonnés ne l'incrémente pas.
-  # Minuterie armée une fois : expirations sœurs ; réarmement en réaction : continuation, sans remise à zéro.
-  # Non livré : ni borne au Manifest, ni garde de soumission, ni refus transactionnel ; I98 ne prouve pas I9.
   mode: run
-  etat: cible
+  # Fan-out : les branches d'un Event partagent sa profondeur, le nombre d'abonnés ne l'incrémente pas.
+  # Réalisé par Root : borne `causalBound` du Manifest (option d'Application, 50 par défaut), contrôlée à la soumission
+  # de Command, Query, Event et local, avant la réservation des branches ; refus au préambule tracé (root.test.ts, « D9, I9 »).
+  etat: livre
 
 - id: I54
   nature: D
@@ -58,9 +58,8 @@
     qu'un contexte implicite applicatif ; elle ne permet pas de choisir soi-même un parent.
     Un oubli de propagation n'ouvre jamais une nouvelle origine. Les formes exactes de l'API,
     du type opaque éventuel et du stockage interne restent à spécifier sous ces contraintes.
-  # V0.9.4 : D conservé pour le choix de propagation explicite ; type → run pour l'authenticité et la durée de conservation.
-  # Non livré : pas de contexte causal contrôlé ; Entity.mutate() accepte encore metas?: Record<string, unknown>.
-  # Un brand TypeScript seul ne prouve ni l'authenticité runtime ni la durée de conservation.
-  # Une minuterie instrumentée continue son armement ; elle ne crée pas une origine sys- à chaque rappel.
   mode: run
-  etat: cible
+  # Livré : contexte établi, dérivé et gelé par le noyau ; conservé jusqu'au résultat corrélé ; restitué après une Query.
+  # Non livré : le code applicatif ne reçoit pas encore le contexte (`ctx.metas`, strate 1b, ADR-04) ;
+  # `ctx.mutate` accepte encore des `metas?: Record<string, unknown>` libres, hors contexte causal.
+  etat: partiel

@@ -24,10 +24,10 @@
   parents: [P3]
   roles: [Channel, Feature]
   enonce: Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé.
-  # Les tests prouvent seulement : Command sans handler → throw, Event sans abonné → ignoré.
-  # Aucun mécanisme de refus d'un Command par son handler n'est testé.
   mode: run
-  etat: partiel
+  # Réalisé par Root : un handler de Command refuse en échouant (unité défaite, aucun Event) ; l'échec d'un abonné
+  # ne révoque ni l'Event ni l'état validé de l'émetteur (root.test.ts, « I27 »).
+  etat: livre
 
 # I12 et I26 fusionnés ici : même règle vue sous trois angles (émettre sur son Channel,
 # ne pas émettre sur un Channel étranger, seule la Feature propriétaire appelle emit()).
@@ -47,12 +47,11 @@
   parents: [P3, P5]
   roles: ["*"]
   enonce: Une Command vise un Channel déclaré dans les limites des parties ; une Feature n'en adresse pas à une autre Feature, mais peut en adresser à un adaptateur du domaine. Le domaine n'adresse rien à un adaptateur de l'interface et n'en reçoit rien. Les Commands de l'interface restent soumises à I13 ; le Behavior agit au nom de sa View, et le Composer n'adresse aucune Command.
-  # A4.b, D17/D18, §16.7/§16.8 ; généralisation au-delà des seules View/Behavior.
-  # V0.9.4 : type → run pour les contrôles d'auteur, cible et partie ; état partiel conservé.
-  # Livré : trigger typé de View, absence de trigger sur Feature/Composer/Foundation.
-  # Non livré : Commands de Feature vers adaptateur domaine, rôles adaptateurs, garde D18 et imputation Behavior.
-  # Le test historique refusant tout trigger Feature ne prouve pas la capacité désormais autorisée.
   mode: run
+  # A4.b, D17/D18, §16.7/§16.8 ; généralisation au-delà des seules View/Behavior.
+  # Livré : trigger typé de View, garde D18 (I13), refus A4.b d'une Command du domaine vers un adaptateur de l'interface,
+  # absence de trigger sur Feature, Composer et Foundation.
+  # Non livré : Commands d'une Feature vers un adaptateur du domaine, imputation au nom de la View (Behavior, strate 2).
   etat: partiel
 
 - id: I4
@@ -60,8 +59,8 @@
   parents: [P3, P2]
   roles: [View, Behavior]
   enonce: Une View ou un Behavior commande (`ctx.trigger`), écoute et interroge (`ctx.query`) uniquement les Features déclarées dans son contrat — jamais il n'émet.
-  # Livré pour la View (capabilities.types, I77) ; le Behavior n'existe pas encore (strate 2b).
   mode: type
+  # Livré pour la View (capabilities.types, view.test.ts) ; le Behavior n'existe pas encore (strate 2b).
   etat: partiel
 
 - id: I13
@@ -69,12 +68,12 @@
   parents: [P3, P5]
   roles: ["*"]
   enonce: Un composant de l'interface n'adresse une Command que pendant une réaction à un fait admis d'indépendance établie ou une continuation corrélée déjà autorisée à commander, sous réserve des interdictions de son rôle. Event, relais local d'Event, résultat d'effet corrélé à un Event et observation d'antécédent inconnu n'accordent aucune permission. Une Query préalable conserve la permission de son auteur sans l'accorder au traitement consulté, toujours en lecture seule ; sa réponse n'est pas un déclencheur autonome.
-  # D18, A4.a/A4.d, C.4, §9.11 ; transversal à toute l'interface, adaptateurs compris.
-  # V0.9.4 : revue/convention → run/cible ; permission dynamique, pas simple convention de handler.
-  # Non livré : View.trigger() ne contrôle aucun contexte ; un handler Event peut encore l'appeler.
-  # Les restrictions propres au rôle restent cumulatives : Composer ne commande jamais (I35).
   mode: run
-  etat: cible
+  # D18, A4.a/A4.d, C.4, §9.11 ; transversal à toute l'interface, adaptateurs compris.
+  # Réalisé par Root : droit de commander porté par le contexte (fait indépendant, continuation corrélée autorisée) ;
+  # refus NOT_AUTHORIZED en réaction à un Event, à un relais local ou à un antécédent inconnu (permissions.test.ts, « D18, I13 ») ;
+  # le contexte d'un handler d'Event de View n'offre pas `trigger`. Le Composer ne commande jamais (I35).
+  etat: livre
 
 - id: I3
   nature: C
@@ -90,8 +89,8 @@
   parents: [P3, P2]
   roles: [Feature]
   enonce: Une Feature n'interroge (`ctx.query`) que les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect.
-  # Lecture seule livrée (READ_ONLY, A3.g) ; `ctx.query` accepte tout jeton typé, sans contrôle contre `queries` (même écart que I14).
   mode: type
+  # Lecture seule livrée (READ_ONLY, A3.g) ; `ctx.query` accepte tout jeton typé, sans contrôle contre `queries` (même écart que I14).
   etat: partiel
 
 - id: I29
@@ -144,7 +143,7 @@
     L'observabilité ne doit donc ni blanchir une consultation échouée ni devenir un Event
     contournant les règles de transport. Un ErrorReporter injectable reste un choix de réalisation,
     non une exigence de la théorie ; le reporting avant retour de null de l'ADR-03 est abandonné.
-  # V0.9.4, 2026-10-30 : partiel → cible ; console.error existe, mais il accompagne encore null.
-  # Le signalement causal obligatoire n'est pas livré ; sa réalisation ne doit pas intercepter l'échec I55.
   mode: run
-  etat: cible
+  # Réalisé par Root : l'échec est inscrit dans la trace (`unit-failed`, contexte de l'auteur), hors transport applicatif ;
+  # l'unité de l'auteur échoue quand même (root.test.ts, « I65 »). Un ErrorReporter injectable reste un choix ouvert.
+  etat: livre

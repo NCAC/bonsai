@@ -82,7 +82,7 @@ function setup() {
   return { root, log, designations, tokens, h };
 }
 
-describe("M3 — parts and attribution (6.5, T7, A1.b)", () => {
+describe("M3, I37 — parts and attribution (6.5, T7, A1.b)", () => {
   it("attributes disjoint parts; each View resolves its own designation", () => {
     const { log } = setup();
     expect(log).toEqual(["view-a resolves body/main/a", "view-b resolves body/main/b"]);
@@ -109,7 +109,7 @@ describe("M3 — parts and attribution (6.5, T7, A1.b)", () => {
   });
 });
 
-describe("M3 — designations (8.5, 9.10)", () => {
+describe("M3, I31, I58 — designations (8.5, 9.10)", () => {
   it("refuses to resolve another component's designation", () => {
     const { root, designations, h } = setup();
     root.admit(h.a!, "steal", designations["view-b"], click);
@@ -127,7 +127,7 @@ describe("M3 — designations (8.5, 9.10)", () => {
   });
 });
 
-describe("M3 — cascade and restitutions (T3, §2.5)", () => {
+describe("M3, I20, I58 — cascade and restitutions (T3, §2.5)", () => {
   it("returns portions bottom-up, each imputed to the container's owner still present", () => {
     const { root, h } = setup();
     root.admit(h.foundation!, "drop", {}, click);

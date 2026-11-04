@@ -91,7 +91,7 @@ describe("Composer on the kernel", () => {
     failOther = false;
   });
 
-  it("creates the Views of the initial composition, in order", () => {
+  it("I37 — creates the Views of the initial composition, in order", () => {
     const d = setup();
     expect(keys()).toEqual(["a", "b"]);
     expect(d.failures()).toEqual([]);
@@ -118,7 +118,7 @@ describe("Composer on the kernel", () => {
     expect(keys()).toEqual(["a", "n", "b"]);
   });
 
-  it("destroys a View whose key disappeared, with its part", () => {
+  it("I19, I20 — destroys a View whose key disappeared, with its part", () => {
     const d = setup();
     d.send("list", "set", [{ id: "b", variant: "x" }]);
     expect(keys()).toEqual(["b"]);
@@ -158,7 +158,7 @@ describe("Composer on the kernel", () => {
     expect(keys()).toEqual(["a", "b"]);
   });
 
-  it("the bookkeeping is rolled back with the unit: the next composition reconciles against what exists", () => {
+  it("I35 — the bookkeeping is rolled back with the unit: the next composition reconciles against what exists", () => {
     const d = setup();
     d.send("list", "set", [{ id: "a", variant: "x" }, { id: "a", variant: "y" }]); // fails
     d.send("list", "set", [{ id: "a", variant: "x" }, { id: "b", variant: "x" }, { id: "c", variant: "x" }]);
@@ -201,7 +201,7 @@ describe("Composer on the kernel", () => {
     expect(d.failures()).toEqual([]);
   });
 
-  it("has no triggers lane and no emit: a Composer addresses nothing (D12)", () => {
+  it("I35 — has no triggers lane and no emit: a Composer addresses nothing (D12)", () => {
     const c = new ListComposer() as unknown as Record<string, unknown>;
     for (const name of ["trigger", "emit", "request"]) expect(c[name]).toBeUndefined();
   });

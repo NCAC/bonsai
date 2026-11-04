@@ -19,7 +19,9 @@
   roles: [Application]
   enonce: Le bootstrap est la frontière de confiance — après `app.start()` les garanties sont vérifiées, avant, aucun `trigger`/`emit`/`request` n'est accepté.
   mode: boot
-  etat: cible
+  # Aucun contexte n'existe hors d'une unité de la racine démarrée ; un contexte conservé et utilisé après son unité
+  # est refusé (NO_UNIT, root.test.ts, « A5.a, I66 »).
+  etat: livre
 
 - id: I102
   nature: E
@@ -189,13 +191,13 @@
   nature: D
   parents: [P9]
   roles: [View, Behavior]
-  enonce: Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, au `mount()`.
+  enonce: Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, quand il est décrit au noyau à sa création.
   pourquoi: >
     Une lecture unique fige les dépendances déclarées au moment du montage : un composant ne peut
     pas élargir ses canaux en cours d'exécution (ADR-14).
-  # Livré pour la View (`mount()`) ; le Behavior n'existe pas encore (strate 2b).
   mode: boot
-  etat: partiel
+  # Lecture unique dans la description de la View (view.test.ts, « I81 »).
+  etat: livre
 
 - id: I83
   nature: D

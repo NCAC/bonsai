@@ -37,10 +37,12 @@ Depuis le tag `v0.1.0-strate-0` (l'historique complet est dans `git log`). Ce ja
 - **Entity** : l'état est détenu par le noyau et n'est modifiable que par `ctx.mutate` ; `entity.mutate()` et la file de ré-entrance propre à l'Entity sont retirés (ADR-10)
 - **Composition** : le Composer décide par `resolve(ctx)` une composition ordonnée par clé ; la View occupe une part attribuée, créée par le noyau ; `rootElement`, `mount()`, `onAttach()`/`onDetach()` et les getters `html`/`body` de la Foundation sont retirés (ADR-16, ADR-18 à ADR-20)
 - **ADR** réécrits depuis le code livré (ADR-01 à ADR-05, ADR-09, ADR-10, ADR-13, ADR-16, ADR-18 à ADR-20), lignes **Livré** corrigées (ADR-07, ADR-14, ADR-15, ADR-21, ADR-25, ADR-26, ADR-28, ADR-31, ADR-32, ADR-35) ; règle des ADR vivants, réécrits en place, rendue unique (`docs/README.md`, `docs/adr/README.md`)
-- **Seuils de couverture** relevés au niveau mesuré (100 % hors `kernel`, `router` et `view`) ; 419 tests
+- **Seuils de couverture** relevés au niveau mesuré (100 % hors `kernel`, `router` et `view`) ; 435 tests
 - **Versions** : tous les `package.json` du workspace alignés sur `0.2.0`
 - JSDoc et commentaires de `packages/` et `core/` traduits en anglais (ADR-34)
-- Documentation alignée sur le code livré : les écarts connus sont consignés dans la ligne **Livré** de chaque ADR ; les chapitres de spécification encore non alignés le signalent par leur bandeau, et le registre des invariants reste à requalifier après le noyau
+- Documentation alignée sur le code livré : les écarts connus sont consignés dans la ligne **Livré** de chaque ADR ; les chapitres de spécification encore non alignés le signalent par leur bandeau
+
+- **Registre des invariants requalifié après le noyau** : I7, I8, I9, I13, I19, I20, I27, I28, I31, I33 à I37, I39, I58, I65, I66, I67 et I81 livrés, chacun cité par un test ; nouveaux tests du noyau (origine de démarrage, borne causale d'un Event, refus d'une Command, signalement d'une Query en échec) et des composants (lectures uniques des déclarations, typage de la composition)
 
 ### Fixed
 

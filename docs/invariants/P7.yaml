@@ -8,10 +8,10 @@
   parents: [P7]
   roles: [View]
   enonce: La View ne décide ni de sa création, ni de sa destruction, ni de son remplacement ; son existence appartient exclusivement à son Composer parent, y compris pendant une cascade annulable de destruction.
-  # View n'expose que `mount()`, appelé par le Composer ; aucune destruction n'existe encore
-  # (une View remplacée n'est pas détruite, cf. I20). Aucun test ne cite I19.
   mode: run
-  etat: partiel
+  # La View n'a ni `mount()` ni méthode de destruction : le noyau la crée quand son Composer la résout et la détruit
+  # sur décision de ce parent seul (root.test.ts, composer.test.ts, « I19 »). Une instance construite hors Composer reste inerte.
+  etat: livre
 
 - id: I20
   nature: C
@@ -22,11 +22,10 @@
     D11 et §16.4–§16.6 séparent décision et rendu ; A2 et T3 fixent propriété et restitution.
     La cascade est exécutée par l'infrastructure, de bas en haut, sans traitement applicatif,
     et reste annulable avec son unité avant validation (C.2).
-  # Écart à P9 : règle structurelle non garantie avant l'exécution. `View` est exportée avec un
-  # constructeur public et un `mount()` public : le code applicatif peut instancier et monter une
-  # View lui-même. À remonter au compile-time (création réservée au Composer).
   mode: run
-  etat: partiel
+  # La Foundation et la View ne créent que des Composers (`get composers()`), le Composer que les Views de son catalogue ;
+  # la destruction suit la cascade du noyau, de bas en haut (structure.test.ts, composer.test.ts, « I20 »).
+  etat: livre
 
 - id: I36
   nature: C
@@ -36,10 +35,9 @@
   pourquoi: >
     Si la View composait, elle recouvrirait le rôle du Composer et brouillerait la frontière entre
     décider et rendre (ADR-18).
-  # View n'a aucune méthode de composition ; la déclaration des slots (`get composers()`) n'est pas
-  # livrée. Seul l'en-tête de view.basic.test.ts cite I36 : aucun test ne le prouve.
   mode: run
-  etat: partiel
+  # La View déclare ses slots (`get composers()`) et n'a aucune méthode de composition (view.test.ts, « I36 »).
+  etat: livre
 
 - id: I37
   nature: D
@@ -50,10 +48,10 @@
     Le type unique et la multiplicité portée par resolve() restent le choix de réalisation
     compatible de l'ADR-18, non une conséquence nécessaire de la théorie. §16.6 impose
     les frontières de propriété indépendamment de la forme du résultat.
-  # Garanti par construction : une seule classe `Composer`, `resolve()` typé
-  # `TResolveResult | null`. Partiel : 0/1 View seulement, N Views en strate 1d.
   mode: type
-  etat: partiel
+  # Une seule classe `Composer` ; `resolve(ctx)` rend une composition ordonnée de 0..N Views par clé ;
+  # le noyau refuse une portion déjà attribuée (T7) (composer.test.ts, structure.test.ts, « I37 »).
+  etat: livre
 
 # I58 (durée de l'attribution du Composer) : P6.yaml sous I99, second parent I20.
 
@@ -66,7 +64,8 @@
     Toute composition dynamique est déléguée à une View dédiée : la Foundation reste une racine
     figée dont le cycle de vie n'est pas remis en cause en cours d'exécution (ADR-20).
   mode: type+boot
-  etat: partiel
+  # `get composers()` est lu une fois, au démarrage de la Foundation (foundation.test.ts, « I67 »).
+  etat: livre
 
 - id: I23
   nature: D
@@ -88,9 +87,10 @@
   pourquoi: >
     Le Router a besoin d'un accès exclusif à l'History API : en faire une Feature interne réutilise le
     cycle de vie existant plutôt qu'un mécanisme de bootstrap à part (ADR-13).
-  # Seule la réservation du namespace `router` est livrée (via I71) ; aucun Router n'existe.
   mode: type+boot
-  etat: partiel
+  # `RouterFeature` (@bonsai/router) est créée par Application avec `router: true` ; le namespace `router` est réservé (I71),
+  # un manifest applicatif ne peut donc pas la déclarer (router.test.ts, namespace-manifest.types).
+  etat: livre
 
 - id: I94
   nature: D
