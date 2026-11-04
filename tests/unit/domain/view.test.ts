@@ -9,7 +9,7 @@ import { drive } from "../../helpers/drive";
 import { resetDOM } from "../../helpers/dom-setup";
 import { Entity } from "@bonsai/entity";
 import { Feature, type TFeatureContract, type TFeatureCallbacks, type TFeatureContext } from "@bonsai/feature";
-import type { TChannelToken } from "@bonsai/kernel";
+import type { TCausalContext, TChannelToken } from "@bonsai/kernel";
 import { Composer, type TComposerContract, type TComposeContext, type TComposition } from "@bonsai/composer";
 import { Foundation } from "@bonsai/foundation";
 import {
@@ -66,7 +66,7 @@ const uiElements = {
 type TContract = TViewContract<typeof features, typeof uiEvents>;
 
 /** Observation points of the Views under test, reset per test. */
-const seen: { fact?: TFact; ctxKeys?: string[]; eventCtxKeys?: string[]; paramsRead?: unknown; outside?: unknown } = {};
+const seen: { fact?: TFact; ctxKeys?: string[]; eventCtxKeys?: string[]; factCause?: TCausalContext; eventCause?: TCausalContext; paramsRead?: unknown; outside?: unknown } = {};
 
 /** Reads of the declaration getters of CounterView (I81). */
 const declarationReads = { features: 0, uiEvents: 0, uiElements: 0 };
@@ -80,10 +80,12 @@ class CounterView extends View<TContract> implements TViewCallbacks<TContract> {
   onButtonClick(fact: TFact, ctx: TFactContext<TContract>): void {
     seen.fact = fact;
     seen.ctxKeys = Object.keys(ctx).sort();
+    seen.factCause = ctx.cause;
     ctx.trigger("counter:inc", null);
   }
   onCounterChangedEvent(payload: { n: number }, ctx: TEventContext<TContract>): void {
     seen.eventCtxKeys = Object.keys(ctx).sort();
+    seen.eventCause = ctx.cause;
     const label = this.getUI("label");
     label.text(String(ctx.query("counter:get", null)));
     label.attr("title", `n=${payload.n}`);
@@ -143,7 +145,7 @@ describe("View on the kernel", () => {
     const d = page();
     (document.querySelector("[data-ui='button']") as HTMLElement).click();
     expect(seen.fact).toEqual({ type: "click", ui: "button" });
-    expect(seen.ctxKeys).toEqual(["query", "trigger"]);
+    expect(seen.ctxKeys).toEqual(["cause", "query", "trigger"]);
     expect(d.ask<number>("counter", "get", null)).toBe(1);
     expect(document.querySelector("[data-ui='label']")!.textContent).toBe("1");
     expect(d.failures()).toEqual([]);
@@ -152,7 +154,16 @@ describe("View on the kernel", () => {
   it("an Event handler can query but has no `trigger` (D18)", () => {
     page();
     (document.querySelector("[data-ui='button']") as HTMLElement).click();
-    expect(seen.eventCtxKeys).toEqual(["query"]);
+    expect(seen.eventCtxKeys).toEqual(["cause", "query"]);
+  });
+
+  it("I54 / ADR-04 — ctx.cause: a click is a spontaneous origin, the Event continues its chain", () => {
+    page();
+    (document.querySelector("[data-ui='button']") as HTMLElement).click();
+    expect([seen.factCause!.originKind, seen.factCause!.parentId, seen.factCause!.depth]).toEqual(["spontaneous", null, 0]);
+    // click → Command inc (depth 1) → Event changed (depth 2)
+    expect(seen.eventCause!.originId).toBe(seen.factCause!.id);
+    expect(seen.eventCause!.depth).toBe(2);
   });
 
   it("projections: text, attr, toggleClass, style and visible reach the document after the unit", () => {

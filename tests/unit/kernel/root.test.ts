@@ -745,6 +745,63 @@ describe("Refusals of the unit context: the author's unit fails (G7)", () => {
   });
 });
 
+describe("ADR-04, I54 — kernel errors carry the context where they were born", () => {
+  it("a refusal in a unit carries the unit's context, the one in the trace", () => {
+    let cause!: TCausalContext;
+    const { root, handles } = boot((ctx) => ctx.create({ name: "a", locals: { go: (_p, c) => { cause = c.cause; c.trigger("nowhere", "hit"); } } }));
+    root.admit(handles, "go", {}, click);
+    const error = failures(root)[0] as TransportError;
+    expect(error.context).toBe(cause);
+    expect(Object.isFrozen(error.context)).toBe(true);
+  });
+
+  it("a refusal born while answering a Query carries the Query's context, child of its author", () => {
+    let author!: TCausalContext;
+    const { root, handles } = boot((ctx) => ({
+      bare: ctx.create({ name: "bare", channel: { namespace: "bare", queries: { v: (_p, c) => c.state() } } }),
+      asker: ctx.create({ name: "asker", locals: { ask: (_p, c) => { author = c.cause; c.query("bare", "v"); } } })
+    }));
+    root.admit(handles.asker, "ask", {}, click);
+    const error = failures(root)[0] as TransportError;
+    expect(error.code).toBe("READ_ONLY");
+    expect(error.context!.parentId).toBe(author.id);
+  });
+
+  it("an intercepted Query failure: UNRECOVERABLE and its original refusal are both dated", () => {
+    let author!: TCausalContext;
+    const { root, handles } = boot((ctx) => ({
+      answer: ctx.create({ name: "answer", channel: { namespace: "answer", queries: { v: () => 1 } } }),
+      asker: ctx.create({
+        name: "asker",
+        locals: { ask: (_p, c) => { author = c.cause; try { c.query("answer", "missing"); } catch { /* intercepted */ } } }
+      })
+    }));
+    root.admit(handles.asker, "ask", {}, click);
+    const error = failures(root)[0] as TransportError;
+    expect(error.code).toBe("UNRECOVERABLE");
+    expect(error.context).toBe(author);
+    expect((error.cause as TransportError).context).toBe(author);   // refused before reaching the target
+  });
+
+  it("an error raised by application code is left untouched; its context is in the trace", () => {
+    const thrown = new Error("application failure");
+    const { root, handles } = boot((ctx) => ctx.create({ name: "a", locals: { go: () => { throw thrown; } } }));
+    root.admit(handles, "go", {}, click);
+    expect(failures(root)[0]).toBe(thrown);
+    expect("context" in thrown).toBe(false);
+    const entry = root.trace.find((e) => e.type === "unit-failed");
+    expect(entry && entry.type === "unit-failed" && entry.context.originKind).toBe("spontaneous");
+  });
+
+  it("a refusal outside any unit carries no context", () => {
+    const { root, handles } = boot((ctx) => ctx.create({ name: "a" }));
+    let error: unknown;
+    try { root.admit(handles, "undeclared", {}, click); } catch (e) { error = e; }
+    expect((error as TransportError).code).toBe("UNDECLARED_MESSAGE");
+    expect((error as TransportError).context).toBeUndefined();
+  });
+});
+
 describe("C.6 — a delivery whose target is gone is abandoned, not run", () => {
   it("a Command whose Channel was destroyed before its delivery", () => {
     let hits = 0;

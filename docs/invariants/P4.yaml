@@ -2,7 +2,7 @@
 #
 # Migration depuis docs/reorganisation-sept-2026/arbre-invariants-precision.md.
 # Champs : voir P8.yaml pour la légende complète.
-# Alignement V0.9.4, lot 2, 2026-10-30 : contrats cibles, aucun mécanisme causal livré.
+# Alignement V0.9.4, lot 2, 2026-10-30 : contrats cibles. Noyau (4 nov. 2026) puis strate 1b : I7, I8, I9, I54 livrés.
 # Les rôles transversaux couvrent aussi les locaux, admissions, adaptateurs et effets instrumentés.
 # Les anciens champs d'ADR-04 et le nom MAX_HOPS ne sont pas un contrat de représentation imposé par la théorie.
 
@@ -56,10 +56,11 @@
     G8, C.2/C.4 et §9.11 imposent l'établissement, la conservation et la restitution
     du contexte. La propagation explicite conserve le choix compatible de l'ADR-04 plutôt
     qu'un contexte implicite applicatif ; elle ne permet pas de choisir soi-même un parent.
-    Un oubli de propagation n'ouvre jamais une nouvelle origine. Les formes exactes de l'API,
-    du type opaque éventuel et du stockage interne restent à spécifier sous ces contraintes.
+    Un oubli de propagation n'ouvre jamais une nouvelle origine. La forme retenue par l'ADR-04 :
+    `ctx.cause`, contexte gelé en lecture seule ; aucune API n'accepte de contexte venant de l'application.
   mode: run
-  # Livré : contexte établi, dérivé et gelé par le noyau ; conservé jusqu'au résultat corrélé ; restitué après une Query.
-  # Non livré : le code applicatif ne reçoit pas encore le contexte (`ctx.metas`, strate 1b, ADR-04) ;
-  # `ctx.mutate` accepte encore des `metas?: Record<string, unknown>` libres, hors contexte causal.
-  etat: partiel
+  # Réalisé par Root : contexte établi, dérivé et gelé par le noyau ; conservé jusqu'au résultat corrélé ; restitué après une Query.
+  # Strate 1b (ADR-04) : reçu par les handlers via `ctx.cause` (Command, Event, Query, fait du DOM, resolve du Composer) ; propagé par `ctx`
+  # par construction ; joint au `TEntityEvent` (`context`) et aux erreurs du noyau (`context`) ; `metas` libre de `ctx.mutate` retiré
+  # (feature.test.ts et view.test.ts, « I54 / ADR-04 » ; entity.test.ts « I54 » ; root.test.ts « ADR-04, I54 »).
+  etat: livre

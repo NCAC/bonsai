@@ -140,19 +140,19 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 ### ❌ Meta-driven logic
 
-**Description** : Logique métier qui branche sur les metas (origin, hop, correlationId).
+**Description** : Logique métier qui branche sur le contexte causal (`ctx.cause.originKind`, `depth`, identifiants).
 
 **Pourquoi c'est dangereux** :
 
-- Les metas sont pour la traçabilité, pas pour la logique métier
+- Le contexte causal sert à la traçabilité et au diagnostic, pas à la logique métier
 - Crée des comportements imprévisibles
 - Casse le principe de découplage
 
-**Viole** : principe de traçabilité des metas (cf. [metas.md](../2-architecture/metas.md) — ⏳ cible strate 1b, non livré)
+**Viole** : principe de traçabilité causale (cf. [metas.md](../2-architecture/metas.md), ADR-04)
 
-**Détection** : `[Code review]` — le contexte causal est créé par le noyau (G8) et n'est pas encore exposé au code applicatif (`ctx.metas`, strate 1b, ADR-04). Quand il le sera, tout branchement (`if (metas.origin…)`) dans la logique métier sera un signal d'alarme.
+**Détection** : `[Code review]` — le contexte causal est créé par le noyau (G8) et lu par `ctx.cause` (ADR-04) ; tout branchement (`if (ctx.cause.originKind …)`) dans la logique métier est un signal d'alarme. Le droit de commander (D18) est contrôlé par le noyau, pas par le code.
 
-**Alternative** : La logique métier branche sur le payload du message, jamais sur les metas.
+**Alternative** : La logique métier branche sur le payload du message, jamais sur le contexte causal.
 
 ---
 

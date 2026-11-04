@@ -29,7 +29,7 @@
 import { Immer } from "@bonsai/immer";
 import type { Draft, Patch } from "immer";
 import { capture } from "./capture";
-import { InvariantError, ManifestError, StartupError, TransportError } from "./errors";
+import { attachContext, InvariantError, ManifestError, StartupError, TransportError } from "./errors";
 import type {
   TAdmission,
   TCausalContext,
@@ -317,6 +317,9 @@ export class Root {
     }
     if (failure === null) failure = this.#checkInvariants(unit);
     if (failure !== null) {
+      attachContext(failure.error, cause);
+      // An intercepted refusal reported by UNRECOVERABLE is also dated (ADR-04).
+      if (unit.poisoned !== null) attachContext(unit.poisoned.error, cause);
       for (let i = unit.undo.length - 1; i >= 0; i--) {
         try {
           unit.undo[i]!();
@@ -735,6 +738,8 @@ export class Root {
       const result = handler(value, this.#readContext(target, context, unit));
       return this.#capture(result, unit) as T;
     } catch (error) {
+      // Born while answering the Query: it carries the Query's context (ADR-04).
+      attachContext(error, context);
       // Any Query failure interrupts the author's unit; no local recovery (G7).
       unit.poisoned = unit.poisoned ?? { error };
       throw error;

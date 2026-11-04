@@ -148,7 +148,7 @@ Les modules contractuels (`TFeatureContract`, `TUIContract`, `TChannelDefinition
 
 ### 2.1 Principe fondamental : Pas de magie
 
-> **Règle absolue** : toute donnée contextuelle (metas, configuration, state)
+> **Règle absolue** : toute donnée contextuelle (contexte causal, configuration, state)
 > est passée **explicitement** en paramètre. Jamais de getter implicite,
 > jamais de global state, jamais de "contexte magique".
 
@@ -182,7 +182,7 @@ method("DISCRIMINANT", param1, param2, param3);
 | **Lisibilité** | ⭐⭐⭐ Intention immédiate | ⭐⭐ Chercher la clé | ⭐⭐ Compter les args |
 | **IDE completion** | ⭐⭐⭐ Suggestions par discriminant | ⭐⭐ Union type | ⭐ Aucune aide |
 | **Évolutivité** | ⭐⭐⭐ Ajouter params sans casser | ⭐⭐⭐ Idem | ⭐ Ordre figé |
-| **Destructuring** | ⭐⭐⭐ `{ payload, metas }` | ⭐⭐⭐ Idem | ❌ Impossible |
+| **Destructuring** | ⭐⭐⭐ `{ payload }` | ⭐⭐⭐ Idem | ❌ Impossible |
 
 #### Applications
 
@@ -208,8 +208,8 @@ ctx.mutate("cart:clear", (draft) => {
 // ══════════════════════════════════════════════════════════════
 
 // emit() — émet un Event sur le Channel propre de la Feature, délivré après
-// la validation de l'unité (G5). Signature livrée : emit(eventName, payload) ;
-// { metas } en 3e argument est une cible strate 1b (ADR-04).
+// la validation de l'unité (G5). Signature : emit(eventName, payload) ; le
+// contexte causal est rattaché par le noyau, jamais passé en argument (ADR-04).
 ctx.emit("itemAdded", { productId: payload.productId, qty: payload.qty });
 
 // query() — interroge un Channel déclaré dans `get queries()` (ADR-09, I93)
@@ -218,7 +218,7 @@ const total = ctx.query(PricingFeature.channel, "total", { productId });
 
 // ══════════════════════════════════════════════════════════════
 // View — ctx.trigger() sortant, depuis le handler d'un fait du DOM
-// Le contexte causal est créé par le noyau (G8) ; ctx.metas : strate 1b.
+// Le contexte causal est créé par le noyau (G8) ; lisible par ctx.cause (ADR-04).
 // ══════════════════════════════════════════════════════════════
 
 // Clé namespacée plate (I80), validée compile-time contre TFlatTriggers<F>
@@ -226,7 +226,7 @@ const total = ctx.query(PricingFeature.channel, "total", { productId });
 ctx.trigger("cart:addItem", { productId, qty });
 
 // ══════════════════════════════════════════════════════════════
-// Handlers — (payload, ctx) ; metas : strate 1b
+// Handlers — (payload, ctx) ; ctx.cause : contexte causal en lecture seule
 // ══════════════════════════════════════════════════════════════
 
 onAddItemCommand(payload: TAddItemPayload, ctx: TFeatureContext<TCartDef, CartEntity>): void {
@@ -240,10 +240,13 @@ onCartItemAddedEvent(payload: TItemAddedPayload, ctx: TFeatureContext<TPromoDef,
 }
 ```
 
-### 2.3 Passage explicite des metas
+### 2.3 Contexte causal : lu par `ctx.cause`, jamais fourni
 
-> **Règle** : les `metas` sont **toujours** passées explicitement en paramètre.
-> Pas de `this.currentMetas`, pas de `withMetas()`, pas de contexte implicite.
+> **Règle** : le contexte causal arrive **explicitement** par le paramètre `ctx`
+> du handler et se lit par `ctx.cause` (lecture seule, ADR-04). Tout ce qui est
+> soumis par `ctx` lui est rattaché par le noyau ; aucune API n'accepte un
+> contexte fourni par l'application. Pas de `this.currentMetas`, pas de
+> `withMetas()`, pas de `emit(name, payload, { metas })`.
 
 ```typescript
 // ✅ BON : tout passe par le contexte reçu en paramètre
@@ -260,7 +263,7 @@ onAddItemCommand(payload: TAddItemPayload, ctx: TFeatureContext<TCartDef, CartEn
   ctx.emit("itemAdded", { item: payload.item, total });
 }
 
-// ❌ MAUVAIS : getter implicite (reste vrai quand ctx.metas sera livré)
+// ❌ MAUVAIS : getter implicite au lieu de ctx.cause
 onAddItemCommand(payload: TAddItemPayload, ctx: TFeatureContext<TCartDef, CartEntity>): void {
   const metas = this.currentMetas; // NON — magie
 }
@@ -300,15 +303,14 @@ function createFeature(namespace, entity, channels, handlers) { }
 
 ```typescript
 // ✅ BON : types explicites dans l'API publique — forme réelle et complète
-// (packages/entity/src/bonsai-entity.ts) ; `metas` est accepté par
-// ctx.mutate() mais typé Record<string, unknown>, pas encore
-// TMessageMetas (cible strate 1b).
+// (packages/entity/src/bonsai-entity.ts) ; `context` est posé par le noyau
+// (ADR-04), jamais fourni à ctx.mutate().
 type TEntityEvent<
   TStructure extends TJsonSerializable = TJsonSerializable
 > = {
   readonly intent: string;
   readonly payload?: unknown;
-  readonly metas?: Record<string, unknown>;
+  readonly context: TCausalContext;
   readonly changedKeys: string[];
   readonly patches: Patch[];
   readonly inversePatches: Patch[];

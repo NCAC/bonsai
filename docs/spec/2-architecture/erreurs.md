@@ -92,7 +92,7 @@ La doctrine de rendu complète est dans [5-rendu.md](../5-rendu.md) (cible strat
 
 - La hiérarchie `BonsaiError` (`@bonsai/error`) n'est levée que par `hardInvariant` ; ses autres classes (`CommandError`, `RequestError`, `ListenerError`…) sont déclarées mais jamais levées, et les erreurs du noyau (`TransportError`, `StartupError`, `InvariantError`, `ManifestError`) n'en dérivent pas ([ADR-05](../../adr/ADR-05-propagation-erreurs.md), à décider).
 - Pas d'`ErrorReporter` injectable ni de hook `onError()` : la trace et `onTrace` en tiennent lieu ([ADR-03](../../adr/ADR-03-channel-runtime.md)).
-- Le contexte causal n'est pas joint à l'erreur elle-même, seulement à l'entrée de trace ; `ctx.metas` est strate 1b ([ADR-04](../../adr/ADR-04-metas-explicites.md)).
+- Le contexte causal est joint aux erreurs du noyau (`TransportError`, `InvariantError` : champ `context`, l'erreur la plus interne gardant le sien) ; une `Error` levée par le code applicatif n'est pas modifiée, son contexte est dans l'entrée `unit-failed` de la trace ([ADR-04](../../adr/ADR-04-metas-explicites.md)).
 
 ---
 

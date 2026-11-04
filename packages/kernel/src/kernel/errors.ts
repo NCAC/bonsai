@@ -3,7 +3,13 @@
  *
  * A transport error is not a business answer: it interrupts the author and
  * propagates to the outermost validation unit, which then fails (G7).
+ *
+ * Errors raised by the kernel during a validation unit or a Query carry the
+ * causal context where they were born (`context`, ADR-04). `cause` keeps its
+ * standard `Error.cause` meaning: the original error being reported.
  */
+
+import type { TCausalContext } from "./types";
 
 export type TTransportErrorCode =
   | "UNKNOWN_TARGET"        // no such Channel in this root (G6)
@@ -27,6 +33,8 @@ export class TransportError extends Error {
   readonly code: TTransportErrorCode;
   /** Original error, when this one reports it (UNRECOVERABLE). */
   readonly cause?: unknown;
+  /** Causal context where the error was born; absent outside any unit (ADR-04). */
+  readonly context?: TCausalContext;
 
   constructor(code: TTransportErrorCode, message: string, cause?: unknown) {
     super(`[${code}] ${message}`);
@@ -54,6 +62,8 @@ export class StartupError extends Error {
 export class InvariantError extends Error {
   readonly entity: string;
   readonly invariant: string;
+  /** Causal context of the failing validation unit (ADR-04). */
+  readonly context?: TCausalContext;
 
   constructor(entity: string, invariant: string) {
     super(`Invariant "${invariant}" of entity "${entity}" violated at the end of the validation unit (A4.a)`);
@@ -69,4 +79,15 @@ export class ManifestError extends Error {
     super(message);
     this.name = "ManifestError";
   }
+}
+
+/**
+ * Attaches the causal context where a kernel error was born (ADR-04). The
+ * innermost boundary wins: a context already attached is kept. Errors raised
+ * by application code are left untouched — their context is in the trace.
+ */
+export function attachContext(error: unknown, context: TCausalContext): void {
+  if (!(error instanceof TransportError || error instanceof InvariantError)) return;
+  if (error.context !== undefined) return;
+  Object.defineProperty(error, "context", { value: context, enumerable: true, writable: false, configurable: false });
 }

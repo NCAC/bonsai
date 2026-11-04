@@ -143,7 +143,6 @@ new Application({ features, foundation, document, onTrace: (entry) => devtools.p
 
 | Élément | Statut |
 | --- | --- |
-| `metas` et `correlationId` exposés aux handlers | Cible (ADR-04) ; le noyau tient la chaîne causale en interne |
 | `ErrorReporter` (I65) et hook `onError()` | Cible |
 | Arrêt complet de la racine (`Application.stop`) | Cible |
 

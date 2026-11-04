@@ -34,6 +34,7 @@
 import {
   DESCRIBE,
   describeComponent,
+  type TCausalContext,
   type TComponentSpec,
   type TUnitContext
 } from "@bonsai/kernel";
@@ -72,10 +73,12 @@ export type TComposerContract<
 };
 
 /**
- * What `resolve` can do: ask Queries. Nothing else — no Command, no Event, no
- * state (D12).
+ * What `resolve` can do: read its causal context, ask Queries. Nothing else —
+ * no Command, no Event, no state (D12).
  */
 export type TComposeContext<TCC extends TComposerContract> = {
+  /** Causal context of the treatment that recomposes, established by the kernel (G8, ADR-04). Read-only. */
+  readonly cause: TCausalContext;
   query<K extends TFlatQueries<TCC["features"]> & string>(
     key: K,
     params: TQueryParamsFor<TCC["features"], K>
@@ -139,6 +142,7 @@ export abstract class Composer<TCC extends TComposerContract = TComposerContract
     const reconcile = (c: TUnitContext): void => {
       const slot = c.resolve(c.designation()!);
       const composition = this.resolve({
+        cause: c.cause,
         query: ((key: string, params: unknown) => {
           const idx = key.indexOf(":");
           return c.query(key.slice(0, idx), key.slice(idx + 1), params);

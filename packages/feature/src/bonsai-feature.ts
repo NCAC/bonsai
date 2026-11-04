@@ -386,6 +386,7 @@ export abstract class Feature<
 
   #queryContext(c: TReadContext): TFeatureQueryContext {
     return {
+      cause: c.cause,
       query: (token, name, params) =>
         c.query(token.namespace, name, params)
     };
@@ -404,7 +405,7 @@ export abstract class Feature<
       const event: TEntityEvent<any> = {
         intent,
         payload: params?.payload,
-        metas: params?.metas,
+        context: c.cause,
         // Keys derived from the first path segment of each patch (I97)
         changedKeys: [...new Set(change.patches.map((p) => String(p.path[0])))],
         patches: [...change.patches],

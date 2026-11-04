@@ -1,7 +1,7 @@
 /**
  * @bonsai/composer - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T12:45:26.593Z
+ * Date: 2026-11-04T20:41:17.360Z
  */
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -1298,6 +1298,7 @@ class Composer {
         const reconcile = (c) => {
             const slot = c.resolve(c.designation());
             const composition = this.resolve({
+                cause: c.cause,
                 query: ((key, params) => {
                     const idx = key.indexOf(":");
                     return c.query(key.slice(0, idx), key.slice(idx + 1), params);

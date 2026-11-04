@@ -11,7 +11,7 @@
 #     I11, I27, I29, I55, I97 → hors du champ de P9, prouvées par les tests ;
 #   - règle structurelle vérifiée trop tard : I20 → écart à P9, à remonter au compile-time.
 #   I37 était mal qualifié (garanti par construction) : requalifié en mode `type`.
-#   I54 requalifié en mode `type` le 30/09 : metas requises partout + type opaque (brand).
+#   I54 : requalifié en mode `type` le 30/09, puis rendu au mode `run` (ADR-04 : `ctx.cause` gelé, pas de type opaque).
 
 - id: I66
   nature: E
@@ -32,8 +32,8 @@
     À l'exécution, on ne peut plus empêcher la violation, seulement la détecter : échouer tout de
     suite, avec le contexte (intent, correlationId, profondeur), réduit au minimum la distance entre
     la faute et son diagnostic. Une dégradation silencieuse repousserait le symptôme loin de sa cause.
-  # Livré : I98 (EntityReentrancyError). Partiel : I65 (console.error, ErrorReporter ⏳).
-  # Cible : I8, I9 (metas, strate 1b).
+  # Livré : I98 (EntityReentrancyError) ; erreurs du noyau datées par leur contexte causal (`context`, ADR-04, strate 1b).
+  # Partiel : I65 (console.error, ErrorReporter ⏳).
   mode: run
   etat: partiel
 
