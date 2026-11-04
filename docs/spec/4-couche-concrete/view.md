@@ -211,13 +211,14 @@ Trois modes **mutuellement exclusifs** :
  *   Le reste du DOM serveur est intouché.
  *   La clé `root` est interdite (réservée au Mode B).
  */
+// Données d'un template (ADR-26, 5-rendu.md §7) : une Query déclarée,
+// relancée par les Events listés dans `on` ; sans `query`, template statique.
 type TViewTemplateBinding<TData = unknown> = {
   template: TProjectionTemplate<any, TData>;
-  /**
-   * Selector optionnel : active l'auto-réactivité (5-rendu.md §2.3/§7.2).
-   * Si absent, le template est statique (projection initiale seulement).
-   */
-  select?: (data: Record<string, any>) => TData | undefined;
+  query?: string;                      // "ns:query", déclarée dans features[ns].queries
+  params?: unknown;                    // valeur, ou fonction des paramètres de création
+  on?: readonly string[];              // "ns:event" ⊂ features[ns].listens ; non vide si `query`
+  select?: (result: unknown) => TData; // dérivation de présentation pure (A4.d)
 };
 
 type TViewTemplates<TUI extends TUIContract = TUIContract> =
@@ -310,13 +311,13 @@ const accountViewFeatures = {
     feature:  AuthFeature,
     listens:  ['stateChanged']  as const,
     triggers: ['login', 'logout'] as const,
-    queries:  []                 as const,
+    queries:  ['session']        as const,
   },
   cart: {
     feature:  CartFeature,
     listens:  ['itemAdded', 'itemRemoved'] as const,
     triggers: []                            as const,
-    queries:  []                            as const,
+    queries:  ['itemCount']                 as const,
   },
 } satisfies TFeatureContract;
 
@@ -364,24 +365,22 @@ class AccountView
     return {
       loginContainer: {
         template: loginContainerTemplate,
-        select: (data) => data.auth
-          ? { isLogged: data.auth.isLogged, username: data.auth.username }
-          : undefined,
+        query: 'auth:session',
+        on: ['auth:stateChanged'],
+        select: (session) => ({ isLogged: session.isLogged, username: session.username }),
       },
       cartBadge: {
         template: cartBadgeTemplate,
-        select: (data) => data.cart
-          ? { itemCount: data.cart.itemCount }
-          : undefined,
+        query: 'cart:itemCount',
+        on: ['cart:itemAdded', 'cart:itemRemoved'],
+        select: (itemCount) => ({ itemCount }),
       },
       // pas de `nav` → la nav est SSR pur, aucune projection
     };
   }
 
-  // ── Channel handlers (ADR-09 channel — imposés par TViewCallbacks) ─────────
-  onAuthStateChangedEvent(_p: { isAuthenticated: boolean }, _ctx: TEventContext<TAccountViewContract>): void { /* ... */ }
-  onCartItemAddedEvent(_p: { id: string; qty: number }, _ctx: TEventContext<TAccountViewContract>): void { /* ... */ }
-  onCartItemRemovedEvent(_p: { id: string }, _ctx: TEventContext<TAccountViewContract>): void { /* ... */ }
+  // ── Channel handlers : facultatifs ici, chaque Event écouté figure dans le `on`
+  //    d'un binding (I82 amendé, ADR-26) ; un handler reste possible pour un effet N1.
 
   // ── DOM handlers (I48 UI — imposés par TViewCallbacks) ──────────────────
   // loginInput n'a PAS de template → getUI retourne TProjectionNode<HTMLInputElement>
@@ -512,13 +511,14 @@ Une annulation de destruction conserve l'état antérieur et la même occurrence
 | Niveau | Mecanisme | Quand utiliser | Declenchement |
 | --- | --- | --- | --- |
 | **N1** | Callbacks `onLocal{Key}Updated(update: TLocalUpdate<T>)` proposés | Préparation de mutations de présentation | Ordre synchrone historiquement proposé ; écriture physique seulement post-validation |
-| **N2/N3** | Selector `select: (data) => data.local?.xxx` proposé dans `get templates()` | Préparation de re-projection via pipeline PDR | Microtask historiquement proposée ; ne remplace ni la validation ni le contrôle d'occurrence |
+| **N2/N3** | ⏳ À concevoir en strate 2a : l'ADR-26 alimente les templates par Query, le state local n'y entre pas | Préparation de re-projection via pipeline PDR | Ne remplace ni la validation ni le contrôle d'occurrence |
 
 Les deux mecanismes **ne s'excluent pas**. Un même `updateLocal()` peut declencher
 un callback N1 **et** une re-projection N2/N3 si les clés concernent des zones differentes.
 
-> **Namespace `local` reserve** (I57) : le data key `local` dans `NamespacedData` est
-> reserve par le framework. Aucun Channel ne peut utiliser le namespace `local`.
+> **Namespace `local` reserve** (I57) : aucun Channel ne peut utiliser le namespace `local`.
+> L'ancien `NamespacedData` (state complet par référence) est écarté par l'ADR-26 ; la forme
+> sous laquelle le state local alimente un template relève de la strate 2a.
 
 ### 7.4 Pipeline de mutation
 
@@ -627,14 +627,9 @@ class WizardView
 
   get templates() {
     return {
-      stepContent: {
-        template: stepContentTemplate,
-        select: (data: NamespacedData) => data.local?.currentStep,
-      },
-      errorList: {
-        template: errorListTemplate,
-        select: (data: NamespacedData) => data.local?.validationErrors,
-      },
+      // ⏳ Forme à concevoir en strate 2a (ADR-17) : l'ADR-26 ne couvre pas le state local.
+      stepContent: { template: stepContentTemplate /* alimenté par local.currentStep */ },
+      errorList:   { template: errorListTemplate   /* alimenté par local.validationErrors */ },
     };
   }
 

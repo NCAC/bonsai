@@ -25,7 +25,7 @@ commence pas la strate N+1 sans suite verte sur la strate N.
 | **0** — kernel | Channels (Commands, Events, Queries), Entity, Feature, View N1, Composer, Foundation, Application ; depuis M6 sur le noyau (`Root`) | `strate-0.cart-round-trip` : clic → Command → mutation → Event → projection |
 | **1a** | Entity : patches, handlers par clé, ré-entrance bornée (ADR-10) | — |
 | **1b** | Metas causales (ADR-04), anti-boucle, isolation des erreurs (ADR-05) | — |
-| **1c** | Rendu PDR : templates N2/N3, selectors (ADR-22, ADR-26) | — |
+| **1c** | Rendu PDR : templates N2/N3 alimentés par Query (ADR-22, ADR-26), `ProjectionList` (ADR-23), compilateur Pug | — |
 | **1d** | Composer N instances, `View.composers`, cascade (ADR-18) | chorégraphie multi-Features avec metas traçables + N instances |
 | **2** | `localState` (2a), Behavior (2b), hydratation SSR et DevTools (2c) | `localState` dual avec Behavior |
 

@@ -38,6 +38,7 @@ tests : `R` runtime · `T` type · `·` aucun.
   > Livré : élément admis de la Foundation, slots attribués aux Composers, parts des Views (noyau, M3–M6.2).
   > Non livré : exclusion des portions des enfants pour les projections de la View (I40) ; Behavior (strate 2).
 - `C` I41 — Chaque clé `@ui` a une source de mutation unique — son template ou `getUI()`, jamais les deux. ⟨type · ⏳ · ·⟩
+  > ⏳ strate 1c, lot 2 (ADR-22, ADR-26) : refusé au compile-time et quand la View est décrite au noyau.
 - `D` I42 — Une View peut déclarer un state local de présentation — typé, réactif, encapsulé, non diffusable, détruit avec elle. ⟨type+boot · ⏳ · ·⟩
 - `C` I43 — Les noms des clés de la View et de chacun de ses Behaviors sont tous disjoints, y compris entre Behaviors ; des noms distincts peuvent désigner le même élément, sans multiplier l'admission du fait par la View. ⟨boot · ⏳ · ·⟩
 
@@ -89,7 +90,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 - `C` I78 — `View.getUI(key)` n'accepte qu'une clé déclarée dans le `TUIContract` de la View. ⟨type · ✅ · T⟩
 - `D` I48 — Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Query`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework. ⟨boot · ✅ · R⟩
 - `D` I88 — Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis. ⟨type · ✅ · T⟩
-- `D` I82 — `implements TViewCallbacks<TVC>` rend obligatoires les handlers d'Event et les handlers DOM déclarés ; un filet, quand la View est décrite au noyau, couvre les contournements. ⟨type+boot · ✅ · R⟩
+- `D` I82 — `implements TViewCallbacks<TVC>` rend obligatoires les handlers d'Event et les handlers DOM déclarés, sauf pour un Event référencé par le `on` d'un binding de template, dont le handler est facultatif ; un filet, quand la View est décrite au noyau, couvre les contournements. ⟨type+boot · ✅ · R⟩
 - `C` I84 — Un élément UI déclaré avec `events` non vide exige ses handlers DOM ; `events` vide déclare un élément non interactif. ⟨type+boot · ✅ · R T⟩
 - `D` I81 — Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, quand il est décrit au noyau à sa création. ⟨boot · ✅ · R⟩
 - `D` I83 — Tous les composants consommateurs composent leur contrat selon le même pattern modulaire (`TFeatureContract`, `TUIContract`, `TUIElements`). ⟨revue · 📐 · R⟩
