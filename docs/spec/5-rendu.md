@@ -142,7 +142,7 @@ class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartVi
 }
 ```
 
-**Fonctionnement** (⏳ strate 1c, lot 2) :
+**Fonctionnement** (✅ strate 1c, lot 2) :
 
 1. À la création de la View, le framework exécute `cart:items`, applique `select` et prépare la projection initiale.
 2. Quand `cart:itemAdded` est délivré à la View, après son handler s'il existe, le framework relance `cart:items` dans l'unité de l'Event.
@@ -1037,33 +1037,42 @@ ul.Cart-items
       span.qty ×#{item.qty}
 ```
 
-### 7.4 Types TypeScript (cible, lot 2)
+### 7.4 Types TypeScript (`@bonsai/view`)
 
 ```typescript
-type TViewTemplateBinding<TVC extends TViewContract, K extends TFlatQueries<TVC["features"]> & string, TData> = {
-  template: TProjectionTemplate<TData>;
-  query: K;
-  params?: TQueryParamsFor<TVC["features"], K> | ((viewParams: unknown) => TQueryParamsFor<TVC["features"], K>);
-  on: readonly [TFlatListens<TVC["features"]>, ...TFlatListens<TVC["features"]>[]];
-  select?: (result: TQueryResultFor<TVC["features"], K>) => TData;
+type TProjectionTemplate<TData = unknown, TNodes = unknown> = {
+  create(data: TData): Node;                 // contenu de la zone (SPA)
+  setup(container: HTMLElement): TNodes;     // localise les nœuds dynamiques
+  project(nodes: TNodes, data: TData): void; // mutations gardées par nœud (R5)
 };
 
-type TViewStaticBinding = { template: TProjectionTemplate<void> };
+type TQueryBinding<TVC, K extends TFlatQueries<TVC["features"]> & string, TData, TOn> = {
+  readonly template: TProjectionTemplate<TData>;
+  readonly query: K;
+  readonly params?: TQueryParamsFor<TVC["features"], K>
+    | ((viewParams: Readonly<Record<string, unknown>>) => TQueryParamsFor<TVC["features"], K>);
+  readonly on: TOn;                          // readonly [TFlatListens, ...TFlatListens[]]
+  readonly select?: (result: TQueryResultFor<TVC["features"], K>) => TData;
+};
+
+type TStaticBinding = { readonly template: TProjectionTemplate<undefined> };
 
 type TViewTemplates<TVC extends TViewContract> =
-  | null
-  | { root: TViewTemplateBinding<TVC, any, any> | TViewStaticBinding }
-  | { [K in keyof TVC["uiEvents"] & string]?: TViewTemplateBinding<TVC, any, any> | TViewStaticBinding };
+  | null                                                   // mode A
+  | { readonly root: TTemplateBinding<TVC> }               // mode B
+  | { readonly [K in keyof TVC["ui"] & string]?: TTemplateBinding<TVC> }; // mode C
 ```
 
-Les noms exacts (`TFlatListens`, `TProjectionTemplate`) seront fixés au lot 2 ;
-le contrat est : `query` ∈ Queries déclarées, `on` ⊂ Events écoutés, `select`
-typé par le résultat de la Query.
+`bind<TVC>()({ ... })` construit un `TQueryBinding` en inférant `K`, `TOn`
+(littéral) et `TData` : `select` est typé par le résultat de la Query, le
+template par la sortie de `select`. `TViewCallbacks<TVC, typeof templates>`
+rend facultatif le handler de chaque Event cité dans un `on` (I82 amendé).
+Sans `params`, la Query reçoit `null`.
 
 ### 7.5 Exécution par le framework
 
-1. **Description de la View** (O2) : chaque `query` et chaque Event de `on` sont déclarés dans le contrat ; un binding avec `query` a un `on` non vide ; une clé couverte par un template n'est pas une cible de `getUI()` (I41).
-2. **Création** : dans l'unité qui crée la View, `setup()` (part existante, strate 2c) ou `create()` ; puis, pour chaque binding avec `query`, Query → `select` → projection préparée.
+1. **Description de la View** (O2) : les clés sont des clés UI, ou `root` seule (sans `template` initial) ; chaque `query` et chaque Event de `on` sont déclarés dans le contrat ; un binding avec `query` a un `on` non vide. Codes : `UNKNOWN_TEMPLATE_KEY`, `ROOT_TEMPLATE_EXCLUSIVE`, `MISSING_TEMPLATE`, `MISSING_QUERY`, `UNDECLARED_QUERY`, `MISSING_ON`, `UNDECLARED_LISTEN`. Un appel de `getUI()` sur une clé couverte (toutes sous `root`) fait échouer l'unité (`TEMPLATE_OWNED_KEY`, I41).
+2. **Création** : dans l'unité qui crée la View, pour chaque binding, Query → `select` (rien pour un binding statique) → effet préparé qui insère `create(data)` dans la zone puis y appelle `setup()`. L'adoption d'une part pré-rendue par `setup()` seul relève de la strate 2c (ADR-24).
 3. **Event délivré** : handler `on{NS}{Event}Event` s'il existe, puis **une passe** sur les bindings dont `on` contient cet Event : Query (une seule exécution par couple Query/paramètres dans la passe) → `select` → `shallowEqual` avec la dernière sortie projetée → projection préparée si différente.
 4. **Validation** : les projections sont engagées après la validation de l'unité (C.3) ; si l'unité échoue, elles ne le sont pas et la mémoire des dernières sorties est restaurée (G7).
 
@@ -1183,7 +1192,7 @@ T3 ─── Interaction utilisateur (ex: tri) ───────────
        ✅ Seuls les nœuds nécessaires sont déplacés/mutés
 ```
 
-### 7bis.4 Implémentation framework (pseudo-code, lot 2)
+### 7bis.4 Implémentation framework (schéma du livré, `View.#projectBindings`)
 
 ```typescript
 // INTERNE FRAMEWORK — pendant le traitement d'un Event délivré à la View (ADR-26)

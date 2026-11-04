@@ -48,7 +48,7 @@
 | Type | Definition | État | Source |
 | --- | --- | --- | --- |
 | `TChannelToken<TDef, NS>` | Token `{ namespace: NS; events?: string[] }` typé par `TDef`, porté par `static readonly channel` (ADR-14). `events` déclare au noyau les Events que la Feature peut émettre (D16) | ✅ | [feature.md](../3-couche-abstraite/feature.md), [communication.md](../2-architecture/communication.md) |
-| `TTokenDef<T>` / `TAnyEventPayload` | Extraction du `TChannelDefinition` d'un token ; payload d'Event quelconque (`packages/kernel/src/channel-types.ts`) | ✅ | [communication.md](../2-architecture/communication.md) |
+| `TTokenDef<T>` | Extraction du `TChannelDefinition` d'un token (`packages/kernel/src/channel-types.ts`) | ✅ | [communication.md](../2-architecture/communication.md) |
 | `TCommandCallbacks<TDef>` / `TQueryCallbacks<TDef>` / `TListenCallbacks<TListens>` | Composants de `TFeatureCallbacks` (ADR-09) : handlers `on{Cmd}Command`, `on{Name}Query`, `on{Ns}{Event}Event` | ✅ | [feature.md](../3-couche-abstraite/feature.md) |
 | `TFeatureCallbacks<TDef, TListens, TEntity>` | Clause `implements` d'une Feature (ADR-09, I92). Handler manquant → `TS2420` ; signature fautive → `TS2416` | ✅ | [feature.md](../3-couche-abstraite/feature.md) |
 | `TStrictFeatureClass<NS, TDef>` | Contrainte de `StrictManifest<M>` sur chaque entrée du manifest (ADR-09, I95) : constructeur `(namespace: NS) => Feature<…, TDef, NS>` + `static channel` aligné | ✅ | [feature.md](../3-couche-abstraite/feature.md) |
@@ -109,9 +109,9 @@
 | `TProjectionRead` | Type de lecture seule sur un @ui DOM : `value()`, `checked()`, `getAttr()`, `getText()`, `hasClass()`. Retourne par `getUI(key)` pour les @ui couverts par un template (N2/N3, ADR-16) | ⏳ cible strate 1c — n'existe pas ; `getUI()` retourne toujours `TProjectionNode` | [view.md](../4-couche-concrete/view.md) |
 | `TProjectionNode<TEl>` | Projection N1 sur une clé d'interface : `text(value)`, `attr(name, value)`, `toggleClass(name, force)`, `visible(show)`, `style(prop, value)`. Chaque appel prépare un effet engagé après validation (C.3) ; tous retournent `void`. Ni `element()` ni `.node` (I39) | ✅ | [view.md](../4-couche-concrete/view.md) |
 | `TProjectionList` | Gestionnaire de reconciliation par clé pour listes dynamiques. Algorithme O(n) : `reconcile({ items, key, create, update, remove })`. Utilise en interne par les templates N2 (Mode C, ADR-22) | ⏳ cible strate 1c | [5-rendu.md](../5-rendu.md) |
-| `TViewTemplateBinding<TData>` | Contrat d'une entree de `get templates()` : `{ template: TProjectionTemplate<any, TData>; select?: (data) => TData \| undefined }`. `select` active l'auto-reactivite | ⏳ cible strate 1c | [view.md](../4-couche-concrete/view.md) |
-| `TViewTemplates<TUI>` | Union des trois modes de rendu : `null` (Mode A), `{ root: TViewTemplateBinding }` (Mode B), `{ [K in keyof TUI]?: TViewTemplateBinding }` (Mode C). Modes mutuellement exclusifs (ADR-22) | ⏳ cible strate 1c | [view.md](../4-couche-concrete/view.md) |
-| `TProjectionTemplate` | Type d'un template compile — objet `{ setup, project, create }` généré par le compilateur PugJS -> PDR | ⏳ cible strate 1c — seul un prototype existe (`tools/pug-to-ts-template`) | [5-rendu.md](../5-rendu.md) |
+| `TQueryBinding<TVC, K, TData, TOn>` / `TStaticBinding` | Entrée de `get templates()` : `{ template, query, params?, on, select? }` alimentée par une Query déclarée et relancée par les Events de `on`, ou `{ template }` statique ; `bind<TVC>()` l'infère (ADR-26) | ✅ strate 1c, lot 2 | [5-rendu.md §7](../5-rendu.md) |
+| `TViewTemplates<TVC>` | Union des trois modes de rendu : `null` (Mode A), `{ root }` (Mode B), `{ [uiKey]?: binding }` (Mode C), exclusifs (ADR-22) | ✅ strate 1c, lot 2 | [view.md](../4-couche-concrete/view.md) |
+| `TProjectionTemplate<TData, TNodes>` | Template d'une zone : `{ create, setup, project }`, exécuté à l'engagement (C.3) ; écrit à la main, généré par le compilateur Pug au lot 4 | ✅ strate 1c, lot 2 | [view.md §4.6](../4-couche-concrete/view.md) |
 | `TViewNodes<TUI>` | Références de projection des clés de `get templates()` | ⏳ cible strate 1c, proposition non fixée | [view.md](../4-couche-concrete/view.md) |
 
 ## Types Behavior (ADR-14 — pattern modulaire)

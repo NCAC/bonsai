@@ -9,7 +9,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 | Invariants | ✅ livré | ⚠️ partiel | ⏳ cible | 📐 convention |
 | --- | --- | --- | --- | --- |
-| 32 | 16 | 11 | 3 | 2 |
+| 32 | 17 | 11 | 2 | 2 |
 
 ## Écarts
 
@@ -37,8 +37,6 @@ tests : `R` runtime · `T` type · `·` aucun.
   > V0.9.4 : A2, §16.4–§16.7 ; l'admission Foundation n'est pas une attribution par un parent DOM.
   > Livré : élément admis de la Foundation, slots attribués aux Composers, parts des Views (noyau, M3–M6.2).
   > Non livré : exclusion des portions des enfants pour les projections de la View (I40) ; Behavior (strate 2).
-- `C` I41 — Chaque clé `@ui` a une source de mutation unique — son template ou `getUI()`, jamais les deux. ⟨type · ⏳ · ·⟩
-  > ⏳ strate 1c, lot 2 (ADR-22, ADR-26) : refusé au compile-time et quand la View est décrite au noyau.
 - `D` I42 — Une View peut déclarer un state local de présentation — typé, réactif, encapsulé, non diffusable, détruit avec elle. ⟨type+boot · ⏳ · ·⟩
 - `C` I43 — Les noms des clés de la View et de chacun de ses Behaviors sont tous disjoints, y compris entre Behaviors ; des noms distincts peuvent désigner le même élément, sans multiplier l'admission du fait par la View. ⟨boot · ⏳ · ·⟩
 
@@ -67,7 +65,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 - `C` I40 — La View conserve son élément racine et les éléments de ses slots, mais le contenu attribué à ses Composers est soustrait à sa part ; toute lecture, écriture ou admission respecte cette exclusion pendant l'attribution. ⟨run · ⚠️ · ·⟩
 - `C` I34 — L'élément racine d'une View appartient à la part que son Composer lui attribue dans le contenu de son slot ; il ne se confond pas avec l'élément du slot. Aucune contrainte universelle de descendance de `body` ne remplace cette vérification de propriété. ⟨run · ✅ · R⟩
 - `D` I31 — Le Composer fournit à la création de la View une désignation de sa part, jamais un élément de l'hôte ; sa résolution contrôlée vérifie la propriété et sa validité pour cette seule attribution, sans réactivation par réattribution du même emplacement. ⟨run · ✅ · R⟩
-- `C` I41 — Chaque clé `@ui` a une source de mutation unique — son template ou `getUI()`, jamais les deux. ⟨type · ⏳ · ·⟩
+- `C` I41 — Chaque clé `@ui` a une source de mutation unique — son template ou `getUI()`, jamais les deux. ⟨run · ✅ · R⟩
 - `C` I43 — Les noms des clés de la View et de chacun de ses Behaviors sont tous disjoints, y compris entre Behaviors ; des noms distincts peuvent désigner le même élément, sans multiplier l'admission du fait par la View. ⟨boot · ⏳ · ·⟩
 - `C` I38 — Les droits de modification de l'interface respectent les parts attribuées et les rôles ; la View projette dans sa part hors contenu des slots, les opérations du Behavior lui sont imputées, la Foundation reste bornée à son élément admis hors parts attribuées, et le Composer ne modifie son contenu que pour la composition définie par I35. ⟨run · ⚠️ · ·⟩
 - `C` I32 — La View ne détruit ni ne remplace son élément racine ; elle peut en modifier les attributs et dispose de son contenu hors contenu attribué aux Composers. Avant de retirer un élément de slot, elle détruit le Composer concerné pour en obtenir restitution. ⟨run · ⚠️ · ·⟩
@@ -90,7 +88,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 - `C` I78 — `View.getUI(key)` n'accepte qu'une clé déclarée dans le `TUIContract` de la View. ⟨type · ✅ · T⟩
 - `D` I48 — Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Query`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework. ⟨boot · ✅ · R⟩
 - `D` I88 — Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis. ⟨type · ✅ · T⟩
-- `D` I82 — `implements TViewCallbacks<TVC>` rend obligatoires les handlers d'Event et les handlers DOM déclarés, sauf pour un Event référencé par le `on` d'un binding de template, dont le handler est facultatif ; un filet, quand la View est décrite au noyau, couvre les contournements. ⟨type+boot · ✅ · R⟩
+- `D` I82 — `implements TViewCallbacks<TVC>` rend obligatoires les handlers d'Event et les handlers DOM déclarés, sauf pour un Event référencé par le `on` d'un binding de template, dont le handler est facultatif ; un filet, quand la View est décrite au noyau, couvre les contournements. ⟨type+boot · ✅ · R T⟩
 - `C` I84 — Un élément UI déclaré avec `events` non vide exige ses handlers DOM ; `events` vide déclare un élément non interactif. ⟨type+boot · ✅ · R T⟩
 - `D` I81 — Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, quand il est décrit au noyau à sa création. ⟨boot · ✅ · R⟩
 - `D` I83 — Tous les composants consommateurs composent leur contrat selon le même pattern modulaire (`TFeatureContract`, `TUIContract`, `TUIElements`). ⟨revue · 📐 · R⟩

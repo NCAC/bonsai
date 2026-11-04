@@ -1,7 +1,7 @@
 /**
  * @bonsai/router - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T20:50:16.914Z
+ * Date: 2026-11-04T21:46:46.093Z
  */
 import { Entity } from '@bonsai/entity';
 import { Feature } from '@bonsai/feature';

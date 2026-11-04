@@ -24712,14 +24712,6 @@ type TChannelToken<TDef extends TChannelDefinition, TNS extends string = string>
 };
 /** Extracts the `TDef` of a `TChannelToken`. */
 type TTokenDef<T> = T extends TChannelToken<infer TDef, any> ? TDef : never;
-/**
- * Payload of the technical `any` event, emitted automatically after
- * each `emit()` of a granular Event.
- */
-type TAnyEventPayload = {
-    readonly event: string;
-    readonly changes: Record<string, unknown>;
-};
 
 /** Opaque handle on a living component occurrence (C.2). */
 interface TComponentHandle {
@@ -26114,6 +26106,8 @@ declare abstract class Composer<TCC extends TComposerContract = TComposerContrac
  *   3. `get uiElements()` — CSS selector of each key, inside the View's part
  *   4. `get template()`   — initial content of the part (HTML string; default empty)
  *   5. `get composers()`  — slots of the part and the Composer of each
+ *   6. `get templates()`  — template bindings (N2/N3, ADR-26): the Query that
+ *      feeds each zone and the Events that re-run it
  *
  * Removed with this lot: `this.trigger`, `this.request`, `mount()`, `onAttach()`,
  * and `TProjectionNode.element()` (a raw element contradicts I39 and cannot be
@@ -26122,11 +26116,13 @@ declare abstract class Composer<TCC extends TComposerContract = TComposerContrac
  * Invariants:
  *   I4  — A View NEVER has emit() — absent from the type
  *   I36 — A View never composes other Views directly (only declares Composers)
- *   I39 — DOM access only through getUI(key), as prepared effects
+ *   I39 — DOM access only through getUI(key) or a template binding, as prepared effects
+ *   I41 — A key covered by a template binding is not a target of getUI(key)
  *   I48 — Handlers are auto-discovered by naming convention
  *   I80 — No TChannelToken in the consumer public surface
  *   I81 — `features` / `uiEvents` / `uiElements` are the sources of truth
- *   I82 — Missing handler → compile error through `implements TViewCallbacks`
+ *   I82 — Missing handler → compile error through `implements TViewCallbacks`;
+ *         optional for an Event cited in the `on` of a template binding (ADR-26)
  *   I84 — A non-empty `events: [E, ...]` requires the matching DOM handlers
  *   I85 — `ui<TEl>()(events)` is the only TUIEntry helper (curried form)
  *   I86 — `events` is always present in TUIEntry (never optional)
@@ -26322,12 +26318,18 @@ type TUIEntryHandlers<TKey extends string, TEntry extends TUIEntry, TVC extends 
 type TUICallbacks<U extends TUIContract, TVC extends TViewContract = TViewContract> = UnionToIntersection<{
     [K in keyof U]: TUIEntryHandlers<K & string, U[K], TVC>;
 }[keyof U]>;
+/** Handler of the Event `NS:E` of a View. */
+type TEventHandler<TVC extends TViewContract, NS extends string, E extends string> = (payload: TEventPayloadFor<TVC["features"], `${NS}:${E}`>, ctx: TEventContext<TVC>) => void;
 /**
- * Event handlers REQUIRED by the `listens` of a `TFeatureContract` (I48 channel).
+ * Event handlers of the `listens` of a `TFeatureContract` (I48 channel):
+ * REQUIRED, except for an Event of `TOn`, which re-runs a template binding and
+ * whose handler is optional (I82 amended, ADR-26).
  */
-type TEventCallbacks<TVC extends TViewContract> = UnionToIntersection<{
+type TEventCallbacks<TVC extends TViewContract, TOn extends string = never> = UnionToIntersection<{
     [NS in keyof TVC["features"] & string]: {
-        [E in TVC["features"][NS]["listens"][number] as TChannelHandlerName<NS, E & string>]: (payload: TEventPayloadFor<TVC["features"], `${NS}:${E & string}`>, ctx: TEventContext<TVC>) => void;
+        [E in TVC["features"][NS]["listens"][number] as `${NS}:${E & string}` extends TOn ? never : TChannelHandlerName<NS, E & string>]: TEventHandler<TVC, NS, E & string>;
+    } & {
+        [E in TVC["features"][NS]["listens"][number] as `${NS}:${E & string}` extends TOn ? TChannelHandlerName<NS, E & string> : never]?: TEventHandler<TVC, NS, E & string>;
     };
 }[keyof TVC["features"] & string]>;
 /**
@@ -26339,10 +26341,90 @@ type TViewContract<F extends TFeatureContract = TFeatureContract, U extends TUIC
     readonly ui: U;
 };
 /**
- * Single `implements` clause of a View (ADR-14, I88): the handlers of the
- * Events it listens to and of the host events it declares.
+ * Compiled template of a projection zone (ADR-22, 5-rendu §4.6). The compiler
+ * generates it from Pug (strate 1c, lot 4); it can be written by hand.
+ *
+ * Its functions run only when the projection is engaged, after the unit
+ * validates (C.3): they receive host nodes and nothing else.
  */
-type TViewCallbacks<TVC extends TViewContract> = TEventCallbacks<TVC> & TUICallbacks<TVC["ui"], TVC>;
+type TProjectionTemplate<TData = unknown, TNodes = unknown> = {
+    /** Builds the content of the zone from data (SPA mode); inserted in the container. */
+    create(data: TData): Node;
+    /** Locates the dynamic nodes inside the container (hydration, ADR-24 H2). */
+    setup(container: HTMLElement): TNodes;
+    /** Surgical mutations from data, guarded per node (5-rendu §7bis R5). */
+    project(nodes: TNodes, data: TData): void;
+};
+/**
+ * Binding fed by a declared Query and re-run by the Events of `on` (ADR-26).
+ * Built with `bind<TVC>()(...)` for `select` and the template to be typed by
+ * the result of the Query.
+ */
+type TQueryBinding<TVC extends TViewContract, K extends TFlatQueries<TVC["features"]> & string, TData = TQueryResultFor<TVC["features"], K>, TOn extends TBindingEvents<TVC> = TBindingEvents<TVC>> = {
+    readonly template: TProjectionTemplate<TData>;
+    /** `"ns:query"` key of a Query declared in `features[ns].queries`. */
+    readonly query: K;
+    /** Parameters of the Query: a value, or a function of the View's creation parameters (A3.d). */
+    readonly params?: TQueryParamsFor<TVC["features"], K> | ((viewParams: Readonly<Record<string, unknown>>) => TQueryParamsFor<TVC["features"], K>);
+    /** Events that re-run the Query: declared in `features[ns].listens`, never empty. */
+    readonly on: TOn;
+    /** Pure presentation derivation of the result, without business authority (A4.d). */
+    readonly select?: (result: TQueryResultFor<TVC["features"], K>) => TData;
+};
+/** Non-empty list of `"ns:event"` keys a binding is re-run by. */
+type TBindingEvents<TVC extends TViewContract> = readonly [
+    TFlatListens<TVC["features"]>,
+    ...TFlatListens<TVC["features"]>[]
+];
+/** Static binding: no data, projected once when the View is created. */
+type TStaticBinding = {
+    readonly template: TProjectionTemplate<undefined>;
+    readonly query?: never;
+    readonly on?: never;
+};
+/** Any binding of a View: static, or fed by one of its declared Queries. */
+type TTemplateBinding<TVC extends TViewContract> = TStaticBinding | {
+    [K in TFlatQueries<TVC["features"]> & string]: TQueryBinding<TVC, K, unknown>;
+}[TFlatQueries<TVC["features"]> & string];
+/**
+ * Template bindings of a View (ADR-22 modes):
+ *   - `null` — mode A, no template (N1 projections through `getUI()` only);
+ *   - `{ root }` — mode B, one template covers the whole part;
+ *   - `{ [uiKey]: binding }` — mode C, one template per UI key, as islands.
+ */
+type TViewTemplates<TVC extends TViewContract> = null | {
+    readonly root: TTemplateBinding<TVC>;
+} | {
+    readonly [K in keyof TVC["ui"] & string]?: TTemplateBinding<TVC>;
+};
+/** Union of the `"ns:event"` keys cited in the `on` of some bindings. */
+type TTemplateEvents<TTemplates> = TTemplates extends null ? never : {
+    [K in keyof TTemplates]: TTemplates[K] extends {
+        readonly on: readonly (infer E)[];
+    } ? E & string : never;
+}[keyof TTemplates];
+/**
+ * Typed binding helper (ADR-26): `select` receives the result of the Query,
+ * the template receives the output of `select`, and `on` keeps its literal
+ * keys for `TViewCallbacks`.
+ *
+ * ```ts
+ * const items = bind<TCartViewContract>()({
+ *   template: CartItemsTemplate,
+ *   query: "cart:items",
+ *   on: ["cart:itemAdded", "cart:itemRemoved"],
+ *   select: (items) => items.filter((i) => i.qty > 0)
+ * });
+ * ```
+ */
+declare function bind<TVC extends TViewContract>(): <K extends TFlatQueries<TVC["features"]> & string, const TOn extends TBindingEvents<TVC>, TData = TQueryResultFor<TVC["features"], K>>(binding: TQueryBinding<TVC, K, TData, TOn>) => TQueryBinding<TVC, K, TData, TOn>;
+/**
+ * Single `implements` clause of a View (ADR-14, I88): the handlers of the
+ * Events it listens to and of the host events it declares. With the type of
+ * its `templates`, the handler of an Event cited in an `on` becomes optional
+ * (I82 amended, ADR-26).
+ */
+type TViewCallbacks<TVC extends TViewContract, TTemplates = null> = TEventCallbacks<TVC, TTemplateEvents<TTemplates>> & TUICallbacks<TVC["ui"], TVC>;
 /**
  * Structural type of a concrete View class, independent of its contract.
  * Used by orchestrating components (Composer) that only depend on the
@@ -26393,6 +26475,13 @@ declare abstract class View<TVC extends TViewContract = TViewContract> {
      * part, in the content produced by `template`.
      */
     get composers(): Readonly<Record<string, TViewSlotDeclaration>>;
+    /**
+     * Template bindings (ADR-26): for each zone, the template, the declared
+     * Query that feeds it and the Events that re-run it. `null` (default): no
+     * template. Projected when the View is created, then after each Event of
+     * an `on`, unless the output is shallow-equal to the last one projected.
+     */
+    get templates(): TViewTemplates<TVC>;
     /** Creation parameters given by the Composer, frozen (6.2). Only inside a handler. */
     protected get params(): Readonly<Record<string, unknown>>;
     /**
@@ -26576,5 +26665,5 @@ declare class Application<M extends TFeaturesManifest = TFeaturesManifest> {
     get started(): boolean;
 }
 
-export { Application, BonsaiError, BonsaiNamespaceError, Composer, Entity, Feature, Foundation, HistoryAdapter, Immer, RESERVED_NAMESPACES, RXJS, RouteEntity, RouterFeature, Valibot, View, assertValidNamespace, bindEntityState, canonicalLocation, describeEntity, describeFeature, hardInvariant, invariant, isCamelCaseNamespace, isDev, isReservedNamespace, parseLocation, serializeRoute, ui, warning };
-export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, CamelCaseNamespace, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, ReservedNamespace, StrictArrayOfKeys, StrictArrayOfValues, StrictManifest, StringDigit, StringHash, TAdapterClass, TAllLetters, TAnyEventPayload, TApplicationOptions, TBonsaiErrorOptions, TBonsaiNamespaceErrorCode, TCausalContext, TChannelCallbacks, TChannelDefinition, TChannelHandlerName, TChannelToken, TClass, TCommandCallbacks, TCommandPayloadFor, TComposeContext, TComposed, TComposerClass, TComposerContract, TComposerFeatures, TComposition, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntityEvent, TEntityInvariant, TEntityRecipe, TEntityState, TEntries, TEventCallbacks, TEventContext, TEventPayloadFor, TEventsFor, TExcludeKeys, TExcludeValues, TFact, TFactContext, TFalsy, TFeatureCallbacks, TFeatureClass, TFeatureContext, TFeatureContract, TFeatureQueryContext, TFeatureRef, TFeatureRefForNS, TFeaturesManifest, TFlatListens, TFlatQueries, TFlatTriggers, TFoundationOptions, TFoundationSlots, TFunctionPropertyNames, THistoryAdapterOptions, THistoryObservation, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonSerializable, TJsonValue, TListenCallbacks, TLookup, TLowerLetter, TMapEntry, TMutationParams, TNavigationMode, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TOriginKind, TParameters, TPrimitive, TProjectionNode, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TQueryCallbacks, TQueryContext, TQueryParamsFor, TQueryResultFor, TRoute, TRouterDef, TSetEntry, TSlotDeclaration, TStrictFeatureClass, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIEntryOptions, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewCatalog, TViewClass, TViewContract, TViewSlotDeclaration, TuplifyUnion, UnionToIntersection, ValidatedManifest, ValuesType, Whitespace };
+export { Application, BonsaiError, BonsaiNamespaceError, Composer, Entity, Feature, Foundation, HistoryAdapter, Immer, RESERVED_NAMESPACES, RXJS, RouteEntity, RouterFeature, Valibot, View, assertValidNamespace, bind, bindEntityState, canonicalLocation, describeEntity, describeFeature, hardInvariant, invariant, isCamelCaseNamespace, isDev, isReservedNamespace, parseLocation, serializeRoute, ui, warning };
+export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, CamelCaseNamespace, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, ReservedNamespace, StrictArrayOfKeys, StrictArrayOfValues, StrictManifest, StringDigit, StringHash, TAdapterClass, TAllLetters, TApplicationOptions, TBindingEvents, TBonsaiErrorOptions, TBonsaiNamespaceErrorCode, TCausalContext, TChannelCallbacks, TChannelDefinition, TChannelHandlerName, TChannelToken, TClass, TCommandCallbacks, TCommandPayloadFor, TComposeContext, TComposed, TComposerClass, TComposerContract, TComposerFeatures, TComposition, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntityEvent, TEntityInvariant, TEntityRecipe, TEntityState, TEntries, TEventCallbacks, TEventContext, TEventPayloadFor, TEventsFor, TExcludeKeys, TExcludeValues, TFact, TFactContext, TFalsy, TFeatureCallbacks, TFeatureClass, TFeatureContext, TFeatureContract, TFeatureQueryContext, TFeatureRef, TFeatureRefForNS, TFeaturesManifest, TFlatListens, TFlatQueries, TFlatTriggers, TFoundationOptions, TFoundationSlots, TFunctionPropertyNames, THistoryAdapterOptions, THistoryObservation, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonSerializable, TJsonValue, TListenCallbacks, TLookup, TLowerLetter, TMapEntry, TMutationParams, TNavigationMode, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TOriginKind, TParameters, TPrimitive, TProjectionNode, TProjectionTemplate, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TQueryBinding, TQueryCallbacks, TQueryContext, TQueryParamsFor, TQueryResultFor, TRoute, TRouterDef, TSetEntry, TSlotDeclaration, TStaticBinding, TStrictFeatureClass, TTemplateBinding, TTemplateEvents, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIEntryOptions, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewCatalog, TViewClass, TViewContract, TViewSlotDeclaration, TViewTemplates, TuplifyUnion, UnionToIntersection, ValidatedManifest, ValuesType, Whitespace };

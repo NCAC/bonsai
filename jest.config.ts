@@ -103,8 +103,8 @@ const config: Config = {
     "packages/kernel/src/**/*.ts": { statements: 98, branches: 96, functions: 98, lines: 100 },
     // history-adapter.ts: 99.12 / 87.09 / 100 / 100 on 2026-11-03.
     "packages/router/src/**/*.ts": { statements: 99, branches: 87, functions: 100, lines: 100 },
-    // bonsai-view.ts: 100 / 94.44 / 100 / 100 on 2026-11-03.
-    "packages/view/src/**/*.ts": { statements: 100, branches: 94, functions: 100, lines: 100 }
+    // bonsai-view.ts: 100 / 97.05 / 100 / 100 on 2026-11-04.
+    "packages/view/src/**/*.ts": { statements: 100, branches: 97, functions: 100, lines: 100 }
   },
 
   // Test configuration

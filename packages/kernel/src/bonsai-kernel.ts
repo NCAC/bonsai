@@ -3,7 +3,7 @@
  *
  * Exports:
  * - `Root` and the kernel types: the execution kernel (theory §13, annex C)
- * - Channel contract types: `TChannelDefinition`, `TChannelToken`, `TTokenDef`, `TAnyEventPayload`
+ * - Channel contract types: `TChannelDefinition`, `TChannelToken`, `TTokenDef`
  *
  * @packageDocumentation
  */
@@ -11,8 +11,7 @@
 export type {
   TChannelDefinition,
   TChannelToken,
-  TTokenDef,
-  TAnyEventPayload
+  TTokenDef
 } from "./channel-types";
 
 // ── Execution kernel (migration lot M6) ──────────────────────────────────
