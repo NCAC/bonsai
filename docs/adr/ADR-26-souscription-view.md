@@ -1,51 +1,56 @@
-# ADR-26 — Souscription de la View : handlers granulaires ou `any` + selectors
+# ADR-26 — Données d'un template : Query déclarée, relancée par des Events explicites
 
 | Champ | Valeur |
 | --- | --- |
-| **Statut** | 🟡 Proposed |
-| **Livré** | Handlers granulaires `on{NS}{Event}Event(payload, ctx)` livrés (ADR-14) ; ni événement `any` ni selectors (⏳) |
-| **Spec** | [5-rendu.md §7](../spec/5-rendu.md) |
+| **Statut** | 🟢 Accepted |
+| **Invariants impactés** | I41, I82 |
+| **Livré** | ⏳ strate 1c, lot 2 (runtime N2/N3) — handlers granulaires `on{NS}{Event}Event(payload, ctx)` livrés (ADR-14) ; bindings `query`/`on`/`select` absents |
+| **Spec** | [5-rendu.md §7](../spec/5-rendu.md) · théorie A4.d, G5, C.3, D18 |
 
 ## Contexte
 
-Deux mécanismes de réaction de la View aux données coexistent dans le corpus,
-sans qu'aucun ADR n'ait tranché leur articulation :
+Un template (N2/N3, ADR-22) projette des données du domaine. La cible
+antérieure lui passait, sur un événement `any`, une référence au state complet
+de l'Entity. Elle contredit la théorie : l'état ne se lit que par Query (G5),
+la View n'a aucun accès à l'Entity (I6, I80), et une information présentée
+comme l'état métier vient d'un message ou d'une réponse du domaine (A4.d).
+Reste à fixer d'où le template tire ses données et quand il les relit.
 
-- **Livré** : la View déclare `features[ns].listens` et reçoit chaque Event
-  dans un handler dédié `on{NS}{Event}Event(payload, ctx)`, qui relit l'état par
-  `ctx.query` (ADR-14). Adapté au N1.
-- **Cible des templates** (ADR-22) : la View s'abonne à l'événement `any` de
-  chaque Channel écouté ; le framework passe à chaque `select(data)` le state
-  **complet** de chaque namespace (`data.cart`, `data.local`), par référence
-  gelée, et saute la projection si la sortie est `shallowEqual`.
+## Décision
 
-La cible pose deux problèmes non résolus :
+**Chaque binding déclare la Query qui l'alimente et les Events qui la relancent.**
 
-1. Un même Event va-t-il au handler granulaire **et** aux selectors ? Dans quel ordre ? L'un peut-il désactiver l'autre ?
-2. Le selector reçoit le state de l'Entity, alors que la View n'a pas d'accès Entity (I6, I80) et que l'état ne se lit que par Query (G5). Par quel chemin passe-t-il ?
+```ts
+get templates() {
+  return {
+    items: {
+      template: CartItemsTemplate,
+      query: "cart:items",                  // Query déclarée dans features.cart.queries
+      on: ["cart:itemAdded", "cart:itemRemoved"], // Events déclarés dans features.cart.listens
+      select: (items) => items.filter((i) => i.qty > 0) // dérivation de présentation, pure
+    },
+    header: { template: OrderHeaderTemplate } // statique : projeté une fois
+  };
+}
+```
 
-## Options en présence
+- **Paramètres** : `params` facultatif, valeur fixe ou fonction des paramètres de création de la View (capturés, A3.d).
+- **Projection initiale** : dans l'unité qui crée la View, le framework exécute la Query, applique `select` et prépare la projection.
+- **Relance** : après la délivrance d'un Event listé dans `on`, et après son handler s'il existe, le framework exécute les Queries concernées dans l'unité de l'Event, en une seule passe. Une Query identique n'est exécutée qu'une fois par passe.
+- **Saut** : si la sortie de `select` est `shallowEqual` à la dernière sortie projetée, rien n'est préparé. Cette mémoire est journalisée : elle est défaite avec l'unité (G7).
+- **Effets** : la projection est un effet préparé, engagé après validation (C.3). Elle n'ouvre aucun droit de commander (D18).
+- **I82 amendé** : un handler `on{NS}{Event}Event` reste exigé pour chaque Event écouté, sauf s'il figure dans le `on` d'un binding (il devient alors facultatif).
+- **I41** : une clé couverte par un template n'est pas mutable par `getUI()`.
 
-**A — Deux mécanismes complémentaires.** Handlers pour le N1 et les effets
-ponctuels, selectors pour les templates. Les handlers passent d'abord, puis
-une seule passe de projection par Event. Reste à définir comment le state
-atteint le selector (piste : la Feature l'expose elle-même, jamais le Channel).
+## Alternatives rejetées
 
-**B — Selectors seuls.** Les handlers granulaires disparaissent ; le N1 lui
-aussi passe par `select`. Un seul modèle, mais on perd la vérification
-compile-time par Event (I82) et on reprend le contrat livré.
-
-**C — Handlers seuls.** Pas de `any` ni de state complet : un template se
-projette depuis le payload de l'Event et, au besoin, une Query explicite.
-Cohérent avec I80, mais le filtre/tri doit reconstituer le state à la main.
-
-## Critères (non actés)
-
-- Préserver I80 (Channel privé derrière la Feature) et I82 (handlers imposés au compile-time).
-- Une seule passe de projection par Event, déterministe, dans l'unité de l'Event (C.3).
-- Coût : pas de copie du state (la référence gelée d'Immer est gratuite).
+- **Événement `any` + state complet par référence** — lecture d'Entity hors Query (G5, I6, I80, A4.d).
+- **Payload de l'Event seul** — filtre et tri devraient reconstituer l'état à la main.
+- **Projection explicite par le handler** (`this.render(key, data)`) — perd l'auto-réactivité déclarée, chaque handler la réécrit.
+- **Relance par tout Event du namespace ou toute Event écoutée** — implicite, et impose des handlers vides (I82).
 
 ## Conséquences
 
-À rédiger à la décision. En attendant, `5-rendu.md` §7 décrit le mécanisme
-`any` + selectors sans trancher ces deux points : il n'est pas normatif sur eux.
+- La Feature expose une Query par vue de ses données dont un template a besoin ; la dérivation de présentation (tri, filtre, format) reste dans `select`, sans autorité métier (A4.d).
+- La description de la View vérifie (O2) que chaque `query` et chaque Event de `on` sont déclarés dans le contrat, et qu'un binding avec `query` a un `on` non vide.
+- Le state local (`local`, ADR-17) n'entre pas dans ce mécanisme ; son articulation avec les templates relève de la strate 2a.

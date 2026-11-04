@@ -33,12 +33,12 @@
 > | Élément | Strate cible | Sections concernées |
 > | --- | --- | --- |
 > | Compilateur Pug → PDR (`setup`/`project`/`create`), `ProjectionList`, réconciliation keyed | Strate 1c | §4, §5, §6, §8 |
-> | Templates réactifs, selectors, abonnement `any`, Render Contract | Strate 1c | §2, §7, §7bis |
+> | Templates réactifs (Query déclarée, `on`, `select`), Render Contract | Strate 1c | §2, §7, §7bis |
 > | Hydratation SSR (H1–H5) | Strate 2c | §7bis.3 |
 > | Callbacks d'animation de liste (ADR-22) | Strate 1c | §11 |
 > | `VirtualizedList` (ADR-23) | Hors v1 ([roadmap](../ROADMAP.md)) | §11 |
 >
-> Seul un prototype de compilation existe (`tools/pug-to-ts-template`). Le modèle d'abonnement des Views décrit ici (ADR-26 : `any` + state complet) diffère de la surface livrée par ADR-14 (handlers `on{NS}{Event}Event` sur les Events granulaires) : l'articulation des deux reste **à trancher** avant la strate 1c.
+> Seul un prototype de compilation existe (`tools/pug-to-ts-template`). Le modèle de données des templates est tranché par l'[ADR-26](../adr/ADR-26-souscription-view.md) : chaque binding déclare la Query qui l'alimente et les Events qui la relancent (§7) ; les handlers granulaires `on{NS}{Event}Event` d'ADR-14 restent.
 
 ## 1. Résumé exécutif
 
@@ -110,8 +110,9 @@ class CartView extends View {
 ### 2.3 Le template est réactif par déclaration — dans la View
 
 Le template est **pur** (pas de métadonnées de réactivité).
-La **View** déclare la réactivité dans `get templates()` via un **selector**
-qui filtre les clés de state **namespacées** par Channel.
+La **View** déclare la réactivité dans `get templates()` : chaque binding nomme
+la **Query** qui l'alimente, les **Events** qui la relancent et un `select`
+facultatif ([ADR-26](../adr/ADR-26-souscription-view.md)).
 
 ```pug
 //- cart-items.template.pug
@@ -124,37 +125,35 @@ ul.Cart-items
 ```
 
 ```typescript
-// La View déclare la réactivité via un selector namespacé
 class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartViewContract> {
-  get features()   { return cartViewFeatures; }
+  get features()   { return cartViewFeatures; }   // cart : listens itemAdded/itemRemoved, queries items
   get uiEvents()   { return cartViewUiEvents; }
   get uiElements() { return cartViewUiElements; }
-  
+
   get templates() {
     return {
       items: {
         template: CartItemsTemplate,
-        select: (data) => data.cart?.items,  // Namespace 'cart'
+        query: "cart:items",
+        on: ["cart:itemAdded", "cart:itemRemoved"]
       }
     };
   }
 }
 ```
 
-**Fonctionnement** (⏳ strate 1c ; modèle d'abonnement en question ouverte, [ADR-26](../adr/ADR-26-souscription-view.md)) :
+**Fonctionnement** (⏳ strate 1c, lot 2) :
 
-1. Le Channel émet `any` automatiquement après chaque Event granulaire — **livré**
-2. `select()` reçoit le **state complet** de chaque namespace écouté, par référence gelée, pas seulement les clés changées (§7.1)
-3. Le framework **namespace** le payload par le Channel source
-4. Le selector filtre les données pertinentes (ex: `data.cart?.items`)
-5. Si les données ont changé (shallow equal), le template est re-projeté
+1. À la création de la View, le framework exécute `cart:items`, applique `select` et prépare la projection initiale.
+2. Quand `cart:itemAdded` est délivré à la View, après son handler s'il existe, le framework relance `cart:items` dans l'unité de l'Event.
+3. Si la sortie de `select` est `shallowEqual` à la dernière projetée, rien n'est préparé ; sinon le template est re-projeté, en effet engagé après validation (C.3).
 
 **Avantages** :
 
-- ✅ Un seul abonnement par Channel (événement `any`)
+- ✅ L'état se lit par Query, comme partout ailleurs (G5) : la View n'a aucun accès à l'Entity (I6)
 - ✅ Le template reste du Pug pur, portable
-- ✅ Le selector filtre par clé de state, pas par nom d'Event
-- ✅ Ajout d'un nouvel Event → View fonctionne sans modification
+- ✅ Les dépendances d'un binding sont explicites et vérifiées à la description de la View (O2)
+- ✅ Pas de handler vide : un Event référencé par un `on` n'exige plus de handler (I82 amendé)
 
 > **Note** : Le projet [pugx](../pugx/) explore une extension de Pug avec typage natif,
 > mais c'est **hors scope** de Bonsai. Cette spec suppose des templates Pug standard.
@@ -282,36 +281,11 @@ each product in items
 
 ### 4.4 Pas d'appel manuel à `project()` — Auto-réactivité
 
-La View déclare un `select` dans `get templates()`. Le framework s'abonne à `any`
-et dispatch automatiquement via les selectors.
+La View déclare `query`, `on` et `select` dans `get templates()` ; le framework
+relance la Query après les Events listés et projette (§7). Le code applicatif
+n'appelle jamais `project()`.
 
-> Pseudo-code de conception, antérieur au noyau : la création d'une View est
-> aujourd'hui une matérialisation de part par la racine (`Root`), et le
-> `setup()` d'un template y deviendrait un effet de la View, engagé après
-> validation (C.3).
-
-```typescript
-// INTERNE FRAMEWORK — dans attachView() (simplifié, voir §7bis.4 pour la version normative)
-for (const channel of view.listen) {
-  channel.on('any', ({ event, changes }) => {
-    // ADR-26 : state complet par référence live (pas juste les changes)
-    const namespacedData = { [channel.namespace]: channel.entity.state };
-    
-    for (const [uiKey, binding] of Object.entries(view.templates)) {
-      if (!binding.select) continue;
-      
-      const data = binding.select(namespacedData);
-      if (data === undefined) continue;
-      if (shallowEqual(view._cache[uiKey], data)) continue;
-      
-      view._cache[uiKey] = data;
-      binding.template.project(view.nodes[uiKey], data);
-    }
-  });
-}
-```
-
-**Conséquence** : la View n'a **jamais** de handler manuel pour une clé de state dont un template s'occupe.
+**Conséquence** : la View n'a **jamais** de handler manuel pour une clé dont un template s'occupe (I41).
 
 ---
 
@@ -989,116 +963,73 @@ onCellClick(fact: TFact, ctx: TFactContext<TTableViewContract>): void {
 
 ## 7. Intégration avec la View
 
-> ⚠️ **Question ouverte — [ADR-26](../adr/ADR-26-souscription-view.md) (🟡 Proposed).** Le contrat **livré** pour la couche View (ADR-31 strate 0/1a) est celui d'[ADR-14](../adr/ADR-14-contrats-types.md) : des handlers **granulaires** `on{NS}{Event}Event` par Event déclaré dans `features[ns].listens` — l'exact opposé de l'abonnement unique `any` + selector décrit ci-dessous. Aucune View ne s'abonne à `any` aujourd'hui. Ce §7 documente une proposition **cible strate 1c** dont l'articulation avec ADR-14 reste à trancher par un ADR dédié.
->
-> **Cible, non actée (ADR-26)** : les Views s'abonneraient à un événement `any`
-> qu'émettrait le noyau après chaque Event (il n'existe pas). Les Events granulaires sont destinés
-> à la communication inter-Feature. Les selectors des templates filtrent les clés
-> de state pertinentes dans le payload **namespacé**.
+> Décision : [ADR-26](../adr/ADR-26-souscription-view.md). Théorie : A4.d (une information présentée vient d'un message ou d'une réponse du domaine), G5 (l'état se lit par Query), C.3 (effets engagés après validation), D18 (une réaction à un Event n'ouvre aucun droit de commander).
 
-### 7.1 Principe : Abonnement `any` + State complet par référence
+### 7.1 Principe : une Query déclarée par binding, relancée par des Events explicites
 
-> **Cible, non actée (ADR-26 — state complet)** — [ADR-22](../adr/ADR-22-pdr.md)
->
-> Le selector de la View reçoit le **state complet** de chaque Channel écouté,
-> pas seulement les clés changées par le dernier Event. Le framework passe une
-> **référence live** vers le state frozen (Immer) de l'Entity — zéro copie,
-> zéro coût. Le payload `any` continue d'exister en interne pour l'optimisation
-> (`shallowEqual` sur la **sortie** du selector, pas sur l'input).
+Un binding de template déclare :
 
-La View déclare les Channels qu'elle écoute. Le framework s'abonne **une seule fois**
-à l'événement `any` de chaque Channel.
+| Champ | Rôle |
+| --- | --- |
+| `template` | Template compilé (`setup()`/`create()`/`project()`). |
+| `query` | Clé `"ns:query"` d'une Query déclarée dans `features[ns].queries`. Absent : template statique, projeté une fois sans données. |
+| `params` | Facultatif : valeur fixe, ou fonction des paramètres de création de la View (capturés, A3.d). |
+| `on` | Clés `"ns:event"` d'Events déclarés dans `features[ns].listens`. Obligatoire et non vide quand `query` est présent. |
+| `select` | Facultatif, pur : dérivation de présentation du résultat (tri, filtre, format), sans autorité métier (A4.d). Par défaut, l'identité. |
 
-**Contrat `NamespacedData`** :
+La Feature expose une Query par vue de ses données dont un template a besoin ;
+les données dérivées ne sont jamais stockées dans l'Entity (§6.5, §6.6).
 
-- Contient le **state complet** de chaque Channel écouté, par référence (frozen)
-- Est **namespacé** par le Channel source (ex: `data.cart`, `data.promo`)
-- Inclut le namespace réservé `local` pour le localState (I57, ADR-17)
+### 7.2 Exemple complet, deux namespaces
 
 ```typescript
-// Quand CartFeature mute { items, total }, le Channel émet 'any'.
-// Le framework construit NamespacedData avec le STATE COMPLET :
-
-// data = {
-//   cart: { items: [...], total: 42, sortCriteria: {...}, filters: {...} }
-//         └────────────── state complet de l'Entity Cart (ref live) ──────────────┘
-// }
-
-// Le selector peut accéder à TOUT le state :
-select: (data) => {
-  const catalog = data.catalog; // State complet de l'Entity Catalog
-  if (!catalog) return undefined;
-  // Calcul dérivé : filtre + tri sur données brutes + critères
-  return deriveVisibleProducts(catalog);
-}
-```
-
-### 7.2 Exemple complet avec namespace
-
-```typescript
-// orderSummaryViewFeatures : cart et promo (deux namespaces)
-// orderSummaryViewUiEvents : items, summary, header
+// orderSummaryViewFeatures :
+//   cart  : listens itemAdded, itemRemoved ; queries items, total
+//   promo : listens discountApplied ; queries discount
 class OrderSummaryView extends View<TOrderSummaryViewContract> implements TViewCallbacks<TOrderSummaryViewContract> {
   get features()   { return orderSummaryViewFeatures; }
   get uiEvents()   { return orderSummaryViewUiEvents; }
   get uiElements() { return orderSummaryViewUiElements; }
-  
+
   get templates() {
     return {
-      // ══════════════════════════════════════════════════════════════
-      // SELECTOR avec namespace — accède à cart.items
-      // ══════════════════════════════════════════════════════════════
       items: {
         template: CartItemsTemplate,
-        select: (data) => data.cart?.items,  // Namespace 'cart'
+        query: "cart:items",
+        on: ["cart:itemAdded", "cart:itemRemoved"],
+        select: (items) => [...items].sort((a, b) => a.name.localeCompare(b.name))
       },
-      
-      // ══════════════════════════════════════════════════════════════
-      // SELECTOR multi-namespace — combine cart + promo
-      // Le framework skip automatiquement si toutes les valeurs sont undefined
-      // ══════════════════════════════════════════════════════════════
-      summary: {
-        template: OrderSummaryTemplate,
-        select: (data) => ({
-          total: data.cart?.total,
-          discount: data.promo?.discount,
-        }),
-        // Pas besoin de guard — le framework gère :
-        // { total: undefined, discount: undefined } → skip automatique
+      total: {
+        template: TotalTemplate,
+        query: "cart:total",
+        on: ["cart:itemAdded", "cart:itemRemoved"]
       },
-      
-      // ══════════════════════════════════════════════════════════════
-      // TEMPLATE STATIQUE — Pas de réactivité auto
-      // ══════════════════════════════════════════════════════════════
-      header: {
-        template: OrderHeaderTemplate,
-        // Pas de select → projection initiale seulement
+      discount: {
+        template: DiscountTemplate,
+        query: "promo:discount",
+        on: ["promo:discountApplied"]
       },
+      header: { template: OrderHeaderTemplate } // statique
     };
+  }
+
+  // Facultatif : un handler reste possible pour un effet N1 ponctuel (sur une clé sans template)
+  onCartItemAddedEvent(payload: { item: TItem }, ctx: TEventContext<TOrderSummaryViewContract>): void {
+    this.getUI("flash").text(`${payload.item.name} ajouté`);
   }
 }
 ```
 
-### 7.3 Template Pug avec données namespacées
+Un binding combine les données d'un seul namespace ; une présentation qui
+croise deux namespaces se découpe en deux clés, ou s'appuie sur une Query de la
+Feature qui fait autorité sur le calcul (A4.d).
 
-Le template reçoit les données déjà extraites par le selector.
-Les variables dans le template correspondent au retour du selector :
+### 7.3 Template Pug
 
-```pug
-//- order-summary.template.pug
-//- Reçoit { total, discount } depuis le selector
-
-.Order-summary
-  .total Total: #{total} €
-  if discount
-    .discount Réduction: -#{discount} €
-    .final Final: #{total - discount} €
-```
+Le template reçoit la sortie de `select` (ou le résultat de la Query) :
 
 ```pug
 //- cart-items.template.pug
-//- Reçoit items[] depuis le selector (data.cart.items)
-
 ul.Cart-items
   each item in items
     li.Cart-item(data-item-id=item.id)
@@ -1106,119 +1037,54 @@ ul.Cart-items
       span.qty ×#{item.qty}
 ```
 
-### 7.4 Types TypeScript
-
-> ⚠️ **Nom réel et faisabilité structurelle** : le type livré s'appelle
-> `TAnyEventPayload` (`packages/kernel/src/channel-types.ts`), pas
-> `TChannelAnyPayload` — et son champ `changes` est le **payload de l'Event
-> granulaire tel quel**, pas des « clés changées » (cf.
-> [communication.md §7](2-architecture/communication.md), corrigé). Par
-> ailleurs, un Channel n'est qu'un contrat typé : son token (`TChannelToken`)
-> ne porte que le `namespace` et la liste des Events, pas de `.state` — **le
-> Channel ne connaît pas l'Entity** (I6, I80). `NamespacedData` telle qu'esquissée
-> ci-dessous n'est donc pas seulement non livrée : sa lecture `C['state']`
-> est **structurellement impossible** avec l'encapsulation actuelle sans
-> changer où vit la référence au state (cf. la question ouverte
-> [ADR-26](../adr/ADR-26-souscription-view.md) et le bandeau en tête de ce
-> document).
+### 7.4 Types TypeScript (cible, lot 2)
 
 ```typescript
-// Payload de l'événement 'any' — nom réel TAnyEventPayload, cf. note ci-dessus
-type TAnyEventPayload = {
-  event: string;                  // Nom de l'Event granulaire
-  changes: Record<string, unknown>; // Payload de l'Event tel quel (PAS les clés changées)
-}
+type TViewTemplateBinding<TVC extends TViewContract, K extends TFlatQueries<TVC["features"]> & string, TData> = {
+  template: TProjectionTemplate<TData>;
+  query: K;
+  params?: TQueryParamsFor<TVC["features"], K> | ((viewParams: unknown) => TQueryParamsFor<TVC["features"], K>);
+  on: readonly [TFlatListens<TVC["features"]>, ...TFlatListens<TVC["features"]>[]];
+  select?: (result: TQueryResultFor<TVC["features"], K>) => TData;
+};
 
-// Données reçues par le selector (après namespace par le framework)
-// ADR-26 (FULL-STATE-SELECTOR) : le state serait COMPLET, pas juste les changes.
-// ⏳ Suppose une référence live vers le state frozen de l'Entity — mécanisme
-// non spécifié (cf. note ci-dessus : Channel n'a pas accès à l'Entity).
-// Inclut le namespace réservé 'local' pour le localState (I57, ADR-17)
-type NamespacedData<TChannels extends Channel[], TLocal = never> = 
-  & { [C in TChannels[number] as C['name']]?: unknown /* état de l'Entity — voie d'accès non spécifiée */ }
-  & ([TLocal] extends [never] ? {} : { local?: Partial<TLocal> });
+type TViewStaticBinding = { template: TProjectionTemplate<void> };
 
-// Note : le namespace 'local' est réservé par le framework (I57).
-// Aucun Channel développeur ne peut utiliser 'local' comme namespace.
-// Le framework injecte { local: changedKeys } après chaque updateLocal().
-
-// Template binding
-type TTemplateBindingStatic = {
-  template: TProjectionTemplate<any, any>;
-}
-
-type TTemplateBindingReactive<TData> = TTemplateBindingStatic & {
-  /**
-   * Extrait les données du payload namespacé.
-   * @param data - Payload namespacé par Channel + localState
-   *               (ex: { cart: {...}, promo: {...}, local: {...} })
-   * @returns Données pour le template, ou undefined pour skip
-   */
-  select: (data: NamespacedData<any, any>) => TData | undefined;
-}
-
-type TViewTemplateBinding<TData = unknown> = {
-  template: TProjectionTemplate<any, TData>;
-  select?: (data: NamespacedData<any, any>) => TData | undefined;
-}
-
-type TViewTemplates<TUI extends TUIContract> =
+type TViewTemplates<TVC extends TViewContract> =
   | null
-  | { root: TViewTemplateBinding }
-  | { [K in keyof TUI & string]?: TViewTemplateBinding };
+  | { root: TViewTemplateBinding<TVC, any, any> | TViewStaticBinding }
+  | { [K in keyof TVC["uiEvents"] & string]?: TViewTemplateBinding<TVC, any, any> | TViewStaticBinding };
 ```
 
-### 7.5 Auto-branchement par le framework
+Les noms exacts (`TFlatListens`, `TProjectionTemplate`) seront fixés au lot 2 ;
+le contrat est : `query` ∈ Queries déclarées, `on` ⊂ Events écoutés, `select`
+typé par le résultat de la Query.
 
-> **Implémentation normative** : voir **§7bis.4** pour le code complet de `attachView()`
-> intégrant ADR-26 (FULL-STATE-SELECTOR), les 4 couches de protection (L1–L4),
-> et les helpers `isAllUndefined()` / `shallowEqual()`.
+### 7.5 Exécution par le framework
 
-**Résumé du mécanisme** :
+1. **Description de la View** (O2) : chaque `query` et chaque Event de `on` sont déclarés dans le contrat ; un binding avec `query` a un `on` non vide ; une clé couverte par un template n'est pas une cible de `getUI()` (I41).
+2. **Création** : dans l'unité qui crée la View, `setup()` (part existante, strate 2c) ou `create()` ; puis, pour chaque binding avec `query`, Query → `select` → projection préparée.
+3. **Event délivré** : handler `on{NS}{Event}Event` s'il existe, puis **une passe** sur les bindings dont `on` contient cet Event : Query (une seule exécution par couple Query/paramètres dans la passe) → `select` → `shallowEqual` avec la dernière sortie projetée → projection préparée si différente.
+4. **Validation** : les projections sont engagées après la validation de l'unité (C.3) ; si l'unité échoue, elles ne le sont pas et la mémoire des dernières sorties est restaurée (G7).
 
-1. Le framework appelle `template.setup(container)` pour localiser les nœuds dynamiques
-2. Un **seul** abonnement `any` par Channel (pas un listener par Event)
-3. Le framework namespace le state complet par Channel (ADR-26 : référence live, zéro copie)
-4. Chaque selector filtre les données pertinentes → `shallowEqual` → `project()` si changé
-
-> **Note** : Le développeur écrit simplement `select: (data) => ({ total: data.cart?.total })`.
-> Le framework gère automatiquement le skip quand toutes les valeurs sont `undefined`.
->
-> **localState et selectors** (I57, ADR-17) : Le même pipeline de selectors est utilisé pour le
-> localState. Après un `updateLocal()`, le framework injecte `{ local: changedPartial }` dans le
-> `namespacedData` et dispatch aux templates via leurs selectors. Le développeur écrit
-> `select: (data) => data.local?.currentStep` — même syntaxe que pour les Channels.
-> Les callbacks N1 (`onLocal{Key}Updated`) sont gérés séparément (voir ADR-17).
+Une Query refusée ou en échec fait échouer l'unité, comme toute Query (G7, `UNRECOVERABLE`) ; la projection n'ouvre aucun droit de commander (D18).
 
 ### 7.6 Séparation des audiences
 
-| Audience | Écoute | Payload | Cas d'usage |
-| --- | --- | --- | --- |
-| **Features** | Events granulaires (`itemAdded`) | Payload métier | Réactions inter-Feature |
-| **Views** | ⏳ Event `any` (proposé, ADR-26) ; livré : Events granulaires | `{ changes }` namespacé | Réactivité UI |
-
-```text
-Feature.emit('itemAdded', payload)
-        │
-        ▼
-    Channel
-        ├─► emit('itemAdded', payload)       → Autres Features
-        │
-        └─► emit('any', { event, changes })  → Views (selector filtre)
-```
-
-> **Avantage clé** : Si la Feature ajoute un nouvel Event (`itemQuantityChanged`),
-> la View **fonctionne toujours** sans modification — le selector filtre sur les clés,
-> pas sur les noms d'Events.
+| Audience | Reçoit | Pour |
+| --- | --- | --- |
+| **Features** | Events granulaires, payload métier | Réactions inter-Feature |
+| **Handlers de View** | Events granulaires, payload | Effets N1 ponctuels (`getUI()`) |
+| **Templates** | Résultat d'une Query, relancée par les Events de `on` | Projection N2/N3 |
 
 ### 7.7 Résumé des responsabilités
 
 | Qui | Responsabilité |
 | --- | --- |
-| **Noyau** | ⏳ Émettrait `any` après chaque Event granulaire (ADR-26) |
-| **View** | Déclare `listen` (Channels) et `templates` avec selectors |
-| **Selector** | Extrait / dérive les données pertinentes depuis le state complet (ADR-26) |
-| **Framework** | Namespace le state, appelle les selectors, skip si unchanged |
+| **Feature** | Expose les Queries dont les templates ont besoin ; émet les Events qui signalent leurs changements |
+| **View** | Déclare `templates` : `query`, `params`, `on`, `select` |
+| **Selector** | Dérivation de présentation pure du résultat de Query (A4.d) |
+| **Framework** | Relance les Queries après les Events de `on`, saute si `shallowEqual`, prépare la projection |
 | **Template** | Projette les données reçues sur le DOM via `project()` |
 | **Guards per-nœud** | Évitent les mutations DOM inutiles (compilés dans `update()`) |
 
@@ -1227,7 +1093,7 @@ Feature.emit('itemAdded', payload)
 ## 7bis. Render Contract complet — How Rendering Works
 
 > **Section normative** — Source de vérité pour le cycle de rendu PDR de bout en bout.
-> Décisions associées : [ADR-22](../adr/ADR-22-pdr.md) (PDR), [ADR-26](../adr/ADR-26-souscription-view.md) (souscription, 🟡), ADR-10 (pas de state dérivé).
+> Décisions associées : [ADR-22](../adr/ADR-22-pdr.md) (PDR), [ADR-26](../adr/ADR-26-souscription-view.md) (données d'un template), ADR-10 (pas de state dérivé).
 
 Bonsai utilise la **Projection DOM Réactive (PDR)** : mutations chirurgicales sur le DOM
 existant, sans arbre virtuel intermédiaire (pas de VDOM). Cette section décrit le cycle
@@ -1242,16 +1108,14 @@ complet, du changement de données à la mutation DOM finale.
 │       │                                                   │
 │       ▼                                                   │
 │  2. EMISSION     ctx.emit(event, payload), différé (G5)   │
-│       │          ⏳ 'any' { event, changes } (ADR-26)     │
+│       │                                                   │
 │       ▼                                                   │
-│  3. NAMESPACE    Framework construit NamespacedData :      │
-│       │          { [channel.namespace]: entity.state }    │
-│       │          (ADR-26 : state complet par réf live)       │
-│       ▼                                                   │
-│  4. SELECTOR     Pour chaque template avec select() :     │
-│       │          data = binding.select(namespacedData)     │
-│       │          └─ undefined → SKIP (pas concerné)        │
-│       │          └─ shallowEqual(cache, data) → SKIP       │
+│  3. QUERY        Event délivré à la View : pour chaque     │
+│       │          binding dont `on` le contient,            │
+│       │          result = query(binding.query, params)     │
+│       ▼          (ADR-26, une exécution par passe)         │
+│  4. SELECTOR     data = binding.select(result)            │
+│       │          └─ shallowEqual(dernière, data) → SKIP    │
 │       ▼          └─ différent → continuer               │
 │  5. PROJECT      template.project(nodes, data)             │
 │       │          ├─ scalaires : guards per-nœud            │
@@ -1272,8 +1136,8 @@ agit comme un filtre — seules les mutations réellement nécessaires atteignen
 
 | Couche | Nom | Où | Ce qu'elle filtre | Exemple |
 | --- | --- | --- | --- | --- |
-| **L1** | **Selector** | `select()` dans `get templates()` | Rejette les Events non pertinents pour ce template | `data.catalog?.items` retourne `undefined` quand seul `promo` a changé → skip |
-| **L2** | **shallowEqual** | Framework, après le selector | Rejette les projections quand les données n'ont pas changé | Premier `any` après SSR : données identiques → skip complet (ADR-24 H4) |
+| **L1** | **`on`** | `get templates()` | Ne relance que les bindings concernés par l'Event délivré | `promo:discountApplied` ne relance pas `cart:items` |
+| **L2** | **shallowEqual** | Framework, après le selector | Rejette les projections quand les données n'ont pas changé | Première projection après SSR : données identiques → skip complet (ADR-24 H4) |
 | **L3** | **Guards per-nœud** | `update()` dans `project()` (compilé) | Rejette les mutations de contenu quand la valeur est identique | `if (node.textContent !== item.name)` — évite le re-layout navigateur |
 | **L4** | **Keyed reconcile** | `ProjectionList.reconcile()` | Ne déplace/crée/supprime que les items nécessaires | Tri : seuls les items mal positionnés reçoivent un `insertBefore` |
 
@@ -1313,75 +1177,26 @@ T2 ─── Première projection ───────────────�
 
 T3 ─── Interaction utilisateur (ex: tri) ────────────────────────────────
        ctx.trigger(command) → Feature → ctx.mutate(critères) → ctx.emit(event)
-       Selector → deriveVisibleProducts(fullState) → liste réordonnée
+       Query catalog:products → select (tri) → liste réordonnée
        shallowEqual → différent → project()
        ProjectionList.reconcile(items) → déplacements + guards
        ✅ Seuls les nœuds nécessaires sont déplacés/mutés
 ```
 
-### 7bis.4 Implémentation framework : `attachView()` avec ADR-26
+### 7bis.4 Implémentation framework (pseudo-code, lot 2)
 
 ```typescript
-// INTERNE FRAMEWORK — dans attachView()
-// Mise à jour normative intégrant ADR-26 (FULL-STATE-SELECTOR)
-
-function attachView(view: View): void {
-  // ... part matérialisée par le noyau, uiElements, délégation ...
-
-  const templates = view.templates;
-
-  // Setup des nodes selon le mode de rendu (H1, H2)
-  if (templates === null) {
-    view.nodes = {};
-  } else if ('root' in templates) {
-    view.nodes = {
-      root: templates.root.template.setup(view.el),
-    };
-  } else {
-    for (const [uiKey, binding] of Object.entries(templates)) {
-      if (!binding) continue;
-      const container = view._resolveUIElement(uiKey);
-      view.nodes[uiKey] = binding.template.setup(container);
-    }
-  }
-  
-  // ⚠️ Pseudocode illustratif, noms non alignés sur l'API réelle : la View
-  // n'a pas de propriété `listen` (le contrat réel est `get features()`,
-  // ADR-14) ; `Channel` n'a pas de méthode `.on()` (l'API réelle est
-  // `listenAny(listener)`) ni de champ `.namespace` (`.name`) ; `channel.entity`
-  // n'existe pas — le Channel ne connaît pas l'Entity (I6, I80), cf. la note
-  // de §7.4 sur la faisabilité structurelle de cette lecture.
-
-  // UN SEUL abonnement par Channel — événement 'any'
-  for (const channel of view.listen) {
-    channel.on('any', ({ event, changes }) => {
-      
-      // ADR-26 : Namespace le STATE COMPLET (réf live, pas copie)
-      const namespacedData = {
-        [channel.namespace]: channel.entity.state   // Ref frozen (Immer)
-      };
-      
-      // Dispatch à chaque template via son selector
-      if (templates === null || 'root' in templates) return;
-
-      for (const [uiKey, binding] of Object.entries(templates)) {
-        if (!binding) continue;
-        if (!('select' in binding)) continue;
-        
-        // L1 — Selector : extrait / dérive les données pertinentes
-        const data = binding.select(namespacedData);
-        if (data === undefined) continue;               // L1 skip
-        if (isAllUndefined(data)) continue;              // L1 skip multi-ns
-        
-        // L2 — shallowEqual : skip si données identiques
-        if (shallowEqual(view._dataCache[uiKey], data)) continue;
-        
-        // Mise à jour du cache + projection
-        view._dataCache[uiKey] = data;
-        binding.template.project(view.nodes[uiKey], data);
-        // L3 (guards) et L4 (reconcile) opèrent à l'intérieur de project()
-      }
-    });
+// INTERNE FRAMEWORK — pendant le traitement d'un Event délivré à la View (ADR-26)
+function refreshTemplates(view: View, event: string, ctx: TUnitContext): void {
+  const results = new Map<string, unknown>();               // une Query par couple query/params dans la passe
+  for (const [uiKey, binding] of view.bindingsListening(event)) {
+    const params = view.paramsOf(binding);
+    const id = `${binding.query} ${stableKey(params)}`;
+    if (!results.has(id)) results.set(id, ctx.query(binding.query, params));
+    const data = (binding.select ?? identity)(results.get(id));
+    if (shallowEqual(view.lastProjected(uiKey), data)) continue;   // L2
+    view.rememberProjected(uiKey, data, ctx);                       // journalisé : défait avec l'unité (G7)
+    ctx.prepareEffect(view.part, () => binding.template.project(view.nodes[uiKey], data)); // engagé après validation (C.3)
   }
 }
 ```
@@ -1391,7 +1206,7 @@ function attachView(view: View): void {
 | # | Règle | Source |
 | --- | --- | --- |
 | **R1** | PDR est la stratégie de rendu **unique** de Bonsai. Pas de VDOM. | ADR-22 |
-| **R2** | Le selector reçoit le **state complet** de chaque Channel par référence live (frozen). | ADR-26 |
+| **R2** | Un template tire ses données d'une Query déclarée, relancée par les Events de son `on` ; jamais d'accès direct à l'Entity. | ADR-26 |
 | **R3** | Les données dérivées (filtre, tri) sont calculées dans le selector, **jamais** stockées dans l'Entity. | ADR-10 |
 | **R4** | `shallowEqual` compare la **sortie** du selector (pas l'input). Si identique, la projection est skippée. | §7bis.4 |
 | **R5** | `update()` dans `project()` **DOIT** inclure des guards per-nœud (`if (val !== newVal)`). | §6.1 |

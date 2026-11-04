@@ -71,6 +71,7 @@
   parents: [P6]
   roles: [View]
   enonce: Chaque clé `@ui` a une source de mutation unique — son template ou `getUI()`, jamais les deux.
+  # ⏳ strate 1c, lot 2 (ADR-22, ADR-26) : refusé au compile-time et quand la View est décrite au noyau.
   mode: type
   etat: cible
 

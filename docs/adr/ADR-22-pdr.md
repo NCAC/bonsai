@@ -28,7 +28,7 @@ template, mutuellement exclusifs par View :
 | C | `{ [cléUI]?: binding }` | N2 | îlots : fragments sur certaines clés (`root` interdit) |
 
 - Templates écrits en **Pug**, compilés au build en deux fonctions : `setup()` localise les nœuds dynamiques dans un DOM existant (c'est l'hydratation, ADR-24), `create()` les produit quand le DOM est absent. Les boucles `each` imbriquées sont supportées.
-- Chaque binding a un `select(data)` ; la projection est sautée si sa sortie est `shallowEqual` à la précédente (ADR-26).
+- Chaque binding tire ses données d'une Query déclarée, relancée par les Events de son `on`, puis d'un `select` facultatif ; la projection est sautée si la sortie est `shallowEqual` à la précédente (ADR-26).
 - **Source de mutation unique par clé** (I41) : une clé couverte par un template n'est plus mutable par `getUI()`.
 - Les listes passent par `ProjectionList.reconcile()` (ADR-23), l'équivalent d'un diff keyed sans arbres alloués.
 - **Les données dérivées (filtrées, triées) ne vont jamais dans l'Entity** : elle stocke les items bruts et les critères, le selector dérive.

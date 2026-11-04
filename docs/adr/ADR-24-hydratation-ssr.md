@@ -3,7 +3,7 @@
 | Champ | Valeur |
 | --- | --- |
 | **Statut** | 🟢 Accepted |
-| **Livré** | ⏳ strate 1c — `setup()`, adoption par `keyAttr` et `serverState` absents ; seule la réutilisation d'un élément existant est livrée (ADR-19) |
+| **Livré** | ⏳ strate 2c (ADR-31) — `setup()`, adoption par `keyAttr` et `serverState` absents ; seule la réutilisation d'un élément existant est livrée (ADR-19) |
 | **Spec** | [5-rendu.md](../spec/5-rendu.md) · [application.md](../spec/3-couche-abstraite/application.md) |
 
 ## Contexte
