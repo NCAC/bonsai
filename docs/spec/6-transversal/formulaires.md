@@ -1,6 +1,6 @@
 # Formulaires
 
-> 🟠 **Aligné sur la théorie V0.9.5 (4 novembre 2026) ; patterns non livrés.** Les patterns B, C et D dépendent de `localState` (ADR-17) et de Behavior (ADR-21), strate 2 ; tous attendent que la valeur d'une saisie soit capturée avec le fait du DOM (théorie C.5 ; aujourd'hui `TFact` = `{ type, ui }`). Guide pratique : [FORMS-GUIDE](../../guides/FORMS-GUIDE.md). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
+> 🟠 **Aligné sur la théorie V0.9.5 (4 novembre 2026) ; patterns non livrés.** Les patterns B, C et D dépendent de `localState` (ADR-17) et de Behavior (ADR-21), strate 2 ; tous attendent que la valeur d'une saisie soit capturée avec le fait du DOM (théorie C.5 ; `TFact` = `{ type, ui, data }`, où `data` ne porte encore que des attributs d'item, ADR-23). Guide pratique : [FORMS-GUIDE](../../guides/FORMS-GUIDE.md). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
 
 > **4 patterns de formulaire dans Bonsai, du simple au complexe**
 

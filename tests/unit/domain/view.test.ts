@@ -141,10 +141,10 @@ describe("View on the kernel", () => {
     expect(d.failures()).toEqual([]);
   });
 
-  it("a click is admitted as a fact { type, ui }, and the handler may trigger and query", () => {
+  it("a click is admitted as a fact { type, ui, data }, and the handler may trigger and query", () => {
     const d = page();
     (document.querySelector("[data-ui='button']") as HTMLElement).click();
-    expect(seen.fact).toEqual({ type: "click", ui: "button" });
+    expect(seen.fact).toEqual({ type: "click", ui: "button", data: {} });
     expect(seen.ctxKeys).toEqual(["cause", "query", "trigger"]);
     expect(d.ask<number>("counter", "get", null)).toBe(1);
     expect(document.querySelector("[data-ui='label']")!.textContent).toBe("1");
@@ -299,14 +299,14 @@ describe("View on the kernel", () => {
       class P extends Foundation { get composers() { return { main: { slot: "#main", composer: C } } as const; } }
       const d = drive({ counter: CounterFeature }, { foundation: P, document });
       expect(clickButton()).toBe(true);
-      expect(seen.fact).toEqual({ type: "click", ui: "button" });
+      expect(seen.fact).toEqual({ type: "click", ui: "button", data: {} });
       expect(d.ask<number>("counter", "get", null)).toBe(1);
     });
 
     it("without the declaration, the default action is left to the host", () => {
       page();
       expect(clickButton()).toBe(false);
-      expect(seen.fact).toEqual({ type: "click", ui: "button" });
+      expect(seen.fact).toEqual({ type: "click", ui: "button", data: {} });
     });
 
     it("cancelling the default action of an undeclared event is refused when the View is described (O2)", () => {

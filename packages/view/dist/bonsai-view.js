@@ -1,7 +1,7 @@
 /**
  * @bonsai/view - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T21:46:47.630Z
+ * Date: 2026-11-04T22:22:09.639Z
  */
 import { DESCRIBE, describeComponent } from '@bonsai/kernel';
 import { BonsaiError } from '@bonsai/error';
@@ -39,6 +39,87 @@ function __classPrivateFieldSet(receiver, state, value, kind, f) {
 typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
     var e = new Error(message);
     return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
+};
+
+/**
+ * ProjectionList — keyed reconciliation of a list of items (ADR-23, 5-rendu §6).
+ *
+ * Used inside a `TProjectionTemplate`: built in `setup()`, reconciled in
+ * `project()`. It therefore runs only when the projection is engaged, after
+ * the unit validates (C.3), and adds no listener: the View's part already
+ * delegates one listener per declared event type, and the item touched is
+ * identified by a value captured with the fact (`data`, C.5).
+ *
+ * @packageDocumentation
+ */
+var _a$1, _ProjectionList_container, _ProjectionList_options, _ProjectionList_entries, _ProjectionList_duplicate;
+/**
+ * Keyed list over the element children of a container. At construction it
+ * adopts the children carrying `keyAttr` — those `create()` of the template
+ * just produced, or a server rendering (ADR-24) — without recreating them.
+ */
+class ProjectionList {
+    constructor(container, options) {
+        _ProjectionList_container.set(this, void 0);
+        _ProjectionList_options.set(this, void 0);
+        _ProjectionList_entries.set(this, new Map());
+        __classPrivateFieldSet(this, _ProjectionList_container, container, "f");
+        __classPrivateFieldSet(this, _ProjectionList_options, options, "f");
+        for (const child of Array.from(container.children)) {
+            const key = child.getAttribute(options.keyAttr);
+            if (key === null)
+                continue;
+            if (__classPrivateFieldGet(this, _ProjectionList_entries, "f").has(key))
+                throw __classPrivateFieldGet(_a$1, _a$1, "m", _ProjectionList_duplicate).call(_a$1, key);
+            const el = child;
+            __classPrivateFieldGet(this, _ProjectionList_entries, "f").set(key, { el, nodes: options.setup(el) });
+        }
+    }
+    /**
+     * Reconciles the container with `items`, in this order: updates known items,
+     * moves only misplaced ones (`insertBefore`), creates new ones, removes the
+     * elements whose key is gone. O(n) through the map of keys.
+     */
+    reconcile(items) {
+        const { keyAttr, key, create, setup, update } = __classPrivateFieldGet(this, _ProjectionList_options, "f");
+        const container = __classPrivateFieldGet(this, _ProjectionList_container, "f");
+        const seen = new Set();
+        let previous = null;
+        items.forEach((item, index) => {
+            const k = key(item);
+            if (seen.has(k))
+                throw __classPrivateFieldGet(_a$1, _a$1, "m", _ProjectionList_duplicate).call(_a$1, k);
+            seen.add(k);
+            let entry = __classPrivateFieldGet(this, _ProjectionList_entries, "f").get(k);
+            if (entry === undefined) {
+                const el = create(item);
+                el.setAttribute(keyAttr, k);
+                entry = { el, nodes: setup(el) };
+                __classPrivateFieldGet(this, _ProjectionList_entries, "f").set(k, entry);
+            }
+            const expected = previous === null ? container.firstElementChild : previous.nextElementSibling;
+            if (entry.el !== expected)
+                container.insertBefore(entry.el, expected);
+            update(entry.nodes, item, index);
+            previous = entry.el;
+        });
+        for (const [k, entry] of __classPrivateFieldGet(this, _ProjectionList_entries, "f")) {
+            if (seen.has(k))
+                continue;
+            entry.el.remove();
+            __classPrivateFieldGet(this, _ProjectionList_entries, "f").delete(k);
+        }
+    }
+    /** Nodes of an item by its key. */
+    nodes(key) {
+        return __classPrivateFieldGet(this, _ProjectionList_entries, "f").get(key)?.nodes;
+    }
+}
+_a$1 = ProjectionList, _ProjectionList_container = new WeakMap(), _ProjectionList_options = new WeakMap(), _ProjectionList_entries = new WeakMap(), _ProjectionList_duplicate = function _ProjectionList_duplicate(key) {
+    return new BonsaiError("DUPLICATE_KEY", `duplicate key "${key}" in a list.`, {
+        component: "ProjectionList",
+        suggestion: "Each item needs a unique key (key / keyAttr)."
+    });
 };
 
 /**
@@ -109,11 +190,17 @@ var _View_instances, _a, _View_current, _View_selectors, _View_templated, _View_
  * @example ui<HTMLSpanElement>()([])                    // explicitly non-interactive
  * @example ui<HTMLInputElement>()(["input", "change"])  // 2 required handlers
  * @example ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] }) // link relayed to the router (D20)
+ * @example ui<HTMLButtonElement>()(["click"], { data: ["itemId"] })  // fact.data.itemId (ADR-23)
  */
 function ui() {
-    return (events, options) => (options === undefined || options.cancelDefault.length === 0
-        ? { events }
-        : { events, cancelDefault: options.cancelDefault });
+    return (events, options) => {
+        const entry = { events };
+        if (options?.cancelDefault !== undefined && options.cancelDefault.length > 0)
+            entry.cancelDefault = options.cancelDefault;
+        if (options?.data !== undefined && options.data.length > 0)
+            entry.data = options.data;
+        return entry;
+    };
 }
 /**
  * Typed binding helper (ADR-26): `select` receives the result of the Query,
@@ -279,7 +366,21 @@ class View {
         // I48 UI — one handler per declared (key, event); a missing one is a safety net (I84).
         const domTypes = new Map();
         const cancelled = new Map();
+        // ADR-23, C.5 — values captured with the facts of a key.
+        const captured = {};
         for (const [uiKey, entry] of Object.entries(uiEvents)) {
+            const data = entry.data ?? [];
+            for (const name of data) {
+                if (!/^[a-z][a-zA-Z]*$/.test(name)) {
+                    throw new BonsaiError("MALFORMED_DATA_NAME", `ui.${uiKey} captures "${name}"; a captured name is camelCase letters (itemId → data-item-id).`, { component: this.constructor.name });
+                }
+            }
+            if (data.length > 0) {
+                if (entry.events.length === 0) {
+                    throw new BonsaiError("DATA_WITHOUT_EVENT", `ui.${uiKey} captures ${data.join(", ")} but declares no event: no fact would carry them.`, { component: this.constructor.name });
+                }
+                captured[uiKey] = [...data];
+            }
             if (entry.events.length === 0)
                 continue;
             const selector = selectors[uiKey];
@@ -309,7 +410,7 @@ class View {
         const dom = {};
         for (const [type, keys] of domTypes) {
             const cancelDefault = cancelled.get(type);
-            dom[type] = cancelDefault === undefined ? { local: "fact", keys } : { local: "fact", keys, cancelDefault };
+            dom[type] = cancelDefault === undefined ? { local: "fact", keys, data: captured } : { local: "fact", keys, cancelDefault, data: captured };
         }
         // I48 channel — on{NS}{Event}Event for each listened Event, then one pass
         // on the bindings it re-runs (ADR-26). The handler is optional for an
@@ -520,4 +621,4 @@ _a = View, _View_checkTemplates = function _View_checkTemplates(features, select
     };
 };
 
-export { View, bind, ui };
+export { ProjectionList, View, bind, ui };

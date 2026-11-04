@@ -60,7 +60,7 @@
 | --- | --- | --- | --- |
 | `TFeatureContext<TDef, TEntity>` | Contexte d'un handler de Command, d'Event, de notification et d'`onInit` : `mutate`, `emit`, `query`. Pas de `trigger` (D17) | ✅ | [feature.md](../3-couche-abstraite/feature.md) |
 | `TFeatureQueryContext` | Contexte d'un handler de Query, en lecture seule : `query` (A3.g) | ✅ | [feature.md](../3-couche-abstraite/feature.md) |
-| `TFact` | Fait du DOM admis dans la part d'une View : `{ type, ui }` | ✅ | [view.md](../4-couche-concrete/view.md) |
+| `TFact<TData>` | Fait du DOM admis dans la part d'une View : `{ type, ui, data }`, `data` = attributs déclarés capturés à l'admission (ADR-23) | ✅ | [view.md](../4-couche-concrete/view.md) |
 | `TFactContext<TVC>` | Contexte du handler d'un fait : `trigger`, `query` (D18) | ✅ | [view.md](../4-couche-concrete/view.md) |
 | `TEventContext<TVC>` / `TQueryContext<TVC>` | Contexte du handler d'un Event de View : `query` seulement | ✅ | [view.md](../4-couche-concrete/view.md) |
 | `TComposeContext<TCC>` | Contexte de `resolve(ctx)` : `query` (D12) | ✅ | [composer.md](../4-couche-concrete/composer.md) |
@@ -108,7 +108,7 @@
 | --- | --- | --- | --- |
 | `TProjectionRead` | Type de lecture seule sur un @ui DOM : `value()`, `checked()`, `getAttr()`, `getText()`, `hasClass()`. Retourne par `getUI(key)` pour les @ui couverts par un template (N2/N3, ADR-16) | ⏳ cible strate 1c — n'existe pas ; `getUI()` retourne toujours `TProjectionNode` | [view.md](../4-couche-concrete/view.md) |
 | `TProjectionNode<TEl>` | Projection N1 sur une clé d'interface : `text(value)`, `attr(name, value)`, `toggleClass(name, force)`, `visible(show)`, `style(prop, value)`. Chaque appel prépare un effet engagé après validation (C.3) ; tous retournent `void`. Ni `element()` ni `.node` (I39) | ✅ | [view.md](../4-couche-concrete/view.md) |
-| `TProjectionList` | Gestionnaire de reconciliation par clé pour listes dynamiques. Algorithme O(n) : `reconcile({ items, key, create, update, remove })`. Utilise en interne par les templates N2 (Mode C, ADR-22) | ⏳ cible strate 1c | [5-rendu.md](../5-rendu.md) |
+| `ProjectionList<TItem, TItemNodes>` / `TProjectionListOptions` | Réconciliation par clé d'une liste, O(n) : options `{ keyAttr, key, create, setup, update }`, `reconcile(items)`, `nodes(key)` ; adopte les enfants portant `keyAttr`. Employée dans `setup()`/`project()` d'un template (ADR-23) | ✅ strate 1c, lot 3 | [5-rendu.md §6](../5-rendu.md) |
 | `TQueryBinding<TVC, K, TData, TOn>` / `TStaticBinding` | Entrée de `get templates()` : `{ template, query, params?, on, select? }` alimentée par une Query déclarée et relancée par les Events de `on`, ou `{ template }` statique ; `bind<TVC>()` l'infère (ADR-26) | ✅ strate 1c, lot 2 | [5-rendu.md §7](../5-rendu.md) |
 | `TViewTemplates<TVC>` | Union des trois modes de rendu : `null` (Mode A), `{ root }` (Mode B), `{ [uiKey]?: binding }` (Mode C), exclusifs (ADR-22) | ✅ strate 1c, lot 2 | [view.md](../4-couche-concrete/view.md) |
 | `TProjectionTemplate<TData, TNodes>` | Template d'une zone : `{ create, setup, project }`, exécuté à l'engagement (C.3) ; écrit à la main, généré par le compilateur Pug au lot 4 | ✅ strate 1c, lot 2 | [view.md §4.6](../4-couche-concrete/view.md) |

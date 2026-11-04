@@ -14737,7 +14737,7 @@ function assertValidNamespace(ns, options) {
  *
  * @packageDocumentation
  */
-var _Feature_instances, _a$1, _Feature_namespace, _Feature_entity, _Feature_methodNames, _Feature_run, _Feature_queryContext, _Feature_featureContext, _Feature_checkEntityHandlers, _Feature_dispatchEntityEvent;
+var _Feature_instances, _a$2, _Feature_namespace, _Feature_entity, _Feature_methodNames, _Feature_run, _Feature_queryContext, _Feature_featureContext, _Feature_checkEntityHandlers, _Feature_dispatchEntityEvent;
 // ─── Framework description of a Feature ──────────────────────────────────────
 const DESCRIBE$1 = Symbol("bonsai.feature.describe");
 /** Name of the local message a Feature sends itself after a mutation (I96). */
@@ -14891,9 +14891,9 @@ class Feature {
         };
     }
 }
-_a$1 = Feature, _Feature_methodNames = function _Feature_methodNames() {
+_a$2 = Feature, _Feature_methodNames = function _Feature_methodNames() {
     const names = new Set();
-    for (let proto = Object.getPrototypeOf(this); proto !== null && proto !== _a$1.prototype; proto = Object.getPrototypeOf(proto)) {
+    for (let proto = Object.getPrototypeOf(this); proto !== null && proto !== _a$2.prototype; proto = Object.getPrototypeOf(proto)) {
         for (const name of Object.getOwnPropertyNames(proto))
             names.add(name);
     }
@@ -15933,6 +15933,7 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
                         const local = typeof admission === "string" ? admission : admission.local;
                         const keys = typeof admission === "string" ? undefined : admission.keys;
                         const cancelDefault = typeof admission === "string" ? undefined : admission.cancelDefault;
+                        const captured = typeof admission === "string" ? undefined : admission.data;
                         element.addEventListener(type, (event) => {
                             const target = event.target;
                             if (target === null || target.closest("[data-bonsai-part]") !== element)
@@ -15956,7 +15957,18 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
                             const admission = pending !== null && pending.element === element && pending.type === type
                                 ? { kind: "correlated", token: pending.token }
                                 : { kind: "independent" };
-                            this.admit(record.handle, local, { type, ui }, admission);
+                            // C.5: values are captured in the preamble, detached from the host; never re-read at delivery.
+                            let payload = { type, ui };
+                            if (captured !== undefined) {
+                                const data = {};
+                                for (const name of (ui === null ? undefined : captured[ui]) ?? []) {
+                                    const attribute = `data-${name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`;
+                                    const carrier = target.closest(`[${attribute}]`);
+                                    data[name] = carrier !== null && element.contains(carrier) ? carrier.getAttribute(attribute) : null;
+                                }
+                                payload = { type, ui, data };
+                            }
+                            this.admit(record.handle, local, payload, admission);
                         });
                     }
                 }
@@ -16419,6 +16431,87 @@ HistoryAdapter.category = "history";
 HistoryAdapter.requires = ["router"];
 
 /**
+ * ProjectionList — keyed reconciliation of a list of items (ADR-23, 5-rendu §6).
+ *
+ * Used inside a `TProjectionTemplate`: built in `setup()`, reconciled in
+ * `project()`. It therefore runs only when the projection is engaged, after
+ * the unit validates (C.3), and adds no listener: the View's part already
+ * delegates one listener per declared event type, and the item touched is
+ * identified by a value captured with the fact (`data`, C.5).
+ *
+ * @packageDocumentation
+ */
+var _a$1, _ProjectionList_container, _ProjectionList_options, _ProjectionList_entries, _ProjectionList_duplicate;
+/**
+ * Keyed list over the element children of a container. At construction it
+ * adopts the children carrying `keyAttr` — those `create()` of the template
+ * just produced, or a server rendering (ADR-24) — without recreating them.
+ */
+class ProjectionList {
+    constructor(container, options) {
+        _ProjectionList_container.set(this, void 0);
+        _ProjectionList_options.set(this, void 0);
+        _ProjectionList_entries.set(this, new Map());
+        __classPrivateFieldSet(this, _ProjectionList_container, container, "f");
+        __classPrivateFieldSet(this, _ProjectionList_options, options, "f");
+        for (const child of Array.from(container.children)) {
+            const key = child.getAttribute(options.keyAttr);
+            if (key === null)
+                continue;
+            if (__classPrivateFieldGet(this, _ProjectionList_entries, "f").has(key))
+                throw __classPrivateFieldGet(_a$1, _a$1, "m", _ProjectionList_duplicate).call(_a$1, key);
+            const el = child;
+            __classPrivateFieldGet(this, _ProjectionList_entries, "f").set(key, { el, nodes: options.setup(el) });
+        }
+    }
+    /**
+     * Reconciles the container with `items`, in this order: updates known items,
+     * moves only misplaced ones (`insertBefore`), creates new ones, removes the
+     * elements whose key is gone. O(n) through the map of keys.
+     */
+    reconcile(items) {
+        const { keyAttr, key, create, setup, update } = __classPrivateFieldGet(this, _ProjectionList_options, "f");
+        const container = __classPrivateFieldGet(this, _ProjectionList_container, "f");
+        const seen = new Set();
+        let previous = null;
+        items.forEach((item, index) => {
+            const k = key(item);
+            if (seen.has(k))
+                throw __classPrivateFieldGet(_a$1, _a$1, "m", _ProjectionList_duplicate).call(_a$1, k);
+            seen.add(k);
+            let entry = __classPrivateFieldGet(this, _ProjectionList_entries, "f").get(k);
+            if (entry === undefined) {
+                const el = create(item);
+                el.setAttribute(keyAttr, k);
+                entry = { el, nodes: setup(el) };
+                __classPrivateFieldGet(this, _ProjectionList_entries, "f").set(k, entry);
+            }
+            const expected = previous === null ? container.firstElementChild : previous.nextElementSibling;
+            if (entry.el !== expected)
+                container.insertBefore(entry.el, expected);
+            update(entry.nodes, item, index);
+            previous = entry.el;
+        });
+        for (const [k, entry] of __classPrivateFieldGet(this, _ProjectionList_entries, "f")) {
+            if (seen.has(k))
+                continue;
+            entry.el.remove();
+            __classPrivateFieldGet(this, _ProjectionList_entries, "f").delete(k);
+        }
+    }
+    /** Nodes of an item by its key. */
+    nodes(key) {
+        return __classPrivateFieldGet(this, _ProjectionList_entries, "f").get(key)?.nodes;
+    }
+}
+_a$1 = ProjectionList, _ProjectionList_container = new WeakMap(), _ProjectionList_options = new WeakMap(), _ProjectionList_entries = new WeakMap(), _ProjectionList_duplicate = function _ProjectionList_duplicate(key) {
+    return new BonsaiError("DUPLICATE_KEY", `duplicate key "${key}" in a list.`, {
+        component: "ProjectionList",
+        suggestion: "Each item needs a unique key (key / keyAttr)."
+    });
+};
+
+/**
  * @bonsai/view — View base class (ADR-14, migration lot M6.2)
  *
  * A View projects the domain onto the part of the document its Composer
@@ -16486,11 +16579,17 @@ var _View_instances, _a, _View_current, _View_selectors, _View_templated, _View_
  * @example ui<HTMLSpanElement>()([])                    // explicitly non-interactive
  * @example ui<HTMLInputElement>()(["input", "change"])  // 2 required handlers
  * @example ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] }) // link relayed to the router (D20)
+ * @example ui<HTMLButtonElement>()(["click"], { data: ["itemId"] })  // fact.data.itemId (ADR-23)
  */
 function ui() {
-    return (events, options) => (options === undefined || options.cancelDefault.length === 0
-        ? { events }
-        : { events, cancelDefault: options.cancelDefault });
+    return (events, options) => {
+        const entry = { events };
+        if (options?.cancelDefault !== undefined && options.cancelDefault.length > 0)
+            entry.cancelDefault = options.cancelDefault;
+        if (options?.data !== undefined && options.data.length > 0)
+            entry.data = options.data;
+        return entry;
+    };
 }
 /**
  * Typed binding helper (ADR-26): `select` receives the result of the Query,
@@ -16656,7 +16755,21 @@ class View {
         // I48 UI — one handler per declared (key, event); a missing one is a safety net (I84).
         const domTypes = new Map();
         const cancelled = new Map();
+        // ADR-23, C.5 — values captured with the facts of a key.
+        const captured = {};
         for (const [uiKey, entry] of Object.entries(uiEvents)) {
+            const data = entry.data ?? [];
+            for (const name of data) {
+                if (!/^[a-z][a-zA-Z]*$/.test(name)) {
+                    throw new BonsaiError("MALFORMED_DATA_NAME", `ui.${uiKey} captures "${name}"; a captured name is camelCase letters (itemId → data-item-id).`, { component: this.constructor.name });
+                }
+            }
+            if (data.length > 0) {
+                if (entry.events.length === 0) {
+                    throw new BonsaiError("DATA_WITHOUT_EVENT", `ui.${uiKey} captures ${data.join(", ")} but declares no event: no fact would carry them.`, { component: this.constructor.name });
+                }
+                captured[uiKey] = [...data];
+            }
             if (entry.events.length === 0)
                 continue;
             const selector = selectors[uiKey];
@@ -16686,7 +16799,7 @@ class View {
         const dom = {};
         for (const [type, keys] of domTypes) {
             const cancelDefault = cancelled.get(type);
-            dom[type] = cancelDefault === undefined ? { local: "fact", keys } : { local: "fact", keys, cancelDefault };
+            dom[type] = cancelDefault === undefined ? { local: "fact", keys, data: captured } : { local: "fact", keys, cancelDefault, data: captured };
         }
         // I48 channel — on{NS}{Event}Event for each listened Event, then one pass
         // on the bindings it re-runs (ADR-26). The handler is optional for an
@@ -17244,4 +17357,4 @@ _Application_manifest = new WeakMap(), _Application_components = new WeakMap(), 
     }
 };
 
-export { Application, BonsaiError, BonsaiNamespaceError, Composer, Entity, Feature, Foundation, HistoryAdapter, immer$1 as Immer, RESERVED_NAMESPACES, index$1 as RXJS, RouteEntity, RouterFeature, index as Valibot, View, assertValidNamespace, bind, bindEntityState, canonicalLocation, describeEntity, describeFeature, hardInvariant, invariant, isCamelCaseNamespace, isDev, isReservedNamespace, parseLocation, serializeRoute, ui, warning };
+export { Application, BonsaiError, BonsaiNamespaceError, Composer, Entity, Feature, Foundation, HistoryAdapter, immer$1 as Immer, ProjectionList, RESERVED_NAMESPACES, index$1 as RXJS, RouteEntity, RouterFeature, index as Valibot, View, assertValidNamespace, bind, bindEntityState, canonicalLocation, describeEntity, describeFeature, hardInvariant, invariant, isCamelCaseNamespace, isDev, isReservedNamespace, parseLocation, serializeRoute, ui, warning };

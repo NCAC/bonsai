@@ -161,12 +161,14 @@
   nature: D
   parents: [I38]
   roles: [View]
-  enonce: La View accède au DOM exclusivement via `getUI(key)` ; aucun `querySelector` ni accès DOM brut ne lui est exposé.
+  enonce: La View accède au DOM exclusivement via `getUI(key)` ou ses templates, à l'engagement ; aucun `querySelector` ni accès DOM brut ne lui est exposé, et ce qu'elle sait d'un fait lui vient de valeurs capturées à son admission.
   pourquoi: >
     Un point d'accès unique empêche la View d'accumuler des sélecteurs ad hoc qui échapperaient au
     scope calculé (I40) et à la source de mutation unique (I41) (ADR-16).
   mode: type
   # La View n'expose que `getUI(key)` ; ni `el`, ni `querySelector`, ni `element()` (view.test.ts, « I4, I39 »).
+  # Templates et `ProjectionList` ne s'exécutent qu'à l'engagement (ADR-26) ; l'item touché arrive dans
+  # `fact.data`, capturé au préambule (ADR-23, C.5 ; view-list.test.ts, « C.5, I39 »).
   etat: livre
 
 - id: I45

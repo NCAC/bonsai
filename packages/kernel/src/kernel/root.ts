@@ -854,6 +854,7 @@ export class Root {
               const local = typeof admission === "string" ? admission : admission.local;
               const keys = typeof admission === "string" ? undefined : admission.keys;
               const cancelDefault = typeof admission === "string" ? undefined : admission.cancelDefault;
+              const captured = typeof admission === "string" ? undefined : admission.data;
               element.addEventListener(type, (event) => {
                 const target = event.target as Element | null;
                 if (target === null || target.closest("[data-bonsai-part]") !== element) return; // innermost part only (A5.d)
@@ -872,7 +873,18 @@ export class Root {
                 const admission: TAdmission = pending !== null && pending.element === element && pending.type === type
                   ? { kind: "correlated", token: pending.token }
                   : { kind: "independent" };
-                this.admit(record.handle, local, { type, ui }, admission);
+                // C.5: values are captured in the preamble, detached from the host; never re-read at delivery.
+                let payload: Record<string, unknown> = { type, ui };
+                if (captured !== undefined) {
+                  const data: Record<string, string | null> = {};
+                  for (const name of (ui === null ? undefined : captured[ui]) ?? []) {
+                    const attribute = `data-${name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`;
+                    const carrier = target.closest(`[${attribute}]`);
+                    data[name] = carrier !== null && element.contains(carrier) ? carrier.getAttribute(attribute) : null;
+                  }
+                  payload = { type, ui, data };
+                }
+                this.admit(record.handle, local, payload, admission);
               });
             }
           }

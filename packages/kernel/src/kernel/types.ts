@@ -88,7 +88,7 @@ export interface TComponentSpec {
 
 /**
  * Admission of a host event type with the UI keys it can be attributed to: the
- * payload's `ui` is the first key, in declaration order, whose selector matches
+ * payload is `{ type, ui }` (plus `data`, see below); `ui` is the first key, in declaration order, whose selector matches
  * the target or an ancestor inside the part; without `keys`, it is the target's
  * `data-ui` attribute.
  */
@@ -100,6 +100,13 @@ export interface TDomAdmission {
    * cancelled at capture, before any treatment and whatever its outcome (D20).
    */
   readonly cancelDefault?: readonly string[];
+  /**
+   * Values captured with the fact, per UI key (C.5): for each name, the
+   * `data-*` attribute (`itemId` → `data-item-id`) of the closest ancestor of
+   * the target inside the part that carries it, `null` without one. When
+   * present, the payload carries `data` (empty for a key without names).
+   */
+  readonly data?: Readonly<Record<string, readonly string[]>>;
 }
 
 /** Entry of a Manifest: a child of the root and its initial Query dependencies (C.1). */

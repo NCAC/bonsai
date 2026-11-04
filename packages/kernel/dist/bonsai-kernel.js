@@ -1,7 +1,7 @@
 /**
  * @bonsai/kernel - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T21:46:40.105Z
+ * Date: 2026-11-04T22:22:03.526Z
  */
 import { Immer } from '@bonsai/immer';
 import { BonsaiError } from '@bonsai/error';
@@ -923,6 +923,7 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
                         const local = typeof admission === "string" ? admission : admission.local;
                         const keys = typeof admission === "string" ? undefined : admission.keys;
                         const cancelDefault = typeof admission === "string" ? undefined : admission.cancelDefault;
+                        const captured = typeof admission === "string" ? undefined : admission.data;
                         element.addEventListener(type, (event) => {
                             const target = event.target;
                             if (target === null || target.closest("[data-bonsai-part]") !== element)
@@ -946,7 +947,18 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
                             const admission = pending !== null && pending.element === element && pending.type === type
                                 ? { kind: "correlated", token: pending.token }
                                 : { kind: "independent" };
-                            this.admit(record.handle, local, { type, ui }, admission);
+                            // C.5: values are captured in the preamble, detached from the host; never re-read at delivery.
+                            let payload = { type, ui };
+                            if (captured !== undefined) {
+                                const data = {};
+                                for (const name of (ui === null ? undefined : captured[ui]) ?? []) {
+                                    const attribute = `data-${name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`;
+                                    const carrier = target.closest(`[${attribute}]`);
+                                    data[name] = carrier !== null && element.contains(carrier) ? carrier.getAttribute(attribute) : null;
+                                }
+                                payload = { type, ui, data };
+                            }
+                            this.admit(record.handle, local, payload, admission);
                         });
                     }
                 }

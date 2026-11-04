@@ -74,6 +74,8 @@ import type {
 import type { TComposerClass } from "@bonsai/composer";
 import { BonsaiError } from "@bonsai/error";
 
+export { ProjectionList, type TProjectionListOptions } from "./projection-list";
+
 // ─── UI contract module (ADR-14) ───────────────────────────────────────────
 
 // ─── DOM event categories — Bonsai semantic layer (ADR-15) ─────────────────
@@ -291,6 +293,8 @@ export type HasNoDuplicates<
  * - `cancelDefault?`: declared events whose host default action (following a
  *             link, submitting a form) is cancelled at capture, before the
  *             handler and whatever the unit's outcome (D20). Absent = none.
+ * - `data?`  : names of values captured with a fact of the key (ADR-23, C.5):
+ *             `itemId` reads `data-item-id` on the closest carrying ancestor.
  * - `_el?`  : phantom TEl (compile time only, never allocated at runtime).
  *             Types the events of the key (`TEventsFor<TEl>`).
  *
@@ -298,20 +302,25 @@ export type HasNoDuplicates<
  */
 export type TUIEntry<
   TEl extends HTMLElement = HTMLElement,
-  TEvts extends ReadonlyArray<TEventsFor<TEl>> = ReadonlyArray<TEventsFor<TEl>>
+  TEvts extends ReadonlyArray<TEventsFor<TEl>> = ReadonlyArray<TEventsFor<TEl>>,
+  TData extends string = string
 > = {
   readonly events: TEvts;
   readonly cancelDefault?: ReadonlyArray<TEvts[number]>;
+  readonly data?: ReadonlyArray<TData>;
   readonly _el?: TEl;
 };
 
 /**
- * Options of a UI entry. `cancelDefault` names declared events of the key whose
- * host default action is cancelled (D20): the handler never decides it, since
- * it receives a fact as data, not the host event (A3.c).
+ * Options of a UI entry.
+ * - `cancelDefault` names declared events of the key whose host default action
+ *   is cancelled (D20): the handler never decides it, since it receives a fact
+ *   as data, not the host event (A3.c).
+ * - `data` names the values captured with each fact of the key (ADR-23, C.5).
  */
-export type TUIEntryOptions<TEvt extends string> = {
-  readonly cancelDefault: ReadonlyArray<TEvt>;
+export type TUIEntryOptions<TEvt extends string, TData extends string = never> = {
+  readonly cancelDefault?: ReadonlyArray<TEvt>;
+  readonly data?: ReadonlyArray<TData>;
 };
 
 /**
@@ -330,20 +339,24 @@ export type TUIEntryOptions<TEvt extends string> = {
  * @example ui<HTMLSpanElement>()([])                    // explicitly non-interactive
  * @example ui<HTMLInputElement>()(["input", "change"])  // 2 required handlers
  * @example ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] }) // link relayed to the router (D20)
+ * @example ui<HTMLButtonElement>()(["click"], { data: ["itemId"] })  // fact.data.itemId (ADR-23)
  */
 export function ui<TEl extends HTMLElement = HTMLElement>(): <
-  const TEvts extends ReadonlyArray<TEventsFor<TEl>>
+  const TEvts extends ReadonlyArray<TEventsFor<TEl>>,
+  const TData extends string = never
 >(
   events: HasNoDuplicates<TEvts> extends true ? TEvts : never,
-  options?: TUIEntryOptions<NoInfer<TEvts[number]>>
-) => TUIEntry<TEl, TEvts> {
-  return <const TEvts extends ReadonlyArray<TEventsFor<TEl>>>(
+  options?: TUIEntryOptions<NoInfer<TEvts[number]>, TData>
+) => TUIEntry<TEl, TEvts, TData> {
+  return <const TEvts extends ReadonlyArray<TEventsFor<TEl>>, const TData extends string = never>(
     events: TEvts,
-    options?: TUIEntryOptions<TEvts[number]>
-  ) =>
-    (options === undefined || options.cancelDefault.length === 0
-      ? { events }
-      : { events, cancelDefault: options.cancelDefault }) as TUIEntry<TEl, TEvts>;
+    options?: TUIEntryOptions<TEvts[number], TData>
+  ) => {
+    const entry: { events: TEvts; cancelDefault?: ReadonlyArray<TEvts[number]>; data?: ReadonlyArray<TData> } = { events };
+    if (options?.cancelDefault !== undefined && options.cancelDefault.length > 0) entry.cancelDefault = options.cancelDefault;
+    if (options?.data !== undefined && options.data.length > 0) entry.data = options.data;
+    return entry as TUIEntry<TEl, TEvts, TData>;
+  };
 }
 
 /**
@@ -364,7 +377,11 @@ export type TUIElements<TUI extends TUIContract> = {
 
 /** Extracts the HTMLElement subtype of a TUIEntry through the phantom. */
 export type ExtractEl<TEntry extends TUIEntry> =
-  TEntry extends TUIEntry<infer TEl, infer _TEvts> ? TEl : HTMLElement;
+  TEntry extends TUIEntry<infer TEl, infer _TEvts, infer _TData> ? TEl : HTMLElement;
+
+/** Names of the values a UI entry captures with its facts (ADR-23). */
+export type ExtractData<TEntry extends TUIEntry> =
+  TEntry extends { readonly data?: ReadonlyArray<infer TData> } ? (string extends TData ? never : TData & string) : never;
 
 // ─── Projection (ADR-14, C.3) ───────────────────────────────────────────────
 
@@ -388,11 +405,17 @@ export type TProjectionNode<_TEl extends HTMLElement = HTMLElement> = {
 // ─── Handler contexts (D18) ─────────────────────────────────────────────────
 
 /** A fact of the host admitted in the View's part, as data (A3.d). */
-export type TFact = {
+export type TFact<TData extends string = never> = {
   /** Host event type, e.g. `"click"`. */
   readonly type: string;
   /** UI key the target belongs to, `null` when none. */
   readonly ui: string | null;
+  /**
+   * Values declared by the key (`data`), captured at admission (C.5, ADR-23):
+   * the `data-*` attribute of the closest carrying ancestor in the part, `null`
+   * without one. Empty for a key that captures nothing.
+   */
+  readonly data: Readonly<Record<TData, string | null>>;
 };
 
 /** What every View handler can do: read its causal context, ask Queries. */
@@ -443,10 +466,10 @@ export type TUIEntryHandlers<
   TEntry extends TUIEntry,
   TVC extends TViewContract = TViewContract
 > =
-  TEntry extends TUIEntry<infer _TEl, infer TEvts>
+  TEntry extends TUIEntry<infer _TEl, infer TEvts, infer _TData>
     ? {
         [E in TEvts[number] as `on${Capitalize<TKey>}${Capitalize<E & string>}`]: (
-          fact: TFact,
+          fact: TFact<ExtractData<TEntry>>,
           ctx: TFactContext<TVC>
         ) => void;
       }
@@ -810,7 +833,21 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
     // I48 UI — one handler per declared (key, event); a missing one is a safety net (I84).
     const domTypes = new Map<string, Record<string, string>>();
     const cancelled = new Map<string, string[]>();
+    // ADR-23, C.5 — values captured with the facts of a key.
+    const captured: Record<string, readonly string[]> = {};
     for (const [uiKey, entry] of Object.entries(uiEvents)) {
+      const data = entry.data ?? [];
+      for (const name of data) {
+        if (!/^[a-z][a-zA-Z]*$/.test(name)) {
+          throw new BonsaiError("MALFORMED_DATA_NAME", `ui.${uiKey} captures "${name}"; a captured name is camelCase letters (itemId → data-item-id).`, { component: this.constructor.name });
+        }
+      }
+      if (data.length > 0) {
+        if (entry.events.length === 0) {
+          throw new BonsaiError("DATA_WITHOUT_EVENT", `ui.${uiKey} captures ${data.join(", ")} but declares no event: no fact would carry them.`, { component: this.constructor.name });
+        }
+        captured[uiKey] = [...data];
+      }
       if (entry.events.length === 0) continue;
       const selector = selectors[uiKey];
       if (selector === undefined) {
@@ -843,7 +880,7 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
     const dom: Record<string, TDomAdmission> = {};
     for (const [type, keys] of domTypes) {
       const cancelDefault = cancelled.get(type);
-      dom[type] = cancelDefault === undefined ? { local: "fact", keys } : { local: "fact", keys, cancelDefault };
+      dom[type] = cancelDefault === undefined ? { local: "fact", keys, data: captured } : { local: "fact", keys, cancelDefault, data: captured };
     }
 
     // I48 channel — on{NS}{Event}Event for each listened Event, then one pass

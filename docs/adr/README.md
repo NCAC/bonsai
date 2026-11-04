@@ -73,7 +73,7 @@ Modèle : [TEMPLATE.md](TEMPLATE.md). Correspondance avec l'ancienne numérotati
 | ADR | Décision | Statut |
 | --- | --- | --- |
 | [ADR-22](ADR-22-pdr.md) | PDR chirurgicale (pas de VDOM), modes de template A/B/C | 🟢 ⚠️ |
-| [ADR-23](ADR-23-listes.md) | Listes : `ProjectionList` + délégation, `VirtualizedList` séparée | 🟢 ⏳ |
+| [ADR-23](ADR-23-listes.md) | Listes : `ProjectionList` + délégation, item identifié par capture déclarée | 🔵 ✅ |
 | [ADR-24](ADR-24-hydratation-ssr.md) | Hydratation SSR structurelle, `serverState` opt-in | 🟢 ⏳ |
 | [ADR-25](ADR-25-formulaires.md) | Formulaires : `localState` pendant la saisie, Command à la soumission | 🟢 ⏳ |
 | [ADR-26](ADR-26-souscription-view.md) | Données d'un template : Query déclarée, relancée par des Events explicites (`on`) | 🔵 ✅ |
