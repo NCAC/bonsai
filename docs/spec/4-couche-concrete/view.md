@@ -234,24 +234,29 @@ type TViewTemplates<TUI extends TUIContract = TUIContract> =
 
 ### 4.6 TProjectionTemplate
 
-Un template compile (`TProjectionTemplate`) expose trois fonctions :
+Un template (`TProjectionTemplate`, ✅ strate 1c, lot 2) expose trois fonctions ;
+le compilateur Pug les générera (lot 4), elles s'écrivent aujourd'hui à la main :
 
 ```typescript
-type TProjectionTemplate<TNodes = any, TData = any> = {
-  /** Localise les noeuds dynamiques dans le conteneur, retourne un objet de references */
+type TProjectionTemplate<TData = unknown, TNodes = unknown> = {
+  /** Crée le contenu de la zone depuis les données (SPA) ; inséré dans le conteneur. */
+  create(data: TData): Node;
+
+  /** Localise les noeuds dynamiques dans le conteneur ; retourne leurs références. */
   setup(container: HTMLElement): TNodes;
 
-  /** Effectue les mutations DOM chirurgicales depuis les donnees */
+  /** Mutations DOM chirurgicales depuis les données, gardées par noeud. */
   project(nodes: TNodes, data: TData): void;
-
-  /** Factory DOM -- cree le fragment HTML complet (si pas de SSR) */
-  create(data: TData): HTMLElement;
 }
 ```
 
-Le peuplement de références de projection est une **proposition non livrée**, pas un appel garanti dans `onAttach()`. L'ancien pseudo-code d'attachement (accès à `slot`, affectation de `el`, parseur CSS et méthodes internes non définies) n'est pas une API exécutable.
-
-Dans la cible, la View résout sa désignation sous contrôle d'attribution ; ses références et intentions de projection sont établies dans l'initialisation autorisée, incluse dans l'unité de son Composer. Aucun template ne crée une autorité sur une part déjà attribuée. La matérialisation DOM est post-validation et peut échouer partiellement ; `setup()`, `project()` ou `create()` ne suffisent pas à établir ce protocole. La représentation des références et leur articulation avec ces opérations restent à concevoir.
+Ces fonctions ne s'exécutent qu'à l'engagement, après validation de l'unité
+(C.3) : la View ne détient aucun élément de l'hôte pendant ses traitements. Le
+conteneur est la part elle-même (`root`) ou l'élément de la clé UI, résolu à
+l'engagement. À la création, le framework insère `create(data)` dans le
+conteneur puis appelle `setup()` ; les références sont conservées par
+conteneur et rétablies par `setup()` si elles manquent. L'adoption d'une part
+pré-rendue par `setup()` seul relève de la strate 2c (ADR-24).
 
 ### 4.7 Templates partiels Mode C — Syntaxe PugJS `@ui.xxx`
 

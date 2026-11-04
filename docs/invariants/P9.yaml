@@ -142,8 +142,9 @@
     à la compilation, et quand la View est décrite au noyau pour le code JS ou casté (ADR-14).
     Un Event qui relance un template a déjà son traitement déclaré : le `on` du binding (ADR-26).
   mode: type+boot
-  # Livré : handler exigé pour chaque Event écouté et chaque événement DOM déclaré.
-  # Exception ADR-26 (handler facultatif pour un Event d'un `on`) : ⏳ strate 1c, lot 2 ; le code reste plus strict.
+  # Livré : handler exigé pour chaque Event écouté et chaque événement DOM déclaré ; facultatif pour un Event
+  # d'un `on` via `TViewCallbacks<TVC, typeof templates>` et le filet de description (ADR-26 ;
+  # view-templates.types.test.ts, view-templates.test.ts, « I82 »).
   etat: livre
 
 - id: I84

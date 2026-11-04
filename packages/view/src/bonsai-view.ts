@@ -20,6 +20,8 @@
  *   3. `get uiElements()` — CSS selector of each key, inside the View's part
  *   4. `get template()`   — initial content of the part (HTML string; default empty)
  *   5. `get composers()`  — slots of the part and the Composer of each
+ *   6. `get templates()`  — template bindings (N2/N3, ADR-26): the Query that
+ *      feeds each zone and the Events that re-run it
  *
  * Removed with this lot: `this.trigger`, `this.request`, `mount()`, `onAttach()`,
  * and `TProjectionNode.element()` (a raw element contradicts I39 and cannot be
@@ -28,11 +30,13 @@
  * Invariants:
  *   I4  — A View NEVER has emit() — absent from the type
  *   I36 — A View never composes other Views directly (only declares Composers)
- *   I39 — DOM access only through getUI(key), as prepared effects
+ *   I39 — DOM access only through getUI(key) or a template binding, as prepared effects
+ *   I41 — A key covered by a template binding is not a target of getUI(key)
  *   I48 — Handlers are auto-discovered by naming convention
  *   I80 — No TChannelToken in the consumer public surface
  *   I81 — `features` / `uiEvents` / `uiElements` are the sources of truth
- *   I82 — Missing handler → compile error through `implements TViewCallbacks`
+ *   I82 — Missing handler → compile error through `implements TViewCallbacks`;
+ *         optional for an Event cited in the `on` of a template binding (ADR-26)
  *   I84 — A non-empty `events: [E, ...]` requires the matching DOM handlers
  *   I85 — `ui<TEl>()(events)` is the only TUIEntry helper (curried form)
  *   I86 — `events` is always present in TUIEntry (never optional)
@@ -52,12 +56,14 @@ import {
   type TCausalContext,
   type TComponentSpec,
   type TDomAdmission,
+  type TResourceHandle,
   type TUnitContext
 } from "@bonsai/kernel";
 import { type UnionToIntersection } from "@bonsai/types";
 import type {
   TFeatureContract,
   TFlatTriggers,
+  TFlatListens,
   TFlatQueries,
   TCommandPayloadFor,
   TQueryParamsFor,
@@ -459,16 +465,27 @@ export type TUICallbacks<
   }[keyof U]
 >;
 
+/** Handler of the Event `NS:E` of a View. */
+type TEventHandler<TVC extends TViewContract, NS extends string, E extends string> = (
+  payload: TEventPayloadFor<TVC["features"], `${NS}:${E}`>,
+  ctx: TEventContext<TVC>
+) => void;
+
 /**
- * Event handlers REQUIRED by the `listens` of a `TFeatureContract` (I48 channel).
+ * Event handlers of the `listens` of a `TFeatureContract` (I48 channel):
+ * REQUIRED, except for an Event of `TOn`, which re-runs a template binding and
+ * whose handler is optional (I82 amended, ADR-26).
  */
-export type TEventCallbacks<TVC extends TViewContract> = UnionToIntersection<
+export type TEventCallbacks<TVC extends TViewContract, TOn extends string = never> = UnionToIntersection<
   {
     [NS in keyof TVC["features"] & string]: {
-      [E in TVC["features"][NS]["listens"][number] as TChannelHandlerName<NS, E & string>]: (
-        payload: TEventPayloadFor<TVC["features"], `${NS}:${E & string}`>,
-        ctx: TEventContext<TVC>
-      ) => void;
+      [E in TVC["features"][NS]["listens"][number] as `${NS}:${E & string}` extends TOn
+        ? never
+        : TChannelHandlerName<NS, E & string>]: TEventHandler<TVC, NS, E & string>;
+    } & {
+      [E in TVC["features"][NS]["listens"][number] as `${NS}:${E & string}` extends TOn
+        ? TChannelHandlerName<NS, E & string>
+        : never]?: TEventHandler<TVC, NS, E & string>;
     };
   }[keyof TVC["features"] & string]
 >;
@@ -487,11 +504,120 @@ export type TViewContract<
   readonly ui: U;
 };
 
+// ─── Template bindings (ADR-26, 5-rendu §7) ─────────────────────────────────
+
+/**
+ * Compiled template of a projection zone (ADR-22, 5-rendu §4.6). The compiler
+ * generates it from Pug (strate 1c, lot 4); it can be written by hand.
+ *
+ * Its functions run only when the projection is engaged, after the unit
+ * validates (C.3): they receive host nodes and nothing else.
+ */
+export type TProjectionTemplate<TData = unknown, TNodes = unknown> = {
+  /** Builds the content of the zone from data (SPA mode); inserted in the container. */
+  create(data: TData): Node;
+  /** Locates the dynamic nodes inside the container (hydration, ADR-24 H2). */
+  setup(container: HTMLElement): TNodes;
+  /** Surgical mutations from data, guarded per node (5-rendu §7bis R5). */
+  project(nodes: TNodes, data: TData): void;
+};
+
+/**
+ * Binding fed by a declared Query and re-run by the Events of `on` (ADR-26).
+ * Built with `bind<TVC>()(...)` for `select` and the template to be typed by
+ * the result of the Query.
+ */
+export type TQueryBinding<
+  TVC extends TViewContract,
+  K extends TFlatQueries<TVC["features"]> & string,
+  TData = TQueryResultFor<TVC["features"], K>,
+  TOn extends TBindingEvents<TVC> = TBindingEvents<TVC>
+> = {
+  readonly template: TProjectionTemplate<TData>;
+  /** `"ns:query"` key of a Query declared in `features[ns].queries`. */
+  readonly query: K;
+  /** Parameters of the Query: a value, or a function of the View's creation parameters (A3.d). */
+  readonly params?:
+    | TQueryParamsFor<TVC["features"], K>
+    | ((viewParams: Readonly<Record<string, unknown>>) => TQueryParamsFor<TVC["features"], K>);
+  /** Events that re-run the Query: declared in `features[ns].listens`, never empty. */
+  readonly on: TOn;
+  /** Pure presentation derivation of the result, without business authority (A4.d). */
+  readonly select?: (result: TQueryResultFor<TVC["features"], K>) => TData;
+};
+
+/** Non-empty list of `"ns:event"` keys a binding is re-run by. */
+export type TBindingEvents<TVC extends TViewContract> = readonly [
+  TFlatListens<TVC["features"]>,
+  ...TFlatListens<TVC["features"]>[]
+];
+
+/** Static binding: no data, projected once when the View is created. */
+export type TStaticBinding = {
+  readonly template: TProjectionTemplate<undefined>;
+  readonly query?: never;
+  readonly on?: never;
+};
+
+/** Any binding of a View: static, or fed by one of its declared Queries. */
+export type TTemplateBinding<TVC extends TViewContract> =
+  | TStaticBinding
+  | {
+      [K in TFlatQueries<TVC["features"]> & string]: TQueryBinding<TVC, K, unknown>;
+    }[TFlatQueries<TVC["features"]> & string];
+
+/**
+ * Template bindings of a View (ADR-22 modes):
+ *   - `null` — mode A, no template (N1 projections through `getUI()` only);
+ *   - `{ root }` — mode B, one template covers the whole part;
+ *   - `{ [uiKey]: binding }` — mode C, one template per UI key, as islands.
+ */
+export type TViewTemplates<TVC extends TViewContract> =
+  | null
+  | { readonly root: TTemplateBinding<TVC> }
+  | { readonly [K in keyof TVC["ui"] & string]?: TTemplateBinding<TVC> };
+
+/** Union of the `"ns:event"` keys cited in the `on` of some bindings. */
+export type TTemplateEvents<TTemplates> = TTemplates extends null
+  ? never
+  : {
+      [K in keyof TTemplates]: TTemplates[K] extends { readonly on: readonly (infer E)[] } ? E & string : never;
+    }[keyof TTemplates];
+
+/**
+ * Typed binding helper (ADR-26): `select` receives the result of the Query,
+ * the template receives the output of `select`, and `on` keeps its literal
+ * keys for `TViewCallbacks`.
+ *
+ * ```ts
+ * const items = bind<TCartViewContract>()({
+ *   template: CartItemsTemplate,
+ *   query: "cart:items",
+ *   on: ["cart:itemAdded", "cart:itemRemoved"],
+ *   select: (items) => items.filter((i) => i.qty > 0)
+ * });
+ * ```
+ */
+export function bind<TVC extends TViewContract>() {
+  return <
+    K extends TFlatQueries<TVC["features"]> & string,
+    const TOn extends TBindingEvents<TVC>,
+    TData = TQueryResultFor<TVC["features"], K>
+  >(
+    binding: TQueryBinding<TVC, K, TData, TOn>
+  ): TQueryBinding<TVC, K, TData, TOn> => binding;
+}
+
 /**
  * Single `implements` clause of a View (ADR-14, I88): the handlers of the
- * Events it listens to and of the host events it declares.
+ * Events it listens to and of the host events it declares. With the type of
+ * its `templates`, the handler of an Event cited in an `on` becomes optional
+ * (I82 amended, ADR-26).
  */
-export type TViewCallbacks<TVC extends TViewContract> = TEventCallbacks<TVC> &
+export type TViewCallbacks<TVC extends TViewContract, TTemplates = null> = TEventCallbacks<
+  TVC,
+  TTemplateEvents<TTemplates>
+> &
   TUICallbacks<TVC["ui"], TVC>;
 
 /**
@@ -512,6 +638,38 @@ export type TViewSlotDeclaration = {
 // ─── Internal helpers ────────────────────────────────────────────────────────
 
 const capitalize = (s: string): string => (s.length === 0 ? s : s[0]!.toUpperCase() + s.slice(1));
+
+/** Shallow equality of two projected outputs (5-rendu §7bis R4). */
+function shallowEqual(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const ka = Object.keys(a);
+  const kb = Object.keys(b);
+  if (ka.length !== kb.length) return false;
+  const ra = a as Record<string, unknown>;
+  const rb = b as Record<string, unknown>;
+  return ka.every((k) => Object.prototype.hasOwnProperty.call(rb, k) && Object.is(ra[k], rb[k]));
+}
+
+/** Identity of a Query asked with its parameters, for one pass; `null` when not comparable. */
+function queryIdentity(query: string, params: unknown): string | null {
+  try {
+    return `${query}\u0000${String(JSON.stringify(params))}`;
+  } catch {
+    return null;
+  }
+}
+
+/** A template binding after its checks at description (internal). */
+type TCheckedBinding = {
+  readonly key: string;
+  readonly template: TProjectionTemplate;
+  readonly query: { readonly namespace: string; readonly name: string; readonly key: string } | null;
+  readonly params: unknown;
+  readonly on: readonly string[];
+  readonly select: ((result: unknown) => unknown) | null;
+};
 
 function parseNSKey(key: string): { namespace: string; name: string } {
   const idx = key.indexOf(":");
@@ -549,6 +707,15 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
   /** The unit context of the handler being run, for `getUI` and `params`. */
   #current: TUnitContext | null = null;
   #selectors: Readonly<Record<string, string>> = {};
+  /** Keys covered by a template binding (`root` covers the whole part), I41. */
+  #templated: ReadonlySet<string> = new Set();
+  /**
+   * Last output projected by each binding: confined local state of the View
+   * (16.5), journaled so that a failed unit restores it (G7).
+   */
+  readonly #projected = new Map<string, unknown>();
+  /** Nodes located by `setup()`, per container; read and written only at engagement (C.3). */
+  readonly #nodes = new WeakMap<Element, unknown>();
 
   // ─── Abstract: sources of truth (ADR-14 / I81) ──────────────────────
 
@@ -577,6 +744,16 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
     return {};
   }
 
+  /**
+   * Template bindings (ADR-26): for each zone, the template, the declared
+   * Query that feeds it and the Events that re-run it. `null` (default): no
+   * template. Projected when the View is created, then after each Event of
+   * an `on`, unless the output is shallow-equal to the last one projected.
+   */
+  get templates(): TViewTemplates<TVC> {
+    return null;
+  }
+
   // ─── Handler-only API ───────────────────────────────────────────────
 
   /** Creation parameters given by the Composer, frozen (6.2). Only inside a handler. */
@@ -590,6 +767,12 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
    */
   getUI<K extends keyof TVC["ui"] & string>(key: K): TProjectionNode<ExtractEl<TVC["ui"][K]>> {
     const c = this.#unit(`getUI("${key}")`);
+    if (this.#templated.has(key) || this.#templated.has("root")) {
+      throw new BonsaiError("TEMPLATE_OWNED_KEY", `UI key "${key}" is covered by a template binding; getUI() cannot write there (I41).`, {
+        component: this.constructor.name,
+        suggestion: "Project this zone through its template, or remove the binding."
+      });
+    }
     const selector = this.#selectors[key];
     if (selector === undefined) {
       throw new BonsaiError("UNKNOWN_UI_KEY", `Unknown UI key "${key}". Declared keys: ${Object.keys(this.#selectors).join(", ")}`);
@@ -619,6 +802,8 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
     const uiEvents = this.uiEvents as TUIContract;
     const selectors = this.uiElements as Readonly<Record<string, string>>;
     this.#selectors = selectors;
+    const initial = this.template;
+    const bindings = this.#checkTemplates(features, selectors, initial);
     const methods = this.#methodNames();
     const self = this as unknown as Record<string, (...args: unknown[]) => void>;
 
@@ -661,21 +846,30 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
       dom[type] = cancelDefault === undefined ? { local: "fact", keys } : { local: "fact", keys, cancelDefault };
     }
 
-    // I48 channel — on{NS}{Event}Event for each listened Event.
+    // I48 channel — on{NS}{Event}Event for each listened Event, then one pass
+    // on the bindings it re-runs (ADR-26). The handler is optional for an
+    // Event cited in an `on` (I82 amended).
     const listens: NonNullable<TComponentSpec["listens"]>[number][] = [];
     for (const [namespace, entry] of Object.entries(features)) {
       for (const event of entry.listens) {
         const handlerName = `on${capitalize(namespace)}${capitalize(event)}Event`;
-        if (typeof self[handlerName] !== "function") {
+        const rerun = bindings.filter((b) => b.on.includes(`${namespace}:${event}`));
+        const handler = typeof self[handlerName] === "function" ? self[handlerName] : null;
+        if (handler === null && rerun.length === 0) {
           throw new BonsaiError("MISSING_HANDLER", 
             `Missing handler "${handlerName}" for declared listen "${namespace}:${event}". ` +
-              `Add the method or remove "${event}" from features.${namespace}.listens.`
+              `Add the method, cite "${namespace}:${event}" in the \`on\` of a template binding, ` +
+              `or remove "${event}" from features.${namespace}.listens.`
           );
         }
         listens.push({
           namespace,
           event,
-          handler: (payload, c) => this.#run(c, () => self[handlerName]!(payload, this.#eventContext(c)))
+          handler: (payload, c) =>
+            this.#run(c, () => {
+              if (handler !== null) handler.call(this, payload, this.#eventContext(c));
+              if (rerun.length > 0) this.#projectBindings(c, rerun, false);
+            })
         });
       }
     }
@@ -696,8 +890,8 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
       init: (c) => {
         this.#run(c, () => {
           const part = c.resolve(c.designation()!);
-          const template = this.template;
-          if (template !== "") c.project(part, "template", (el) => { el.innerHTML = template; });
+          if (initial !== "") c.project(part, "template", (el) => { el.innerHTML = initial; });
+          if (bindings.length > 0) this.#projectBindings(c, bindings, true, part);
           for (const [key, { slot, composer }] of Object.entries(this.composers)) {
             if (key in uiEvents) throw new BonsaiError("SLOT_KEY_COLLISION", `slot key "${key}" collides with a UI key (D13)`);
             const ComposerClass = composer as unknown as new () => object;
@@ -709,6 +903,138 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
   }
 
   // ─── Private ───────────────────────────────────────────────────────
+
+  /**
+   * Reads `templates` once and checks it against the contract (O2, ADR-26):
+   * keys are UI keys or a lone `root`, every `query` and every Event of `on`
+   * is declared, a binding with a Query has a non-empty `on`.
+   */
+  #checkTemplates(
+    features: TFeatureContract,
+    selectors: Readonly<Record<string, string>>,
+    initial: string
+  ): TCheckedBinding[] {
+    const declared = this.templates as Readonly<Record<string, Partial<TQueryBinding<TViewContract, never>> & { template?: TProjectionTemplate }>> | null;
+    if (declared === null) return [];
+    const component = this.constructor.name;
+    const fail = (code: string, message: string, suggestion?: string): never => {
+      throw new BonsaiError(code, message, suggestion === undefined ? { component } : { component, suggestion });
+    };
+    const keys = Object.keys(declared);
+    if (keys.includes("root")) {
+      if (keys.length > 1) fail("ROOT_TEMPLATE_EXCLUSIVE", `templates.root covers the whole part; it excludes the keys ${keys.filter((k) => k !== "root").join(", ")}.`);
+      if (initial !== "") fail("ROOT_TEMPLATE_EXCLUSIVE", "templates.root covers the whole part; `template` must stay empty.");
+    }
+    const checked = keys.map((key): TCheckedBinding => {
+      const binding = declared[key]!;
+      if (key !== "root" && selectors[key] === undefined) {
+        fail("UNKNOWN_TEMPLATE_KEY", `templates.${key} is neither a UI key nor "root".`, `Declare "${key}" in uiEvents and uiElements.`);
+      }
+      if (typeof binding.template?.create !== "function") {
+        fail("MISSING_TEMPLATE", `templates.${key} has no template (create/setup/project).`);
+      }
+      if (binding.query === undefined) {
+        if (binding.on !== undefined || binding.select !== undefined || binding.params !== undefined) {
+          fail("MISSING_QUERY", `templates.${key} declares on, select or params without a query.`, "Add the Query that feeds it, or make it static.");
+        }
+        return { key, template: binding.template!, query: null, params: null, on: [], select: null };
+      }
+      const query = parseNSKey(binding.query);
+      if (!features[query.namespace]?.queries.includes(query.name)) {
+        fail("UNDECLARED_QUERY", `templates.${key} reads "${binding.query}", which is not declared.`, `Add "${query.name}" to features.${query.namespace}.queries.`);
+      }
+      const on = (binding.on ?? []) as readonly string[];
+      if (on.length === 0) {
+        fail("MISSING_ON", `templates.${key} reads "${binding.query}" but no Event re-runs it.`, "List in `on` the Events that change its result.");
+      }
+      for (const eventKey of on) {
+        const event = parseNSKey(eventKey);
+        if (!features[event.namespace]?.listens.includes(event.name)) {
+          fail("UNDECLARED_LISTEN", `templates.${key} is re-run by "${eventKey}", which is not listened to.`, `Add "${event.name}" to features.${event.namespace}.listens.`);
+        }
+      }
+      return {
+        key,
+        template: binding.template!,
+        query: { ...query, key: binding.query },
+        params: binding.params ?? null,
+        on,
+        select: (binding.select as ((result: unknown) => unknown) | undefined) ?? null
+      };
+    });
+    this.#templated = new Set(keys);
+    return checked;
+  }
+
+  /**
+   * One pass on bindings (ADR-26): Query (once per Query and parameters),
+   * `select`, skip when shallow-equal to the last projected output, then a
+   * prepared projection (C.3). At creation the content is created instead.
+   */
+  #projectBindings(
+    c: TUnitContext,
+    bindings: readonly TCheckedBinding[],
+    creation: boolean,
+    part: TResourceHandle = c.resolve(c.designation()!)
+  ): void {
+    const results = new Map<string, unknown>();
+    for (const binding of bindings) {
+      let data: unknown = undefined;
+      if (binding.query !== null) {
+        const { namespace, name, key } = binding.query;
+        const params =
+          typeof binding.params === "function"
+            ? (binding.params as (p: Readonly<Record<string, unknown>>) => unknown)(c.params<Readonly<Record<string, unknown>>>() ?? {})
+            : binding.params;
+        const id = queryIdentity(key, params);
+        let result: unknown;
+        if (id !== null && results.has(id)) {
+          result = results.get(id);
+        } else {
+          result = c.query(namespace, name, params);
+          if (id !== null) results.set(id, result);
+        }
+        data = binding.select === null ? result : binding.select(result);
+      }
+      if (!creation && shallowEqual(this.#projected.get(binding.key), data)) continue;
+      this.#remember(c, binding.key, data);
+      const { template } = binding;
+      c.project(part, `templates.${binding.key}`, (root) => {
+        const container = this.#container(root, binding.key);
+        if (creation) {
+          container.replaceChildren(template.create(data));
+          this.#nodes.set(container, template.setup(container));
+          return;
+        }
+        let nodes = this.#nodes.get(container);
+        if (nodes === undefined) {
+          nodes = template.setup(container);
+          this.#nodes.set(container, nodes);
+        }
+        template.project(nodes, data);
+      });
+    }
+  }
+
+  /** Records the last projected output of a binding, undone if the unit fails (G7). */
+  #remember(c: TUnitContext, key: string, data: unknown): void {
+    const had = this.#projected.has(key);
+    const previous = this.#projected.get(key);
+    this.#projected.set(key, data);
+    c.journal(() => {
+      if (had) this.#projected.set(key, previous);
+      else this.#projected.delete(key);
+    });
+  }
+
+  /** Container of a binding at engagement: the part itself, or its UI key element. */
+  #container(root: Element, key: string): HTMLElement {
+    if (key === "root") return root as HTMLElement;
+    const selector = this.#selectors[key]!;
+    const el = root.querySelector(selector) as HTMLElement | null;
+    if (el === null) throw new BonsaiError("UI_ELEMENT_NOT_FOUND", `UI element "${key}" not found with selector "${selector}" in the part`);
+    return el;
+  }
 
   #unit(operation: string): TUnitContext {
     if (this.#current === null) {

@@ -2,9 +2,9 @@
 
 | Champ | Valeur |
 | --- | --- |
-| **Statut** | 🟢 Accepted |
+| **Statut** | 🔵 Tested |
 | **Invariants impactés** | I41, I82 |
-| **Livré** | ⏳ strate 1c, lot 2 (runtime N2/N3) — handlers granulaires `on{NS}{Event}Event(payload, ctx)` livrés (ADR-14) ; bindings `query`/`on`/`select` absents |
+| **Livré** | ✅ strate 1c, lot 2 — `get templates()`, `bind<TVC>()`, `TProjectionTemplate` écrit à la main (`@bonsai/view`) ; I41 vérifié à l'appel de `getUI()`, pas au compile-time (écart ci-dessous) |
 | **Spec** | [5-rendu.md §7](../spec/5-rendu.md) · théorie A4.d, G5, C.3, D18 |
 
 ## Contexte
@@ -21,16 +21,19 @@ Reste à fixer d'où le template tire ses données et quand il les relit.
 **Chaque binding déclare la Query qui l'alimente et les Events qui la relancent.**
 
 ```ts
-get templates() {
-  return {
-    items: {
-      template: CartItemsTemplate,
-      query: "cart:items",                  // Query déclarée dans features.cart.queries
-      on: ["cart:itemAdded", "cart:itemRemoved"], // Events déclarés dans features.cart.listens
-      select: (items) => items.filter((i) => i.qty > 0) // dérivation de présentation, pure
-    },
-    header: { template: OrderHeaderTemplate } // statique : projeté une fois
-  };
+const templates = {
+  items: bind<TCartViewContract>()({
+    template: CartItemsTemplate,
+    query: "cart:items",                         // Query déclarée dans features.cart.queries
+    params: null,
+    on: ["cart:itemAdded", "cart:itemRemoved"],  // Events déclarés dans features.cart.listens
+    select: (items) => items.filter((i) => i.qty > 0) // dérivation de présentation, pure
+  }),
+  header: { template: OrderHeaderTemplate }      // statique : projeté une fois
+} as const;
+
+class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartViewContract, typeof templates> {
+  override get templates() { return templates; }
 }
 ```
 
@@ -53,4 +56,11 @@ get templates() {
 
 - La Feature expose une Query par vue de ses données dont un template a besoin ; la dérivation de présentation (tri, filtre, format) reste dans `select`, sans autorité métier (A4.d).
 - La description de la View vérifie (O2) que chaque `query` et chaque Event de `on` sont déclarés dans le contrat, et qu'un binding avec `query` a un `on` non vide.
+- `bind<TVC>()` type `select` par le résultat de la Query et le template par la sortie de `select` ; le type de `templates` passé à `TViewCallbacks` rend facultatifs les handlers des Events cités.
+
+**Écarts du livré** :
+
+- I41 est vérifié quand `getUI()` est appelé sur une clé couverte (`TEMPLATE_OWNED_KEY`), pas au compile-time : `getUI()` est typé par le contrat, qui ne porte pas les templates.
+- Les projections d'une View visent une seule ressource (C.3) : l'échec d'une zone à l'engagement laisse les suivantes de l'unité non tentées.
+- `create()` puis `setup()` à la création ; `setup()` sur une part pré-rendue (hydratation) relève de la strate 2c (ADR-24).
 - Le state local (`local`, ADR-17) n'entre pas dans ce mécanisme ; son articulation avec les templates relève de la strate 2a.

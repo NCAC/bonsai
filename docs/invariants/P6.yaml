@@ -71,9 +71,11 @@
   parents: [P6]
   roles: [View]
   enonce: Chaque clé `@ui` a une source de mutation unique — son template ou `getUI()`, jamais les deux.
-  # ⏳ strate 1c, lot 2 (ADR-22, ADR-26) : refusé au compile-time et quand la View est décrite au noyau.
-  mode: type
-  etat: cible
+  # Livré à l'exécution (ADR-26) : `getUI()` sur une clé couverte, ou sur toute clé sous `root`, fait échouer
+  # l'unité (TEMPLATE_OWNED_KEY ; view-templates.test.ts, « I41 »). Écart à P9 : `getUI()` est typé par le
+  # contrat, qui ne porte pas les templates ; le refus au compile-time reste à remonter.
+  mode: run
+  etat: livre
 
 - id: I43
   nature: C

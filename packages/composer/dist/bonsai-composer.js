@@ -1,7 +1,7 @@
 /**
  * @bonsai/composer - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T20:50:20.355Z
+ * Date: 2026-11-04T21:46:49.720Z
  */
 import { BonsaiError } from '@bonsai/error';
 

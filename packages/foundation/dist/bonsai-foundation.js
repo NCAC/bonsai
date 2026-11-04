@@ -1,7 +1,7 @@
 /**
  * @bonsai/foundation - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T20:50:22.215Z
+ * Date: 2026-11-04T21:46:51.815Z
  */
 /******************************************************************************
 Copyright (c) Microsoft Corporation.

@@ -86,8 +86,7 @@ export * from "@bonsai/immer";
 export type {
   TChannelDefinition,
   TChannelToken,
-  TTokenDef,
-  TAnyEventPayload
+  TTokenDef
 } from "@bonsai/kernel";
 
 // @bonsai/error — BonsaiError hierarchy, invariant helpers

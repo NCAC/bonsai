@@ -52,14 +52,3 @@ export type TChannelToken<
 /** Extracts the `TDef` of a `TChannelToken`. */
 export type TTokenDef<T> =
   T extends TChannelToken<infer TDef, any> ? TDef : never;
-
-// ── Payload of the technical `any` event ─────────────────────────────────────
-
-/**
- * Payload of the technical `any` event, emitted automatically after
- * each `emit()` of a granular Event.
- */
-export type TAnyEventPayload = {
-  readonly event: string;
-  readonly changes: Record<string, unknown>;
-};
