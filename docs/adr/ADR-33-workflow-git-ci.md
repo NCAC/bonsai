@@ -3,7 +3,7 @@
 | Champ | Valeur |
 | --- | --- |
 | **Statut** | 🟢 Accepted |
-| **Livré** | ✅ branches, hooks, CI · ⚠️ jalon strate 0 tagué `v0.1.0-strate-0` (en plus du tag `v0.1.0` de la baseline) au lieu de `v0.2.0` (le `package.json` est resté en `0.1.0`) ; gate de régression limitée à 6 fichiers unitaires (noyau `kernel/root`, Entity, Feature, View, Composer, Foundation — pas Application) |
+| **Livré** | ✅ branches, hooks, CI · ✅ numérotation recalée au jalon `v0.2.0` (le jalon strate 0 avait été tagué `v0.1.0-strate-0`), `package.json` du workspace alignés sur le tag · ⚠️ gate de régression limitée à 6 fichiers unitaires (noyau `kernel/root`, Entity, Feature, View, Composer, Foundation — pas Application) |
 | **Spec** | [CONTRIBUTING.md](../../CONTRIBUTING.md) · [CHANGELOG.md](../../CHANGELOG.md) |
 
 ## Contexte
@@ -49,4 +49,4 @@ avec son numéro.
 
 - `main` est la seule source contractuelle des artefacts (ADR-30).
 - Passer en post-v1 ajoutera `release/*` et `hotfix/*` sans changer de modèle.
-- **Écart** : le prochain jalon doit recaler la numérotation (`0.2.0` ou `0.3.0`) et aligner `package.json` sur le tag.
+- Chaque jalon aligne les `package.json` du workspace sur son tag et date sa section du `CHANGELOG.md`.

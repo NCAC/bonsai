@@ -99,16 +99,19 @@ Exemple minimal conforme (extrait de [`tests/fixtures/cart-feature.fixture.ts`](
 ```ts
 class CartFeature
   extends Feature<CartEntity, TCartChannelDef, "cart">
-  implements TFeatureCallbacks<TCartChannelDef, typeof cartListens>
+  implements TFeatureCallbacks<TCartChannelDef, typeof cartListens, CartEntity>
 {
-  static readonly channel: TChannelToken<TCartChannelDef, "cart"> = { namespace: "cart" };
+  static readonly channel: TChannelToken<TCartChannelDef, "cart"> = { namespace: "cart", events: ["itemAdded"] };
   get listens() { return cartListens; }
   get queries() { return [] as const; }
   protected get Entity() { return CartEntity; }
 
-  onAddItemCommand(payload: TCartItem): void {
-    this.entity.mutate("addItem", (draft) => { draft.items.push(payload); });
-    this.emit("itemAdded", { item: payload });
+  onAddItemCommand(payload: TCartItem, ctx: TFeatureContext<TCartChannelDef, CartEntity>): void {
+    ctx.mutate("addItem", (draft) => {
+      draft.items.push(payload);
+      draft.total += payload.price * payload.qty;
+    });
+    ctx.emit("itemAdded", { item: payload });
   }
 }
 ```
@@ -122,24 +125,26 @@ Guide détaillé : [TESTING.md](docs/guides/TESTING.md) ([ADR-32](docs/adr/ADR-3
 ```bash
 pnpm test                                  # suite complète (Jest, ts-jest en isolatedModules)
 pnpm test:unit | test:integration | test:e2e
-pnpm test:strate-0:regression              # gate de régression strate 0
+pnpm test:regression                       # gate de régression
 pnpm test:coverage                         # couverture ; seuils dans jest.config.ts
-npx tsc --noEmit -p tsconfig.test.json     # type-check de packages/ + tests/ — À LANCER À LA MAIN
+pnpm test:ci                               # suite complète avec seuils de couverture (comme la CI)
+pnpm tsc:check:tests                       # type-check de packages/ + tests/ (pre-commit et CI)
+pnpm invariants:check                      # cohérence du registre des invariants (pre-commit et CI)
 ```
 
-- **TDD** : écrire le test d'abord, dans `tests/unit/strate-N/<composant>.<sujet>.test.ts`.
+- **TDD** : écrire le test d'abord, dans `tests/unit/kernel/` (noyau) ou `tests/unit/domain/` (composants).
 - **Citer l'invariant prouvé** (`I<N>`) dans l'en-tête du fichier et dans les `describe`/`it` (ADR-32) ; `lib/check-adr-tested-status.ts` liste les ADR promouvables.
-- **Jest ne type-check pas** : les tests de `tests/types/` (`@ts-expect-error`) ne sont vérifiés que par la commande `tsc` ci-dessus. Avant de merger un changement touchant les types publics, la lancer.
-- **Gate de non-régression cumulative** (ADR-33) : chaque PR ajoute ses fichiers de test à `tests/unit/strate-N/strate-N.regression.test.ts`, avec le numéro de PR :
+- **Jest ne type-check pas** : les tests de `tests/types/` (`@ts-expect-error`) ne sont vérifiés que par `pnpm tsc:check:tests`, lancé au commit et en CI.
+- **Gate de non-régression cumulative** (ADR-33) : chaque PR ajoute ses suites validées à `tests/unit/strate-0/strate-0.regression.test.ts`, avec le numéro de PR :
 
   ```ts
   // ── PR #N — Description courte ──────────────────────────
-  import "./mon-nouveau.test";
+  import "../domain/mon-nouveau.test";
   ```
 
   ⚠️ Aujourd'hui la gate strate 0 n'importe que le noyau (`kernel/root`), Entity, Feature, View, Composer et Foundation.
-- **Seuils de couverture** figés dans `jest.config.ts` : toute régression fait échouer la CI.
-- **Ne pas casser** la gate E2E `tests/e2e/strate-0.cart-round-trip.test.ts`.
+- **Seuils de couverture** figés dans `jest.config.ts` au niveau mesuré : toute régression fait échouer la CI, et un fichier à 100 % exige que tout nouveau code y soit testé.
+- **Ne pas casser** les gates E2E `tests/e2e/strate-0.cart-round-trip.test.ts` et `tests/e2e/navigation-round-trip.test.ts`.
 
 ---
 
@@ -147,9 +152,10 @@ npx tsc --noEmit -p tsconfig.test.json     # type-check de packages/ + tests/ �
 
 Point d'entrée : [docs/README.md](docs/README.md). Toute la documentation est en **français** (ADR-34).
 
+- **Théorie** (`docs/theorie.md`) : vocabulaire, axiomes, garanties et décisions ; **fait autorité** sur tout le reste du corpus.
 - **Spec** (`docs/spec/`) : le *quoi*, contrat cible ; chaque section non livrée porte un encadré ⏳ qui renvoie à l'ADR.
 - **ADR** (`docs/adr/`) : le *pourquoi*, 30 à 80 lignes, **vivants** (réécrits en place), modèle [TEMPLATE.md](docs/adr/TEMPLATE.md), ligne **Livré** (✅/⚠️/⏳) écrite depuis le code livré.
-- **Le code fait foi** : en cas d'écart doc ↔ code, corriger la documentation (ou consigner l'écart dans la ligne **Livré**), jamais l'inverse sans décision.
+- **La théorie fait foi** : un écart entre la théorie et la spec, un ADR, les tests ou le code se corrige du côté de ces derniers ; faire évoluer la théorie exige un amendement explicite et tracé. L'ordre de travail est toujours : théorie, puis documentation, puis code. Ce que le code réalise réellement est consigné dans la ligne **Livré** de chaque ADR.
 - Vérifier les liens et ancres après tout renommage de titre.
 
 ---
@@ -160,7 +166,7 @@ Mainteneur unique : la revue vérifie les points suivants.
 
 - [ ] Code conforme aux conventions ci-dessus ; architecture respectée (flux `View → Command → Feature → Event → View`)
 - [ ] Tests ajoutés (TDD), invariants cités, gate de régression mise à jour
-- [ ] `pnpm test` vert ; `npx tsc --noEmit -p tsconfig.test.json` vert
+- [ ] `pnpm test:ci` vert ; `pnpm tsc:check:tests` et `pnpm invariants:check` verts
 - [ ] `pnpm run build:no-watch` relancé si `packages/` ou `core/` ont changé
 - [ ] Documentation alignée (ADR/spec/guides) ; changement cassant noté dans le CHANGELOG
 

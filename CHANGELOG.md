@@ -10,20 +10,36 @@ Workflow : [ADR-33](docs/adr/ADR-33-workflow-git-ci.md)
 
 ## [Unreleased]
 
-Depuis le tag `v0.1.0-strate-0` (l'historique complet est dans `git log`).
+---
+
+## [0.2.0] — 2026-11-04 — Noyau d'exécution
+
+Depuis le tag `v0.1.0-strate-0` (l'historique complet est dans `git log`). Ce jalon recale la numérotation d'ADR-33 : le jalon de la strate 0 aurait dû porter `0.2.0`.
 
 ### Added
 
+- **Théorie V0.9.5** (`docs/theorie.md`, fait autorité) : vocabulaire, axiomes A0–A5, garanties G1–G8, décisions D1–D20, annexes A et B (navigateur) et C (protocole d'exécution) ; index de traçabilité, table des gardes, fiches des adaptateurs de l'hôte, guide pédagogique
+- **Noyau d'exécution `@bonsai/kernel`** (`Root`, lots M1 à M5) : unités de validation et retour arrière (G7), file des messages différés et vidage synchrone (ADR-35), Queries synchrones (G5), capture par copie (G2), contextes causaux (G8) et borne causale (D9), Entity sur le journal d'unité et invariants (A4.a), démarrage depuis un Manifest avec dépendances initiales (C.1), parts et désignations, matérialisation et effets engagés après validation (C.3), admission des faits du DOM, monde fermé et droit de commander (C.4, D18), trace des engagements et sortie console (`reportToConsole`, O2)
+- **Composants sur le noyau** (lot M6) : Feature, Entity et Application (M6.1) ; Foundation, Composer et View (M6.2), dont la composition de plusieurs Views par clé, les slots d'une View (`composers`) et l'annulation déclarée de l'action par défaut (`ui()(events, { cancelDefault })`, D20)
+- **`@bonsai/router`** (M6.3a) : Feature `router` fournie par le framework (D15) et adaptateur d'historique (D7, annexe B) ; gate E2E `tests/e2e/navigation-round-trip.test.ts`
 - **Strate 1a — Entity** : `Immer.produceWithPatches`, `TEntityEvent` enrichi (`patches`, `inversePatches`, `previousState`, `nextState`), file FIFO de ré-entrance bornée par `maxEntityNotificationDepth` (`EntityReentrancyError`, I98), handlers `on<Key>EntityUpdated` / `onAnyEntityUpdated` auto-découverts par la Feature (`BroadcastError` isolée, I96)
 - **Contrat Feature `Feature<TEntity, TChannelDef, TSelfNS>`** : namespace porté par le manifest applicatif (`StrictManifest<M>`), `static readonly channel`, `get listens()` / `get queries()` d'instance, `TFeatureCallbacks`, constructeur inerte, phases 0a–0c du bootstrap (ADR-08, ADR-09)
 - **Pattern modulaire de View** : `TFeatureContract` / `TUIContract` / `TUIElements`, `ui<TEl>()(events)`, `TEventsFor<TEl>`, `TViewCallbacks` (ADR-14, ADR-15)
-- **Documentation** : 34 ADR vivants (`docs/adr/`), spécification par chapitres (`docs/spec/`), `docs/ROADMAP.md` ; ancien corpus archivé dans `docs/archive/adr-v0/`
+- **Build** : `__DEV__` défini par la pipeline, bundles `core/dist/bonsai.js` (développement) et `bonsai.prod.js` (production) (ADR-06)
+- **Documentation** : 35 ADR vivants (`docs/adr/`), spécification par chapitres (`docs/spec/`), `docs/ROADMAP.md` ; ancien corpus archivé dans `docs/archive/adr-v0/`
 
 ### Changed
 
-- **`@bonsai/event` renommé `@bonsai/kernel`** : le package ne contient plus que le noyau d'exécution (`Root`) et les types de contrat des Channels depuis le retrait de `Channel` et `Radio` (lot M6.3b) ; ADR-28 mis à jour
+- **`@bonsai/event` renommé `@bonsai/kernel`** : le package ne contient plus que le noyau d'exécution (`Root`) et les types de contrat des Channels ; ADR-28 mis à jour
+- **Contextes de handler** : une Feature mute et émet par son contexte (`ctx.mutate`, `ctx.emit`) ; une View commande depuis le handler d'un fait (`ctx.trigger`) et interroge par `ctx.query` ; un handler d'Event ne commande jamais (D18)
+- **Seuils de couverture** relevés au niveau mesuré (100 % hors `kernel`, `router` et `view`) ; 416 tests
+- **Versions** : tous les `package.json` du workspace alignés sur `0.2.0`
 - JSDoc et commentaires de `packages/` et `core/` traduits en anglais (ADR-34)
 - Documentation alignée sur le code livré : les écarts connus sont consignés dans la ligne **Livré** de chaque ADR
+
+### Removed
+
+- **`Channel` et `Radio`** (lot M6.3b) : la racine du noyau, propre à chaque Application, les remplace (G6)
 
 ---
 
@@ -72,6 +88,7 @@ Depuis le tag `v0.1.0-strate-0` (l'historique complet est dans `git log`).
 
 ---
 
-[Unreleased]: https://github.com/NCAC/bonsai/compare/v0.1.0-strate-0...HEAD
+[Unreleased]: https://github.com/NCAC/bonsai/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/NCAC/bonsai/compare/v0.1.0-strate-0...v0.2.0
 [0.1.0-strate-0]: https://github.com/NCAC/bonsai/releases/tag/v0.1.0-strate-0
 [0.1.0]: https://github.com/NCAC/bonsai/releases/tag/v0.1.0

@@ -1,6 +1,6 @@
 {
   "name": "@bonsai/valibot",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Wrapper Valibot pour Bonsai — bibliothèque de validation imposée par ADR-11",
   "type": "module",
   "author": {

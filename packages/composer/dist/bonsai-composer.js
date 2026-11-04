@@ -1,7 +1,7 @@
 /**
- * @bonsai/composer - Version 0.0.1
+ * @bonsai/composer - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-03T08:44:12.151Z
+ * Date: 2026-11-04T06:28:09.098Z
  */
 /******************************************************************************
 Copyright (c) Microsoft Corporation.

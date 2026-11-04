@@ -1,7 +1,7 @@
 /**
- * @bonsai/foundation - Version 0.0.1
+ * @bonsai/foundation - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-02T15:48:13.817Z
+ * Date: 2026-11-04T06:28:10.814Z
  */
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -1218,7 +1218,8 @@ immer.produce;
  * - D8  production order; subscription order; rank fixed at emission.
  * - D9  causal depth checked before any submission.
  * - C.3 effects prepared during the unit, engaged in order after it
- *       validates, stopping at the first synchronous failure.
+ *       validates; a synchronous failure closes the resource the effect
+ *       aims at (and, for a part, the parts below it), the rest goes on.
  *
  * Out of scope for M1: Entity integration (M2), structural parts and DOM
  * (M3–M4), closed-world qualification of host sources and D18 (M5).

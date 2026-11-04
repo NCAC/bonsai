@@ -1,7 +1,7 @@
 # 🚀 Guide de Démarrage Rapide - Framework Bonsai
 
-> État du code : strate 0 livrée, strate 1a livrée (Entity : patches, handlers par clé,
-> ré-entrance). Voir [ADR-31](docs/adr/ADR-31-strates-perimetre-v1.md) pour le périmètre
+> État du code (`0.2.0`) : strate 0 livrée, strate 1a livrée (Entity : patches, handlers par clé,
+> ré-entrance), noyau d'exécution et navigation livrés. Voir [ADR-31](docs/adr/ADR-31-strates-perimetre-v1.md) pour le périmètre
 > et la ligne **Livré** de chaque [ADR](docs/adr/README.md) pour l'état réel.
 
 ## Pré-requis
@@ -30,13 +30,13 @@ pnpm run build:no-watch   # régénère les artefacts versionnés (core/dist, pa
 bonsai/
 ├── core/                   # @bonsai/core — barrel (ré-exporte, sans code propre)
 ├── packages/               # un package par composant (ADR-28)
-│   ├── application/  composer/  entity/  event/  feature/
-│   ├── foundation/   view/      error/
+│   ├── application/  composer/  entity/  kernel/  feature/
+│   ├── foundation/   view/      router/   error/
 │   └── immer/  rxjs/  valibot/  types/    # wrappers de bibliothèques tierces
 ├── lib/                    # pipeline de build (Rollup + rollup-plugin-dts)
-├── tools/                  # pug-to-ts-template (prototype), build-bonsai-package
-├── tests/                  # unit/strate-N, types, integration, e2e, fixtures, helpers
-├── docs/                   # spec (le QUOI), adr (le POURQUOI), guides (le COMMENT)
+├── tools/                  # pug-to-ts-template (prototype), build-bonsai-package, invariants
+├── tests/                  # unit/{kernel,domain,error,strate-0}, types, integration, e2e, fixtures, helpers
+├── docs/                   # theorie.md (fait autorité), spec (le QUOI), adr (le POURQUOI), guides (le COMMENT)
 └── .github/agents/         # agents conversationnels
 ```
 
@@ -48,10 +48,10 @@ pnpm run build:no-watch     # build one-shot (à lancer après toute modificatio
 pnpm test                   # suite complète (Jest)
 pnpm run test:coverage      # couverture (seuils dans jest.config.ts)
 pnpm run test:unit          # tests/unit
-pnpm run test:e2e           # gate E2E strate 0
-pnpm run test:strate-0:regression
+pnpm run test:e2e           # gates E2E (panier, navigation)
+pnpm run test:regression    # gate de régression
 pnpm tsc:check              # type-check de lib/ uniquement
-npx tsc --noEmit -p tsconfig.test.json   # type-check de packages/ + tests/ (à lancer à la main)
+pnpm tsc:check:tests        # type-check de packages/ + tests/ (pre-commit et CI)
 ```
 
 Jest ne type-check pas les tests (`isolatedModules`) : voir [TESTING.md](docs/guides/TESTING.md).
@@ -64,7 +64,7 @@ Extrait de la fixture de la gate E2E
 ```ts
 import { Entity } from "@bonsai/entity";           // ⚠️ @bonsai/core ne ré-exporte pas encore Entity (ADR-28)
 import { type TChannelToken } from "@bonsai/kernel";
-import { Feature, type TFeatureCallbacks } from "@bonsai/feature";
+import { Feature, type TFeatureCallbacks, type TFeatureContext, type TFeatureQueryContext } from "@bonsai/feature";
 
 type TCartState = { items: TCartItem[]; total: number };
 
@@ -77,51 +77,56 @@ class CartEntity extends Entity<TCartState> {
 type TCartChannelDef = {
   commands: { addItem: TCartItem };
   events: { itemAdded: { item: TCartItem } };
-  requests: { getItemCount: { params: null; result: number } };
+  queries: { getItemCount: { params: null; result: number } };
 };
 
 const cartListens = [] as const;
 
 class CartFeature
   extends Feature<CartEntity, TCartChannelDef, "cart">
-  implements TFeatureCallbacks<TCartChannelDef, typeof cartListens>
+  implements TFeatureCallbacks<TCartChannelDef, typeof cartListens, CartEntity>
 {
-  static readonly channel: TChannelToken<TCartChannelDef, "cart"> = { namespace: "cart" };
+  static readonly channel: TChannelToken<TCartChannelDef, "cart"> = { namespace: "cart", events: ["itemAdded"] };
   get listens() { return cartListens; }
   get queries() { return [] as const; }
   protected get Entity() { return CartEntity; }
 
   // I48 : handler découvert par son nom → Command "addItem"
-  onAddItemCommand(payload: TCartItem): void {
-    this.entity.mutate("addItem", (draft) => {
+  onAddItemCommand(payload: TCartItem, ctx: TFeatureContext<TCartChannelDef, CartEntity>): void {
+    ctx.mutate("addItem", (draft) => {
       draft.items.push(payload);
       draft.total += payload.price * payload.qty;
     });
-    this.emit("itemAdded", { item: payload });
+    ctx.emit("itemAdded", { item: payload });
   }
 
-  onGetItemCountRequest(_params: null): number {
+  // I48 : handler découvert par son nom → Query "getItemCount"
+  onGetItemCountQuery(_params: null, _ctx: TFeatureQueryContext): number {
     return this.entity.state.items.length;
   }
 }
 ```
 
-La View, le Composer, la Foundation et le bootstrap (`new Application({ foundation, features }).start()`)
+La View, le Composer, la Foundation et le bootstrap (`new Application({ foundation, features, document }).start()`)
 suivent le même principe : voir la fixture et le [README](README.md).
 
 ## Points d'attention
 
 - **La racine du noyau (`Root`, `@bonsai/kernel`) est interne** (I15) : le code applicatif ne la manipule jamais ;
-  il passe par `Feature.emit()`, `Feature.request()`, `View.trigger()` et `View.request()`.
-- **`request()` est synchrone** et retourne `T | null` (ADR-02) : pas de `Promise`.
+  il passe par le contexte reçu par chaque handler : `ctx.mutate()`, `ctx.emit()` et `ctx.query()` côté Feature,
+  `ctx.trigger()` et `ctx.query()` côté View.
+- **Chaque traitement est une unité de validation** : un échec la défait entièrement (G7), et ses effets
+  sur le DOM ne sont engagés qu'après validation (C.3).
+- **Une Query est synchrone** (G5) : pas de `Promise`.
+- **Seul le handler d'un fait du DOM commande** : un handler d'Event peut interroger, jamais adresser une Command (D18).
 - **Le namespace vient du manifest applicatif** (`features = { cart: CartFeature } satisfies StrictManifest<…>`,
   ADR-08), jamais d'un `static namespace`.
-- **Mutation** : uniquement `this.entity.mutate("ns:intent", recipe)` depuis la Feature propriétaire.
+- **Mutation** : uniquement `ctx.mutate(intent, recipe)` dans un handler de la Feature propriétaire.
 
 ## Workflow de développement
 
-1. **TDD** : écrire le test dans `tests/unit/strate-N/<composant>.<sujet>.test.ts`, citer l'invariant prouvé (ADR-32).
-2. **Régression** : ajouter le fichier à `tests/unit/strate-0/strate-0.regression.test.ts` (ADR-33).
+1. **TDD** : écrire le test dans `tests/unit/kernel/` (noyau) ou `tests/unit/domain/` (composants), citer l'invariant prouvé (ADR-32).
+2. **Régression** : ajouter la suite validée à `tests/unit/strate-0/strate-0.regression.test.ts` (ADR-33).
 3. **Build** : `pnpm run build:no-watch` avant de commiter une modification de source (ADR-30).
 4. **Commit** : `type(portée): description en français` (Conventional Commits, ADR-33/ADR-34).
 

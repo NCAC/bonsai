@@ -1,6 +1,6 @@
 {
   "name": "@bonsai/rxjs",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "exposes rxjs",
   "type": "module",
   "author": {

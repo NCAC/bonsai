@@ -14,7 +14,7 @@ docs/
 ├── rapports/     ← Rapports de travail sur la théorie : audits, registre, écarts (non normatifs)
 ├── invariants/   ← Registre opérationnel des règles, états et justifications (subordonné à la théorie)
 ├── spec/          ← Spécification : le QUOI (contrats, signatures, invariants)
-├── adr/          ← Décisions : le POURQUOI (ADR-01 à ADR-34)
+├── adr/          ← Décisions : le POURQUOI (ADR-01 à ADR-35)
 ├── guides/       ← Conventions et mode d'emploi : le COMMENT
 ├── ROADMAP.md    ← Pistes post-v1 (ce qui n'est pas décidé ou pas dans la v1)
 ├── GENESIS.md    ← L'histoire du projet
@@ -77,7 +77,7 @@ correspondance dans [spec/README.md](spec/README.md#anciens-identifiants-rfc-000
 
 ## 🧭 Décisions — [adr/](adr/README.md)
 
-34 ADR répertoriés (30–80 lignes), groupés en 7 chapitres : communication et
+35 ADR répertoriés (30–80 lignes), groupés en 7 chapitres : communication et
 runtime, couche abstraite, contrats typés, couche concrète, rendu,
 distribution et build, processus. Chaque ADR porte une ligne **Livré**
 (✅ / ⚠️ / ⏳) qui dit ce que le code implémente réellement.

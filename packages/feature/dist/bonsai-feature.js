@@ -1,7 +1,7 @@
 /**
- * @bonsai/feature - Version 0.1.0
+ * @bonsai/feature - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-02T15:48:09.121Z
+ * Date: 2026-11-04T06:28:05.657Z
  */
 import { describeEntity, bindEntityState } from '@bonsai/entity';
 import { hardInvariant } from '@bonsai/error';

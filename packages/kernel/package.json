@@ -1,6 +1,6 @@
 {
   "name": "@bonsai/kernel",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Execution kernel of Bonsai — validation units, deferred delivery, Queries, parts and host effects (theory §13, annex C)",
   "type": "module",
