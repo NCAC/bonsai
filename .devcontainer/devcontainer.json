@@ -4,6 +4,10 @@
     "dockerfile": "Dockerfile",
     "context": ".."
   },
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "mounts": ["source=bonsai-claude,target=/root/.claude,type=volume"],
   "workspaceMount": "source=${localWorkspaceFolder},target=/bonsai,type=bind",
   "workspaceFolder": "/bonsai",
   "customizations": {
