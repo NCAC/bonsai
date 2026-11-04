@@ -26,6 +26,7 @@ type TUIMap = {
 ```
 
 Problèmes :
+
 - Le sélecteur CSS est une **valeur runtime** encodée dans le **type compile-time** — mélange de niveaux d'abstraction
 - Les handlers `onXXXEvent(e)` n'ont aucune information sur le **type d'élément HTML** sous-jacent — `e.currentTarget` est `Element`
 - Le Composer ne peut pas substituer les sélecteurs puisqu'ils font partie du type
@@ -36,18 +37,18 @@ Problèmes :
 
 ### Pour le problème 1
 
-| Option | Description | Verdict |
-|--------|-------------|---------|
-| A. Options constructeur (passage par le constructeur) | `new AccountView({ rootElement: '#account' })` | Trop lié à l'instanciation, self-referencing generics complexes |
-| B. Abstract `get params()` + Composer `options` | La View déclare ses défauts, le Composer peut overrider | ✅ Retenu |
-| C. Factory function | `createView(AccountView, { rootElement: '#alt' })` | Perd l'héritage de classe |
+| Option                                                | Description                                             | Verdict                                                         |
+| ----------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------- |
+| A. Options constructeur (passage par le constructeur) | `new AccountView({ rootElement: '#account' })`          | Trop lié à l'instanciation, self-referencing generics complexes |
+| B. Abstract `get params()` + Composer `options`       | La View déclare ses défauts, le Composer peut overrider | ✅ Retenu                                                       |
+| C. Factory function                                   | `createView(AccountView, { rootElement: '#alt' })`      | Perd l'héritage de classe                                       |
 
 ### Pour le problème 2
 
-| Option | Description | Verdict |
-|--------|-------------|---------|
-| A. Garder `sel` dans TUIMap | Statu quo | ❌ Mélange niveaux |
-| B. Remplacer `sel` par `el` (HTMLElement type) | TUIMap porte le type d'élément, sélecteur libre dans params | ✅ Retenu |
+| Option                                         | Description                                                 | Verdict            |
+| ---------------------------------------------- | ----------------------------------------------------------- | ------------------ |
+| A. Garder `sel` dans TUIMap                    | Statu quo                                                   | ❌ Mélange niveaux |
+| B. Remplacer `sel` par `el` (HTMLElement type) | TUIMap porte le type d'élément, sélecteur libre dans params | ✅ Retenu          |
 
 ## Décisions de nommage
 
@@ -82,6 +83,7 @@ protected readonly resolvedParams: TParams = { ...this.params, ...composerOption
 ```
 
 **Conséquences** :
+
 - `rootElement` et `uiElements` ne sont plus des abstract getters séparés — ils vivent dans `params`
 - Une même classe View peut être réutilisée dans différents contextes DOM
 - Le contrat de type `TParams extends TViewParams<TUI>` garantit la présence de `rootElement` et `uiElements`
@@ -92,6 +94,7 @@ protected readonly resolvedParams: TParams = { ...this.params, ...composerOption
 `TUIMap` utilise `el: HTMLButtonElement` au lieu de `sel: '.btn-submit'`. Le sélecteur CSS, valeur runtime, est libre dans `params.uiElements` (type `Record<keyof TUI, string>`).
 
 **Conséquences** :
+
 - Les handlers typent automatiquement `currentTarget` grâce à `TUIEventFor<TUI, K, E>`
 - Le Composer peut substituer les sélecteurs via `options.uiElements` sans toucher au type
 - `getUI(key)` retourne un `TProjectionNode<TUI[K]['el']>` correctement typé

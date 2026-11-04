@@ -1,7 +1,7 @@
 /**
- * @bonsai/immer - Version 0.1.0
+ * @bonsai/immer - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-04-17T21:02:01.651Z
+ * Date: 2026-11-04T06:27:58.256Z
  */
 import * as immer from 'immer';
 export { immer as Immer };

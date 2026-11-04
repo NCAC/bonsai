@@ -1,42 +1,70 @@
 # Guide Pratique — Formulaires dans Bonsai
 
 > **Comment gérer la saisie, la validation et la soumission de formulaires
-> dans l'architecture Bonsai : 4 patterns, 1 arbre de décision.**
+> dans l'architecture Bonsai : 3 patterns + 1 complément combinable, 1 arbre de décision.**
 
-[← Retour aux guides](../README.md)
+> 🟠 **Guide cible, écrit avec l'API livrée (4 novembre 2026).** Les exemples
+> utilisent les contextes de handler réels (`ctx.mutate`, `ctx.emit`,
+> `ctx.trigger`, `ctx.query`, `on{Nom}Query`) et le pattern modulaire
+> (ADR-08, ADR-09, ADR-14). Ils **ne s'exécutent pas encore**, pour trois raisons :
+>
+> 1. **`localState`** (`get localState()`, `updateLocal()`, `this.local`,
+>    `onLocal{Key}Updated`, `View<TVC, TLocal>`) n'existe pas : strate 2,
+>    [ADR-17](../adr/ADR-17-local-state.md). Les patterns B, C et D en dépendent.
+> 2. **Behavior** n'existe pas (`@bonsai/behavior`) : strate 2,
+>    [ADR-21](../adr/ADR-21-behavior-reutilisation.md). Le pattern C en dépend.
+> 3. **La valeur saisie** : un fait du DOM ne transporte aujourd'hui que
+>    `{ type, ui }`, et une View ne lit jamais le DOM (I39). La théorie prévoit
+>    que les données d'un fait soient capturées avec lui (C.5) ; ni cette
+>    capture ni sa forme ne sont fixées. Les exemples écrivent **`fact.value`**
+>    pour cette cible : c'est une notation de ce guide, pas une API.
+>
+> Ce qui fonctionne déjà : déclarer `ui<HTMLInputElement>()(["input", "blur"])`
+> ou `ui<HTMLFormElement>()(["submit"])` (ADR-15), annuler l'action par défaut
+> d'un `submit` par déclaration (`ui()(events, { cancelDefault })`, D20),
+> commander depuis le handler du fait, projeter le retour du domaine.
+> En cas d'écart, la [théorie](../theorie.md) prévaut ([règle de confiance](../README.md#règle-de-confiance-et-dalignement)).
 
 ---
 
-| Champ          | Valeur                                                                                                                                                     |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **ADR source** | [ADR-0009 — Forms Pattern](../adr/ADR-0009-forms-pattern.md)                                                                                               |
-| **Pré-requis** | ADR-0001 (mutate), ADR-0015 (localState), D36/D38 (Behavior — [RFC-0001-composants §8](../rfc/2-architecture/README.md#8-behavior)), D48, ADR-0016 (metas) |
-| **Créé le**    | 2026-04-01                                                                                                                                                 |
+| Champ | Valeur |
+| ----- | ------- |
+| **ADR source** | [ADR-25 — Formulaires](../adr/ADR-25-formulaires.md) |
+| **Pré-requis** | [ADR-10](../adr/ADR-10-entity-mutation.md) (mutate), [ADR-17](../adr/ADR-17-local-state.md) (localState, cible), [behavior.md](../spec/4-couche-concrete/behavior.md) (Behavior, cible), [ADR-04](../adr/ADR-04-metas-explicites.md) (metas, strate 1b) |
+| **Créé le** | 2026-04-01 |
+| **Mis à jour** | 2026-11-04 (API du noyau) |
+
+Chaque scénario porte la lettre du pattern d'ADR-25 dont il découle : **B** =
+localState (cas simple), **C** = FormBehavior, **D** = Entity + localState par
+étape. Il n'y a pas de pattern A : le formulaire entièrement piloté par une
+Entity est rejeté par ADR-25. La **validation différée** (§5) est un complément
+combinable avec B, C ou D, sans lettre.
 
 ---
 
 ## TL;DR
 
-| Situation                                      | Pattern                             | Où vit l'état de saisie                  |
-| ---------------------------------------------- | ----------------------------------- | ---------------------------------------- |
-| Formulaire simple (contact, login, newsletter) | **localState dans la View**         | View (`updateLocal`)                     |
-| Formulaire réutilisable (adresse sur 3 pages)  | **FormBehavior**                    | Behavior (`updateLocal`)                 |
-| Wizard multi-step (checkout)                   | **Entity + localState par étape**   | View (saisie) + Entity (étapes validées) |
-| Recherche / filtres live                       | **localState + debounce + Command** | View (debounce) + Feature (requête)      |
+| Situation | Pattern (ADR-25) | Où vit l'état de saisie |
+| --- | --- | --- |
+| Formulaire simple (contact, login, newsletter) | **B** — localState dans la View | View (`updateLocal`) |
+| Formulaire réutilisable (adresse sur 3 pages) | **C** — FormBehavior | Behavior (`updateLocal`) |
+| Wizard multi-step (checkout) | **D** — Entity + localState par étape | View (saisie) + Entity (étapes validées) |
+| Validation contre le domaine (unicité, référence connue) | _(complément)_ Query synchrone dans le handler de saisie | Feature (état en mémoire) |
 
 > **Règle fondamentale** : l'état de saisie (valeurs, touched, errors, isSubmitting) est
 > de l'**état de présentation transitoire** (I30, I42). Seule la **soumission finale**
-> produit une Command qui franchit la frontière View → Feature.
+> produit une Command qui franchit la frontière View → Feature, depuis le handler
+> d'un fait du DOM (D18).
 
 ---
 
 ## Table des matières
 
 1. [Arbre de décision](#1-arbre-de-décision)
-2. [Pattern A — Formulaire simple (localState)](#2-pattern-a--formulaire-simple-localstate)
-3. [Pattern B — Formulaire réutilisable (FormBehavior)](#3-pattern-b--formulaire-réutilisable-formbehavior)
-4. [Pattern C — Wizard multi-step (Entity + localState)](#4-pattern-c--wizard-multi-step-entity--localstate)
-5. [Pattern D — Validation asynchrone (Request Channel)](#5-pattern-d--validation-asynchrone-request-channel)
+2. [Pattern B — Formulaire simple (localState)](#2-pattern-b--formulaire-simple-localstate)
+3. [Pattern C — Formulaire réutilisable (FormBehavior)](#3-pattern-c--formulaire-réutilisable-formbehavior)
+4. [Pattern D — Wizard multi-step (Entity + localState)](#4-pattern-d--wizard-multi-step-entity--localstate)
+5. [Validation contre le domaine — complément combinable](#5-validation-contre-le-domaine--complément-combinable)
 6. [Anti-patterns](#6-anti-patterns)
 7. [Checklist formulaire](#7-checklist-formulaire)
 
@@ -44,221 +72,283 @@
 
 ## 1. Arbre de décision
 
-```
+```text
 Le formulaire est-il réutilisé sur plusieurs pages ?
-├── OUI → Pattern B (FormBehavior)
+├── OUI → Pattern C (FormBehavior)
 └── NON
     └── L'état de saisie a-t-il une valeur métier persistante ?
-        ├── OUI → Pattern C (Entity + localState par étape)
+        ├── OUI → Pattern D (Entity + localState par étape)
         │         Exemples : wizard checkout, éditeur de document
         └── NON
-            └── Y a-t-il de la validation asynchrone (unicité, API) ?
-                ├── OUI → Pattern A + Request Channel (§5)
-                └── NON → Pattern A (localState simple)
+            └── Faut-il valider contre l'état du domaine (unicité, référence) ?
+                ├── OUI → Pattern B + Query synchrone (§5)
+                └── NON → Pattern B (localState simple)
 ```
 
 ---
 
-## 2. Pattern A — Formulaire simple (localState)
+## 2. Pattern B — Formulaire simple (localState)
 
 > **Quand** : formulaire de contact, login, newsletter, feedback — affiché une seule fois, pas de réutilisation.
 
-### Étape 1 — Namespace et Channel
+### Étape 1 — Contrat Channel et Feature
 
-Le Channel est **minimal** : seule la soumission est un Command. Aucun message pour la saisie en cours.
+Le Channel est **minimal** : seule la soumission est une Command. Aucun message pour la saisie en cours. Cette partie s'exécute déjà.
 
 ```typescript
-export namespace Newsletter {
-  export type State = TEntityStructure & {
-    subscribers: Array<{ email: string; subscribedAt: number }>;
-  };
+import { Entity, Feature, type TChannelToken, type TFeatureCallbacks, type TFeatureContext } from "@bonsai/core";
 
-  export type Channel = TChannelDefinition & {
-    readonly namespace: "newsletter";
-    readonly commands: {
-      subscribe: { email: string };
-    };
-    readonly events: {
-      subscribed: { email: string };
-    };
-    readonly requests: {};
-  };
+// ─── Contrat Channel (ADR-14) ──────────────────────────────────────────────
 
-  export const channel: unique symbol = Symbol("newsletter");
+type TNewsletterDef = {
+  readonly commands: { subscribe: { email: string } };
+  readonly events: { subscribed: { email: string } };
+  readonly queries: {};
+};
+
+// ─── Entity ───────────────────────────────────────────────────────────────
+
+type TNewsletterState = {
+  subscribers: Array<{ email: string; subscribedAt: number }>;
+};
+
+class NewsletterEntity extends Entity<TNewsletterState> {
+  protected defineInitialState(): TNewsletterState {
+    return { subscribers: [] };
+  }
 }
-```
 
-### Étape 2 — Feature
+// ─── Feature ──────────────────────────────────────────────────────────────
+// La Feature ne voit que la soumission. Pas de `updateField`, pas de `touchField`.
 
-La Feature ne voit que la soumission. Pas de `updateField`, pas de `touchField`.
+const newsletterListens = [] as const;
 
-```typescript
-class NewsletterFeature extends Feature<NewsletterEntity, Newsletter.Channel> {
-  static readonly namespace = Newsletter.channel;
+class NewsletterFeature
+  extends Feature<NewsletterEntity, TNewsletterDef, "newsletter">
+  implements TFeatureCallbacks<TNewsletterDef, typeof newsletterListens, NewsletterEntity>
+{
+  static readonly channel: TChannelToken<TNewsletterDef, "newsletter"> = {
+    namespace: "newsletter",
+    events: ["subscribed"]
+  };
 
-  onSubscribeCommand(payload: { email: string }, metas: TMessageMetas): void {
-    this.entity.mutate("newsletter:subscribe", { payload, metas }, (draft) => {
-      draft.subscribers.push({
-        email: payload.email,
-        subscribedAt: Date.now()
-      });
+  get listens() { return newsletterListens; }
+  get queries() { return [] as const; }
+
+  protected get Entity() { return NewsletterEntity; }
+
+  onSubscribeCommand(payload: { email: string }, ctx: TFeatureContext<TNewsletterDef, NewsletterEntity>): void {
+    // Validation métier définitive : une Command dont le handler lève est refusée (I27, G7)
+    if (!payload.email.includes("@")) throw new Error("invalid email");
+    ctx.mutate("newsletter:subscribe", { payload }, (draft) => {
+      draft.subscribers.push({ email: payload.email, subscribedAt: Date.now() });
     });
-    this.emit("subscribed", { email: payload.email }, { metas });
+    ctx.emit("subscribed", { email: payload.email });
   }
 }
 ```
 
-### Étape 3 — View avec localState
+> `Date.now()` dans une recette lit l'hôte : la valeur n'est pas rejouable.
+> Une heure lue est une valeur transmise (théorie 3.2) : la passer dans le
+> payload quand elle compte.
+
+### Étape 2 — View avec localState (⏳ cible)
 
 ```typescript
-type TNewsletterLocal = TJsonSerializable & {
+import {
+  View, ui,
+  type TViewContract, type TViewCallbacks,
+  type TUIContract, type TUIElements,
+  type TFact, type TFactContext, type TEventContext,
+  type TFeatureContract
+} from "@bonsai/core";
+import type { TLocalUpdate } from "@bonsai/view"; // ⏳ cible ADR-17
+import { NewsletterFeature } from "./newsletter.feature";
+
+// ─── Module 1 — TFeatureContract ─────────────────────────────────────────
+
+const newsletterViewFeatures = {
+  newsletter: {
+    feature:  NewsletterFeature,
+    listens:  ["subscribed"] as const,
+    triggers: ["subscribe"]  as const,
+    queries:  []             as const
+  }
+} satisfies TFeatureContract;
+
+// ─── Module 2 — TUIContract ───────────────────────────────────────────────
+
+const newsletterViewUiEvents = {
+  emailInput:  ui<HTMLInputElement>()(["input"]),
+  form:        ui<HTMLFormElement>()(["submit"], { cancelDefault: ["submit"] }), // D20
+  errorMsg:    ui<HTMLSpanElement>()([]),
+  successMsg:  ui<HTMLDivElement>()([])
+} satisfies TUIContract;
+
+// ─── Module 3 — TUIElements ───────────────────────────────────────────────
+
+const newsletterViewUiElements = {
+  emailInput:  "[data-ui='emailInput']",
+  form:        "[data-ui='form']",
+  errorMsg:    "[data-ui='errorMsg']",
+  successMsg:  "[data-ui='successMsg']"
+} satisfies TUIElements<typeof newsletterViewUiEvents>;
+
+type TNewsletterViewContract = TViewContract<
+  typeof newsletterViewFeatures,
+  typeof newsletterViewUiEvents
+>;
+
+// ─── localState (⏳ ADR-17) ────────────────────────────────────────────────
+
+type TNewsletterLocal = {
   email: string;
   error: string | null;
   isSubmitted: boolean;
 };
 
-type TNewsletterUI = TUIMap<{
-  emailInput: { el: HTMLInputElement; event: ["input"] };
-  submitBtn: { el: HTMLButtonElement; event: ["click"] };
-  errorMsg: { el: HTMLSpanElement; event: [] };
-  successMsg: { el: HTMLDivElement; event: [] };
-}>;
+class NewsletterView
+  extends View<TNewsletterViewContract, TNewsletterLocal> // ⏳ second générique : cible
+  implements TViewCallbacks<TNewsletterViewContract>
+{
+  get features()   { return newsletterViewFeatures;   }
+  get uiEvents()   { return newsletterViewUiEvents;   }
+  get uiElements() { return newsletterViewUiElements; }
 
-class NewsletterView extends View<
-  [Newsletter.Channel],
-  TNewsletterUI,
-  { rootElement: string; uiElements: TUIElements<TNewsletterUI> },
-  TNewsletterLocal
-> {
-  static readonly trigger = [Newsletter.channel] as const;
-  static readonly listen = [Newsletter.channel] as const;
-
-  get params() {
-    return {
-      rootElement: "#newsletter-form",
-      uiElements: {
-        emailInput: ".Newsletter-emailInput",
-        submitBtn: ".Newsletter-submitBtn",
-        errorMsg: ".Newsletter-error",
-        successMsg: ".Newsletter-success"
-      }
-    };
-  }
-
-  // ── localState initial (ADR-0015) ──
   protected get localState(): TNewsletterLocal {
     return { email: "", error: null, isSubmitted: false };
   }
 
-  // ── D48 auto-discovery ──
+  // ── I48 UI — handlers imposés par uiEvents ────────────────────────────
 
-  onEmailInputInput(
-    e: TUIEventFor<TNewsletterUI, "emailInput", "input">
-  ): void {
-    const value = e.currentTarget.value;
+  onEmailInputInput(fact: TFact, _ctx: TFactContext<TNewsletterViewContract>): void {
+    const value = fact.value; // ⏳ valeur capturée avec le fait (C.5) : notation de ce guide
     this.updateLocal((draft) => {
       draft.email = value;
-      draft.error =
-        value.length > 0 && !value.includes("@") ? "Email invalide" : null;
+      draft.error = value.length > 0 && !value.includes("@") ? "Email invalide" : null;
     });
   }
 
-  onSubmitBtnClick(): void {
+  onFormSubmit(_fact: TFact, ctx: TFactContext<TNewsletterViewContract>): void {
     const email = this.local.email;
     if (!email.includes("@")) {
-      this.updateLocal((draft) => {
-        draft.error = "Email invalide";
-      });
+      this.updateLocal((draft) => { draft.error = "Email invalide"; });
       return;
     }
-    // ✅ Seule la soumission franchit la frontière
-    this.trigger(Newsletter.channel, "subscribe", { email });
+    // ✅ Seule la soumission franchit la frontière, depuis le handler d'un fait (D18)
+    ctx.trigger("newsletter:subscribe", { email });
   }
 
-  // ── N1 callbacks — feedback synchrone ──
+  // ── Projections de l'état local (⏳ ADR-17) ─────────────────────────────
 
   onLocalErrorUpdated(update: TLocalUpdate<string | null>): void {
     this.getUI("errorMsg").text(update.actual ?? "");
-    this.getUI("emailInput").toggleClass("is-invalid", update.actual !== null);
+    this.getUI("emailInput").attr("data-state", update.actual === null ? "valid" : "invalid");
   }
 
   onLocalIsSubmittedUpdated(update: TLocalUpdate<boolean>): void {
     this.getUI("successMsg").visible(update.actual);
   }
 
-  // ── Event domaine ──
+  // ── Event écouté — imposé par newsletter.listens: ["subscribed"] ────────
+  // Un handler d'Event projette et interroge ; il ne commande pas (D18).
 
-  onNewsletterSubscribedEvent(
-    payload: { email: string },
-    metas: TMessageMetas
-  ): void {
-    this.updateLocal((draft) => {
-      draft.isSubmitted = true;
-    });
+  onNewsletterSubscribedEvent(_payload: { email: string }, _ctx: TEventContext<TNewsletterViewContract>): void {
+    this.updateLocal((draft) => { draft.isSubmitted = true; });
   }
 }
 ```
 
 ### Points clés
 
-- **Zéro round-trip** pour la saisie — `updateLocal()` est synchrone
-- **N1 callbacks** (`onLocalErrorUpdated`, `onLocalIsSubmittedUpdated`) assurent le feedback immédiat
-- **`getUI().text()`, `.toggleClass()`, `.visible()`** — pas de `.prop()`, pas de `querySelector`
-- **Le Channel ne contient aucun message lié à la saisie** — overhead minimal
+- **Zéro round-trip** pour la saisie : `updateLocal()` reste dans l'unité du fait
+- **L'état d'erreur est un `data-*`**, pas une classe (`is-invalid` est interdit, conventions DOM)
+- **`getUI().text()`, `.attr()`, `.visible()`** : pas de `.prop()`, pas de `querySelector` (I39)
+- **Le Channel ne contient aucun message lié à la saisie**
+- **L'action par défaut du `submit`** est annulée par déclaration (D20), jamais par le handler
+- **Compile-time** : `implements TFeatureCallbacks<…>` et `implements TViewCallbacks<…>` imposent tous les handlers ci-dessus
 
 ---
 
-## 3. Pattern B — Formulaire réutilisable (FormBehavior)
+## 3. Pattern C — Formulaire réutilisable (FormBehavior)
 
 > **Quand** : le même formulaire (adresse, identité, paiement) apparaît sur plusieurs pages.
+>
+> ⏳ **Strate 2** : `Behavior` n'existe pas encore (cf. [behavior.md](../spec/4-couche-concrete/behavior.md)).
+> Un Behavior n'est pas un composant : il n'a ni existence, ni Channel, ni part propres,
+> et ses traitements sont inclus dans l'unité de la View qui le porte. La forme
+> ci-dessous suit la cible documentée (identique à View par I83) ; elle sera
+> revalidée à la livraison.
 
 ### Étape 1 — Créer le Behavior
 
-Le Behavior encapsule le TUIMap du formulaire, le localState, la validation et les N1 callbacks.
+Le Behavior encapsule le module `uiEvents` du formulaire, l'état local, la validation et ses projections. Ce guide délègue la soumission à la View hôte par un callback qui reçoit le contexte du fait : la Command part toujours du handler d'un fait (D18).
+
+> 🧭 **Choix de ce guide, non imposé** : I44 interdit au Behavior l'accès à sa View
+> (`this.view`), pas la déclaration d'un `TFeatureContract` propre. Un Behavior
+> qui `trigger()` lui-même reste une alternative à trancher avec ADR-21.
 
 ```typescript
-type TContactFields = {
-  name: string;
-  email: string;
-  message: string;
-};
+import { Behavior, ui, type TBehaviorContract, type TBehaviorCallbacks } from "@bonsai/behavior"; // ⏳ cible
+import type { TUIContract, TUIElements, TFact, TFactContext, TFeatureContract } from "@bonsai/core";
+import type { TLocalUpdate } from "@bonsai/view"; // ⏳ cible
 
-type TFormLocal<TFields extends Record<string, string>> = TJsonSerializable & {
+type TContactFields = { name: string; email: string; message: string };
+
+type TFormLocal<TFields extends Record<string, string>> = {
   values: TFields;
   touched: Record<keyof TFields, boolean>;
   errors: Record<keyof TFields, string | null>;
   isSubmitting: boolean;
 };
 
-type TContactFormBehaviorUI = TUIMap<{
-  nameField: { el: HTMLInputElement; event: ["input", "blur"] };
-  emailField: { el: HTMLInputElement; event: ["input", "blur"] };
-  messageField: { el: HTMLTextAreaElement; event: ["input", "blur"] };
-  submitBtn: { el: HTMLButtonElement; event: ["click"] };
-  nameError: { el: HTMLSpanElement; event: [] };
-  emailError: { el: HTMLSpanElement; event: [] };
-  messageError: { el: HTMLSpanElement; event: [] };
-}>;
+const contactFormBehaviorFeatures = {} satisfies TFeatureContract;
 
-class ContactFormBehavior extends Behavior<
-  [],
-  TContactFormBehaviorUI,
-  TFormLocal<TContactFields>
-> {
-  private readonly validators: Record<
-    keyof TContactFields,
-    (v: string) => string | null
-  >;
-  private readonly onValidSubmit: (values: TContactFields) => void;
+const contactFormBehaviorUiEvents = {
+  nameField:    ui<HTMLInputElement>()(["input", "blur"]),
+  emailField:   ui<HTMLInputElement>()(["input", "blur"]),
+  messageField: ui<HTMLTextAreaElement>()(["input", "blur"]),
+  form:         ui<HTMLFormElement>()(["submit"], { cancelDefault: ["submit"] }),
+  nameError:    ui<HTMLSpanElement>()([]),
+  emailError:   ui<HTMLSpanElement>()([]),
+  messageError: ui<HTMLSpanElement>()([])
+} satisfies TUIContract;
 
-  constructor(config: {
-    validators: Record<keyof TContactFields, (v: string) => string | null>;
-    onValidSubmit: (values: TContactFields) => void;
-  }) {
+// Les clés doivent être uniques face à celles de la View hôte (I43).
+const contactFormBehaviorUiElements = {
+  nameField:    "[data-ui='contactNameField']",
+  emailField:   "[data-ui='contactEmailField']",
+  messageField: "[data-ui='contactMessageField']",
+  form:         "[data-ui='contactForm']",
+  nameError:    "[data-ui='contactNameError']",
+  emailError:   "[data-ui='contactEmailError']",
+  messageError: "[data-ui='contactMessageError']"
+} satisfies TUIElements<typeof contactFormBehaviorUiEvents>;
+
+type TContactFormBehaviorContract = TBehaviorContract<
+  typeof contactFormBehaviorFeatures,
+  typeof contactFormBehaviorUiEvents
+>;
+
+type TContactFormConfig = {
+  validators: Record<keyof TContactFields, (v: string) => string | null>;
+  onValidSubmit: (values: TContactFields, ctx: TFactContext) => void;
+};
+
+class ContactFormBehavior
+  extends Behavior<TContactFormBehaviorContract, TFormLocal<TContactFields>>
+  implements TBehaviorCallbacks<TContactFormBehaviorContract>
+{
+  readonly #config: TContactFormConfig;
+
+  constructor(config: TContactFormConfig) {
     super();
-    this.validators = config.validators;
-    this.onValidSubmit = config.onValidSubmit;
+    this.#config = config;
   }
+
+  get features()   { return contactFormBehaviorFeatures;   }
+  get uiEvents()   { return contactFormBehaviorUiEvents;   }
+  get uiElements() { return contactFormBehaviorUiElements; }
 
   protected get localState(): TFormLocal<TContactFields> {
     return {
@@ -269,113 +359,52 @@ class ContactFormBehavior extends Behavior<
     };
   }
 
-  // D48 — handlers auto-dérivés depuis TContactFormBehaviorUI
-
-  onNameFieldInput(
-    e: TUIEventFor<TContactFormBehaviorUI, "nameField", "input">
-  ): void {
-    const value = e.currentTarget.value;
+  #input(field: keyof TContactFields, fact: TFact): void {
+    const value = fact.value; // ⏳ valeur capturée avec le fait (C.5)
     this.updateLocal((draft) => {
-      draft.values.name = value;
-      draft.errors.name = this.validators.name(value);
+      draft.values[field] = value;
+      draft.errors[field] = this.#config.validators[field](value);
     });
   }
 
-  onNameFieldBlur(): void {
-    this.updateLocal((draft) => {
-      draft.touched.name = true;
-    });
+  #blur(field: keyof TContactFields): void {
+    this.updateLocal((draft) => { draft.touched[field] = true; });
   }
 
-  onEmailFieldInput(
-    e: TUIEventFor<TContactFormBehaviorUI, "emailField", "input">
-  ): void {
-    const value = e.currentTarget.value;
-    this.updateLocal((draft) => {
-      draft.values.email = value;
-      draft.errors.email = this.validators.email(value);
-    });
-  }
+  onNameFieldInput(fact: TFact): void    { this.#input("name", fact); }
+  onNameFieldBlur(): void                { this.#blur("name"); }
+  onEmailFieldInput(fact: TFact): void   { this.#input("email", fact); }
+  onEmailFieldBlur(): void               { this.#blur("email"); }
+  onMessageFieldInput(fact: TFact): void { this.#input("message", fact); }
+  onMessageFieldBlur(): void             { this.#blur("message"); }
 
-  onEmailFieldBlur(): void {
-    this.updateLocal((draft) => {
-      draft.touched.email = true;
-    });
-  }
-
-  onMessageFieldInput(
-    e: TUIEventFor<TContactFormBehaviorUI, "messageField", "input">
-  ): void {
-    const value = e.currentTarget.value;
-    this.updateLocal((draft) => {
-      draft.values.message = value;
-      draft.errors.message = this.validators.message(value);
-    });
-  }
-
-  onMessageFieldBlur(): void {
-    this.updateLocal((draft) => {
-      draft.touched.message = true;
-    });
-  }
-
-  onSubmitBtnClick(): void {
+  onFormSubmit(_fact: TFact, ctx: TFactContext): void {
     const values = this.local.values;
+    const { validators } = this.#config;
     const errors = {
-      name: this.validators.name(values.name),
-      email: this.validators.email(values.email),
-      message: this.validators.message(values.message)
+      name: validators.name(values.name),
+      email: validators.email(values.email),
+      message: validators.message(values.message)
     };
     const hasErrors = Object.values(errors).some((e) => e !== null);
 
     this.updateLocal((draft) => {
       draft.errors = errors;
       draft.touched = { name: true, email: true, message: true };
+      draft.isSubmitting = !hasErrors;
     });
 
-    if (!hasErrors) {
-      this.updateLocal((draft) => {
-        draft.isSubmitting = true;
-      });
-      this.onValidSubmit({ ...values });
-    }
+    if (!hasErrors) this.#config.onValidSubmit({ ...values }, ctx);
   }
 
-  // N1 callbacks
-
-  onLocalErrorsUpdated(
-    update: TLocalUpdate<Record<keyof TContactFields, string | null>>
-  ): void {
+  onLocalErrorsUpdated(update: TLocalUpdate<Record<keyof TContactFields, string | null>>): void {
     const errors = update.actual;
     const touched = this.local.touched;
-
-    this.getUI("nameError").text(
-      touched.name && errors.name ? errors.name : ""
-    );
-    this.getUI("emailError").text(
-      touched.email && errors.email ? errors.email : ""
-    );
-    this.getUI("messageError").text(
-      touched.message && errors.message ? errors.message : ""
-    );
-
-    this.getUI("nameField").toggleClass(
-      "is-invalid",
-      touched.name && errors.name !== null
-    );
-    this.getUI("emailField").toggleClass(
-      "is-invalid",
-      touched.email && errors.email !== null
-    );
-    this.getUI("messageField").toggleClass(
-      "is-invalid",
-      touched.message && errors.message !== null
-    );
-  }
-
-  onLocalIsSubmittingUpdated(update: TLocalUpdate<boolean>): void {
-    this.getUI("submitBtn").attr("disabled", String(update.actual));
-    this.getUI("submitBtn").text(update.actual ? "Envoi…" : "Envoyer");
+    for (const field of ["name", "email", "message"] as const) {
+      const shown = touched[field] && errors[field] !== null;
+      this.getUI(`${field}Error`).text(shown ? errors[field]! : "");
+      this.getUI(`${field}Field`).attr("data-state", shown ? "invalid" : "valid");
+    }
   }
 }
 ```
@@ -383,21 +412,47 @@ class ContactFormBehavior extends Behavior<
 ### Étape 2 — Brancher dans la View hôte
 
 ```typescript
-class ContactPageView extends View<[Contact.Channel], TContactPageUI> {
-  static readonly trigger = [Contact.channel] as const;
-  static readonly listen = [Contact.channel] as const;
+import {
+  View, ui,
+  type TViewContract, type TViewCallbacks, type TUIContract, type TUIElements,
+  type TFeatureContract
+} from "@bonsai/core";
+import { ContactFeature } from "./contact.feature";
+import { ContactFormBehavior } from "./contact-form.behavior";
 
-  get params() {
-    return {
-      rootElement: "#contact-page",
-      uiElements: {
-        pageTitle: ".ContactPage-title",
-        successMsg: ".ContactPage-success"
-      }
-    };
+const contactPageViewFeatures = {
+  contact: {
+    feature:  ContactFeature,
+    listens:  []                as const,
+    triggers: ["submitContact"] as const,
+    queries:  []                as const
   }
+} satisfies TFeatureContract;
 
-  get behaviors() {
+const contactPageViewUiEvents = {
+  pageTitle:  ui<HTMLHeadingElement>()([]),
+  successMsg: ui<HTMLDivElement>()([])
+} satisfies TUIContract;
+
+const contactPageViewUiElements = {
+  pageTitle:  "[data-ui='pageTitle']",
+  successMsg: "[data-ui='successMsg']"
+} satisfies TUIElements<typeof contactPageViewUiEvents>;
+
+type TContactPageViewContract = TViewContract<
+  typeof contactPageViewFeatures,
+  typeof contactPageViewUiEvents
+>;
+
+class ContactPageView
+  extends View<TContactPageViewContract>
+  implements TViewCallbacks<TContactPageViewContract>
+{
+  get features()   { return contactPageViewFeatures;   }
+  get uiEvents()   { return contactPageViewUiEvents;   }
+  get uiElements() { return contactPageViewUiElements; }
+
+  get behaviors() { // ⏳ cible ADR-21
     return [
       new ContactFormBehavior({
         validators: {
@@ -405,10 +460,8 @@ class ContactPageView extends View<[Contact.Channel], TContactPageUI> {
           email: (v) => (!v.includes("@") ? "Email invalide" : null),
           message: (v) => (v.length < 10 ? "Message trop court" : null)
         },
-        onValidSubmit: (values) => {
-          // La View fait le trigger — seule elle a accès au Channel
-          this.trigger(Contact.channel, "submitContact", values);
-        }
+        // Le contexte est celui du fait admis : la Command part de son unité (D18, A5.a)
+        onValidSubmit: (values, ctx) => ctx.trigger("contact:submitContact", values)
       })
     ];
   }
@@ -417,208 +470,249 @@ class ContactPageView extends View<[Contact.Channel], TContactPageUI> {
 
 ### Points clés
 
-- Le **Behavior ne trigger jamais de Channel** (I44) — il délègue via callback
-- Les **clés TUIMap du Behavior** (`nameField`, `emailField`, etc.) ne doivent pas collisionner avec celles de la View (I43)
-- Le même `ContactFormBehavior` peut être branché sur `ContactPageView`, `SupportPageView`, `FeedbackModalView` avec des validators différents
+- La soumission passe par un callback qui reçoit le **contexte du fait** : un contexte n'est utilisable que dans son unité (A5.a, `NO_UNIT` sinon)
+- Les **clés `uiElements` du Behavior** ne doivent pas entrer en collision avec celles de la View hôte (I43)
+- Le même `ContactFormBehavior` se branche sur plusieurs Views avec des validators différents
 
 ---
 
-## 4. Pattern C — Wizard multi-step (Entity + localState)
+## 4. Pattern D — Wizard multi-step (Entity + localState)
 
 > **Quand** : checkout, inscription multi-step, assistant de configuration — les étapes validées ont une valeur métier.
 
 ### Principe
 
-Chaque **étape** utilise le localState pour la saisie en cours. La **validation de l'étape** produit une Command qui persiste dans l'Entity. L'Entity conserve la progression globale.
+Chaque **étape** utilise le localState pour la saisie en cours. La **validation de l'étape** produit une Command qui persiste dans l'Entity. L'Entity conserve la progression globale ; le Composer affiche l'étape courante en interrogeant la Feature dans `resolve(ctx)`.
 
-```
+```text
 ┌─────────────────────────┐     ┌─────────────────────────┐
 │  ShippingStepView       │     │  PaymentStepView        │
 │  localState: saisie     │     │  localState: saisie     │
 │  ─────────────────────  │     │  ─────────────────────  │
-│  ✅ → trigger(          │     │  ✅ → trigger(          │
-│    completeShipping)    │     │    completePayment)     │
+│  ✅ → ctx.trigger(      │     │  ✅ → ctx.trigger(      │
+│    "checkout:           │     │    "checkout:           │
+│     completeShipping")  │     │     completePayment")   │
 └───────────┬─────────────┘     └───────────┬─────────────┘
             │                               │
             ▼                               ▼
 ┌─────────────────────────────────────────────────────────┐
 │  CheckoutFeature                                         │
 │  Entity: { currentStep, steps: { shipping, payment } }  │
+│  Event stepCompleted → CheckoutComposer.resolve(ctx)     │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Code abrégé (voir ADR-0009 pour le complet)
+### Feature (s'exécute déjà)
 
 ```typescript
-// Namespace Checkout — Entity stocke les étapes validées
-export namespace Checkout {
-  export type State = TEntityStructure & {
-    currentStep: number;
-    steps: {
-      shipping: { address: string; city: string; zip: string } | null;
-      payment: { method: "card" | "paypal"; cardLast4: string | null } | null;
-      confirmation: { accepted: boolean } | null;
-    };
-    isComplete: boolean;
-  };
+type TShipping = { address: string; city: string; zip: string };
 
-  export type Channel = TChannelDefinition & {
-    readonly namespace: "checkout";
-    readonly commands: {
-      completeShipping: { address: string; city: string; zip: string };
-      completePayment: { method: "card" | "paypal"; cardLast4: string | null };
-      confirmOrder: void;
-      goToStep: { step: number };
-    };
-    readonly events: {
-      stepCompleted: { step: number };
-      orderConfirmed: void;
-    };
-    readonly requests: {
-      checkoutState: { params: void; result: State };
-    };
+type TCheckoutState = {
+  currentStep: number;
+  steps: {
+    shipping: TShipping | null;
+    payment: { method: "card" | "paypal"; cardLast4: string | null } | null;
   };
+};
 
-  export const channel: unique symbol = Symbol("checkout");
+type TCheckoutDef = {
+  readonly commands: {
+    completeShipping: TShipping;
+    completePayment: { method: "card" | "paypal"; cardLast4: string | null };
+  };
+  readonly events: { stepCompleted: { step: number } };
+  readonly queries: { currentStep: { params: null; result: number } };
+};
+
+class CheckoutFeature
+  extends Feature<CheckoutEntity, TCheckoutDef, "checkout">
+  implements TFeatureCallbacks<TCheckoutDef, readonly [], CheckoutEntity>
+{
+  static readonly channel: TChannelToken<TCheckoutDef, "checkout"> = {
+    namespace: "checkout",
+    events: ["stepCompleted"]
+  };
+  get listens() { return [] as const; }
+  get queries() { return [] as const; }
+  protected get Entity() { return CheckoutEntity; }
+
+  onCompleteShippingCommand(payload: TShipping, ctx: TFeatureContext<TCheckoutDef, CheckoutEntity>): void {
+    ctx.mutate("checkout:completeShipping", { payload }, (draft) => {
+      draft.steps.shipping = payload;
+      draft.currentStep = 1;
+    });
+    ctx.emit("stepCompleted", { step: 0 });
+  }
+
+  onCompletePaymentCommand(payload: TCheckoutDef["commands"]["completePayment"], ctx: TFeatureContext<TCheckoutDef, CheckoutEntity>): void {
+    ctx.mutate("checkout:completePayment", { payload }, (draft) => {
+      draft.steps.payment = payload;
+      draft.currentStep = 2;
+    });
+    ctx.emit("stepCompleted", { step: 1 });
+  }
+
+  onCurrentStepQuery(_params: null, _ctx: TFeatureQueryContext): number {
+    return this.entity.state.currentStep;
+  }
 }
 ```
 
-```typescript
-// ShippingStepView — localState pour la saisie, Command pour valider l'étape
-class ShippingStepView extends View<
-  [Checkout.Channel],
-  TShippingUI,
-  { rootElement: string; uiElements: TUIElements<TShippingUI> },
-  TShippingLocal
-> {
-  static readonly trigger = [Checkout.channel] as const;
+### View d'étape (⏳ cible : localState, valeur du fait)
 
-  protected get localState(): TShippingLocal {
-    return {
-      values: { address: "", city: "", zip: "" },
-      errors: { address: null, city: null, zip: null },
-      touched: { address: false, city: false, zip: false }
-    };
+```typescript
+const shippingStepViewFeatures = {
+  checkout: {
+    feature:  CheckoutFeature,
+    listens:  []                   as const,
+    triggers: ["completeShipping"] as const,
+    queries:  []                   as const
+  }
+} satisfies TFeatureContract;
+
+const shippingStepViewUiEvents = {
+  addressField: ui<HTMLInputElement>()(["input"]),
+  cityField:    ui<HTMLInputElement>()(["input"]),
+  zipField:     ui<HTMLInputElement>()(["input"]),
+  nextBtn:      ui<HTMLButtonElement>()(["click"])
+} satisfies TUIContract;
+
+class ShippingStepView
+  extends View<TShippingStepViewContract, { values: TShipping }> // ⏳ localState
+  implements TViewCallbacks<TShippingStepViewContract>
+{
+  // features / uiEvents / uiElements comme au Pattern B
+  protected get localState() {
+    return { values: { address: "", city: "", zip: "" } };
   }
 
-  // ... D48 handlers, N1 callbacks (identiques au Pattern A) ...
+  onAddressFieldInput(fact: TFact): void {
+    this.updateLocal((draft) => { draft.values.address = fact.value; }); // ⏳ C.5
+  }
+  onCityFieldInput(fact: TFact): void {
+    this.updateLocal((draft) => { draft.values.city = fact.value; });
+  }
+  onZipFieldInput(fact: TFact): void {
+    this.updateLocal((draft) => { draft.values.zip = fact.value; });
+  }
 
-  onNextBtnClick(): void {
+  onNextBtnClick(_fact: TFact, ctx: TFactContext<TShippingStepViewContract>): void {
     const { values } = this.local;
-    // Validation complète
-    const errors = {
-      /* ... */
-    };
-    const hasErrors = Object.values(errors).some((e) => e !== null);
-
-    if (!hasErrors) {
+    if (Object.values(values).every((v) => v.length > 0)) {
       // ✅ L'étape validée franchit la frontière → Command → Entity
-      this.trigger(Checkout.channel, "completeShipping", { ...values });
+      ctx.trigger("checkout:completeShipping", { ...values });
     }
+  }
+}
+```
+
+### Composer de l'étape courante (s'exécute déjà)
+
+```typescript
+const checkoutComposerFeatures = {
+  checkout: { feature: CheckoutFeature, listens: ["stepCompleted"] as const, queries: ["currentStep"] as const }
+};
+const checkoutComposerViews = { shipping: ShippingStepView, payment: PaymentStepView, summary: SummaryView };
+
+class CheckoutComposer extends Composer<TComposerContract<typeof checkoutComposerFeatures, typeof checkoutComposerViews>> {
+  get features() { return checkoutComposerFeatures; }
+  get views() { return checkoutComposerViews; }
+
+  resolve(ctx: TComposeContext<TCheckoutComposerContract>): TComposition<TCheckoutComposerContract> {
+    const step = ctx.query("checkout:currentStep", null);
+    const view = (["shipping", "payment", "summary"] as const)[step]!;
+    return [{ view, key: view }];
   }
 }
 ```
 
 ### Points clés
 
-- L'**Entity stocke les étapes validées** — observable dans les DevTools, retour en arrière possible
-- Chaque **View d'étape** est autonome avec son propre localState — détruit au detach (I42.5)
-- Le **Composer** gère l'affichage conditionnel des étapes (résolution dynamique)
+- L'**Entity stocke les étapes validées** : retour en arrière possible, et un échec de l'unité défait l'étape entière (G7)
+- Chaque **View d'étape** a son propre état local, qui disparaît avec elle quand sa clé quitte la composition (I42.5)
+- Le **Composer** recalcule la composition à chaque `stepCompleted` : il garde la View dont la clé ne change pas, détruit les autres (I35)
 
 ---
 
-## 5. Pattern D — Validation asynchrone (Request Channel)
+## 5. Validation contre le domaine — complément combinable
 
-> **Quand** : vérifier l'unicité d'un username, valider un code postal via API, etc.
+> **Quand** : vérifier l'unicité d'un username contre l'état d'une Entity, valider un code postal contre une liste connue.
 
-Combinable avec n'importe quel pattern (A, B ou C). La validation asynchrone
-utilise `this.request()` pour interroger la Feature.
+Une Query est **synchrone** (G5) et rend une valeur, jamais une `Promise` ni un
+`null` de substitution. Elle lit un état déjà en mémoire : elle se fait
+**directement dans le handler du fait de saisie**, sans debounce.
 
 ```typescript
-// Dans la View (ou le Behavior)
-private usernameCheckTimer: ReturnType<typeof setTimeout> | null = null;
-
-onUsernameInputInput(e: TUIEventFor<TRegFormUI, 'usernameInput', 'input'>): void {
-  const value = e.currentTarget.value;
-  this.updateLocal(draft => {
-    draft.values.username = value;
-    draft.errors.username = value.length < 3 ? 'Min. 3 caractères' : null;
-  });
-
-  // Debounce 300ms avant d'appeler la Feature
-  if (this.usernameCheckTimer) clearTimeout(this.usernameCheckTimer);
-  if (value.length >= 3) {
-    this.usernameCheckTimer = setTimeout(() => {
-      this.checkUsernameAvailability(value);
-    }, 300);
-  }
-}
-
-private async checkUsernameAvailability(username: string): Promise<void> {
-  this.updateLocal(draft => { draft.usernameChecking = true; });
-
-  // ✅ Request Channel — async, typé, avec metas
-  const isAvailable = await this.request(
-    Registration.channel, 'isUsernameAvailable', { username }
-  );
-
-  this.updateLocal(draft => {
-    draft.usernameChecking = false;
-    if (!isAvailable && draft.values.username === username) {
-      draft.errors.username = 'Ce nom est déjà pris';
-    }
+onUsernameInputInput(fact: TFact, ctx: TFactContext<TRegistrationViewContract>): void {
+  const username = fact.value; // ⏳ C.5
+  const available = username.length >= 3 && ctx.query("registration:usernameAvailable", { username });
+  this.updateLocal((draft) => { // ⏳ ADR-17
+    draft.values.username = username;
+    draft.errors.username =
+      username.length < 3 ? "Min. 3 caractères" : available ? null : "Ce nom est déjà pris";
   });
 }
 ```
 
+> ❌ **Pas de `setTimeout` dans une View.** Un callback de minuterie s'exécute hors
+> de toute unité : son `ctx.query` est refusé (`NO_UNIT`, A5.a). Une minuterie est
+> une source de l'hôte : elle doit être admise par un adaptateur (D7), dont le
+> résultat revient comme un message (⏳ non livré).
+>
+> Une vérification qui appelle réellement une API externe n'est pas une Query :
+> c'est une opération de la Feature, dont le résultat revient comme un message
+> corrélé (C.4). Non couverte par ce guide.
+
 ### Points clés
 
-- **Debounce côté View** — la Feature ne reçoit pas une requête par frappe
-- **`this.request()`** retourne une `Promise<T>` — typé par le Channel
-- **Guard `draft.values.username === username`** — évite d'écraser si l'utilisateur a continué à taper
-- Le **spinner** est piloté par un N1 callback sur `usernameChecking`
+- **`ctx.query("ns:name", params)`** est typé depuis le contrat `features` (`TFlatQueries<F>`)
+- **Une Query qui échoue fait échouer l'unité du fait** : ne pas l'entourer d'un `try/catch` (G7, `UNRECOVERABLE`)
+- **Pas d'état « en attente réseau »** : la réponse est immédiate
 
 ---
 
 ## 6. Anti-patterns
 
-| ❌ Interdit                                          | ✅ Correct                                                                | Raison             |
-| ---------------------------------------------------- | ------------------------------------------------------------------------- | ------------------ |
-| `this.entity.state.values[field] = value`            | `this.entity.mutate('form:update', { payload, metas }, draft => { ... })` | ADR-0001           |
-| `get uiEvents() { return { 'input @ui.x': 'onX' } }` | D48 auto-discovery depuis TUIMap                                          | D48                |
-| `this.trigger('ns:cmd', payload)`                    | `this.trigger(Ns.channel, 'cmd', payload)`                                | RFC-0002 §9.3      |
-| `this.getUI('btn').prop('disabled', true)`           | `this.getUI('btn').attr('disabled', 'true')`                              | I41                |
-| `document.querySelector('.x')`                       | `this.getUI('x')`                                                         | I39                |
-| `onSubmitCommand(payload) { }`                       | `onSubmitCommand(payload: void, metas: TMessageMetas): void { }`          | ADR-0016           |
-| État `touched`/`errors` dans l'Entity                | `localState` dans la View/Behavior                                        | I30, I42, ADR-0009 |
+| ❌ Interdit | ✅ Correct | Raison |
+| --- | --- | --- |
+| `this.entity.state.values[field] = value` | `ctx.mutate("ns:update", { payload }, (draft) => { … })` | ADR-10 |
+| `this.entity.mutate(…)`, `this.emit(…)`, `this.trigger(…)` | `ctx.mutate`, `ctx.emit`, `ctx.trigger` (contexte du handler) | A3, A5.a |
+| `ctx.trigger("ns:cmd", …)` dans un handler d'Event | La Command part du handler d'un fait du DOM | D18 |
+| `ctx.trigger("ns:cmd", …)` sans `ns` dans `get features()` | `ns` référencé dans `get features()` avec `triggers: ["cmd"]` | I77, I87 |
+| `(e.currentTarget as HTMLInputElement).value` | La valeur capturée avec le fait (⏳ C.5) | I39 |
+| `event.preventDefault()` dans le handler | `ui()(["submit"], { cancelDefault: ["submit"] })` | D20 |
+| `this.getUI("btn").prop("disabled", true)` | `this.getUI("btn").attr("disabled", "")` | I41 |
+| `toggleClass("is-invalid", …)` | `attr("data-state", "invalid")` | conventions DOM |
+| `document.querySelector(".x")` | `this.getUI("x")` | I39 |
+| `setTimeout(() => ctx.query(…))` | Query synchrone dans le handler du fait | A5.a |
+| `onSubmitCommand(payload, metas)` | `onSubmitCommand(payload, ctx)` ; `metas` : strate 1b | ADR-04 |
+| État `touched`/`errors` dans l'Entity | `localState` dans la View/Behavior (⏳) | I30, I42, ADR-25 |
+| `static readonly namespace = …` | `static readonly channel: TChannelToken<TDef, NS>` | I68 |
 
 ---
 
 ## 7. Checklist formulaire
 
-Avant de merger un formulaire dans Bonsai, vérifier :
-
 - [ ] **Pattern choisi** selon l'arbre de décision (§1)
-- [ ] **TUIMap complet** — tous les inputs, boutons, zones d'erreur déclarés avec `el` et `event`
-- [ ] **D48 respecté** — pas de `get uiEvents()`, handlers nommés `on${Key}${Event}`
-- [ ] **localState typé** — `TJsonSerializable`, `get localState()` retourne l'état initial
-- [ ] **N1 callbacks** — `onLocal{Key}Updated` pour le feedback synchrone (erreurs, disabled, texte)
-- [ ] **Soumission via `trigger()`** — channel token en premier argument
-- [ ] **Feature handler avec metas** — `(payload, metas: TMessageMetas)`
-- [ ] **Entity mutation via `mutate()`** — Immer draft, intent nommé
-- [ ] **Pas de `.prop()`** — utiliser `.attr()`, `.text()`, `.toggleClass()`, `.visible()`
-- [ ] **Pas de `querySelector` brut** — tout via `getUI(key)`
-- [ ] **Validation async debounced** si nécessaire (§5)
-- [ ] **Clés TUIMap Behavior** ne collisionnent pas avec la View hôte (I43)
+- [ ] **`uiEvents` complet** : champs, formulaire, zones d'erreur via `ui<TEl>()(events)`, `uiElements` en 1:1
+- [ ] **`implements TFeatureCallbacks<…>` / `TViewCallbacks<…>`** : pas de handler manquant (erreur compile)
+- [ ] **Soumission par `ctx.trigger("ns:cmd", payload)`** depuis le handler d'un fait (D18)
+- [ ] **Action par défaut du `submit` annulée par déclaration** (`cancelDefault`, D20)
+- [ ] **Feature** : `onXCommand(payload, ctx)`, mutation par `ctx.mutate("ns:intent", { payload }, recipe)`, validation métier qui lève si la Command doit être refusée
+- [ ] **États dynamiques en `data-*`**, projections par `.attr()`, `.text()`, `.visible()`
+- [ ] **Aucun accès brut au DOM**, aucune minuterie dans la View
+- [ ] **Clés `uiElements` du Behavior** sans collision avec la View hôte (I43)
+- [ ] ⏳ **localState typé** et projections `onLocal{Key}Updated` (ADR-17)
 
 ---
 
 ## Références
 
-- [ADR-0009 — Forms Pattern](../adr/ADR-0009-forms-pattern.md) — décision architecturale complète
-- [RFC-0002 §9.1](../rfc/6-transversal/conventions-typage.md) — API localState (I42, D33, ADR-0015)
-- [RFC-0002 §10.4](../rfc/6-transversal/conventions-typage.md) — Exemples Behavior (ContactFormBehavior)
-- [ADR-0001](../adr/ADR-0001-entity-diff-notification-strategy.md) — Entity mutation unique `mutate()`
-- [ADR-0015](../adr/ADR-0015-local-state-mechanism.md) — Mécanisme localState View & Behavior
-- [ADR-0007](../adr/ADR-0007-behavior-contract.md) — Contrat Behavior (⚪ Superseded → D36/D38 dans [RFC-0001-composants §8](../rfc/2-architecture/README.md))
-- [ADR-0016](../adr/ADR-0016-metas-handler-signature.md) — Signature metas explicite
+- [ADR-25 — Formulaires](../adr/ADR-25-formulaires.md) — décision architecturale
+- [feature.md](../spec/3-couche-abstraite/feature.md) — Feature et contextes de handler
+- [view.md](../spec/4-couche-concrete/view.md) — View, faits du DOM, projections
+- [composer.md](../spec/4-couche-concrete/composer.md) — composition par clé
+- [behavior.md](../spec/4-couche-concrete/behavior.md) — Behavior (cible strate 2)
+- [ADR-15](../adr/ADR-15-evenements-ui.md) — événements DOM par type d'élément ; D20 pour l'action par défaut
+- [ADR-17](../adr/ADR-17-local-state.md) — localState de View et Behavior (cible)
+- [ADR-21](../adr/ADR-21-behavior-reutilisation.md) — Behavior et réutilisation (cible)

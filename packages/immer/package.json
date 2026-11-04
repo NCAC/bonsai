@@ -1,14 +1,20 @@
 {
   "name": "@bonsai/immer",
-  "version": "0.1.0",
-  "description": "Wrapper Immer pour Bonsai — mutations immutables via draft (ADR-0001)",
+  "version": "0.2.0",
+  "description": "Wrapper Immer pour Bonsai — mutations immutables via draft (ADR-10)",
   "type": "module",
   "author": {
     "name": "NCAC",
     "email": "dev.ncac@gmail.com"
   },
-  "main": "./dist/immer.js",
+  "main": "./src/immer.ts",
   "types": "./src/immer.ts",
+  "exports": {
+    ".": {
+      "types": "./src/immer.ts",
+      "default": "./src/immer.ts"
+    }
+  },
   "src": "./src/immer.ts",
   "namespace": "Immer",
   "bonsaiUpstream": "immer",

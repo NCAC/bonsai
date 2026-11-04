@@ -1,5 +1,8 @@
 import type { Config } from "jest";
 
+/** Threshold of a fully covered file. */
+const full = { statements: 100, branches: 100, functions: 100, lines: 100 };
+
 const config: Config = {
   // Basic configuration
   preset: "ts-jest/presets/default-esm",
@@ -36,15 +39,16 @@ const config: Config = {
 
   // Module aliases (consistent with tsconfig.json)
   moduleNameMapper: {
-    // ── Packages composants framework (ADR-0031 Option D) ──
+    // ── Packages composants framework (ADR-28 Option D) ──
     "^@bonsai/entity$": "<rootDir>/packages/entity/src/bonsai-entity.ts",
     "^@bonsai/feature$": "<rootDir>/packages/feature/src/bonsai-feature.ts",
-    "^@bonsai/event$": "<rootDir>/packages/event/src/bonsai-event.ts",
+    "^@bonsai/kernel$": "<rootDir>/packages/kernel/src/bonsai-kernel.ts",
     "^@bonsai/error$": "<rootDir>/packages/error/src/bonsai-error.ts",
     "^@bonsai/view$": "<rootDir>/packages/view/src/bonsai-view.ts",
     "^@bonsai/composer$": "<rootDir>/packages/composer/src/bonsai-composer.ts",
     "^@bonsai/foundation$":
       "<rootDir>/packages/foundation/src/bonsai-foundation.ts",
+    "^@bonsai/router$": "<rootDir>/packages/router/src/bonsai-router.ts",
     "^@bonsai/behavior$": "<rootDir>/packages/behavior/src/bonsai-behavior.ts",
     "^@bonsai/application$":
       "<rootDir>/packages/application/src/bonsai-application.ts",
@@ -76,85 +80,31 @@ const config: Config = {
   coverageDirectory: "coverage",
   coverageReporters: ["text", "html", "lcov"],
 
-  // Coverage thresholds — baseline figée à la livraison strate 0 (2026-04-21).
-  // Toute régression sous ces seuils fait échouer la CI.
-  // Cf. ADR-0028 (gate strate 0) et bilan coverage post-livraison.
+  // Coverage thresholds — raised on 2026-11-03 to the measured coverage,
+  // rounded down to the integer. Any regression below them fails the CI.
+  // Cf. ADR-31 (strate 0 gate) and ADR-32 (tests are the proof).
   //
-  // NB Jest : un fichier matché par un seuil path-specific est EXCLU du calcul
-  // global. Les seuils ci-dessous couvrent donc explicitement chaque package
-  // strate 0 ; le `global` ne sert qu'aux fichiers hors strate 0.
+  // NB Jest: a path-specific threshold applies to each matched file, and a
+  // matched file is EXCLUDED from the global computation. `global` therefore
+  // only covers the files no pattern names (core, immer, rxjs, valibot).
+  //
+  // At 100: a new uncovered line, branch or function in these files fails the
+  // CI. Below 100: the branches left aside on purpose (defensive fallbacks,
+  // edge cases the theory does not settle yet — cf. tests/unit/kernel/root.test.ts).
   coverageThreshold: {
-    global: {
-      statements: 80,
-      lines: 80,
-      branches: 55,
-      functions: 55
-    },
-    // ── Composants core du flux unidirectionnel — exigence forte ──
-    "packages/entity/src/**/*.ts": {
-      statements: 100,
-      lines: 100,
-      branches: 95,
-      functions: 100
-    },
-    "packages/application/src/**/*.ts": {
-      statements: 95,
-      lines: 95,
-      branches: 85,
-      functions: 95
-    },
-    "packages/composer/src/**/*.ts": {
-      statements: 95,
-      lines: 95,
-      branches: 80,
-      functions: 95
-    },
-    "packages/feature/src/**/*.ts": {
-      statements: 95,
-      lines: 95,
-      branches: 70,
-      functions: 95
-    },
-    "packages/view/src/**/*.ts": {
-      statements: 95,
-      lines: 95,
-      branches: 80,
-      functions: 90
-    },
-    // ── Plomberie événementielle — exigence haute ──
-    "packages/event/src/**/*.ts": {
-      statements: 85,
-      lines: 85,
-      branches: 80,
-      functions: 75
-    },
-    // ── Foundation — hooks no-op non couverts intentionnellement ──
-    "packages/foundation/src/**/*.ts": {
-      statements: 85,
-      lines: 85,
-      branches: 90,
-      functions: 55
-    },
-    // ── Helpers d'erreur défensifs — couverture faible assumée ──
-    "packages/error/src/bonsai-error.class.ts": {
-      statements: 70,
-      lines: 70,
-      branches: 60,
-      functions: 95
-    },
-    "packages/error/src/bonsai-error.ts": {
-      statements: 95,
-      lines: 95,
-      branches: 95,
-      functions: 20
-    },
-    // invariant.ts — helpers défensifs jamais déclenchés sur code conforme
-    "packages/error/src/invariant.ts": {
-      statements: 25,
-      lines: 25,
-      branches: 0,
-      functions: 0
-    }
+    global: full,
+    "packages/application/src/**/*.ts": full,
+    "packages/composer/src/**/*.ts": full,
+    "packages/entity/src/**/*.ts": full,
+    "packages/error/src/**/*.ts": full,
+    "packages/feature/src/**/*.ts": full,
+    "packages/foundation/src/**/*.ts": full,
+    // root.ts: 98.78 / 96.77 / 98.43 / 100 on 2026-11-03.
+    "packages/kernel/src/**/*.ts": { statements: 98, branches: 96, functions: 98, lines: 100 },
+    // history-adapter.ts: 99.12 / 87.09 / 100 / 100 on 2026-11-03.
+    "packages/router/src/**/*.ts": { statements: 99, branches: 87, functions: 100, lines: 100 },
+    // bonsai-view.ts: 100 / 94.44 / 100 / 100 on 2026-11-03.
+    "packages/view/src/**/*.ts": { statements: 100, branches: 94, functions: 100, lines: 100 }
   },
 
   // Test configuration

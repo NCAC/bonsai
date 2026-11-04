@@ -12,8 +12,8 @@
       "@bonsai/rxjs": ["./packages/rxjs/src/rxjs"],
       "@bonsai/immer": ["./packages/immer/src/immer"],
       "@bonsai/valibot": ["./packages/valibot/src/valibot"],
-      "@bonsai/event": ["./packages/event/src/bonsai-event"],
-      "@bonsai/event/*": ["./packages/event/src/*"]
+      "@bonsai/kernel": ["./packages/kernel/src/bonsai-kernel"],
+      "@bonsai/kernel/*": ["./packages/kernel/src/*"]
       // "@bonsai/error*": ["packages/error/dist"],
       // "@bonsai/dom*": ["packages/dom/dist"],
       // "@bonsai/vdom*": ["packages/vdom/dist"],
@@ -36,7 +36,7 @@
     { "path": "./packages/rxjs" },
     { "path": "./packages/immer" },
     { "path": "./packages/valibot" },
-    { "path": "./packages/event" }
+    { "path": "./packages/kernel" }
     // { "path": "./packages/app-node" },
     // { "path": "./packages/base-components" },
     // { "path": "./packages/base-view" },

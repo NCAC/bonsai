@@ -1,104 +1,128 @@
 # 📖 Documentation Bonsai
 
-> Point d'entrée de toute la documentation technique du framework Bonsai.
-
----
+> Point d'entrée de la documentation technique du framework Bonsai.
 
 ## 📁 Structure
 
-```
+```text
 docs/
-├── rfc/                    ← Spécifications (le QUOI)
-├── adr/                    ← Décisions architecturales (le POURQUOI)
-├── guides/                 ← Conventions et mode d'emploi (le COMMENT)
-├── pugx/                   ← Sous-projet PugX (WIP)
-└── archive/                ← Documents passés (mémoire)
-    ├── analyses/           ← Audits et analyses ponctuelles
-    └── explorations/       ← Notes de réflexion brutes
+├── theorie.md    ← Théorie : vocabulaire, axiomes, garanties, décisions, rôles (fait autorité)
+├── theorie-explication-pedagogique.md ← Guide d'initiation à la théorie (non normatif)
+├── tracabilite.md ← Index de traçabilité V0.9.5, aligné sur la théorie
+├── gardes.md     ← Table de conformité : obligations, gardes et scénarios requis
+├── adaptateurs/  ← Fiches des adaptateurs de l'hôte navigateur (annexe B de la théorie)
+├── rapports/     ← Rapports de travail sur la théorie : audits, registre, écarts (non normatifs)
+├── invariants/   ← Registre opérationnel des règles, états et justifications (subordonné à la théorie)
+├── spec/          ← Spécification : le QUOI (contrats, signatures, invariants)
+├── adr/          ← Décisions : le POURQUOI (ADR-01 à ADR-35)
+├── guides/       ← Conventions et mode d'emploi : le COMMENT
+├── ROADMAP.md    ← Pistes post-v1 (ce qui n'est pas décidé ou pas dans la v1)
+├── GENESIS.md    ← L'histoire du projet
+├── pugx/         ← Sous-projet PugX (WIP)
+└── archive/      ← Mémoire, non normative
+    ├── adr-v0/        ← anciens ADR-0001…0047 et journal D1–D48, table de correspondance
+    ├── analyses/      ← audits et analyses ponctuelles
+    └── explorations/  ← notes de réflexion brutes
 ```
 
----
+## 🌱 Théorie — [theorie.md](theorie.md)
 
-## 📐 Documents de référence
+La théorie fait autorité sur la spécification, les ADR et le registre : en cas d'écart, ce sont eux qui se corrigent.
 
-### [RFCs — Spécifications](rfc/README.md)
+### Règle de confiance et d’alignement
 
-Les RFCs définissent l'architecture et les contrats techniques. C'est la **source de vérité**.
+**Tout le corpus actif, les contrats TypeScript, les tests, le code et les artefacts générés doivent correspondre au corps théorique validé.** Leur existence, leur ancienneté, un statut Accepted/Tested ou une suite de tests verte ne peuvent justifier une exception à la théorie.
 
-| RFC      | Sujet                                                    | Statut    |
-| -------- | -------------------------------------------------------- | --------- |
-| RFC-0001 | Architecture fondamentale (composants, invariants, flux) | 🟢 Stable |
-| RFC-0002 | API, contrats TypeScript (Channel, Feature, Entity)      | 🟢 Stable |
-| RFC-0003 | Rendu avancé (PDR, templates, ProjectionList)            | 🟢 Stable |
-| RFC-0004 | DevTools et observabilité (Event Ledger, hooks, perf)    | � Draft   |
+| Niveau | Responsabilité | Traitement d’un écart |
+| --- | --- | --- |
+| Théorie validée | Source normative de confiance ; fixe les obligations et les arbitrages déjà tranchés | Une évolution exige un amendement explicite et tracé de la théorie, jamais une dérogation implicite en aval. |
+| Registre, spécification et ADR | Déclinent les obligations ; les ADR justifient les choix de réalisation restant compatibles | Corriger le document divergent ; un ADR ne remet pas en vote une obligation déjà fixée par la théorie. |
+| Guides, tests, code et artefacts | Expliquent, vérifient ou réalisent les contrats | Corriger les instructions, assertions et mécanismes incompatibles ; régénérer les sorties depuis leur source. |
+| Rapports historiques et archives | Conservent les faits et décisions de leur époque, sans autorité sur le contrat courant | Conserver leur contenu historique et expliciter leur portée ; ne pas les réécrire pour simuler un alignement passé. |
 
-### [ADRs — Décisions](adr/README.md)
+L’alignement est **obligatoire**, sa réalisation peut être **progressive** : tout écart restant doit être identifié et suivi, sans être présenté comme conforme. Un ADR réécrit en place trace le remplacement d’une ancienne décision (l’historique reste dans git) ; il n’est pas une autorisation préalable pour appliquer une obligation théorique déjà validée. Les choix réellement ouverts portent uniquement sur les mécanismes compatibles avec cette obligation.
 
-Les ADRs documentent les choix architecturaux non triviaux : contexte, options évaluées, décision finale.
+| Document | Rôle |
+| --- | --- |
+| [theorie.md](theorie.md) | V0.9.5 : 55 termes, axiomes A0–A5, garanties G1–G8, conséquences, objectifs, décisions D1–D20 (D5 retirée), rôles, gardes, annexes A et B (navigateur) et C (protocole d’exécution) |
+| [theorie-explication-pedagogique.md](theorie-explication-pedagogique.md) | Guide d'initiation, avec un exemple de boutique filé de bout en bout |
+| [tracabilite.md](tracabilite.md) | Chaque élément de la théorie : catégorie, statut, dépendances, justification |
+| [gardes.md](gardes.md) | Obligations, niveaux de garde, invariants et scénarios de conformité requis, dont P01–P20 ; aucune exécution de test présumée |
+| [adaptateurs/](adaptateurs/README.md) | Les treize adaptateurs de l'hôte navigateur, en fiches de 30 rubriques |
+| [rapports/](rapports/) | Audits et revues historiques, arbitrages V0.9.3 et suivi des vingt corrections V0.9.4 ; documents non normatifs |
 
-- **36 ADRs** (ADR-0001 à ADR-0036)
-- **29 Accepted**, 3 Superseded, 1 Proposed, 2 Suspended, 1 Proposed
-- [Voir l'index complet →](adr/README.md)
+Le socle documentaire courant est **V0.9.5 — 30 octobre 2026** : vocabulaire opérationnel défini et protocole d’exécution en annexe C, sans obligation ajoutée ni retirée, après le protocole du monde fermé (points R1 à R3 de la [relecture de fond V0.9.4](rapports/relecture-V0.9.4-2026-10-30.md)). Il conserve les [28 arbitrages V0.9.3](rapports/arbitrages-V0.9.3-2026-10-30.md) et intègre les réponses aux vingt constats de la [revue V0.9.3](rapports/revue-academique-architecture-V0.9.3-2026-10-30.md), détaillées dans le [suivi des corrections V0.9.4](rapports/corrections-V0.9.4-2026-10-30.md). Les constats, citations et notes des rapports historiques ne sont pas réévalués rétroactivement.
 
-### [Guides — Conventions](guides/)
+Les contrats transversaux précisent la disponibilité des Queries, la publication des états provisoires, les occurrences de vie, les résultats d’effets, la capture sans alias mutable et les réservations d’abonnements. La causalité garantie est **observable** : une notification non corrélable porte un antécédent inconnu, sans parent inventé ni permission de Command pour l’interface. D9 borne les segments connus, pas les boucles traversant une coupure d’observation.
 
-| Guide                                                       | Périmètre        | Description                                                                      |
-| ----------------------------------------------------------- | ---------------- | -------------------------------------------------------------------------------- |
-| [BUILD-CODING-STYLE.md](guides/BUILD-CODING-STYLE.md)       | `lib/`, `tools/` | Conventions pour la pipeline de build (TypeScript, imports, nommage, singleton)  |
-| [FRAMEWORK-STYLE-GUIDE.md](guides/FRAMEWORK-STYLE-GUIDE.md) | Code applicatif  | Conventions du framework (DOM, HTML, CSS, API TypeScript, patterns)              |
-| [FORMS-GUIDE.md](guides/FORMS-GUIDE.md)                     | Formulaires      | 4 patterns de formulaires (localState, FormBehavior, Entity, Hybride) — ADR-0009 |
-| [TESTING.md](guides/TESTING.md)                             | Tests            | Stratégie de test (unit, intégration, e2e) — ADR-0006                            |
+Le runtime est migré sur la théorie : le noyau d’exécution (`Root`, `@bonsai/kernel`, lots M1 à M5) porte tous les composants depuis les lots M6.1 à M6.3 (1er novembre 2026). L’état de chaque chapitre de la spécification est indiqué par son bandeau (🟢 aligné, 🟠 aligné pour le cœur, 🟡 conception cible) ; tous sont relus contre la théorie et le code depuis le 4 novembre 2026 ; ce qui est livré se lit sur la ligne **Livré** de chaque ADR. Le registre opérationnel est requalifié après ces lots (4 novembre 2026) : chaque invariant `livre` est cité par un test, et les écarts restants sont consignés dans son entrée. Les scénarios prescrits par les [gardes](gardes.md) ne sont pas tous déclarés exécutés ; aucune preuve formelle de consistance n’en découle. Le protocole général de clic ou déplacement du focus hors d’une View reste ouvert (18.30) ; sans admetteur déjà autorisé, le besoin n’est **pas pris en charge en V1**.
 
----
+## 📐 Spécification — [spec/](spec/README.md)
 
-## 🔍 Errata et audits
+Référence des contrats opérationnels, subordonnée à la théorie en cas d’écart. Organisée par chapitres :
 
-| Document                                  | Date       | Statut                                     |
-| ----------------------------------------- | ---------- | ------------------------------------------ |
-| [ERRATA-2026-03-23](ERRATA-2026-03-23.md) | 2026-03-23 | 🟢 Clos — 36 constats, tous corrigés       |
-| [Audit sévère (v1)](audit-2026-04-01.md)  | 2026-04-01 | 🟡 Actif — 19 recommandations, 11 résolues |
-| [ERRATA-2026-04-08](ERRATA-2026-04-08.md) | 2026-04-08 | 🟡 À vérifier                              |
+| Chapitre | Contenu |
+| --- | --- |
+| [1. Philosophie](spec/1-philosophie.md) | Principes, frontières |
+| [2. Architecture](spec/2-architecture/README.md) | Communication, state, metas, erreurs, lifecycle, distribution |
+| [3. Couche abstraite](spec/3-couche-abstraite/README.md) | Application, Feature, Entity, Router |
+| [4. Couche concrète](spec/4-couche-concrete/README.md) | Foundation, Composer, View, Behavior |
+| [5. Rendu](spec/5-rendu.md) | PDR, templates, ProjectionList, hydratation |
+| [6. Transversal](spec/6-transversal/conventions-typage.md) | Conventions de typage, validation, formulaires |
+| [DevTools](spec/devtools.md) | Observabilité (🟡 brouillon) |
+| [Référence](spec/reference/invariants.md) | [Invariants](spec/reference/invariants.md) · [Glossaire](spec/reference/glossaire.md) · [Anti-patterns](spec/reference/anti-patterns.md) · [Index des types](spec/reference/types-index.md) |
 
----
+Les anciens identifiants `RFC-0001`…`RFC-0004` restent cités çà et là :
+correspondance dans [spec/README.md](spec/README.md#anciens-identifiants-rfc-000x).
 
-## 📦 Archive
+## 🧭 Décisions — [adr/](adr/README.md)
 
-Documents ayant servi à alimenter les RFC/ADR. Conservés comme **mémoire de raisonnement**,
-mais ne sont plus des documents de référence actifs.
+35 ADR répertoriés (30–80 lignes), groupés en 7 chapitres : communication et
+runtime, couche abstraite, contrats typés, couche concrète, rendu,
+distribution et build, processus. Chaque ADR porte une ligne **Livré**
+(✅ / ⚠️ / ⏳) qui dit ce que le code implémente réellement.
 
-| Dossier                                                              | Contenu                                        |
-| -------------------------------------------------------------------- | ---------------------------------------------- |
-| [archive/analyses/](archive/analyses/)                               | Audits et analyses RFC (mars 2026)             |
-| [archive/explorations/](archive/explorations/)                       | Notes de réflexion, conversations, comparatifs |
-| [archive/ROADMAP-CONSOLIDATION.md](archive/ROADMAP-CONSOLIDATION.md) | Plan de travail consolidation RFC              |
+## 📚 Guides — [guides/](guides/)
 
----
+| Guide | Périmètre |
+| --- | --- |
+| [FRAMEWORK-STYLE-GUIDE.md](guides/FRAMEWORK-STYLE-GUIDE.md) | Code applicatif et framework : DOM, HTML, CSS, API TypeScript |
+| [BUILD-CODING-STYLE.md](guides/BUILD-CODING-STYLE.md) | Pipeline de build (`lib/`, `tools/`) |
+| [NAMESPACE-MENTAL-MODEL.md](guides/NAMESPACE-MENTAL-MODEL.md) | Les quatre lieux où vit le namespace d'une Feature (ADR-08) |
+| [TESTING.md](guides/TESTING.md) | Organisation et écriture des tests (ADR-32) |
+| [FORMS-GUIDE.md](guides/FORMS-GUIDE.md) | Formulaires : patterns B, C, D (ADR-25) |
+| [INVARIANTS.md](guides/INVARIANTS.md) | Ajouter, modifier, fusionner, supprimer ou renuméroter un invariant |
 
-## 🧭 Comment naviguer
+## 🔎 Je veux…
 
-| Je veux…                             | Je lis…                                                                            |
-| ------------------------------------ | ---------------------------------------------------------------------------------- |
-| Comprendre l'architecture Bonsai     | [Philosophie](rfc/1-philosophie.md) + [Architecture](rfc/2-architecture/README.md) |
-| Connaître les règles non-négociables | [Invariants I1–I58](rfc/reference/invariants.md)                                   |
-| Savoir pourquoi tel choix a été fait | [ADRs](adr/README.md)                                                              |
-| Écrire du code framework (build)     | [BUILD-CODING-STYLE](guides/BUILD-CODING-STYLE.md)                                 |
-| Écrire du code applicatif Bonsai     | [FRAMEWORK-STYLE-GUIDE](guides/FRAMEWORK-STYLE-GUIDE.md)                           |
-| Implémenter un formulaire            | [FORMS-GUIDE](guides/FORMS-GUIDE.md)                                               |
-| Retrouver une ancienne réflexion     | [Archive](archive/)                                                                |
+| … | Je lis |
+| --- | --- |
+| découvrir la théorie | [Guide pédagogique](theorie-explication-pedagogique.md), puis [Théorie V0.9.5](theorie.md) |
+| retrouver une obligation et ses contrôles requis | [Traçabilité](tracabilite.md), puis [Gardes](gardes.md) |
+| comprendre les corrections de la dernière revue | [Suivi V0.9.4](rapports/corrections-V0.9.4-2026-10-30.md) |
+| connaître les réserves avant gel de la théorie | [Relecture de fond V0.9.4](rapports/relecture-V0.9.4-2026-10-30.md) — propositions R1–R4, L1–L7, S1–S3, non appliquées |
+| suivre la migration du registre et du code vers V0.9.4 | [Diagnostic, plan et lots appliqués](rapports/migration-invariants-runtime-V0.9.4-2026-10-30.md) (rapport du 30 octobre, avant le noyau) · [Rapport du prototype M1](rapports/prototype-noyau-M1-2026-10-31.md) · runtime migré aux lots M1 à M6 ([CHANGELOG](../CHANGELOG.md)) |
+| comprendre l'architecture | [Philosophie](spec/1-philosophie.md), puis [Architecture](spec/2-architecture/README.md) |
+| connaître les règles non négociables | [Arbre des invariants](invariants/generated/arbre.md) (registre) · [Invariants](spec/reference/invariants.md) (matrice détaillée) |
+| connaître les règles et les écarts d'un composant | [Invariants par rôle](invariants/generated/roles/README.md) (vues générées) |
+| ajouter ou modifier un invariant | [Guide des invariants](guides/INVARIANTS.md) |
+| savoir pourquoi un choix a été fait | [ADR](adr/README.md) |
+| savoir ce qui est réellement livré | la ligne **Livré** de chaque ADR · [ADR-31](adr/ADR-31-strates-perimetre-v1.md) (strates) |
+| savoir ce qui viendra après la v1 | [ROADMAP](ROADMAP.md) |
+| écrire une Feature ou une View | [FRAMEWORK-STYLE-GUIDE](guides/FRAMEWORK-STYLE-GUIDE.md) |
+| retrouver un ancien ADR ou une décision `Dn` | [archive/adr-v0](archive/adr-v0/README.md) |
 
----
+## 📏 Types de documents
 
-## 🌱 Genèse
+| Type | Rôle | Évolution |
+| --- | --- | --- |
+| **Théorie** | Le socle normatif : vocabulaire, axiomes, garanties et décisions ; prévaut en cas d’écart | Versionnée ; amendements tracés dans les rapports datés |
+| **Spec** (`spec/`) | Le quoi : contrats normatifs, sous l’autorité de la théorie | Vivante |
+| **ADR** | Le pourquoi : une décision, ses alternatives rejetées | Vivant : une décision qui évolue est réécrite en place, git garde l’historique ; la ligne **Livré** suit le code ([ADR-32](adr/ADR-32-tests-preuve-architecture.md)) |
+| **Traçabilité et gardes** | Index des obligations, dépendances, contrôles et scénarios requis | Alignées sur la théorie, sans attester la conformité du runtime |
+| **Guide** | Le comment : mode d'emploi | Vivant |
+| **Rapport** | Revue, audit ou suivi daté ; ne fait pas autorité sur la théorie | Constats historiques conservés ; suites documentées séparément |
+| **Roadmap** | Pistes non décidées ou hors v1 | Une piste devient un ADR quand on la travaille |
+| **Archive** | Mémoire | Figée, non normative |
 
-[**GENESIS.md**](GENESIS.md) — L'histoire de Bonsai : de Backbone.Marionette à marionext, du TypeScript révélateur à la naissance d'un framework.
-
----
-
-## 📏 Conventions de documentation
-
-| Type de document  | Rôle                           | Durée de vie               | Modifiable ?                |
-| ----------------- | ------------------------------ | -------------------------- | --------------------------- |
-| **RFC**           | Spécification (quoi + comment) | Vivant → se stabilise      | Oui, jusqu'à stabilisation  |
-| **ADR**           | Décision (pourquoi)            | Immutable une fois accepté | Non — on crée un nouvel ADR |
-| **Guide**         | Mode d'emploi                  | Vivant                     | Oui                         |
-| **Analyse/Audit** | Input temporaire               | Éphémère                   | Archivé une fois intégré    |
+Le français est la langue source ; les traductions sont suffixées `-EN.md` (ADR-34).

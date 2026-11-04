@@ -17,8 +17,12 @@
  * |------|------------|--------------------------------------------------|
  * | #2   | 2026-04-17 | channel.basic, radio.singleton                   |
  * | #5   | 2026-04-20 | entity.basic                                     |
- * | #7   | 2026-04-20 | feature.core                                     |
- * | #8   | 2026-04-20 | view.core                                        |
+ * | #7   | 2026-04-20 | feature.basic (ex feature.core)                  |
+ * | #8   | 2026-04-20 | view.basic (ex view.core)                        |
+ * | M6.3b | 2026-11-01 | channel.basic, radio.singleton, channel.class, radio.singleton (unit) supprimés avec les classes ; kernel/root.test les remplace |
+ * | M6.2 | 2026-11-01 | view.basic, composer.basic, foundation.basic remplacés par domain/{view,composer,foundation}.test |
+ * | M6.1 | 2026-11-01 | entity.basic et feature.basic remplacés par       |
+ * |      |            | tests/unit/domain/{entity,feature}.test (noyau)  |
  *
  * ── Utilisation ────────────────────────────────────────────────────────
  *
@@ -28,15 +32,14 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-// ── PR #2 — Channel tri-lane + Radio singleton ────────────────────────
-import "./channel.basic.test";
-import "./radio.singleton.test";
+// ── PR #2 — Channel tri-lane + Radio : retirés au profit du noyau (lot M6.3b) ──
+import "../kernel/root.test";
 
-// ── PR #5 — Entity basic (ADR-0001, I6, I46, I51, I52) ───────────────
-import "./entity.basic.test";
+// ── PR #5 / #7 — Entity et Feature : migrés sur le noyau (lot M6.1) ─────
+import "../domain/entity.test";
+import "../domain/feature.test";
 
-// ── PR #7 — Feature core (5 capacités, I1, I2, I3, I5, I12, I21, I48) ─
-import "./feature.core.test";
-
-// ── PR #8 — View core (ADR-0024, I4, I31, I39, I40, I48, D48) ─────────
-import "./view.core.test";
+// ── PR #8 — View, Composer, Foundation : migrés sur le noyau (lot M6.2) ──
+import "../domain/view.test";
+import "../domain/composer.test";
+import "../domain/foundation.test";

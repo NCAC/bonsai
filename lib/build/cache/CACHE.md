@@ -34,8 +34,8 @@ Le système de cache du build Bonsai repose sur deux mécanismes principaux : 
 
 3. **Build des packages internes**
 
-   - Pour chaque package, `PackageCache.isValid()` calcule le hash de tous les fichiers sources.
-   - Si le hash n’a pas changé, le build est court-circuité.
+   - Pour chaque package, `PackageCache.isValid()` attend le chargement de `cache-index.json`, puis calcule le hash de tous les fichiers sources.
+   - Le build est court-circuité seulement si le hash n’a pas changé, si l’artefact (`dist/…`) existe encore — un `--clean` force donc la reconstruction — et si aucune dépendance n’a été reconstruite pendant ce build : chaque bundle embarque ses dépendances, un changement du noyau reconstruit donc `feature`, `view`, `composer`…
    - Sinon, le package est rebuilder, puis `PackageCache.write()` met à jour le cache et persiste dans `cache-index.json`.
 
 4. **Nettoyage et maintenance**

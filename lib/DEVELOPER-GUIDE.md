@@ -94,12 +94,13 @@ packages/types/
 # Bibliothèques externes (build parallèle)
 libraries:
   - "@bonsai/rxjs" # Wrapper RxJS
-  - "@bonsai/zod" # Wrapper Zod
+  - "@bonsai/immer" # Wrapper Immer
+  - "@bonsai/valibot" # Wrapper Valibot
 
 # Packages internes (build séquentiel)
 packages:
   - "@bonsai/types" # Types utilitaires
-  - "@bonsai/event" # Système d'événements
+  - "@bonsai/kernel" # Noyau d'exécution
 ```
 
 **Ordre important :** Les packages sont buildés dans l'ordre de déclaration.
@@ -174,7 +175,7 @@ EOF
 packages:
   - "@bonsai/types"
   - "@bonsai/my-types" # Nouveau package types
-  - "@bonsai/event"
+  - "@bonsai/kernel"
   - "@bonsai/my-new-package" # Nouveau package régulier
 ```
 
@@ -335,8 +336,8 @@ Le système affiche automatiquement :
 🔍 Analyzing packages...
 📝 Package @bonsai/types detected as types-only
 ⚡ Package @bonsai/rxjs is up to date (cache hit)
-🔨 Building package: @bonsai/event
-✅ Built @bonsai/event in 234ms
+🔨 Building package: @bonsai/kernel
+✅ Built @bonsai/kernel in 234ms
 🎯 Generating flat framework .d.ts bundle...
 🏁 Framework built successfully in 1.2s
 ```
@@ -389,7 +390,7 @@ head -20 core/dist/bonsai.d.ts
 
 - **Convention :** `@bonsai/nom-package`
 - **Types :** Toujours au pluriel (`@bonsai/types`)
-- **Fonctionnalités :** Nom descriptif (`@bonsai/event`)
+- **Fonctionnalités :** Nom descriptif (`@bonsai/kernel`)
 
 ### Structure des fichiers
 
@@ -410,4 +411,4 @@ packages/nom-package/
 
 ---
 
-> 💡 **Conseil** : Commencez par les exemples de packages existants (`@bonsai/types`, `@bonsai/event`) pour comprendre les patterns établis.
+> 💡 **Conseil** : Commencez par les exemples de packages existants (`@bonsai/types`, `@bonsai/kernel`) pour comprendre les patterns établis.

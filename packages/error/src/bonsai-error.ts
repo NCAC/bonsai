@@ -1,18 +1,19 @@
 /**
- * @bonsai/error — Infrastructure d'erreurs et de validation du framework Bonsai.
+ * @bonsai/error — Error and validation infrastructure of the Bonsai framework.
  *
- * Exports :
- * - `BonsaiError` et sous-classes (taxonomie ADR-0002)
- * - `invariant()`, `hardInvariant()`, `warning()` (modes ADR-0004)
+ * Exports:
+ * - `BonsaiError` and subclasses (ADR-05 taxonomy)
+ * - `invariant()`, `hardInvariant()`, `warning()`, `isDev()` (ADR-06 modes)
  *
  * @packageDocumentation
  */
 
-// ── Hiérarchie d'erreurs ────────────────────────────────────────
+// ── Error hierarchy ─────────────────────────────────────────────
 export {
   BonsaiError,
   // Entity Layer
   MutationError,
+  EntityReentrancyError,
   // Feature Layer
   CommandError,
   RequestError,
@@ -26,5 +27,5 @@ export {
   BehaviorError
 } from "./bonsai-error.class";
 
-// ── Fonctions de validation ─────────────────────────────────────
-export { invariant, hardInvariant, warning } from "./invariant";
+// ── Validation functions ────────────────────────────────────────
+export { invariant, hardInvariant, warning, isDev } from "./invariant";

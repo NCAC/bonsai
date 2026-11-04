@@ -1,11 +1,19 @@
 {
   "name": "@bonsai/entity",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "main": "./src/bonsai-entity.ts",
   "types": "./src/bonsai-entity.ts",
+  "exports": {
+    ".": {
+      "types": "./src/bonsai-entity.ts",
+      "default": "./src/bonsai-entity.ts"
+    }
+  },
+  "src": "./src/bonsai-entity.ts",
   "dependencies": {
+    "@bonsai/error": "workspace:^",
     "@bonsai/immer": "workspace:^"
   }
 }

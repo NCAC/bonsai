@@ -1,6 +1,6 @@
 {
   "name": "bonsai",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "repository": {
     "type": "git",
@@ -30,7 +30,10 @@
     "test:e2e": "npx jest tests/e2e",
     "test:regression": "npx jest --testPathPattern='regression\\.test\\.ts$' --no-coverage",
     "test:strate-0:regression": "npx jest tests/unit/strate-0/strate-0.regression.test.ts --no-coverage",
-    "tsc:check": "tsc --noEmit"
+    "tsc:check": "tsc --noEmit",
+    "tsc:check:tests": "tsc --noEmit -p tsconfig.test.json",
+    "invariants": "tsx tools/invariants/invariants.ts",
+    "invariants:check": "tsx tools/invariants/invariants.ts --check"
   },
   "license": "MIT",
   "workspaces": [
@@ -38,18 +41,20 @@
     "."
   ],
   "dependencies": {
+    "@bonsai/application": "workspace:^",
+    "@bonsai/composer": "workspace:^",
     "@bonsai/core": "workspace:^",
     "@bonsai/entity": "workspace:^",
-    "@bonsai/event": "workspace:^",
+    "@bonsai/error": "workspace:^",
+    "@bonsai/kernel": "workspace:^",
     "@bonsai/feature": "workspace:^",
+    "@bonsai/foundation": "workspace:^",
+    "@bonsai/router": "workspace:^",
     "@bonsai/immer": "workspace:^",
     "@bonsai/rxjs": "workspace:^",
     "@bonsai/types": "workspace:^",
     "@bonsai/valibot": "workspace:^",
     "@bonsai/view": "workspace:^",
-    "@bonsai/composer": "workspace:^",
-    "@bonsai/foundation": "workspace:^",
-    "@bonsai/application": "workspace:^",
     "@rollup/plugin-alias": "^5.1.1",
     "@rollup/plugin-commonjs": "^28.0.3",
     "@rollup/plugin-json": "^6.1.0",

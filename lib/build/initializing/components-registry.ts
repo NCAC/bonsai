@@ -265,11 +265,24 @@ export class ComponentsRegistry {
       const distPath = join(packagePath, "dist");
 
       // Determine file names based on package.json if possible
+      // Remove prefixes like ./dist/, ./, ./src/, src/ and change .ts to .js for main
       const mainFile = packageJson.main
-        ? packageJson.main.replace(/^\.\/dist\//, "").replace(/^\.\//, "")
+        ? packageJson.main
+            .replace(/^\.\/dist\//, "")
+            .replace(/^\.\/src\//, "")
+            .replace(/^src\//, "")
+            .replace(/^\.\//, "")
+            .replace(/\.ts$/, ".js")
         : `${packageName}.js`;
       const typesFile = packageJson.types
-        ? packageJson.types.replace(/^\.\/dist\//, "").replace(/^\.\//, "")
+        ? packageJson.types
+            .replace(/^\.\/dist\//, "")
+            .replace(/^\.\/src\//, "")
+            .replace(/^src\//, "")
+            .replace(/^\.\//, "")
+            // `.ts` → `.d.ts`, mais ne pas redoubler un `.d.ts` déjà présent
+            // (sinon `index.d.ts` deviendrait `index.d.d.ts`).
+            .replace(/(?<!\.d)\.ts$/, ".d.ts")
         : `${packageName}.d.ts`;
 
       // Determine the source file

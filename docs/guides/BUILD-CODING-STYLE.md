@@ -4,15 +4,16 @@
 
 ---
 
-| Champ             | Valeur                                           |
-|-------------------|--------------------------------------------------|
-| **Périmètre**     | Pipeline de build (`lib/build/`, `tools/`)        |
+| Champ | Valeur |
+| --- | --- |
+| **Périmètre** | Pipeline de build (`lib/build/`, `tools/`) |
 | **Ne couvre pas** | Le framework applicatif (voir [FRAMEWORK-STYLE-GUIDE](FRAMEWORK-STYLE-GUIDE.md)) |
-| **Statut**        | 🟢 Active                                        |
-| **Créé le**       | 2026-03-10                                        |
-| **Mis à jour**    | 2026-03-20                                        |
+| **Statut** | 🟢 Active |
+| **Créé le** | 2026-03-10 |
+| **Mis à jour** | 2026-09-25 |
 
-> ### Périmètre
+> ## Périmètre
+>
 > Ce guide s'applique au code **interne du framework** : système de build, bundling,
 > cache, orchestration Rollup, scripts npm, outils CLI — c'est-à-dire tout ce qui vit
 > dans `lib/`, `tools/` et les fichiers de configuration racine.
@@ -44,9 +45,10 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 
 ### Configuration
 
-- Utiliser la configuration TypeScript stricte (`strict: true`) dans tous les fichiers `tsconfig.json`
+- Utiliser la configuration TypeScript stricte (`strict: true`) dans tous les fichiers `tsconfig.json` — ⚠️ **cible** : aucun `tsconfig` du dépôt ne l'active aujourd'hui (`lib/` compile pourtant sans erreur avec `--strict` ; `packages/` et `tests/` non, voir [ADR-14](../adr/ADR-14-contrats-types.md))
 - Étendre `tsconfig.base.json` pour maintenir la cohérence entre les packages
 - Spécifier explicitement les options TypeScript importantes:
+
   ```json
   {
     "compilerOptions": {
@@ -68,7 +70,7 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 - Préfixer les interface avec `I` (exemple `IProject`)
 
 > **⚠️ Périmètre** : ces conventions s'appliquent au **code build** (`lib/`, `tools/`) qui utilise `interface` et le préfixe `I`.
-> Le **code framework** (`core/`, `packages/`) suit les conventions de [RFC-0002 §3](../rfc/6-transversal/conventions-typage.md) qui interdit `interface` au profit de `type` avec préfixe `T`.
+> Le **code framework** (`core/`, `packages/`) suit les conventions de [RFC-0002 §3](../spec/6-transversal/conventions-typage.md) qui interdit `interface` au profit de `type` avec préfixe `T`.
 
 - **Emplacement des définitions** : À l'exception des types ambiants, définir et exporter les types/interfaces à côté de leur implémentation, et non dans des fichiers centralisés de types
 
@@ -94,10 +96,12 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 
 - Quand vous importez le défaut d'une bibliothèque externe et que vous avez le choix du nom, **préférez systématiquement un nom explicite et verbeux**.
 - Exemple recommandé :
+
   ```ts
   import fileSystem from "fs-extra";
   // et non : import fs from "fs-extra";
   ```
+
 - Cela améliore la lisibilité et évite les confusions avec les modules natifs Node.js ou d'autres utilitaires.
 
 ## Modules et imports (ESM)
@@ -118,10 +122,12 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 - **N'utilisez jamais d'import relatif pour les modules internes du framework.**
 - Utilisez toujours les chemins d'alias (`@build/...`, `@lib/...`, etc.) définis dans `tsconfig.json` pour tous les imports internes.
 - Exemple :
+
   ```ts
   import { Logger } from "@build/monitoring/logger.class";
   // et non : import { Logger } from "../monitoring/logger.class";
   ```
+
 - Cette règle est obligatoire pour garantir la maintenabilité, la clarté et la robustesse des imports dans tout le projet.
 
 ## Structure du projet
@@ -139,8 +145,8 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 
 ### Structure des répertoires
 
-- `/core` - Framework principal
-- `/packages` - Modules indépendants
+- `/core` - Méta-package barrel `@bonsai/core` (ré-exporte tout, ADR-28) — pas le framework lui-même
+- `/packages` - Modules indépendants, un package par composant (implémentation réelle)
 - `/lib` - Outils de build et utilitaires
 - `/tools` - Scripts et outils de développement
 - `/docs` - Documentation technique
@@ -166,7 +172,7 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 
 ## Formatage
 
-- Utiliser Prettier pour le formatage automatique
+- Prettier est utilisé programmatiquement pour le code généré (ex: `tools/pug-to-ts-template`, `gulp-prettier` dans les scripts de build) — ⏳ pas de configuration `.prettierrc` versionnée ni de vérification en pre-commit pour le code écrit à la main
 - Indentation de 2 espaces
 - Longueur de ligne maximale de 80 caractères
 - Utiliser des points-virgules (`;`) à la fin des instructions
@@ -190,6 +196,7 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 - Documenter toutes les fonctions, classes et interfaces publiques avec JSDoc
 - Inclure une description, les paramètres, le type de retour et les exceptions
 - Exemple:
+
   ```typescript
   /**
    * Nettoie le dossier dist d'un package spécifique
@@ -202,14 +209,14 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 
 ### README
 
-- Chaque package doit avoir son propre README.md
+- Chaque package doit avoir son propre README.md (⚠️ aujourd'hui seuls `@bonsai/kernel` et `@bonsai/types` en ont un)
 - Inclure une brève description, les fonctionnalités, l'installation et l'utilisation
 - Fournir des exemples de code pour les API principales
 
 ### Commentaires
 
 - Commenter le code complexe ou non évident
-- Utiliser des commentaires en français
+- Écrire les commentaires et la JSDoc en **anglais** ([ADR-34](../adr/ADR-34-documentation-francais.md)) ; les commentaires français existants de `lib/` sont traduits au fil de l'eau
 - Privilégier le code auto-documenté (noms descriptifs) aux commentaires excessifs
 - Utiliser des commentaires en ligne (`// ...`) pour des explications brèves
 - Utiliser des commentaires de bloc (`/* ... */`) pour la documentation plus longue
@@ -217,7 +224,7 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 ## Tests
 
 - Écrire des tests unitaires pour toutes les fonctionnalités principales
-- Utiliser **Vitest** comme framework de test (voir [TESTING.md](TESTING.md) et [ADR-0006](../adr/ADR-0006-testing-strategy.md))
+- ⏳ **Cible, non livré** : `lib/` n'a aujourd'hui aucun fichier de test et aucune dépendance Vitest n'est installée — **Vitest** est le runner visé pour `lib/`, distinct de Jest utilisé par le framework applicatif (`tests/`, voir [TESTING.md](TESTING.md)). Ne pas confondre les deux périmètres — [TESTING.md](TESTING.md) documente le choix de Jest pour le framework, pas la stratégie de test de `lib/`
 - Suivre la convention de nommage: `[nom-du-fichier].test.ts`
 - Organiser les tests en blocs `describe` et `it`
 - Tester les cas nominaux et les cas d'erreur
@@ -244,11 +251,13 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
   - Préférez toujours la librairie [`fs-extra`](https://github.com/jprichardson/node-fs-extra) pour toutes les opérations sur le système de fichiers.
   - `fs-extra` est plus moderne, propose une API compatible avec `fs` mais enrichie, et intègre nativement les promesses pour toutes ses méthodes.
   - Exemple :
+
     ```ts
     import fileSystem from "fs-extra";
     // et non : import { promises as fs } from 'node:fs';
     ```
-  - **Note** : conformément à la convention de nommage verbeux (§ Imports par défaut), le nom `fileSystem` est préféré à `fs`.
+
+  - **Note** : conformément à la convention de nommage verbeux (§ Imports par défaut), le nom `fileSystem` est préféré à `fs`. ⚠️ Écart : `lib/build/core/build-cache.class.ts` et `lib/check-adr-tested-status.ts` utilisent encore `node:fs`.
   - Cela simplifie le code, améliore la compatibilité et réduit les erreurs potentielles.
 
 ### Pattern Singleton pour les services
@@ -257,6 +266,7 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
   - Le constructeur doit être `private`.
   - Une méthode statique `me()` doit retourner l’unique instance du service.
   - Exemple :
+
     ```ts
     export class MyService {
       private static instance: MyService;
@@ -271,6 +281,7 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
       }
     }
     ```
+
 - Ce pattern permet d’injecter d’autres services dans le constructeur privé et garantit l’unicité de l’instance dans tout le projet.
 - Voir les exemples dans `/bonsai/lib/build/initializing/build-options.class.ts` et `/bonsai/lib/build/initializing/components-registry.ts`.
 

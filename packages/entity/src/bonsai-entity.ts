@@ -1,24 +1,34 @@
 /**
  * @bonsai/entity — Entity base class
  *
- * Strate 0 — Implémentation ADR-0001 :
- *   - mutate(intent, recipe) via Immer.produce
- *   - changedKeys par comparaison shallow avant/après
- *   - Détection no-op (pas de notification si state inchangé)
- *   - Notification catch-all onAnyEntityUpdated (I51)
- *   - initialState getter (D17)
+ * The Entity describes the domain state of a Feature (theory 11.3, A4.a):
+ *   - its initial state (`defineInitialState`)
+ *   - its business invariants (`invariants`), verified by the kernel at the
+ *     successful end of every validation unit that touched the state
+ *   - its read methods (`query`-style getters), which read the current state
  *
- * NOTE strate 0 : pas de produceWithPatches, pas de per-key handlers,
- * pas de ré-entrance FIFO, pas de toJSON/fromJSON.
+ * The state itself is **owned by the kernel** (migration lot M6.1): it lives in
+ * the root, is mutated only through the handler context (`ctx.mutate`), and is
+ * journaled so that a failed unit leaves it intact (G7). The Entity holds no
+ * mutable state and no `mutate` method: a mutation outside a unit is not
+ * expressible (A5.a).
+ *
+ * `state` is readable only while a handler of the owning Feature is running
+ * (the Feature binds the Entity to the kernel's current state for the duration
+ * of the handler). Anywhere else it throws: the current state is observed
+ * through a Query (G5), never by holding the Entity.
+ *
+ * Notifications `on<Key>EntityUpdated` / `onAnyEntityUpdated` are not sent by
+ * the Entity any more: after a mutation the Feature delivers them to itself as
+ * a deferred local message (G5, D8). An Entity never knows its Feature (I6).
  */
 
-import { Immer } from "@bonsai/immer";
-import type { Draft } from "immer";
+import type { Draft, Patch } from "immer";
 
-// ─── Types publics ───────────────────────────────────────────────────────────
+// ─── Public types ────────────────────────────────────────────────────────────
 
 /**
- * Contrainte structurelle : le state d'une Entity doit être JsonSerializable (I46).
+ * Structural constraint: an Entity state must be JsonSerializable (I46).
  */
 export type TJsonSerializable =
   | string
@@ -29,10 +39,7 @@ export type TJsonSerializable =
   | { [key: string]: TJsonSerializable };
 
 /**
- * Extrait la structure d'état (TStructure) d'une classe Entity concrète.
- *
- * Introduit par ADR-0037 — permet de dériver la forme du state
- * depuis une classe Entity, sans la redéclarer manuellement.
+ * Extracts the state structure (TStructure) of a concrete Entity class.
  *
  * @example
  *   type TCartState = TEntityState<CartEntity>;  // = { items: [...]; total: number }
@@ -41,7 +48,7 @@ export type TEntityState<E extends Entity<TJsonSerializable>> =
   E extends Entity<infer S> ? S : never;
 
 /**
- * Paramètres optionnels passés à mutate() — payload + metas (traçabilité).
+ * Optional parameters passed to `ctx.mutate()` — payload + metas (traceability).
  */
 export type TMutationParams = {
   payload?: unknown;
@@ -49,189 +56,143 @@ export type TMutationParams = {
 };
 
 /**
- * Événement émis après une mutation réussie (non no-op).
- * Reçu par les listeners onAnyEntityUpdated.
+ * Event describing a successful (non no-op) mutation.
+ * Received by the Feature's `on<Key>EntityUpdated` / `onAnyEntityUpdated`
+ * handlers, as a deferred local message.
  */
 export type TEntityEvent<
   TStructure extends TJsonSerializable = TJsonSerializable
 > = {
   readonly intent: string;
-  readonly params: TMutationParams | null;
+  readonly payload?: unknown;
+  readonly metas?: Record<string, unknown>;
   readonly changedKeys: string[];
+  readonly patches: Patch[];
+  readonly inversePatches: Patch[];
   readonly previousState: TStructure;
   readonly nextState: TStructure;
   readonly timestamp: number;
 };
 
 /**
- * Signature du listener catch-all.
+ * Recipe applied to a draft of the state.
  */
-export type TEntityUpdateListener<
-  TStructure extends TJsonSerializable = TJsonSerializable
-> = (event: TEntityEvent<TStructure>) => void;
-
-// ─── Classe abstraite Entity ─────────────────────────────────────────────────
+export type TEntityRecipe<TStructure extends TJsonSerializable> = (
+  draft: Draft<TStructure>
+) => void;
 
 /**
- * Entity — Conteneur d'état immutable d'une Feature (I6, I22, I46).
+ * A business invariant: `check` returns `true` when the state satisfies it.
+ * Verified at the end of every validation unit that touched the state (A4.a).
+ */
+export type TEntityInvariant<TStructure extends TJsonSerializable> = {
+  readonly name: string;
+  readonly check: (state: TStructure) => boolean;
+};
+
+// ─── Internal binding to the kernel state ────────────────────────────────────
+
+const stateSources = new WeakMap<object, () => unknown>();
+
+/**
+ * @internal Framework use only (`@bonsai/feature`).
  *
- * Classe abstraite : les sous-classes doivent implémenter `get initialState()`.
+ * Binds an Entity to the kernel's current state for the duration of a handler.
+ * Returns the function that restores the previous binding (bindings nest when
+ * a Query reaches the same Feature again).
+ */
+export function bindEntityState(
+  entity: Entity<TJsonSerializable>,
+  source: () => unknown
+): () => void {
+  const previous = stateSources.get(entity);
+  stateSources.set(entity, source);
+  return () => {
+    if (previous === undefined) stateSources.delete(entity);
+    else stateSources.set(entity, previous);
+  };
+}
+
+/**
+ * @internal Framework use only (`@bonsai/feature`).
  *
- * @template TStructure - Le type du state, contraint à TJsonSerializable.
+ * What the kernel needs to own the state of an Entity: its name, its initial
+ * state and its invariants.
+ */
+export function describeEntity<TStructure extends TJsonSerializable>(
+  entity: Entity<TStructure>
+): {
+  readonly name: string;
+  readonly initial: TStructure;
+  readonly invariants: ReadonlyArray<TEntityInvariant<TStructure>>;
+} {
+  return {
+    name: entity.constructor.name,
+    initial: entity.initialState,
+    invariants: entity.invariants
+  };
+}
+
+// ─── Abstract Entity class ───────────────────────────────────────────────────
+
+/**
+ * Entity — description of the domain state of a Feature (I6, I22, I46).
+ *
+ * Abstract class: subclasses must implement `defineInitialState()`.
+ *
+ * @template TStructure - The state type, constrained to TJsonSerializable.
  */
 export abstract class Entity<TStructure extends TJsonSerializable> {
   /**
-   * State courant de l'Entity. Accessible en lecture par les sous-classes
-   * et par le code qui détient une référence à l'Entity.
+   * Copy of the initial state, returned by `initialState` (ADR-10).
    */
-  #state!: TStructure;
-
-  /**
-   * Copie du state initial pour pouvoir le retourner via `initialState` (D17).
-   */
-  #initialState!: TStructure;
-
-  /**
-   * Listeners catch-all (I51).
-   */
-  #listeners: Array<TEntityUpdateListener<TStructure>> = [];
-
-  /**
-   * Flag d'initialisation (lazy init pour contourner la restriction abstraite).
-   */
-  #initialized = false;
+  readonly #initialState: TStructure;
 
   constructor() {
-    // L'initialisation réelle est faite dans #ensureInitialized()
-    // car TS interdit l'accès aux propriétés abstraites dans le constructeur.
-    this.#ensureInitialized();
-  }
-
-  #ensureInitialized(): void {
-    if (!this.#initialized) {
-      this.#initialState = this.defineInitialState();
-      this.#state = this.#initialState;
-      this.#initialized = true;
-    }
+    this.#initialState = this.defineInitialState();
   }
 
   // ─── Abstract ────────────────────────────────────────────────────────
 
   /**
-   * Retourne l'état initial de l'Entity.
-   * Chaque sous-classe concrète DOIT implémenter ce getter.
+   * Returns the initial state of the Entity.
+   * Every concrete subclass MUST implement this method.
    */
   protected abstract defineInitialState(): TStructure;
+
+  // ─── Overridable configuration ─────────────────────────────────────────
+
+  /**
+   * Business invariants (11.3, A4.a). Verified by the kernel at the end of
+   * every validation unit that touched the state and at the end of startup;
+   * a violation fails the unit, which is rolled back (G7).
+   */
+  get invariants(): ReadonlyArray<TEntityInvariant<TStructure>> {
+    return [];
+  }
 
   // ─── Public API ──────────────────────────────────────────────────────
 
   /**
-   * State courant (lecture seule depuis l'extérieur).
+   * Current state, frozen, while a handler of the owning Feature is running.
+   *
+   * @throws outside a handler: the current state is observed through a Query.
    */
   get state(): TStructure {
-    return this.#state;
+    const source = stateSources.get(this);
+    if (source === undefined) {
+      throw new Error(
+        `[Bonsai Entity] "${this.constructor.name}".state is readable only inside a handler of its Feature. ` +
+          "Observe the current state through a Query (G5, I6)."
+      );
+    }
+    return source() as TStructure;
   }
 
   /**
-   * Retourne l'état initial tel que défini à la construction (D17).
-   * Accessible publiquement pour reset ou comparaison.
+   * Returns the initial state as defined at construction (ADR-10).
    */
   get initialState(): TStructure {
     return this.#initialState;
-  }
-
-  /**
-   * Mutation immutable via Immer (ADR-0001).
-   *
-   * Overload 1 : mutate(intent, recipe)
-   * Overload 2 : mutate(intent, params, recipe)
-   *
-   * Détecte les no-ops par comparaison shallow des clés de 1er niveau.
-   * Si aucune clé n'a changé → pas de notification.
-   */
-  mutate(intent: string, recipe: (draft: Draft<TStructure>) => void): void;
-  mutate(
-    intent: string,
-    params: TMutationParams,
-    recipe: (draft: Draft<TStructure>) => void
-  ): void;
-  mutate(
-    intent: string,
-    paramsOrRecipe: TMutationParams | ((draft: Draft<TStructure>) => void),
-    maybeRecipe?: (draft: Draft<TStructure>) => void
-  ): void {
-    // Résolution des overloads
-    let params: TMutationParams | null = null;
-    let recipe: (draft: Draft<TStructure>) => void;
-
-    if (typeof paramsOrRecipe === "function") {
-      recipe = paramsOrRecipe;
-    } else {
-      params = paramsOrRecipe;
-      recipe = maybeRecipe!;
-    }
-
-    const previousState = this.#state;
-
-    // Immer produce — mutation immutable
-    const nextState = Immer.produce(previousState, recipe);
-
-    // Détection no-op : comparaison shallow des clés de 1er niveau
-    const changedKeys = this.#computeChangedKeys(previousState, nextState);
-
-    if (changedKeys.length === 0) {
-      // No-op — pas de notification
-      return;
-    }
-
-    // Mise à jour du state
-    this.#state = nextState;
-
-    // Notification catch-all (I51)
-    const event: TEntityEvent<TStructure> = {
-      intent,
-      params,
-      changedKeys,
-      previousState,
-      nextState,
-      timestamp: Date.now()
-    };
-
-    for (const listener of this.#listeners) {
-      listener(event);
-    }
-  }
-
-  /**
-   * Enregistre un listener catch-all (I51).
-   * Appelé après chaque mutation non no-op.
-   */
-  onAnyEntityUpdated(listener: TEntityUpdateListener<TStructure>): void {
-    this.#listeners.push(listener);
-  }
-
-  // ─── Private ─────────────────────────────────────────────────────────
-
-  /**
-   * Comparaison shallow des clés de premier niveau entre deux states.
-   * Retourne la liste des clés dont la référence a changé.
-   */
-  #computeChangedKeys(prev: TStructure, next: TStructure): string[] {
-    if (prev === next) return [];
-
-    // TStructure est un objet (garanti par l'usage)
-    const prevObj = prev as Record<string, unknown>;
-    const nextObj = next as Record<string, unknown>;
-
-    const keys = new Set([...Object.keys(prevObj), ...Object.keys(nextObj)]);
-    const changed: string[] = [];
-
-    for (const key of keys) {
-      if (prevObj[key] !== nextObj[key]) {
-        changed.push(key);
-      }
-    }
-
-    return changed;
   }
 }

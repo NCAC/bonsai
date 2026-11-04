@@ -1,4 +1,4 @@
-// @bonsai/types — types utilitaires (ré-exportés au top-level)
+// @bonsai/types — utility types (re-exported at top level)
 export * from "@bonsai/types";
 
 // Export all types from @bonsai/types at top-level (flat)
@@ -66,22 +66,41 @@ export type {
   AlwaysParameters
 } from "@bonsai/types";
 
-// @bonsai/rxjs — Tier 3 opaque (ADR-0032 §3)
-// Les types RxJS sont encapsulés dans le namespace `RXJS` et ne font pas
-// partie de l'API publique documentée. Ils sont ré-exportés car les types
-// @bonsai/event (ThisMapEvents, etc.) référencent RXJS.Subject<T>.
+// @bonsai/rxjs — Tier 3 opaque (ADR-29)
+// RxJS types are wrapped in the `RXJS` namespace and are not part of the
+// documented public API. They are re-exported because @bonsai/kernel types
+// (ThisMapEvents, etc.) reference RXJS.Subject<T>.
 export * from "@bonsai/rxjs";
 
-// @bonsai/valibot — Tier 1 intégrée (ADR-0022 + ADR-0032 §3)
+// @bonsai/valibot — Tier 1 integrated (ADR-11, ADR-29)
 export * from "@bonsai/valibot";
 
-// @bonsai/immer — Tier 3 opaque (ADR-0001 + ADR-0032 §3)
-// Immer est utilisé en interne pour les mutations immutables d'Entity.
-// Les types (Draft, Patch, etc.) sont encapsulés dans le namespace `Immer`.
+// @bonsai/immer — Tier 3 opaque (ADR-10 + ADR-29)
+// Immer is used internally for immutable Entity mutations.
+// Its types (Draft, Patch, etc.) are wrapped in the `Immer` namespace.
 export * from "@bonsai/immer";
 
-// @bonsai/event — Channel, Radio, EventTrigger
-export * from "@bonsai/event";
+// @bonsai/kernel — contract types only. The communication kernel (`Root`) stays
+// internal to the framework (I15, I80): exported by `@bonsai/kernel` for
+// cross-package use, never re-exported in the application-facing surface.
+export type {
+  TChannelDefinition,
+  TChannelToken,
+  TTokenDef,
+  TAnyEventPayload
+} from "@bonsai/kernel";
+
+// @bonsai/error — BonsaiError hierarchy, invariant helpers
+export * from "@bonsai/error";
+
+// @bonsai/entity — Entity base class, its event and recipe types (ADR-10)
+export * from "@bonsai/entity";
+
+// @bonsai/feature — Feature base class, BonsaiNamespaceError, TFeatureContract, etc.
+export * from "@bonsai/feature";
+
+// @bonsai/router — navigation Feature (D15) and history adapter (D7)
+export * from "@bonsai/router";
 
 // @bonsai/view — View base class
 export * from "@bonsai/view";

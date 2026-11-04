@@ -1,14 +1,20 @@
 {
   "name": "@bonsai/rxjs",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "exposes rxjs",
   "type": "module",
   "author": {
     "name": "NCAC",
     "email": "dev.ncac@gmail.com"
   },
-  "main": "./dist/rxjs.js",
+  "main": "./src/rxjs.ts",
   "types": "./src/rxjs.ts",
+  "exports": {
+    ".": {
+      "types": "./src/rxjs.ts",
+      "default": "./src/rxjs.ts"
+    }
+  },
   "src": "./src/rxjs.ts",
   "namespace": "RXJS",
   "bonsaiUpstream": "rxjs"

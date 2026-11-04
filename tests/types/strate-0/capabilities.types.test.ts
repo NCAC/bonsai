@@ -1,0 +1,201 @@
+/**
+ * Type tests — capabilities of each role on the Channel (compile-time).
+ *
+ * These tests do not assert anything at runtime: each `@ts-expect-error`
+ * locks a rejection. If the typing is loosened, the compiler reports
+ * "Unused '@ts-expect-error' directive" and the regression is caught.
+ *
+ * Covers:
+ *   I1  — a Feature emits only on its own Channel, through its handler context
+ *         (`ctx.emit`); the Feature itself has no `emit()` any more (lot M6.1).
+ *   I4  — a View has no `emit()` (the declared-Channels part is I77,
+ *         view-contract.types.test.ts).
+ *   I23 — Application exposes no Channel capability (dormant at runtime).
+ *   I25 — only Views (and Behaviors, ⏳) have `trigger()`: not Feature
+ *         (nor its handler context, D17), Composer nor Foundation.
+ *   I46 — an Entity state must be `TJsonSerializable`.
+ *   I79 — `ctx.query()` takes a typed `TChannelToken`, never a string.
+ *
+ * @jest-environment node
+ */
+
+import { describe, it } from "@jest/globals";
+import type { Application } from "@bonsai/application";
+import type { Composer, TComposerContract, TComposition } from "@bonsai/composer";
+import { Entity } from "@bonsai/entity";
+import { type TChannelToken } from "@bonsai/kernel";
+import { Feature, type TFeatureContext } from "@bonsai/feature";
+import type { Foundation } from "@bonsai/foundation";
+import type { View } from "@bonsai/view";
+
+// ─── Fixtures ────────────────────────────────────────────────────────────────
+
+type TCounterState = { count: number };
+
+class CounterEntity extends Entity<TCounterState> {
+  protected defineInitialState(): TCounterState {
+    return { count: 0 };
+  }
+}
+
+type TPricingDef = {
+  readonly commands: Record<string, never>;
+  readonly events: { priceChanged: { id: string } };
+  readonly queries: { price: { params: { id: string }; result: number } };
+};
+
+type TCartDef = {
+  readonly commands: { addItem: { id: string } };
+  readonly events: { itemAdded: { id: string } };
+  readonly queries: Record<string, never>;
+};
+
+class PricingFeature extends Feature<CounterEntity, TPricingDef, "pricing"> {
+  static readonly channel: TChannelToken<TPricingDef, "pricing"> = {
+    namespace: "pricing"
+  };
+  get listens() {
+    return [] as const;
+  }
+  get queries() {
+    return [] as const;
+  }
+  protected get Entity() {
+    return CounterEntity;
+  }
+}
+
+class CartFeature extends Feature<CounterEntity, TCartDef, "cart"> {
+  static readonly channel: TChannelToken<TCartDef, "cart"> = {
+    namespace: "cart"
+  };
+  get listens() {
+    return [] as const;
+  }
+  get queries() {
+    return [PricingFeature.channel] as const;
+  }
+  protected get Entity() {
+    return CounterEntity;
+  }
+
+  handle(ctx: TFeatureContext<TCartDef, CounterEntity>): void {
+    ctx.emit("itemAdded", { id: "a" });
+  }
+
+  emitForeignEvent(ctx: TFeatureContext<TCartDef, CounterEntity>): void {
+    // @ts-expect-error — `priceChanged` belongs to another Channel (I1)
+    ctx.emit("priceChanged", { id: "a" });
+  }
+
+  queryWithToken(ctx: TFeatureContext<TCartDef, CounterEntity>): void {
+    ctx.query(PricingFeature.channel, "price", { id: "a" });
+  }
+
+  queryWithString(ctx: TFeatureContext<TCartDef, CounterEntity>): void {
+    // @ts-expect-error — a namespace string is not a TChannelToken (I79)
+    ctx.query("pricing", "price", { id: "a" });
+  }
+
+  sendCommand(ctx: TFeatureContext<TCartDef, CounterEntity>): void {
+    // @ts-expect-error — a Feature's context has no `trigger()` (I25, D17)
+    ctx.trigger("pricing:refresh", {});
+  }
+}
+
+// ─── Tests ───────────────────────────────────────────────────────────────────
+
+describe("Feature capabilities [I1, I25, I79]", () => {
+  it("I1 — a Feature has no `emit()`: emission goes through the handler context", () => {
+    const cart = new CartFeature("cart");
+    // @ts-expect-error — no `emit` on Feature (lot M6.1)
+    void cart.emit;
+  });
+
+  it("I25 — a Feature has no `trigger()`", () => {
+    const cart = new CartFeature("cart");
+    // @ts-expect-error — no `trigger` on Feature (I25, D17)
+    void cart.trigger;
+  });
+});
+
+describe("Concrete layer capabilities [I4, I25]", () => {
+  it("I4 — a View has no `emit()`", () => {
+    const view = null as unknown as View<never>;
+    // @ts-expect-error — `emit` does not exist on View (I4)
+    void view?.emit;
+  });
+
+  it("I25 — neither Composer nor Foundation has `trigger()`", () => {
+    const composer = null as unknown as Composer;
+    const foundation = null as unknown as Foundation;
+    // @ts-expect-error — `trigger` does not exist on Composer (I25)
+    void composer?.trigger;
+    // @ts-expect-error — `trigger` does not exist on Foundation (I25)
+    void foundation?.trigger;
+  });
+});
+
+describe("Composition and DOM access [I37, I39]", () => {
+  it("I37 — a composition names only Views of the Composer's catalogue, each with a key", () => {
+    type TCC = TComposerContract<Record<string, never>, { row: typeof View; empty: typeof View }>;
+    const ok: TComposition<TCC> = [{ view: "row", key: "a" }, { view: "empty", key: "b" }, { view: "row", key: "c" }];
+    const none: TComposition<TCC> = [];
+    // @ts-expect-error — "other" is not in the catalogue (I37)
+    const outside: TComposition<TCC> = [{ view: "other", key: "x" }];
+    // @ts-expect-error — every composed View has a key (I37)
+    const keyless: TComposition<TCC> = [{ view: "row" }];
+    void [ok, none, outside, keyless];
+  });
+
+  it("I39 — a View exposes no raw DOM access", () => {
+    const view = null as unknown as View<never>;
+    // @ts-expect-error — no `el` on View (I39)
+    void view?.el;
+    // @ts-expect-error — no `querySelector` on View (I39)
+    void view?.querySelector;
+    // @ts-expect-error — no `element()` on View (I39)
+    void view?.element;
+  });
+});
+
+describe("Application is dormant [I23]", () => {
+  it("I23 — Application exposes no Channel capability", () => {
+    const app = null as unknown as Application<never>;
+    // @ts-expect-error — no `emit` on Application (I23)
+    void app?.emit;
+    // @ts-expect-error — no `trigger` on Application (I23)
+    void app?.trigger;
+    // @ts-expect-error — no `request` on Application (I23)
+    void app?.request;
+    // @ts-expect-error — no `listen` on Application (I23)
+    void app?.listen;
+    // @ts-expect-error — no `handle` on Application (I23)
+    void app?.handle;
+  });
+});
+
+describe("Entity state is JSON-serializable [I46]", () => {
+  it("I46 — a plain `type` alias is accepted", () => {
+    type TOk = { items: string[]; total: number; meta: null };
+    class OkEntity extends Entity<TOk> {
+      protected defineInitialState(): TOk {
+        return { items: [], total: 0, meta: null };
+      }
+    }
+    void OkEntity;
+  });
+
+  it("I46 — Date, Map, function and bigint are rejected", () => {
+    // @ts-expect-error — Date is not TJsonSerializable (I46)
+    type TDate = Entity<{ at: Date }>;
+    // @ts-expect-error — Map is not TJsonSerializable (I46)
+    type TMap = Entity<{ byId: Map<string, number> }>;
+    // @ts-expect-error — a function is not TJsonSerializable (I46)
+    type TFn = Entity<{ compute: () => number }>;
+    // @ts-expect-error — bigint is not TJsonSerializable (I46)
+    type TBig = Entity<{ n: bigint }>;
+    const rejected: [TDate?, TMap?, TFn?, TBig?] = [];
+    void rejected;
+  });
+});

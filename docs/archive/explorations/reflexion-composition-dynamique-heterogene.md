@@ -41,7 +41,7 @@
 
 ### 1.1 Énoncé
 
-L'invariant I37 pose : *« Un Composer gère toujours 0 ou 1 View dans un slot »* et les slots sont déclarés statiquement via `get composers()` dans la View. Combiné avec D24 (*pas de CollectionComposer*), le modèle actuel ne gère que :
+L'invariant I37 pose : _« Un Composer gère toujours 0 ou 1 View dans un slot »_ et les slots sont déclarés statiquement via `get composers()` dans la View. Combiné avec D24 (_pas de CollectionComposer_), le modèle actuel ne gère que :
 
 - **Slots statiques** : nombre et position connus au compile-time
 - **Listes homogènes** : via ProjectionList + event delegation (ADR-0008)
@@ -52,12 +52,12 @@ Il ne couvre **pas** le cas de la **composition dynamique hétérogène** : un n
 
 ProjectionList (ADR-0008, D24) résout le problème des **listes d'items homogènes** — le même template appliqué à N données. Le problème posé ici est fondamentalement différent :
 
-| Aspect | ProjectionList (ADR-0008, D24) | Composition dynamique hétérogène |
-|--------|-------------------------------|----------------------------------|
-| **Nature des enfants** | Homogènes (même template × N données) | Hétérogènes (types radicalement différents) |
-| **Itération** | Oui (boucle sur une collection) | Non (chaque enfant est unique) |
-| **Besoin de View enfant** | Pas forcément (event delegation) | Oui — chaque enfant complexe est une View à part entière |
-| **Connu au build** | La structure oui, les données non | Ni la structure ni les types |
+| Aspect                    | ProjectionList (ADR-0008, D24)        | Composition dynamique hétérogène                         |
+| ------------------------- | ------------------------------------- | -------------------------------------------------------- |
+| **Nature des enfants**    | Homogènes (même template × N données) | Hétérogènes (types radicalement différents)              |
+| **Itération**             | Oui (boucle sur une collection)       | Non (chaque enfant est unique)                           |
+| **Besoin de View enfant** | Pas forcément (event delegation)      | Oui — chaque enfant complexe est une View à part entière |
+| **Connu au build**        | La structure oui, les données non     | Ni la structure ni les types                             |
 
 ### 1.3 Pourquoi les autres patterns ne répondent pas
 
@@ -137,11 +137,11 @@ Un produit configurable dont les options dépendent du type de produit. Un T-shi
 
 Tous ces cas partagent **3 propriétés** :
 
-| Propriété | Description |
-|-----------|-------------|
-| **Hétérogénéité** | Les enfants sont de types radicalement différents (pas une liste d'items) |
-| **Indétermination au build** | Le nombre et le type des enfants dépendent d'une source runtime (config, API, HTML serveur, permissions) |
-| **Complexité des enfants** | Certains enfants sont trop complexes pour un Behavior — ce sont de vraies Views avec leur propre lifecycle, TUIMap, Channels, voire Behaviors |
+| Propriété                    | Description                                                                                                                                   |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Hétérogénéité**            | Les enfants sont de types radicalement différents (pas une liste d'items)                                                                     |
+| **Indétermination au build** | Le nombre et le type des enfants dépendent d'une source runtime (config, API, HTML serveur, permissions)                                      |
+| **Complexité des enfants**   | Certains enfants sont trop complexes pour un Behavior — ce sont de vraies Views avec leur propre lifecycle, TUIMap, Channels, voire Behaviors |
 
 ---
 
@@ -149,17 +149,17 @@ Tous ces cas partagent **3 propriétés** :
 
 La discussion révèle que tous les invariants n'ont pas le même poids. On établit une hiérarchie explicite :
 
-| Priorité | Invariant | Énoncé | Pourquoi non-négociable / négociable |
-|----------|-----------|--------|--------------------------------------|
-| 🔴 **Absolue** | **I36 — View ne compose jamais** | View déclare des limites de scope, mais ne décide jamais quoi y mettre | Si View compose, on retombe dans les God Views / Marionette LayoutView. C'est le pilier de la séparation des responsabilités. |
-| 🔴 **Absolue** | **I35 — Composer = décideur pur** | Aucune écriture DOM | Le Composer est un cerveau, pas des mains. |
-| 🟡 **Négociable** | **I37 — Composer gère 0/1 View** | Un Composer, un slot, 0 ou 1 View | C'est un choix de simplification, pas un pilier structurel. Il peut être assoupli sans détruire l'architecture. |
+| Priorité          | Invariant                         | Énoncé                                                                 | Pourquoi non-négociable / négociable                                                                                          |
+| ----------------- | --------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 🔴 **Absolue**    | **I36 — View ne compose jamais**  | View déclare des limites de scope, mais ne décide jamais quoi y mettre | Si View compose, on retombe dans les God Views / Marionette LayoutView. C'est le pilier de la séparation des responsabilités. |
+| 🔴 **Absolue**    | **I35 — Composer = décideur pur** | Aucune écriture DOM                                                    | Le Composer est un cerveau, pas des mains.                                                                                    |
+| 🟡 **Négociable** | **I37 — Composer gère 0/1 View**  | Un Composer, un slot, 0 ou 1 View                                      | C'est un choix de simplification, pas un pilier structurel. Il peut être assoupli sans détruire l'architecture.               |
 
 ### 3.1 Précision cruciale sur I36 — « View ne compose jamais »
 
 Il faut distinguer **rendre** et **composer** :
 
-- **Rendre** = produire du markup à partir de données. La View rend un template qui *se trouve contenir* des éléments DOM. Ce n'est pas de la composition, c'est du rendu.
+- **Rendre** = produire du markup à partir de données. La View rend un template qui _se trouve contenir_ des éléments DOM. Ce n'est pas de la composition, c'est du rendu.
 - **Composer** = décider quelle View instancier et où. C'est le monopole du Composer.
 
 Une View qui rend `<div data-field="body"></div>` ne « compose » pas : elle ne sait pas que cet élément deviendra un point de montage. C'est le Composer qui **donne le sens** de slot à un élément DOM. La View reste aveugle.
@@ -182,15 +182,15 @@ Est-ce qu'il y a des cas concrets où le scope d'un Composer serait amené à ch
 
 ### 4.2 Inventaire exhaustif des scénarios
 
-| Scénario | Que se passe-t-il ? | Le scope change-t-il ? |
-|----------|---------------------|------------------------|
-| **Route change** | Le Composer résout une View différente | ❌ — le contenu change, pas le scope |
-| **Slot supprimé** (projection parent) | La View conteneur retire l'élément du DOM | ❌ — le scope n'a pas « bougé », il a **cessé d'exister**. Le Composer détache proprement ses Views. |
-| **Slot restauré** | L'élément réapparaît dans le DOM | ❌ — c'est le même élément au même endroit. Le Composer re-résout. |
-| **Layout responsive** | CSS repositionne visuellement | ❌ — l'élément DOM est le même |
-| **Drag-and-drop de panneaux** | Un panneau est déplacé dans le DOM | ❌ — c'est une destruction + re-création. L'ancien Composer meurt, un nouveau naît. |
-| **View conteneur re-rend** | Le template est reprojeté | ❌ — soit le slot survit (mutation chirurgicale PDR), soit il est détruit/recréé (cycle complet). Pas de « migration » de scope. |
-| **Formulaire dynamique Drupal** | Des champs apparaissent/disparaissent | ❌ — le scope du Composer (le `<form>`) reste le même. Ce sont les **points de montage internes** qui apparaissent/disparaissent. |
+| Scénario                              | Que se passe-t-il ?                       | Le scope change-t-il ?                                                                                                            |
+| ------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Route change**                      | Le Composer résout une View différente    | ❌ — le contenu change, pas le scope                                                                                              |
+| **Slot supprimé** (projection parent) | La View conteneur retire l'élément du DOM | ❌ — le scope n'a pas « bougé », il a **cessé d'exister**. Le Composer détache proprement ses Views.                              |
+| **Slot restauré**                     | L'élément réapparaît dans le DOM          | ❌ — c'est le même élément au même endroit. Le Composer re-résout.                                                                |
+| **Layout responsive**                 | CSS repositionne visuellement             | ❌ — l'élément DOM est le même                                                                                                    |
+| **Drag-and-drop de panneaux**         | Un panneau est déplacé dans le DOM        | ❌ — c'est une destruction + re-création. L'ancien Composer meurt, un nouveau naît.                                               |
+| **View conteneur re-rend**            | Le template est reprojeté                 | ❌ — soit le slot survit (mutation chirurgicale PDR), soit il est détruit/recréé (cycle complet). Pas de « migration » de scope.  |
+| **Formulaire dynamique Drupal**       | Des champs apparaissent/disparaissent     | ❌ — le scope du Composer (le `<form>`) reste le même. Ce sont les **points de montage internes** qui apparaissent/disparaissent. |
 
 ### 4.3 Conclusion — invariant candidat
 
@@ -206,13 +206,13 @@ Il n'existe pas de scénario « le Composer migre vers un autre élément DOM »
 
 ### 4.4 Propriétés dérivées
 
-| Propriété | Statut |
-|-----------|--------|
-| Le scope est **immutable** — assigné une fois, jamais déplacé | ✅ Invariant candidat |
-| Le Composer **ne crée pas** son scope — il le reçoit | ✅ Invariant (cohérent avec I35) |
-| La **View** contrôle l'existence du slot (ajout/retrait DOM) | ✅ Cohérent avec I36 (View ne compose pas, elle rend du markup) |
+| Propriété                                                                                 | Statut                                                             |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Le scope est **immutable** — assigné une fois, jamais déplacé                             | ✅ Invariant candidat                                              |
+| Le Composer **ne crée pas** son scope — il le reçoit                                      | ✅ Invariant (cohérent avec I35)                                   |
+| La **View** contrôle l'existence du slot (ajout/retrait DOM)                              | ✅ Cohérent avec I36 (View ne compose pas, elle rend du markup)    |
 | Le Composer **réagit** à l'apparition/disparition de points de montage **dans** son scope | 🆕 C'est la capacité nouvelle nécessaire pour le pattern dynamique |
-| La disparition du scope = **cleanup total** des Views gérées | ✅ Mécanique, pas décisionnel |
+| La disparition du scope = **cleanup total** des Views gérées                              | ✅ Mécanique, pas décisionnel                                      |
 
 ### 4.5 Intégrité DOM du slot Composer — garde-fous
 
@@ -324,14 +324,14 @@ le framework détecte la disparition → cleanup Composer → `onDetach()` sur t
 les Views gérées). Mais il **n'a pas le droit** de modifier la structure interne
 du slot tant que celui-ci est vivant.
 
-| Action du template root sur un slot Composer | Autorisé ? | Raison |
-|----------------------------------------------|-----------|--------|
-| **Conserver** l'élément slot tel quel | ✅ | Le Composer continue de travailler dedans |
-| **Détruire** l'élément slot (ne pas le re-créer dans la projection) | ✅ | Lifecycle normal : le Composer détache ses Views et meurt |
-| **Ajouter** des enfants à l'intérieur du slot | ❌ | Le contenu du slot est le domaine du Composer |
-| **Retirer** des enfants à l'intérieur du slot | ❌ | Idem — le Composer décide seul de ses Views |
-| **Réordonner** les enfants à l'intérieur du slot | ❌ | Idem |
-| **Modifier les attributs** de l'élément slot lui-même | ✅ | L'élément slot reste dans le scope View (I40 : « N1 ») |
+| Action du template root sur un slot Composer                        | Autorisé ? | Raison                                                    |
+| ------------------------------------------------------------------- | ---------- | --------------------------------------------------------- |
+| **Conserver** l'élément slot tel quel                               | ✅         | Le Composer continue de travailler dedans                 |
+| **Détruire** l'élément slot (ne pas le re-créer dans la projection) | ✅         | Lifecycle normal : le Composer détache ses Views et meurt |
+| **Ajouter** des enfants à l'intérieur du slot                       | ❌         | Le contenu du slot est le domaine du Composer             |
+| **Retirer** des enfants à l'intérieur du slot                       | ❌         | Idem — le Composer décide seul de ses Views               |
+| **Réordonner** les enfants à l'intérieur du slot                    | ❌         | Idem                                                      |
+| **Modifier les attributs** de l'élément slot lui-même               | ✅         | L'élément slot reste dans le scope View (I40 : « N1 »)    |
 
 > **Invariant** : le mode root **saute** les sous-arbres des slots Composer pendant
 > la projection. Le slot est une « île protégée » dans le flux de re-render.
@@ -361,6 +361,7 @@ class DashboardView extends View {
 ```
 
 **Mécanisme framework** : lors du `project()` en Mode B, le framework :
+
 1. Identifie les éléments slot déclarés dans `get composers()` et vivants dans le DOM
 2. Les **extrait temporairement** du flux de diff/projection (ou les marque comme intouchables)
 3. Projette le reste du sous-arbre normalement
@@ -373,11 +374,11 @@ un trou dans son rendu, pas l'enfant qui projette ailleurs.
 
 #### Synthèse des deux garde-fous
 
-| Mode de rendu | Garde-fou | Vérification |
-|--------------|-----------|---------------|
-| **Mode A** (null) | Pas de template → pas de conflit. `getUI()` sur clé Composer → **interdit** (I40). | Compile-time (I40) |
-| **Mode C** (îlots) | `keyof templates ∩ keyof composers = ∅` | **Compile-time** (type system) |
-| **Mode B** (root) | Le template saute les sous-arbres des slots Composer vivants | **Runtime** (framework, post-projection) |
+| Mode de rendu      | Garde-fou                                                                          | Vérification                             |
+| ------------------ | ---------------------------------------------------------------------------------- | ---------------------------------------- |
+| **Mode A** (null)  | Pas de template → pas de conflit. `getUI()` sur clé Composer → **interdit** (I40). | Compile-time (I40)                       |
+| **Mode C** (îlots) | `keyof templates ∩ keyof composers = ∅`                                            | **Compile-time** (type system)           |
+| **Mode B** (root)  | Le template saute les sous-arbres des slots Composer vivants                       | **Runtime** (framework, post-projection) |
 
 > **Invariant candidat** : le domaine DOM d'un slot Composer est un domaine exclu
 > de tout mécanisme de rendu de la View déclarante. Destruction de l'élément slot :
@@ -416,12 +417,12 @@ class NodeEditFormView extends View {
 
 ### 5.3 Pourquoi cette approche est écartée
 
-| Problème | Détail |
-|----------|--------|
-| **I36 en tension** | La View **décide** quel Composer va dans quel slot. Même si les données viennent de la Feature, c'est la View qui fait le mapping `type → Composer`. C'est une décision de composition déguisée. |
-| **View comme passe-plat** | Si la Feature retourne directement la map de Composers, la View ne fait que transmettre — *wrong level of abstraction*. Pourquoi est-ce la View qui porte cette logique ? |
-| **Bootstrap async** | `get composers()` async change fondamentalement le flow du bootstrap (ADR-0010). En SPA, problème d'œuf et de poule : les clés `composers` doivent correspondre à des entrées `uiElements`, qui doivent matcher des éléments DOM, qui n'existent qu'après le rendu. |
-| **View devient data-aware** | La View fait un `request()` → elle acquiert une connaissance du domaine. Cela va à l'encontre du principe « View rend, ne raisonne pas ». |
+| Problème                    | Détail                                                                                                                                                                                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **I36 en tension**          | La View **décide** quel Composer va dans quel slot. Même si les données viennent de la Feature, c'est la View qui fait le mapping `type → Composer`. C'est une décision de composition déguisée.                                                                    |
+| **View comme passe-plat**   | Si la Feature retourne directement la map de Composers, la View ne fait que transmettre — _wrong level of abstraction_. Pourquoi est-ce la View qui porte cette logique ?                                                                                           |
+| **Bootstrap async**         | `get composers()` async change fondamentalement le flow du bootstrap (ADR-0010). En SPA, problème d'œuf et de poule : les clés `composers` doivent correspondre à des entrées `uiElements`, qui doivent matcher des éléments DOM, qui n'existent qu'après le rendu. |
+| **View devient data-aware** | La View fait un `request()` → elle acquiert une connaissance du domaine. Cela va à l'encontre du principe « View rend, ne raisonne pas ».                                                                                                                           |
 
 ### 5.4 Enseignement
 
@@ -440,10 +441,10 @@ et l'accès au scope (via son élément assigné).
 > c'est le Composer — qui a aujourd'hui des capacités « faibles » par rapport aux
 > autres composants du framework.
 
-| Composant | Capacités actuelles | Évolution |
-|-----------|--------------------|-----------|
-| **View** | Rend, déclare des limites de scope, TUIEvents, TUIMap, Behaviors | ❄️ **Fermée** — aucune nouvelle capacité |
-| **Composer** | `resolve()` → 0/1 View, Channel (listen, request) | 🔓 **Ouvert à révision** |
+| Composant    | Capacités actuelles                                              | Évolution                               |
+| ------------ | ---------------------------------------------------------------- | --------------------------------------- |
+| **View**     | Rend, déclare des limites de scope, TUIEvents, TUIMap, Behaviors | ❄️ **Fermée** — aucune nouvelle capacité |
+| **Composer** | `resolve()` → 0/1 View, Channel (listen, request)                | 🔓 **Ouvert à révision**                |
 
 ### 6.2 Justification
 
@@ -512,10 +513,10 @@ que l'élément est dans le scope (`slot.contains(el)`) et de l'attacher à la V
 Le rendu SSR (ou le template SPA) **doit** rendre des éléments avec des attributs DOM
 reconnaissables. Deux informations sont nécessaires par point de montage :
 
-| Attribut | Rôle | Exemple |
-|----------|------|---------|
-| `data-field-type` | Dit **quelle View** instancier | `data-field-type="wysiwyg"` |
-| `data-field-id` | Identifie **précisément** l'élément DOM | `data-field-id="field_body"` |
+| Attribut          | Rôle                                    | Exemple                      |
+| ----------------- | --------------------------------------- | ---------------------------- |
+| `data-field-type` | Dit **quelle View** instancier          | `data-field-type="wysiwyg"`  |
+| `data-field-id`   | Identifie **précisément** l'élément DOM | `data-field-id="field_body"` |
 
 Ces attributs peuvent aussi être des attributs déjà présents dans le markup existant
 (ex: Drupal fournit déjà `data-drupal-selector="edit-field-description-page-0-value"`).
@@ -570,14 +571,14 @@ résoudre le `rootElement` car :
 - Il fait déjà un `querySelectorAll` pour découvrir les points de montage (cas N Views)
 - Même pour le cas 1 View, c'est plus cohérent qu'il fasse la résolution lui-même
 
-| Responsabilité | Avant (I35 strict) | Après (I35 nuancé) |
-|---------------|-------------------|-------------------|
-| **Résoudre l'élément DOM** | Framework (`querySelector`) | **Composer** (Element) ou framework (string, D30) |
-| **Créer l'élément si absent (D30)** | Framework (`create()`) | **Framework** — inchangé (le Composer ne crée jamais, I35) |
-| **Vérifier que l'élément est dans le scope** | Implicite (querySelector sur le slot) | **Framework** — validation défensive (`slot.contains(el)`) |
-| **Attacher la View sur l'élément** | Framework (`view.el = el`, câblage, `onAttach()`) | **Framework** — inchangé |
-| **Détacher la View** | Framework | **Framework** — inchangé |
-| **Diff resolve précédent vs actuel** | Framework | **Framework** — inchangé |
+| Responsabilité                               | Avant (I35 strict)                                | Après (I35 nuancé)                                         |
+| -------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------- |
+| **Résoudre l'élément DOM**                   | Framework (`querySelector`)                       | **Composer** (Element) ou framework (string, D30)          |
+| **Créer l'élément si absent (D30)**          | Framework (`create()`)                            | **Framework** — inchangé (le Composer ne crée jamais, I35) |
+| **Vérifier que l'élément est dans le scope** | Implicite (querySelector sur le slot)             | **Framework** — validation défensive (`slot.contains(el)`) |
+| **Attacher la View sur l'élément**           | Framework (`view.el = el`, câblage, `onAttach()`) | **Framework** — inchangé                                   |
+| **Détacher la View**                         | Framework                                         | **Framework** — inchangé                                   |
+| **Diff resolve précédent vs actuel**         | Framework                                         | **Framework** — inchangé                                   |
 
 ### 7.6 Le flow concret — Composer N Views (CDH)
 
@@ -794,12 +795,12 @@ Composer→ EditorJSView dans [data-field-id='field_body']
 
 Les deux axes de la réflexion du 2026-03-30 convergent naturellement :
 
-| Partie I (ESM Modulaire) | Partie II (Composition Dynamique) |
-|--------------------------|-----------------------------------|
-| `BonsaiRegistry.registerFeature()` | `BonsaiRegistry.registerFieldType()` |
+| Partie I (ESM Modulaire)                   | Partie II (Composition Dynamique)                           |
+| ------------------------------------------ | ----------------------------------------------------------- |
+| `BonsaiRegistry.registerFeature()`         | `BonsaiRegistry.registerFieldType()`                        |
 | Module ESM autonome déclare ses composants | Module ESM déclare quels types de champs/widgets il fournit |
-| Découverte dynamique des Features | Découverte dynamique des points de montage |
-| Composition UI via injections | Composition UI via résolution type → View |
+| Découverte dynamique des Features          | Découverte dynamique des points de montage                  |
+| Composition UI via injections              | Composition UI via résolution type → View                   |
 
 Le mode ESM modulaire fournit le **véhicule de distribution**. La composition dynamique hétérogène fournit le **modèle de composition au runtime**. Les deux sont nécessaires ensemble pour une architecture CMS réelle.
 
@@ -860,6 +861,7 @@ abstract resolve(): TResolveResult | TResolveResult[] | null;
 - `TResolveResult[]` → cas N Views (extension additive)
 
 Raisons du choix `resolve()` étendu plutôt que `resolveAll()` :
+
 - **Rétrocompatibilité totale** — le retour existant fonctionne tel quel
 - **Un seul protocole** — pas de bifurcation dans le contrat Composer
 - **Le framework traite uniformément** — il normalise en tableau, diff, attach/detach
@@ -872,8 +874,8 @@ et accepte `Element | string`. Voir §7.4–7.7.
 
 **Réponse** : oui. I35 devrait être reformulé en « aucune **écriture** DOM ». La lecture
 pour découverte est une capacité de **décision**, pas de **manipulation**. Lire le DOM
-pour savoir *ce qui est là* est du même ordre que lire un Channel pour savoir
-*ce qui s'est passé*.
+pour savoir _ce qui est là_ est du même ordre que lire un Channel pour savoir
+_ce qui s'est passé_.
 
 Concrètement, le Composer fait `this.scope.querySelectorAll('[data-field-type]')` —
 c'est de la lecture, pas de l'écriture. Le montage effectif des Views (appendChild, etc.)
@@ -977,14 +979,14 @@ qu'il **choisit** de consulter le Registry, **valide** le résultat, et peut app
 
 #### Synthèse des deux cas
 
-| Dimension | Composer d'application | Composer de plateforme |
-|-----------|----------------------|------------------------|
-| **Qui l'écrit** | Le développeur de l'app | Le développeur du core |
-| **Connaît les Views au compile-time** | ✅ Oui — imports explicites | ❌ Non — contributeurs externes |
-| **Mécanisme de résolution** | Map locale (switch/Record) | Registry (`BonsaiRegistry`) |
-| **Respecte D21** | ✅ Décideur direct | ✅ Décideur par délégation contrôlée |
-| **Type-safety** | ✅ Compile-time | 🟡 Runtime (le Registry retourne `typeof View \| null`) |
-| **Hypothèse** | Monde fermé | Monde ouvert |
+| Dimension                             | Composer d'application      | Composer de plateforme                                  |
+| ------------------------------------- | --------------------------- | ------------------------------------------------------- |
+| **Qui l'écrit**                       | Le développeur de l'app     | Le développeur du core                                  |
+| **Connaît les Views au compile-time** | ✅ Oui — imports explicites | ❌ Non — contributeurs externes                         |
+| **Mécanisme de résolution**           | Map locale (switch/Record)  | Registry (`BonsaiRegistry`)                             |
+| **Respecte D21**                      | ✅ Décideur direct          | ✅ Décideur par délégation contrôlée                    |
+| **Type-safety**                       | ✅ Compile-time             | 🟡 Runtime (le Registry retourne `typeof View \| null`) |
+| **Hypothèse**                         | Monde fermé                 | Monde ouvert                                            |
 
 > **Principe** : le cas 1 (monde fermé) est le **cas par défaut**. La majorité des
 > applications Bonsai seront en monde fermé. Le cas 2 (monde ouvert) est réservé
@@ -994,7 +996,7 @@ qu'il **choisit** de consulter le Registry, **valide** le résultat, et peut app
 
 #### Piste `request()` vers la Feature — écartée
 
-La Feature connaît les *métadonnées* des champs (validation, permissions), pas le
+La Feature connaît les _métadonnées_ des champs (validation, permissions), pas le
 mapping `type → View`. Le mapping est une décision de couche concrète — la Feature
 est couche abstraite. Le Composer demanderait à la Feature une information qui ne
 lui appartient pas. Écarté dans les deux cas (application et plateforme).
@@ -1016,7 +1018,7 @@ Deux sous-cas selon la nature du changement de route :
 
 `nodeEditForm:entityA` → `settings:development` : `NodeEditFormView` est détruite,
 son DOM disparaît, le slot (`<form>`) est supprimé. Le Composer entre dans l'état
-*détruit* (§4.3). Aucun problème, aucune coordination nécessaire.
+_détruit_ (§4.3). Aucun problème, aucune coordination nécessaire.
 
 #### Sous-cas B — même View, entité différente
 
@@ -1082,7 +1084,7 @@ sous-arbres sont des domaines Composer pour appliquer la protection (cf. §4.5 g
 8. ✅ **Composer résout le rootElement** : `querySelector` fait par le Composer, pas le framework
 9. ✅ **Rétrocompatibilité D30** : `rootElement: string` → le framework résout + crée si absent (SPA)
 10. ✅ **Intégrité DOM du slot Composer** : domaine exclu — destruction autorisée, modification structurelle interdite. Deux garde-fous : exclusivité clé `composers`/`templates` (compile-time, Mode C) + protection des slots en Mode B root (runtime, framework)
-11. ✅ **Résolution `type → View`** : deux cas selon qui écrit le Composer. *Application* (monde fermé) : map locale, imports explicites. *Plateforme* (monde ouvert, IDE, CMS à plugins) : `BonsaiRegistry` comme mécanisme de composition par délégation contrôlée. D21 respecté dans les deux cas
+11. ✅ **Résolution `type → View`** : deux cas selon qui écrit le Composer. _Application_ (monde fermé) : map locale, imports explicites. _Plateforme_ (monde ouvert, IDE, CMS à plugins) : `BonsaiRegistry` comme mécanisme de composition par délégation contrôlée. D21 respecté dans les deux cas
 12. ✅ **`route:change` et recomposition** : le Composer réagit à son Channel de routing et re-appelle `resolve()`. Précondition : le slot survit au re-render PDR (garanti pour même structure de View). Deux sous-cas : View détruite → Composer détruit (§4.3) ; même View, entité différente → Composer re-résout, framework diff. Aucune coordination globale nécessaire.
 13. ✅ **Périmètre CDH révisé (2026-03-31)** : le cas « types encodés dans attributs DOM » est résolu par la sémantique TUIMap + sélecteurs d'attribut + N instances Composer par clé — **sans mécanisme CDH**. Les sélecteurs `uiElements` sont résolus par `querySelectorAll` (0/1/N éléments) ; si la clé est dans `get composers()`, le framework instancie N Composers. CDH vrai se réduit à deux cas résiduels : (a) DOM sans type, résolution nécessitant un croisement Channel + DOM ; (b) monde ouvert / plateforme extensible (couvert par ADR-0021).
 
@@ -1106,13 +1108,13 @@ sous-arbres sont des domaines Composer pour appliquer la protection (cf. §4.5 g
 
 ### Matrice d'impact sur les invariants et décisions existants
 
-| Élément | Impact | Détail |
-|---------|--------|--------|
-| **I35** | 🟡 Nuancé | « Aucun droit DOM » → « Aucune **écriture** DOM. Lecture du scope autorisée. Le Composer résout le `rootElement` par `querySelector`. » |
-| **I36** | ❄️ Inchangé | « View ne compose jamais » — confirmé et renforcé |
-| **I37** | 🔴 Révisé | « 0/1 View » → « 0/N Views hétérogènes dans un scope fixe via `resolve()` étendu » |
-| **D24** | 🟡 Précisé | « Pas de CollectionComposer » — toujours vrai. Un Composer classique gère N mount points hétérogènes (pas une liste itérative). |
-| **I40** | 🟡 Renforcé | Exclusions dynamiques de sous-arbres (QO-CDH-7 partiellement stabilisé, §4.5). Deux garde-fous posés : exclusivité clé `composers`/`templates` (Mode C compile-time) + protection slots en Mode B root (runtime). |
-| **ADR-0010** | ❄️ Compatible | Le timing bootstrap est naturellement compatible (couche abstraite prête avant concrète) |
-| **TResolveResult** | 🟡 Révisé | `rootElement` promu en champ dédié (`Element \| string`). `options` ne contient plus que les params View (D34). |
-| **RFC-0002 §12.4** | 🟡 Impacté | La séquence d'attachement change : étape 5 (résolution rootElement) est faite par le Composer si `Element`, par le framework si `string`. |
+| Élément            | Impact       | Détail                                                                                                                                                                                                            |
+| ------------------ | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **I35**            | 🟡 Nuancé    | « Aucun droit DOM » → « Aucune **écriture** DOM. Lecture du scope autorisée. Le Composer résout le `rootElement` par `querySelector`. »                                                                           |
+| **I36**            | ❄️ Inchangé   | « View ne compose jamais » — confirmé et renforcé                                                                                                                                                                 |
+| **I37**            | 🔴 Révisé    | « 0/1 View » → « 0/N Views hétérogènes dans un scope fixe via `resolve()` étendu »                                                                                                                                |
+| **D24**            | 🟡 Précisé   | « Pas de CollectionComposer » — toujours vrai. Un Composer classique gère N mount points hétérogènes (pas une liste itérative).                                                                                   |
+| **I40**            | 🟡 Renforcé  | Exclusions dynamiques de sous-arbres (QO-CDH-7 partiellement stabilisé, §4.5). Deux garde-fous posés : exclusivité clé `composers`/`templates` (Mode C compile-time) + protection slots en Mode B root (runtime). |
+| **ADR-0010**       | ❄️ Compatible | Le timing bootstrap est naturellement compatible (couche abstraite prête avant concrète)                                                                                                                          |
+| **TResolveResult** | 🟡 Révisé    | `rootElement` promu en champ dédié (`Element \| string`). `options` ne contient plus que les params View (D34).                                                                                                   |
+| **RFC-0002 §12.4** | 🟡 Impacté   | La séquence d'attachement change : étape 5 (résolution rootElement) est faite par le Composer si `Element`, par le framework si `string`.                                                                         |

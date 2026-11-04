@@ -1,0 +1,97 @@
+# Branche P8 — Identité par le manifest (pilote).
+#
+# Champs :
+#   id        identifiant stable (I<n>), conservé pendant la transition
+#   nature    E énoncé · C conséquence · D décision · V vérification
+#   parents   principe(s) ou ligne(s) parente(s) ; le premier est le parent principal
+#   roles     composant(s) concerné(s), un par package (ADR-28) : Application, Feature, Entity,
+#             Channel, View, Behavior, Composer, Foundation — ou ["*"] pour une règle transversale
+#   enonce    la règle, en une phrase
+#   pourquoi  obligatoire pour une décision (D) : remplace l'ADR
+#   mode      type · boot · type+boot · run · revue
+#   etat      livre · partiel · cible · convention
+#   alias     facultatif : anciens IDs fusionnés dans cette ligne (leurs citations comptent ici)
+#   preuves   facultatif : chemins de tests qui prouvent la ligne sans citer son ID
+#             (les citations `I<n>` dans les tests sont détectées automatiquement)
+
+- id: I69
+  nature: E
+  parents: [P8]
+  roles: [Application]
+  enonce: Le manifest est l'unique source de vérité de l'identité d'une Feature.
+  mode: type
+  etat: livre
+
+- id: I68
+  nature: C
+  parents: [I69]
+  roles: [Feature]
+  enonce: Aucune classe Feature ne déclare de `static namespace`.
+  mode: type
+  etat: livre
+
+- id: I72
+  nature: C
+  parents: [I69]
+  roles: [Feature, Application]
+  enonce: "`TSelfNS` est la clé de la Feature dans le manifest."
+  mode: type
+  etat: livre
+
+- id: I87
+  nature: C
+  parents: [I69]
+  roles: [View, Behavior]
+  enonce: La clé d'un `TFeatureContract` est le namespace de la Feature référencée.
+  mode: type
+  etat: partiel
+
+# I24 fusionné ici : même garantie (unicité/format des clés, type+boot), aucune
+# distinction retenue. Alias conservé pour ne pas casser une citation existante.
+- id: I21
+  nature: D
+  parents: [P8]
+  roles: [Application]
+  alias: [I24]
+  enonce: Toute Feature est enregistrée dans le manifest sous une clé `camelCase` sans chiffre.
+  pourquoi: >
+    Le namespace est réemployé tel quel à trois endroits : clé du manifest (identifiant TS),
+    préfixe des messages (`"cart:addItem"`) et nom des handlers découverts par convention
+    (`onCartItemAddedEvent`). Le `camelCase` plat est le seul format valide et lisible dans les
+    trois : `kebab-case`, `snake_case` ou séparateurs `/` `.` produiraient des noms de méthode
+    invalides ou ambigus (ADR-08), et la minuscule initiale fait de la majuscule la frontière du
+    namespace dans le nom du handler. Les chiffres sont exclus parce que ces noms appartiennent
+    au vocabulaire du domaine : un namespace nomme un domaine, comme les intentions, Events et
+    Queries qu'il préfixe nomment des actions, des faits et des questions — des noms et des
+    verbes, où un chiffre n'a pas de sens métier.
+  # Argument des chiffres formulé par le mainteneur le 30/09 : absent des sources (ADR-08,
+  # ex-ADR-0039, D5). Élargissable sans casse via un variant `CamelCaseAlnum<S>`
+  # (cf. packages/types/src/string.d.ts).
+  mode: type+boot
+  etat: livre
+
+- id: I71
+  nature: D
+  parents: [P8]
+  roles: [Application]
+  enonce: "Les namespaces `local` et `router` sont réservés (`RESERVED_NAMESPACES`)."
+  pourquoi: >
+    Chaque réservation a sa raison propre (I57 pour `local`, I28 pour `router`) ; I71 en fixe la
+    forme : une seule constante du framework, dont dérivent le type du manifest et le filet
+    runtime — une liste, deux vérifications, aucune dérive entre elles. Elle n'est pas
+    configurable : un nom réservé est une garantie du framework, pas une politique de
+    l'application, qui ne peut donc pas libérer un nom dont le framework dépend. Réserver avant
+    de livrer (aucun Router n'existe encore) évite qu'une application prenne le nom et casse le
+    jour où la Feature du framework arrive.
+  # Toute nouvelle réservation (ex. `ContributionRegistry`, ROADMAP) s'ajoute à la constante ;
+  # c'est un breaking change pour une application qui utiliserait déjà ce nom.
+  mode: type+boot
+  etat: livre
+
+- id: I95
+  nature: V
+  parents: [I69]
+  roles: [Application, Feature]
+  enonce: "Chaque entrée du manifest est contrainte par `TStrictFeatureClass<NS>`."
+  mode: type
+  etat: livre

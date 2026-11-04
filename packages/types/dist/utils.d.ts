@@ -8,11 +8,8 @@ export type TInstanceOrT<T> = T extends new (...args: any) => any
  * @credit https://github.com/piotrwitek/utility-types
  * @see https://github.com/Microsoft/TypeScript/issues/27024#issuecomment-421529650
  */
-export type IfEquals<X, Y, A = X, B = never> = (<T>() => T extends X
-  ? 1
-  : 2) extends <T>() => T extends Y ? 1 : 2
-  ? A
-  : B;
+export type IfEquals<X, Y, A = X, B = never> =
+  (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2 ? A : B;
 
 /**
 Returns a boolean for whether the two given types are equal.
@@ -38,11 +35,10 @@ type Includes<Value extends readonly any[], Item> =
 
 @category Utilities
 */
-export type IsEqual<A, B> = (<G>() => G extends A ? 1 : 2) extends <
-  G
->() => G extends B ? 1 : 2
-  ? true
-  : false;
+export type IsEqual<A, B> =
+  (<G>() => G extends A ? 1 : 2) extends <G>() => G extends B ? 1 : 2
+    ? true
+    : false;
 
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   k: infer I
@@ -50,11 +46,10 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   ? I
   : never;
 
-type LastOf<T> = UnionToIntersection<
-  T extends any ? () => T : never
-> extends () => infer R
-  ? R
-  : never;
+type LastOf<T> =
+  UnionToIntersection<T extends any ? () => T : never> extends () => infer R
+    ? R
+    : never;
 type Push<T extends any[], V> = [...T, V];
 type TuplifyUnion<
   T,
@@ -80,11 +75,11 @@ type TuplifyUnion<
  */
 
 export type StrictArrayOfValues<T extends Record<any, any> | null> =
-  T extends null 
-    ? readonly [] 
+  T extends null
+    ? readonly []
     : T extends Record<any, any>
-    ? Readonly<TuplifyUnion<ValuesType<T>>>
-    : readonly [];
+      ? Readonly<TuplifyUnion<ValuesType<T>>>
+      : readonly [];
 
 /**
  * StrictArrayOfKeys<T>
@@ -117,13 +112,14 @@ export type StrictArrayOfKeys<T extends object> = Readonly<
  */
 export type ValuesType<
   T extends ReadonlyArray<any> | ArrayLike<any> | Record<any, any>
-> = T extends ReadonlyArray<any>
-  ? T[number]
-  : T extends ArrayLike<any>
-  ? T[number]
-  : T extends object
-  ? T[keyof T]
-  : never;
+> =
+  T extends ReadonlyArray<any>
+    ? T[number]
+    : T extends ArrayLike<any>
+      ? T[number]
+      : T extends object
+        ? T[keyof T]
+        : never;
 
 /**
  * ElementType<T>
@@ -190,7 +186,7 @@ export type Whitespace =
 export type TObjectKeys<T> = T extends object
   ? (keyof T)[]
   : T extends number
-  ? []
-  : T extends Array<any> | string
-  ? string[]
-  : never;
+    ? []
+    : T extends Array<any> | string
+      ? string[]
+      : never;

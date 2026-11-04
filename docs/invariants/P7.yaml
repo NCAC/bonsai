@@ -1,0 +1,104 @@
+# Branche P7 — Cycle de vie hétéronome.
+#
+# Migration depuis docs/reorganisation-sept-2026/arbre-invariants-precision.md.
+# Champs : voir P8.yaml pour la légende complète.
+
+- id: I19
+  nature: E
+  parents: [P7]
+  roles: [View]
+  enonce: La View ne décide ni de sa création, ni de sa destruction, ni de son remplacement ; son existence appartient exclusivement à son Composer parent, y compris pendant une cascade annulable de destruction.
+  mode: run
+  # La View n'a ni `mount()` ni méthode de destruction : le noyau la crée quand son Composer la résout et la détruit
+  # sur décision de ce parent seul (root.test.ts, composer.test.ts, « I19 »). Une instance construite hors Composer reste inerte.
+  etat: livre
+
+- id: I20
+  nature: C
+  parents: [P7]
+  roles: [Foundation, Composer, View]
+  enonce: Une View n'est enfant que d'un Composer ; la Foundation et les Views ne sont parents que de Composers. Le parent est seul propriétaire de l'existence de ses enfants et leur destruction entraîne celle de leurs descendants.
+  pourquoi: >
+    D11 et §16.4–§16.6 séparent décision et rendu ; A2 et T3 fixent propriété et restitution.
+    La cascade est exécutée par l'infrastructure, de bas en haut, sans traitement applicatif,
+    et reste annulable avec son unité avant validation (C.2).
+  mode: run
+  # La Foundation et la View ne créent que des Composers (`get composers()`), le Composer que les Views de son catalogue ;
+  # la destruction suit la cascade du noyau, de bas en haut (structure.test.ts, composer.test.ts, « I20 »).
+  etat: livre
+
+- id: I36
+  nature: C
+  parents: [I20, P10]
+  roles: [View, Composer]
+  enonce: La View déclare les slots dont elle attribue le contenu à ses Composers enfants, jamais des Views enfants ; seuls ces Composers décident quelles Views occupent leurs parts.
+  pourquoi: >
+    Si la View composait, elle recouvrirait le rôle du Composer et brouillerait la frontière entre
+    décider et rendre (ADR-18).
+  mode: run
+  # La View déclare ses slots (`get composers()`) et n'a aucune méthode de composition (view.test.ts, « I36 »).
+  etat: livre
+
+- id: I37
+  nature: D
+  parents: [I20]
+  roles: [Composer]
+  enonce: Un seul type d'API Composer exprime la composition de 0..N Views hétérogènes dans le contenu qui lui est attribué, sans recouvrement des parts ; cette multiplicité n'autorise ni transfert de part ni lecture des portions attribuées.
+  pourquoi: >
+    Le type unique et la multiplicité portée par resolve() restent le choix de réalisation
+    compatible de l'ADR-18, non une conséquence nécessaire de la théorie. §16.6 impose
+    les frontières de propriété indépendamment de la forme du résultat.
+  mode: type
+  # Une seule classe `Composer` ; `resolve(ctx)` rend une composition ordonnée de 0..N Views par clé ;
+  # le noyau refuse une portion déjà attribuée (T7) (composer.test.ts, structure.test.ts, « I37 »).
+  etat: livre
+
+# I58 (durée de l'attribution du Composer) : P6.yaml sous I99, second parent I20.
+
+- id: I67
+  nature: D
+  parents: [P7, P10]
+  roles: [Foundation]
+  enonce: La structure de la Foundation est stable — `get composers()` est lu une seule fois au bootstrap et n'est jamais modifié.
+  pourquoi: >
+    Toute composition dynamique est déléguée à une View dédiée : la Foundation reste une racine
+    figée dont le cycle de vie n'est pas remis en cause en cours d'exécution (ADR-20).
+  mode: type+boot
+  # `get composers()` est lu une fois, au démarrage de la Foundation (foundation.test.ts, « I67 »).
+  etat: livre
+
+- id: I23
+  nature: D
+  parents: [P7, P10]
+  roles: [Application]
+  enonce: Application est dormante au runtime — aucune logique métier ni rôle actif entre le bootstrap et le shutdown.
+  pourquoi: >
+    Garder Application hors du flux Command/Event/Query l'empêche de devenir un point de causalité
+    caché une fois le bootstrap terminé (ADR-07).
+  # Application n'expose ni handle, ni emit, ni listen, ni query (vérifié par un test runtime).
+  mode: type
+  etat: livre
+
+- id: I28
+  nature: D
+  parents: [P7, P8]
+  roles: [Application, Feature]
+  enonce: Le Router est une Feature interne, de namespace réservé `router`, instanciée par Application et non par le développeur.
+  pourquoi: >
+    Le Router a besoin d'un accès exclusif à l'History API : en faire une Feature interne réutilise le
+    cycle de vie existant plutôt qu'un mécanisme de bootstrap à part (ADR-13).
+  mode: type+boot
+  # `RouterFeature` (@bonsai/router) est créée par Application avec `router: true` ; le namespace `router` est réservé (I71),
+  # un manifest applicatif ne peut donc pas la déclarer (router.test.ts, namespace-manifest.types).
+  etat: livre
+
+- id: I94
+  nature: D
+  parents: [P7, P9]
+  roles: [Feature]
+  enonce: Le constructeur d'une Feature est inerte — aucun side-effect au-delà de la validation et de l'assignation du namespace.
+  pourquoi: >
+    Un constructeur à effets rendrait l'ordre d'instanciation significatif ; inerte, il garantit que
+    créer une Feature n'a aucun effet tant que le framework ne l'a pas explicitement activée (ADR-09).
+  mode: boot
+  etat: livre
