@@ -16,18 +16,10 @@
 
 Dans l'index, ⚠️ / ⏳ signalent une livraison partielle ou à venir (ligne **Livré** de l'ADR).
 
-Une décision Accepted ou Tested est conservée comme trace historique. Si elle
-change, un nouvel ADR documente sa succession, désigne explicitement la décision
-remplacée et distingue les obligations imposées par la théorie des choix de
-réalisation encore ouverts. La succession est référencée dans cet index ; elle
-n’efface pas les arguments ni les preuves de l’ancien contrat. Une proposition
-non acceptée peut évoluer ; une piste reportée va dans la [roadmap](../ROADMAP.md).
-
-Les statuts et indicateurs de livraison ci-dessous se rapportent aux contrats
-documentés par les ADR : ils n’attestent pas leur conformité à V0.9.4. Les
-incompatibilités déjà identifiées sont suivies dans le [plan de migration](../rapports/migration-invariants-runtime-V0.9.4-2026-10-30.md#7-successions-et-décisions-préparatoires).
-L’obligation d’alignement découle directement de la théorie, sans attendre un
-nouvel arbitrage sur cette obligation.
+Les ADR sont **vivants** : si une décision évolue, l'ADR est réécrit en place, et
+git garde l'historique de l'ancien contrat. Une décision abandonnée disparaît ;
+une piste reportée va dans la [roadmap](../ROADMAP.md). Chaque ADR s'écrit depuis
+le code livré et consigne ses écarts dans sa ligne **Livré** (ADR-32).
 
 Modèle : [TEMPLATE.md](TEMPLATE.md). Correspondance avec l'ancienne numérotation
 (`ADR-00xx`, `D1–D48`) : [archive/adr-v0](../archive/adr-v0/README.md).
@@ -38,13 +30,13 @@ Modèle : [TEMPLATE.md](TEMPLATE.md). Correspondance avec l'ancienne numérotati
 
 | ADR | Décision | Statut |
 | --- | --- | --- |
-| [ADR-01](ADR-01-channels-tri-lane.md) | Channels tri-lane déclaratifs, chorégraphie, `trigger`/`emit` | 🟢 ⚠️ |
-| [ADR-02](ADR-02-request-synchrone.md) | `request` synchrone → `T \| null` | 🔵 |
-| [ADR-03](ADR-03-channel-runtime.md) | Sémantique runtime du Channel | 🟢 ⚠️ |
-| [ADR-04](ADR-04-metas-explicites.md) | Metas causales explicites `(payload, metas)` | 🟢 ⏳ |
-| [ADR-05](ADR-05-propagation-erreurs.md) | Propagation des erreurs | 🟢 ⚠️ |
+| [ADR-01](ADR-01-channels-tri-lane.md) | Channels à trois voies déclaratifs, chorégraphie pure | 🟢 ⚠️ |
+| [ADR-02](ADR-02-request-synchrone.md) | Query synchrone : une valeur, jamais une `Promise` ni un `null` de substitution | 🔵 |
+| [ADR-03](ADR-03-channel-runtime.md) | Sémantique d'exécution des messages : l'unité comme frontière d'échec | 🟢 ⚠️ |
+| [ADR-04](ADR-04-metas-explicites.md) | Contexte causal établi par le noyau, porté par le contexte du handler | 🟢 ⚠️ |
+| [ADR-05](ADR-05-propagation-erreurs.md) | Propagation des erreurs : l'unité de validation comme frontière | 🟢 ⚠️ |
 | [ADR-06](ADR-06-modes-validation.md) | Modes de validation | 🟢 ⚠️ |
-| [ADR-35](ADR-35-vidage-file-differee.md) | Vidage synchrone de la file des messages différés ; unités longues signalées | 🟢 ⚠️ |
+| [ADR-35](ADR-35-vidage-file-differee.md) | Vidage synchrone de la file des messages différés ; unités longues signalées | 🟢 |
 
 ### Couche abstraite
 
@@ -56,7 +48,7 @@ Modèle : [TEMPLATE.md](TEMPLATE.md). Correspondance avec l'ancienne numérotati
 | [ADR-10](ADR-10-entity-mutation.md) | Entity : mutation Immer, patches, pas de state dérivé | 🔵 |
 | [ADR-11](ADR-11-entity-schema-valibot.md) | Entity : schema Valibot | 🟢 |
 | [ADR-12](ADR-12-entity-intent-typing.md) | Typage de l'`intent` de `mutate()` | 🟡 |
-| [ADR-13](ADR-13-router.md) | Router : Feature framework spécialisée | 🟢 |
+| [ADR-13](ADR-13-router.md) | Router : Feature de navigation fournie par le framework | 🔵 |
 
 ### Contrats typés
 
@@ -69,11 +61,11 @@ Modèle : [TEMPLATE.md](TEMPLATE.md). Correspondance avec l'ancienne numérotati
 
 | ADR | Décision | Statut |
 | --- | --- | --- |
-| [ADR-16](ADR-16-view-scope-projection.md) | View : scope de rendu exclusif, `getUI`, niveaux N1/N2/N3 | 🟢 ⚠️ |
+| [ADR-16](ADR-16-view-scope-projection.md) | View : part exclusive, `getUI`, niveaux N1/N2/N3 | 🟢 ⚠️ |
 | [ADR-17](ADR-17-local-state.md) | `localState` de présentation | 🟢 ⏳ |
-| [ADR-18](ADR-18-composer.md) | Composer : décideur pur, `resolve(event)`, N instances | 🟢 ⚠️ |
-| [ADR-19](ADR-19-root-element.md) | `rootElement` : sélecteur CSS fourni par le Composer | 🟢 ⚠️ |
-| [ADR-20](ADR-20-foundation.md) | Foundation : `<body>`, `Record` stable, N1 seul | 🟢 ⚠️ |
+| [ADR-18](ADR-18-composer.md) | Composer : décideur pur, `resolve(ctx)`, composition par clé | 🟢 ⚠️ |
+| [ADR-19](ADR-19-root-element.md) | Part de la View : attribuée par le Composer, créée par le noyau | 🟢 ⚠️ |
+| [ADR-20](ADR-20-foundation.md) | Foundation : un élément admis, des slots stables, aucun Channel en V1 | 🟢 ⚠️ |
 | [ADR-21](ADR-21-behavior-reutilisation.md) | Behavior et réutilisation de View | 🟢 ⏳ |
 
 ### Rendu
@@ -99,8 +91,8 @@ Modèle : [TEMPLATE.md](TEMPLATE.md). Correspondance avec l'ancienne numérotati
 
 | ADR | Décision | Statut |
 | --- | --- | --- |
-| [ADR-31](ADR-31-strates-perimetre-v1.md) | Strates d'implémentation et périmètre v1 gelé | 🟢 |
-| [ADR-32](ADR-32-tests-preuve-architecture.md) | Tests = preuve d'architecture, statut `Tested` | 🟢 |
+| [ADR-31](ADR-31-strates-perimetre-v1.md) | Strates d'implémentation et périmètre v1 gelé | 🟢 ⚠️ |
+| [ADR-32](ADR-32-tests-preuve-architecture.md) | Tests = preuve d'architecture, statut `Tested` | 🟢 ⚠️ |
 | [ADR-33](ADR-33-workflow-git-ci.md) | Workflow git, SemVer, hooks et CI | 🟢 ⚠️ |
 | [ADR-34](ADR-34-documentation-francais.md) | Documentation et commits en français, code et JSDoc en anglais | 🟢 ⚠️ |
 

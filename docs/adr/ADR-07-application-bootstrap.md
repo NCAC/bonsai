@@ -4,7 +4,7 @@
 | --- | --- |
 | **Statut** | 🔵 Tested |
 | **Invariants impactés** | I23, I56 |
-| **Livré** | ✅ `start()` · ⏳ shutdown et `serverState` (strate 2) |
+| **Livré** | ✅ `start()` · ⏳ arrêt complet (`stop()` ne retire que les observateurs de l'hôte) et `serverState` (strate 2) |
 | **Spec** | [application.md](../spec/3-couche-abstraite/application.md) · [lifecycle.md](../spec/2-architecture/lifecycle.md) |
 
 ## Contexte
@@ -21,7 +21,7 @@ contournables (`as any`, JS pur) sont revérifiées.
 **dormante au runtime** : aucune logique métier, aucun rôle entre les deux (I23).
 
 ```ts
-new Application({ foundation: AppFoundation, features }).start();
+new Application({ foundation: AppFoundation, features, document }).start();
 ```
 
 `start()` exécute des phases strictement ordonnées :
@@ -37,7 +37,8 @@ new Application({ foundation: AppFoundation, features }).start();
 La couche abstraite est **intégralement active** avant la création de la couche
 concrète (I56). `start()` est la **frontière de confiance** : avant, aucune
 garantie runtime ; après, les garanties compile-time sont revérifiées (I66).
-Un second appel à `start()` lève une erreur.
+Un second appel à `start()` lève une erreur. `document` est requis dès qu'il y a une
+Foundation ou des adaptateurs ; `router: true` active la Feature de navigation (ADR-13).
 
 Les phases 0a–0c sont sans side-effect : un manifest invalide échoue avant
 que la racine du noyau ne soit créée.
@@ -52,4 +53,4 @@ que la racine du noyau ne soit créée.
 
 - Les erreurs de bootstrap sont localisées par phase et levées **avant** tout effet observable.
 - La phase 1 démarre les Features dans l'ordre de leurs `dependsOn` (C.1), à défaut dans l'ordre du manifest. Une Query adressée depuis `onInit()` à une Feature qui n'est pas encore prête, faute de `dependsOn`, est refusée (`TARGET_NOT_READY`) et fait échouer le démarrage.
-- Le shutdown (ordre inverse) et le pré-peuplement SSR (`serverState`, ADR-24) restent à livrer.
+- `stop()` ne retire aujourd'hui que les observateurs de l'hôte ; l'arrêt complet de la racine (ordre inverse) et le pré-peuplement SSR (`serverState`, ADR-24) restent à livrer.

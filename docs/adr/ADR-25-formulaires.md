@@ -26,14 +26,14 @@ réutilisation ni les parcours en plusieurs étapes.
 | Parcours multi-étapes | **D** | `localState` par étape ; chaque étape validée est une Command qui persiste dans l'Entity (retour arrière, DevTools) |
 
 ```ts
-onSubmitBtnClick() {
-  const { values, errors } = this.local;
+onSubmitBtnClick(_fact: TFact, ctx: TFactContext<TVC>) {
+  const { values, errors } = this.local;          // localState : cible (ADR-17)
   if (Object.keys(errors).length === 0)
-    this.trigger("user:updateProfile", values);   // le domaine ne voit que le résultat validé
+    ctx.trigger("user:updateProfile", values);    // le domaine ne voit que le résultat validé
 }
 ```
 
-- La validation différée (unicité d'un email…) : debounce dans la View, puis Request **synchrone** vers la Feature qui tient la donnée en mémoire (ADR-02).
+- La validation différée (unicité d'un email…) : debounce dans la View, puis Query **synchrone** vers la Feature qui tient la donnée en mémoire (ADR-02).
 - La validation métier définitive reste dans la Feature et le schema de l'Entity (ADR-11) ; la validation locale sert le retour immédiat.
 - Aucune dépendance externe (pas de bibliothèque de formulaires).
 

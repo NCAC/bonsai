@@ -3,6 +3,18 @@ import { Builder } from "./builder.class";
 import { TFramework, TPackage } from "@build/build.type";
 import { TOrganizedComponents } from "@lib/build/initializing/components-registry";
 import { CacheStrategyFactory } from "@build/cache/cache-strategy.factory";
+import { existsSync } from "node:fs";
+import { basename, join } from "node:path";
+
+/**
+ * The artefact a component's build leaves on disk. A cache entry only proves the
+ * sources did not change; it is trusted only while this artefact still exists, so
+ * a cleaned `dist/` (`--clean`) is always rebuilt.
+ */
+function builtArtifact(component: TPackage, isLibrary: boolean): string {
+  if (isLibrary) return join(component.distPath, basename(component.outJsFile));
+  return component.isTypesOnly ? component.outDtsFile : component.outJsFile;
+}
 
 /**
  * Classe responsable d'orchestrer le build des différents composants
@@ -12,6 +24,12 @@ export class BuildOrchestrator {
   private static instance: BuildOrchestrator;
   private logger: Logger;
   private builder: Builder;
+  /**
+   * Components rebuilt during this run. Each package bundle inlines its
+   * dependencies, so a package whose dependency was rebuilt is rebuilt too,
+   * even when its own sources are unchanged.
+   */
+  private rebuilt = new Set<string>();
 
   /**
    * Constructeur privé pour le singleton
@@ -105,7 +123,7 @@ export class BuildOrchestrator {
     const buildPromises = libraries.map(async (lib) => {
       const cache = CacheStrategyFactory.create("library");
       const target = { libName: lib.name };
-      if (await cache.isValid(target)) {
+      if (existsSync(builtArtifact(lib, true)) && (await cache.isValid(target))) {
         this.logger.info(
           `Cache valide pour la bibliothèque ${lib.name}, build ignoré.`
         );
@@ -115,6 +133,7 @@ export class BuildOrchestrator {
         return true;
       }
       const result = await this.builder.buildLibrary(lib);
+      this.rebuilt.add(lib.name);
       if (result) {
         await cache.write(target);
       }
@@ -179,7 +198,10 @@ export class BuildOrchestrator {
       );
       const cache = CacheStrategyFactory.create("package");
       const target = { packageRoot: pkg.rootPath };
-      if (await cache.isValid(target)) {
+      const staleDependency = pkg.dependencies.find((dep) => this.rebuilt.has(dep));
+      if (staleDependency) {
+        this.logger.info(`${pkg.name} : dépendance ${staleDependency} reconstruite, cache ignoré.`);
+      } else if (existsSync(builtArtifact(pkg, false)) && (await cache.isValid(target))) {
         this.logger.info(
           `Cache valide pour le package ${pkg.name}, build ignoré.`
         );
@@ -187,6 +209,7 @@ export class BuildOrchestrator {
         continue;
       }
       const success = await this.builder.buildPackage(pkg);
+      this.rebuilt.add(pkg.name);
       if (success) {
         await cache.write(target);
       } else {

@@ -1,142 +1,148 @@
 # Validation statique et dynamique
 
-> 🗑️ **La classe `Channel` est retirée (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau (`Root`, `@bonsai/kernel`). Les passages qui décrivent la classe sont historiques ; voir [communication.md](../2-architecture/communication.md).
+> 🟢 **Aligné sur la théorie V0.9.5 et sur le code livré (4 novembre 2026).** Les garde-fous non livrés sont marqués ⏳. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
 
+> **Compile-time, démarrage, unité de validation — garanties TypeScript et refus du noyau**
 
-> ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
-
-> **Compile-time, bootstrap, runtime — garanties TypeScript et garde-fous framework**
-
-[← Retour a l'index](../README.md)
+[← Retour à l'index](../README.md)
 
 ---
 
-> ## ⏳ Périmètre d'implémentation (ADR-31)
+> **Livré** : garanties compile-time du pattern modulaire et du contrat Feature
+> (ADR-14, ADR-09), prouvées par `tests/types/` ; au démarrage,
+> `BonsaiNamespaceError` (phases 0a et 0c), `ManifestError` (cycle de
+> dépendances initiales), constructeur inerte (I94), filets I82/I84 quand la
+> View est décrite au noyau, `hardInvariant()` pour I96 ; pendant un
+> traitement, les refus du noyau (`TransportError`, code stable) qui font
+> échouer l'unité de l'auteur (G7) ; helpers `invariant()`, `hardInvariant()`
+> et `warning()` de `@bonsai/error`, et `__DEV__` remplacé par la pipeline
+> (§3.1).
 >
-> Ce document décrit le **contrat cible** de la validation. Les éléments suivants ne sont **pas encore implémentés** :
->
-> | Élément | Strate cible | Sections concernées |
-> | --- | --- | --- |
-> | Garde-fou anti-boucle (`hop > maxHops`) | Strate 1b | §2.1, §3.6 |
-> | Validation modale des Entities via `TEntitySchema` (Valibot, ADR-11) | Strate 1 | — |
-> | `warning()` sur handlers orphelins et messages sans handler | Non planifié par ADR-31 | §2.3, §3.6 |
-> | Test de taille de bundle confirmant l'élimination des assertions | Non planifié par ADR-31 | §3.7 |
->
-> **Périmètre effectif livré** : garanties compile-time du pattern modulaire et du contrat Feature (ADR-14 → ADR-09), prouvées par `tests/types/` ; au bootstrap, `BonsaiNamespaceError` (Phases 0a et 0c), sentinel du constructeur inerte (I94), filets I82/I84 au `mount()` et `hardInvariant()` pour I96 ; helpers `invariant()`, `hardInvariant()` et `warning()` exportés par `@bonsai/error` avec la signature `(condition, message, invariantId, component?)` — `__DEV__` est remplacé par la pipeline : `true` dans `core/dist/bonsai.js`, `false` dans `core/dist/bonsai.prod.js` (§3.1) ; libre, il vaut `true`.
+> **Non livré** : validation des Entities par schéma (`TEntitySchema`, Valibot,
+> ADR-11) ; `warning()` sur les handlers orphelins ; test de taille du bundle.
 
 ## 1. Validation statique (compile-time)
 
-### 1.1 Typage des déclarations Channel
+### 1.1 Typage des déclarations
 
-Le système de types garantit que les déclarations
-Channel sont coherentes avec l'usage.
+Le système de types garantit que les déclarations sont cohérentes avec l'usage.
 
-**Exemple** — si `CartView` déclare `cart` dans `get features()` (ADR-14,
+**Exemple** : `CartView` déclare `cart` dans `get features()` (ADR-14,
 `TFeatureContract`), avec `triggers: ["addItem"]` :
 
 ```typescript
-// ✅ Type — "cart:addItem" ∈ TFlatTriggers<F> (I77)
-this.trigger('cart:addItem', payload);
+onAddButtonClick(_fact: TFact, ctx: TFactContext<TCartViewContract>): void {
+  // ✅ "cart:addItem" ∈ TFlatTriggers<F> (I77)
+  ctx.trigger("cart:addItem", payload);
 
-// ❌ Erreur TS — Command inconnu (typo)
-this.trigger('cart:adddItem', payload);
+  // ❌ Erreur TS : Command inconnue (typo)
+  ctx.trigger("cart:adddItem", payload);
 
-// ❌ Erreur TS — namespace non declare dans get features()
-this.trigger('inventory:reserve', payload);
+  // ❌ Erreur TS : namespace non déclaré dans get features()
+  ctx.trigger("inventory:reserve", payload);
+}
 
-// ❌ Erreur TS — View n'a pas de methode emit() (I4)
-this.emit('itemAdded', payload);
+onCartItemAddedEvent(_payload: { item: TCartItem }, ctx: TEventContext<TCartViewContract>): void {
+  // ❌ Erreur TS : le contexte d'un Event n'a pas de trigger (D18)
+  ctx.trigger("cart:addItem", payload);
+}
+// ❌ Erreur TS : une View n'a ni emit() ni trigger() propre (I4)
+this.emit("itemAdded", payload);
 ```
 
 ### 1.2 Erreurs de compilation attendues
 
 | # | Erreur TypeScript | Invariant | Cause |
 | --- | --- | --- | --- |
-| 1 | `Property 'emit' does not exist on type 'View'` | I4 | View n'a pas de méthode `emit()` |
-| 2 | `Argument of type '"cart:adddItem"' is not assignable to parameter of type 'TFlatTriggers<…>'` | I77 | Command inexistant ou typo dans la clé namespacee |
-| 3 | `Argument of type '"inventory:reserve"' is not assignable to parameter of type 'TFlatTriggers<…>'` | I14, I77 | Namespace non déclaré dans `get features()` |
-| 4 | `Type '{ items: Map<string, Item> }' does not satisfy the constraint 'TJsonSerializable'` | ADR-10 | Entity non jsonifiable |
+| 1 | `Property 'emit' does not exist on type 'CartView'` | I4 | Une View n'émet jamais |
+| 2 | `Argument of type '"cart:adddItem"' is not assignable to parameter of type …` | I77 | Command inexistante ou typo dans la clé namespacée |
+| 3 | `Argument of type '"inventory:reserve"' is not assignable to parameter of type …` | I14, I77 | Namespace non déclaré dans `get features()` |
+| 4 | `Property 'trigger' does not exist on type 'TEventContext<…>'` | D18, I13 | Un handler d'Event ne commande pas |
+| 5 | `Property 'trigger' does not exist on type 'TFeatureContext<…>'` | D17 | Une Feature n'adresse jamais de Command |
+| 6 | `Type '{ items: Map<string, Item> }' does not satisfy the constraint 'TJsonSerializable'` | ADR-10 | Entity non jsonifiable |
 
-### 1.3 Patterns TypeScript avances
+### 1.3 Patterns TypeScript avancés
 
-Inventaire des patterns TypeScript utilises par le système de types Bonsai.
-
-| Pattern TypeScript | Usage dans Bonsai | Benefice DX |
+| Pattern TypeScript | Usage dans Bonsai | Bénéfice DX |
 | --- | --- | --- |
-| **Template literal types** | `` `on${Capitalize<K>}Command` `` (dans `TCommandCallbacks<TDef>`) : `"addItem"` -> `"onAddItemCommand"` | Autocompletion des noms de méthodes handler |
-| **Mapped types** | `TCommandCallbacks<TDef>`/`TRequestCallbacks<TDef>` : génère les signatures handler obligatoires, sans metas en strate 0 (ADR-09) | `implements TFeatureCallbacks<…>` -> l'IDE liste les méthodes manquantes (TS2515 si absentes) |
-| **Conditional types + infer** | `TRequestResultFor<F, K>` : extrait le type de retour d'un Request depuis un `TFeatureContract` | Typage automatique des retours `T \| null` synchrone (ADR-02) |
-| **Literal string types** | `namespace: 'cart'` — parametre `NS` de `TChannelToken<TDef, NS>` | Erreur compile-time si namespace inconnu |
-| **Constrained generics** | `TStructure extends TJsonSerializable` — contraint a la compilation | Impossible de creer une Entity non-serialisable |
-| **`satisfies`** | `satisfies StrictManifest<AppManifest>` (manifest applicatif, ADR-08) et `satisfies TFeatureContract`/`TUIContract` (View, ADR-14) | Erreur si un namespace ou un Channel non déclaré est utilisé |
-| **`UnionToIntersection`** | Fusionne les handlers de plusieurs tokens `listens` en un seul type `implements`-able (`TListenCallbacks`, ADR-09) | Nécessaire — sans lui, TS produit une union que `implements` refuse (TS2422) |
+| **Template literal types** | `` `on${Capitalize<K>}Command` `` (dans `TCommandCallbacks<TDef>`) : `"addItem"` → `"onAddItemCommand"` | Autocomplétion des noms de handlers |
+| **Mapped types** | `TCommandCallbacks<TDef>` / `TQueryCallbacks<TDef>` génèrent les signatures obligatoires (ADR-09) | `implements TFeatureCallbacks<…>` : l'IDE liste les méthodes manquantes |
+| **Conditional types + infer** | `TQueryResultFor<F, K>` extrait le type de retour d'une Query depuis un `TFeatureContract` | `ctx.query` retourne une valeur typée, synchrone (G5) |
+| **Literal string types** | paramètre `NS` de `TChannelToken<TDef, NS>` | Erreur compile-time si namespace inconnu |
+| **Constrained generics** | `TStructure extends TJsonSerializable` | Impossible de créer une Entity non sérialisable |
+| **`satisfies`** | `satisfies StrictManifest<AppManifest>` (ADR-08), `satisfies TFeatureContract` / `TUIContract` (ADR-14) | Erreur si un namespace ou un message non déclaré est utilisé |
+| **Contextes distincts** | `TFactContext` (avec `trigger`) / `TEventContext` (sans), `TFeatureContext` / `TFeatureQueryContext` | Le droit de commander et la lecture seule sont des propriétés du type (D18, A3.g) |
+| **`UnionToIntersection`** | Fusionne les handlers de plusieurs tokens `listens` en un type `implements`-able (`TListenCallbacks`) | Sans lui, TS produit une union que `implements` refuse (TS2422) |
 
-**Patterns NON retenus** :
+**Patterns non retenus** :
 
-- **F-bounded polymorphism recursif** (`Class<Child extends Class<Child, ...>>`) — pas nécessaire dans Bonsai car les Features ne s'heritent pas.
-- **Accès runtime à un Channel exposé au développeur** — l'acheminement des messages appartient à la racine du noyau (`Root`, `@bonsai/kernel`), interne au framework (I15) : la surface développeur ne manipule que des types statiques (`TChannelDefinition`, `TChannelToken`).
-- **Decorateurs (stage 3)** (`@Handle('addItem')`) — rejete (ADR-09) au profit de la convention `onXXX` auto-découverte.
-- **Branded types pour l'unicite du namespace** — non retenu : l'unicite est garantie par `TS1117` (clé d'objet dupliquee dans le manifest litteral), pas par un type nominal brande sur le namespace lui-même.
+- **F-bounded polymorphism récursif** : inutile, les Features ne s'héritent pas.
+- **Accès runtime à un Channel exposé au développeur** : l'acheminement appartient à la racine du noyau, interne (I15) ; la surface développeur ne manipule que des types (`TChannelDefinition`, `TChannelToken`) et les contextes de handler.
+- **Décorateurs** (`@Handle('addItem')`) : rejetés (ADR-09) au profit de la convention `on…` auto-découverte.
+- **Branded types pour l'unicité du namespace** : l'unicité est garantie par `TS1117` (clé dupliquée dans le manifest littéral).
 
 ---
 
 ## 2. Validation dynamique (runtime)
 
-### 2.1 Garde-fous framework
+### 2.1 Refus du noyau
 
-Le framework fournit des garde-fous runtime pour les cas
-que le type system ne peut pas attraper :
+Ce que le type system ne peut pas attraper (casts `as any`, JavaScript, ordre
+d'exécution) est refusé par la racine du noyau. Un refus est une
+`TransportError` à code stable : il interrompt l'auteur et fait échouer son
+unité, qui est entièrement défaite (G7).
 
-| Garde-fou | Condition | Action reelle |
+| Code | Condition | Référence |
 | --- | --- | --- |
-| Anti-boucle | `hop > maxHops` | ⏳ Cible strate 1b — aucune notion de `hop` n'existe dans le code livre |
-| Handler manquant | Command sans handler | `NoHandlerError` levee par `Channel.trigger()` — **livre** |
-| Replier manquant | Request sans replier | `Channel.request()` retourne `null`, **sans erreur** (ADR-02) — **livre** |
-| Double handler | Deux handlers/repliers pour le même Command/Request | `DuplicateHandlerError` levee par `Channel.handle()`/`reply()` (I10) — **livre** |
-| Mutation externe | Tentative de modifier une Entity hors Feature | ⏳ Aucun garde-fou runtime — `Feature.entity` est `protected` (I6), donc **impossible a compiler** depuis l'exterieur ; aucun Proxy/`Object.freeze` n'existe pour intercepter un contournement (`as any`) |
+| `UNKNOWN_TARGET` | Command vers un namespace sans Channel dans cette racine | G6 |
+| `UNDECLARED_MESSAGE` | Command, Query ou Event absent du contrat de la cible (handler non découvert compris), message local non déclaré | D16 |
+| `NOT_AUTHORIZED` | Command adressée sans droit de commander : handler d'Event, composant hors interface | D18, I13 |
+| `NOT_OWNER` | `emit` sans Channel propre, projection ou destruction sur une ressource d'autrui | A3.e, A1.b |
+| `READ_ONLY` | Mutation, émission ou Command pendant une Query | A3.g |
+| `TARGET_ACTIVE` / `TARGET_NOT_READY` | Query vers soi-même, un cycle, ou une cible encore en initialisation | G5, C.1 |
+| `CAUSAL_BOUND` | Profondeur causale au-delà de `causalBound` | D9, I9 |
+| `NOT_CAPTURABLE` | Payload portant une fonction ou une valeur non copiable | G2, A3.d |
+| `NO_UNIT` | Contexte utilisé hors de son unité (par exemple dans un `.then()`) | A5.a, I66 |
+| `UNRECOVERABLE` | Échec de Query intercepté par l'auteur : l'unité échoue quand même | G7 |
+| `DUPLICATE_NAMESPACE` | Deux Channels vivants du même namespace dans une racine | I21 |
+
+Il n'y a ni `NoHandlerError`, ni `DuplicateHandlerError`, ni `null` de
+substitution : un handler est découvert par son nom (un nom de méthode est
+unique), et une Command ou une Query sans handler n'appartient pas au contrat.
+
+**Mutation externe** : `Feature.entity` est `protected` (I6), donc une mutation
+externe ne compile pas ; à l'exécution, `entity.state` n'est lisible que
+pendant un handler de la Feature, et l'état n'est modifiable que par
+`ctx.mutate`.
 
 ### 2.2 Messages d'erreur et diagnostics
 
-Les messages d'erreur doivent être :
-
-- **Explicites** (pas de « undefined is not a function »)
-- **Contextuels** (quel composant, quel Channel, quel message)
-- **Actionnables** (« did you forget to add X.channel to listen? »)
-
-**Exemple reel, livre** (`TransportError`, `packages/kernel/src/kernel/root.ts`) —
-une Command `reserve` adressée à `inventory` alors que le Channel de
-`InventoryFeature` ne la déclare pas ; l'unité qui l'adresse échoue et est
-annulée (G7) :
+Les messages d'erreur sont **explicites**, **contextuels** et **actionnables**.
+Exemples réels (`packages/kernel/src/kernel/root.ts`) :
 
 ```text
 [UNDECLARED_MESSAGE] command "inventory:reserve" not declared
+[CAUSAL_BOUND] depth 51 exceeds bound 50
+[NO_UNIT] context used outside its validation unit (A5.a)
 ```
 
-> Le cas « `inventory:reserve` non déclaré du tout dans `get features()` »
-> n'atteint **jamais** le runtime : il est rejeté au compile-time par I77
-> (cf. §1.2, erreur n°3).
+Chaque échec est écrit dans la trace de la racine (`unit-failed`) avec le
+contexte causal de l'unité (G8), et signalé sur la console en développement
+(`reportToConsole`, O2).
 
-**Exemple cible, non livre** (⏳ strate 1b — aucune notion de `hop` n'existe
-aujourd'hui) :
+> Le cas « `inventory:reserve` non déclaré dans `get features()` » n'atteint
+> **jamais** le runtime : il est rejeté au compile-time (I77, §1.2 n°3).
 
-```text
-[Bonsai] Causal loop detected: hop 11 exceeds maxHops 10.
- correlationId: c-9f3a..., last 5 messages:
- 1. cart:addItem (CartView, hop=0)
- 2. cart:itemAdded (CartFeature, hop=1)
- ...
-```
+### 2.3 Catégorisation des validations
 
-### 2.3 Categorisation des validations
+> **Principe** : maximum de validations au compile-time ; le runtime ne vérifie que ce que TypeScript ne peut pas attraper.
 
-> **Principe** : maximum de validations au compile-time, le runtime ne vérifie que ce que TypeScript ne peut pas attraper.
-
-| Categorie | Quand | Exemples reels | Action en cas de violation |
+| Catégorie | Quand | Exemples | Action en cas de violation |
 | --- | --- | --- | --- |
-| **Compile-time** | `tsc` | Types Channel, `get features()`/`get listens()`, payload types, handlers requis (I92) | Erreur de compilation |
-| **Bootstrap** | Au demarrage, une seule fois | Unicite namespace (TS1117, compile-time), handler/replier duplique (I10, `DuplicateHandlerError`), reference `listens`/`queries` inconnue (I70, `BonsaiNamespaceError`, Phase 0c) | `hardInvariant()` ou erreur dediee (`DuplicateHandlerError`, `BonsaiNamespaceError`) |
-| **Runtime** | Chaque appel | `NoHandlerError` (Command sans handler), `Channel.request()` retourne `null` sans handler | Erreur levee (Command) ou `null` silencieux (Request) — pas de distinction dev/prod |
-| **⏳ Cible, non livre** | — | Hop limit (I9), `Entity` freeze anti-mutation, `warning()` sur handlers orphelins ou metas manquantes | Aucun de ces garde-fous n'est implemente aujourd'hui |
+| **Compile-time** | `tsc` | Contrats de Channel, `get features()`/`get listens()`, payloads, handlers requis (I92), droit de commander (D18) | Erreur de compilation |
+| **Démarrage** | `app.start()`, une fois | Format et unicité du namespace, `static channel` (phase 0a), références inconnues (I70, phase 0c), cycle de dépendances (C.1), handlers déclarés d'une View (I82, I84) | `BonsaiNamespaceError`, `ManifestError`, `StartupError` : rien n'est publié |
+| **Unité** | Chaque traitement | Refus du noyau (§2.1), invariant d'Entity en fin d'unité (`InvariantError`) | L'unité échoue et est défaite, en développement comme en production |
+| **⏳ Non livré** | — | Schéma d'Entity (ADR-11), `warning()` sur handlers orphelins | — |
 
 ---
 
@@ -223,8 +229,8 @@ function warning(condition: unknown, message: string): void {
 /**
  * Assertion NON-strippable — reste en production.
  * Reservee aux erreurs structurelles fatales detectees au bootstrap.
- * (Le seul appelant livre est Feature#registerEntityHandlers, I96 : namespace
- * reserve et handler duplique levent, eux, BonsaiNamespaceError / DuplicateHandlerError.)
+ * (Le seul appelant livré est la Feature, pour I96 : un namespace réservé
+ * lève BonsaiNamespaceError.)
  */
 function hardInvariant(
   condition: unknown,
@@ -241,8 +247,8 @@ function hardInvariant(
 > Aucune des trois fonctions n'accepte de placeholders `%s`/`...args` — le
 > `message` est passe tel quel a `BonsaiError`, qui le formate avec
 > `invariantId`/`component`/`suggestion` (voir
-> [feature.md §8.4](../3-couche-abstraite/feature.md#84-modèle-derreurs--hiérarchie-bonsaierror) pour la classe
-> `BonsaiError` complète).
+> [erreurs.md](../2-architecture/erreurs.md) et [ADR-05](../../adr/ADR-05-propagation-erreurs.md)
+> pour la hiérarchie et ses écarts).
 
 ### 3.5 Messages d'erreur riches
 
@@ -259,34 +265,30 @@ hardInvariant(
 );
 ```
 
-> Un cas comme « une Feature emet sur le Channel d'une autre » (I1)
-> n'a **pas besoin** d'un `invariant()` runtime : `emit()` n'accepte que les
-> clés de `TChannelDef['events']` propre a la Feature — la violation est
-> **structurellement impossible** a exprimer, donc rejetee au compile-time,
-> pas interceptee au runtime.
+> Un cas comme « une Feature émet sur le Channel d'une autre » (I1)
+> n'a **pas besoin** d'un `invariant()` : `ctx.emit()` n'accepte que les
+> clés de `TChannelDef['events']` propre à la Feature, et le noyau émet
+> toujours sur le Channel de l'auteur (`NOT_OWNER` sinon).
 >
 > **Convention** : chaque message d'invariant cite l'invariant violé (I1, I7, I21, etc.)
 > pour que le developpeur puisse trouver la documentation.
 
 ### 3.6 Mode debug vs production
 
-> ⚠️ **La plupart des lignes ci-dessous decrivent un contrat cible, non livre**
-> (aucune notion de `hop`, aucun `Object.freeze` anti-mutation, aucun
-> `warning()` sur les handlers orphelins n'existe dans le code). Ce qui est
-> **reellement** livre : `invariant()`/`hardInvariant()` different uniquement
-> par le strippage en production (`isDev()` conditionne `invariant()`,
-> jamais `hardInvariant()`) — il n'y a pas de troisieme état "warning en dev,
-> silencieux en prod" pour les handlers manquants aujourd'hui.
+`invariant()` et `hardInvariant()` ne diffèrent que par le strippage en
+production (`isDev()` conditionne `invariant()`, jamais `hardInvariant()`). Les
+refus du noyau ne dépendent pas du mode : une unité qui échoue en
+développement échoue de la même façon en production. Seule la sortie console
+change.
 
-| Vérification | Debug (`__DEV__`) | Production | Mecanisme | État |
+| Vérification | Debug (`__DEV__`) | Production | Mécanisme | État |
 | --- | --- | --- | --- | --- |
-| Duplicate handler/replier (I10) | Oui | Oui | `DuplicateHandlerError` (toujours leve, pas de strippage) | ✅ livré |
-| Reference `listens`/`queries` inconnue (I70) | Oui | Oui | `BonsaiNamespaceError` (Phase 0c, toujours leve) | ✅ livré |
-| Anti-boucle (hop) | — | — | — | ⏳ cible strate 1b |
-| onXXX sans message déclaré | — | — | — | ⏳ non planifie |
-| Entity freeze anti-mutation | — | — | — | ⏳ non planifie |
-| Metas logging (verbose) | — | — | — | ⏳ cible strate 1b (depend des metas) |
-| Payload serializable check | — | — | — | ⏳ non planifie |
+| Refus du noyau (§2.1) | Oui | Oui | `TransportError`, unité défaite | ✅ livré |
+| Références `listens`/`queries` inconnues (I70) | Oui | Oui | `BonsaiNamespaceError` (phase 0c) | ✅ livré |
+| Borne causale (D9) | Oui | Oui | `CAUSAL_BOUND` | ✅ livré |
+| Payload capturable par copie (G2) | Oui | Oui | `NOT_CAPTURABLE` | ✅ livré |
+| Sortie console des échecs (O2) | Oui | Non | `reportToConsole`, absent du bundle de production | ✅ livré |
+| `on…` sans message déclaré | — | — | — | ⏳ non planifié |
 
 ### 3.7 Tree-shaking — garantie zero-overhead en production
 

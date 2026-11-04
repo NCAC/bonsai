@@ -9,6 +9,8 @@
   roles: ["*"]
   enonce: Tout composant déclare statiquement les Channels avec lesquels il interagit.
   mode: type+boot
+  # Livré : `listens`/`queries` de Feature, `features` de View, refus UNKNOWN_TARGET et UNDECLARED_MESSAGE du noyau.
+  # Non livré : contrôle de `ctx.query` d'une Feature contre `queries` (I17).
   etat: partiel
 
 - id: I16
@@ -17,6 +19,7 @@
   roles: ["*"]
   enonce: Un accès à un Channel non déclaré est une erreur (compilation ou bootstrap).
   mode: type+boot
+  # Même écart qu'I14 : une Query d'une Feature vers un Channel non déclaré en `queries` n'est refusée ni au typage ni au démarrage.
   etat: partiel
 
 - id: I2
@@ -55,6 +58,6 @@
   nature: V
   parents: [P2, P8]
   roles: [Application]
-  enonce: Toute référence à un namespace externe (`listens`, `queries`, `request`) est validée contre le manifest au bootstrap.
+  enonce: Toute référence à un namespace externe (`listens`, `queries`, `dependsOn`) est validée contre le manifest au bootstrap.
   mode: boot
   etat: livre

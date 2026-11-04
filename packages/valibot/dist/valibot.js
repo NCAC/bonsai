@@ -1,7 +1,7 @@
 /**
- * @bonsai/valibot - Version 0.1.0
+ * @bonsai/valibot - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-05-20T12:01:41.028Z
+ * Date: 2026-11-04T06:27:58.748Z
  */
 //#region src/storages/globalConfig/globalConfig.ts
 let store$4;

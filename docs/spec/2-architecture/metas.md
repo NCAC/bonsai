@@ -6,7 +6,7 @@
 
 > **Statut normatif — V0.9.4, lot 2, 30 octobre 2026.** La [théorie validée](../../theorie.md), notamment C.2–C.4, §9.11, §10, G8 et D9/D18/D19, fait autorité. Ce document décline les contrats du [registre P4](../../invariants/P4.yaml) et les permissions du [registre P3](../../invariants/P3.yaml). Les obligations déjà fixées ne sont pas remises en discussion par les choix de représentation restant ouverts. Les anciens exemples sont conservés dans git ; ils ne sont plus un contrat cible admissible lorsqu’ils coupent ou inventent un lien causal.
 >
-> **État de réalisation.** I7/I8/I9/I54 et I13 sont `cible` ; I25 reste `partiel`. Aucun contexte causal contrôlé n’est livré : handlers à un paramètre, `emit()`, `request()` et `View.trigger()` sans métadonnées ; seul `Entity.mutate()` accepte encore un objet `metas` libre et optionnel. Cet objet ne réalise ni authenticité, ni qualification, ni conservation G8. Le lot est documentaire, sans changement du runtime.
+> **État de réalisation (lots M1 à M6, 1er novembre 2026).** Le noyau (`Root`) établit le contexte causal de chaque message : qualification de l’origine (démarrage, spontanée, inconnue) selon le protocole du monde fermé (C.4), parent unique, profondeur bornée par `causalBound` (D9), droit de commander contrôlé (D18, `NOT_AUTHORIZED`) ; il voyage par le contexte `ctx` du handler ([ADR-04](../../adr/ADR-04-metas-explicites.md)). **Non livré** : ce contexte n’est pas lisible par les handlers ni joint aux erreurs, et `ctx.mutate` accepte encore un objet `metas` libre et optionnel, qui ne réalise ni authenticité ni qualification. Au registre, I7, I8, I9 et I13 sont livrés ; I54 reste partiel tant que le code applicatif ne reçoit pas le contexte.
 
 ## 1. Structure des metas
 

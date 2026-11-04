@@ -12,8 +12,8 @@
  *   G5   — a notification is a deferred message, delivered after the unit
  *   G7   — a failed unit leaves the state exactly as it was
  *   D9   — a notification loop is bounded by the causal bound
- *   (I98 — the FIFO re-entrance queue of the Entity is replaced by the
- *          kernel's deferred queue: ordering and bound are tested below)
+ *   I98  — a mutation notifies through the kernel's deferred queue (the FIFO
+ *          re-entrance queue of the Entity is gone): ordered, bounded by D9
  */
 
 import { describe, it, expect, beforeEach } from "@jest/globals";
@@ -288,7 +288,7 @@ describe("Entity on the kernel — lot M6.1", () => {
     });
   });
 
-  describe("D9 — a notification loop is bounded", () => {
+  describe("D9, I98 — a notification loop is bounded", () => {
     it("a handler that mutates on every notification stops at the causal bound", () => {
       const d = drive(features, { causalBound: 5 });
       d.send("counter", "loop", null);

@@ -1,6 +1,6 @@
 # Distribution : mode IIFE et mode ESM modulaire
 
-> ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
+> 🟢 **Aligné sur le code livré (4 novembre 2026)** pour les bundles et la topologie (§2, §4) ; le mode ESM modulaire (§3) est une cible strate 2+. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
 
 > **Deux modes de distribution, `BonsaiRegistry`, topologie des packages**
 
@@ -13,8 +13,9 @@
 >
 > ## ⏳ Périmètre d'implémentation
 >
-> **Livré** : un runtime unique `core/dist/bonsai.js` (format ES) + `bonsai.d.ts`,
-> consommé comme une application monolithique (§2). **Non livré** (strate 2+, hors v1) :
+> **Livré** : un runtime `core/dist/bonsai.js` (développement), `bonsai.prod.js`
+> (production, `__DEV__` à `false`, ADR-06) et `bonsai.d.ts`, format ES,
+> consommés comme une application monolithique (§2). **Non livré** (strate 2+, hors v1) :
 > `BonsaiRegistry`, modules `*.esm.js` par composant, bundle IIFE, CLI `bonsai build`.
 
 ## 1. Deux modes de distribution
@@ -45,7 +46,7 @@ const features = {
   user: UserFeature,
 } satisfies StrictManifest<AppManifest>;
 
-new Application({ foundation: AppFoundation, features }).start();
+new Application({ foundation: AppFoundation, features, document }).start();
 ```
 
 ## 3. Mode ESM modulaire — `BonsaiRegistry`
@@ -97,15 +98,19 @@ dans les `package.json` :
 @bonsai/view       → kernel
 @bonsai/composer   → view
 @bonsai/foundation → composer
-@bonsai/application→ kernel, feature, foundation
-@bonsai/core       → barrel : ré-exporte les packages publics
+@bonsai/router     → entity, kernel, feature
+@bonsai/application→ error, kernel, feature, foundation, router
+@bonsai/core       → barrel : ré-exporte les packages de composant
 ```
 
 Le graphe est un DAG. `@bonsai/behavior` n'existe pas encore (strate 2).
 
 > ⚠️ **Frontières non imposées** : TypeScript et Jest résolvent `@bonsai/*` par
 > alias de chemins, sans consulter les `dependencies`. `view` importe
-> `@bonsai/feature` et `@bonsai/types` sans les déclarer, et cela compile. Voir
+> `@bonsai/feature`, `@bonsai/composer` et `@bonsai/types` sans les déclarer ;
+> `composer` importe `@bonsai/feature` et `@bonsai/kernel`, `foundation`
+> importe `@bonsai/kernel`, sans les déclarer non plus (des imports de types
+> pour la plupart), et cela compile. Voir
 > ADR-28 (références de projet ou règle de lint à mettre en place).
 
 ### Convention d'import — deux audiences, deux règles
@@ -119,9 +124,6 @@ import { Application, Feature, Entity, View, Composer } from "@bonsai/core";
 // ❌ Interdit — imports internes réservés au framework
 import { Entity } from "@bonsai/entity";
 ```
-
-> ⚠️ `@bonsai/core` n'exporte pas encore `@bonsai/entity` ni `@bonsai/error`
-> (ADR-28) : en attendant, le premier import ne compile pas pour `Entity`.
 
 **Développeur framework** (code inter-packages) :
 
@@ -141,25 +143,27 @@ import { Entity } from "@bonsai/core";
 | --- | --- | --- |
 | **Unit** (`tests/unit/`) | `from "@bonsai/entity"` | Prouve l'isolation, charge le minimum |
 | **Intégration** (`tests/integration/`) | `from "@bonsai/core"` | Teste comme un consommateur |
-| **E2E** (`tests/e2e/`) | `from "@bonsai/application"` et la fixture partagée (`@bonsai/entity`, `@bonsai/feature`, `@bonsai/view`…) | ⚠️ pas `@bonsai/core` : le barrel n'exporte pas `Entity` (ADR-28) |
+| **E2E** (`tests/e2e/`) | `from "@bonsai/application"` et la fixture partagée (`@bonsai/entity`, `@bonsai/feature`, `@bonsai/view`…) | Imports directs hérités ; `@bonsai/core` couvre aussi ces composants (ADR-28) |
 
 ### Structure d'un package composant
 
 ```text
 packages/{name}/
   package.json          → "@bonsai/{name}", dépendances @bonsai/* nécessaires uniquement
-  tsconfig.json         → extends tsconfig.base.json (présent sur error, event, immer, rxjs, types, valibot seulement)
+  tsconfig.json         → extends tsconfig.base.json (présent sur error, immer, kernel, rxjs, types, valibot seulement)
   src/
     bonsai-{name}.ts    ← point d'entrée : classe principale et exports publics
-    *.class.ts, types.ts ← découpage optionnel (ex. event/channel.class.ts, feature/types.ts)
+    *.class.ts, types.ts ← découpage optionnel (ex. kernel/kernel/root.ts, feature/types.ts)
   dist/                 → artefact versionné (ADR-30)
 ```
 
 `@bonsai/core` (dans `core/`) est le seul méta-package : barrel pur, sans code
-propre, qui ré-exporte la surface publique des composants (pas les types de transport internes, I80).
+propre, qui ré-exporte la surface publique des composants, sauf la racine du
+noyau (`Root`), interne (I15) ; `tests/integration/core-barrel.test.ts` le vérifie
+sur la source et sur les deux bundles.
 
 ---
 
 ## Lecture suivante
 
-→ [Erreurs](erreurs.md) — categories d'erreurs, propagation, diagnostics
+→ [Erreurs](erreurs.md) — catégories d'erreurs, unité de validation, diagnostics

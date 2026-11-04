@@ -19,7 +19,9 @@
   roles: [Application]
   enonce: Le bootstrap est la frontière de confiance — après `app.start()` les garanties sont vérifiées, avant, aucun `trigger`/`emit`/`request` n'est accepté.
   mode: boot
-  etat: cible
+  # Aucun contexte n'existe hors d'une unité de la racine démarrée ; un contexte conservé et utilisé après son unité
+  # est refusé (NO_UNIT, root.test.ts, « A5.a, I66 »).
+  etat: livre
 
 - id: I102
   nature: E
@@ -56,7 +58,7 @@
   nature: D
   parents: [I76, I21]
   roles: [Channel]
-  enonce: "Les clés de Commands, d'Events et de Requests d'un `TChannelDefinition` sont en `camelCase` plat, lettres uniquement."
+  enonce: "Les clés de Commands, d'Events et de Queries d'un `TChannelDefinition` sont en `camelCase` plat, lettres uniquement."
   pourquoi: >
     Même règle que le namespace (I21), pour les mêmes raisons : une clé de message est réemployée
     dans le token `"ns:clé"` et dans le nom du handler découvert par convention
@@ -90,7 +92,7 @@
   nature: C
   parents: [P9, P2]
   roles: [Feature]
-  enonce: "`Feature.request()` n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre."
+  enonce: "Le `ctx.query` d'une Feature n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre."
   mode: type
   etat: livre
 
@@ -98,7 +100,7 @@
   nature: D
   parents: [P9]
   roles: [Feature, View]
-  enonce: Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Request`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework.
+  enonce: Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Query`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework.
   pourquoi: >
     Pas de décorateurs ni d'enregistrement manuel : le nom de la méthode est la déclaration, ce qui
     permet au compilateur de dériver les handlers attendus d'un contrat (I88) (ADR-09).
@@ -133,10 +135,10 @@
   nature: D
   parents: [I88]
   roles: [View]
-  enonce: "`implements TViewCallbacks<TVC>` rend obligatoires les handlers d'Event et les handlers DOM déclarés ; un filet au `mount()` couvre les contournements."
+  enonce: "`implements TViewCallbacks<TVC>` rend obligatoires les handlers d'Event et les handlers DOM déclarés ; un filet, quand la View est décrite au noyau, couvre les contournements."
   pourquoi: >
     La déclaration est l'engagement : un Event ou un événement DOM déclaré sans handler est refusé
-    à la compilation, et au `mount()` pour le code JS ou casté (ADR-14).
+    à la compilation, et quand la View est décrite au noyau pour le code JS ou casté (ADR-14).
   mode: type+boot
   etat: livre
 
@@ -189,13 +191,13 @@
   nature: D
   parents: [P9]
   roles: [View, Behavior]
-  enonce: Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, au `mount()`.
+  enonce: Les getters `features`, `uiEvents` et `uiElements` d'un consommateur sont évalués une seule fois, quand il est décrit au noyau à sa création.
   pourquoi: >
     Une lecture unique fige les dépendances déclarées au moment du montage : un composant ne peut
     pas élargir ses canaux en cours d'exécution (ADR-14).
-  # Livré pour la View (`mount()`) ; le Behavior n'existe pas encore (strate 2b).
   mode: boot
-  etat: partiel
+  # Lecture unique dans la description de la View (view.test.ts, « I81 »).
+  etat: livre
 
 - id: I83
   nature: D

@@ -12,13 +12,13 @@
 | **Couche** | Interface utilisateur, par imputation à la View |
 | **Statut** | Contrat documentaire V0.9.5 ; API cible ⏳ fixée au §2.0 ; aucun package Behavior livré |
 | **Référence normative** | [Théorie](../../theorie.md), §2.5, C.2–C.6, D10, D11, D13, D16, D18 et §16.5–§16.7 |
-| **Historique** | [ADR-21](../../adr/ADR-21-behavior-reutilisation.md), [ADR-14](../../adr/ADR-14-contrats-types.md), [ADR-15](../../adr/ADR-15-evenements-ui.md), [ADR-17](../../adr/ADR-17-local-state.md), [ADR-25](../../adr/ADR-25-formulaires.md) ; Accepted conservés sans modification |
+| **Décisions** | [ADR-21](../../adr/ADR-21-behavior-reutilisation.md), [ADR-14](../../adr/ADR-14-contrats-types.md), [ADR-15](../../adr/ADR-15-evenements-ui.md), [ADR-17](../../adr/ADR-17-local-state.md), [ADR-25](../../adr/ADR-25-formulaires.md) |
 
 > ## ⏳ Périmètre d'implémentation
 >
 > **Aucun mécanisme Behavior n'est livré** : ni package `@bonsai/behavior`, ni agrégation des déclarations et réactions, ni contrôle des collisions de clés, ni état local intégré à la View. L'API cible du §2.0 (`Behavior<TBC>`, `TBehaviorContract`, `TBehaviorCallbacks`, `get behaviors()`, contexte de handler) est **⏳ non livrée** : elle fixe ce que la réalisation doit offrir, pas ce qui existe.
 >
-> [La View livrée](../../../packages/view/src/bonsai-view.ts) possède ses contrats UI/Feature et `onAttach()`, mais pas `onDetach()`, ni orchestration Behavior. [Le Composer livré](../../../packages/composer/src/bonsai-composer.ts) oublie la View courante sans retirer ses listeners. Les garanties de cycle de vie cible ne sont donc pas fournies par ce runtime.
+> [La View livrée](../../../packages/view/src/bonsai-view.ts) est passive : ni hook de cycle de vie, ni orchestration Behavior. Le noyau la crée et la détruit sur décision de son [Composer](../../../packages/composer/src/bonsai-composer.ts), avec ses sources DOM et ses abonnements (lot M6.2) ; un Behavior livré devra s'inscrire dans ce cycle, inclus dans l'unité de sa View.
 
 ---
 
@@ -42,7 +42,7 @@ Un Behavior est une **partie réutilisable du code d'une View**, aveugle à cell
 | Aveuglement | Le **code** du Behavior ne désigne ni la View qui le déclare ni les clés de celle-ci ; aucune lecture implicite via référence, callback ou fermeture capturée |
 | Clés UI | Noms disjoints de ceux de la View **et de chacun des autres Behaviors** déclarés par elle ; des noms différents peuvent désigner le même élément |
 | Périmètre | Ses clés désignent seulement des éléments de la part de la View ; aucune capture, lecture ou production hors de cette part ou dans le contenu attribué à ses Composers |
-| Effets de présentation | N1 et îlots N2 sur ses clés déclarées, dans les limites de la View ; pas de remplacement du template principal, de `rootElement` ou de composition N3 autonomes |
+| Effets de présentation | N1 et îlots N2 sur ses clés déclarées, dans les limites de la View ; pas de remplacement du template principal, de la part ou de composition N3 autonomes |
 | Communication | Dépendances déclarées agrégées à celles de la View ; les messages sont adressés par cette dernière, aucun `emit()` ni Channel Behavior |
 | Command | Restrictions D18 inchangées ; réutilisation et partage d'un élément ne créent aucune permission supplémentaire |
 
@@ -58,7 +58,7 @@ Les déclarations d'un Behavior font partie du contrat agrégé de sa View. Elle
 
 ### 2.0 API cible ⏳
 
-> ⏳ **Cible non livrée**, validée le 31 octobre 2026 (point S2 de la [relecture V0.9.4](../../rapports/relecture-V0.9.4-2026-10-30.md)). Le Behavior reprend la forme modulaire de la View ([View §2](view.md#2-pattern-modulaire-adr-14)) ; `trigger` et `query` passent par le **contexte du handler**, comme pour la View ([View §2.4](view.md#24-contexte-de-handler--d18)).
+> ⏳ **Cible non livrée**, validée le 31 octobre 2026 (point S2 de la [relecture V0.9.4](../../rapports/relecture-V0.9.4-2026-10-30.md)). Le Behavior reprend la forme modulaire de la View ([View §2](view.md#2-déclarations)) ; `trigger` et `query` passent par le **contexte du handler**, comme pour la View ([View §3](view.md#3-handlers-et-contextes)).
 
 ```typescript
 // ─── Déclaration du Behavior : même forme modulaire qu'une View ─────────────
@@ -145,7 +145,7 @@ Ce titre conserve le repère historique : **« propres » qualifie les dépendan
 | Observation à antécédent inconnu | Aucun droit de Command ; état local et projection possibles dans leurs autres limites |
 | Retour d'une Query | Pas un déclencheur autonome ; conserve chez l'auteur la permission préexistante, sans l'accorder au traitement de Query, toujours en lecture seule |
 
-Un clic n'est pas autorisé à commander par son seul nom, sa proximité temporelle ou `isTrusted` : la qualification dépend du protocole de source (C.4). Pour les saisies dans la part, c'est le protocole du monde fermé : une saisie qu'aucune opération instrumentée en cours n'a pu produire est indépendante ([View §4.3](view.md#43-délégation-dévénements)). Un Behavior qui appelle directement `click()` ou `dispatchEvent()` viole G8. Les réactions d'un Behavior ne fabriquent ni origine indépendante ni nouveau contexte pour contourner D18 ou D9.
+Un clic n'est pas autorisé à commander par son seul nom, sa proximité temporelle ou `isTrusted` : la qualification dépend du protocole de source (C.4). Pour les saisies dans la part, c'est le protocole du monde fermé : une saisie qu'aucune opération instrumentée en cours n'a pu produire est indépendante ([View §5](view.md#5-faits-de-lhôte)). Un Behavior qui appelle directement `click()` ou `dispatchEvent()` viole G8. Les réactions d'un Behavior ne fabriquent ni origine indépendante ni nouveau contexte pour contourner D18 ou D9.
 
 ### 2.4 Templates en îlots (N2)
 
@@ -161,7 +161,7 @@ L'état utilisé par un Behavior est **une partie de l'état local de la View**.
 
 L'état reste confiné : aucun autre composant ne le lit, ne le modifie ou ne le demande ; il n'est pas diffusé. Une valeur figée peut entrer dans une Command autorisée par D18, sans alias mutable (C.5). Un brouillon ou une validation de saisie n'est pas une certification de l'état métier du domaine. Il prend fin avec la View, pas lors d'un « détachement Behavior » indépendant.
 
-Dans l'API cible, chaque Behavior lit et modifie sa partie par `state` et `setState`, typés par son contrat ; la partie est nommée par la classe du Behavior, ce qui exclut toute collision. Les noms historiques `localState` et `updateLocal()` de [View §7](view.md#7-api-localstate) ne sont pas livrés.
+Dans l'API cible, chaque Behavior lit et modifie sa partie par `state` et `setState`, typés par son contrat ; la partie est nommée par la classe du Behavior, ce qui exclut toute collision. Les noms historiques `localState` et `updateLocal()` de [View, annexe B](view.md#annexe-b--localstate-cible) ne sont pas livrés.
 
 ---
 
@@ -231,6 +231,6 @@ La View déclare les fragments réutilisables et leur ordre ; leurs noms de clé
 ## Lecture suivante
 
 → [foundation.md](foundation.md) — ancrage configurable par racine
-→ [View §7](view.md#7-api-localstate) — cible historique de l'état local, à lire sous la règle d'imputation
+→ [View, annexe B](view.md#annexe-b--localstate-cible) — cible historique de l'état local, à lire sous la règle d'imputation
 → [Cycle de vie](../2-architecture/lifecycle.md) — occurrences de vie, réservations, cascade et limites du livré
 → [ADR-25](../../adr/ADR-25-formulaires.md) — historique des patterns de formulaire, sans nouvelle API promise ici

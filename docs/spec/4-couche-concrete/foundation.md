@@ -14,7 +14,7 @@
 | **Couche** | Concrète ; persistante pendant la vie de sa racine (D1) |
 | **Paquet** | `@bonsai/foundation` |
 | **Référence normative** | [Théorie](../../theorie.md) : §2.5, C.2–C.3, A0–A2, D3, D7, D11, §16.4 et §16.9 |
-| **Historique** | [ADR-20](../../adr/ADR-20-foundation.md), [ADR-07](../../adr/ADR-07-application-bootstrap.md), conservés Accepted sans modification |
+| **Décisions** | [ADR-20](../../adr/ADR-20-foundation.md), [ADR-07](../../adr/ADR-07-application-bootstrap.md) |
 
 ## Table des matieres
 

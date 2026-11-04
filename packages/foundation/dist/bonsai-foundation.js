@@ -1,7 +1,7 @@
 /**
- * @bonsai/foundation - Version 0.0.1
+ * @bonsai/foundation - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-02T15:48:13.817Z
+ * Date: 2026-11-04T12:45:28.319Z
  */
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -1199,9 +1199,9 @@ var immer = new Immer2();
 immer.produce;
 
 /**
- * Kernel prototype (migration lot M1) — one Root per model.
+ * Execution kernel (migration lots M1–M6) — one Root per model.
  *
- * Realises, for testing, the guarantees of the communication infrastructure
+ * Realises the guarantees of the communication infrastructure
  * (docs/theorie.md §13 and annex C):
  *
  * - G1  delivery to the Channel owner, to subscription owners, to the author
@@ -1218,10 +1218,12 @@ immer.produce;
  * - D8  production order; subscription order; rank fixed at emission.
  * - D9  causal depth checked before any submission.
  * - C.3 effects prepared during the unit, engaged in order after it
- *       validates, stopping at the first synchronous failure.
+ *       validates; a synchronous failure closes the resource the effect
+ *       aims at (and, for a part, the parts below it), the rest goes on.
  *
- * Out of scope for M1: Entity integration (M2), structural parts and DOM
- * (M3–M4), closed-world qualification of host sources and D18 (M5).
+ * Later lots added the Entity journal and invariants (M2), structural parts
+ * and the host document (M3–M4), closed-world qualification of host sources
+ * and D18 (M5).
  */
 enablePatches();
 

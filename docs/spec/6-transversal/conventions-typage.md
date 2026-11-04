@@ -1,6 +1,6 @@
 # Conventions de typage
 
-> 🗑️ **La classe `Channel` est retirée (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau (`Root`, `@bonsai/kernel`). Les passages qui décrivent la classe sont historiques ; voir [communication.md](../2-architecture/communication.md).
+> 🟢 **Aligné sur le code livré (4 novembre 2026).** Les types cités sont ceux de `packages/*/src`. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
 
 
 > **Préfixes, contraintes, patterns TypeScript fondamentaux du framework Bonsai**
@@ -12,7 +12,7 @@
 ## 1. Objectifs
 
 > Le cycle de vie des composants, le protocole de transport (racine du noyau) et les metas sont traités
-> ailleurs ([feature.md §7](../3-couche-abstraite/feature.md#7-cycle-de-vie),
+> ailleurs ([feature.md §5](../3-couche-abstraite/feature.md#5-démarrage-et-dépendances),
 > [communication.md](../2-architecture/communication.md), [metas.md](../2-architecture/metas.md)).
 
 1. **Definir** la convention de prefixage des types (`T`, quand l'utiliser — §2)
@@ -36,7 +36,7 @@ rembourse integralement en DX — et ce pour **chaque composant** :
 |  1. DECLARER LES TYPES (le contrat)                              |
 |                                                                   |
 |     Feature / Entity                                              |
-|       -> TChannelDefinition : Commands, Events, Requests types    |
+|       -> TChannelDefinition : Commands, Events, Queries types     |
 |       -> Entity<TStructure> : etat jsonifiable (TJsonSerializable) |
 |                                                                   |
 |     View / Behavior (pattern modulaire ADR-14)                  |
@@ -48,12 +48,12 @@ rembourse integralement en DX — et ce pour **chaque composant** :
 |  2. IMPLEMENTER LA CLASSE                                         |
 |     Feature -> extends Feature<TEntityClass, TChannelDef, TSelfNS>|
 |            -> static channel: TChannelToken<TChannelDef, TSelfNS> |
-|            -> handlers onXxxCommand/Request auto-decouverts (I48) |
+|            -> handlers onXxxCommand/Query auto-decouverts (I48)   |
 |     View   -> extends View<TViewContract<F, U>>                   |
 |            -> implements TViewCallbacks<TVC>  (I88, ADR-14)     |
 |                                                                   |
 |  3. RECOMPENSE AUTOMATIQUE                                        |
-|     Feature -> handlers onXXXCommand/Event/Request auto-types     |
+|     Feature -> handlers onXXXCommand/Event/Query auto-types       |
 |            -> payloads types, retours verifies compile-time        |
 |     View   -> handlers on{NS}{Event}Event imposes par TVC.features|
 |            -> handlers on{UIKey}{DomEvent} imposes par TVC.ui     |
@@ -158,11 +158,11 @@ Conversion d'un nom de message en nom de méthode handler :
  * "addItem" + "Command" -> "onAddItemCommand"
  *
  * Utilise les template literal types pour generer les noms
- * de methodes a partir des 3 suffixes (Command, Event, Request).
+ * de methodes a partir des 3 suffixes (Command, Event, Query).
  */
 type ExtractHandlerName<
   TMessageName extends string,
-  TSuffix extends "Command" | "Event" | "Request"
+  TSuffix extends "Command" | "Event" | "Query"
 > = `on${Capitalize<TMessageName>}${TSuffix}`;
 
 /**
@@ -196,34 +196,38 @@ les signatures de handlers attendues, que `implements` impose. Types **exportés
 et testés** (`packages/feature/src/types.ts`) :
 
 ```typescript
-// Handlers Command REQUIS — un par clé de TDef["commands"], sans metas (strate 0)
-type TCommandCallbacks<TDef extends TChannelDefinition> = {
+// Handlers Command REQUIS — un par clé de TDef["commands"] ; reçoivent le contexte de l'unité
+type TCommandCallbacks<TDef extends TChannelDefinition, TEntity extends Entity<TJsonSerializable>> = {
   [K in keyof TDef["commands"] & string as `on${Capitalize<K>}Command`]: (
-    payload: TDef["commands"][K]
+    payload: TDef["commands"][K],
+    ctx: TFeatureContext<TDef, TEntity>
   ) => void;
 };
 
-// Handlers Request REQUIS — un par clé de TDef["requests"]
-type TRequestCallbacks<TDef extends TChannelDefinition> = {
-  [K in keyof TDef["requests"] & string as `on${Capitalize<K>}Request`]: (
-    params: TDef["requests"][K]["params"]
-  ) => TDef["requests"][K]["result"];
+// Handlers Query REQUIS — un par clé de TDef["queries"] ; contexte en lecture seule (A3.g)
+type TQueryCallbacks<TDef extends TChannelDefinition> = {
+  [K in keyof TDef["queries"] & string as `on${Capitalize<K>}Query`]: (
+    params: TDef["queries"][K]["params"],
+    ctx: TFeatureQueryContext
+  ) => TDef["queries"][K]["result"];
 };
 
 // Handlers Event cross-Channel REQUIS — un par (token, event) de `listens`.
 // UnionToIntersection est OBLIGATOIRE (sans lui, TS produit une union que
 // `implements` refuse — TS2422). Tous ces handlers sont requis (pas de
-// Partial<>) : `listens` ne déclare que les Channels réellement écoutés,
-// donc chaque event qu'ils exposent doit avoir un handler.
+// Partial<>) : `listens` ne déclare que les Channels réellement écoutés.
 type TListenCallbacks<
-  TListens extends readonly TChannelToken<TChannelDefinition, string>[]
+  TListens extends readonly TChannelToken<TChannelDefinition, string>[],
+  TDef extends TChannelDefinition,
+  TEntity extends Entity<TJsonSerializable>
 > = UnionToIntersection<
   TListens[number] extends infer Tok
     ? Tok extends TChannelToken<infer DEF, infer NS>
       ? {
           [E in keyof DEF["events"] &
             string as `on${Capitalize<NS & string>}${Capitalize<E>}Event`]: (
-            payload: DEF["events"][E]
+            payload: DEF["events"][E],
+            ctx: TFeatureContext<TDef, TEntity>
           ) => void;
         }
       : never
@@ -231,10 +235,8 @@ type TListenCallbacks<
 >;
 
 // Le contrat complet d'une Feature concrète (ADR-09, I92) :
-type TFeatureCallbacks<
-  TDef extends TChannelDefinition,
-  TListens extends readonly TChannelToken<TChannelDefinition, string>[] = readonly []
-> = TCommandCallbacks<TDef> & TRequestCallbacks<TDef> & TListenCallbacks<TListens>;
+type TFeatureCallbacks<TDef, TListens = readonly [], TEntity = Entity<TJsonSerializable>> =
+  TCommandCallbacks<TDef, TEntity> & TQueryCallbacks<TDef> & TListenCallbacks<TListens, TDef, TEntity>;
 ```
 
 ```typescript
@@ -243,22 +245,23 @@ type UnionToIntersection<U> =
   (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never;
 ```
 
-> Pas de paramètre `metas` aujourd'hui (⏳ strate 1b, ADR-04). `TListenCallbacks`
+> Le second paramètre est le contexte de l'unité ; `ctx.metas` est ⏳ strate 1b (ADR-04). `TListenCallbacks`
 > dérive du tuple renvoyé par `get listens()` (I93). Les handlers de notification
 > Entity `on{Key}EntityUpdated` n'ont pas de type d'imposition : une clé inconnue
 > est détectée au bootstrap seulement (I53, I96). Voir
-> [feature.md §3bis](../3-couche-abstraite/feature.md#3bis-tfeaturecallbacks-et-tstrictfeatureclass-adr-09)
+> [feature.md §7](../3-couche-abstraite/feature.md#7-contrats-typés)
 > pour l'exemple complet et [reference/invariants.md I92](../reference/invariants.md)
 > pour la portée exacte de la garantie (compile-time uniquement).
 >
 > Côté View, le type frère est `TChannelCallbacks<F extends TFeatureContract>`
 > (même fichier) — dérive les handlers `on{NS}{Event}Event` requis depuis
 > `features[ns].listens`, en s'appuyant sur `TEventPayloadFor<F, K>` pour
-> typer chaque payload.
+> typer chaque payload ; `TViewCallbacks<TVC>` (`@bonsai/view`) y ajoute le
+> contexte `TEventContext` et les handlers de faits `(fact, ctx: TFactContext)`.
 
 ### 5.3 Infer et conditional types — extraction des payloads
 
-Un consommateur (View, Composer, Behavior) nomme un message par une clé
+Un consommateur (View, Composer) nomme un message par une clé
 namespacée `"ns:nom"`. Quatre extracteurs en déduisent le type depuis son
 `TFeatureContract`, en passant par le token de la Feature référencée :
 
@@ -266,8 +269,8 @@ namespacée `"ns:nom"`. Quatre extracteurs en déduisent le type depuis son
 // Décompose "ns:nom", lit TDef via F[ns]["feature"]["channel"], renvoie le type
 type TCommandPayloadFor<F extends TFeatureContract, K extends string>;  // commands[nom]
 type TEventPayloadFor<F extends TFeatureContract, K extends string>;    // events[nom]
-type TRequestParamsFor<F extends TFeatureContract, K extends string>;   // requests[nom]["params"]
-type TRequestResultFor<F extends TFeatureContract, K extends string>;   // requests[nom]["result"]
+type TQueryParamsFor<F extends TFeatureContract, K extends string>;     // queries[nom]["params"]
+type TQueryResultFor<F extends TFeatureContract, K extends string>;     // queries[nom]["result"]
 
 // Exemple de mécanique (TCommandPayloadFor)
 type TCommandPayloadFor<F extends TFeatureContract, K extends string> =
@@ -280,7 +283,7 @@ type TCommandPayloadFor<F extends TFeatureContract, K extends string> =
     : never;
 ```
 
-Une clé hors contrat donne `never` : l'appel `trigger(K, payload)` est alors
+Une clé hors contrat donne `never` : l'appel `ctx.trigger(K, payload)` est alors
 rejeté à la compilation (I77, I87).
 
 ```typescript
@@ -305,14 +308,14 @@ type TCartState = TEntityState<CartEntity>;
 | --- | --- | --- |
 | **I46** | `TStructure` d'une Entity est contraint à `TJsonSerializable` — pas de classes, pas de fonctions ; les cycles de valeurs ne sont pas détectables par le type ([registre](../../invariants/P1.yaml), ADR-10) | → [Entity §2](../3-couche-abstraite/entity.md) |
 | **I47** | _Fusionné dans I73_ — identifiant conservé comme alias ([registre](../../invariants/P9.yaml)) | → [reference/invariants.md I73](../reference/invariants.md) |
-| **I48** | Les handlers sont des méthodes conventionnelles `on<Name><Command\|Event\|Request>` — le framework les découvre et les câble automatiquement (ADR-09) | → [Feature §4](../3-couche-abstraite/feature.md) |
+| **I48** | Les handlers sont des méthodes conventionnelles `on<Name><Command\|Event\|Query>` — le framework les découvre et les câble automatiquement (ADR-09) | → [Feature §4](../3-couche-abstraite/feature.md) |
 | **I49** | _Fusionné dans I74_ — identifiant conservé comme alias ; précision conservée : pas de wrapper `namespace` TypeScript ([registre](../../invariants/P9.yaml)) | → [reference/invariants.md I74](../reference/invariants.md) |
 | **I50** | _Fusionné dans I15_ — identifiant conservé comme alias ([registre](../../invariants/P2.yaml)) | → [reference/invariants.md I15](../reference/invariants.md) |
 | **I51** | Les mutations de l'Entity déclenchent des notifications auto-découvertes `on<Key>EntityUpdated` (per-key) et/ou `onAnyEntityUpdated` (catch-all) sur la Feature propriétaire — le framework les câble automatiquement (ADR-09). Mécanisme livré et détaillé par **I96** (`reference/invariants.md`) — dispatch, ordre, isolation des erreurs. | → [Entity §4](../3-couche-abstraite/entity.md), [reference/invariants.md I96](../reference/invariants.md) |
-| **I52** | L'Entity peut exposer des **méthodes query** (lecture seule, pures) pour servir les request handlers de la Feature — ces méthodes ne modifient jamais `this.state` (ADR-10) | → [Entity §5](../3-couche-abstraite/entity.md) |
+| **I52** | L'Entity peut exposer des **méthodes query** (lecture seule, pures) pour servir les handlers de Query de la Feature — ces méthodes ne modifient jamais `this.state` (ADR-10) | → [Entity §5](../3-couche-abstraite/entity.md) |
 | **I53** | Un handler `on<Key>EntityUpdated` où `<Key>` ne correspond pas à une clé de `TStructure` est une erreur. **La détection compile-time via `TEntityKeyHandlers<TStructure>` n'existe pas** (type jamais exporté) — seule la détection **runtime au bootstrap** est livrée (`hardInvariant`, voir **I96** dans `reference/invariants.md`). | → [Entity §6](../3-couche-abstraite/entity.md), [reference/invariants.md I96](../reference/invariants.md) |
-| **I54** | **⏳ Cible V0.9.4, contrôle runtime.** L’infrastructure établit et dérive les métadonnées ; le code applicatif les reçoit et les propage explicitement sans les fabriquer ni les remplacer. Le contexte d’une opération corrélable est conservé jusqu’au résultat, à l’annulation ou à la clôture de l’occurrence de vie, même après échec. La Query restitue son contexte à l’auteur ; oubli de propagation et rappel de minuterie ne créent pas une nouvelle origine. La propagation explicite conserve le choix compatible d’ADR-04, mais les signatures et le type opaque restent à spécifier. Aucun contexte causal contrôlé n’est livré. | → [Registre P4](../../invariants/P4.yaml), [Metas](../2-architecture/metas.md) |
-| **I55** | **⏳ Cible V0.9.4, contrat runtime G7.** L’erreur technique d’une Query se propage à son auteur jusqu’au traitement extérieur ou au démarrage ; l’unité englobante échoue, sans réponse de substitution ni récupération locale permettant sa validation. `null` reste possible uniquement comme résultat métier déclaré (I29). L’ancien contrat de l’ADR-02 est incompatible et n’a plus autorité ; les tests historiques vérifiant son absorption ne prouvent pas cette cible. | → [Registre P3](../../invariants/P3.yaml), [Théorie G7](../../theorie.md#13-garanties-de-linfrastructure-de-communication) |
+| **I54** | **⚠️ Partiel.** L’infrastructure établit et dérive les contextes causaux (livré, G8 : le noyau les crée, les gèle et les conserve pour un résultat corrélé ; une Query rend à l’auteur son contexte) ; le code applicatif les recevrait et les propagerait sans les fabriquer (`ctx.metas`, ⏳ strate 1b, ADR-04). | → [Registre P4](../../invariants/P4.yaml), [Metas](../2-architecture/metas.md) |
+| **I55** | **✅ Livré (G7).** L’erreur technique d’une Query se propage à son auteur ; l’unité englobante échoue, sans réponse de substitution ni récupération locale (`UNRECOVERABLE`). `null` reste possible uniquement comme résultat métier déclaré (I29). | → [Registre P3](../../invariants/P3.yaml), [Théorie G7](../../theorie.md#13-garanties-de-linfrastructure-de-communication) |
 | **I56** | `onInit()` de chaque Feature est appelé avant la création des Foundations — la couche abstraite est intégralement active avant la couche concrète (ADR-07, principe d'ordre de bootstrap) | → [Lifecycle](../2-architecture/lifecycle.md) |
 
 ---

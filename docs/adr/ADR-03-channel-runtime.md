@@ -1,52 +1,55 @@
-# ADR-03 — Sémantique runtime du Channel
+# ADR-03 — Sémantique d'exécution des messages
 
 | Champ | Valeur |
 | --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Invariants impactés** | I10, I11, I27, I65, I66 |
-| **Livré** | ⚠️ partiel — lanes livrées ; `ErrorReporter` (I65), rejet avant `start()` (I66) et nettoyage au démontage ⏳ |
-| **Spec** | [communication.md](../spec/2-architecture/communication.md) |
+| **Livré** | ⚠️ partiel — unités, file différée, ordre et retrait des abonnements livrés par `Root` ; `ErrorReporter` (I65) ⏳ : les échecs passent par la trace et `reportToConsole` (O2) |
+| **Spec** | [communication.md §8](../spec/2-architecture/communication.md#8-sémantique-dexécution) · théorie G5, G7, D8, D9, annexe C |
 
 ## Contexte
 
-Le typage (ADR-14) élimine la plupart des erreurs de contrat à la compilation :
-handler manquant, payload incorrect, Channel non déclaré. Restent les cas que le
-compilateur ne voit pas : contournement du typage, chargement paresseux (ADR-27),
-exceptions dans les handlers, ordre et nettoyage des abonnements.
+Le typage (ADR-14) élimine la plupart des erreurs de contrat à la compilation.
+Restent les cas que le compilateur ne voit pas : contournement du typage, cible
+absente, exception dans un handler, ordre des abonnés, abonnements d'un
+composant détruit. Il faut une seule règle d'échec et un ordre déterministe.
 
 ## Décision
 
+**La frontière d'échec est l'unité de validation** (G7) : chaque délivrance
+s'exécute dans sa propre unité ; si elle échoue, ses mutations, émissions,
+créations et Commands préparées sont annulées, et ses effets ne sont pas engagés.
+
 | Situation | Comportement |
 | --- | --- |
-| Second `handle()` ou `reply()` pour le même message | `DuplicateHandlerError` au bootstrap (I10) |
-| `trigger()` sans handler | `NoHandlerError`, en dev comme en prod |
-| `emit()` sans listener | silencieux : un fait sans observateur est valide |
-| Listener qui throw | `ListenerError` journalisée ; les listeners suivants s'exécutent |
-| `request()` sans replier | `null` (ADR-02) |
-| Replier qui throw | `null` ; l'erreur n'est **jamais silencieuse** : journalisée, puis remontée à un `ErrorReporter` injectable (I65) |
-| Ordre des listeners | séquentiel, dans l'ordre d'abonnement, synchrone |
-| Replay | aucun : un nouveau listener ne reçoit pas les Events passés |
-| Nettoyage | automatique : le framework désabonne au démontage du composant, jamais le développeur |
+| Command vers un namespace absent ou un message non déclaré | Échec de l'unité (`UNKNOWN_TARGET`, `UNDECLARED_MESSAGE`) |
+| Event sans abonné | Silencieux : un fait sans observateur est valide |
+| Handler qui lève | Échec de **sa** unité seulement ; l'unité émettrice, déjà validée, reste |
+| Query en échec | Échec de l'unité de l'auteur (ADR-02) |
+| Ordre des abonnés | Fixé à l'émission (D8, C.6), stable ; chaque abonné dans sa propre unité |
+| Profondeur causale au-delà de `causalBound` | Message non délivré, abandon tracé (D9) |
+| Replay | Aucun : un nouvel abonné ne reçoit pas les Events passés |
+| Abonnements d'un composant détruit | Retirés avec lui ; une délivrance en file vers lui est abandonnée (G3, C.6) |
 
-Après chaque `emit()`, le Channel diffuse aussi l'événement technique `any`
-(`{ event, changes }`), consommé par la souscription des Views (ADR-26).
+Les messages différés (Commands, Events, notifications locales) sont délivrés
+**après** la validation de l'unité qui les produit, d'un trait (ADR-35).
 
-**`start()` est la frontière de confiance** (I66). Avant, aucune garantie ; après,
-les garanties compile-time contournables sont revérifiées. Un message envoyé avant
-`start()` doit être rejeté.
+**Le démarrage est la frontière de confiance** (I66) : `Application.start()`
+revérifie le Manifest avant de créer la racine, et un composant n'existe
+qu'après lui ; aucun message ne peut donc précéder `start()`.
 
-Implémentation interne : un `RxJS.Subject` par event. Le choix de bibliothèque
-n'est pas exposé.
+Les échecs sont écrits dans la **trace** de la racine (`onTrace`) ; en
+développement, `reportToConsole` signale ceux que personne ne reçoit.
 
 ## Alternatives rejetées
 
-- **Comportement « no handler » configurable** (`throw` / `warn` / `silent`) — ajoute un réglage sans cas d'usage : un Command sans handler est toujours un bug.
-- **Timeout de Request** — sans objet depuis la Request synchrone (ADR-02).
-- **Listeners parallèles** ou **priorités de listener** — ordre imprévisible, ou couplage entre listeners qui devraient s'ignorer.
-- **Replay des Events** — les Events sont fire-and-forget ; l'état durable vit dans l'Entity.
+- **Comportement « sans handler » configurable** (`throw` / `warn` / `silent`) — un Command sans destinataire est toujours un bug.
+- **Isoler chaque handler en journalisant son erreur** (`ListenerError`, `null` de Query, strate 0) — valide des traitements à moitié faits ; contraire à G7.
+- **Abonnés en parallèle** ou **priorités d'abonné** — ordre imprévisible, ou couplage entre abonnés qui devraient s'ignorer.
+- **Replay des Events** — l'état durable vit dans l'Entity.
 
 ## Conséquences
 
-- Un listener défaillant ne casse pas la chorégraphie, mais l'erreur est visible.
-- ⚠️ Aujourd'hui les erreurs de replier et de listener ne passent que par `console.error` : l'`ErrorReporter` et le mode strict (throw en test) restent à livrer.
-- ⚠️ **Fuite connue** : `Composer#detachCurrent()` libère la référence à la View, mais ne désabonne ni ses listeners Channel (`ch.listen`) ni ses listeners DOM, et n'appelle pas `onDetach()`. Une View remplacée continue de réagir aux Events.
+- Un abonné défaillant ne casse ni l'émetteur ni les autres abonnés, et l'échec est visible dans la trace.
+- Les tests restent synchrones : après une admission, toutes les unités qui en découlent sont terminées.
+- L'`ErrorReporter` injectable et le hook `onError()` restent à livrer.

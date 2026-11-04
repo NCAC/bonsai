@@ -6,20 +6,19 @@
  * ║  La strate 0 n'est PAS livrée tant que ce test ne passe pas.   ║
  * ╚═══════════════════════════════════════════════════════════════════╝
  *
- * Scénario complet avec DOM :
+ * Full scenario with a DOM:
  *
  *   1. new Application({ features, foundation, document }).start()
- *   2. CartView est créée par MainComposer dans l'emplacement de AppFoundation
- *   3. Simuler click sur @ui.addButton
- *      → ADR-15 auto-dérive → CartView.onAddButtonClick()
- *      → CartView.trigger(cart:addItem, { productId: "123", qty: 1 })
- *   4. CartFeature.onAddItemCommand() est appelé
- *      → this.entity.mutate("addItem", draft => { draft.items.push(...) })
- *      → onAnyEntityUpdated() (changedKeys = ["items", "total"])
- *      → this.emit("itemAdded", { item })
- *   5. CartView écoute cart:itemAdded
- *      → handler met à jour la projection N1 : this.getUI("itemCount").text(count)
- *   6. Assertion DOM : le compteur d'items est mis à jour
+ *   2. MainComposer resolves CartView; the kernel creates its part in AppFoundation's slot
+ *   3. Click on @ui.addButton, admitted as a fact of the part
+ *      → CartView.onAddButtonClick(fact, ctx)
+ *      → ctx.trigger("cart:addItem", { productId: "prod", qty: 1, price: 9.99 })
+ *   4. CartFeature.onAddItemCommand(payload, ctx), in its own validation unit
+ *      → ctx.mutate("addItem", draft => { draft.items.push(...) })
+ *      → ctx.emit("itemAdded", { item })
+ *   5. CartView.onCartItemAddedEvent(payload, ctx) queries the cart
+ *      → N1 projection: this.getUI("itemCount").text(count), engaged after validation
+ *   6. DOM assertion: the item count is updated, and no unit failed
  *
  * Invariants prouvés (par transitivité) :
  *   I1, I10, I11, I22, I25, I31, I39, I48, I51

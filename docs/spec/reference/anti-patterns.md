@@ -1,8 +1,6 @@
 # Anti-patterns
 
-> ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
-
-> 🗑️ **La classe `Channel` est retirée (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau (`Root`, `@bonsai/kernel` ; [communication.md](../2-architecture/communication.md)). Le mot « Channel » ne désigne plus que le **contrat typé** d'une Feature (`TChannelDefinition`, `TChannelToken`). Les lignes qui décrivent la classe sont historiques.
+> 🟢 **Aligné sur la théorie V0.9.5 et sur le code livré (4 novembre 2026).** La colonne « Détection » distingue ce que le compilateur ou le noyau refusent aujourd'hui de ce qui reste affaire de revue. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
 
 > **Les patterns explicitement INTERDITS dans Bonsai**
 
@@ -18,7 +16,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 >
 > - `[Compile]` — erreur TypeScript avant l'exécution. Zéro coût runtime.
 > - `[Bootstrap]` — erreur levée au démarrage (`app.start()`). Bloque l'application si non corrigée.
-> - `[Runtime]` — erreur ou warning pendant l'exécution, avec contexte causal complet.
+> - `[Runtime]` — refus du noyau pendant l'exécution (`TransportError`, code stable) : l'unité de l'auteur échoue et est défaite (G7), l'échec est écrit dans la trace avec son contexte causal.
 > - `[Code review]` — pattern non détectable mécaniquement en v1. À enforcer par convention et outillage de lint.
 
 ---
@@ -36,22 +34,22 @@ et **détection** (compile-time, bootstrap ou runtime).
 9. [Undeclared Channel Usage](#-undeclared-channel-usage)
 10. [Stateful View / Stateful Behavior](#-stateful-view--stateful-behavior-domain-state-ou-state-ad-hoc)
 11. [Excessive View Inheritance](#-excessive-view-inheritance)
-12. [Async Replier](#-async-replier)
+12. [Async Query Handler](#-async-query-handler)
 13. [Async in Concrete Layer](#-async-in-concrete-layer)
 
 ---
 
 ### ❌ Smart View
 
-**Description** : View qui orchestre le métier (écoute Event → déclenche Command cross-domain).
+**Description** : View qui orchestre le métier (reçoit un Event → adresse une Command).
 
 **Pourquoi c'est dangereux** : La View devient un orchestrateur implicite, la causalité métier y transite.
 
-**Viole** : I13
+**Viole** : I13, D18
 
-**Détection** : `[Code review]` — le pattern est légal syntaxiquement (une View _peut_ listen ET trigger). C'est la sémantique (décision métier dans le handler `listen`) qui est interdite. À enforcer par convention et code review.
+**Détection** : `[Compile]` + `[Runtime]` — le contexte d'un handler d'Event (`TEventContext`) n'a pas de `trigger` : l'appel ne compile pas. Un contournement (`as any`) est refusé par le noyau (`NOT_AUTHORIZED`) : seule une admission indépendante d'un fait du DOM donne le droit de commander (D18, C.4). Reste `[Code review]` : une décision métier prise dans le handler d'un fait (calcul, branchement sur l'état du domaine) avant la Command.
 
-**Alternative** : La View écoute des Events pour se mettre à jour (projection pure), elle trigger des Commands sur demande utilisateur. Jamais de logique métier dans la View.
+**Alternative** : La View reçoit des Events pour projeter (`getUI`), et commande depuis le handler d'un fait du DOM. La décision métier est dans la Feature.
 
 ---
 
@@ -61,14 +59,14 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 **Pourquoi c'est interdit** :
 
-- Les Features ne possèdent pas `trigger()` — seuls les Views/Behaviors l'utilisent (I25)
+- Une Feature n'adresse jamais de Command : son contexte n'a pas de `trigger` (D17, I25)
 - Les Features communiquent via emit (Events) + listen, jamais via Commands
 - Crée un couplage impératif entre Features
 - Détruit l'autonomie chorégraphique
 
 **Viole** : I25, ADR-01
 
-**Détection** : `[Compile]` — `trigger()` n'est pas disponible sur le type `Feature`. Toute tentative génère une erreur TypeScript.
+**Détection** : `[Compile]` + `[Runtime]` — `TFeatureContext` n'a pas de `trigger` ; un contournement est refusé par le noyau (`NOT_AUTHORIZED` : une Feature n'est pas un composant de l'interface).
 
 **Alternative** : Feature A émet un Event (emit) sur son propre Channel, Feature B écoute cet Event (listen) et réagit de manière autonome.
 
@@ -86,7 +84,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 **Viole** : I1
 
-**Détection** : `[Compile]` — `emit()` est typé par `TChannel` (le Channel propre). Tenter d'émettre un événement non déclaré dans `TChannel['events']` produit une erreur TypeScript.
+**Détection** : `[Compile]` + `[Runtime]` — `ctx.emit()` n'accepte que les clés de `TChannel['events']` du Channel propre, et le noyau émet toujours sur le Channel de l'auteur : un Event absent de son token est refusé (`UNDECLARED_MESSAGE`, D16), une émission sans Channel propre aussi (`NOT_OWNER`).
 
 **Alternative** : Feature A émet sur SON propre Channel, Feature B écoute si elle le souhaite.
 
@@ -100,7 +98,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 **Viole** : I10
 
-**Détection** : `[Bootstrap]` — le registre Command Lane n'accepte qu'un seul handler. Un deuxième enregistrement lève `DuplicateHandlerError` : `[I10] {namespace} — Command "{namespace}:{command}" already has a handler`.
+**Détection** : `[Compile]` + `[Bootstrap]` — impossible par construction : une Command appartient au Channel d'une seule Feature (un namespace = une Feature, I21), et son handler est la méthode `on{Cmd}Command`, unique par nom. Deux Channels vivants du même namespace dans une racine sont refusés (`DUPLICATE_NAMESPACE`) ; un manifest littéral ne peut pas porter deux fois la même clé (TS1117).
 
 **Alternative** : Un seul handler par Command. Si plusieurs composants doivent réagir, utiliser un Event (1:N) au lieu d'un Command (1:1).
 
@@ -118,9 +116,9 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 **Viole** : I6
 
-**Détection** : `[Compile]` — `entity` est un getter `protected` de la Feature : tout accès externe produit `TS2445` (« Property 'entity' is protected and only accessible within class 'Feature' and its subclasses »). Les types `View`, `Behavior`, `Composer` n'ont pas de propriété `entity`. Preuve : `tests/types/strate-0/encapsulation.types.test.ts`.
+**Détection** : `[Compile]` + `[Runtime]` — `entity` est un getter `protected` de la Feature : tout accès externe produit `TS2445`. Les types `View`, `Composer` n'ont pas de propriété `entity`. À l'exécution, `entity.state` n'est lisible que pendant un handler de la Feature, et l'état n'est modifiable que par `ctx.mutate`. Preuves : `tests/types/strate-0/encapsulation.types.test.ts`, `tests/unit/domain/feature.test.ts`.
 
-**Alternative** : La Feature expose le state via `reply` (C4), les consommateurs utilisent `request` (C5).
+**Alternative** : La Feature expose son état par ses handlers de Query (C4) ; les consommateurs l'interrogent par `ctx.query` (C5).
 
 ---
 
@@ -152,9 +150,9 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 **Viole** : principe de traçabilité des metas (cf. [metas.md](../2-architecture/metas.md) — ⏳ cible strate 1b, non livré)
 
-**Détection** : `[Code review]` — les handlers reçoivent `(payload, metas)` explicitement (ADR-04), mais les metas servent **exclusivement** à la traçabilité et à la propagation causale. Tout branchement conditionnel (`if (metas.origin...)`, `switch(metas.correlationId)`) dans la logique métier est un signal d'alarme.
+**Détection** : `[Code review]` — le contexte causal est créé par le noyau (G8) et n'est pas encore exposé au code applicatif (`ctx.metas`, strate 1b, ADR-04). Quand il le sera, tout branchement (`if (metas.origin…)`) dans la logique métier sera un signal d'alarme.
 
-**Alternative** : La logique métier branche sur le payload du message, jamais sur les metas. Les metas sont propagées telles quelles via `{ metas }` dans `emit()`, `request()`, `mutate()`.
+**Alternative** : La logique métier branche sur le payload du message, jamais sur les metas.
 
 ---
 
@@ -173,13 +171,13 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 **Détection** : `[Compile]` — `Root` n'est pas exporté par `@bonsai/core`, seule surface applicative : `import { Root } from "@bonsai/core"` produit `TS2305` (« Module '"@bonsai/core"' has no exported member 'Root' »). `Root` est exporté par `@bonsai/kernel` pour l'usage inter-packages du framework, et l'importer depuis du code applicatif viole la convention d'import (cf. [distribution.md §4](../2-architecture/distribution.md#4-topologie-des-packages-adr-28)) — `[Code review]`. Preuve : `tests/types/strate-0/encapsulation.types.test.ts`.
 
-**Alternative** : Déclarer les Channels externes dans `get listens()`/`get queries()` (Feature, ADR-09) ou dans `get features()` (View/Behavior, ADR-14).
+**Alternative** : Déclarer les Channels externes dans `get listens()`/`get queries()` (Feature, ADR-09) ou dans `get features()` (View, Composer, ADR-14), et passer par le contexte du handler.
 
 ---
 
 ### ❌ Undeclared Channel Usage
 
-**Description** : Utiliser un Channel dans le corps d'un composant sans l'avoir déclaré dans sa définition (`get listens()`/`get queries()` pour une Feature, `get features()` pour une View/Behavior).
+**Description** : Utiliser un Channel dans le corps d'un composant sans l'avoir déclaré dans sa définition (`get listens()`/`get queries()` pour une Feature, `get features()` pour une View ou un Composer).
 
 **Pourquoi c'est dangereux** :
 
@@ -189,7 +187,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 **Viole** : I14, I16, I70
 
-**Détection** : `[Compile + Bootstrap]` partielle — compile : `View.trigger()`/`View.request()` n'acceptent qu'une clé référencée par `get features()` (I77) ; ⚠️ `Feature.request()` accepte **n'importe quel** `TChannelToken` (I79) : `get queries()` n'est pas comparé à l'appel, donc un Channel non déclaré y compile (ADR-01). Bootstrap (Phase 0c) : si `listens`/`queries` référence un namespace absent du manifest, `Application.start()` lève une `BonsaiNamespaceError` — message réel (`packages/application/src/bonsai-application.ts`) : `Feature "{ownNs}" declares unknown channel "{ref}". Known namespaces: {...}` — pas le message générique montré dans les versions antérieures de cette entrée.
+**Détection** : `[Compile + Bootstrap]` partielle — compile : `ctx.trigger()`/`ctx.query()` d'une View ou d'un Composer n'acceptent qu'une clé référencée par `get features()` (I77) ; ⚠️ `ctx.query()` d'une Feature accepte **n'importe quel** `TChannelToken` (I79) et le noyau ne compare pas encore l'appel à `get queries()` : un Channel non déclaré y passe (I17, partiel). Bootstrap (Phase 0c) : si `listens`/`queries` référence un namespace absent du manifest, `Application.start()` lève une `BonsaiNamespaceError` — message réel (`packages/application/src/bonsai-application.ts`) : `Feature "{ownNs}" declares unknown channel "{ref}". Known namespaces: {...}` — pas le message générique montré dans les versions antérieures de cette entrée.
 
 **Alternative** : Toujours déclarer le Channel dans `get listens()`/`get queries()`/`get features()`.
 
@@ -215,7 +213,7 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 > **⚠️ Critère de migration** : si un localState doit être observé par un autre composant (autre View, Behavior, Feature), il **DOIT** être migré vers Feature + Entity. Le localState est strictement intra-View.
 
-**Détection** : ⏳ **Cible, non livré** — `localState` lui-même est une cible strate 2a (cf. [view.md §7](../4-couche-concrete/view.md)), donc aucun garde-fou compile-time ou bootstrap contre les propriétés `this.xxx` ad hoc n'existe aujourd'hui. `[Code review]` reste le seul mécanisme réel en attendant.
+**Détection** : `[Code review]` — `localState` est une cible strate 2a ([ADR-17](../../adr/ADR-17-local-state.md)) ; aucun garde-fou contre les propriétés `this.xxx` ad hoc n'existe. Une propriété mutable de View n'est pas journalisée : l'échec d'une unité ne la restaure pas (G7 ne la couvre pas).
 
 ---
 
@@ -223,13 +221,11 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 **Description** : Créer des sous-classes de View pour des variations mineures (layout, config) au lieu d'utiliser les mécanismes prévus : View + options (ADR-21) pour la réutilisation d'un même composant, Behavior (ADR-21) pour l'ajout de capacités orthogonales.
 
-> ⚠️ **ADR-21 (View + options) n'a plus de support livré ni de remplaçant documenté** —
-> `TResolveResult.options` a disparu avec ADR-14 (`TResolveResult` livré est
-> `{ view, rootElement }` uniquement). L'algorithme de décision ci-dessous cite
-> toujours « Q1 : View + options » comme option légitime alors qu'aucun
-> mécanisme ne permet aujourd'hui de personnaliser une View par des options
-> injectées par le Composer — ne pas présumer que ce chemin est utilisable
-> avant qu'un ADR ne redéfinisse sa forme (cf. R08/R19, composer.md).
+> ⚠️ **« View + options » est partiellement livré** : un Composer passe des
+> **paramètres de création** à une View (`{ view, key, params }` dans
+> `TComposition`, lus par `this.params` dans un handler) ; la surcharge des
+> `uiElements` ou d'autres options de la View par le Composer (ADR-21) reste
+> une cible strate 2.
 
 **Pourquoi c'est dangereux** :
 
@@ -251,33 +247,32 @@ et **détection** (compile-time, bootstrap ou runtime).
 
 ---
 
-### ❌ Async Replier
+### ❌ Async Query Handler
 
-**Description** : Un replier (handler `reply`) qui effectue un appel asynchrone (`fetch`, `await`, `Promise`) pour construire sa réponse.
+**Description** : Un handler de Query (`on{Name}Query`) qui effectue un appel asynchrone (`fetch`, `await`, `Promise`) pour construire sa réponse.
 
 **Pourquoi c'est interdit** :
 
-- Un `request()` est une **lecture synchrone d'un état déjà matérialisé** dans une Entity. Si le replier a besoin d'être async, c'est que l'état n'est pas encore dans l'Entity — problème d'ordre de bootstrap (ADR-07), pas de sémantique de `request`
-- Détruit la sémantique du tri-lane : `trigger()` = `void`, `emit()` = `void`, `request()` = `T` (immédiat)
-- Transforme la Request Lane en canal de side-effects déguisé
-- Rend les selectors et templates dépendants de `await` inutiles
+- Une Query est une **lecture synchrone d'un état déjà matérialisé** (G5) : elle ne rééchantillonne pas l'hôte (C.5). Si le handler a besoin d'être async, l'état n'est pas encore dans l'Entity — problème d'ordre de démarrage (C.1), pas de sémantique de Query
+- Détruit la sémantique du tri-lane : `trigger()` = `void`, `emit()` = `void`, `query()` = `T` (immédiat)
+- Un handler de Query est en lecture seule (A3.g) : il ne peut produire aucun effet
 
-**Viole** : ADR-02 (révisé par ADR-02), I29, I64
+**Viole** : ADR-02, G5, I29, I64
 
-**Détection** : `[Compile]` **partiel**, pas absolu — ne pas sur-vendre (I64 est explicite : « le type system ne peut pas l'interdire mécaniquement en v1 »). Ce qui **est** attrapé : marquer le handler `async` change son type de retour en `Promise<T>`, ce qui viole la signature exigée par `implements TFeatureCallbacks<TDef, TListens>` (`(params) => T`, ADR-09) → `TS2416`. Ce qui **n'est pas** attrapé : un handler non-`async` qui déclenche un `fetch()` fire-and-forget sans l'attendre, ou toute I/O dont le résultat n'est pas le retour de la fonction — la signature reste valide, rien ne compile en erreur. D'où le recours à `[Code review]` + lint pour la classe complète de l'anti-pattern.
+**Détection** : `[Compile]` + `[Runtime]` partiels — marquer le handler `async` change son retour en `Promise<T>`, ce qui viole la signature exigée par `implements TFeatureCallbacks<…>` → `TS2416`. À l'exécution, un résultat de `fetch` utilisé plus tard ne peut plus rien faire : le contexte est hors de son unité (`NO_UNIT`, A5.a). Un `fetch()` lancé sans être attendu reste `[Code review]`.
 
-**Alternative** : Pré-charger la donnée via un handler Command (async, fire-and-forget) ou un listener Event, stocker dans l'Entity, puis le replier lit l'état synchrone.
+**Alternative** : Charger la donnée par une opération de la Feature dont le résultat revient comme un message (⏳ adaptateurs d'opérations, D7), la stocker dans l'Entity, puis la Query lit l'état synchrone.
 
 ```typescript
-// ❌ Anti-pattern : fetch dans le replier — attrapé par TS2416 (async → Promise<T>)
-async onTotalRequest(params: void): Promise<number> {
-  const response = await fetch('/api/cart/total');
+// ❌ Anti-pattern : fetch dans le handler de Query — TS2416 (async → Promise<T>)
+async onTotalQuery(_params: null, _ctx: TFeatureQueryContext): Promise<number> {
+  const response = await fetch("/api/cart/total");
   return response.json();
 }
 
-// ✅ Pattern correct : donnée déjà dans l'Entity — strate 0, sans metas
-onTotalRequest(params: void): number | null {
-  return this.entity.query.getTotal(); // lecture synchrone
+// ✅ Pattern correct : la donnée est déjà dans l'Entity
+onTotalQuery(_params: null, _ctx: TFeatureQueryContext): number {
+  return this.entity.state.total; // lecture synchrone
 }
 ```
 
@@ -295,37 +290,35 @@ onTotalRequest(params: void): number | null {
 - Rend impossible la traçabilité causale (metas) : un `fetch` dans une View n'a pas de chaîne causale
 - Le résultat du `fetch` ne peut pas transiter par le Channel system — l'état résultant est invisible pour le reste de l'application
 
-**Viole** : ADR-02 (conséquence 1 et 2), I13, I30
+**Viole** : ADR-02 (conséquences 1 et 2), A5.a, I13, I30
 
-**Détection** : `[Code review]` + `[Lint]` — ce pattern n'est **pas détectable mécaniquement** au compile-time (TypeScript n'interdit pas `fetch()` dans une classe). Enforçable par :
+**Détection** : `[Runtime]` partiel + `[Code review]` — un contexte, `getUI` ou `params` utilisé après son unité (callback de `fetch`, de `setTimeout`) est refusé (`NO_UNIT`, A5.a) : rien de ce que fait le callback n'atteint le modèle. Le lancement lui-même n'est pas détectable au compile-time. Enforçable par :
 
 - Convention d'équipe et code review
 - Règle ESLint custom (future) : détecter `fetch`, `async`, `await`, `new Promise`, `setTimeout`, `setInterval` dans les fichiers `*.view.ts`, `*.behavior.ts`, `*.foundation.ts`, `*.composer.ts`
 
-**Alternative** : Toute opération async passe par `trigger()` qui délègue à une Feature. La Feature exécute l'async, mute son Entity, émet un Event. La View se met à jour via sa souscription.
+**Alternative** : La View commande (`ctx.trigger`) depuis le handler du fait ; la Feature décide, mute son Entity, émet un Event ; la View projette à la réception. Une opération réellement asynchrone de l'hôte (requête, minuterie) relève d'un adaptateur dont le résultat revient comme un message corrélé (D7, C.4 ; ⏳ non livré hors historique).
 
 ```typescript
 // ❌ Anti-pattern : fetch dans une View
 class ServiceListView extends View<TServiceListViewContract> {
-  async onRefreshButtonClick(event: MouseEvent): Promise<void> {
+  async onRefreshButtonClick(_fact: TFact): Promise<void> {
     const response = await fetch('/api/services'); // ⚠️ async dans une View !
     const services = await response.json();
     this.renderServices(services); // ⚠️ mutation directe sans Entity !
   }
 }
 
-// ✅ Pattern correct : délégation via trigger — clé namespacée flat (I80),
-// signature réelle sans metas (la View ne manipule jamais de metas, I54 ;
-// { metas } en option serait de toute façon une cible strate 1b non livrée)
+// ✅ Pattern correct : une Command depuis le handler du fait — clé plate (I80)
 class ServiceListView extends View<TServiceListViewContract> {
-  onRefreshButtonClick(event: MouseEvent): void {
-    this.trigger('services:refresh', undefined);
-    // fire-and-forget — la View sera notifiée via l'Event services:listLoaded
+  onRefreshButtonClick(_fact: TFact, ctx: TFactContext<TServiceListViewContract>): void {
+    ctx.trigger("services:refresh", null);
+    // la View projettera à la réception de l'Event services:listLoaded
   }
 }
 ```
 
-> **Cas limites tolérés** : les animations CSS (transitions, `requestAnimationFrame`) ne sont PAS concernées par cet anti-pattern — elles relèvent du rendu visuel, pas de la logique métier. Les callbacks lifecycle d'animation (ADR-22 : `onBeforeEnter`, `onAfterLeave`, etc.) restent légitimes dans la View.
+> **Cas limites tolérés** : les transitions CSS ne sont pas concernées — elles relèvent du rendu visuel, pas de la logique. Les callbacks d'animation d'ADR-22 (`onBeforeEnter`, `onAfterLeave`…) sont une cible strate 1c.
 
 ---
 

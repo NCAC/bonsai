@@ -1,34 +1,45 @@
-# ADR-13 — Router : Feature framework spécialisée
+# ADR-13 — Router : Feature de navigation fournie par le framework
 
 | Champ | Valeur |
 | --- | --- |
-| **Statut** | 🟢 Accepted |
+| **Statut** | 🔵 Tested |
 | **Invariants impactés** | I28, I71 |
-| **Livré** | ⚠️ partiel — seul le namespace réservé `router` existe · Router ⏳ strate 2 |
-| **Spec** | [router.md](../spec/3-couche-abstraite/router.md) |
+| **Livré** | ✅ `RouterFeature` et `HistoryAdapter` (`@bonsai/router`, lot M6.3a), gate `tests/e2e/navigation-round-trip.test.ts` · ⏳ routes à motifs (`params`), gardes, routes imbriquées, exportés par `@bonsai/core` |
+| **Spec** | [router.md](../spec/3-couche-abstraite/router.md) · théorie D7, D15, annexe B.5, C.4 |
 
 ## Contexte
 
-La navigation touche un état global (URL, `window.history`) que plusieurs
-domaines lisent. Si chaque composant manipule l'History API, l'URL devient un
-state partagé non encapsulé, en contradiction avec I30 (domain state
-uniquement dans une Entity).
+La navigation touche un état global (l'adresse, l'historique de session) que
+plusieurs domaines lisent. Si chaque composant manipule l'History API, l'adresse
+devient un état partagé non encapsulé, en contradiction avec I30 (domain state
+uniquement dans une Entity), et un retour arrière n'a plus de cause établie.
 
 ## Décision
 
-Le Router est une **Feature framework** (`RouterFeature extends Feature<RouteEntity, TRouterDef, "router">`) :
+**Deux composants, deux responsabilités** (D7, D15) :
 
-- **namespace réservé `router`** (`RESERVED_NAMESPACES`) : aucune Feature applicative ne peut le prendre (I28, I71) ;
-- **accès exclusif à l'History API** : aucun autre composant ne touche `window.history` ;
-- **instancié par `Application`**, pas déclaré par le développeur dans son manifest ;
-- l'état de navigation (URL, params, query) vit dans `RouteEntity`. Les autres composants l'observent comme n'importe quel Channel (listen, request) et naviguent par Command.
+- **`RouterFeature`**, namespace réservé `router` (`RESERVED_NAMESPACES`, I28, I71) : possède l'**état de navigation** (`{ path, query, hash }`) et ne touche pas l'hôte. Contrat : Command `router:navigate { location, mode }`, Event `router:routeChanged { route, mode }`, Query `router:currentRoute`.
+- **`HistoryAdapter`**, adaptateur de l'interface (`history`) : seul à toucher l'adresse et l'historique ; il projette `routeChanged` sur l'adresse et relaie les retours et avances de l'utilisateur en `router:navigate { mode: "pop" }`.
+
+Tous deux sont **activés par l'Application**, hors du manifest applicatif
+(la clé `router` y est refusée) :
+
+```ts
+new Application({ document, router: true, adapters: [HistoryAdapter], features, foundation: AppFoundation });
+```
+
+`RouterFeature` porte `static readonly framework = true`, seule voie pour prendre
+un namespace réservé. Les autres composants l'écoutent et l'interrogent comme
+n'importe quelle Feature, et naviguent par Command depuis un fait de l'hôte (D18).
 
 ## Alternatives rejetées
 
 - **Router = Feature ordinaire écrite par l'application** — rien n'empêche deux Features de se disputer l'History API.
 - **Router = composant hors modèle (service global)** — introduit un getter global, contraire à « Explicit > Implicit ».
+- **Une seule Feature qui possède état et adresse** — mêle domaine et hôte ; un retour arrière n'aurait pas de source admise (C.4).
 
-## Questions ouvertes (à trancher à la livraison)
+## Conséquences
 
-- **Enregistrement** : `StrictManifest<M>` résout la clé `router` en `never`. Il faut définir l'injection hors manifest (option d'`Application` ou ajout automatique) et la manière dont les consommateurs obtiennent le token typé.
-- Contrat du Channel `router` (commands de navigation, events, requests) : à écrire dans la spec au moment de l'implémentation.
+- Un lien relayé à `router:navigate` doit déclarer l'annulation de son clic (`cancelDefault`, D20), sinon l'hôte charge l'adresse.
+- Charger les données d'une page revient à une Feature qui écoute `routeChanged` (D17), pas à la View.
+- Un `popstate` est qualifié par le monde fermé (C.4) : indépendant, corrélé à une traversée demandée, ou d'antécédent inconnu ; ce dernier n'ouvre aucun droit de commander et n'est pas relayé.

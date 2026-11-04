@@ -94,7 +94,8 @@ packages/types/
 # External libraries (parallel build)
 libraries:
   - "@bonsai/rxjs" # RxJS wrapper
-  - "@bonsai/zod" # Zod wrapper
+  - "@bonsai/immer" # Immer wrapper
+  - "@bonsai/valibot" # Valibot wrapper
 
 # Internal packages (sequential build)
 packages:

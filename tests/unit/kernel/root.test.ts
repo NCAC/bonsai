@@ -119,7 +119,7 @@ describe("G5 and D8 — deferred delivery in production order", () => {
 
 // ── G5 Queries ───────────────────────────────────────────────────────────────
 
-describe("G5 — synchronous Queries towards a ready, inactive target", () => {
+describe("G5, I29 — synchronous Queries towards a ready, inactive target", () => {
   it("refuses a Query to oneself and a cycle A → B → A; the author's unit fails", () => {
     let counter = 0;
     const { root, handles } = boot((ctx) => {
@@ -165,7 +165,7 @@ describe("G5 — synchronous Queries towards a ready, inactive target", () => {
 
 // ── G7 ───────────────────────────────────────────────────────────────────────
 
-describe("G7 — a failing unit is rolled back", () => {
+describe("G7, I55 — a failing unit is rolled back", () => {
   it("restores journaled state and drops its deferred messages", () => {
     let lines = 0;
     let notified = false;
@@ -213,6 +213,59 @@ describe("G7 — a failing unit is rolled back", () => {
     expect(error!.code).toBe("UNRECOVERABLE");
     expect(error!.message).toContain("ne peut pas reprendre localement");
     expect((error!.cause as Error).message).toBe("boom");
+  });
+
+  it("I65 — reports a Query error in the trace with the author's causal context, outside the transport; the unit still fails", () => {
+    let author!: TCausalContext;
+    const delivered: string[] = [];
+    const { root, handles } = boot((ctx) => {
+      ctx.create({ name: "broken", channel: { namespace: "broken", queries: { q: () => { throw new Error("boom"); } } } });
+      ctx.create({ name: "spy", listens: [{ namespace: "author", event: "done", handler: () => { delivered.push("done"); } }] });
+      return ctx.create({
+        name: "author",
+        channel: { namespace: "author", events: ["done"] },
+        locals: { go: (_p, c) => { author = c.cause; c.emit("done"); c.query("broken", "q"); } }
+      });
+    });
+    const before = root.trace.length;
+    root.admit(handles, "go", {}, click);
+    const entries = root.trace.slice(before);
+    const failure = entries.find((e) => e.type === "unit-failed") as Extract<(typeof entries)[number], { type: "unit-failed" }>;
+    expect(failure.context).toBe(author);
+    expect((failure.error as Error).message).toBe("boom");
+    expect(delivered).toEqual([]);                                   // the report is not a message
+    expect(entries.filter((e) => e.type === "delivered").map((e) => e.type === "delivered" && e.name)).toEqual(["go"]);
+  });
+
+  it("I27 — a Command is refused by the failure of its handler; an Event is a fact a subscriber cannot refuse", () => {
+    let total = 0;
+    const heard: string[] = [];
+    const { root } = boot((ctx) => {
+      ctx.create({
+        name: "cart",
+        channel: {
+          namespace: "cart",
+          events: ["added"],
+          commands: {
+            add: (p, c) => {
+              const qty = (p as { qty: number }).qty;
+              if (qty <= 0) throw new Error("refused: quantity must be positive");
+              total += qty;
+              c.journal(() => { total -= qty; });
+              c.emit("added");
+            }
+          }
+        }
+      });
+      for (const name of ["failing", "other"]) {
+        ctx.create({ name, listens: [{ namespace: "cart", event: "added", handler: () => { heard.push(name); if (name === "failing") throw new Error("cannot refuse a fact"); } }] });
+      }
+      ctx.trigger("cart", "add", { qty: 0 });
+      ctx.trigger("cart", "add", { qty: 2 });
+    });
+    expect(total).toBe(2);                                  // the refused Command left nothing
+    expect(heard).toEqual(["failing", "other"]);            // only the accepted one produced the Event
+    expect(failures(root).map((e) => (e as Error).message)).toEqual(["refused: quantity must be positive", "cannot refuse a fact"]);
   });
 
   it("does not publish a component created by a failing unit", () => {
@@ -276,7 +329,7 @@ describe("G3 and C.6 — reservations bound to a determined subscription", () =>
     expect(received).toEqual(["sub"]);
   });
 
-  it("refuses a destruction by a component that is not the parent (A1.b)", () => {
+  it("I19 — refuses a destruction by a component that is not the parent (A1.b)", () => {
     let victim!: TComponentHandle;
     const { root, handles } = boot((ctx) => {
       victim = ctx.create({ name: "victim" });
@@ -333,7 +386,20 @@ describe("G6 — two roots never exchange messages", () => {
 
 // ── G8 ───────────────────────────────────────────────────────────────────────
 
-describe("G8 — causal contexts created by the kernel", () => {
+describe("G8, I7, I8 — causal contexts created by the kernel", () => {
+  it("qualifies startup as an origin of its own: a startup message is its child", () => {
+    let start!: TCausalContext;
+    let delivered!: TCausalContext;
+    boot((ctx) => {
+      start = ctx.cause;
+      ctx.create({ name: "a", channel: { namespace: "a", commands: { hello: (_p, c) => { delivered = c.cause; } } } });
+      ctx.trigger("a", "hello");
+    });
+    expect([start.originKind, start.parentId, start.depth]).toEqual(["startup", null, 0]);
+    expect([delivered.parentId, delivered.originId, delivered.depth]).toEqual([start.id, start.id, 1]);
+    expect(Object.isFrozen(delivered)).toBe(true);                 // the application cannot rewrite it
+  });
+
   it("chains click → Command → Event, keeps the author's context after a Query, continues a correlated result", () => {
     const seen: Record<string, TCausalContext> = {};
     let token!: ReturnType<TUnitContext["correlate"]>;
@@ -392,7 +458,34 @@ describe("G8 — causal contexts created by the kernel", () => {
 
 // ── D9 ───────────────────────────────────────────────────────────────────────
 
-describe("D9 — causal depth bound", () => {
+describe("D9, I9 — causal depth bound", () => {
+  it("refuses an Event beyond the bound before reserving any branch", () => {
+    const reached: string[] = [];
+    const { root, handles } = boot((ctx) => {
+      const cart = ctx.create({ name: "cart", channel: { namespace: "cart", events: ["added"] }, locals: { go: (_p, c) => { c.emit("added"); } } });
+      for (const name of ["s1", "s2"]) {
+        ctx.create({ name, listens: [{ namespace: "cart", event: "added", handler: () => { reached.push(name); } }] });
+      }
+      return cart;
+    }, 0);
+    root.admit(handles, "go", {}, click);
+    expect(reached).toEqual([]);
+    expect((failures(root)[0] as TransportError).code).toBe("CAUSAL_BOUND");
+  });
+
+  it("gives every branch of an Event the same depth: the fan-out does not deepen the chain", () => {
+    const depths: number[] = [];
+    const { root, handles } = boot((ctx) => {
+      const cart = ctx.create({ name: "cart", channel: { namespace: "cart", events: ["added"] }, locals: { go: (_p, c) => { c.emit("added"); } } });
+      for (const name of ["s1", "s2", "s3"]) {
+        ctx.create({ name, listens: [{ namespace: "cart", event: "added", handler: (_p, c) => { depths.push(c.cause.depth); } }] });
+      }
+      return cart;
+    }, 1);
+    root.admit(handles, "go", {}, click);
+    expect(depths).toEqual([1, 1, 1]);
+  });
+
   it("refuses at submission beyond the bound and rolls the refusing unit back", () => {
     let validated = 0;
     let depthReached = -1;
@@ -698,7 +791,7 @@ describe("C.6 — a delivery whose target is gone is abandoned, not run", () => 
   });
 });
 
-describe("A5.a — no operation outside a validation unit", () => {
+describe("A5.a, I66 — no operation outside a validation unit", () => {
   it("refuses a context kept and used after its unit (e.g. in a .then())", () => {
     let kept!: TUnitContext;
     const { root, handles } = boot((ctx) => {

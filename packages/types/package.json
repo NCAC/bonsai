@@ -1,6 +1,6 @@
 {
   "name": "@bonsai/types",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Types module for bonsai",
   "type": "module",
   "author": {

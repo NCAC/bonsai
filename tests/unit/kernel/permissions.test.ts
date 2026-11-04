@@ -114,7 +114,7 @@ describe("M5 — admission in the innermost part (D10, A5.d)", () => {
   });
 });
 
-describe("M5 — D18: the right to command follows the trigger", () => {
+describe("M5 — D18, I13: the right to command follows the trigger", () => {
   it("refuses a Command in reaction to an Event", () => {
     const { root, element, count } = setup();
     element("inner").click();                              // inner commands → cart emits added
@@ -172,7 +172,7 @@ describe("M5 — D18: the right to command follows the trigger", () => {
   });
 });
 
-describe("M5 — closed world (C.4): a simulated occurrence is correlated, never independent", () => {
+describe("M5 — closed world (C.4, I8): a simulated occurrence is correlated, never independent", () => {
   it("does not launder an Event reaction through a simulated click", () => {
     const root = new Root({ causalBound: 20, document });
     let count = 0;

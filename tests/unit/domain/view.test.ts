@@ -68,10 +68,13 @@ type TContract = TViewContract<typeof features, typeof uiEvents>;
 /** Observation points of the Views under test, reset per test. */
 const seen: { fact?: TFact; ctxKeys?: string[]; eventCtxKeys?: string[]; paramsRead?: unknown; outside?: unknown } = {};
 
+/** Reads of the declaration getters of CounterView (I81). */
+const declarationReads = { features: 0, uiEvents: 0, uiElements: 0 };
+
 class CounterView extends View<TContract> implements TViewCallbacks<TContract> {
-  get features() { return features; }
-  get uiEvents() { return uiEvents; }
-  get uiElements() { return uiElements; }
+  get features() { declarationReads.features++; return features; }
+  get uiEvents() { declarationReads.uiEvents++; return uiEvents; }
+  get uiElements() { declarationReads.uiElements++; return uiElements; }
   get template() { return `<b data-ui="label">0</b><button data-ui="button">+</button>`; }
 
   onButtonClick(fact: TFact, ctx: TFactContext<TContract>): void {
@@ -117,7 +120,18 @@ describe("View on the kernel", () => {
     for (const k of Object.keys(seen)) delete (seen as Record<string, unknown>)[k];
   });
 
-  it("projects its template into the part attributed by the Composer", () => {
+  it("I81 — reads features, uiEvents and uiElements once, when the View is described to the kernel", () => {
+    for (const k of Object.keys(declarationReads)) declarationReads[k as keyof typeof declarationReads] = 0;
+    page();
+    expect(declarationReads).toEqual({ features: 1, uiEvents: 1, uiElements: 1 });
+    const button = document.querySelector("[data-ui='button']") as HTMLElement;
+    button.click();
+    button.click();
+    expect(document.querySelector("[data-ui='label']")!.textContent).toBe("2");
+    expect(declarationReads).toEqual({ features: 1, uiEvents: 1, uiElements: 1 });
+  });
+
+  it("I34 — projects its template into the part attributed by the Composer", () => {
     const d = page();
     const main = document.getElementById("main")!;
     expect(main.children).toHaveLength(1);
@@ -352,7 +366,7 @@ describe("View on the kernel", () => {
     expect(got).toEqual([{ label: "A" }]);
   });
 
-  it("a View may declare slots filled by nested Composers", () => {
+  it("I36 — a View may declare slots filled by nested Composers", () => {
     class InnerView extends View<TViewContract<Record<string, never>, Record<string, never>>> {
       get features() { return {}; }
       get uiEvents() { return {}; }

@@ -88,7 +88,7 @@ elle doit atterrir.
 
 **Quoi** : un littéral runtime qui porte le namespace **en valeur**, cette
 fois — c'est le pont entre la classe et son `Channel` typé, consommé par les
-autres Features (`request()`) et par les Views (`TFeatureContract`).
+autres Features (`ctx.query(OtherFeature.channel, …)`) et par les Views (`TFeatureContract`).
 
 ```typescript
 // app/cart/cart.feature.ts (suite)
@@ -180,7 +180,7 @@ signale **immédiatement** (`TStrictFeatureClass<NS>`, I95).
 
 1. J'ouvre **l'annuaire** (`app/manifest.ts`) et j'ajoute `myFeature: unknown`.
 2. Je crée la classe : `class MyFeature extends Feature<MyEntity, TMyDef, "myFeature">` avec `static readonly channel: TChannelToken<TMyDef, "myFeature"> = { namespace: "myFeature" }`.
-3. J'implémente `implements TFeatureCallbacks<TMyDef, typeof myListens>` — le compilateur exige tous les handlers `onXxxCommand`/`onXxxRequest`/`on{NS}{Event}Event`.
+3. J'implémente `implements TFeatureCallbacks<TMyDef, typeof myListens, MyEntity>` — le compilateur exige tous les handlers `onXxxCommand`/`onXxxQuery`/`on{NS}{Event}Event`.
 4. J'ouvre **le bureau d'accueil** (`app/main.ts`) et j'ajoute `myFeature: MyFeature` dans l'objet `features`.
 
 Si j'oublie une étape, **TS refuse de compiler** et m'indique laquelle.

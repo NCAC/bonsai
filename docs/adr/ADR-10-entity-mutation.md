@@ -9,50 +9,49 @@
 
 ## Contexte
 
-L'Entity détient le domain state d'une Feature. Chaque mutation doit être
+L'Entity décrit le domain state d'une Feature. Chaque mutation doit être
 traçable (intention métier), produire une notification précise (quelles clés
-ont changé) pour alimenter la réactivité, et rester compatible avec undo/redo,
-DevTools et un éventuel event sourcing — sans magie exposée au développeur.
+ont changé) pour alimenter la réactivité, être annulable avec son unité (G7)
+et rester compatible avec undo/redo, DevTools et un éventuel event sourcing.
 
 ## Décision
 
 **State JSON-sérialisable** (I46) : `Entity<TStructure extends TJsonSerializable>`.
-Pas de `Date`, `Map`, `Set`, classe ni fonction. Le state initial est fourni par
-`protected abstract defineInitialState()`, et `initialState` reste lisible pour
-un reset ou une comparaison.
+Pas de `Date`, `Map`, `Set`, classe ni fonction. L'état initial est fourni par
+`protected abstract defineInitialState()` ; `initialState` reste lisible.
 
-**Une seule API d'écriture**, discriminant en premier :
+**Le noyau détient l'état** : l'Entity le décrit (état initial, invariants,
+méthodes de lecture) mais ne le contient pas et n'a pas de `mutate`.
+**Une seule API d'écriture**, le contexte d'un handler de la Feature propriétaire :
 
 ```ts
-this.entity.mutate("cart:addItem", { payload, metas }, draft => {
+ctx.mutate("addItem", { payload }, (draft) => {
   draft.items.push(payload.item);
 });
 ```
 
-- Implémentation `Immer.produceWithPatches`. Le `TEntityEvent` retourné porte `intent`, `payload`, `metas`, `changedKeys` (1er segment des paths), `patches`, `inversePatches`, `previousState`, `nextState`, `timestamp` (I97).
-- **No-op** (aucun patch) : ni notification ni event, `mutate()` retourne `null`.
-- **Recipe qui throw** : `MutationError`, state intact (rollback Immer).
-- **Ré-entrance** : une mutation déclenchée pendant une notification est mise en **file FIFO** et exécutée dans son propre cycle. Au-delà de `maxEntityNotificationDepth` (défaut 3, `protected get` overridable), `mutate()` lève `EntityReentrancyError` (I98) : elle se propage à l'appelant tant que le listener est un `onAnyEntityUpdated` brut de l'Entity ; dans un handler de Feature (`on<Key>EntityUpdated`, `onAnyEntityUpdated`), le dispatch de la Feature l'attrape et la journalise en `BroadcastError` (ADR-05).
-- **Écoute** : un seul listener catch-all `onAnyEntityUpdated()`. Le routage par clé est fait par la Feature (ADR-09).
+- Implémentation `Immer.produceWithPatches` (I97). Le `TEntityEvent` rendu porte `intent`, `payload`, `metas`, `changedKeys` (1er segment des paths), `patches`, `inversePatches`, `previousState`, `nextState`, `timestamp`.
+- **Sans effet** (aucun patch) : ni notification, `mutate()` rend `null`.
+- **Annulation** : la mutation est journalisée dans l'unité ; une recette qui lève, un invariant violé à la fin de l'unité (`InvariantError`, A4.a) ou tout autre échec restaure l'état (G7).
+- **Notification différée** (I98) : chaque mutation effective envoie à la Feature un message local, délivré après la validation de l'unité, dans sa propre unité ; une mutation faite pendant une notification produit la sienne, bornée par la profondeur causale (D9).
 
-**Lecture** : `state` est en lecture seule. L'Entity peut exposer des méthodes
-query pures pour les repliers de sa Feature (I52).
+**Lecture** : `entity.state`, gelé, n'est lisible que pendant un handler de la
+Feature ; hors handler, l'état s'observe par une Query (G5). L'Entity expose des
+méthodes de lecture pures pour les Queries de sa Feature (I52).
 
 **Pas de state dérivé** : l'Entity stocke les données brutes et les critères
 (`sortCriteria`, `filters`, `page`), jamais la liste filtrée, triée ou paginée.
-La dérivation est une projection calculée côté View. Un changement de tri produit
-un patch, pas N.
 
 ## Alternatives rejetées
 
 - **Snapshot + deep diff** — coût O(n) à chaque mutation, aucune intention métier.
 - **Proxy ES6 + dirty tracking** — magie exposée, fuites de proxy hors du scope de mutation.
-- **Mutations explicites + dirty flags manuels** — verbeux, oubli silencieux d'un flag.
-- **API hybride `set()` + `mutate()`** — deux chemins d'écriture pour une seule garantie.
-- **Stocker les données dérivées** — explosion de patches, désynchronisation brut/dérivé, sémantique fausse (seule la présentation change).
+- **`entity.mutate()` sur l'Entity elle-même** (strate 0) — mutation possible hors unité, sans annulation ; contraire à A5.a et G7.
+- **File FIFO de ré-entrance propre à l'Entity et `EntityReentrancyError`** (strate 1a) — doublait la file différée du noyau et sa borne D9.
+- **Stocker les données dérivées** — explosion de patches, désynchronisation brut/dérivé.
 
 ## Conséquences
 
 - Dépendance Immer (inlinée dans le bundle, `@bonsai/immer`), acceptée pour la valeur des patches.
-- Intent verbeux mais porteur de sens : c'est la clé de l'audit, des DevTools et de l'undo (`inversePatches`). Typage de l'intent : question ouverte (ADR-12).
+- Intent porteur de sens : c'est la clé de l'audit, des DevTools et de l'undo (`inversePatches`). Typage de l'intent : question ouverte (ADR-12).
 - Seule la Feature propriétaire mute son Entity (I6) : `entity` est `protected` côté Feature, absent des Views et Behaviors.

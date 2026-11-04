@@ -33,10 +33,10 @@
  *         (no separate `.channel.ts`) (ADR-14)
  *   I75 — No `any`/`unknown` in the public surface of Channel/Feature/View;
  *         internal casts are documented and contained (ADR-14)
- *   I76 — `Channel.{trigger,emit,request,handle,listen,reply}` are strictly
+ *   I76 — The handler contexts (`emit`, `query`, `mutate`) are strictly
  *         typed by `TDef` — key = `keyof TDef[lane]`, never a free `string`
  *         (ADR-14)
- *   I79 — `Feature.request()` only accepts a typed `TChannelToken`;
+ *   I79 — The Feature's `ctx.query` only accepts a typed `TChannelToken`;
  *         `abstract get listens()`/`abstract get queries()` carry these tokens
  *         as instance declarations (ADR-14, ADR-09 — I93)
  *   I93 — `listens` and `queries` are instance `abstract get` on Feature

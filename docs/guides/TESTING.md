@@ -74,9 +74,11 @@ tests/
 ├── unit/
 │   ├── kernel/                      # noyau d'exécution (Root, @bonsai/kernel)
 │   │   ├── root.test.ts
+│   │   ├── capture.test.ts
 │   │   ├── entity.test.ts
 │   │   ├── host.test.ts
 │   │   ├── permissions.test.ts
+│   │   ├── report.test.ts
 │   │   └── structure.test.ts
 │   ├── domain/                      # classes de base branchées sur le noyau
 │   │   ├── application.test.ts
@@ -87,10 +89,13 @@ tests/
 │   │   ├── foundation.test.ts
 │   │   ├── router.test.ts
 │   │   └── cart-journey.test.ts
+│   ├── error/
+│   │   └── errors.test.ts           # hiérarchie BonsaiError, helpers invariant
 │   └── strate-0/
 │       └── strate-0.regression.test.ts   # suite de non-régression agrégée
 ├── integration/
-│   └── bonsai-core-rxjs.test.ts
+│   ├── bonsai-core-rxjs.test.ts
+│   └── bundles-dev-prod.test.ts     # bundles de développement et de production (ADR-06)
 ├── e2e/
 │   ├── strate-0.cart-round-trip.test.ts   # GATE strate 0 — ne pas casser
 │   └── navigation-round-trip.test.ts
@@ -120,9 +125,10 @@ tests/
 pnpm test                                          # suite complète
 pnpm test:unit                                     # tests/unit uniquement
 pnpm test:integration                              # tests/integration uniquement
-pnpm test:e2e                                      # gate E2E strate 0
-pnpm test:strate-0:regression                      # tests/unit/strate-0/strate-0.regression.test.ts
-npx jest tests/unit/strate-0/feature.basic.test.ts # un fichier précis
+pnpm test:e2e                                      # gates E2E (panier, navigation)
+pnpm test:regression                               # tests/unit/strate-0/strate-0.regression.test.ts
+pnpm test:ci                                       # suite complète avec seuils de couverture (CI)
+npx jest tests/unit/domain/feature.test.ts         # un fichier précis
 pnpm tsc:check:tests                               # type-check des tests (@ts-expect-error) — SÉPARÉ de `pnpm test`
 ```
 
@@ -130,61 +136,88 @@ pnpm tsc:check:tests                               # type-check des tests (@ts-e
 
 ## 3. Test d'une Entity
 
-Les Entities sont testées **directement**, sans passer par une Feature — `tests/unit/strate-0/entity.basic.test.ts` le fait explicitement (I6 protègent `Feature#entity` de l'accès applicatif, pas l'Entity elle-même en dehors de ce contexte). On teste `mutate()` (ADR-10, seule API de mutation) et les méthodes du `get query()` (I52) :
+Une Entity ne se mute pas seule : son état est tenu par la racine du noyau et
+ne change que par `ctx.mutate(intent, recipe)` dans un handler de sa Feature
+(ADR-10). On la teste donc **à travers sa Feature**, démarrée par `drive()`
+(voir §4), en observant l'état par une Query. C'est la pratique de
+`tests/unit/domain/entity.test.ts` :
 
 ```typescript
-import { describe, it, expect, beforeEach } from "@jest/globals";
+import { describe, it, expect } from "@jest/globals";
+import { Feature, type TFeatureContext } from "@bonsai/feature";
 import { Entity } from "@bonsai/entity";
+import type { TChannelToken } from "@bonsai/kernel";
+import { drive } from "../../helpers/drive";
 
-type TCartState = {
-  items: Array<{ productId: string; qty: number; price: number }>;
-  total: number;
-};
+type TState = { count: number };
 
-class CartEntity extends Entity<TCartState> {
-  protected defineInitialState(): TCartState {
-    return { items: [], total: 0 };
+class CounterEntity extends Entity<TState> {
+  protected defineInitialState(): TState {
+    return { count: 0 };
   }
-
-  // Convention query — I52 : méthodes de lecture pures, jamais de mutation.
-  get query() {
-    return {
-      getTotal: () => this.state.total,
-      getItemCount: () => this.state.items.length
-    };
+  // Business invariants (A4.a): checked at the end of every unit that touched the state.
+  override get invariants() {
+    return [{ name: "count-never-negative", check: (s: TState) => s.count >= 0 }];
   }
 }
 
-describe("CartEntity", () => {
-  let entity: CartEntity;
+type TDef = {
+  commands: { inc: { by: number }; noop: null };
+  events: {};
+  queries: { count: { params: null; result: number } };
+};
+type TCtx = TFeatureContext<TDef, CounterEntity>;
 
-  beforeEach(() => {
-    entity = new CartEntity();
+const log: string[] = []; // observations made outside the Feature
+
+class CounterFeature extends Feature<CounterEntity, TDef, "counter"> {
+  static readonly channel: TChannelToken<TDef, "counter"> = { namespace: "counter" };
+  get listens() { return [] as const; }
+  get queries() { return [] as const; }
+  protected get Entity() { return CounterEntity; }
+
+  onIncCommand(p: { by: number }, ctx: TCtx): void {
+    ctx.mutate("inc", (d) => { d.count += p.by; });
+  }
+  onNoopCommand(_p: null, ctx: TCtx): void {
+    log.push(String(ctx.mutate("noop", (d) => { d.count = d.count; })));
+  }
+  onCountQuery(): number {
+    return this.entity.state.count;
+  }
+}
+
+describe("CounterEntity", () => {
+  it("ctx.mutate applique la recette de façon immuable", () => {
+    const d = drive({ counter: CounterFeature });
+    d.send("counter", "inc", { by: 2 });
+    expect(d.ask<number>("counter", "count", null)).toBe(2);
   });
 
-  it("mutate() ajoute un item de façon immuable", () => {
-    entity.mutate("addItem", (draft) => {
-      draft.items.push({ productId: "1", qty: 1, price: 10 });
-      draft.total += 10;
-    });
-
-    expect(entity.query.getItemCount()).toBe(1);
-    expect(entity.query.getTotal()).toBe(10);
+  it("une recette sans effet renvoie null", () => {
+    const d = drive({ counter: CounterFeature });
+    d.send("counter", "noop", null);
+    expect(log).toEqual(["null"]);
   });
 
-  it("mutate() sans patch (no-op) retourne null", () => {
-    const event = entity.mutate("noop", () => {});
-    expect(event).toBeNull();
+  it("un invariant violé fait échouer l'unité, et l'état est restauré (G7)", () => {
+    const d = drive({ counter: CounterFeature });
+    d.send("counter", "inc", { by: -1 });
+    expect(d.failures()).toHaveLength(1);
+    expect(d.ask<number>("counter", "count", null)).toBe(0);
   });
 });
 ```
 
-> **Anti-pattern** : appeler des méthodes de mutation nommées directement sur
-> l'Entity (`entity.addItem()`). Seule `mutate(intent, params?, recipe)` est
-> autorisée (ADR-10). `mutate()` retourne `TEntityEvent<TStructure> | null` —
-> `null` si la recipe ne produit aucun patch (no-op) **ou** si l'appel est mis
-> en file par la garde de ré-entrance (I98, strate 1a) — ne jamais présumer
-> qu'un retour non-`null` signifie "appliqué immédiatement".
+> **Hors d'un traitement**, une Entity n'expose que `initialState` ; lire
+> `entity.state` lève une erreur (I6). Les tests qui ont besoin de lire l'état
+> d'une Entity isolée lient une source d'état avec `bindEntityState()`, comme
+> le fait le noyau.
+>
+> **Anti-pattern** : appeler des méthodes de mutation nommées sur l'Entity
+> (`entity.addItem()`). Seule `ctx.mutate(intent, params?, recipe)` est
+> autorisée (ADR-10). Elle retourne `TEntityEvent<TStructure> | null` —
+> `null` si la recette ne produit aucun patch (no-op).
 
 ---
 
@@ -312,8 +345,9 @@ tierces ré-exportées par `@bonsai/core`). La **gate strate 0** est
 `tests/e2e/strate-0.cart-round-trip.test.ts` : elle traverse les six
 composants (Entity, Feature, View, Composer, Foundation, Application) sans mock,
 avec un vrai DOM jsdom, via la fixture partagée `tests/fixtures/cart-feature.fixture.ts`.
-**Ne pas la casser** — c'est le seul test qui prouve que l'assemblage complet
-fonctionne de bout en bout.
+**Ne pas la casser** — avec `tests/e2e/navigation-round-trip.test.ts` (clic sur
+un lien → route → adresse → retour arrière), ce sont les tests qui prouvent que
+l'assemblage complet fonctionne de bout en bout.
 
 `tests/helpers/create-test-app.ts` et `tests/helpers/dom-setup.ts` factorisent
 le bootstrap d'application et le montage DOM communs à ces tests — ce sont des
@@ -383,9 +417,9 @@ pnpm tsc:check:tests   # = tsc --noEmit -p tsconfig.test.json
 
 | ADR | Décision testée | Fichier(s) de test |
 | --- | --- | --- |
-| [ADR-10](../adr/ADR-10-entity-mutation.md) | `mutate()` unique via Immer, détection no-op, notification diff | `tests/unit/strate-0/entity.basic.test.ts` (`describe("mutate() — Immer produce")`, `describe("No-op detection")`) |
+| [ADR-10](../adr/ADR-10-entity-mutation.md) | `mutate()` unique via Immer, détection no-op, notification diff | `tests/unit/domain/entity.test.ts` (`describe("ctx.mutate — immutable update (ADR-10)")`) |
 | [ADR-03](../adr/ADR-03-channel-runtime.md) | Tri-lane (Commands/Events/Queries) porté par la racine du noyau, livraison différée | `tests/unit/kernel/root.test.ts` (`describe("G5 and D8 — deferred delivery in production order")`) |
-| [ADR-07](../adr/ADR-07-application-bootstrap.md) | Ordre de bootstrap et dépendances entre phases | `tests/unit/strate-0/application.basic.test.ts` (`describe("start() — 4-phase bootstrap")`, `describe("Bootstrap guards [I33, I56, ADR-07]")`) |
+| [ADR-07](../adr/ADR-07-application-bootstrap.md) | Ordre de bootstrap et dépendances entre phases | `tests/unit/domain/application.test.ts` (`describe("C.1 — start order by initial dependencies (\`dependsOn\`)")`, `describe("§2.5 — startup")`) |
 | [ADR-02](../adr/ADR-02-request-synchrone.md) | Queries **synchrones** — pas de `Promise` | `tests/unit/kernel/root.test.ts` (`describe("G5 — synchronous Queries towards a ready, inactive target")`) |
 
 > À maintenir manuellement — contrairement à l'annexe A.3 (invariants numérotés),

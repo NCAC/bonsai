@@ -2,29 +2,29 @@
 
 > **Conventions d'usage, patterns recommandés et discipline HTML/DOM pour le code applicatif Bonsai**
 
+> 🟢 **Aligné sur la théorie V0.9.5 et sur le code livré (4 novembre 2026).** Les exemples utilisent l'API du noyau : contextes de handler (`ctx.mutate`, `ctx.emit`, `ctx.query`, `ctx.trigger`), handlers `on{Nom}Query`, composition par `resolve(ctx)`. Les mécanismes non livrés sont marqués ⏳. En cas d'écart, la [théorie](../theorie.md) prévaut ([règle de confiance](../README.md#règle-de-confiance-et-dalignement)).
+
 ---
 
 | Champ | Valeur |
 | --- | --- |
-| **Périmètre** | Code applicatif framework (Views, Features, Entities, Channels, DOM) |
+| **Périmètre** | Code applicatif framework (Views, Features, Entities, Composers, Foundation, DOM) |
 | **Ne couvre pas** | La pipeline de build (voir [BUILD-CODING-STYLE](BUILD-CODING-STYLE.md)) |
-| **Statut** | 🟢 Active — exemples antérieurs à ADR-08/ADR-14 marqués comme historiques (cf. encadré ci-dessous) |
+| **Statut** | 🟢 Active |
 | **Créé le** | 2026-03-17 |
-| **Mis à jour** | 2026-09-25 (alignement doc ↔ code) |
+| **Mis à jour** | 2026-11-04 (API du noyau) |
 | **Dépend de** | [spec](../spec/README.md), [ADR-04](../adr/ADR-04-metas-explicites.md), [ADR-08](../adr/ADR-08-namespace-manifest.md), [ADR-09](../adr/ADR-09-feature-contract.md), [ADR-10](../adr/ADR-10-entity-mutation.md), [ADR-14](../adr/ADR-14-contrats-types.md) |
 
-> **⚠ État du guide (2026-09-16, audit doc)** — Plusieurs exemples utilisent
-> encore `TUIMap` (pré-ADR-14) et `BonsaiRegistry.registerFeature(...)`
-> (Mode ESM Modulaire — Strate 2), marqués historiques. Les patterns courants
-> à utiliser :
+> **Patterns courants, en un coup d'œil :**
 >
-> - **Feature** : `class extends Feature<E, TDef, "ns">` avec `static readonly channel: TChannelToken<TDef, "ns">` (ADR-14), `get listens()`/`get queries()` d'instance pour les Channels externes (ADR-09, I93). Plus de `static namespace` (I68 / ADR-08) ni `static readonly listens/queries`.
-> - **Manifest applicatif** : `new Application({ foundation, features }).start()` où `features satisfies StrictManifest<AppManifest>`.
-> - **View** : `extends View<TViewContract<F, U>>` + `implements TViewCallbacks<TVC>` (ADR-14 — I88). Trois getters : `features` / `uiEvents` / `uiElements`. Plus de `params` / `TUIMap` / `TViewParams` / `TViewCapabilities`.
-> - **Helper UI** : `ui<TEl>()(events)` curryfié (I85).
-> - **`this.request()` côté Feature** : `this.request(OtherFeature.channel, 'reqName', params)` — **token typé explicite** (ADR-14), inchangé — asymétrie volontaire avec View (cf. [feature.md §4 C5](../spec/3-couche-abstraite/feature.md#c5--request--interroger-une-feature-externe)).
-> - **`this.request()` côté View/Behavior** : `this.request("ns:req", params)` — **clé flat namespacée**, jamais de token explicite (ADR-14, I80).
-> - **Les deux formes de `request()` sont synchrones** — `T | null`, jamais une `Promise`, jamais d'`await` (ADR-02, I29).
+> - **Feature** : `class extends Feature<E, TDef, "ns">` avec `static readonly channel: TChannelToken<TDef, "ns">` et `get listens()` / `get queries()` d'instance (ADR-09, I93). Pas de `static namespace` (I68).
+> - **Manifest applicatif** : `new Application({ foundation, features, document }).start()` où `features satisfies StrictManifest<AppManifest>` (ADR-08).
+> - **View** : `extends View<TViewContract<F, U>>` + `implements TViewCallbacks<TVC>` (I88). Trois getters : `features` / `uiEvents` / `uiElements` ; optionnels : `template`, `composers`.
+> - **Helper UI** : `ui<TEl>()(events, options?)` curryfié (I85).
+> - **Query côté Feature** : `ctx.query(OtherFeature.channel, "name", params)` — token typé explicite (ADR-14).
+> - **Query côté View et Composer** : `ctx.query("ns:name", params)` — clé plate namespacée (I80).
+> - **Une Query est synchrone** et rend une valeur, jamais une `Promise` ni un `null` de substitution ; son échec fait échouer l'unité de l'auteur (G5, G7).
+> - **Command** : seul le handler d'un fait du DOM commande (`ctx.trigger("ns:cmd", payload)`, D18) ; une Feature ne commande jamais (D17).
 >
 > ## Périmètre
 >
@@ -57,7 +57,7 @@ Bonsai repose sur un pattern universel, applicable à **chaque composant** du fr
 │  1. DÉCLARER LES MODULES CONTRACTUELS (header du fichier)       │
 │                                                                  │
 │     Feature / Entity                                            │
-│       → TChannelDefinition : Commands, Events, Requests typés   │
+│       → TChannelDefinition : Commands, Events, Queries typés    │
 │       → Entity<TStructure> : état jsonifiable (ADR-10)             │
 │                                                                  │
 │     View / Behavior / Composer (consommateurs — ADR-14)       │
@@ -67,8 +67,8 @@ Bonsai repose sur un pattern universel, applicable à **chaque composant** du fr
 │                                                                  │
 │  2. COMPOSER LE CONTRAT DU COMPOSANT (un alias type)            │
 │     View      → type TXxxContract = TViewContract<F, U>         │
-│     Composer  → type TXxxContract = TComposerContract<F>        │
-│     Behavior  → type TXxxContract = TBehaviorContract<F, U>     │
+│     Composer  → type TXxxContract = TComposerContract<F, Views> │
+│     Behavior  → ⏳ TBehaviorContract<F, U> (strate 2)           │
 │                                                                  │
 │  3. IMPLÉMENTER LA CLASSE — un générique, un implements (C2/C3) │
 │     class XxxView                                               │
@@ -76,10 +76,10 @@ Bonsai repose sur un pattern universel, applicable à **chaque composant** du fr
 │       implements TViewCallbacks<TXxxContract>                   │
 │                                                                  │
 │  4. RÉCOMPENSE AUTOMATIQUE (le compilateur travaille pour vous) │
-│     Feature → handlers onXxxCommand/Event/Request auto-typés    │
+│     Feature → handlers onXxxCommand/Event/Query auto-typés      │
 │     View   → onXxxClick/Input requis si events DOM déclarés     │
 │           → onNsEventEvent requis si listens déclarées          │
-│           → getUI(k).element() : TProjectionNode<TEl> typé      │
+│           → ctx.trigger / ctx.query : clés et payloads typés    │
 │     Tous   → Refactoring : renommer un symbole = erreur partout │
 │           → Zéro runtime surprise : tout vérifié au build       │
 └──────────────────────────────────────────────────────────────────┘
@@ -103,12 +103,15 @@ Bonsai repose sur un pattern universel, applicable à **chaque composant** du fr
 > son contrat d'implémentation est interdite — elle exposerait des capacités
 > non-honorées.
 
-| Composant | Contract | Callbacks |
-| --- | --- | --- |
-| **View** | `TViewContract<F, U>` | `TViewCallbacks<TVC>` |
-| **Behavior** | `TBehaviorContract<F, U, ...>` | `TBehaviorCallbacks<TBC>` |
-| **Composer** | `TComposerContract<F>` | `TComposerCallbacks<TCC>` |
-| **Foundation** | `TFoundationContract` | `TFoundationCallbacks<TFC>` |
+| Composant | Contract | Callbacks | État |
+| --- | --- | --- | --- |
+| **Feature** | `TChannelDefinition` + `listens`/`queries` | `TFeatureCallbacks<TDef, Listens, E>` | ✅ |
+| **View** | `TViewContract<F, U>` | `TViewCallbacks<TVC>` | ✅ |
+| **Composer** | `TComposerContract<F, Views>` | — (un seul point de décision : `resolve(ctx)`, imposé par la classe abstraite) | ✅ |
+| **Foundation** | — (`get composers()` seulement) | — | ✅ |
+| **Behavior** | `TBehaviorContract<F, U>` | `TBehaviorCallbacks<TBC>` | ⏳ strate 2 |
+
+La règle vaut là où le composant a des handlers dérivés de son contrat : Feature, View, et plus tard Behavior. Un Composer n'a qu'un point de décision et une Foundation aucun.
 
 Le développeur applicatif écrit toujours la paire dans la signature de classe :
 
@@ -151,7 +154,7 @@ Les modules contractuels (`TFeatureContract`, `TUIContract`, `TChannelDefinition
 
 **Justification** :
 
-- **Async-safe** : le closure capture les valeurs, pas de problème avec les Promises
+- **Borné à l'unité** : le contexte reçu par un handler n'est valide que pendant son unité de validation ; utilisé plus tard (dans un `.then()`), il est refusé (`NO_UNIT`, A5.a)
 - **Testable** : les dépendances sont injectées, mockables
 - **Debuggable** : le flux de données est visible
 - **Prévisible** : pas de comportement qui dépend d'un état invisible
@@ -185,63 +188,55 @@ method("DISCRIMINANT", param1, param2, param3);
 
 ```typescript
 // ══════════════════════════════════════════════════════════════
-// Entity.mutate() — ADR-10
+// ctx.mutate() — ADR-10, dans un handler de la Feature
 // L'intent est un string libre namespace:verbNoun
 // ══════════════════════════════════════════════════════════════
 
-// Forme complète (dans une Feature)
-this.entity.mutate("cart:addItem", { payload, metas }, draft => {
+// Forme complète
+ctx.mutate("cart:addItem", { payload }, (draft) => {
   draft.items.push(payload.item);
 });
 
 // Forme simplifiée (sans params)
-this.entity.mutate("cart:clear", draft => {
+ctx.mutate("cart:clear", (draft) => {
   draft.items = [];
 });
 
 // ══════════════════════════════════════════════════════════════
-// Feature — emit() et request() sortants
-// Les noms sont des clés NUES de TChannelDefinition (pas namespace-qualifiées)
+// Feature — ctx.emit() et ctx.query() sortants
+// Les noms sont des clés NUES de TChannelDefinition
 // ══════════════════════════════════════════════════════════════
 
-// emit() — émet un Event sur le Channel propre de la Feature
-// Signature LIVRÉE (strate 0) : emit(eventName, payload) — SANS metas.
-// { metas } en 3e argument est une cible strate 1b (ADR-31), pas livrée.
-this.emit('itemAdded', { productId: payload.productId, qty: payload.qty });
+// emit() — émet un Event sur le Channel propre de la Feature, délivré après
+// la validation de l'unité (G5). Signature livrée : emit(eventName, payload) ;
+// { metas } en 3e argument est une cible strate 1b (ADR-04).
+ctx.emit("itemAdded", { productId: payload.productId, qty: payload.qty });
 
-// request() — interroge un Channel externe déclaré via `get queries()` (ADR-09, I93)
-// Signature SYNCHRONE (ADR-02, I29) : request(token, requestName, params) → T | null
-// Pas de `metas` (strate 0 — ADR-14, reporté à un ADR dédié en strate 1), pas d'await.
-// Convention nominale pour requestName (pas getNoun) — cf. §3.1.
-const total = this.request(PricingFeature.channel, 'total', { productId });
+// query() — interroge un Channel déclaré dans `get queries()` (ADR-09, I93)
+// Synchrone (G5) : query(token, name, params) → la valeur typée, jamais null de substitution.
+const total = ctx.query(PricingFeature.channel, "total", { productId });
 
 // ══════════════════════════════════════════════════════════════
-// View / Behavior — trigger() sortant
-// Les metas seraient créées automatiquement (corrélation racine, ADR-04,
-// I54) — cible strate 1b, non livrée (pas de metas du tout aujourd'hui).
+// View — ctx.trigger() sortant, depuis le handler d'un fait du DOM
+// Le contexte causal est créé par le noyau (G8) ; ctx.metas : strate 1b.
 // ══════════════════════════════════════════════════════════════
 
-// trigger() — envoie un Command via clé namespacée flat (ADR-14, I80)
-// Signature : trigger("ns:cmd", payload) — clé validée compile-time contre
-// TFlatTriggers<F> dérivé de get features() (pas de "contract.triggers"/"TDeps",
-// terminologie supersédée par ADR-14).
-this.trigger("cart:addItem", { productId, qty });
+// Clé namespacée plate (I80), validée compile-time contre TFlatTriggers<F>
+// dérivé de get features().
+ctx.trigger("cart:addItem", { productId, qty });
 
 // ══════════════════════════════════════════════════════════════
-// Handlers — strate 0 : (payload) uniquement, SANS metas (cible strate 1b)
+// Handlers — (payload, ctx) ; metas : strate 1b
 // ══════════════════════════════════════════════════════════════
 
-onAddItemCommand(payload: AddItemPayload) {
-  // Handler Command sur le Channel propre (C2)
+onAddItemCommand(payload: TAddItemPayload, ctx: TFeatureContext<TCartDef, CartEntity>): void {
+  // Handler de Command sur le Channel propre (C2)
 }
 
-// Listener cross-Channel : on{NS}{Event}Event — le préfixe NS distingue la
-// Feature source (ex. on{Cart}{ItemAdded}Event si on écoute "cart"). Un
-// simple onItemAddedEvent (sans préfixe NS) suppose une écoute sur son
-// propre Channel, ce qu'aucune Feature ne fait jamais (une Feature ne
-// s'écoute pas elle-même — cf. get listens()).
-onCartItemAddedEvent(payload: ItemAddedPayload) {
-  // Feature (listen) ou View (listen, ADR-14 features[ns].listens)
+// Listener cross-Channel : on{NS}{Event}Event — le préfixe NS désigne la
+// Feature source. Une Feature ne s'écoute jamais elle-même (get listens()).
+onCartItemAddedEvent(payload: TItemAddedPayload, ctx: TFeatureContext<TPromoDef, PromoEntity>): void {
+  // Feature (listens) ou View (features[ns].listens, contexte sans trigger)
 }
 ```
 
@@ -251,32 +246,28 @@ onCartItemAddedEvent(payload: ItemAddedPayload) {
 > Pas de `this.currentMetas`, pas de `withMetas()`, pas de contexte implicite.
 
 ```typescript
-// ✅ BON : signature strate 0 réelle — sans metas (cible strate 1b, cf. §2.2)
-onAddItemCommand(payload: AddItemPayload) {
+// ✅ BON : tout passe par le contexte reçu en paramètre
+onAddItemCommand(payload: TAddItemPayload, ctx: TFeatureContext<TCartDef, CartEntity>): void {
   // Propager aux mutations — intent "namespace:verbNoun" (ADR-10)
-  this.entity.mutate("cart:addItem", { payload }, draft => {
+  ctx.mutate("cart:addItem", { payload }, (draft) => {
     draft.items.push(payload.item);
   });
 
-  // request() est SYNCHRONE (ADR-02, I29) et ne prend pas de `metas`
-  // (strate 0 — ADR-14, reporté à un ADR dédié en strate 1) :
-  // pas d'await, pas de 4e argument. Convention nominale (pas getNoun).
-  const total = this.request(PricingFeature.channel, 'total', { id: payload.id });
+  // Query synchrone (G5), sans await
+  const total = ctx.query(PricingFeature.channel, "total", { id: payload.id });
 
-  // Propager aux émissions — clé nue (keyof TChannel['events']) + payload
-  this.emit('itemAdded', { item: payload.item, total });
+  // Émission — clé nue (keyof TChannel['events']) + payload
+  ctx.emit("itemAdded", { item: payload.item, total });
 }
 
-// ❌ MAUVAIS : getter implicite (reste vrai le jour où les metas seront livrées)
-onAddItemCommand(payload: AddItemPayload) {
+// ❌ MAUVAIS : getter implicite (reste vrai quand ctx.metas sera livré)
+onAddItemCommand(payload: TAddItemPayload, ctx: TFeatureContext<TCartDef, CartEntity>): void {
   const metas = this.currentMetas; // NON — magie
 }
 
-// ❌ MAUVAIS : wrapper magique
-onAddItemCommand(payload: AddItemPayload) {
-  this.withMetas(() => {
-    // NON — magie, complexité inutile
-  });
+// ❌ MAUVAIS : contexte conservé hors de son unité
+onAddItemCommand(payload: TAddItemPayload, ctx: TFeatureContext<TCartDef, CartEntity>): void {
+  fetch("/api").then(() => ctx.emit("itemAdded", payload)); // NON — refusé (NO_UNIT, A5.a)
 }
 ```
 
@@ -309,9 +300,9 @@ function createFeature(namespace, entity, channels, handlers) { }
 
 ```typescript
 // ✅ BON : types explicites dans l'API publique — forme réelle et complète
-// (packages/entity/src/bonsai-entity.ts) ; `metas` est déjà accepté par
-// mutate() (strate 1a) mais typé Record<string, unknown>, pas encore
-// TMessageMetas (cible strate 1b, ce type n'est pas encore exporté).
+// (packages/entity/src/bonsai-entity.ts) ; `metas` est accepté par
+// ctx.mutate() mais typé Record<string, unknown>, pas encore
+// TMessageMetas (cible strate 1b).
 type TEntityEvent<
   TStructure extends TJsonSerializable = TJsonSerializable
 > = {
@@ -341,7 +332,7 @@ const changedKeys = [...new Set(patches.map(p => String(p.path[0])))];
 
 - Le `private` TypeScript est un mensonge runtime — contournable via `(instance as any)._field`
 - Le `#` ES natif est **enforcement runtime réel** — `TypeError` si accès externe
-- Cohérent avec I6 (Entity accessible uniquement par sa Feature, state encapsulé)
+- Cohérent avec I6 (Entity accessible uniquement par sa Feature, état détenu par le noyau)
 - Pas de faux sentiment de sécurité : si c'est privé, c'est _vraiment_ privé
 
 **Prérequis** : `"target": "ES2022"` minimum dans `tsconfig.base.json`.
@@ -351,15 +342,12 @@ const changedKeys = [...new Set(patches.map(p => String(p.path[0])))];
 // (3 génériques, ADR-09/ADR-14 — pas Feature<TCartState>, un seul
 // générique appartient à l'ancien pattern, abandonné)
 export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
-  #lastComputedTotal = 0;
-
   #computeTotal(): number {
     return this.entity.state.items.reduce((sum, i) => sum + i.price * i.qty, 0);
   }
 
-  onTotalRequest(): number {
-    this.#lastComputedTotal = this.#computeTotal();
-    return this.#lastComputedTotal;
+  onTotalQuery(_params: null, _ctx: TFeatureQueryContext): number {
+    return this.#computeTotal();
   }
 }
 
@@ -388,15 +376,16 @@ export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
 
 | Pattern | Format | Exemples | Contexte |
 | --- | --- | --- | --- |
-| **Intent mutation** | `namespace:verbNoun` | `"cart:addItem"`, `"user:updateProfile"` | String libre dans `entity.mutate()` |
+| **Intent mutation** | `namespace:verbNoun` | `"cart:addItem"`, `"user:updateProfile"` | String libre dans `ctx.mutate()` |
 | **Command name** (clé Channel) | `verbNoun` | `'addItem'`, `'submit'` | `keyof TChannel['commands']` |
 | **Event name** (clé Channel) | `nounVerbed` | `'itemAdded'`, `'submitted'` | `keyof TChannel['events']` |
-| **Request name** (clé Channel) | nominal, pas `getNoun` | `'total'`, `'profile'` | `keyof TChannel['requests']` |
+| **Query name** (clé Channel) | nominal, pas `getNoun` | `'total'`, `'profile'` | `keyof TChannel['queries']` |
 
 > **Attention** : les intents de mutation sont des strings libres `namespace:verbNoun`
-> (utilisés dans `entity.mutate()` pour la traçabilité). Les noms de Commands/Events/Requests
+> (utilisés dans `ctx.mutate()` pour la traçabilité). Les noms de Commands/Events/Queries
 > sont des **clés nues** du `TChannelDefinition` — sans préfixe namespace.
 > Le namespace est porté par le **channel token**, pas par le nom du message.
+> Côté View et Composer, la clé plate `"ns:name"` les réunit (I80).
 
 ### 3.2 Conventions TypeScript
 
@@ -406,8 +395,8 @@ export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
 | **Type de la surface développeur** (écrit explicitement dans le code applicatif — structurel ou mapped/conditional : `implements TFeatureCallbacks<…>`, `TChannelDefinition`, payloads) | PascalCase, préfixe `T` | `TEntityEvent`, `TChannelDefinition`, `TFeatureCallbacks`, `TCommandCallbacks` |
 | **Type de plomberie interne** (jamais écrit directement par le développeur, uniquement composé par d'autres types exportés) | PascalCase, **sans** préfixe | `StrictManifest`, `CamelCase`, `UnionToIntersection`, `HasNoDuplicates` |
 | **Interface** (si utilisée exceptionnellement) | PascalCase, préfixe `I` | `IProject`, `IConfig` |
-| **Méthode** | camelCase | `mutate()`, `emit()`, `onAddItem()` |
-| **Handler** | `on` + EventName en PascalCase | `onAddItemCommand`, `onItemAddedEvent` |
+| **Méthode** | camelCase | `resolve()`, `getUI()` |
+| **Handler** | `on` + nom en PascalCase + suffixe | `onAddItemCommand`, `onTotalQuery`, `onCartItemAddedEvent`, `onAddButtonClick` |
 | **Constante** | SCREAMING_SNAKE | `MAX_HOPS`, `DEFAULT_TIMEOUT` |
 | **Namespace** | camelCase | `cart`, `userProfile`, `pricing` |
 
@@ -448,7 +437,7 @@ export class CartFeature extends Feature<CartEntity, TCartDef, "cart"> {
 ```text
 src/
   Cart/
-    cart.feature.ts         # Feature + Channel + State (ADR-09, ADR-14)
+    cart.feature.ts         # Feature + contrat de Channel (ADR-09, ADR-14)
     cart.entity.ts          # Entity
     cart.view.ts            # View
     cart.behavior.ts        # Behavior(s) optionnel(s)
@@ -510,6 +499,10 @@ src/
 
 ### 3.5 Modules ESM Bonsai — convention de déclaration (ADR-27)
 
+> ⏳ **Cible strate 2+, non livrée** : ni `BonsaiRegistry`, ni module `*.esm.js` par
+> composant n'existent ([distribution.md](../spec/2-architecture/distribution.md) §3).
+> Le mode livré est le bootstrap monolithique (`new Application({ … }).start()`).
+
 En **Mode ESM Modulaire**, chaque composant Bonsai est distribué sous forme
 d'un module ES natif (`*.esm.js` + `*.d.ts`). Le module déclare ses composants
 dans le `BonsaiRegistry` au top-level — sans side-effect métier.
@@ -542,7 +535,7 @@ cart.init();                    // ❌ Logique exécutée à l'import
 | Module ESM navigateur | `{nom}.esm.js` | `cart.feature.esm.js` |
 | Déclaration TypeScript | `{nom}.d.ts` | `cart.feature.d.ts` |
 | Source map JS | `{nom}.esm.js.map` | `cart.feature.esm.js.map` |
-| Runtime Bonsai ESM | `bonsai.esm.js` | — |
+| ⏳ Runtime Bonsai ESM (cible ; livré : `core/dist/bonsai.js` et `bonsai.prod.js`) | `bonsai.esm.js` | — |
 | ⏳ Runtime Bonsai IIFE (cible, non produit — `lib/build/building/builder.class.ts` ne génère que `format: "es"`) | `bonsai.iife.js` | — |
 | ⏳ Bundle IIFE applicatif (cible, non produit) | `{app}.bundle.iife.js` | `app.bundle.iife.js` |
 
@@ -588,120 +581,109 @@ get uiElements() {
 
 - Une classe CSS **NE DOIT PAS** représenter un état (`is-open`, `is-active`).
   Les états dynamiques sont portés par des `data-*` (§4.4).
-- Une classe CSS **NE DOIT PAS** être modifiée par le JavaScript applicatif
-  (la Foundation peut altérer les classes de `<html>`/`<body>` en N1, mais c'est
-  une exception contrôlée par le framework).
+- Une classe CSS **NE DOIT PAS** être modifiée par le JavaScript applicatif.
+  La Foundation n'a pas de projection : elle n'altère ni `<html>` ni `<body>`.
   > 🧭 **Tension non tranchée** : `TProjectionNode.toggleClass(className, force)`
-  > est pourtant une primitive **livrée** (`packages/view/src/bonsai-view.ts`),
-  > utilisée dans les exemples de [view.md](../spec/4-couche-concrete/view.md),
-  > [foundation.md](../spec/4-couche-concrete/foundation.md) et
-  > [FORMS-GUIDE.md](FORMS-GUIDE.md) pour piloter des états (`is-invalid`,
-  > `has-items`...). Soit `toggleClass()` doit être encadrée (réservée aux
-  > rôles sémantiques statiques, jamais aux états — auquel cas ces exemples
-  > sont fautifs), soit cette règle doit admettre une exception explicite —
-  > non tranché, ne pas présumer laquelle des deux avant décision.
+  > est une primitive **livrée** (`packages/view/src/bonsai-view.ts`), et
+  > [view.md](../spec/4-couche-concrete/view.md) §4 l'utilise pour un état
+  > (`toggleClass("hidden", true)`). Soit `toggleClass()` est réservée à des
+  > rôles statiques (et l'exemple doit passer à `data-*` ou à `visible()`),
+  > soit cette règle admet une exception explicite. Non tranché ; les guides
+  > emploient `attr("data-state", …)` en attendant.
 
 ### 4.3 Identifiants (`id`) — ciblage JavaScript pur
 
 Les `id` sont réservés au ciblage JavaScript. Ils **NE DOIVENT PAS** être
 utilisés dans les sélecteurs CSS.
 
-Dans Bonsai, les `id` servent à deux usages :
-
 #### 4.3.1 Slots de composition — `#name-slot`
 
-Les éléments qui servent de **slots** pour les Composers utilisent un `id`
-avec le suffixe `-slot`. Le slot est un conteneur structurel pur — il n'a
-pas de rôle visuel propre, il sert de point d'ancrage JS.
+Les éléments qui servent de **slots** aux Composers utilisent un `id` avec le
+suffixe `-slot`. Le slot est un conteneur structurel pur : il n'a pas de rôle
+visuel propre. Son sélecteur doit désigner **exactement un élément** du
+contenant (l'ancre de la Foundation, ou le contenu produit par le `template`
+de la View) ; sinon l'effet de matérialisation échoue et l'échec est consigné
+dans la trace.
 
 ```html
-<!-- Slots racines (Foundation) -->
+<!-- Slots racines : dans l'ancre de la Foundation (<body> par défaut) -->
 <div id="header-slot"></div>
 <div id="main-slot"></div>
 <div id="footer-slot"></div>
-
-<!-- Slots enfants (View) -->
-<div id="sidebar-slot"></div>
-<div id="content-slot"></div>
 ```
 
 **Convention** : `#kebab-case-slot` — le suffixe `-slot` marque l'intention.
+Un sélecteur d'attribut (`[data-slot='main']`) convient aussi ; il ne change jamais.
 
-Usage dans la Foundation :
+Usage dans la Foundation (clé = nom du slot, lu une fois au démarrage, I67) :
 
 ```typescript
-get composers() {
-  return {
-    '#header-slot': HeaderComposer,
-    '#main-slot':   MainContentComposer,
-    '#footer-slot': FooterComposer,
-  };
+class AppFoundation extends Foundation {
+  get composers() {
+    return {
+      header: { slot: "#header-slot", composer: HeaderComposer },
+      main:   { slot: "#main-slot",   composer: MainContentComposer },
+      footer: { slot: "#footer-slot", composer: FooterComposer }
+    } as const;
+  }
 }
 ```
 
-Usage dans une View (les clés de `get composers()` doivent correspondre
-à des entrées dans `get uiElements()`) :
+Usage dans une View : le slot est un élément de son `template`, et sa clé est
+**distincte** des clés d'interface (D13 ; une collision est refusée à la
+création de la View) :
 
 ```typescript
 get uiElements() {
-  return {
-    sidebarSlot: '#sidebar-slot',
-    contentSlot: '#content-slot',
-    itemList:    '.LayoutMain-itemList',
-  };
+  return { itemList: ".LayoutMain-itemList" };
+}
+
+get template() {
+  return `<ul class="LayoutMain-itemList"></ul>
+          <aside id="sidebar-slot"></aside>
+          <section id="content-slot"></section>`;
 }
 
 get composers() {
   return {
-    sidebarSlot: SidebarComposer,
-    contentSlot: ContentComposer,
-  };
+    sidebar: { slot: "#sidebar-slot", composer: SidebarComposer },
+    content: { slot: "#content-slot", composer: ContentComposer }
+  } as const;
 }
 ```
 
-#### 4.3.2 Point d'ancrage View — `#name-view`
+Le contenu d'un slot appartient au Composer qui le remplit, pas à la View :
+la View ne doit pas y projeter (I40 ; ⚠️ le code ne l'empêche pas encore, voir
+[view.md §9](../spec/4-couche-concrete/view.md#9-limites-connues)).
 
-Le `rootElement` d'une View utilise un `id` avec le suffixe `-view`.
-Cela marque l'intention explicite : _cet élément est le point d'ancrage
-JS d'une View spécifique_.
+#### 4.3.2 La part d'une View
 
-```html
-<div id="header-slot">
-  <header id="header-view" class="AppHeader">…</header>
-</div>
-<div id="main-slot">
-  <main id="main-view" class="ProductList">…</main>
-</div>
-```
+Une View n'a pas d'élément racine à désigner : le noyau crée sa **part**, un
+élément `<div data-bonsai-part="{clé}">` inséré dans le slot de son Composer à
+la position décidée par `resolve(ctx)`, puis y projette son `template`
+(I31, I34). Il n'y a donc ni `rootElement`, ni convention `#name-view`.
 
 ```typescript
-// Le sélecteur est fourni par le Composer via resolve(), PAS déclaré par
-// la View elle-même (I31, ADR-19) :
-class HeaderComposer extends Composer {
-  resolve(_event: unknown | null) {
-    return { view: HeaderView, rootElement: '#header-view' };
-  }
-}
+class HeaderComposer extends Composer<THeaderComposerContract> {
+  get features() { return headerComposerFeatures; }
+  get views() { return { header: HeaderView }; }
 
-// View.rootElement est un getter en LECTURE SEULE, peuplé par mount() —
-// jamais surchargé par le développeur applicatif.
-class HeaderView extends View<THeaderViewContract> {
-  // this.rootElement === '#header-view' après mount("#header-view")
+  // Le Composer décide quelles Views occupent son slot, par clé ; il ne
+  // désigne aucun élément.
+  resolve(_ctx: TComposeContext<THeaderComposerContract>): TComposition<THeaderComposerContract> {
+    return [{ view: "header", key: "header" }];
+  }
 }
 ```
 
-**Convention** : `#kebab-case-view` — le suffixe `-view` marque l'intention.
-
-> **Note** : l'élément existe **avant** que la View ne s'y attache (SSR).
-> Le suffixe `-view` indique l'intention d'ancrage framework, pas le statut
-> courant de l'élément.
+`data-bonsai-part` appartient au framework : ne pas l'écrire, ne pas le cibler
+en CSS. Le style s'accroche aux classes du `template`.
 
 #### 4.3.3 Récapitulatif `id`
 
 | Suffixe | Usage | Exemple | Résolu par |
 | --- | --- | --- | --- |
-| `-slot` | Point d'ancrage d'un Composer | `#header-slot` | `querySelector()` (Foundation ou `@ui`) |
-| `-view` | rootElement d'une View | `#header-view` | ⚠️ cible : `slotElement.querySelector()` ; livré : `document.querySelector()` global (ADR-19) |
+| `-slot` | Point d'ancrage d'un Composer | `#header-slot` | Le noyau, dans le contenant (ancre de la Foundation ou part de la View), exactement un élément |
 
 ### 4.4 Attributs `data-*` — états dynamiques
 
@@ -732,202 +714,147 @@ pilotés par JavaScript (projections PDR, Behaviors).
 
 | Composant | Élément DOM | Sélecteur | Mécanisme | Justification |
 | --- | --- | --- | --- | --- |
-| **Foundation** | Slot racine | `#header-slot` | `id` | Ciblage JS pur — point d'ancrage Composer |
-| **View** | rootElement | `#header-view` | `id` | Ciblage JS — ancrage de la View dans le slot |
-| **View** | uiElements (interaction) | `.ProductCard-addToBasket` | classe CSS | Rôle sémantique dans le contexte du Bloc |
-| **View** | uiElements (slot enfant) | `#sidebar-slot` | `id` | Ciblage JS pur — point d'ancrage Composer enfant |
-| **View / Behavior** | États dynamiques | `data-state="open"` | `data-*` | Piloté par JS, mutable à l'exécution |
-| **Foundation** | Altération N1 | `data-theme="dark"` | `data-*` | État global piloté par JS |
+| **Foundation** | Ancre | `body` (option `anchor`) | — | Seul élément de l'hôte admis par la Foundation (D3) |
+| **Foundation** | Slot racine | `#header-slot` | `id` | Ciblage JS pur — point d'ancrage d'un Composer |
+| **View** | Part | `[data-bonsai-part]` | attribut du framework | Créée par le noyau, jamais ciblée par le code applicatif |
+| **View** | uiElements (interaction) | `.ProductCard-addToBasket` | classe CSS | Rôle sémantique dans le contexte du bloc |
+| **View** | Slot enfant | `#sidebar-slot` | `id` | Point d'ancrage d'un Composer enfant, clé hors `uiElements` (D13) |
+| **View** | États dynamiques | `data-state="open"` | `data-*` | Piloté par projection, mutable à l'exécution |
 
 ### 4.6 Exemple complet HTML
 
+Le document servi ne contient que l'ancre et ses slots ; les parts des Views
+sont créées par le noyau et remplies par leur `template` :
+
 ```html
 <!DOCTYPE html>
-<html lang="fr" data-theme="light">
+<html lang="fr">
 <head>…</head>
 <body>
-  <!-- Foundation: slots racines (#name-slot) -->
-  <div id="header-slot">
-    <!-- View: rootElement (#name-view) + classe CSS (rôle) -->
-    <header id="header-view" class="AppHeader">
-      <nav class="AppHeader-nav">…</nav>
-      <div class="AppHeader-cartBadge" data-item-count="3">…</div>
-    </header>
-  </div>
-
-  <div id="main-slot">
-    <main id="main-view" class="ProductList">
-      <!-- uiElements → classes CSS (rôle sémantique) -->
-      <ul class="ProductList-items">…</ul>
-      <button class="ProductList-loadMore">Charger plus</button>
-
-      <!-- Slots enfants pour Composers (#name-slot) -->
-      <aside id="sidebar-slot">
-        <div id="sidebar-view" class="ProductFilters">…</div>
-      </aside>
-    </main>
-  </div>
-
-  <div id="footer-slot">
-    <footer id="footer-view" class="AppFooter">
-      <p class="AppFooter-copyright">© 2026</p>
-    </footer>
-  </div>
+  <!-- Foundation : slots racines (#name-slot) -->
+  <div id="header-slot"></div>
+  <div id="main-slot"></div>
+  <div id="footer-slot"></div>
 </body>
 </html>
 ```
 
-```text
-Foundation(<body>)
-  ├─ '#header-slot'  → HeaderComposer    → HeaderView (#header-view)
-  ├─ '#main-slot'    → MainContentComposer → ProductListView (#main-view)
-  │                                            └─ '#sidebar-slot' → SidebarComposer → FiltersView (#sidebar-view)
-  └─ '#footer-slot'  → FooterComposer   → FooterView (#footer-view)
-```
-
-### 4.7 Pattern — Composition hétérogène typée par attribut
-
-> ⏳ **Cible strate 1d, non livré** : `View.composers` et l'instanciation de N Composers par
-> `querySelectorAll` n'existent pas (voir l'encadré plus bas). Par ailleurs, l'exemple
-> déclare `ui<HTMLInputElement>()(["input"])` : ce contrat est aujourd'hui rejeté par
-> `satisfies TUIContract` (ADR-15, `TUIContract` n'accepte que les événements de base et de défilement).
-
-Quand un conteneur accueille **N slots de types différents encodés dans un attribut DOM**,
-utilisez des sélecteurs d'attribut dans `uiElements` combinés à `get composers()`.
-Le framework résoudrait chaque sélecteur par `querySelectorAll` : **un Composer serait instancié
-pour chaque élément matché**.
-
-**Cas typiques** : formulaires CMS (champs selon le bundle), éditeurs de blocs,
-dashboards configurables, configurateurs produit.
-
-#### HTML — le type est dans l'attribut
+Après le démarrage :
 
 ```html
-<form id="node-edit-form-view">
-  <input name="title" class="NodeEditForm-titleField" />
-  <div data-field-type="editorjs" data-field-id="field_body"></div>
-  <div data-field-type="media"    data-field-id="field_image"></div>
-  <div data-field-type="editorjs" data-field-id="field_excerpt"></div>
-  <button class="NodeEditForm-submit" type="submit">Enregistrer</button>
-</form>
+<body>
+  <div id="header-slot">
+    <div data-bonsai-part="header">           <!-- part de HeaderView -->
+      <header class="AppHeader">
+        <nav class="AppHeader-nav">…</nav>
+        <div class="AppHeader-cartBadge" data-item-count="3">…</div>
+      </header>
+    </div>
+  </div>
+
+  <div id="main-slot">
+    <div data-bonsai-part="products">         <!-- part de ProductListView -->
+      <main class="ProductList">
+        <ul class="ProductList-items">…</ul>
+        <button class="ProductList-loadMore">Charger plus</button>
+        <aside id="sidebar-slot">             <!-- slot de la View -->
+          <div data-bonsai-part="filters">…</div>  <!-- part de FiltersView -->
+        </aside>
+      </main>
+    </div>
+  </div>
+
+  <div id="footer-slot">…</div>
+</body>
 ```
 
-#### TypeScript — déclaratif, compile-time
+```text
+Foundation(<body>)
+  ├─ header : '#header-slot' → HeaderComposer      → HeaderView (clé "header")
+  ├─ main   : '#main-slot'   → MainContentComposer → ProductListView (clé "products")
+  │                                                    └─ sidebar : '#sidebar-slot' → SidebarComposer → FiltersView (clé "filters")
+  └─ footer : '#footer-slot' → FooterComposer      → FooterView (clé "footer")
+```
 
-Pattern modulaire ADR-14 : trois modules (`TFeatureContract`, `TUIContract`,
-`TUIElements`) composés en un `TViewContract` puis injecté comme **unique
-générique** sur `View<TVC>` avec `implements TViewCallbacks<TVC>` (I88).
+### 4.7 Pattern — Composition hétérogène par clé
+
+Quand un conteneur accueille **N Views de types différents** (formulaire CMS
+dont les champs dépendent du bundle, éditeur de blocs, tableau de bord
+configurable), c'est **un seul slot** et **un seul Composer** : `resolve(ctx)`
+rend une composition ordonnée de Views, chacune sous une clé stable, d'après
+l'état du domaine. Le noyau ne recrée que ce qui a changé (I35).
 
 ```typescript
 import {
-  View, ui,
-  type TViewContract, type TViewCallbacks,
-  type TUIContract, type TUIElements,
-} from "@bonsai/view";
-import type { TFeatureContract } from "@bonsai/feature";
+  Composer,
+  type TComposerContract, type TComposeContext, type TComposition
+} from "@bonsai/core";
 import { NodeEditFeature } from "../NodeEdit/nodeEdit.feature";
 
-// ─── Module 1 — TFeatureContract : Features groupées par namespace ──────────
-const nodeEditFormViewFeatures = {
+const fieldsComposerFeatures = {
   nodeEdit: {
-    feature:  NodeEditFeature,
-    listens:  []                                as const,
-    triggers: ["submit", "titleChanged"]        as const,
-    requests: []                                as const,
-  },
-} satisfies TFeatureContract;
+    feature: NodeEditFeature,
+    listens: ["fieldsChanged"] as const,   // recompose à chaque Event déclaré
+    queries: ["fields"]        as const
+  }
+};
 
-// ─── Module 2 — TUIContract : UI events typés ───────────────────────────────
-// `events: []` = slot non-interactif (mount Composer, mutation N1 directe, etc.) — I86.
-const nodeEditFormViewUiEvents = {
-  editorJsSlot:   ui<HTMLDivElement>()([]),
-  mediaFieldSlot: ui<HTMLDivElement>()([]),
-  submitButton:   ui<HTMLButtonElement>()(["click"]),
-  titleField:     ui<HTMLInputElement>()(["input"]),
-} satisfies TUIContract;
+const fieldsComposerViews = {
+  editorjs: EditorJsFieldView,
+  media:    MediaFieldView,
+  text:     TextFieldView
+};
 
-// ─── Module 3 — TUIElements : sélecteurs CSS, 1:1 avec uiEvents ─────────────
-const nodeEditFormViewUiElements = {
-  editorJsSlot:   '[data-field-type="editorjs"]',
-  mediaFieldSlot: '[data-field-type="media"]',
-  submitButton:   '.NodeEditForm-submit',
-  titleField:     '.NodeEditForm-titleField',
-} satisfies TUIElements<typeof nodeEditFormViewUiEvents>;
-
-// ─── Composition — TViewContract dérivé par typeof ──────────────────────────
-type TNodeEditFormViewContract = TViewContract<
-  typeof nodeEditFormViewFeatures,
-  typeof nodeEditFormViewUiEvents
+type TFieldsComposerContract = TComposerContract<
+  typeof fieldsComposerFeatures,
+  typeof fieldsComposerViews
 >;
 
-// ─── Classe — un seul générique, un seul implements (I88) ───────────────────
-class NodeEditFormView
-  extends View<TNodeEditFormViewContract>
-  implements TViewCallbacks<TNodeEditFormViewContract>
-{
-  get features()   { return nodeEditFormViewFeatures;   }
-  get uiEvents()   { return nodeEditFormViewUiEvents;   }
-  get uiElements() { return nodeEditFormViewUiElements; }
+class FieldsComposer extends Composer<TFieldsComposerContract> {
+  get features() { return fieldsComposerFeatures; }
+  get views()    { return fieldsComposerViews; }
 
-  // Composition N-instances (ADR-18) — clés ⊆ keyof uiEvents.
-  get composers() {
-    return {
-      editorJsSlot:   EditorJsComposer,    // 1 instance par [data-field-type="editorjs"]
-      mediaFieldSlot: MediaFieldComposer,  // 1 instance par [data-field-type="media"]
-    };
-  }
-
-  // I48 UI — handler imposé par events: ["click"] sur submitButton.
-  onSubmitButtonClick(_e: MouseEvent): void {
-    // Clé namespacée vérifiée contre TFlatTriggers<typeof nodeEditFormViewFeatures>.
-    this.trigger("nodeEdit:submit", {});
-  }
-
-  // I48 UI — handler imposé par events: ["input"] sur titleField.
-  onTitleFieldInput(e: InputEvent & { currentTarget: HTMLInputElement }): void {
-    this.trigger("nodeEdit:titleChanged", { value: e.currentTarget.value });
+  resolve(ctx: TComposeContext<TFieldsComposerContract>): TComposition<TFieldsComposerContract> {
+    // Le type de chaque champ vient du domaine, pas d'un attribut du DOM.
+    return ctx.query("nodeEdit:fields", null).map((field) => ({
+      view: field.type,                // "editorjs" | "media" | "text" : clé du catalogue views
+      key: field.id,                   // clé stable : la View est gardée tant qu'elle ne change pas
+      params: { fieldId: field.id }    // paramètres de création, capturés par copie (G2)
+    }));
   }
 }
 ```
 
-> **Résultat sur le DOM ci-dessus** : 2 `EditorJsComposers` (body + excerpt) et
-> 1 `MediaFieldComposer` (image). La View déclare **les types** — le framework
-> décide **combien** d'après le DOM au runtime.
-
-#### Pourquoi ce n'est pas de la composition cachée
-
-> ⏳ **`View.composers` (enfants, N-instances) est entièrement cible strate 1d,
-> non livré** — `packages/view/src/bonsai-view.ts` n'a pas cette propriété.
-> Rien n'est aujourd'hui "vérifié compile-time" pour ce mécanisme puisqu'il
-> n'existe pas ; le tableau ci-dessous décrit une garantie visée, pas un fait.
-
-| Élément | Visible | Vérifié (cible) |
-| --- | --- | --- |
-| Types de slots | `TUIContract` | compile-time — TypeScript (livré pour `uiEvents`, cible pour la composition enfant) |
-| Sélecteurs CSS | `uiElements` | bootstrap — erreur si sélecteur invalide |
-| Composer par type | `get composers()` | ⏳ cible : compile-time — clé devrait exister dans `keyof TVC["ui"]` |
-
-La View sait **quels types** elle accepte (statique), pas **combien** d'instances
-(déterminé par le DOM au runtime). C'est la séparation correcte des responsabilités.
-
-#### ❌ Anti-pattern — logique dans `get composers()`
+La View qui contient le formulaire déclare ce slot unique :
 
 ```typescript
-// ❌ INTERDIT — get composers() est un getter déclaratif, jamais un scanner DOM
+get template()  { return `<form class="NodeEditForm"><div id="fields-slot"></div>…</form>`; }
+get composers() { return { fields: { slot: "#fields-slot", composer: FieldsComposer } } as const; }
+```
+
+#### Pourquoi la décision est dans le Composer
+
+| Élément | Où | Vérifié |
+| --- | --- | --- |
+| Types de Views possibles | catalogue `get views()` | compile-time : une View hors catalogue est refusée par `TComposition` (I37) |
+| Clé de chaque entrée | `resolve(ctx)` | compile-time (clé requise) ; runtime : une clé dupliquée fait échouer l'unité (G7) |
+| Combien, dans quel ordre | l'état du domaine, par Query | à chaque résolution |
+
+#### ❌ Anti-pattern — scanner le DOM
+
+```typescript
+// ❌ INTERDIT — une View ou un Composer ne lit jamais le DOM (I39), et un
+// sélecteur de slot désigne exactement un élément : pas de querySelectorAll.
 get composers() {
-  // Non : get composers() est évalué au bootstrap, this.el n'est pas encore résolu
   return Object.fromEntries(
-    [...this.el.querySelectorAll('[data-field-type]')]
-      .map(el => [el.id, resolveComposer(el.dataset.fieldType)])
+    [...document.querySelectorAll("[data-field-type]")]
+      .map((el) => [el.id, { slot: `#${el.id}`, composer: resolveComposer(el.dataset.fieldType) }])
   );
 }
 
-// ✅ CORRECT — déclaratif, compile-time, le framework fait le reste
+// ✅ CORRECT — un slot, un Composer, une composition décidée par le domaine
 get composers() {
-  return {
-    editorJsSlot:   EditorJsComposer,
-    mediaFieldSlot: MediaFieldComposer,
-  };
+  return { fields: { slot: "#fields-slot", composer: FieldsComposer } } as const;
 }
 ```
 
@@ -962,11 +889,27 @@ createView({ name, element, template, behaviors, options });
 
 ```typescript
 // NON — pas d'intent
-this.entity.mutate(draft => { });
+ctx.mutate((draft) => { });
 
 // NON — intent générique
-this.entity.mutate("update", draft => { });
+ctx.mutate("update", (draft) => { });
 
 // OUI — intent métier explicite
-this.entity.mutate("cart:addItem", draft => { });
+ctx.mutate("cart:addItem", (draft) => { });
+```
+
+### ❌ Opérations hors du contexte du handler
+
+```typescript
+// NON — API de la strate 0, retirée
+this.entity.mutate("cart:addItem", recipe);
+this.emit("itemAdded", payload);
+this.trigger("cart:addItem", payload);
+this.request(PricingFeature.channel, "total", params);
+
+// OUI — le contexte de l'unité
+ctx.mutate("cart:addItem", recipe);
+ctx.emit("itemAdded", payload);
+ctx.trigger("cart:addItem", payload);              // View, handler d'un fait seulement (D18)
+ctx.query(PricingFeature.channel, "total", params); // Feature ; "pricing:total" côté View
 ```

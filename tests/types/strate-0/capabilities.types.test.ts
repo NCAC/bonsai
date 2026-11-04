@@ -21,7 +21,7 @@
 
 import { describe, it } from "@jest/globals";
 import type { Application } from "@bonsai/application";
-import type { Composer } from "@bonsai/composer";
+import type { Composer, TComposerContract, TComposition } from "@bonsai/composer";
 import { Entity } from "@bonsai/entity";
 import { type TChannelToken } from "@bonsai/kernel";
 import { Feature, type TFeatureContext } from "@bonsai/feature";
@@ -133,6 +133,29 @@ describe("Concrete layer capabilities [I4, I25]", () => {
     void composer?.trigger;
     // @ts-expect-error — `trigger` does not exist on Foundation (I25)
     void foundation?.trigger;
+  });
+});
+
+describe("Composition and DOM access [I37, I39]", () => {
+  it("I37 — a composition names only Views of the Composer's catalogue, each with a key", () => {
+    type TCC = TComposerContract<Record<string, never>, { row: typeof View; empty: typeof View }>;
+    const ok: TComposition<TCC> = [{ view: "row", key: "a" }, { view: "empty", key: "b" }, { view: "row", key: "c" }];
+    const none: TComposition<TCC> = [];
+    // @ts-expect-error — "other" is not in the catalogue (I37)
+    const outside: TComposition<TCC> = [{ view: "other", key: "x" }];
+    // @ts-expect-error — every composed View has a key (I37)
+    const keyless: TComposition<TCC> = [{ view: "row" }];
+    void [ok, none, outside, keyless];
+  });
+
+  it("I39 — a View exposes no raw DOM access", () => {
+    const view = null as unknown as View<never>;
+    // @ts-expect-error — no `el` on View (I39)
+    void view?.el;
+    // @ts-expect-error — no `querySelector` on View (I39)
+    void view?.querySelector;
+    // @ts-expect-error — no `element()` on View (I39)
+    void view?.element;
   });
 });
 

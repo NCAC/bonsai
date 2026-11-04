@@ -65,11 +65,11 @@
   nature: D
   parents: [P1]
   roles: [Entity]
-  enonce: "`Entity.mutate()` utilise `Immer.produceWithPatches`."
+  enonce: "`ctx.mutate()` utilise `Immer.produceWithPatches`."
   pourquoi: >
     Immer donne l'immutabilité sans code de copie manuel ; `produceWithPatches` fournit les
-    `patches`/`changedKeys` nécessaires à la détection de no-op (I51/I96) et au rollback
-    automatique si la recipe throw (ADR-05, ADR-10).
+    `patches`/`changedKeys` nécessaires à la détection de no-op (I51/I96) ; la mutation est
+    journalisée dans l'unité et annulée avec elle (G7, ADR-05, ADR-10).
   mode: run
   etat: livre
 
@@ -108,10 +108,12 @@
   nature: D
   parents: [I51, P4, I102]
   roles: [Entity]
-  enonce: Une mutation déclenchée pendant un cycle de notification est mise en file FIFO plutôt qu'exécutée immédiatement, avec une profondeur de ré-entrance bornée.
+  enonce: Une mutation effective notifie sa Feature par un message local différé, délivré après la validation de l'unité, dans sa propre unité ; une mutation faite pendant une notification produit la sienne, et la chaîne est bornée par la borne causale (D9).
   pourquoi: >
     Empêche qu'une mutation lancée depuis un handler de notification ne provoque une récursion
-    incontrôlée ou un ordre de notification imprévisible ; la borne transforme une boucle
-    infinie potentielle en erreur explicite (`EntityReentrancyError`, ADR-31 strate 1a).
+    ou un ordre de notification imprévisible : la file différée du noyau (G5, D8) ordonne les
+    notifications, et la borne D9 arrête une boucle (ADR-10).
+  # M6.1 : la file FIFO propre à l'Entity et `EntityReentrancyError` (strate 1a) sont remplacées
+  # par la file différée du noyau.
   mode: run
   etat: livre

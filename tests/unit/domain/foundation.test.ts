@@ -44,12 +44,24 @@ describe("Foundation on the kernel", () => {
     document.body.innerHTML = `<header id="h"></header><main id="m"></main>`;
   });
 
-  it("fills each declared slot through its Composer, inside the anchor (default body)", () => {
+  it("I33 — fills each declared slot through its Composer, inside the anchor (default body)", () => {
     const app = new Application({ foundation: foundationOf({ head: "#h", main: "#m" }), document });
     app.start();
     expect(document.querySelector("#h")!.textContent).toBe("leaf");
     expect(document.querySelector("#m")!.textContent).toBe("leaf");
     expect(app.root!.trace.filter((t) => t.type === "unit-failed")).toEqual([]);
+  });
+
+  it("I67 — reads `composers` once, at startup: its structure stays fixed", () => {
+    let reads = 0;
+    const Base = foundationOf({ main: "#m" });
+    class Counted extends Base {
+      get composers() { reads++; return super.composers; }
+    }
+    const app = new Application({ foundation: Counted, document });
+    app.start();
+    expect(reads).toBe(1);
+    expect(document.querySelector("#m")!.textContent).toBe("leaf");
   });
 
   it("the anchor is an Application option", () => {
@@ -90,7 +102,7 @@ describe("Foundation on the kernel", () => {
     expect(() => new Application({ foundation: foundationOf({}) })).toThrow(/needs the host `document`/);
   });
 
-  it("a Foundation has no body/html getters and no attach hooks any more", () => {
+  it("I33 — a Foundation has no body/html getters and no attach hooks any more", () => {
     const f = new (foundationOf({}))() as unknown as Record<string, unknown>;
     for (const name of ["body", "html", "onAttach", "onDetach"]) expect(f[name]).toBeUndefined();
   });
