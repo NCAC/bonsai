@@ -151,6 +151,36 @@ describe("6.1 — technical sink of the trace (O2)", () => {
       expect(out.error).toHaveBeenCalledTimes(1);
     });
 
+    it("names no effect not attempted when the failure closed nothing else", () => {
+      const out = output();
+      const root = new Root({ causalBound: 10, onTrace: (e) => reportToConsole(e, out) });
+      let handle!: TComponentHandle;
+      root.start((ctx) => {
+        handle = ctx.create({ name: "client", locals: { go: (_p, c) => { c.prepareEffect("send", () => { throw new Error("refused"); }); } } });
+      });
+      root.admit(handle, "go", {}, click);
+      expect(out.warn.mock.calls.map((c) => c[0])).toEqual([`[Bonsai] effect "send" of "client" failed (C.3)`]);
+    });
+
+    it("stays silent about a delivery abandoned because its recipient is gone (C.6)", () => {
+      const out = output();
+      const root = new Root({ causalBound: 10, onTrace: (e) => reportToConsole(e, out) });
+      let src!: TComponentHandle;
+      let sub!: TComponentHandle;
+      root.start((ctx) => {
+        src = ctx.create({
+          name: "src",
+          channel: { namespace: "src", events: ["e"] },
+          init: (c) => { sub = c.create({ name: "sub", listens: [{ namespace: "src", event: "e", handler: () => undefined }] }); },
+          locals: { go: (_p, c) => { c.emit("e"); c.destroy(sub); } }
+        });
+      });
+      root.admit(src, "go", {}, click);
+      expect(root.trace.some((e) => e.type === "delivery-abandoned")).toBe(true);
+      expect(out.warn).not.toHaveBeenCalled();
+      expect(out.error).not.toHaveBeenCalled();
+    });
+
     it("warns about a message abandoned at the causal bound (D9)", () => {
       const out = output();
       reportToConsole({ type: "admission-abandoned", reason: "causal bound", name: "$effects" }, out);

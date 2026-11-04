@@ -138,6 +138,31 @@ describe("M2 — business invariants at the end of each unit (A4.a)", () => {
     expect(error.invariant).toBe("total = somme des lignes");
   });
 
+  it("an invariant check that throws fails the unit with its own error; the state is restored", () => {
+    const fragile: TEntityDefinition<TCart> = {
+      ...cartEntity,
+      invariants: [{ name: "short cart", check: (s) => { if (s.lines.length > 1) throw new Error("check crashed"); return true; } }]
+    };
+    let total = -1;
+    const root = new Root({ causalBound: 10 });
+    let cart!: TComponentHandle;
+    root.start((ctx) => {
+      cart = ctx.create({
+        name: "cart",
+        entity: fragile,
+        locals: {
+          add: (p, c) => { c.mutate<TCart>((d) => { d.lines.push(p as number); d.total += p as number; }); },
+          read: (_p, c) => { total = c.state<TCart>().total; }
+        }
+      });
+    });
+    root.admit(cart, "add", 2, click);
+    root.admit(cart, "add", 3, click);
+    root.admit(cart, "read", {}, click);
+    expect(failures(root).map((e) => (e as Error).message)).toEqual(["check crashed"]);
+    expect(total).toBe(2);
+  });
+
   it("allows an intermediate state inside the unit: a nested Query does not validate its author", () => {
     const log: string[] = [];
     const { root, seen, send } = start(log);

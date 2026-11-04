@@ -60,6 +60,7 @@ describe("G2 — capture by copy", () => {
       expect(error.code).toBe("NOT_CAPTURABLE");
     }
     expect(refusal(() => capture(new Point())).message).toMatch(/instance of Point/);
+    expect(refusal(() => capture(Object.create(Object.create(null)))).message).toMatch(/instance of a class/);
   });
 });
 

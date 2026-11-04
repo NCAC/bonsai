@@ -189,6 +189,31 @@ describe("View on the kernel", () => {
     expect(document.querySelector("[data-ui='label']")!.textContent).toBe("0");
   });
 
+  it("without a template the part starts empty; a key without namespace fails the unit", () => {
+    class BareView extends View<TContract> implements TViewCallbacks<TContract> {
+      get features() { return features; }
+      get uiEvents() { return uiEvents; }
+      get uiElements() { return uiElements; }
+      onButtonClick(_fact: TFact, ctx: TFactContext<TContract>): void {
+        (ctx.trigger as (key: string, payload: unknown) => void)("inc", null);
+      }
+      onCounterChangedEvent(): void {}
+    }
+    class BareComposer extends HostComposer {
+      override get views() { return { counter: BareView }; }
+    }
+    class BarePage extends Foundation {
+      get composers() { return { main: { slot: "#main", composer: BareComposer } } as const; }
+    }
+    const d = drive({ counter: CounterFeature }, { foundation: BarePage, document });
+    const part = document.querySelector("#main > [data-bonsai-part]") as HTMLElement;
+    expect(part.innerHTML).toBe("");
+    part.insertAdjacentHTML("beforeend", `<button data-ui="button">+</button>`);
+    (part.querySelector("[data-ui='button']") as HTMLElement).click();
+    expect(String(d.failures()[0]!.error)).toMatch(/Malformed namespaced key "inc"/);
+    expect(d.ask<number>("counter", "get", null)).toBe(0);
+  });
+
   it("getUI and params are usable only inside a handler", () => {
     class Probe extends CounterView {
       read() { return this.getUI("label"); }
@@ -280,6 +305,34 @@ describe("View on the kernel", () => {
     const d = drive({ counter: CounterFeature }, { foundation: P, document });
     (document.querySelector("[data-ui='button']") as HTMLElement).click();
     expect(d.failures().some((f) => /Unknown UI key "nope"/.test(String((f.error as Error).message)))).toBe(true);
+  });
+
+  it("a UI element missing from the part fails its projection, not the unit (C.3)", () => {
+    const d = page();
+    document.querySelector("[data-ui='label']")!.remove();
+    (document.querySelector("[data-ui='button']") as HTMLElement).click();
+    expect(d.failures()).toEqual([]);
+    expect(d.ask<number>("counter", "get", null)).toBe(1); // the validated state stays (C.3)
+    const lines = d.root.trace.flatMap((e) => (e.type === "effects" ? e.report : []));
+    const failed = lines.find((l) => l.outcome === "failed")!;
+    expect(failed.label).toBe("label.text");
+    expect(String(failed.error)).toMatch(/UI element "label" not found with selector "\[data-ui='label'\]" in the part/);
+  });
+
+  it("D13 — a slot key that is also a UI key is refused when the View is created", () => {
+    class Empty extends Composer<TComposerContract<Record<string, never>, Record<string, never>>> {
+      get features() { return {}; }
+      get views() { return {}; }
+      resolve() { return []; }
+    }
+    class Colliding extends CounterView {
+      override get composers() { return { label: { slot: "[data-ui='label']", composer: Empty } } as const; }
+    }
+    class C extends HostComposer { override get views() { return { counter: Colliding }; } }
+    class P extends Foundation { get composers() { return { main: { slot: "#main", composer: C } } as const; } }
+    expect(startupCause(() => drive({ counter: CounterFeature }, { foundation: P, document }))).toMatch(
+      /slot key "label" collides with a UI key \(D13\)/
+    );
   });
 
   it("creation params are readable in handlers", () => {
