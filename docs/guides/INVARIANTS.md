@@ -130,7 +130,7 @@ Une valeur contenant `:` suivi d'un espace, ou commençant par un backtick, doit
 | Mode | Garantie |
 | --- | --- |
 | `type` | le compilateur rejette la violation |
-| `boot` | `app.start()` ou `mount()` rejette la violation |
+| `boot` | `app.start()`, ou la description d'un composant au noyau (création d'une View), rejette la violation |
 | `type+boot` | compile-time, plus filet runtime pour `as any` / JS pur |
 | `run` | seulement pour une garde dynamique (la violation dépend de données d'exécution) — doit échouer dès la première violation (I102) |
 | `revue` | aucun mécanisme : revue de code, lint à terme |

@@ -40,9 +40,9 @@ Depuis le tag `v0.1.0-strate-0` (l'historique complet est dans `git log`). Ce ja
 - **Seuils de couverture** relevés au niveau mesuré (100 % hors `kernel`, `router` et `view`) ; 435 tests
 - **Versions** : tous les `package.json` du workspace alignés sur `0.2.0`
 - JSDoc et commentaires de `packages/` et `core/` traduits en anglais (ADR-34)
-- Documentation alignée sur le code livré : les écarts connus sont consignés dans la ligne **Livré** de chaque ADR ; les chapitres de spécification encore non alignés le signalent par leur bandeau
-
+- Documentation alignée sur le code livré : les écarts connus sont consignés dans la ligne **Livré** de chaque ADR
 - **Registre des invariants requalifié après le noyau** : I7, I8, I9, I13, I19, I20, I27, I28, I31, I33 à I37, I39, I58, I65, I66, I67 et I81 livrés, chacun cité par un test ; nouveaux tests du noyau (origine de démarrage, borne causale d'un Event, refus d'une Command, signalement d'une Query en échec) et des composants (lectures uniques des déclarations, typage de la composition)
+- **Spécification et guides réécrits sur l'API du noyau** : `1-philosophie`, `2-architecture` (vue d'ensemble, `state`, `lifecycle`, `erreurs`, `distribution`), `validation`, `conventions-typage`, `formulaires`, `devtools`, références (`glossaire`, `types-index`, `anti-patterns`, `invariants`) et guides `FRAMEWORK-STYLE-GUIDE` et `FORMS-GUIDE` : contextes de handler, Queries sans `null` de substitution, refus du noyau, part créée par le noyau, slots aux clés distinctes des clés d'interface (D13), composition par clé ; `5-rendu` et les annexes de `view.md` restent des conceptions cibles, relues contre la théorie
 
 ### Fixed
 

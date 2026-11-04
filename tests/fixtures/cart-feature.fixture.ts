@@ -1,18 +1,16 @@
 /**
  * Fixture — CartFeature, CartEntity, CartView, MainComposer, AppFoundation
  *
- * Mini-domaine "panier" conforme au contrat strate 0 (post-audit 2026-04-21,
- * ADR-09, ADR-20, ADR-14). Sert de gate E2E
- * (cf. strate-0.cart-round-trip.test.ts).
+ * Minimal "cart" domain on the kernel contract (ADR-09, ADR-14, ADR-20).
+ * Used by the E2E gate (see strate-0.cart-round-trip.test.ts).
  *
- * Flux complet illustré :
- *   View.click @addButton
- *     => trigger("cart:addItem", payload)
- *     => Channel.handle => CartFeature.onAddItemCommand
- *     => entity.mutate("addItem", recipe)
- *     => emit("itemAdded", { item })
- *     => View.onCartItemAddedEvent
- *     => getUI("itemCount").text(...)  // projection N1
+ * Full flow:
+ *   click on @addButton, admitted as a fact of the View's part
+ *     => CartView.onAddButtonClick(fact, ctx) => ctx.trigger("cart:addItem", payload)
+ *     => (deferred, G5) CartFeature.onAddItemCommand(payload, ctx)
+ *     => ctx.mutate("addItem", recipe) ; ctx.emit("itemAdded", { item })
+ *     => (deferred) CartView.onCartItemAddedEvent(payload, ctx)
+ *     => this.getUI("itemCount").text(...)  // N1 projection, engaged after validation (C.3)
  */
 
 import { Entity } from "@bonsai/entity";

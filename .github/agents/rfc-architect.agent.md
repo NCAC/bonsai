@@ -33,7 +33,7 @@ Voir la [règle de confiance](../../docs/README.md#règle-de-confiance-et-dalign
 
 ## Maintenir la spec et le registre
 
-- Chaque chapitre de spec porte un **bandeau d'alignement** (🟢 aligné, 🟠 cœur aligné, ⚠️ non aligné, ⏳ cible) ; je le mets à jour quand j'aligne un chapitre.
+- Chaque chapitre de spec porte un **bandeau d'alignement** (🟢 aligné, 🟠 cœur aligné, 🟡 conception cible) ; je le mets à jour quand j'aligne un chapitre.
 - Le registre `docs/invariants/*.yaml` est la source des invariants ; les vues sont générées (`pnpm invariants`, vérifiées par `pnpm invariants:check`). Procédures : [INVARIANTS.md](../../docs/guides/INVARIANTS.md).
 - Un état `livre` exige un mécanisme dans le code **et** un test qui cite l'identifiant.
 

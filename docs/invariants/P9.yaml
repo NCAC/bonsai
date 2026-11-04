@@ -135,10 +135,10 @@
   nature: D
   parents: [I88]
   roles: [View]
-  enonce: "`implements TViewCallbacks<TVC>` rend obligatoires les handlers d'Event et les handlers DOM déclarés ; un filet au `mount()` couvre les contournements."
+  enonce: "`implements TViewCallbacks<TVC>` rend obligatoires les handlers d'Event et les handlers DOM déclarés ; un filet, quand la View est décrite au noyau, couvre les contournements."
   pourquoi: >
     La déclaration est l'engagement : un Event ou un événement DOM déclaré sans handler est refusé
-    à la compilation, et au `mount()` pour le code JS ou casté (ADR-14).
+    à la compilation, et quand la View est décrite au noyau pour le code JS ou casté (ADR-14).
   mode: type+boot
   etat: livre
 

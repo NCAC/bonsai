@@ -1,9 +1,6 @@
 # Rendu — PDR, compilateur Pug, ProjectionList
 
-> 🗑️ **La classe `Channel` est retirée (lot M6.3b, 1er novembre 2026)** : les messages passent par la racine du noyau (`Root`, `@bonsai/kernel`). Les passages qui décrivent la classe sont historiques ; voir [communication.md](./2-architecture/communication.md).
-
-
-> ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../theorie.md) prévaut ([règle de confiance](../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
+> 🟠 **Conception cible (strate 1c), relue contre la théorie V0.9.5 et l'API livrée (4 novembre 2026).** Seules les primitives N1 de `getUI()` sont livrées ([view.md](4-couche-concrete/view.md)). Les exemples utilisent les contextes de handler livrés (`ctx.trigger`, `ctx.mutate`, `TFact`) ; tout le reste (templates, `ProjectionList`, selectors, hydratation) est cible. Toute réalisation devra respecter trois contraintes de la théorie : une projection, y compris `template.project()`, est un **effet** engagé après la validation de l'unité (C.3) ; la View n'observe le domaine que par les Events qu'elle reçoit et par Query, dans une unité (G5, A5.a) ; elle ne lit jamais le DOM (I39), les données d'un fait étant capturées avec lui (C.5). En cas d'écart, la [théorie](../theorie.md) prévaut ([règle de confiance](../README.md#règle-de-confiance-et-dalignement)).
 
 > ## TL;DR
 >
@@ -16,7 +13,7 @@
 | Champ | Valeur |
 | --- | --- |
 | **Statut** | 🟢 Stable |
-| **Prérequis** | [1-philosophie.md](1-philosophie.md), [view.md §4](4-couche-concrete/view.md#4-contrat-de-rendu-pdr) |
+| **Prérequis** | [1-philosophie.md](1-philosophie.md), [view.md §4](4-couche-concrete/view.md#4-projection--getui) |
 | **ADR** | [ADR-22](../adr/ADR-22-pdr.md) PDR · [ADR-23](../adr/ADR-23-listes.md) listes · [ADR-24](../adr/ADR-24-hydratation-ssr.md) hydratation · [ADR-26](../adr/ADR-26-souscription-view.md) souscription (🟡) |
 | **Prototype** | `tools/pug-to-ts-template` génère du VDOM, l'option rejetée par ADR-22 : à réécrire |
 
@@ -166,9 +163,9 @@ class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartVi
 
 ## 3. Contexte et motivation
 
-### 3.1 Ce qui est défini ([view.md §4](4-couche-concrete/view.md#4-contrat-de-rendu-pdr))
+### 3.1 Ce qui est défini ([view.md §4](4-couche-concrete/view.md#4-projection--getui))
 
-[view.md §4](4-couche-concrete/view.md#4-contrat-de-rendu-pdr) a établi les fondations de la **Projection DOM Réactive (PDR)** :
+[view.md §4](4-couche-concrete/view.md#4-projection--getui) a établi les fondations de la **Projection DOM Réactive (PDR)** :
 
 | Concept | Statut | Source |
 | --- | --- | --- |
@@ -287,6 +284,11 @@ each product in items
 
 La View déclare un `select` dans `get templates()`. Le framework s'abonne à `any`
 et dispatch automatiquement via les selectors.
+
+> Pseudo-code de conception, antérieur au noyau : la création d'une View est
+> aujourd'hui une matérialisation de part par la racine (`Root`), et le
+> `setup()` d'un template y deviendrait un effet de la View, engagé après
+> validation (C.3).
 
 ```typescript
 // INTERNE FRAMEWORK — dans attachView() (simplifié, voir §7bis.4 pour la version normative)
@@ -640,7 +642,7 @@ jamais via des listeners individuels sur chaque élément.
 
 > L'exemple ci-dessous se concentre sur l'auto-discovery DOM (ADR-15) — le pattern
 > modulaire complet (avec `TFeatureContract` et `implements TViewCallbacks`) est
-> documenté dans [view.md §2.2](4-couche-concrete/view.md#22-exemple-complet--cartview).
+> documenté dans [view.md §2](4-couche-concrete/view.md#2-déclarations).
 
 ```typescript
 import { View, ui, type TUIContract, type TUIElements } from "@bonsai/view";
@@ -696,38 +698,38 @@ class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartVi
   // ────────────────────────────────────────────────────────────────────
   // Handlers auto-dérivés depuis `uiEvents` (ADR-15)
   // Noms conventionnels : on${Capitalize<key>}${Capitalize<event>}
-  // Le framework vérifie leur existence au bootstrap
+  // Le framework vérifie leur existence quand la View est décrite au noyau (I84)
   // ────────────────────────────────────────────────────────────────────
 
   // removeButton + click → onRemoveButtonClick
-  onRemoveButtonClick(event: MouseEvent & { currentTarget: HTMLButtonElement }): void {
-    const itemId = this.getItemData(event, '[data-item-id]', 'data-item-id');
+  onRemoveButtonClick(fact: TFact, ctx: TFactContext<TCartViewContract>): void {
+    const itemId = this.getItemData(fact, 'data-item-id'); // ⏳ donnée capturée avec le fait (C.5)
     if (itemId) {
-      this.trigger(Cart.channel, 'removeItem', { itemId });
+      ctx.trigger('cart:removeItem', { itemId });
     }
   }
 
   // decreaseQtyButton + click → onDecreaseQtyButtonClick
-  onDecreaseQtyButtonClick(event: MouseEvent & { currentTarget: HTMLButtonElement }): void {
-    const itemId = this.getItemData(event, '[data-item-id]', 'data-item-id');
+  onDecreaseQtyButtonClick(fact: TFact, ctx: TFactContext<TCartViewContract>): void {
+    const itemId = this.getItemData(fact, 'data-item-id'); // ⏳ donnée capturée avec le fait (C.5)
     if (itemId) {
-      this.trigger(Cart.channel, 'decreaseQty', { itemId });
+      ctx.trigger('cart:decreaseQty', { itemId });
     }
   }
 
   // increaseQtyButton + click → onIncreaseQtyButtonClick
-  onIncreaseQtyButtonClick(event: MouseEvent & { currentTarget: HTMLButtonElement }): void {
-    const itemId = this.getItemData(event, '[data-item-id]', 'data-item-id');
+  onIncreaseQtyButtonClick(fact: TFact, ctx: TFactContext<TCartViewContract>): void {
+    const itemId = this.getItemData(fact, 'data-item-id'); // ⏳ donnée capturée avec le fait (C.5)
     if (itemId) {
-      this.trigger(Cart.channel, 'increaseQty', { itemId });
+      ctx.trigger('cart:increaseQty', { itemId });
     }
   }
 
   // qtyInput + input → onQtyInputInput
-  onQtyInputInput(event: InputEvent & { currentTarget: HTMLInputElement }): void {
-    const itemId = this.getItemData(event, '[data-item-id]', 'data-item-id');
+  onQtyInputInput(fact: TFact, ctx: TFactContext<TCartViewContract>): void {
+    const itemId = this.getItemData(fact, 'data-item-id'); // ⏳ C.5
     if (itemId) {
-      this.trigger(Cart.channel, 'setQty', { itemId, qty: Number(event.currentTarget.value) });
+      ctx.trigger('cart:setQty', { itemId, qty: Number(fact.value) }); // ⏳ valeur capturée (C.5)
     }
   }
 }
@@ -796,8 +798,8 @@ const cartViewUiEvents = {
 
 ```typescript
 // ❌ MAUVAIS — Muter les items dans l'Entity
-onFilterByPopularity(payload) {
-  this.entity.mutate('products:filterByPopularity', (draft) => {
+onFilterByPopularityCommand(payload: null, ctx: TFeatureContext<TProductsDef, ProductsEntity>) {
+  ctx.mutate('products:filterByPopularity', (draft) => {
     draft.items.sort((a, b) => b.popularity - a.popularity);
   });
 }
@@ -826,8 +828,8 @@ type TProductsState = {
   filters: TFilterCriteria;      // Filtres actifs
 };
 
-onFilterByPopularity(payload) {
-  this.entity.mutate('products:setSortCriteria', (draft) => {
+onFilterByPopularityCommand(payload: null, ctx: TFeatureContext<TProductsDef, ProductsEntity>) {
+  ctx.mutate('products:setSortCriteria', (draft) => {
     draft.sortCriteria = { field: 'popularity', order: 'desc' };
   });
 }
@@ -909,70 +911,57 @@ class DashboardView extends View<TDashboardViewContract> implements TViewCallbac
   }
 
   /**
-   * Composers dynamiques — chaque slot contient une child View complète
-   * avec son propre lifecycle, Behaviors, Channels.
+   * Un slot, un Composer : le Composer compose une View par widget, sous la
+   * clé du widget (I37). Un sélecteur de slot désigne exactement un élément.
    */
   get composers() {
-    return {
-      '[data-widget-slot]': WidgetComposer,
-    };
+    return { widgets: { slot: '#widgets-slot', composer: WidgetComposer } } as const;
   }
 }
 
-class WidgetComposer extends Composer {
-  resolve(): TResolveResult | null {
-    const widgetType = (this.slot as HTMLElement).dataset.widgetType;
-    const ViewClass = this.resolveViewForType(widgetType);
-    return ViewClass ? { view: ViewClass, rootElement: this.slot } : null;
-  }
+const widgetComposerViews = { chart: ChartWidgetView, table: TableWidgetView, kpi: KpiWidgetView };
 
-  private resolveViewForType(type: string | null): typeof View | null {
-    switch (type) {
-      case 'chart':  return ChartWidgetView;
-      case 'table':  return TableWidgetView;
-      case 'kpi':    return KpiWidgetView;
-      default:       return null;
-    }
+class WidgetComposer extends Composer<TWidgetComposerContract> {
+  get features() { return widgetComposerFeatures; } // dashboard : listens ["widgetsChanged"], queries ["widgets"]
+  get views() { return widgetComposerViews; }
+
+  resolve(ctx: TComposeContext<TWidgetComposerContract>): TComposition<TWidgetComposerContract> {
+    // Le type de chaque widget vient du domaine, pas d'un attribut du DOM.
+    return ctx.query('dashboard:widgets', null).map((w) => ({
+      view: w.type,              // "chart" | "table" | "kpi"
+      key: w.id,
+      params: { widgetId: w.id }
+    }));
   }
 }
 ```
 
-> **Attention** : Ce pattern a un **overhead** significatif (1 Composer + 1 View + 1 Entity
-> par item). Il est réservé aux cas où l'item a une complexité intrinsèque justifiant
+> **Attention** : Ce pattern a un **overhead** significatif (une View, avec sa part et
+> ses abonnements, par item). Il est réservé aux cas où l'item a une complexité intrinsèque justifiant
 > un composant autonome. Pour les listes simples (90% des cas), utiliser
 > ProjectionList + Event Delegation (§6.4).
 
 | Pattern | Cas d'usage | Overhead |
 | --- | --- | --- |
 | ProjectionList + Event Delegation (§6.4) | Listes simples, items template-only | Faible (1 listener par type) |
-| Slots × Composers (§6.7) | Items complexes avec lifecycle propre | Élevé (n Composers + n Views) |
+| Slot × Composer (§6.7) | Items complexes avec leur propre View | Élevé (n Views) |
 
 ### 6.8 Helper `getItemData()`
 
-La classe `View` expose un helper pour extraire les données d'un item depuis un événement
-DOM délégué. Ce helper simplifie le pattern d'extraction via `closest()`.
+> ⏳ **Cible.** Aujourd'hui un fait ne porte que `{ type, ui }` (`TFact`), où `ui`
+> est la clé d'interface dont un ancêtre de la cible correspond au sélecteur.
+
+Avec la délégation d'événements, la View doit savoir **quel item** a été touché.
+Elle ne lit pas le DOM (I39) : l'attribut de l'item (`data-item-id`) doit être
+**capturé avec le fait** au moment de son admission (C.5), puis lu par le helper.
 
 ```typescript
 class View {
   /**
-   * Extrait la valeur d'un attribut data depuis l'ancêtre le plus proche
-   * correspondant au sélecteur. Utilisé avec l'event delegation pour
-   * identifier l'item source d'un événement.
-   *
-   * @param event - L'événement DOM délégué
-   * @param selector - Sélecteur CSS de l'élément portant la donnée
-   * @param attribute - Nom de l'attribut data (défaut: 'data-item-id')
-   * @returns La valeur de l'attribut ou null si non trouvé
+   * ⏳ Lit une donnée capturée avec le fait : la valeur d'un attribut data de
+   * l'ancêtre le plus proche qui le porte. Forme de capture non fixée.
    */
-  protected getItemData<TValue = string>(
-    event: Event,
-    selector: string,
-    attribute: string = 'data-item-id',
-  ): TValue | null {
-    const el = (event.target as Element).closest(selector);
-    const value = el?.getAttribute(attribute);
-    return (value as TValue) ?? null;
-  }
+  protected getItemData(fact: TFact, attribute: string = 'data-item-id'): string | null;
 }
 ```
 
@@ -980,22 +969,21 @@ class View {
 
 ```typescript
 // Convention Bonsai : data-item-id sur chaque élément de liste
-onRemoveClick(event: Event): void {
-  const itemId = this.getItemData(event, '[data-item-id]', 'data-item-id');
-  if (itemId) {
-    this.trigger(Cart.channel, 'removeItem', { itemId });
-  }
+onRemoveClick(fact: TFact, ctx: TFactContext<TCartViewContract>): void {
+  const itemId = this.getItemData(fact, 'data-item-id');
+  if (itemId) ctx.trigger('cart:removeItem', { itemId });
 }
 
-// Avec un attribut custom
-onCellClick(event: Event): void {
-  const rowId = this.getItemData(event, '[data-row-id]', 'data-row-id');
-  const colId = this.getItemData(event, '[data-col-id]', 'data-col-id');
-  if (rowId && colId) {
-    this.trigger(Table.channel, 'cellSelected', { rowId, colId });
-  }
+// Avec des attributs propres
+onCellClick(fact: TFact, ctx: TFactContext<TTableViewContract>): void {
+  const rowId = this.getItemData(fact, 'data-row-id');
+  const colId = this.getItemData(fact, 'data-col-id');
+  if (rowId && colId) ctx.trigger('table:selectCell', { rowId, colId });
 }
 ```
+
+> Le déclarateur de la capture (quels attributs, sur quelles clés) relève du
+> contrat de la View (D16) ; il reste à concevoir avec le compilateur.
 
 ---
 
@@ -1003,8 +991,8 @@ onCellClick(event: Event): void {
 
 > ⚠️ **Question ouverte — [ADR-26](../adr/ADR-26-souscription-view.md) (🟡 Proposed).** Le contrat **livré** pour la couche View (ADR-31 strate 0/1a) est celui d'[ADR-14](../adr/ADR-14-contrats-types.md) : des handlers **granulaires** `on{NS}{Event}Event` par Event déclaré dans `features[ns].listens` — l'exact opposé de l'abonnement unique `any` + selector décrit ci-dessous. Aucune View ne s'abonne à `any` aujourd'hui. Ce §7 documente une proposition **cible strate 1c** dont l'articulation avec ADR-14 reste à trancher par un ADR dédié.
 >
-> **Cible, non actée (ADR-26)** : Les Views s'abonnent aux Channels via l'événement `any`
-> (auto-émis par le Channel après chaque Event). Les Events granulaires sont destinés
+> **Cible, non actée (ADR-26)** : les Views s'abonneraient à un événement `any`
+> qu'émettrait le noyau après chaque Event (il n'existe pas). Les Events granulaires sont destinés
 > à la communication inter-Feature. Les selectors des templates filtrent les clés
 > de state pertinentes dans le payload **namespacé**.
 
@@ -1207,7 +1195,7 @@ type TViewTemplates<TUI extends TUIContract> =
 | Audience | Écoute | Payload | Cas d'usage |
 | --- | --- | --- | --- |
 | **Features** | Events granulaires (`itemAdded`) | Payload métier | Réactions inter-Feature |
-| **Views** | Event `any` (auto-émis) | `{ changes }` namespacé | Réactivité UI |
+| **Views** | ⏳ Event `any` (proposé, ADR-26) ; livré : Events granulaires | `{ changes }` namespacé | Réactivité UI |
 
 ```text
 Feature.emit('itemAdded', payload)
@@ -1227,7 +1215,7 @@ Feature.emit('itemAdded', payload)
 
 | Qui | Responsabilité |
 | --- | --- |
-| **Channel** | Émet automatiquement `any` après chaque Event granulaire |
+| **Noyau** | ⏳ Émettrait `any` après chaque Event granulaire (ADR-26) |
 | **View** | Déclare `listen` (Channels) et `templates` avec selectors |
 | **Selector** | Extrait / dérive les données pertinentes depuis le state complet (ADR-26) |
 | **Framework** | Namespace le state, appelle les selectors, skip si unchanged |
@@ -1250,11 +1238,11 @@ complet, du changement de données à la mutation DOM finale.
 ```text
 ┌────────────────── Pipeline de rendu PDR ───────────────────┐
 │                                                          │
-│  1. MUTATION     entity.mutate() modifie le state         │
+│  1. MUTATION     ctx.mutate() modifie le state (unité)    │
 │       │                                                   │
 │       ▼                                                   │
-│  2. EMISSION     Channel.emit(event, payload)             │
-│       │          Channel.emit('any', { event, changes })  │
+│  2. EMISSION     ctx.emit(event, payload), différé (G5)   │
+│       │          ⏳ 'any' { event, changes } (ADR-26)     │
 │       ▼                                                   │
 │  3. NAMESPACE    Framework construit NamespacedData :      │
 │       │          { [channel.namespace]: entity.state }    │
@@ -1269,7 +1257,8 @@ complet, du changement de données à la mutation DOM finale.
 │       │          ├─ scalaires : guards per-nœud            │
 │       │          └─ listes : ProjectionList.reconcile()    │
 │       ▼                                                   │
-│  6. DOM          Seuls les nœuds CHANGÉS sont mutés        │
+│  6. DOM          Effets engagés après validation (C.3) :   │
+│                  seuls les nœuds CHANGÉS sont mutés        │
 │                  (textContent, setAttribute, insertBefore, │
 │                   removeChild)                             │
 │                                                          │
@@ -1300,10 +1289,10 @@ agit comme un filtre — seules les mutations réellement nécessaires atteignen
 
 | Règle | Nom | Énoncé |
 | --- | --- | --- |
-| **H1** | Détection par nœud | Pour chaque `rootElement` : `querySelector()` dans le scope → **trouvé** = mode SSR (`setup()`), **absent** = le framework **parse le sélecteur CSS** et crée l'élément (SPA, ADR-19). Si le sélecteur n'est pas parseable (combinateurs, pseudo-classes) → ERREUR. La détection est **par nœud**, pas globale. |
+| **H1** | Détection par nœud | ⏳ À la matérialisation de la part d'une View, le noyau chercherait dans le slot un élément pré-rendu de sa clé (`keyAttr`) → **trouvé** = adopté (mode SSR, `setup()`), **absent** = créé (`<div data-bonsai-part>`, livré). La détection est **par nœud**, pas globale. |
 | **H2** | `setup()` = hydratation | `setup()` localise les nœuds dynamiques dans un DOM existant. Il n'y a **pas** de procédure d'hydratation séparée — `setup()` EST l'hydratation. Pas de branche `if (SSR)` dans le code applicatif. |
 | **H3** | ProjectionList par `keyAttr` | `ProjectionList.setup()` indexe les items existants par `keyAttr` (`data-item-id` / `data-key`). Les items sont adoptés, jamais recréés. Résultat : `Map<key, { el, nodes }>` — zéro création DOM. |
-| **H4** | Premier `any` = no-op | Après `onAttach()`, le premier `any` passe dans le pipeline L1→L2. Le selector retourne des données identiques au DOM servi → `shallowEqual` → **SKIP**. Zéro mutation DOM après bootstrap. |
+| **H4** | Première projection = no-op | Après la création de la View, la première projection passe dans le pipeline L1→L2. Le selector retourne des données identiques au DOM servi → `shallowEqual` → **SKIP**. Zéro mutation DOM après bootstrap. |
 | **H5** | `serverState` unique | `TBootstrapOptions.serverState` est le **seul** mécanisme d'état sérialisé du framework. Le framework ne lit **jamais** le DOM pour extraire du state (esprit I39). Le développeur contrôle l'injection (JSON inline, fetch, localStorage, etc.). |
 
 ```text
@@ -1312,18 +1301,18 @@ T0 ─── SSR ─────────────────────
        DOM = source de vérité structurelle (ADR-22)
 
 T1 ─── Bootstrap (setup) ───────────────────────────────────────────────
-       querySelector(rootElement) → TROUVÉ → mode SSR (H1)
+       élément pré-rendu de la part → TROUVÉ → adopté, mode SSR (H1)
        template.setup(container) → localise nœuds dynamiques (H2)
        ProjectionList.setup() → indexe items existants par keyAttr (H3)
        Résultat : Map<key, { el, nodes }> — zéro création DOM
 
-T2 ─── Premier any ──────────────────────────────────────────────────────
-       Feature.onInit() → request / Entity peuplée → emit('any')
+T2 ─── Première projection ─────────────────────────────────────────────
+       Feature.onInit(ctx) → ctx.query / Entity peuplée → Event délivré après le démarrage
        Selector → données identiques au DOM → shallowEqual → SKIP (H4)
        ✅ Zéro mutation DOM après bootstrap
 
 T3 ─── Interaction utilisateur (ex: tri) ────────────────────────────────
-       View.trigger(command) → Feature → entity.mutate(critères) → emit('any')
+       ctx.trigger(command) → Feature → ctx.mutate(critères) → ctx.emit(event)
        Selector → deriveVisibleProducts(fullState) → liste réordonnée
        shallowEqual → différent → project()
        ProjectionList.reconcile(items) → déplacements + guards
@@ -1337,7 +1326,7 @@ T3 ─── Interaction utilisateur (ex: tri) ───────────
 // Mise à jour normative intégrant ADR-26 (FULL-STATE-SELECTOR)
 
 function attachView(view: View): void {
-  // ... résolution rootElement, uiElements, delegation ...
+  // ... part matérialisée par le noyau, uiElements, délégation ...
 
   const templates = view.templates;
 
@@ -1770,7 +1759,7 @@ each category in categories
 
 ## 12. Références
 
-- [view.md §4 — PDR](4-couche-concrete/view.md#4-contrat-de-rendu-pdr) — Contrat de base
+- [view.md §4 — PDR](4-couche-concrete/view.md#4-projection--getui) — Contrat de base
 - [pugx](../pugx/) — Projet séparé d'extension de Pug avec typage (hors scope)
 - [React Reconciliation](https://reactjs.org/docs/reconciliation.html)
 - [Vue v-for with key](https://vuejs.org/guide/essentials/list.html#maintaining-state-with-key)

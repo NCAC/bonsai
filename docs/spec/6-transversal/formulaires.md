@@ -1,6 +1,6 @@
 # Formulaires
 
-> ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
+> 🟠 **Aligné sur la théorie V0.9.5 (4 novembre 2026) ; patterns non livrés.** Les patterns B, C et D dépendent de `localState` (ADR-17) et de Behavior (ADR-21), strate 2 ; tous attendent que la valeur d'une saisie soit capturée avec le fait du DOM (théorie C.5 ; aujourd'hui `TFact` = `{ type, ui }`). Guide pratique : [FORMS-GUIDE](../../guides/FORMS-GUIDE.md). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
 
 > **4 patterns de formulaire dans Bonsai, du simple au complexe**
 
@@ -26,12 +26,12 @@ Les formulaires combinent **saisie utilisateur**, **validation**, **état transi
 L'état complet (valeurs, touched, errors) vit dans une Entity dédiée.
 
 ```text
-View (saisie) → trigger(Command) → Feature → entity.mutate() → Event → View (projection)
+View (fait de saisie) → ctx.trigger(Command) → Feature → ctx.mutate() → Event → View (projection)
 ```
 
 | Avantage | Inconvénient |
 | --- | --- |
-| Traçabilité complète | Cérémonie élevée (Feature + Entity + Channel par formulaire) |
+| Traçabilité complète | Cérémonie élevée (Feature + Entity + contrat de Channel par formulaire) |
 | State persistable / restaurable | Chaque frappe = Command + mutate + Event |
 | Validation dans la Feature | Over-engineering pour les formulaires simples |
 
@@ -42,8 +42,8 @@ View (saisie) → trigger(Command) → Feature → entity.mutate() → Event →
 L'état pré-soumission vit dans le `localState` de la View (I42, ADR-17). La soumission déclenche une Command.
 
 ```text
-View (saisie) → updateLocal() → re-projection locale
-View (submit) → trigger(Command) → Feature → entity.mutate()
+View (fait de saisie) → updateLocal() → re-projection locale
+View (fait submit) → ctx.trigger(Command) → Feature → ctx.mutate()
 ```
 
 | Avantage | Inconvénient |
@@ -60,8 +60,8 @@ View (submit) → trigger(Command) → Feature → entity.mutate()
 Un Behavior encapsule la logique de formulaire (touched, dirty, validation). Pluggable sur n'importe quelle View.
 
 ```text
-View + FormBehavior → Behavior gère localState form
-View (submit) → trigger(Command) → Feature
+View + FormBehavior → Behavior gère l'état local du formulaire
+View (fait submit) → ctx.trigger(Command) → Feature
 ```
 
 | Avantage | Inconvénient |
@@ -77,8 +77,8 @@ View (submit) → trigger(Command) → Feature
 L'état transitoire (saisie, validation) vit dans le `localState`. Le domain state (valeurs soumises) vit dans l'Entity.
 
 ```text
-View (saisie) → localState → validation locale
-View (submit) → trigger(Command) → Feature → entity.mutate() → Event
+View (fait de saisie) → localState → validation locale
+View (fait submit) → ctx.trigger(Command) → Feature → ctx.mutate() → Event
 ```
 
 | Avantage | Inconvénient |
@@ -125,6 +125,8 @@ Q1 : Le state du formulaire doit-il être partagé entre composants ?
 | **I30** | Le domain state vit dans l'Entity, jamais dans la View |
 | **I42** | Le state local pré-soumission utilise le mécanisme `localState` |
 | **I6** | Seule la Feature mute l'Entity (via Command post-soumission) |
+| **D18** | La Command part du handler d'un fait du DOM (saisie, soumission), jamais d'un handler d'Event |
+| **D20** | L'action par défaut du `submit` est annulée par déclaration (`cancelDefault`), jamais par le handler |
 | **I44** | Le FormBehavior (Pattern C) n'accède pas à `this.view` |
 
 ---

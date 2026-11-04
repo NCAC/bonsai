@@ -2,7 +2,7 @@
 
 > **Projette le domaine sur la part que son Composer lui a attribuée ; admet les faits de l'hôte dans cette part ; handlers à contexte**
 
-> 🟠 **Aligné sur la théorie V0.9.5 et sur le code livré pour le cœur (lot M6.2, 1er novembre 2026).** Les annexes A et B (templates de rendu, `localState`) sont des conceptions **cibles non livrées**, conservées avec leur texte d'origine : leurs exemples utilisent l'ancienne forme d'API. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
+> 🟠 **Aligné sur la théorie V0.9.5 et sur le code livré pour le cœur (lot M6.2, 4 novembre 2026).** Les annexes A et B (templates de rendu, `localState`) sont des conceptions **cibles non livrées** ; leurs exemples utilisent les contextes de handler livrés. En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
 
 [<- Retour couche concrète](README.md) | [-> Behavior](behavior.md) | [5-rendu.md (PDR complète)](../5-rendu.md)
 
@@ -179,14 +179,15 @@ Passif : une View n'a ni `mount()` ni hook de cycle de vie. Elle naît quand son
 
 - Une View dont l'élément n'a pas pu être créé **reste vivante** : seul son parent peut détruire son existence (A1.b), et la racine ne le fait pas à sa place. Elle continue de recevoir ses Events, ses handlers s'exécutent, et ses projections sont des effets en échec ou non tentés, rapportés dans la trace et, en développement, signalés en console (C.3, O2) ; aucune unité n'échoue (`tests/unit/domain/view.test.ts`). Un Composer qui voudrait la retirer le décide à partir du résultat corrélé, par un nouveau message.
 - Une View dont la part n'a pas été matérialisée n'a jamais d'élément : la matérialisation d'une part n'est préparée qu'une fois, à son attribution, et rien ne la reprend si l'élément apparaît plus tard dans le document.
-- Une projection peut écrire dans le contenu d'un slot (non vérifié par construction).
+- **Projections et contenu des slots (I40, I32 partiels)** : `getUI` résout son sélecteur dans toute la part, contenu des slots compris. Une projection peut donc atteindre un élément d'une View enfant, et `text()` sur un ancêtre d'un slot en efface le contenu. Ne déclarer comme clé d'interface aucun élément qui contient un slot.
+- **Valeur d'une saisie** : un fait du DOM ne transporte que `{ type, ui }` ; la valeur d'un champ n'est pas capturée avec lui (théorie C.5, forme non fixée), et la View ne lit pas le DOM (I39). Les formulaires attendent cette capture ([FORMS-GUIDE](../../guides/FORMS-GUIDE.md)).
 - `template` est provisoire en attendant le rendu (annexe A) ; pas de Behaviors (package absent), pas de `localState` (annexe B).
 
 ---
 
 ## Annexe A — Templates de rendu (cible)
 
-> ⏳ **Conception cible, non livrée.** Texte d'origine ; voir aussi [5-rendu.md](../5-rendu.md). Les exemples utilisent l'ancienne forme d'API.
+> ⏳ **Conception cible, non livrée (strate 1c).** Voir aussi [5-rendu.md](../5-rendu.md). Les exemples utilisent les contextes de handler livrés ; `get templates()`, `TProjectionRead` et les fichiers `.template.pug` sont la cible.
 
 ### 4.5 get templates() — Trois modes de rendu
 
@@ -309,13 +310,13 @@ const accountViewFeatures = {
     feature:  AuthFeature,
     listens:  ['stateChanged']  as const,
     triggers: ['login', 'logout'] as const,
-    requests: []                 as const,
+    queries:  []                 as const,
   },
   cart: {
     feature:  CartFeature,
     listens:  ['itemAdded', 'itemRemoved'] as const,
     triggers: []                            as const,
-    requests: []                            as const,
+    queries:  []                            as const,
   },
 } satisfies TFeatureContract;
 
@@ -378,22 +379,22 @@ class AccountView
   }
 
   // ── Channel handlers (ADR-09 channel — imposés par TViewCallbacks) ─────────
-  onAuthStateChangedEvent(_p: { isAuthenticated: boolean }): void { /* ... */ }
-  onCartItemAddedEvent(_p: { id: string; qty: number }): void { /* ... */ }
-  onCartItemRemovedEvent(_p: { id: string }): void { /* ... */ }
+  onAuthStateChangedEvent(_p: { isAuthenticated: boolean }, _ctx: TEventContext<TAccountViewContract>): void { /* ... */ }
+  onCartItemAddedEvent(_p: { id: string; qty: number }, _ctx: TEventContext<TAccountViewContract>): void { /* ... */ }
+  onCartItemRemovedEvent(_p: { id: string }, _ctx: TEventContext<TAccountViewContract>): void { /* ... */ }
 
   // ── DOM handlers (I48 UI — imposés par TViewCallbacks) ──────────────────
   // loginInput n'a PAS de template → getUI retourne TProjectionNode<HTMLInputElement>
-  onLoginButtonClick(_e: MouseEvent): void {
-    const username = this.getUI('loginInput').value();
-    this.trigger('auth:login', { username, password: '' });
+  onLoginButtonClick(_fact: TFact, ctx: TFactContext<TAccountViewContract>): void {
+    const username = this.getUI('loginInput').value(); // ⏳ TProjectionRead (strate 1c)
+    ctx.trigger('auth:login', { username, password: '' });
   }
 
-  onLogoutButtonClick(_e: MouseEvent): void {
-    this.trigger('auth:logout', undefined);
+  onLogoutButtonClick(_fact: TFact, ctx: TFactContext<TAccountViewContract>): void {
+    ctx.trigger('auth:logout', null);
   }
 
-  onNavClick(_e: MouseEvent): void { /* ... */ }
+  onNavClick(_fact: TFact): void { /* ... */ }
 
   // loginContainer a un template → getUI retourne TProjectionRead
   // this.getUI('loginContainer').text('...') → ERREUR compile-time (I41)
@@ -554,9 +555,7 @@ updateLocal(recipe)
 
 ### 7.6 Observabilité (DevTools)
 
-Le localState **N'EST PAS** dans `app.snapshot()` (état volatile, voir [devtools](../devtools.md)).
-En mode `debug: true`, les mutations localState sont logguees dans la console
-avec le nom de la View et les clés modifiees.
+Le localState **n'est pas** dans le snapshot des Entities (état de présentation, voir [devtools](../devtools.md)). Ses mutations appartiennent à l'unité de la View : un échec de l'unité les défait (G7).
 
 ### 7.7 Exemple complet
 
@@ -574,7 +573,7 @@ const wizardViewFeatures = {
     feature:  WizardFeature,
     listens:  []                         as const,
     triggers: ['submit']                 as const,
-    requests: []                         as const,
+    queries:  []                         as const,
   },
 } satisfies TFeatureContract;
 
@@ -641,20 +640,20 @@ class WizardView
 
   // ── DOM handlers (I48 UI — imposés par TViewCallbacks) ──
 
-  onNextButtonClick(_e: MouseEvent): void {
+  onNextButtonClick(_fact: TFact): void {
     this.updateLocal(draft => {
       draft.currentStep += 1;
       draft.validationErrors = [];
     });
   }
 
-  onPrevButtonClick(_e: MouseEvent): void {
+  onPrevButtonClick(_fact: TFact): void {
     this.updateLocal(draft => { draft.currentStep -= 1; });
   }
 
-  onSubmitButtonClick(_e: MouseEvent): void {
+  onSubmitButtonClick(_fact: TFact, ctx: TFactContext<TWizardViewContract>): void {
     this.updateLocal(draft => { draft.isSubmitting = true; });
-    this.trigger('wizard:submit', { step: this.local.currentStep });
+    ctx.trigger('wizard:submit', { step: this.local.currentStep });
   }
 }
 ```

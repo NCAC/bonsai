@@ -1,6 +1,6 @@
 # Philosophie du framework Bonsai
 
-> ⚠️ **Non aligné sur la théorie V0.9.5.** Ce document date d'avant la refonte théorique et peut la contredire, notamment sur la délivrance des messages (G5), l'échec d'une Query (G7) et le vocabulaire (Query, et non Request). En cas d'écart, la [théorie](../theorie.md) prévaut ([règle de confiance](../README.md#règle-de-confiance-et-dalignement)). Son alignement est prévu dans les prochains lots de migration.
+> 🟢 **Aligné sur la théorie V0.9.5 (4 novembre 2026).** Ce chapitre pose le pourquoi ; le modèle formel est la [théorie](../theorie.md), qui prévaut en cas d'écart ([règle de confiance](../README.md#règle-de-confiance-et-dalignement)).
 
 > **Pourquoi Bonsai existe — contexte, objectifs et principes fondateurs**
 
@@ -10,7 +10,7 @@
 
 ## 1. Contexte et motivation
 
-### Pourquoi cette RFC ?
+### Pourquoi cette spécification ?
 
 Le framework Bonsai repose sur des choix architecturaux forts et opinionated.
 Avant toute implémentation, il est indispensable de poser formellement :
@@ -77,7 +77,9 @@ pas _autour_ d'une librairie.
 ### 3.3 Flux unidirectionnel strict
 
 Toutes les interactions passent par la racine du noyau, selon des contrats de Channel déclarés.
-Le flux suit un chemin prévisible : UI → Command → Feature → Entity → Event → UI.
+Le flux suit un chemin prévisible : fait du DOM → View → Command → Feature → Entity → Event → View.
+Seul le handler d'un fait du DOM commande ; un handler d'Event interroge mais ne commande pas (D18).
+Chaque traitement est une unité de validation : il réussit entièrement ou est défait (G7).
 Aucun raccourci, aucun appel direct entre composants (sauf Entity ↔ Feature, I6).
 
 ### 3.4 Découplage par communication événementielle
@@ -88,9 +90,11 @@ Le graphe de dépendances est visible dans les déclarations statiques.
 
 ### 3.5 Encapsulation stricte du state
 
-Le state vit dans les Entities, gérées exclusivement par les Features.
-Personne ne lit le state directement — les consommateurs passent par
-`request()` (C5), la Feature contrôle ce qu'elle expose via `reply` (C4).
+Le state vit dans les Entities, détenues par le noyau et mutées exclusivement
+par leur Feature (`ctx.mutate`). Personne d'autre ne lit le state : les
+consommateurs l'interrogent par une Query (`ctx.query`, C5), et la Feature
+contrôle ce qu'elle expose par ses handlers `on{Nom}Query` (C4). Une Query est
+synchrone et rend une copie (G2, G5).
 
 ### 3.6 Testabilité par design
 
@@ -131,24 +135,27 @@ le compilateur vérifie les invariants à la compilation.
 > contrainte permet de déplacer de nombreuses vérifications du runtime
 > vers le compile-time :
 >
-> - Handlers/repliers manquants → `TFeatureCallbacks` et `TStrictFeatureClass` ([feature.md §3bis](3-couche-abstraite/feature.md#3bis-tfeaturecallbacks-et-tstrictfeatureclass-adr-09), ADR-09, I92)
+> - Handlers de Command, d'Event ou de Query manquants → `TFeatureCallbacks` et `TStrictFeatureClass` ([feature.md §7](3-couche-abstraite/feature.md#7-contrats-typés), ADR-09, I92) ; handlers de faits et d'Events d'une View → `TViewCallbacks` (ADR-14)
 > - Payloads incorrects → typage générique
 > - Channels non déclarés → manifest applicatif typé (ADR-08) et `static readonly channel` sur la classe Feature (ADR-14)
+> - Commands interdites → un handler d'Event de View n'a pas de `trigger` dans son contexte (D18), une Feature n'en a jamais (D17)
 >
 > Voir [ADR-03](../adr/ADR-03-channel-runtime.md) pour le détail.
 
 ### 3.9 Dépendances déclaratives et statiques
 
-Tout composant (Feature, View, Behavior) **DOIT** déclarer dans sa définition
-les Channels avec lesquels il interagit (ADR-01). Aucun accès dynamique à un Channel
-n'est permis au runtime. Les dépendances de communication sont visibles
+Tout composant (Feature, View, Composer) **DOIT** déclarer dans sa définition
+les Channels avec lesquels il interagit (ADR-01) : `get listens()` et `get queries()`
+pour une Feature, `get features()` pour une View ou un Composer. Le noyau refuse un
+message absent du contrat de sa cible (D16). ⚠️ Une Query de Feature vers un Channel
+absent de ses `queries` n'est pas encore refusée au runtime (I17, partiel). Les dépendances de communication sont visibles
 dans la signature du composant, pas cachées dans son implémentation.
 
 **Conséquences** :
 
 - Le graphe de communication est lisible dans le code sans l'exécuter
 - Les invariants sont vérifiables à la compilation (TypeScript)
-- Les tests ne montent que les Channels déclarés
+- Les tests ne démarrent que les Features déclarées
 - L'infrastructure (la racine du noyau) reste interne au framework
 
 > Voir [ADR-03](../adr/ADR-03-channel-runtime.md) pour le détail.
