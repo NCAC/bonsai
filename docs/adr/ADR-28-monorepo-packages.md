@@ -3,7 +3,7 @@
 | Champ | Valeur |
 | --- | --- |
 | **Statut** | 🟢 Accepted |
-| **Livré** | ⚠️ partiel — les frontières ne sont pas imposées (les `paths` de tsconfig contournent les `dependencies`) ; `@bonsai/core` n'exporte ni `@bonsai/entity`, ni `@bonsai/error`, ni `@bonsai/router` ; `@bonsai/router` est absent de la pipeline de build (pas de `dist/`) ; `@bonsai/behavior` absent (strate 2) |
+| **Livré** | ⚠️ partiel — les frontières ne sont pas imposées (les `paths` de tsconfig contournent les `dependencies`)  ; le barrel ré-exporte tous les packages de composant (`tests/integration/core-barrel.test.ts`) ; `@bonsai/behavior` absent (strate 2) |
 | **Spec** | `core/src/bonsai.ts` · `packages/*/package.json` |
 
 ## Contexte
@@ -38,5 +38,4 @@ le protocole d'exécution (annexe C) sur lesquels reposent les classes de base.
 
 - La topologie est indépendante du mode de distribution (ADR-27) : IIFE ou ESM consomment les mêmes imports.
 - **Écart livré — frontières** : TypeScript et Jest résolvent `@bonsai/*` par alias vers `src/`, sans regarder les `dependencies`. `view` importe `@bonsai/feature` et `@bonsai/types` sans les déclarer, et `@bonsai/core` ne déclare que `types`, `rxjs`, `valibot`, `kernel` et `immer` alors qu'il ré-exporte aussi `feature`, `view`, `composer`, `foundation` et `application`. La preuve « View ne peut pas importer Entity » n'existe donc pas encore ; il faudrait des références de projet TypeScript ou une règle de lint sur le graphe.
-- **Écart livré — barrel** : `core/src/bonsai.ts` n'exporte ni `@bonsai/entity`, ni `@bonsai/error`, ni `@bonsai/router`. Une application qui consomme le bundle ne peut ni déclarer d'Entity ni activer la navigation (les fixtures importent les packages directement).
-- **Écart livré — build** : l'ordre de build de `lib/` ne connaît pas `@bonsai/router`, qui n'a donc pas de `dist/` versionné (ADR-30).
+- **Barrel** : `core/src/bonsai.ts` ré-exporte `entity`, `error` et `router` avec les autres composants ; la racine du noyau (`Root`) reste interne (I15). Les fixtures et les gates E2E importent encore les packages directement.

@@ -120,9 +120,6 @@ import { Application, Feature, Entity, View, Composer } from "@bonsai/core";
 import { Entity } from "@bonsai/entity";
 ```
 
-> ⚠️ `@bonsai/core` n'exporte pas encore `@bonsai/entity` ni `@bonsai/error`
-> (ADR-28) : en attendant, le premier import ne compile pas pour `Entity`.
-
 **Développeur framework** (code inter-packages) :
 
 ```typescript
@@ -141,7 +138,7 @@ import { Entity } from "@bonsai/core";
 | --- | --- | --- |
 | **Unit** (`tests/unit/`) | `from "@bonsai/entity"` | Prouve l'isolation, charge le minimum |
 | **Intégration** (`tests/integration/`) | `from "@bonsai/core"` | Teste comme un consommateur |
-| **E2E** (`tests/e2e/`) | `from "@bonsai/application"` et la fixture partagée (`@bonsai/entity`, `@bonsai/feature`, `@bonsai/view`…) | ⚠️ pas `@bonsai/core` : le barrel n'exporte pas `Entity` (ADR-28) |
+| **E2E** (`tests/e2e/`) | `from "@bonsai/application"` et la fixture partagée (`@bonsai/entity`, `@bonsai/feature`, `@bonsai/view`…) | Imports directs hérités ; `@bonsai/core` couvre aussi ces composants (ADR-28) |
 
 ### Structure d'un package composant
 

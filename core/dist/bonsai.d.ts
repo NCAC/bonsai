@@ -25078,6 +25078,147 @@ declare class Root {
 declare const DESCRIBE$1: unique symbol;
 
 /**
+ * BonsaiError — base class for all structured framework errors.
+ *
+ * Every Bonsai error provides:
+ * - `invariantId`: id of the violated invariant or ADR (e.g. "I10", "ADR-05")
+ * - `component`: namespace or name of the component involved
+ * - `suggestion`: actionable message for the developer
+ *
+ * @see ADR-05 — error propagation (full taxonomy)
+ */
+declare class BonsaiError extends Error {
+    readonly invariantId: string;
+    readonly component: string;
+    readonly suggestion: string;
+    readonly name: string;
+    constructor(message: string, invariantId: string, component?: string, suggestion?: string);
+}
+/**
+ * The `mutate()` recipe threw → automatic Immer rollback, state intact.
+ */
+declare class MutationError extends BonsaiError {
+    readonly name = "MutationError";
+}
+/**
+ * `mutate()` called during a notification cycle while the re-entrance depth
+ * exceeds `maxEntityNotificationDepth` (stratum 1a).
+ */
+declare class EntityReentrancyError extends BonsaiError {
+    readonly name = "EntityReentrancyError";
+}
+/**
+ * An `onXxxCommand()` handler threw (defined, not raised yet — ADR-05).
+ */
+declare class CommandError extends BonsaiError {
+    readonly name = "CommandError";
+}
+/**
+ * An `onXxxRequest()` handler threw (defined, not raised yet — ADR-05).
+ */
+declare class RequestError extends BonsaiError {
+    readonly name = "RequestError";
+}
+/**
+ * An `onXxxEntityUpdated()` handler threw — state kept, notification continues.
+ */
+declare class BroadcastError extends BonsaiError {
+    readonly name = "BroadcastError";
+}
+/**
+ * An Event listener threw — error isolated, other listeners still run.
+ */
+declare class ListenerError extends BonsaiError {
+    readonly name = "ListenerError";
+}
+/**
+ * `trigger()` with no registered `handle()` (`request()` without a replier returns `null` instead).
+ */
+declare class NoHandlerError extends BonsaiError {
+    readonly name = "NoHandlerError";
+}
+/**
+ * `handle()` or `reply()` called twice for the same message (I10).
+ */
+declare class DuplicateHandlerError extends BonsaiError {
+    readonly name = "DuplicateHandlerError";
+}
+/**
+ * A projection or template threw.
+ */
+declare class RenderError extends BonsaiError {
+    readonly name = "RenderError";
+}
+/**
+ * A Behavior threw.
+ */
+declare class BehaviorError extends BonsaiError {
+    readonly name = "BehaviorError";
+}
+
+/**
+ * Validation functions of the Bonsai framework.
+ *
+ * - `invariant()`: runtime assertion, strippable in production via `__DEV__`
+ * - `hardInvariant()`: NON-strippable assertion — fatal structural errors
+ * - `warning()`: `__DEV__`-only conditional log, never throws
+ *
+ * @see ADR-06 — validation modes
+ */
+/**
+ * Returns `true` in development mode.
+ * Fallback: `true` when `__DEV__` is not defined (safe default — better to
+ * surface errors than to hide them). `typeof` never throws on an undeclared
+ * identifier, and the expression folds to a constant once `__DEV__` is
+ * replaced.
+ */
+declare function isDev(): boolean;
+/**
+ * Runtime assertion — throws a `BonsaiError` when the condition is false.
+ *
+ * **Strippable in production**: `invariant()` calls are removed by the
+ * bundler when `__DEV__ === false`. Use it for development checks (type
+ * checks, DX guards).
+ *
+ * For structural violations that must stay in production → `hardInvariant()`.
+ *
+ * @param condition - When `false`, throws a `BonsaiError`
+ * @param message - Descriptive error message
+ * @param invariantId - Id of the violated invariant (e.g. "I10")
+ * @param component - Namespace or name of the component involved (optional)
+ *
+ * @example
+ * ```typescript
+ * invariant(handlers.size === 0, "Duplicate command handler", "I10", "cart");
+ * ```
+ */
+declare function invariant(condition: unknown, message: string, invariantId?: string, component?: string): asserts condition;
+/**
+ * NON-strippable assertion — kept in production.
+ *
+ * Use it for fatal structural errors detected at bootstrap (duplicate
+ * namespace I21, duplicate Command handler I10, etc.). A failing
+ * `hardInvariant` means the framework is in an inconsistent state — it
+ * MUST throw, even in production.
+ *
+ * @param condition - When `false`, throws a `BonsaiError`
+ * @param message - Descriptive error message
+ * @param invariantId - Id of the violated invariant
+ * @param component - Namespace or name of the component involved (optional)
+ */
+declare function hardInvariant(condition: unknown, message: string, invariantId?: string, component?: string): asserts condition;
+/**
+ * Development-only conditional log — never throws.
+ *
+ * Stripped in production (`__DEV__ === false`).
+ * Use it for non-blocking warnings.
+ *
+ * @param condition - When `false`, logs a warning
+ * @param message - Warning message
+ */
+declare function warning(condition: unknown, message: string): void;
+
+/**
  * @bonsai/entity — Entity base class
  *
  * The Entity describes the domain state of a Feature (theory 11.3, A4.a):
@@ -25149,6 +25290,25 @@ type TEntityRecipe<TStructure extends TJsonSerializable> = (draft: Draft<TStruct
 type TEntityInvariant<TStructure extends TJsonSerializable> = {
     readonly name: string;
     readonly check: (state: TStructure) => boolean;
+};
+/**
+ * @internal Framework use only (`@bonsai/feature`).
+ *
+ * Binds an Entity to the kernel's current state for the duration of a handler.
+ * Returns the function that restores the previous binding (bindings nest when
+ * a Query reaches the same Feature again).
+ */
+declare function bindEntityState(entity: Entity<TJsonSerializable>, source: () => unknown): () => void;
+/**
+ * @internal Framework use only (`@bonsai/feature`).
+ *
+ * What the kernel needs to own the state of an Entity: its name, its initial
+ * state and its invariants.
+ */
+declare function describeEntity<TStructure extends TJsonSerializable>(entity: Entity<TStructure>): {
+    readonly name: string;
+    readonly initial: TStructure;
+    readonly invariants: ReadonlyArray<TEntityInvariant<TStructure>>;
 };
 /**
  * Entity — description of the domain state of a Feature (I6, I22, I46).
@@ -25725,6 +25885,166 @@ declare abstract class Feature<TEntity extends Entity<TJsonSerializable> = Entit
 }
 
 /**
+ * Locations and routes of the navigation (D15).
+ *
+ * A location is the address inside the application, written as the host
+ * writes it: path, query and fragment (`/products/42?tab=2#top`). A route is
+ * its parsed form, kept by the Feature of navigation.
+ */
+/** Parsed address: the state the Feature of navigation owns (D15). */
+type TRoute = {
+    /** Path, always starting with `/`. */
+    path: string;
+    /** Query parameters; the last value wins when a key repeats. */
+    query: Record<string, string>;
+    /** Fragment, with its `#`, or `""`. */
+    hash: string;
+};
+/** How an entry of the history is written, or followed (B.5). */
+type TNavigationMode = "push" | "replace" | "pop";
+/**
+ * Parses a location of the application.
+ *
+ * @throws when it is not a path of the application (`/…`, not `//host`).
+ */
+declare function parseLocation(location: string): TRoute;
+/** Writes a route as a location, in the one canonical form. */
+declare function serializeRoute(route: TRoute): string;
+/** Canonical form of a location: parse, then write. Two equal addresses have one form. */
+declare function canonicalLocation(location: string): string;
+
+/**
+ * RouterFeature — the Feature of navigation provided by the framework (D15).
+ *
+ * Namespace `router`, reserved (I71): the Application instantiates it when
+ * its Manifest activates navigation; it is not declared among the application
+ * Features. It owns the navigation state only. The address belongs to the
+ * history adapter (D7): this Feature never touches the host.
+ *
+ * Contract (the one the history adapter projects, B.5):
+ *   - Command `router:navigate { location, mode }`
+ *   - Event   `router:routeChanged { route, mode }`
+ *   - Query   `router:currentRoute`
+ *
+ * A return or an advance is requested from the history adapter by a View
+ * (`history:back`, `history:forward`, A4.b); the adapter then relays the
+ * traversal here as `navigate` with the mode `"pop"`, when it is established
+ * independent (C.4).
+ */
+
+type TRouterDef = {
+    commands: {
+        navigate: {
+            location: string;
+            mode: TNavigationMode;
+        };
+    };
+    events: {
+        routeChanged: {
+            route: TRoute;
+            mode: TNavigationMode;
+        };
+    };
+    queries: {
+        currentRoute: {
+            params: null;
+            result: TRoute;
+        };
+    };
+};
+declare class RouteEntity extends Entity<TRoute> {
+    protected defineInitialState(): TRoute;
+}
+declare const routerListens: readonly [];
+declare class RouterFeature extends Feature<RouteEntity, TRouterDef, "router"> implements TFeatureCallbacks<TRouterDef, typeof routerListens, RouteEntity> {
+    /** Framework class: may take the reserved namespace `router` (I71). */
+    static readonly framework = true;
+    static readonly channel: TChannelToken<TRouterDef, "router">;
+    get listens(): readonly [];
+    get queries(): readonly [];
+    protected get Entity(): typeof RouteEntity;
+    /**
+     * Updates the navigation state, then announces it with the mode of the
+     * navigation. The Event goes out even when the route is unchanged: a push
+     * to the current address is a request for a new entry (B.5).
+     */
+    onNavigateCommand(payload: {
+        location: string;
+        mode: TNavigationMode;
+    }, ctx: TFeatureContext<TRouterDef, RouteEntity>): void;
+    onCurrentRouteQuery(_params: null, _ctx: TFeatureQueryContext): TRoute;
+}
+
+/**
+ * HistoryAdapter — the adapter of the address and of the session history
+ * (theory annex A.4, B.3; sheet `docs/adaptateurs/historique.md`).
+ *
+ * A built-in component of the user interface, child of the root, namespace
+ * `history`. It is the only component that reads or writes the address. The
+ * application reaches it in three ways:
+ *
+ *   - Commands `history:push|replace|back|forward|refresh`, addressed by
+ *     components of the user interface only (A4.b, enforced by the kernel);
+ *   - Query `history:location`: the observation integrated at initialisation
+ *     or by an admission, never a fresh read of the host (C.5);
+ *   - Events `history:navigated|requestResult|refreshed|failed`.
+ *
+ * It also projects the domain: on `router:routeChanged` it writes the entry
+ * the mode asks for, unless the projection is already satisfied (B.5).
+ *
+ * Closed world (C.4). The operations of the model that can make the host emit
+ * `popstate` are `history:back` and `history:forward`, and both go through
+ * here. A `popstate` that no engaged traversal could have produced is an
+ * independent fact: origin "spontaneous", which grants the right to command
+ * (D18) and is relayed to the router as `router:navigate { mode: "pop" }`.
+ * With exactly one traversal engaged, it is the result of that traversal: a
+ * continuation, which keeps the right of the reaction that requested it (a
+ * click on "back" may command, an Event relayed to the adapter may not). With several engaged, nothing tells them apart: it
+ * is an observation with an unknown antecedent, no right, no relay.
+ *
+ * What a subclass may do (B.4): `normalize` a location that is already
+ * detached from the host. Nothing else is overridable.
+ *
+ * Known limits: `popstate` is the only host notification listened to
+ * (`hashchange` follows it for a change of fragment); the window during which
+ * a traversal is considered engaged is closed by the host notification or by
+ * `traversalTimeoutMs` (open point of the sheet, rubric 30); `stop()` of the
+ * Application removes the host observers.
+ */
+
+/** What the adapter has integrated about the address (C.5). */
+type THistoryObservation = {
+    readonly location: string;
+    /** How the current entry was reached; `"initial"` before any navigation. */
+    readonly mode: "initial" | TNavigationMode;
+    /** Counts the integrated observations, so that an unchanged address stays distinguishable. */
+    readonly sequence: number;
+};
+/** Creation parameters given by the Application (never a reference of the model: they are the framework's). */
+type THistoryAdapterOptions = {
+    readonly root: Root;
+    readonly document: Document;
+    /** Removes the host observers when aborted (B.2). */
+    readonly signal?: AbortSignal;
+    /** Time after which an engaged traversal that the host did not notify is given up. Default 2000 ms. */
+    readonly traversalTimeoutMs?: number;
+};
+declare class HistoryAdapter {
+    /** Category of the catalogue (B.3): one adapter per category and per root. */
+    static readonly category = "history";
+    /** Namespaces of Features that must be active for this adapter. */
+    static readonly requires: readonly ["router"];
+    /**
+     * The only extension point: puts a location, already detached from the
+     * host, in the form the application wants (B.4). Applied to every location
+     * that is observed or written; it must be a pure function of its argument.
+     */
+    protected normalize(location: string): string;
+    /** @internal Description given to the kernel by the Application. */
+    [DESCRIBE$1](options: THistoryAdapterOptions): TComponentSpec;
+}
+
+/**
  * @bonsai/composer — Composer abstract base class (migration lot M6.2)
  *
  * A Composer decides which Views exist in one slot, and in which order. It is
@@ -26294,5 +26614,5 @@ declare class Application<M extends TFeaturesManifest = TFeaturesManifest> {
     get started(): boolean;
 }
 
-export { Application, BonsaiNamespaceError, Composer, Feature, Foundation, Immer, RESERVED_NAMESPACES, RXJS, Valibot, View, assertValidNamespace, describeFeature, isCamelCaseNamespace, isReservedNamespace, ui };
-export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, CamelCaseNamespace, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, ReservedNamespace, StrictArrayOfKeys, StrictArrayOfValues, StrictManifest, StringDigit, StringHash, TAdapterClass, TAllLetters, TAnyEventPayload, TApplicationOptions, TBonsaiNamespaceErrorCode, TChannelCallbacks, TChannelDefinition, TChannelHandlerName, TChannelToken, TClass, TCommandCallbacks, TCommandPayloadFor, TComposeContext, TComposed, TComposerClass, TComposerContract, TComposerFeatures, TComposition, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntries, TEventCallbacks, TEventContext, TEventPayloadFor, TEventsFor, TExcludeKeys, TExcludeValues, TFact, TFactContext, TFalsy, TFeatureCallbacks, TFeatureClass, TFeatureContext, TFeatureContract, TFeatureQueryContext, TFeatureRef, TFeatureRefForNS, TFeaturesManifest, TFlatListens, TFlatQueries, TFlatTriggers, TFoundationOptions, TFoundationSlots, TFunctionPropertyNames, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonValue, TListenCallbacks, TLookup, TLowerLetter, TMapEntry, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TParameters, TPrimitive, TProjectionNode, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TQueryCallbacks, TQueryContext, TQueryParamsFor, TQueryResultFor, TSetEntry, TSlotDeclaration, TStrictFeatureClass, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIEntryOptions, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewCatalog, TViewClass, TViewContract, TViewSlotDeclaration, TuplifyUnion, UnionToIntersection, ValidatedManifest, ValuesType, Whitespace };
+export { Application, BehaviorError, BonsaiError, BonsaiNamespaceError, BroadcastError, CommandError, Composer, DuplicateHandlerError, Entity, EntityReentrancyError, Feature, Foundation, HistoryAdapter, Immer, ListenerError, MutationError, NoHandlerError, RESERVED_NAMESPACES, RXJS, RenderError, RequestError, RouteEntity, RouterFeature, Valibot, View, assertValidNamespace, bindEntityState, canonicalLocation, describeEntity, describeFeature, hardInvariant, invariant, isCamelCaseNamespace, isDev, isReservedNamespace, parseLocation, serializeRoute, ui, warning };
+export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, CamelCaseNamespace, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, ReservedNamespace, StrictArrayOfKeys, StrictArrayOfValues, StrictManifest, StringDigit, StringHash, TAdapterClass, TAllLetters, TAnyEventPayload, TApplicationOptions, TBonsaiNamespaceErrorCode, TChannelCallbacks, TChannelDefinition, TChannelHandlerName, TChannelToken, TClass, TCommandCallbacks, TCommandPayloadFor, TComposeContext, TComposed, TComposerClass, TComposerContract, TComposerFeatures, TComposition, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntityEvent, TEntityInvariant, TEntityRecipe, TEntityState, TEntries, TEventCallbacks, TEventContext, TEventPayloadFor, TEventsFor, TExcludeKeys, TExcludeValues, TFact, TFactContext, TFalsy, TFeatureCallbacks, TFeatureClass, TFeatureContext, TFeatureContract, TFeatureQueryContext, TFeatureRef, TFeatureRefForNS, TFeaturesManifest, TFlatListens, TFlatQueries, TFlatTriggers, TFoundationOptions, TFoundationSlots, TFunctionPropertyNames, THistoryAdapterOptions, THistoryObservation, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonSerializable, TJsonValue, TListenCallbacks, TLookup, TLowerLetter, TMapEntry, TMutationParams, TNavigationMode, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TParameters, TPrimitive, TProjectionNode, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TQueryCallbacks, TQueryContext, TQueryParamsFor, TQueryResultFor, TRoute, TRouterDef, TSetEntry, TSlotDeclaration, TStrictFeatureClass, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIEntryOptions, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewCatalog, TViewClass, TViewContract, TViewSlotDeclaration, TuplifyUnion, UnionToIntersection, ValidatedManifest, ValuesType, Whitespace };

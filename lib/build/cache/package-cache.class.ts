@@ -8,6 +8,8 @@ import { ICacheStrategy } from "@build/cache/cache-strategy.interface";
 export class PackageCache implements ICacheStrategy<{ packageRoot: string }> {
   private static instance: PackageCache;
   private cacheStore: Map<string, string> = new Map(); // Map<packageRoot, hash>
+  /** Load of cache-index.json, started by the constructor; every lookup awaits it. */
+  private ready: Promise<void> = Promise.resolve();
 
   /**
    * Computes a global hash over all the source files of a package
@@ -71,6 +73,7 @@ export class PackageCache implements ICacheStrategy<{ packageRoot: string }> {
    * Checks whether the cache is valid for the package (hash unchanged)
    */
   public async isValid(target: { packageRoot: string }): Promise<boolean> {
+    await this.ready;
     const lastHash = this.getCachedHash(target.packageRoot);
     if (!lastHash) return false;
     const currentHash = await this.computeSourcesHash(target.packageRoot);
@@ -173,7 +176,7 @@ export class PackageCache implements ICacheStrategy<{ packageRoot: string }> {
    * Loads the cache automatically on instantiation
    */
   private constructor() {
-    this.loadCacheFromDisk();
+    this.ready = this.loadCacheFromDisk();
   }
   static me(): PackageCache {
     if (!PackageCache.instance) {

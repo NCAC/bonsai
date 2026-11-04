@@ -90,8 +90,17 @@ export type {
   TAnyEventPayload
 } from "@bonsai/kernel";
 
+// @bonsai/error — BonsaiError hierarchy, invariant helpers
+export * from "@bonsai/error";
+
+// @bonsai/entity — Entity base class, its event and recipe types (ADR-10)
+export * from "@bonsai/entity";
+
 // @bonsai/feature — Feature base class, BonsaiNamespaceError, TFeatureContract, etc.
 export * from "@bonsai/feature";
+
+// @bonsai/router — navigation Feature (D15) and history adapter (D7)
+export * from "@bonsai/router";
 
 // @bonsai/view — View base class
 export * from "@bonsai/view";

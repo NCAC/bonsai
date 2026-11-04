@@ -1,6 +1,6 @@
 [![🇫🇷 Documentation en français](https://img.shields.io/badge/docs-français-blue)](./README.md)
 [![Version](https://img.shields.io/badge/version-0.2.0-informational)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-416%20passed-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-419%20passed-brightgreen)]()
 [![Coverage](https://img.shields.io/badge/coverage-100%25%20lines%20%C2%B7%2097%25%20branches-brightgreen)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue)]()
 

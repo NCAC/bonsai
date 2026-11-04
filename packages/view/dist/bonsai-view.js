@@ -1,7 +1,7 @@
 /**
  * @bonsai/view - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T06:28:07.197Z
+ * Date: 2026-11-04T12:45:23.737Z
  */
 import { DESCRIBE, describeComponent } from '@bonsai/kernel';
 

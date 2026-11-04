@@ -25,7 +25,8 @@ Depuis le tag `v0.1.0-strate-0` (l'historique complet est dans `git log`). Ce ja
 - **Strate 1a — Entity** : `Immer.produceWithPatches`, `TEntityEvent` enrichi (`patches`, `inversePatches`, `previousState`, `nextState`), handlers `on<Key>EntityUpdated` / `onAnyEntityUpdated` auto-découverts par la Feature (I96) ; la notification est un message local différé, délivré dans sa propre unité, et une boucle de notifications est arrêtée par la borne causale (I98, D9)
 - **Contrat Feature `Feature<TEntity, TChannelDef, TSelfNS>`** : namespace porté par le manifest applicatif (`StrictManifest<M>`), `static readonly channel`, `get listens()` / `get queries()` d'instance, `TFeatureCallbacks`, constructeur inerte, phases 0a–0c du bootstrap (ADR-08, ADR-09)
 - **Pattern modulaire de View** : `TFeatureContract` / `TUIContract` / `TUIElements`, `ui<TEl>()(events)`, `TEventsFor<TEl>`, `TViewCallbacks` (ADR-14, ADR-15)
-- **Build** : `__DEV__` défini par la pipeline, bundles `core/dist/bonsai.js` (développement) et `bonsai.prod.js` (production) (ADR-06)
+- **Build** : `__DEV__` défini par la pipeline, bundles `core/dist/bonsai.js` (développement) et `bonsai.prod.js` (production) (ADR-06) ; `@bonsai/router` dans la pipeline (`dist/` versionné)
+- **Barrel `@bonsai/core`** : ré-exporte aussi `@bonsai/entity`, `@bonsai/error` et `@bonsai/router` (ADR-28, `tests/integration/core-barrel.test.ts`)
 - **Documentation** : 35 ADR vivants (`docs/adr/`), spécification par chapitres (`docs/spec/`), `docs/ROADMAP.md` ; ancien corpus archivé dans `docs/archive/adr-v0/`
 
 ### Changed
@@ -36,10 +37,14 @@ Depuis le tag `v0.1.0-strate-0` (l'historique complet est dans `git log`). Ce ja
 - **Entity** : l'état est détenu par le noyau et n'est modifiable que par `ctx.mutate` ; `entity.mutate()` et la file de ré-entrance propre à l'Entity sont retirés (ADR-10)
 - **Composition** : le Composer décide par `resolve(ctx)` une composition ordonnée par clé ; la View occupe une part attribuée, créée par le noyau ; `rootElement`, `mount()`, `onAttach()`/`onDetach()` et les getters `html`/`body` de la Foundation sont retirés (ADR-16, ADR-18 à ADR-20)
 - **ADR** réécrits depuis le code livré (ADR-01 à ADR-05, ADR-09, ADR-10, ADR-13, ADR-16, ADR-18 à ADR-20), lignes **Livré** corrigées (ADR-07, ADR-14, ADR-15, ADR-21, ADR-25, ADR-26, ADR-28, ADR-31, ADR-32, ADR-35) ; règle des ADR vivants, réécrits en place, rendue unique (`docs/README.md`, `docs/adr/README.md`)
-- **Seuils de couverture** relevés au niveau mesuré (100 % hors `kernel`, `router` et `view`) ; 416 tests
+- **Seuils de couverture** relevés au niveau mesuré (100 % hors `kernel`, `router` et `view`) ; 419 tests
 - **Versions** : tous les `package.json` du workspace alignés sur `0.2.0`
 - JSDoc et commentaires de `packages/` et `core/` traduits en anglais (ADR-34)
 - Documentation alignée sur le code livré : les écarts connus sont consignés dans la ligne **Livré** de chaque ADR ; les chapitres de spécification encore non alignés le signalent par leur bandeau, et le registre des invariants reste à requalifier après le noyau
+
+### Fixed
+
+- **Cache de build** : une entrée n'est plus tenue pour valide quand l'artefact a disparu (`--clean` reconstruit tout) ; un package dont une dépendance a été reconstruite est reconstruit (les bundles embarquent leurs dépendances) ; le premier package n'est plus testé contre un cache encore en chargement
 
 ### Removed
 

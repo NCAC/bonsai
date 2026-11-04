@@ -1,7 +1,7 @@
 /**
  * @bonsai/error - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T06:28:04.381Z
+ * Date: 2026-11-04T12:43:04.305Z
  */
 /**
  * BonsaiError — base class for all structured framework errors.

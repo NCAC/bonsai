@@ -15,6 +15,7 @@ packages:
   - "@bonsai/error"
   - "@bonsai/entity"
   - "@bonsai/feature"
+  - "@bonsai/router"
   - "@bonsai/view"
   - "@bonsai/composer"
   - "@bonsai/foundation"

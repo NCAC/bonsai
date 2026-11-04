@@ -2,9 +2,9 @@
 
 | Champ | Valeur |
 | --- | --- |
-| **Statut** | 🟢 Accepted |
+| **Statut** | 🔵 Tested |
 | **Invariants impactés** | I28, I71 |
-| **Livré** | ✅ `RouterFeature` et `HistoryAdapter` (`@bonsai/router`, lot M6.3a), gate `tests/e2e/navigation-round-trip.test.ts` · ⏳ routes à motifs (`params`), gardes, routes imbriquées · ⚠️ `@bonsai/router` absent de la pipeline de build et de `@bonsai/core` (ADR-28) |
+| **Livré** | ✅ `RouterFeature` et `HistoryAdapter` (`@bonsai/router`, lot M6.3a), gate `tests/e2e/navigation-round-trip.test.ts` · ⏳ routes à motifs (`params`), gardes, routes imbriquées, exportés par `@bonsai/core` |
 | **Spec** | [router.md](../spec/3-couche-abstraite/router.md) · théorie D7, D15, annexe B.5, C.4 |
 
 ## Contexte

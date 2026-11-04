@@ -59,12 +59,14 @@ Jest ne type-check pas les tests (`isolatedModules`) : voir [TESTING.md](docs/gu
 ## Un premier flux complet
 
 Extrait de la fixture de la gate E2E
-([`tests/fixtures/cart-feature.fixture.ts`](tests/fixtures/cart-feature.fixture.ts)) :
+([`tests/fixtures/cart-feature.fixture.ts`](tests/fixtures/cart-feature.fixture.ts), qui importe les packages
+directement ; une application passe par `@bonsai/core`) :
 
 ```ts
-import { Entity } from "@bonsai/entity";           // ⚠️ @bonsai/core ne ré-exporte pas encore Entity (ADR-28)
-import { type TChannelToken } from "@bonsai/kernel";
-import { Feature, type TFeatureCallbacks, type TFeatureContext, type TFeatureQueryContext } from "@bonsai/feature";
+import {
+  Entity, Feature,
+  type TChannelToken, type TFeatureCallbacks, type TFeatureContext, type TFeatureQueryContext
+} from "@bonsai/core";
 
 type TCartState = { items: TCartItem[]; total: number };
 

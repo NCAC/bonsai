@@ -48,7 +48,7 @@ Modèle : [TEMPLATE.md](TEMPLATE.md). Correspondance avec l'ancienne numérotati
 | [ADR-10](ADR-10-entity-mutation.md) | Entity : mutation Immer, patches, pas de state dérivé | 🔵 |
 | [ADR-11](ADR-11-entity-schema-valibot.md) | Entity : schema Valibot | 🟢 |
 | [ADR-12](ADR-12-entity-intent-typing.md) | Typage de l'`intent` de `mutate()` | 🟡 |
-| [ADR-13](ADR-13-router.md) | Router : Feature de navigation fournie par le framework | 🟢 ⚠️ |
+| [ADR-13](ADR-13-router.md) | Router : Feature de navigation fournie par le framework | 🔵 |
 
 ### Contrats typés
 

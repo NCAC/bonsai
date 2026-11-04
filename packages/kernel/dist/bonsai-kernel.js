@@ -1,7 +1,7 @@
 /**
  * @bonsai/kernel - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T10:39:15.936Z
+ * Date: 2026-11-04T12:45:17.538Z
  */
 import { Immer } from '@bonsai/immer';
 

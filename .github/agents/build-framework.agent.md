@@ -33,13 +33,12 @@ lib/build/
 
 - **Liste des packages** : `bonsai-components.yaml` (bibliothèques tierces `rxjs`, `immer`, `valibot` en parallèle, puis packages internes dans l'ordre topologique).
 - **Artefacts versionnés** (ADR-30) : `packages/*/dist/` et `core/dist/` — `bonsai.js` (développement, `__DEV__ = true`), `bonsai.prod.js` (production, branches de développement éliminées), `bonsai.d.ts` (un seul fichier, `external: []`). `core/package.json` choisit le bundle par la condition `production` de `exports`.
-- **Cache** : `.bonsai-cache/` (`cache-index.json`, `library-cache.json`).
+- **Cache** : `.bonsai-cache/` (`cache-index.json`, `library-cache.json`). Une entrée n'est fiable que si l'artefact existe (un `--clean` reconstruit tout) ; un package dont une dépendance a été reconstruite l'est aussi (`build-orchestrator.class.ts`).
 - **Preuve** des bundles : `tests/integration/bundles-dev-prod.test.ts` (Jest).
 
 ## Écarts connus
 
-- `@bonsai/router` est absent de `bonsai-components.yaml` : pas de `dist/`, pas d'export par `@bonsai/core` (ADR-28).
-- `--clean` vide les `dist/` mais garde l'index du cache : les packages inchangés ne sont pas reconstruits. Contournement : déplacer `.bonsai-cache/` avant de reconstruire.
+- `bonsai.d.ts` ne se vérifie pas seul (`tsc` sur le fichier) : identifiant `Immer` dupliqué et contrainte circulaire d'un utilitaire de `@bonsai/types` ; les consommateurs passent par `skipLibCheck`.
 - Le bundle JS importe encore `@bonsai/types` ; `Immer` et `RXJS` sont exportés ; `bonsai.d.ts` pèse environ 1,1 Mo (ADR-29).
 - Aucune vérification CI de la fraîcheur des artefacts (ADR-30).
 - `lib/` n'a aucun test : Vitest, le runner visé, n'est pas installé.

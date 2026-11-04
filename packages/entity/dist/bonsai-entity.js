@@ -1,7 +1,7 @@
 /**
  * @bonsai/entity - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T06:28:05.022Z
+ * Date: 2026-11-04T12:43:05.323Z
  */
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
