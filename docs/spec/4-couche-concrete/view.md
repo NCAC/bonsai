@@ -75,7 +75,12 @@ Les handlers sont **découverts par leur nom** (I48) et reçoivent un **contexte
 | Event d'une Feature | `on{Ns}{Event}Event(payload, ctx)` | `TEventContext<TVC>` | `query` |
 
 ```typescript
-type TFact = { readonly type: string; readonly ui: string | null };   // donnée, jamais l'événement natif
+// Donnée, jamais l'événement natif ; `data` : attributs capturés à l'admission (ADR-23)
+type TFact<TData extends string = never> = {
+  readonly type: string;
+  readonly ui: string | null;
+  readonly data: Readonly<Record<TData, string | null>>;
+};
 
 onAddButtonClick(_fact: TFact, ctx: TFactContext<TCartViewContract>): void {
   ctx.trigger("cart:addItem", { productId: "p1", qty: 1, price: 10 });   // livré après validation (G5)
@@ -113,6 +118,8 @@ this.getUI("total").style("color", "red");
 ## 5. Faits de l'hôte
 
 La View déclare à la description chaque événement hôte de `uiEvents` avec les sélecteurs de ses clés. Le noyau pose l'observateur sur sa part, et **seule** la View dont la part est la plus interne admet un fait (A5.d). L'admission est une donnée `{ type, ui }`, où `ui` est la première clé, dans l'ordre de déclaration, dont le sélecteur correspond à la cible ou à un ancêtre dans la part.
+
+- **Données capturées (ADR-23).** Une clé déclare des noms à capturer : `ui<HTMLButtonElement>()(["click"], { data: ["itemId"] })`. À l'admission, le noyau lit pour chaque nom l'attribut `data-*` correspondant (`itemId` → `data-item-id`) sur l'ancêtre le plus proche de la cible qui le porte, dans la part ; à défaut, `null` (C.5). Le handler reçoit `fact.data.itemId` (`TFact<"itemId">`), une chaîne détachée : il ne relit jamais l'hôte. Une clé sans capture reçoit `data: {}`. Déclarer une capture sur une clé sans événement, ou un nom hors camelCase de lettres, est refusé à la description.
 
 - Un fait sur un élément sans clé, ou dont la clé ne déclare pas cet événement, est ignoré sans échec.
 - Un fait survenu hors de la part de la View ne lui parvient pas.

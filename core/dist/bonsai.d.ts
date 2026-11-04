@@ -24778,7 +24778,7 @@ interface TComponentSpec {
 }
 /**
  * Admission of a host event type with the UI keys it can be attributed to: the
- * payload's `ui` is the first key, in declaration order, whose selector matches
+ * payload is `{ type, ui }` (plus `data`, see below); `ui` is the first key, in declaration order, whose selector matches
  * the target or an ancestor inside the part; without `keys`, it is the target's
  * `data-ui` attribute.
  */
@@ -24790,6 +24790,13 @@ interface TDomAdmission {
      * cancelled at capture, before any treatment and whatever its outcome (D20).
      */
     readonly cancelDefault?: readonly string[];
+    /**
+     * Values captured with the fact, per UI key (C.5): for each name, the
+     * `data-*` attribute (`itemId` → `data-item-id`) of the closest ancestor of
+     * the target inside the part that carries it, `null` without one. When
+     * present, the payload carries `data` (empty for a key without names).
+     */
+    readonly data?: Readonly<Record<string, readonly string[]>>;
 }
 /** Entry of a Manifest: a child of the root and its initial Query dependencies (C.1). */
 interface TManifestEntry extends TComponentSpec {
@@ -26085,6 +26092,52 @@ declare abstract class Composer<TCC extends TComposerContract = TComposerContrac
 }
 
 /**
+ * ProjectionList — keyed reconciliation of a list of items (ADR-23, 5-rendu §6).
+ *
+ * Used inside a `TProjectionTemplate`: built in `setup()`, reconciled in
+ * `project()`. It therefore runs only when the projection is engaged, after
+ * the unit validates (C.3), and adds no listener: the View's part already
+ * delegates one listener per declared event type, and the item touched is
+ * identified by a value captured with the fact (`data`, C.5).
+ *
+ * @packageDocumentation
+ */
+/** Options of a `ProjectionList` (5-rendu §6.1). */
+type TProjectionListOptions<TItem, TItemNodes> = {
+    /** Attribute carrying the key of each item element, e.g. `"data-item-id"`. */
+    readonly keyAttr: string;
+    /** Unique key of an item. */
+    readonly key: (item: TItem) => string;
+    /** Creates the element of a new item; the list sets `keyAttr` on it. */
+    readonly create: (item: TItem) => HTMLElement;
+    /** Locates the dynamic nodes of an item element. */
+    readonly setup: (el: HTMLElement) => TItemNodes;
+    /**
+     * Updates the nodes of an item. Called for every item on every
+     * reconciliation, changed or not: it must guard each node
+     * (`if (node.textContent !== value)`) and never create nor remove nodes (R5).
+     */
+    readonly update: (nodes: TItemNodes, item: TItem, index: number) => void;
+};
+/**
+ * Keyed list over the element children of a container. At construction it
+ * adopts the children carrying `keyAttr` — those `create()` of the template
+ * just produced, or a server rendering (ADR-24) — without recreating them.
+ */
+declare class ProjectionList<TItem, TItemNodes> {
+    #private;
+    constructor(container: HTMLElement, options: TProjectionListOptions<TItem, TItemNodes>);
+    /**
+     * Reconciles the container with `items`, in this order: updates known items,
+     * moves only misplaced ones (`insertBefore`), creates new ones, removes the
+     * elements whose key is gone. O(n) through the map of keys.
+     */
+    reconcile(items: readonly TItem[]): void;
+    /** Nodes of an item by its key. */
+    nodes(key: string): TItemNodes | undefined;
+}
+
+/**
  * @bonsai/view — View base class (ADR-14, migration lot M6.2)
  *
  * A View projects the domain onto the part of the document its Composer
@@ -26204,23 +26257,29 @@ type HasNoDuplicates<T extends readonly unknown[], Seen extends readonly unknown
  * - `cancelDefault?`: declared events whose host default action (following a
  *             link, submitting a form) is cancelled at capture, before the
  *             handler and whatever the unit's outcome (D20). Absent = none.
+ * - `data?`  : names of values captured with a fact of the key (ADR-23, C.5):
+ *             `itemId` reads `data-item-id` on the closest carrying ancestor.
  * - `_el?`  : phantom TEl (compile time only, never allocated at runtime).
  *             Types the events of the key (`TEventsFor<TEl>`).
  *
  * NO CSS selector here — it lives in `get uiElements()` (overridable, ADR-21).
  */
-type TUIEntry<TEl extends HTMLElement = HTMLElement, TEvts extends ReadonlyArray<TEventsFor<TEl>> = ReadonlyArray<TEventsFor<TEl>>> = {
+type TUIEntry<TEl extends HTMLElement = HTMLElement, TEvts extends ReadonlyArray<TEventsFor<TEl>> = ReadonlyArray<TEventsFor<TEl>>, TData extends string = string> = {
     readonly events: TEvts;
     readonly cancelDefault?: ReadonlyArray<TEvts[number]>;
+    readonly data?: ReadonlyArray<TData>;
     readonly _el?: TEl;
 };
 /**
- * Options of a UI entry. `cancelDefault` names declared events of the key whose
- * host default action is cancelled (D20): the handler never decides it, since
- * it receives a fact as data, not the host event (A3.c).
+ * Options of a UI entry.
+ * - `cancelDefault` names declared events of the key whose host default action
+ *   is cancelled (D20): the handler never decides it, since it receives a fact
+ *   as data, not the host event (A3.c).
+ * - `data` names the values captured with each fact of the key (ADR-23, C.5).
  */
-type TUIEntryOptions<TEvt extends string> = {
-    readonly cancelDefault: ReadonlyArray<TEvt>;
+type TUIEntryOptions<TEvt extends string, TData extends string = never> = {
+    readonly cancelDefault?: ReadonlyArray<TEvt>;
+    readonly data?: ReadonlyArray<TData>;
 };
 /**
  * Builder of a UI entry (I85 — the only mechanism).
@@ -26238,8 +26297,9 @@ type TUIEntryOptions<TEvt extends string> = {
  * @example ui<HTMLSpanElement>()([])                    // explicitly non-interactive
  * @example ui<HTMLInputElement>()(["input", "change"])  // 2 required handlers
  * @example ui<HTMLAnchorElement>()(["click"], { cancelDefault: ["click"] }) // link relayed to the router (D20)
+ * @example ui<HTMLButtonElement>()(["click"], { data: ["itemId"] })  // fact.data.itemId (ADR-23)
  */
-declare function ui<TEl extends HTMLElement = HTMLElement>(): <const TEvts extends ReadonlyArray<TEventsFor<TEl>>>(events: HasNoDuplicates<TEvts> extends true ? TEvts : never, options?: TUIEntryOptions<NoInfer<TEvts[number]>>) => TUIEntry<TEl, TEvts>;
+declare function ui<TEl extends HTMLElement = HTMLElement>(): <const TEvts extends ReadonlyArray<TEventsFor<TEl>>, const TData extends string = never>(events: HasNoDuplicates<TEvts> extends true ? TEvts : never, options?: TUIEntryOptions<NoInfer<TEvts[number]>, TData>) => TUIEntry<TEl, TEvts, TData>;
 /**
  * UI contract module — keys → typed entries (ADR-14).
  * A View or Behavior composes it with a `TFeatureContract`.
@@ -26255,7 +26315,11 @@ type TUIElements<TUI extends TUIContract> = {
     readonly [K in keyof TUI]: string;
 };
 /** Extracts the HTMLElement subtype of a TUIEntry through the phantom. */
-type ExtractEl<TEntry extends TUIEntry> = TEntry extends TUIEntry<infer TEl, infer _TEvts> ? TEl : HTMLElement;
+type ExtractEl<TEntry extends TUIEntry> = TEntry extends TUIEntry<infer TEl, infer _TEvts, infer _TData> ? TEl : HTMLElement;
+/** Names of the values a UI entry captures with its facts (ADR-23). */
+type ExtractData<TEntry extends TUIEntry> = TEntry extends {
+    readonly data?: ReadonlyArray<infer TData>;
+} ? (string extends TData ? never : TData & string) : never;
 /**
  * Projection onto the element of a UI key. Each call *prepares* an effect,
  * engaged after the unit validates (C.3); none reads the document.
@@ -26273,11 +26337,17 @@ type TProjectionNode<_TEl extends HTMLElement = HTMLElement> = {
     style(property: string, value: string): void;
 };
 /** A fact of the host admitted in the View's part, as data (A3.d). */
-type TFact = {
+type TFact<TData extends string = never> = {
     /** Host event type, e.g. `"click"`. */
     readonly type: string;
     /** UI key the target belongs to, `null` when none. */
     readonly ui: string | null;
+    /**
+     * Values declared by the key (`data`), captured at admission (C.5, ADR-23):
+     * the `data-*` attribute of the closest carrying ancestor in the part, `null`
+     * without one. Empty for a key that captures nothing.
+     */
+    readonly data: Readonly<Record<TData, string | null>>;
 };
 /** What every View handler can do: read its causal context, ask Queries. */
 type TQueryContext<TVC extends TViewContract> = {
@@ -26308,8 +26378,8 @@ type TDOMEventFor<S extends string> = S extends keyof HTMLElementEventMap ? HTML
  * DOM handlers REQUIRED for a UI entry: one per declared event.
  * I48 UI convention: `on{UIKey}{DomEvent}` (no suffix — ADR-15).
  */
-type TUIEntryHandlers<TKey extends string, TEntry extends TUIEntry, TVC extends TViewContract = TViewContract> = TEntry extends TUIEntry<infer _TEl, infer TEvts> ? {
-    [E in TEvts[number] as `on${Capitalize<TKey>}${Capitalize<E & string>}`]: (fact: TFact, ctx: TFactContext<TVC>) => void;
+type TUIEntryHandlers<TKey extends string, TEntry extends TUIEntry, TVC extends TViewContract = TViewContract> = TEntry extends TUIEntry<infer _TEl, infer TEvts, infer _TData> ? {
+    [E in TEvts[number] as `on${Capitalize<TKey>}${Capitalize<E & string>}`]: (fact: TFact<ExtractData<TEntry>>, ctx: TFactContext<TVC>) => void;
 } : never;
 /**
  * Intersection of every DOM handler required by a `TUIContract`.
@@ -26665,5 +26735,5 @@ declare class Application<M extends TFeaturesManifest = TFeaturesManifest> {
     get started(): boolean;
 }
 
-export { Application, BonsaiError, BonsaiNamespaceError, Composer, Entity, Feature, Foundation, HistoryAdapter, Immer, RESERVED_NAMESPACES, RXJS, RouteEntity, RouterFeature, Valibot, View, assertValidNamespace, bind, bindEntityState, canonicalLocation, describeEntity, describeFeature, hardInvariant, invariant, isCamelCaseNamespace, isDev, isReservedNamespace, parseLocation, serializeRoute, ui, warning };
-export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, CamelCaseNamespace, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, ReservedNamespace, StrictArrayOfKeys, StrictArrayOfValues, StrictManifest, StringDigit, StringHash, TAdapterClass, TAllLetters, TApplicationOptions, TBindingEvents, TBonsaiErrorOptions, TBonsaiNamespaceErrorCode, TCausalContext, TChannelCallbacks, TChannelDefinition, TChannelHandlerName, TChannelToken, TClass, TCommandCallbacks, TCommandPayloadFor, TComposeContext, TComposed, TComposerClass, TComposerContract, TComposerFeatures, TComposition, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntityEvent, TEntityInvariant, TEntityRecipe, TEntityState, TEntries, TEventCallbacks, TEventContext, TEventPayloadFor, TEventsFor, TExcludeKeys, TExcludeValues, TFact, TFactContext, TFalsy, TFeatureCallbacks, TFeatureClass, TFeatureContext, TFeatureContract, TFeatureQueryContext, TFeatureRef, TFeatureRefForNS, TFeaturesManifest, TFlatListens, TFlatQueries, TFlatTriggers, TFoundationOptions, TFoundationSlots, TFunctionPropertyNames, THistoryAdapterOptions, THistoryObservation, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonSerializable, TJsonValue, TListenCallbacks, TLookup, TLowerLetter, TMapEntry, TMutationParams, TNavigationMode, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TOriginKind, TParameters, TPrimitive, TProjectionNode, TProjectionTemplate, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TQueryBinding, TQueryCallbacks, TQueryContext, TQueryParamsFor, TQueryResultFor, TRoute, TRouterDef, TSetEntry, TSlotDeclaration, TStaticBinding, TStrictFeatureClass, TTemplateBinding, TTemplateEvents, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIEntryOptions, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewCatalog, TViewClass, TViewContract, TViewSlotDeclaration, TViewTemplates, TuplifyUnion, UnionToIntersection, ValidatedManifest, ValuesType, Whitespace };
+export { Application, BonsaiError, BonsaiNamespaceError, Composer, Entity, Feature, Foundation, HistoryAdapter, Immer, ProjectionList, RESERVED_NAMESPACES, RXJS, RouteEntity, RouterFeature, Valibot, View, assertValidNamespace, bind, bindEntityState, canonicalLocation, describeEntity, describeFeature, hardInvariant, invariant, isCamelCaseNamespace, isDev, isReservedNamespace, parseLocation, serializeRoute, ui, warning };
+export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, CamelCaseNamespace, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractData, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, ReservedNamespace, StrictArrayOfKeys, StrictArrayOfValues, StrictManifest, StringDigit, StringHash, TAdapterClass, TAllLetters, TApplicationOptions, TBindingEvents, TBonsaiErrorOptions, TBonsaiNamespaceErrorCode, TCausalContext, TChannelCallbacks, TChannelDefinition, TChannelHandlerName, TChannelToken, TClass, TCommandCallbacks, TCommandPayloadFor, TComposeContext, TComposed, TComposerClass, TComposerContract, TComposerFeatures, TComposition, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntityEvent, TEntityInvariant, TEntityRecipe, TEntityState, TEntries, TEventCallbacks, TEventContext, TEventPayloadFor, TEventsFor, TExcludeKeys, TExcludeValues, TFact, TFactContext, TFalsy, TFeatureCallbacks, TFeatureClass, TFeatureContext, TFeatureContract, TFeatureQueryContext, TFeatureRef, TFeatureRefForNS, TFeaturesManifest, TFlatListens, TFlatQueries, TFlatTriggers, TFoundationOptions, TFoundationSlots, TFunctionPropertyNames, THistoryAdapterOptions, THistoryObservation, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonSerializable, TJsonValue, TListenCallbacks, TLookup, TLowerLetter, TMapEntry, TMutationParams, TNavigationMode, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TOriginKind, TParameters, TPrimitive, TProjectionListOptions, TProjectionNode, TProjectionTemplate, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TQueryBinding, TQueryCallbacks, TQueryContext, TQueryParamsFor, TQueryResultFor, TRoute, TRouterDef, TSetEntry, TSlotDeclaration, TStaticBinding, TStrictFeatureClass, TTemplateBinding, TTemplateEvents, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIEntryOptions, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewCatalog, TViewClass, TViewContract, TViewSlotDeclaration, TViewTemplates, TuplifyUnion, UnionToIntersection, ValidatedManifest, ValuesType, Whitespace };

@@ -431,168 +431,67 @@ export const CartItemsTemplate: TProjectionTemplate<CartItemsNodes, CartItem[]> 
 
 ## 6. API ProjectionList
 
-### 6.1 Interface
+> Décision : [ADR-23](../adr/ADR-23-listes.md). ✅ strate 1c, lot 3.
 
-````typescript
-/**
- * Gestionnaire de liste dynamique avec réconciliation keyed.
- * Utilisé en interne par les templates compilés.
- */
-class ProjectionList<TItem, TItemNodes> {
-  constructor(
-    container: HTMLElement,
-    options: TProjectionListOptions<TItem, TItemNodes>
-  );
-  
-  /**
-   * Réconcilie la liste avec les nouvelles données.
-   * Algorithme O(n) avec map de clés.
-   */
-  reconcile(
-    items: TItem[],
-    handlers: TReconcileHandlers<TItem, TItemNodes>
-  ): void;
-  
-  /**
-   * Retourne les nœuds d'un item par sa clé.
-   */
-  getItemNodes(key: string): TItemNodes | undefined;
-  
-  /**
-   * Détruit proprement (cleanup listeners, références)
-   */
-  dispose(): void;
-}
+### 6.1 Interface (`@bonsai/view`)
 
+```typescript
 type TProjectionListOptions<TItem, TItemNodes> = {
-  // Attribut contenant la clé (ex: 'data-item-id')
-  keyAttr: string;
-  
-  // Setup des nœuds internes d'un item
-  itemSetup: (el: HTMLElement) => TItemNodes;
-  
-  // Factory pour créer un nouvel élément (mode SPA)
-  itemCreate?: (item: TItem) => HTMLElement;
-}
-
-type TReconcileHandlers<TItem, TItemNodes> = {
-  // Fonction de clé — extrait l'identifiant unique d'un item
-  key: (item: TItem) => string;
-  
+  /** Attribut qui porte la clé de chaque élément d'item, ex. "data-item-id". */
+  readonly keyAttr: string;
+  /** Clé unique d'un item. */
+  readonly key: (item: TItem) => string;
+  /** Crée l'élément d'un nouvel item ; la liste y pose `keyAttr`. */
+  readonly create: (item: TItem) => HTMLElement;
+  /** Localise les nœuds dynamiques d'un élément d'item. */
+  readonly setup: (el: HTMLElement) => TItemNodes;
   /**
-   * Met à jour les nœuds DOM d'un item existant avec les nouvelles données.
-   *
-   * **Contrat normatif** :
-   * - Appelé pour **chaque** item présent dans la liste, qu'il ait changé ou non.
-   * - L'implémentation **DOIT** inclure des guards per-nœud pour éviter les
-   *   mutations DOM inutiles (ex: `if (node.textContent !== val)`).
-   * - Les guards sont la responsabilité du **code généré par le compilateur**,
-   *   pas du développeur (le dev écrit du Pug, le compilateur émet les guards).
-   * - Ne doit **jamais** créer/supprimer des nœuds DOM — seulement muter
-   *   le contenu (textContent, attributs, classes) des nœuds existants.
-   *
-   * @param nodes  — Les références DOM de l'item (retournées par `itemSetup`)
-   * @param item   — Les nouvelles données de l'item
-   * @param index  — L'index de l'item dans la liste (0-based)
-   *
-   * @example
-   * ```typescript
-   * update: (nodes, item, index) => {
-   *   // Guard per-nœud : ne mute que si la valeur a changé
-   *   if (nodes.name.textContent !== item.name)
-   *     nodes.name.textContent = item.name;
-   *   if (nodes.price.textContent !== formatPrice(item.price))
-   *     nodes.price.textContent = formatPrice(item.price);
-   * }
-   * ```
+   * Met à jour les nœuds d'un item, appelé pour chaque item à chaque
+   * réconciliation, qu'il ait changé ou non : gardé par nœud
+   * (`if (node.textContent !== value)`), ne crée ni ne supprime de nœud (R5).
    */
-  update: (nodes: TItemNodes, item: TItem, index: number) => void;
-  
-  // Callbacks optionnels (lifecycle de réconciliation)
-  onInsert?: (el: HTMLElement, item: TItem, index: number) => void;
-  onRemove?: (el: HTMLElement, item: TItem) => void | Promise<void>;
-  onMove?: (el: HTMLElement, item: TItem, fromIndex: number, toIndex: number) => void;
+  readonly update: (nodes: TItemNodes, item: TItem, index: number) => void;
+};
+
+class ProjectionList<TItem, TItemNodes> {
+  /** Adopte les enfants du conteneur qui portent `keyAttr` (rendu de `create()` ou serveur). */
+  constructor(container: HTMLElement, options: TProjectionListOptions<TItem, TItemNodes>);
+  /** Réconcilie le conteneur avec `items`, dans cet ordre. */
+  reconcile(items: readonly TItem[]): void;
+  /** Nœuds d'un item par sa clé. */
+  nodes(key: string): TItemNodes | undefined;
 }
-````
+```
+
+La liste s'emploie dans un `TProjectionTemplate` (§7) : construite dans
+`setup()`, réconciliée dans `project()`. Elle ne s'exécute donc qu'à
+l'engagement, après validation (C.3), et ne pose aucun écouteur : la part de la
+View délègue déjà un écouteur par type d'événement déclaré (§6.4).
+
+```typescript
+const CartItemsTemplate: TProjectionTemplate<readonly TCartItem[], ProjectionList<TCartItem, TRowNodes>> = {
+  create: (items) => { const ul = document.createElement("ul"); for (const i of items) ul.append(row(i)); return ul; },
+  setup: (container) => new ProjectionList(container.querySelector("ul")!, rowOptions),
+  project: (list, items) => list.reconcile(items)
+};
+```
 
 ### 6.2 Algorithme de réconciliation
 
-```typescript
-reconcile(items: TItem[], handlers: TReconcileHandlers<TItem, TItemNodes>): void {
-  const { key, update, onInsert, onRemove, onMove } = handlers;
-  
-  // 1. Construire la map des éléments existants par clé
-  const existing = new Map<string, { el: HTMLElement; nodes: TItemNodes; index: number }>();
-  let idx = 0;
-  for (const child of this.container.children) {
-    const k = (child as HTMLElement).dataset[this.keyAttrName];
-    if (k && this.itemNodesMap.has(k)) {
-      existing.set(k, { el: child as HTMLElement, nodes: this.itemNodesMap.get(k)!, index: idx });
-    }
-    idx++;
-  }
-  
-  // 2. Traiter les nouveaux items dans l'ordre
-  let prevEl: HTMLElement | null = null;
-  const seen = new Set<string>();
-  
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    const k = key(item);
-    seen.add(k);
-    
-    const entry = existing.get(k);
-    
-    if (entry) {
-      // Item existant — mettre à jour
-      update(entry.nodes, item, i);
-      
-      // Déplacer si nécessaire
-      const expectedNext = prevEl ? prevEl.nextElementSibling : this.container.firstElementChild;
-      if (entry.el !== expectedNext) {
-        this.container.insertBefore(entry.el, expectedNext);
-        onMove?.(entry.el, item, entry.index, i);
-      }
-      
-      prevEl = entry.el;
-    } else {
-      // Nouvel item — créer et insérer
-      const newEl = this.options.itemCreate!(item);
-      newEl.dataset[this.keyAttrName] = k;
-      
-      const nodes = this.options.itemSetup(newEl);
-      this.itemNodesMap.set(k, nodes);
-      
-      const insertBefore = prevEl ? prevEl.nextSibling : this.container.firstChild;
-      this.container.insertBefore(newEl, insertBefore);
-      
-      update(nodes, item, i);
-      onInsert?.(newEl, item, i);
-      
-      prevEl = newEl;
-    }
-  }
-  
-  // 3. Supprimer les éléments qui n'existent plus
-  for (const [k, entry] of existing) {
-    if (!seen.has(k)) {
-      onRemove?.(entry.el, /* item */);
-      entry.el.remove();
-      this.itemNodesMap.delete(k);
-    }
-  }
-}
-```
+1. Pour chaque item, dans l'ordre : clé dupliquée → erreur (`DUPLICATE_KEY`) ; item connu → `update`, puis déplacement par `insertBefore` s'il n'est pas à sa place ; item nouveau → `create`, `keyAttr` posé, `setup`, insertion à sa place, `update`.
+2. Les éléments dont la clé a disparu sont retirés, avec leurs nœuds.
+
+Seuls les items mal placés reçoivent un `insertBefore` ; les nœuds texte entre
+éléments sont ignorés. Une erreur pendant la réconciliation est une erreur
+d'engagement : elle ferme la ressource de la View pour la suite de la liste
+d'effets (C.3), sans revenir sur la validation.
 
 ### 6.3 Complexité
 
 | Opération | Complexité |
 | --- | --- |
 | Réconciliation complète | O(n) |
-| Insertion d'un item | O(1) amortie |
-| Suppression d'un item | O(1) |
-| Mise à jour d'un item | O(1) |
-| Déplacement d'un item | O(1) |
+| Insertion, suppression, mise à jour, déplacement d'un item | O(1) |
 
 ### 6.4 Collection patterns — ProjectionList + Event Delegation
 
@@ -627,10 +526,9 @@ import { View, ui, type TUIContract, type TUIElements } from "@bonsai/view";
 // handlers depuis cette déclaration (ADR-15).
 const cartViewUiEvents = {
   items:              ui<HTMLUListElement>()([]),           // Conteneur liste — non-interactif (I86)
-  removeButton:       ui<HTMLButtonElement>()(["click"]),   // → onRemoveButtonClick
-  increaseQtyButton:  ui<HTMLButtonElement>()(["click"]),   // → onIncreaseQtyButtonClick
-  decreaseQtyButton:  ui<HTMLButtonElement>()(["click"]),   // → onDecreaseQtyButtonClick
-  qtyInput:           ui<HTMLInputElement>()(["input"]),    // → onQtyInputInput
+  removeButton:       ui<HTMLButtonElement>()(["click"], { data: ["itemId"] }), // → onRemoveButtonClick
+  increaseQtyButton:  ui<HTMLButtonElement>()(["click"], { data: ["itemId"] }), // → onIncreaseQtyButtonClick
+  decreaseQtyButton:  ui<HTMLButtonElement>()(["click"], { data: ["itemId"] }), // → onDecreaseQtyButtonClick
 } satisfies TUIContract;
 
 // ── Module 3 — TUIElements : sélecteurs CSS, 1:1 avec uiEvents ──
@@ -639,7 +537,6 @@ const cartViewUiElements = {
   removeButton:       "[data-ui='removeButton']",
   increaseQtyButton:  "[data-ui='increaseQtyButton']",
   decreaseQtyButton:  "[data-ui='decreaseQtyButton']",
-  qtyInput:           "[data-ui='qtyInput']",
 } satisfies TUIElements<typeof cartViewUiEvents>;
 
 class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartViewContract> {
@@ -662,10 +559,12 @@ class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartVi
 
   get templates() {
     return {
-      items: {
+      items: bind<TCartViewContract>()({
         template: CartItemsTemplate,
-        select: (data) => data.cart?.items,
-      },
+        query: "cart:items",
+        params: null,
+        on: ["cart:itemAdded", "cart:itemRemoved", "cart:qtyChanged"]
+      })
     };
   }
 
@@ -676,35 +575,21 @@ class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartVi
   // ────────────────────────────────────────────────────────────────────
 
   // removeButton + click → onRemoveButtonClick
-  onRemoveButtonClick(fact: TFact, ctx: TFactContext<TCartViewContract>): void {
-    const itemId = this.getItemData(fact, 'data-item-id'); // ⏳ donnée capturée avec le fait (C.5)
-    if (itemId) {
-      ctx.trigger('cart:removeItem', { itemId });
-    }
+  onRemoveButtonClick(fact: TFact<"itemId">, ctx: TFactContext<TCartViewContract>): void {
+    const { itemId } = fact.data; // capturé à l'admission sur l'ancêtre data-item-id (C.5)
+    if (itemId !== null) ctx.trigger('cart:removeItem', { itemId });
   }
 
   // decreaseQtyButton + click → onDecreaseQtyButtonClick
-  onDecreaseQtyButtonClick(fact: TFact, ctx: TFactContext<TCartViewContract>): void {
-    const itemId = this.getItemData(fact, 'data-item-id'); // ⏳ donnée capturée avec le fait (C.5)
-    if (itemId) {
-      ctx.trigger('cart:decreaseQty', { itemId });
-    }
+  onDecreaseQtyButtonClick(fact: TFact<"itemId">, ctx: TFactContext<TCartViewContract>): void {
+    const { itemId } = fact.data; // capturé à l'admission sur l'ancêtre data-item-id (C.5)
+    if (itemId !== null) ctx.trigger('cart:decreaseQty', { itemId });
   }
 
   // increaseQtyButton + click → onIncreaseQtyButtonClick
-  onIncreaseQtyButtonClick(fact: TFact, ctx: TFactContext<TCartViewContract>): void {
-    const itemId = this.getItemData(fact, 'data-item-id'); // ⏳ donnée capturée avec le fait (C.5)
-    if (itemId) {
-      ctx.trigger('cart:increaseQty', { itemId });
-    }
-  }
-
-  // qtyInput + input → onQtyInputInput
-  onQtyInputInput(fact: TFact, ctx: TFactContext<TCartViewContract>): void {
-    const itemId = this.getItemData(fact, 'data-item-id'); // ⏳ C.5
-    if (itemId) {
-      ctx.trigger('cart:setQty', { itemId, qty: Number(fact.value) }); // ⏳ valeur capturée (C.5)
-    }
+  onIncreaseQtyButtonClick(fact: TFact<"itemId">, ctx: TFactContext<TCartViewContract>): void {
+    const { itemId } = fact.data; // capturé à l'admission sur l'ancêtre data-item-id (C.5)
+    if (itemId !== null) ctx.trigger('cart:increaseQty', { itemId });
   }
 }
 ```
@@ -720,7 +605,6 @@ ul.Cart-items(@ui="items")
         p.price #{item.price} €
       .actions
         button.CartItem-decreaseQty -
-        input.CartItem-qtyInput(type="number" value=item.quantity)
         button.CartItem-increaseQty +
         button.CartItem-remove ×
 ```
@@ -920,44 +804,35 @@ class WidgetComposer extends Composer<TWidgetComposerContract> {
 | ProjectionList + Event Delegation (§6.4) | Listes simples, items template-only | Faible (1 listener par type) |
 | Slot × Composer (§6.7) | Items complexes avec leur propre View | Élevé (n Views) |
 
-### 6.8 Helper `getItemData()`
+### 6.8 Identifier l'item : capture déclarée dans le fait
 
-> ⏳ **Cible.** Aujourd'hui un fait ne porte que `{ type, ui }` (`TFact`), où `ui`
-> est la clé d'interface dont un ancêtre de la cible correspond au sélecteur.
+> Décision : [ADR-23](../adr/ADR-23-listes.md). ✅ strate 1c, lot 3.
 
-Avec la délégation d'événements, la View doit savoir **quel item** a été touché.
-Elle ne lit pas le DOM (I39) : l'attribut de l'item (`data-item-id`) doit être
-**capturé avec le fait** au moment de son admission (C.5), puis lu par le helper.
+Avec la délégation, le traitement doit savoir **quel item** a été touché. Il
+ne lit pas le DOM (I39) : la valeur est **capturée avec le fait**, au préambule
+de son admission (C.5), puis portée comme donnée.
+
+Une clé UI déclare les noms à capturer (`data`, camelCase). Pour chaque nom, le
+noyau lit l'attribut `data-*` correspondant (`itemId` → `data-item-id`) sur
+l'ancêtre le plus proche de la cible qui le porte, dans la part ; à défaut, la
+valeur est `null`. Le fait est `{ type, ui, data }`.
 
 ```typescript
-class View {
-  /**
-   * ⏳ Lit une donnée capturée avec le fait : la valeur d'un attribut data de
-   * l'ancêtre le plus proche qui le porte. Forme de capture non fixée.
-   */
-  protected getItemData(fact: TFact, attribute: string = 'data-item-id'): string | null;
+const uiEvents = {
+  rows:   ui<HTMLUListElement>()([]),
+  remove: ui<HTMLButtonElement>()(["click"], { data: ["itemId"] }),
+  cell:   ui<HTMLTableCellElement>()(["click"], { data: ["rowId", "colId"] })
+} satisfies TUIContract;
+
+onCellClick(fact: TFact<"rowId" | "colId">, ctx: TFactContext<TTableViewContract>): void {
+  const { rowId, colId } = fact.data;
+  if (rowId !== null && colId !== null) ctx.trigger("table:selectCell", { rowId, colId });
 }
 ```
 
-**Usage idiomatique :**
-
-```typescript
-// Convention Bonsai : data-item-id sur chaque élément de liste
-onRemoveClick(fact: TFact, ctx: TFactContext<TCartViewContract>): void {
-  const itemId = this.getItemData(fact, 'data-item-id');
-  if (itemId) ctx.trigger('cart:removeItem', { itemId });
-}
-
-// Avec des attributs propres
-onCellClick(fact: TFact, ctx: TFactContext<TTableViewContract>): void {
-  const rowId = this.getItemData(fact, 'data-row-id');
-  const colId = this.getItemData(fact, 'data-col-id');
-  if (rowId && colId) ctx.trigger('table:selectCell', { rowId, colId });
-}
-```
-
-> Le déclarateur de la capture (quels attributs, sur quelles clés) relève du
-> contrat de la View (D16) ; il reste à concevoir avec le compilateur.
+Un nom capturé sur une clé sans événement déclaré, ou qui n'est pas en
+camelCase de lettres, est refusé quand la View est décrite (O2). La capture de
+la valeur d'une saisie suivra le même canal (strate 2, formulaires).
 
 ---
 
@@ -1370,7 +1245,7 @@ if (nodes.name.textContent !== item.name) {
 
 | Erreur | Cause | Message |
 | --- | --- | --- |
-| Clé dupliquée | Deux items avec la même clé | `Warning: Duplicate key 'X' in list. Reconciliation may be incorrect.` |
+| Clé dupliquée | Deux items avec la même clé | `[DUPLICATE_KEY] ProjectionList — duplicate key "X"` : erreur d'engagement (C.3) |
 | Élément manquant | DOM modifié hors framework | `Error: Expected element with key 'X' not found.` |
 
 ---
@@ -1398,7 +1273,9 @@ if (nodes.name.textContent !== item.name) {
 
 ### 11.2 Animations de liste — callbacks + CSS
 
-**Décision** : Les animations sont gérées via les callbacks `onInsert`, `onRemove`, `onMove`
+> ⏳ **Reporté après la v1** ([ROADMAP](../ROADMAP.md), ADR-23) : `ProjectionList` ne livre pas ces callbacks au lot 3. Une sortie animée laisse l'élément dans le DOM après l'engagement ; son articulation avec C.3 reste à concevoir. La suite de cette section décrit la piste, non un contrat.
+
+**Piste** : Les animations sont gérées via les callbacks `onInsert`, `onRemove`, `onMove`
 de `TReconcileHandlers`, combinés avec des transitions CSS natives.
 
 #### Signatures

@@ -1,7 +1,7 @@
 /**
  * @bonsai/entity - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T21:46:42.506Z
+ * Date: 2026-11-04T22:22:05.512Z
  */
 import { BonsaiError } from '@bonsai/error';
 

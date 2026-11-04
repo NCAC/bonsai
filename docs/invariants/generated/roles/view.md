@@ -69,7 +69,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 - `C` I43 — Les noms des clés de la View et de chacun de ses Behaviors sont tous disjoints, y compris entre Behaviors ; des noms distincts peuvent désigner le même élément, sans multiplier l'admission du fait par la View. ⟨boot · ⏳ · ·⟩
 - `C` I38 — Les droits de modification de l'interface respectent les parts attribuées et les rôles ; la View projette dans sa part hors contenu des slots, les opérations du Behavior lui sont imputées, la Foundation reste bornée à son élément admis hors parts attribuées, et le Composer ne modifie son contenu que pour la composition définie par I35. ⟨run · ⚠️ · ·⟩
 - `C` I32 — La View ne détruit ni ne remplace son élément racine ; elle peut en modifier les attributs et dispose de son contenu hors contenu attribué aux Composers. Avant de retirer un élément de slot, elle détruit le Composer concerné pour en obtenir restitution. ⟨run · ⚠️ · ·⟩
-- `D` I39 — La View accède au DOM exclusivement via `getUI(key)` ; aucun `querySelector` ni accès DOM brut ne lui est exposé. ⟨type · ✅ · R T⟩
+- `D` I39 — La View accède au DOM exclusivement via `getUI(key)` ou ses templates, à l'engagement ; aucun `querySelector` ni accès DOM brut ne lui est exposé, et ce qu'elle sait d'un fait lui vient de valeurs capturées à son admission. ⟨type · ✅ · R T⟩
 
 ### P7 — Cycle de vie hétéronome
 

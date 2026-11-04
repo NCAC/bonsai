@@ -11,6 +11,7 @@ Ces sujets ont un ADR accepté ; seule la livraison est reportée.
 | Sujet | ADR | Ce qui manque |
 | --- | --- | --- |
 | Listes virtualisées | [ADR-23](adr/ADR-23-listes.md) | `VirtualizedList` (viewport, scroll, placeholders) |
+| Animations de liste | [ADR-23](adr/ADR-23-listes.md) | Callbacks `onInsert`/`onMove`/`onRemove` de `ProjectionList` ; une sortie animée (Promise) doit s'articuler avec l'engagement des effets (C.3) |
 | FormBehavior complet | [ADR-25](adr/ADR-25-formulaires.md) | Behavior réutilisable de formulaire (dirty tracking, validation Valibot) |
 | Mode ESM modulaire | [ADR-27](adr/ADR-27-mode-esm-modulaire.md) | `BonsaiRegistry`, modules `*.esm.js`, CLI `bonsai build` |
 
