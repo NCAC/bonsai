@@ -228,6 +228,9 @@ importers:
       '@bonsai/immer':
         specifier: workspace:^
         version: link:../immer
+      '@bonsai/kernel':
+        specifier: workspace:^
+        version: link:../kernel
 
   packages/error:
     dependencies:

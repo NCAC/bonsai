@@ -2,7 +2,7 @@
 
 > **Unité métier : enfant de la racine, handlers à contexte auto-découverts, état détenu par le noyau**
 
-> 🟢 **Aligné sur la théorie V0.9.5 et sur le code livré (lots M6.1 et M6.3, 1er novembre 2026).** Reste à livrer : propagation de `metas` dans les handlers, `onDestroy`, hook `onError` (voir §9). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
+> 🟢 **Aligné sur la théorie V0.9.5 et sur le code livré (lots M6.1 et M6.3, 1er novembre 2026).** Strate 1b : contexte causal lu par `ctx.cause` (ADR-04). Reste à livrer : `onDestroy`, hook `onError` (voir §9). En cas d'écart, la [théorie](../../theorie.md) prévaut ([règle de confiance](../../README.md#règle-de-confiance-et-dalignement)).
 
 [← Retour à la couche abstraite](README.md) · [← Communication](../2-architecture/communication.md)
 
@@ -89,12 +89,13 @@ Les handlers sont **découverts par leur nom** (I48), y compris ceux hérités d
 
 ```typescript
 type TFeatureQueryContext = {
+  readonly cause: TCausalContext;            // contexte causal de la délivrance, gelé (ADR-04)
   query<T>(token, name, params): T;          // lecture seule, synchrone (A3.g)
 };
 type TFeatureContext<TDef, TEntity> = TFeatureQueryContext & {
   emit(event, payload): void;                // sur son propre Channel, délivré après validation (G5)
   mutate(intent, recipe): TEntityEvent | null;          // null si la recette ne change rien
-  mutate(intent, { payload?, metas? }, recipe): TEntityEvent | null;
+  mutate(intent, { payload? }, recipe): TEntityEvent | null;  // TEntityEvent.context = ctx.cause
 };
 ```
 
@@ -173,7 +174,6 @@ Il n'existe plus d'isolation par `BroadcastError`, `CommandError` ni `RequestErr
 
 | Élément | Statut |
 | --- | --- |
-| `metas` dans la signature des handlers et option `{ metas }` de `emit` | Cible (ADR-04) |
 | `onDestroy()`, états `destroying`/`destroyed` | Cible |
 | Hook `onError()` et `ErrorReporter` | Cible |
 | `onInit()` asynchrone | Hors périmètre (le démarrage est synchrone) |

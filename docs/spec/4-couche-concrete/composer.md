@@ -84,7 +84,7 @@ class MainComposer extends Composer<TMainContract> {
 
 | Règle | Ce que l'API garantit |
 | --- | --- |
-| D12, aucune Command | `TComposerFeatures` n'a pas de lane `triggers` ; `TComposeContext` n'offre que `query`. |
+| D12, aucune Command | `TComposerFeatures` n'a pas de lane `triggers` ; `TComposeContext` n'offre que `query` (et `cause`, le contexte causal en lecture seule, ADR-04). |
 | D12, aucun état propre | `resolve` ne reçoit pas l'Event déclencheur : elle se recalcule à partir des seules Queries. Un même état du domaine donne une même composition, quel que soit l'ordre des Events qui y ont mené. Un champ mutable de sous-classe est un état indépendant, refusé en revue et par lint. |
 | D11, T7 | Le tableau rendu donne les Views et leur ordre dans le slot. Le Composer crée pour chacune un élément et lui en attribue la part, sans recouvrement. |
 | Ordre d'affichage | L'ordre du tableau rendu est l'ordre dans le slot. La réconciliation place chaque View explicitement, avant celle qui la suit dans le tableau ; elle ne se fie jamais à l'ordre historique des attributions. Sans cela, remplacer une View la déplacerait après ses voisines (constat du prototype, lot M4 : le noyau prend une position `before` à chaque attribution). |
@@ -101,7 +101,7 @@ class MainComposer extends Composer<TMainContract> {
 
 ## 3. Réconciliation et exécution
 
-`resolve` est appelée par le framework, **jamais par le code applicatif** ni au retour d'une Query, d'un fait de l'hôte ou d'un résultat de composition. Elle reçoit `ctx = { query }` seulement.
+`resolve` est appelée par le framework, **jamais par le code applicatif** ni au retour d'une Query, d'un fait de l'hôte ou d'un résultat de composition. Elle reçoit `ctx = { cause, query }` seulement : `cause` est le contexte causal en lecture seule (ADR-04).
 
 | Étape | Comportement livré |
 | --- | --- |

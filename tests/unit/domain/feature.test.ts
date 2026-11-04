@@ -12,6 +12,7 @@
  *   I68  — the namespace is carried by the manifest, not by a static
  *   I94  — the constructor is inert
  *   D17  — a Feature never addresses a Command
+ *   I54  — handlers read the kernel's causal context through `ctx.cause` (ADR-04)
  *   C.1  — a Feature starts after the Features it queries
  */
 
@@ -26,7 +27,7 @@ import {
   type TFeatureQueryContext
 } from "@bonsai/feature";
 import { Entity } from "@bonsai/entity";
-import type { TChannelDefinition, TChannelToken } from "@bonsai/kernel";
+import type { TCausalContext, TChannelDefinition, TChannelToken } from "@bonsai/kernel";
 import { drive } from "../../helpers/drive";
 
 // ─── Fixtures ──────────────────────────────────────────────────────────────
@@ -280,6 +281,55 @@ describe("Feature on the kernel — lot M6.1", () => {
       const d = drive(features, { listen: [{ namespace: "cart", event: "priced" }] });
       d.send("cart", "askPricingOnCommand", { productId: "nope" });
       expect(d.received.map((r) => r.payload)).toEqual([{ price: null }]);
+    });
+  });
+
+  describe("I54 / ADR-04 — ctx.cause, the kernel's causal context", () => {
+    it("Command, Query and Event handlers read the context of their delivery, frozen", () => {
+      const seen: Record<string, TCausalContext> = {};
+      class CartSpy extends CartFeature {
+        override onAskPricingOnCommandCommand(payload: { productId: string }, ctx: TFeatureContext<TCartDef, CartEntity>): void {
+          seen.command = ctx.cause;
+          super.onAskPricingOnCommandCommand(payload, ctx);
+        }
+      }
+      class PricingSpy extends PricingFeature {
+        override onGetItemPriceQuery(params: { productId: string }, ctx: TFeatureQueryContext): number | null {
+          if (seen.command !== undefined) seen.query = ctx.cause;
+          return super.onGetItemPriceQuery(params, ctx);
+        }
+      }
+      const d = drive({ pricing: PricingSpy, cart: CartSpy }, {
+        listen: [{ namespace: "cart", event: "priced" }]
+      });
+      d.send("cart", "askPricingOnCommand", { productId: "prod-1" });
+
+      expect(seen.command!.originKind).toBe("spontaneous");        // the probe's independent fact
+      expect(seen.command!.depth).toBe(1);
+      expect(seen.query!.parentId).toBe(seen.command!.id);          // the Query continues its author
+      expect(seen.query!.originId).toBe(seen.command!.originId);
+      expect(Object.isFrozen(seen.command)).toBe(true);             // read-only: the code cannot rewrite it
+    });
+
+    it("an Event handler reads a continuation of the emitting unit", () => {
+      let command!: TCausalContext;
+      let event!: TCausalContext;
+      class CartSpy extends CartFeature {
+        override onAddItemCommand(payload: TItem, ctx: TFeatureContext<TCartDef, CartEntity>): void {
+          command = ctx.cause;
+          super.onAddItemCommand(payload, ctx);
+        }
+      }
+      class ListenerSpy extends ListenerFeature {
+        override onCartItemAddedEvent(payload: { item: unknown }, ctx: TFeatureContext<TListenerDef, ListenerEntity>): void {
+          event = ctx.cause;
+          super.onCartItemAddedEvent(payload, ctx);
+        }
+      }
+      const d = drive({ pricing: PricingFeature, cart: CartSpy, listener: ListenerSpy });
+      d.send("cart", "addItem", item(1));
+      expect(event.parentId).toBe(command.id);
+      expect(event.depth).toBe(command.depth + 1);
     });
   });
 

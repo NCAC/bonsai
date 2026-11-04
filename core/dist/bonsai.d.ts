@@ -25257,11 +25257,11 @@ type TJsonSerializable = string | number | boolean | null | TJsonSerializable[] 
  */
 type TEntityState<E extends Entity<TJsonSerializable>> = E extends Entity<infer S> ? S : never;
 /**
- * Optional parameters passed to `ctx.mutate()` — payload + metas (traceability).
+ * Optional parameters passed to `ctx.mutate()`. The causal context is not a
+ * parameter: the kernel attaches it to the `TEntityEvent` (ADR-04).
  */
 type TMutationParams = {
     payload?: unknown;
-    metas?: Record<string, unknown>;
 };
 /**
  * Event describing a successful (non no-op) mutation.
@@ -25271,7 +25271,8 @@ type TMutationParams = {
 type TEntityEvent<TStructure extends TJsonSerializable = TJsonSerializable> = {
     readonly intent: string;
     readonly payload?: unknown;
-    readonly metas?: Record<string, unknown>;
+    /** Causal context of the unit that mutated, established by the kernel (G8, ADR-04). */
+    readonly context: TCausalContext;
     readonly changedKeys: string[];
     readonly patches: Patch[];
     readonly inversePatches: Patch[];
@@ -25633,6 +25634,8 @@ type TChannelCallbacks<F extends TFeatureContract> = UnionToIntersection<{
  * it can only query. Any other operation is refused by the kernel.
  */
 type TFeatureQueryContext = {
+    /** Causal context of the message being handled, established by the kernel (G8, ADR-04). Read-only. */
+    readonly cause: TCausalContext;
     /** Queries a declared Channel; returns the typed result (G5: synchronous, read-only). */
     query<TDef extends TChannelDefinition, TNS extends string, K extends keyof TDef["queries"] & string>(token: TChannelToken<TDef, TNS>, name: K, params: TDef["queries"][K]["params"]): TDef["queries"][K]["result"];
 };
@@ -26096,10 +26099,12 @@ type TComposerContract<F extends TComposerFeatures = TComposerFeatures, V extend
     readonly views: V;
 };
 /**
- * What `resolve` can do: ask Queries. Nothing else — no Command, no Event, no
- * state (D12).
+ * What `resolve` can do: read its causal context, ask Queries. Nothing else —
+ * no Command, no Event, no state (D12).
  */
 type TComposeContext<TCC extends TComposerContract> = {
+    /** Causal context of the treatment that recomposes, established by the kernel (G8, ADR-04). Read-only. */
+    readonly cause: TCausalContext;
     query<K extends TFlatQueries<TCC["features"]> & string>(key: K, params: TQueryParamsFor<TCC["features"], K>): TQueryResultFor<TCC["features"], K>;
 };
 /**
@@ -26323,8 +26328,10 @@ type TFact = {
     /** UI key the target belongs to, `null` when none. */
     readonly ui: string | null;
 };
-/** What every View handler can do: ask Queries. */
+/** What every View handler can do: read its causal context, ask Queries. */
 type TQueryContext<TVC extends TViewContract> = {
+    /** Causal context of the message being handled, established by the kernel (G8, ADR-04). Read-only. */
+    readonly cause: TCausalContext;
     /** Synchronous, read-only Query on a declared Channel (G5). */
     query<K extends TFlatQueries<TVC["features"]> & string>(key: K, params: TQueryParamsFor<TVC["features"], K>): TQueryResultFor<TVC["features"], K>;
 };

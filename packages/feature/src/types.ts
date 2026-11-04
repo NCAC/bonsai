@@ -37,7 +37,7 @@
  */
 
 import type { Entity, TEntityState, TJsonSerializable, TEntityEvent, TEntityRecipe, TMutationParams } from "@bonsai/entity";
-import type { TChannelDefinition, TChannelToken } from "@bonsai/kernel";
+import type { TCausalContext, TChannelDefinition, TChannelToken } from "@bonsai/kernel";
 import type { CamelCase, UnionToIntersection } from "@bonsai/types";
 import type { Feature } from "./bonsai-feature";
 
@@ -425,6 +425,8 @@ export type TChannelCallbacks<F extends TFeatureContract> = UnionToIntersection<
  * it can only query. Any other operation is refused by the kernel.
  */
 export type TFeatureQueryContext = {
+  /** Causal context of the message being handled, established by the kernel (G8, ADR-04). Read-only. */
+  readonly cause: TCausalContext;
   /** Queries a declared Channel; returns the typed result (G5: synchronous, read-only). */
   query<
     TDef extends TChannelDefinition,

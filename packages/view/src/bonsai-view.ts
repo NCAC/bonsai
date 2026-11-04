@@ -49,6 +49,7 @@
 import {
   DESCRIBE,
   describeComponent,
+  type TCausalContext,
   type TComponentSpec,
   type TDomAdmission,
   type TUnitContext
@@ -387,8 +388,10 @@ export type TFact = {
   readonly ui: string | null;
 };
 
-/** What every View handler can do: ask Queries. */
+/** What every View handler can do: read its causal context, ask Queries. */
 export type TQueryContext<TVC extends TViewContract> = {
+  /** Causal context of the message being handled, established by the kernel (G8, ADR-04). Read-only. */
+  readonly cause: TCausalContext;
   /** Synchronous, read-only Query on a declared Channel (G5). */
   query<K extends TFlatQueries<TVC["features"]> & string>(
     key: K,
@@ -738,6 +741,7 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
 
   #eventContext(c: TUnitContext): TEventContext<TVC> {
     return {
+      cause: c.cause,
       query: ((key: string, params: unknown) => {
         const { namespace, name } = parseNSKey(key);
         return c.query(namespace, name, params);

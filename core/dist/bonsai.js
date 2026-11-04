@@ -15006,6 +15006,7 @@ _a$1 = Feature, _Feature_methodNames = function _Feature_methodNames() {
     }
 }, _Feature_queryContext = function _Feature_queryContext(c) {
     return {
+        cause: c.cause,
         query: (token, name, params) => c.query(token.namespace, name, params)
     };
 }, _Feature_featureContext = function _Feature_featureContext(c) {
@@ -15018,7 +15019,7 @@ _a$1 = Feature, _Feature_methodNames = function _Feature_methodNames() {
         const event = {
             intent,
             payload: params?.payload,
-            metas: params?.metas,
+            context: c.cause,
             // Keys derived from the first path segment of each patch (I97)
             changedKeys: [...new Set(change.patches.map((p) => String(p.path[0])))],
             patches: [...change.patches],
@@ -15159,6 +15160,10 @@ RouterFeature.channel = {
  *
  * A transport error is not a business answer: it interrupts the author and
  * propagates to the outermost validation unit, which then fails (G7).
+ *
+ * Errors raised by the kernel during a validation unit or a Query carry the
+ * causal context where they were born (`context`, ADR-04). `cause` keeps its
+ * standard `Error.cause` meaning: the original error being reported.
  */
 class TransportError extends Error {
     constructor(code, message, cause) {
@@ -15195,6 +15200,18 @@ class ManifestError extends Error {
         super(message);
         this.name = "ManifestError";
     }
+}
+/**
+ * Attaches the causal context where a kernel error was born (ADR-04). The
+ * innermost boundary wins: a context already attached is kept. Errors raised
+ * by application code are left untouched — their context is in the trace.
+ */
+function attachContext(error, context) {
+    if (!(error instanceof TransportError || error instanceof InvariantError))
+        return;
+    if (error.context !== undefined)
+        return;
+    Object.defineProperty(error, "context", { value: context, enumerable: true, writable: false, configurable: false });
 }
 
 /**
@@ -15474,6 +15491,10 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
     if (failure === null)
         failure = __classPrivateFieldGet(this, _Root_instances, "m", _Root_checkInvariants).call(this, unit);
     if (failure !== null) {
+        attachContext(failure.error, cause);
+        // An intercepted refusal reported by UNRECOVERABLE is also dated (ADR-04).
+        if (unit.poisoned !== null)
+            attachContext(unit.poisoned.error, cause);
         for (let i = unit.undo.length - 1; i >= 0; i--) {
             try {
                 unit.undo[i]();
@@ -15904,6 +15925,8 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
         return __classPrivateFieldGet(this, _Root_instances, "m", _Root_capture).call(this, result, unit);
     }
     catch (error) {
+        // Born while answering the Query: it carries the Query's context (ADR-04).
+        attachContext(error, context);
         // Any Query failure interrupts the author's unit; no local recovery (G7).
         unit.poisoned = unit.poisoned ?? { error };
         throw error;
@@ -16773,6 +16796,7 @@ _a = View, _View_unit = function _View_unit(operation) {
     return [...names];
 }, _View_eventContext = function _View_eventContext(c) {
     return {
+        cause: c.cause,
         query: ((key, params) => {
             const { namespace, name } = parseNSKey(key);
             return c.query(namespace, name, params);
@@ -16833,6 +16857,7 @@ class Composer {
         const reconcile = (c) => {
             const slot = c.resolve(c.designation());
             const composition = this.resolve({
+                cause: c.cause,
                 query: ((key, params) => {
                     const idx = key.indexOf(":");
                     return c.query(key.slice(0, idx), key.slice(idx + 1), params);

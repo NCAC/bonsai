@@ -1,7 +1,7 @@
 /**
  * @bonsai/view - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T12:45:23.737Z
+ * Date: 2026-11-04T20:36:10.808Z
  */
 import { DESCRIBE, describeComponent } from '@bonsai/kernel';
 
@@ -308,6 +308,7 @@ _a = View, _View_unit = function _View_unit(operation) {
     return [...names];
 }, _View_eventContext = function _View_eventContext(c) {
     return {
+        cause: c.cause,
         query: ((key, params) => {
             const { namespace, name } = parseNSKey(key);
             return c.query(namespace, name, params);

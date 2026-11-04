@@ -24,6 +24,7 @@
  */
 
 import type { Draft, Patch } from "immer";
+import type { TCausalContext } from "@bonsai/kernel";
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -48,11 +49,11 @@ export type TEntityState<E extends Entity<TJsonSerializable>> =
   E extends Entity<infer S> ? S : never;
 
 /**
- * Optional parameters passed to `ctx.mutate()` — payload + metas (traceability).
+ * Optional parameters passed to `ctx.mutate()`. The causal context is not a
+ * parameter: the kernel attaches it to the `TEntityEvent` (ADR-04).
  */
 export type TMutationParams = {
   payload?: unknown;
-  metas?: Record<string, unknown>;
 };
 
 /**
@@ -65,7 +66,8 @@ export type TEntityEvent<
 > = {
   readonly intent: string;
   readonly payload?: unknown;
-  readonly metas?: Record<string, unknown>;
+  /** Causal context of the unit that mutated, established by the kernel (G8, ADR-04). */
+  readonly context: TCausalContext;
   readonly changedKeys: string[];
   readonly patches: Patch[];
   readonly inversePatches: Patch[];

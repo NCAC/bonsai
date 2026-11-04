@@ -9,7 +9,7 @@ import { drive } from "../../helpers/drive";
 import { resetDOM } from "../../helpers/dom-setup";
 import { Entity } from "@bonsai/entity";
 import { Feature, type TFeatureCallbacks, type TFeatureContext } from "@bonsai/feature";
-import type { TChannelToken } from "@bonsai/kernel";
+import type { TCausalContext, TChannelToken } from "@bonsai/kernel";
 import { Composer, type TComposerContract, type TComposeContext, type TComposition } from "@bonsai/composer";
 import { Foundation } from "@bonsai/foundation";
 import { View, type TViewContract } from "@bonsai/view";
@@ -66,10 +66,12 @@ type TC = TComposerContract<typeof features, typeof views>;
 
 let viewOf: (row: TRow) => "row" | "other" = () => "row";
 let paramsOf: (row: TRow) => Record<string, string> = (r) => ({ variant: r.variant });
+const causes: TCausalContext[] = [];
 class ListComposer extends Composer<TC> {
   get features() { return features; }
   get views() { return views; }
   resolve(ctx: TComposeContext<TC>): TComposition<TC> {
+    causes.push(ctx.cause);
     return ctx.query("list:rows", null).map((r) => ({ view: viewOf(r), key: r.id, params: paramsOf(r) }));
   }
 }
@@ -89,6 +91,17 @@ describe("Composer on the kernel", () => {
     viewOf = () => "row";
     paramsOf = (r) => ({ variant: r.variant });
     failOther = false;
+    causes.length = 0;
+  });
+
+  it("I54 / ADR-04 — resolve reads the causal context: startup, then a continuation of the Event", () => {
+    const d = setup();
+    expect(causes[0]!.originKind).toBe("startup");
+    d.send("list", "set", [{ id: "a", variant: "x" }]);
+    const last = causes[causes.length - 1]!;
+    expect(last.originKind).toBe("spontaneous");                   // the probe's fact → Command → Event
+    expect(last.depth).toBeGreaterThanOrEqual(2);
+    expect(Object.isFrozen(last)).toBe(true);
   });
 
   it("I37 — creates the Views of the initial composition, in order", () => {

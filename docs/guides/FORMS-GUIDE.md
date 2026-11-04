@@ -30,7 +30,7 @@
 | Champ | Valeur |
 | ----- | ------- |
 | **ADR source** | [ADR-25 — Formulaires](../adr/ADR-25-formulaires.md) |
-| **Pré-requis** | [ADR-10](../adr/ADR-10-entity-mutation.md) (mutate), [ADR-17](../adr/ADR-17-local-state.md) (localState, cible), [behavior.md](../spec/4-couche-concrete/behavior.md) (Behavior, cible), [ADR-04](../adr/ADR-04-metas-explicites.md) (metas, strate 1b) |
+| **Pré-requis** | [ADR-10](../adr/ADR-10-entity-mutation.md) (mutate), [ADR-17](../adr/ADR-17-local-state.md) (localState, cible), [behavior.md](../spec/4-couche-concrete/behavior.md) (Behavior, cible), [ADR-04](../adr/ADR-04-metas-explicites.md) (contexte causal, `ctx.cause`) |
 | **Créé le** | 2026-04-01 |
 | **Mis à jour** | 2026-11-04 (API du noyau) |
 
@@ -685,7 +685,7 @@ onUsernameInputInput(fact: TFact, ctx: TFactContext<TRegistrationViewContract>):
 | `toggleClass("is-invalid", …)` | `attr("data-state", "invalid")` | conventions DOM |
 | `document.querySelector(".x")` | `this.getUI("x")` | I39 |
 | `setTimeout(() => ctx.query(…))` | Query synchrone dans le handler du fait | A5.a |
-| `onSubmitCommand(payload, metas)` | `onSubmitCommand(payload, ctx)` ; `metas` : strate 1b | ADR-04 |
+| `onSubmitCommand(payload, metas)` | `onSubmitCommand(payload, ctx)` ; contexte causal lu par `ctx.cause` | ADR-04 |
 | État `touched`/`errors` dans l'Entity | `localState` dans la View/Behavior (⏳) | I30, I42, ADR-25 |
 | `static readonly namespace = …` | `static readonly channel: TChannelToken<TDef, NS>` | I68 |
 

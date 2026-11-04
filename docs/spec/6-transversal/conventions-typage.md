@@ -245,7 +245,7 @@ type UnionToIntersection<U> =
   (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never;
 ```
 
-> Le second paramètre est le contexte de l'unité ; `ctx.metas` est ⏳ strate 1b (ADR-04). `TListenCallbacks`
+> Le second paramètre est le contexte de l'unité ; il expose le contexte causal en lecture seule, `ctx.cause` (ADR-04). `TListenCallbacks`
 > dérive du tuple renvoyé par `get listens()` (I93). Les handlers de notification
 > Entity `on{Key}EntityUpdated` n'ont pas de type d'imposition : une clé inconnue
 > est détectée au bootstrap seulement (I53, I96). Voir

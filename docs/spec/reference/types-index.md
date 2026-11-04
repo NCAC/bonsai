@@ -24,9 +24,9 @@
 | `TJsonSerializable` | Contrainte de type : valeurs serialisables en JSON (ADR-10) | ✅ | [entity.md](../3-couche-abstraite/entity.md) |
 | `TEntityStructure` | Type decrivant la structure de donnees d'une Entity — alias formel de `TStructure`, contraint a `TJsonSerializable` (ADR-10) | ⏳ alias non exporté — `TStructure` est un paramètre de type, pas un alias public | [entity.md](../3-couche-abstraite/entity.md) |
 | `TChannelDefinition` | Contrat à trois voies : `commands`, `events`, `queries` d'un Channel | ✅ | [communication.md](../2-architecture/communication.md) |
-| `TMessageMetas` | Type des metadonnees causales attachees a chaque message (ADR-04). Handlers les reçoivent en parametre `(payload, metas)` | ⏳ cible strate 1b — n'existe pas dans le code livré | [metas.md](../2-architecture/metas.md) |
+| `TCausalContext` | Contexte causal de chaque message, établi et gelé par le noyau (G8, ADR-04) : `id`, `parentId`, `originId`, `originKind`, `depth`. Lu par `ctx.cause` ; porté par `TEntityEvent.context` et le `context` des erreurs du noyau | ✅ | [metas.md](../2-architecture/metas.md) |
 | `TApplicationConfig` | Configuration globale de l'application | ⏳ cible — point d'entrée non tranché (application.md §5) | [application.md](../3-couche-abstraite/application.md) |
-| `TMutationParams` | Paramètres de `ctx.mutate()` : `{ payload?: unknown; metas?: Record<string, unknown> }` | ✅ | [entity.md](../3-couche-abstraite/entity.md) |
+| `TMutationParams` | Paramètres de `ctx.mutate()` : `{ payload?: unknown }` (le contexte causal est posé par le noyau, ADR-04) | ✅ | [entity.md](../3-couche-abstraite/entity.md) |
 | `RESERVED_NAMESPACES` | Constante `["local", "router"] as const` | ✅ | [reference/invariants.md](invariants.md) |
 
 ## Types bootstrap
@@ -41,7 +41,7 @@
 
 | Type | Definition | État | Source |
 | --- | --- | --- | --- |
-| `TEntityEvent` | Retourné par `ctx.mutate()` après une mutation non no-op (`null` sinon). Contient `intent`, `payload?`, `metas?`, `changedKeys`, `patches`, `inversePatches`, `previousState`, `nextState`, `timestamp` — tous `readonly`. Consommé par le handler catch-all `onAnyEntityUpdated` | ✅ | [entity.md](../3-couche-abstraite/entity.md) |
+| `TEntityEvent` | Retourné par `ctx.mutate()` après une mutation non no-op (`null` sinon). Contient `intent`, `payload?`, `context` (contexte causal, ADR-04), `changedKeys`, `patches`, `inversePatches`, `previousState`, `nextState`, `timestamp` — tous `readonly`. Consommé par le handler catch-all `onAnyEntityUpdated` | ✅ | [entity.md](../3-couche-abstraite/entity.md) |
 
 ## Types Channel et handlers
 

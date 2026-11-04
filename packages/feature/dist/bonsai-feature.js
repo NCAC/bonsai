@@ -1,7 +1,7 @@
 /**
  * @bonsai/feature - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T12:45:20.394Z
+ * Date: 2026-11-04T20:36:06.871Z
  */
 import { describeEntity, bindEntityState } from '@bonsai/entity';
 import { hardInvariant } from '@bonsai/error';
@@ -358,6 +358,7 @@ _a = Feature, _Feature_methodNames = function _Feature_methodNames() {
     }
 }, _Feature_queryContext = function _Feature_queryContext(c) {
     return {
+        cause: c.cause,
         query: (token, name, params) => c.query(token.namespace, name, params)
     };
 }, _Feature_featureContext = function _Feature_featureContext(c) {
@@ -370,7 +371,7 @@ _a = Feature, _Feature_methodNames = function _Feature_methodNames() {
         const event = {
             intent,
             payload: params?.payload,
-            metas: params?.metas,
+            context: c.cause,
             // Keys derived from the first path segment of each patch (I97)
             changedKeys: [...new Set(change.patches.map((p) => String(p.path[0])))],
             patches: [...change.patches],

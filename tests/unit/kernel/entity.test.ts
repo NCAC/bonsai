@@ -136,6 +136,9 @@ describe("M2 — business invariants at the end of each unit (A4.a)", () => {
     const error = failures(root)[0] as InvariantError;
     expect(error).toBeInstanceOf(InvariantError);
     expect(error.invariant).toBe("total = somme des lignes");
+    // ADR-04: the kernel attaches the context of the failing unit
+    const entry = root.trace.find((e) => e.type === "unit-failed");
+    expect(error.context).toBe(entry && entry.type === "unit-failed" ? entry.context : undefined);
   });
 
   it("an invariant check that throws fails the unit with its own error; the state is restored", () => {

@@ -8,6 +8,7 @@
  *   I96  — per-key handlers in alphabetical order, then the catch-all
  *   I53  — unknown key in on<Key>EntityUpdated → startup error (sub-case of I96)
  *   I97  — patches, inverse patches and changedKeys derive from the recipe
+ *   I54  — the event carries the kernel's causal context, not one chosen by the code (ADR-04)
  *   A4.a — business invariants checked at the end of the unit, not before
  *   G5   — a notification is a deferred message, delivered after the unit
  *   G7   — a failed unit leaves the state exactly as it was
@@ -19,7 +20,7 @@
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { Feature, type TFeatureContext, type TFeatureQueryContext } from "@bonsai/feature";
 import { Entity, bindEntityState, type TEntityEvent } from "@bonsai/entity";
-import type { TChannelToken } from "@bonsai/kernel";
+import type { TCausalContext, TChannelToken } from "@bonsai/kernel";
 import { drive } from "../../helpers/drive";
 
 // ─── Fixtures ──────────────────────────────────────────────────────────────
@@ -48,7 +49,7 @@ type TDef = {
     explode: null;
     breakAndRepair: null;
     breakCount: null;
-    withMetas: { payload: unknown };
+    withPayload: { payload: unknown };
     loop: null;
     setBoth: null;
     emitThenFail: null;
@@ -60,6 +61,7 @@ type TDef = {
 /** Observations made by handlers, outside the Feature (no mutable field in a component, A0.c). */
 const log: string[] = [];
 const events: TEntityEvent<TState>[] = [];
+const causes: TCausalContext[] = [];
 let handlerBehaviour: "ok" | "throw" | "loop" = "ok";
 
 type TCtx = TFeatureContext<TDef, CounterEntity>;
@@ -98,8 +100,9 @@ class CounterFeature extends Feature<CounterEntity, TDef, "counter"> {
   onBreakCountCommand(_p: null, ctx: TCtx): void {
     ctx.mutate("break", (d) => { d.count = -1; });
   }
-  onWithMetasCommand(p: { payload: unknown }, ctx: TCtx): void {
-    events.push(ctx.mutate("withMetas", { payload: p.payload, metas: { source: "test" } }, (d) => { d.count += 1; })!);
+  onWithPayloadCommand(p: { payload: unknown }, ctx: TCtx): void {
+    causes.push(ctx.cause);
+    events.push(ctx.mutate("withPayload", { payload: p.payload }, (d) => { d.count += 1; })!);
   }
   onSetBothCommand(_p: null, ctx: TCtx): void {
     // label is written before count: changedKeys follow the patches, handlers follow the alphabet.
@@ -136,6 +139,7 @@ const features = { counter: CounterFeature };
 beforeEach(() => {
   log.length = 0;
   events.length = 0;
+  causes.length = 0;
   handlerBehaviour = "ok";
 });
 
@@ -208,11 +212,13 @@ describe("Entity on the kernel — lot M6.1", () => {
       expect(event!.changedKeys).toEqual(["count"]);
     });
 
-    it("payload and metas are flattened onto the event", () => {
+    it("the event carries the payload and the causal context of the mutating unit (I54, ADR-04)", () => {
       const d = drive(features);
-      d.send("counter", "withMetas", { payload: { id: 1 } });
+      d.send("counter", "withPayload", { payload: { id: 1 } });
       expect(events[0]!.payload).toEqual({ id: 1 });
-      expect(events[0]!.metas).toEqual({ source: "test" });
+      expect(events[0]!.context).toBe(causes[0]);                 // the kernel's context, as read by ctx.cause
+      expect(events[0]!.context.depth).toBe(1);                   // continuation of the probe's independent fact
+      expect(events[0]!.context.originKind).toBe("spontaneous");
     });
   });
 

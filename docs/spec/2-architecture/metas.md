@@ -6,7 +6,7 @@
 
 > **Statut normatif — V0.9.4, lot 2, 30 octobre 2026.** La [théorie validée](../../theorie.md), notamment C.2–C.4, §9.11, §10, G8 et D9/D18/D19, fait autorité. Ce document décline les contrats du [registre P4](../../invariants/P4.yaml) et les permissions du [registre P3](../../invariants/P3.yaml). Les obligations déjà fixées ne sont pas remises en discussion par les choix de représentation restant ouverts. Les anciens exemples sont conservés dans git ; ils ne sont plus un contrat cible admissible lorsqu’ils coupent ou inventent un lien causal.
 >
-> **État de réalisation (lots M1 à M6, 1er novembre 2026).** Le noyau (`Root`) établit le contexte causal de chaque message : qualification de l’origine (démarrage, spontanée, inconnue) selon le protocole du monde fermé (C.4), parent unique, profondeur bornée par `causalBound` (D9), droit de commander contrôlé (D18, `NOT_AUTHORIZED`) ; il voyage par le contexte `ctx` du handler ([ADR-04](../../adr/ADR-04-metas-explicites.md)). **Non livré** : ce contexte n’est pas lisible par les handlers ni joint aux erreurs, et `ctx.mutate` accepte encore un objet `metas` libre et optionnel, qui ne réalise ni authenticité ni qualification. Au registre, I7, I8, I9 et I13 sont livrés ; I54 reste partiel tant que le code applicatif ne reçoit pas le contexte.
+> **État de réalisation (lots M1 à M6, 1er novembre 2026).** Le noyau (`Root`) établit le contexte causal de chaque message : qualification de l’origine (démarrage, spontanée, inconnue) selon le protocole du monde fermé (C.4), parent unique, profondeur bornée par `causalBound` (D9), droit de commander contrôlé (D18, `NOT_AUTHORIZED`) ; il voyage par le contexte `ctx` du handler ([ADR-04](../../adr/ADR-04-metas-explicites.md)). **Strate 1b (4 novembre 2026)** : les handlers de Feature et de View le lisent par `ctx.cause` (`TCausalContext` gelé) ; le noyau le joint au `TEntityEvent` (`context`) et à ses propres erreurs (`context`) ; le `metas` libre de `ctx.mutate` est retiré. Au registre, I7, I8, I9, I13 et I54 sont livrés.
 
 ## 1. Structure des metas
 
@@ -21,7 +21,15 @@
 
 Le contexte représente le déclenchement de l’exécution, pas toutes les dépendances historiques des valeurs lues. Lire un état issu d’autres traitements ne fusionne pas leurs origines. Une trace ne doit promettre ni causalité physique exhaustive ni instantané global.
 
-Les champs historiques `messageId`, `correlationId`, `causationId`, `hop`, `origin` et `timestamp` ne constituent pas à eux seuls cette garantie. La structure TypeScript publique, ses discriminants et la représentation des liens restent à spécifier avant implémentation ; aucun type approximatif n’est présenté ici comme une API disponible.
+Les champs historiques `messageId`, `correlationId`, `causationId`, `hop`, `origin` et `timestamp` ne constituent pas à eux seuls cette garantie. La structure livrée est `TCausalContext` (`@bonsai/kernel`), gelée par le noyau :
+
+| Champ | Contenu |
+| --- | --- |
+| `id` | Identifiant du message (ou de la Query). |
+| `parentId` | Parent de déclenchement ; `null` pour une origine. |
+| `originId` | Identifiant de l’origine de la chaîne. |
+| `originKind` | `"startup"`, `"spontaneous"` ou `"unknown"` (C.4). |
+| `depth` | Nombre de continuations depuis l’origine (D9) ; origine = 0. |
 
 ## 2. Génération des IDs — ULID
 
@@ -49,9 +57,9 @@ Dans le profil navigateur, une notification générale de défilement, redimensi
 
 Une omission de contexte ne crée jamais implicitement une nouvelle origine. Une réémission, un relais local ou un callback corrélé continue son déclenchement ; leur forme d’enveloppe ne blanchit pas la chaîne. Un type opaque peut aider le compilateur, mais ne prouve seul ni l’authenticité runtime ni la durée de conservation.
 
-### Signature des handlers : `(payload, metas)`
+### Lecture par `ctx.cause`
 
-**La signature historique est un choix de réalisation à compléter, pas une API livrée.** Les contrats futurs doivent rendre explicites le contexte reçu et sa propagation, tout en laissant à l’infrastructure le contrôle du parent et de la qualification. Les noms actuels `request()` et les suffixes `Request` décrivent le code existant ; le terme normatif est Query. Ce lot ne renomme pas ces symboles.
+**Le handler reçoit `(payload, ctx)` ; `ctx.cause` est le contexte de la délivrance, en lecture seule** ([ADR-04](../../adr/ADR-04-metas-explicites.md)). Tout ce que le handler soumet par `ctx` (`emit`, `trigger`, `query`, `mutate`) est rattaché à ce contexte par le noyau : la propagation est explicite par le paramètre, sans qu’aucune API n’accepte un contexte fourni par l’application. Une signature historique `(payload, metas)` ou `emit(name, payload, { metas })` est donc écartée.
 
 ### Decisions rejetees
 
@@ -99,7 +107,7 @@ La borne limite **la profondeur des segments connus**, pas la largeur, le travai
 
 ## 7. API d'implementation
 
-**Les mécanismes doivent satisfaire les contrats ci-dessus avant d’être présentés comme une API conforme.** Aucune signature nouvelle n’est introduite par ce lot documentaire ; les choix de réalisation seront tracés séparément des obligations théoriques.
+**Les mécanismes doivent satisfaire les contrats ci-dessus avant d’être présentés comme une API conforme.** Réalisation livrée : `ctx.cause` dans les contextes de handler (ADR-04), `TEntityEvent.context`, champ `context` des erreurs du noyau (`TransportError`, `InvariantError`) — l’erreur la plus interne gagne, une erreur levée par le code applicatif n’est pas modifiée et son contexte figure dans l’entrée `unit-failed` de la trace.
 
 ### 7.1 Création au point d'entree
 
@@ -121,11 +129,11 @@ Le traitement de Query reste lui-même en lecture seule. La réponse n’est pas
 
 | ID | Obligation | État |
 | --- | --- | --- |
-| I7 | Contexte de chaque message et local, parent hors origine et qualification explicite. | `cible`, `run` |
-| I8 | Qualification contrôlée et sincérité des liens, y compris sélection D19. | `cible`, `run` |
-| I9 | Borne à la soumission et conséquences distinctes des refus. | `cible`, `run` |
-| I54 | Établissement, propagation explicite, conservation et restitution du contexte. | `cible`, `run` |
-| I13 | Permission dynamique D18 dans toute l’interface. | `cible`, `run` |
+| I7 | Contexte de chaque message et local, parent hors origine et qualification explicite. | `livre`, `run` |
+| I8 | Qualification contrôlée et sincérité des liens, y compris sélection D19. | `livre`, `run` |
+| I9 | Borne à la soumission et conséquences distinctes des refus. | `livre`, `run` |
+| I54 | Établissement, propagation explicite, conservation et restitution du contexte. | `livre`, `run` |
+| I13 | Permission dynamique D18 dans toute l’interface. | `livre`, `run` |
 | I25 | Capacités selon les parties ; Feature vers adaptateur domaine permise, pas vers autre Feature ; Behavior imputé à View et Composer sans Command. | `partiel`, `run` |
 
 Pour I25, le domaine n’adresse rien à un adaptateur de l’interface et n’en reçoit rien (A4.b). Les capacités actuelles de View et certaines interdictions statiques constituent seulement une réalisation partielle ; le protocole d’adaptateur et les gardes dynamiques restent absents.

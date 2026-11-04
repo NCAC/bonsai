@@ -13,7 +13,7 @@
 | **Composant** | Entity |
 | **Couche** | Abstraite (persistante) |
 | **Paquet** | `@bonsai/entity` |
-| **Décisions** | [ADR-10](../../adr/ADR-10-entity-mutation.md) (mutation), [ADR-11](../../adr/ADR-11-entity-schema-valibot.md) (schema, cible), [ADR-12](../../adr/ADR-12-entity-intent-typing.md) (intent, 🟡), [ADR-04](../../adr/ADR-04-metas-explicites.md) (metas, cible) ; théorie 11.3, A4.a, D4 |
+| **Décisions** | [ADR-10](../../adr/ADR-10-entity-mutation.md) (mutation), [ADR-11](../../adr/ADR-11-entity-schema-valibot.md) (schema, cible), [ADR-12](../../adr/ADR-12-entity-intent-typing.md) (intent, 🟡), [ADR-04](../../adr/ADR-04-metas-explicites.md) (contexte causal) ; théorie 11.3, A4.a, D4 |
 
 ## Table des matières
 
@@ -66,7 +66,7 @@ onAddItemCommand(payload: TCartItem, ctx: TFeatureContext<TCartChannelDef, CartE
 }
 ```
 
-- Deux formes : `mutate(intent, recipe)` et `mutate(intent, { payload?, metas? }, recipe)` (ADR-10).
+- Deux formes : `mutate(intent, recipe)` et `mutate(intent, { payload? }, recipe)` (ADR-10).
 - La recette s'applique à un brouillon Immer ; le résultat est un nouvel état gelé.
 - **Sans effet** : une recette qui ne change rien renvoie `null`, ne modifie pas l'état et ne notifie personne.
 - **Annulation** : si l'unité échoue (une recette qui lève, un invariant violé, un autre handler qui lève), l'état est restauré tel qu'il était (G7) ; l'erreur est celle de la recette.
@@ -74,7 +74,8 @@ onAddItemCommand(payload: TCartItem, ctx: TFeatureContext<TCartChannelDef, CartE
 
 ```typescript
 type TEntityEvent<S> = {
-  intent: string; payload?: unknown; metas?: Record<string, unknown>;
+  intent: string; payload?: unknown;
+  context: TCausalContext;          // contexte causal de l'unité, posé par le noyau (ADR-04)
   changedKeys: string[];
   patches: Patch[]; inversePatches: Patch[];
   previousState: S; nextState: S;
@@ -133,7 +134,6 @@ Le noyau ne notifie personne directement. Chaque mutation effective envoie à la
 | `toJSON`, `fromJSON`, `populateFromServer` (snapshot, SSR, [ADR-24](../../adr/ADR-24-hydratation-ssr.md)) | Cible |
 | Event Sourcing (`eventLog`, replay) : `TEntityEvent` porte déjà `patches` et `inversePatches` | Cible |
 | Typage de l'`intent` ([ADR-12](../../adr/ADR-12-entity-intent-typing.md)) | Proposé |
-| Propagation de `metas` | Cible ([ADR-04](../../adr/ADR-04-metas-explicites.md)) |
 
 ---
 
