@@ -22,11 +22,11 @@ tests : `R` runtime · `T` type · `·` aucun.
 - `E` I6 — L'Entity n'est accessible qu'à sa Feature propriétaire : aucun autre composant (View, Behavior, autre Feature, Composer, Foundation) ne peut la lire ni la modifier. ⟨type · ✅ · R T⟩
 - `D` I22 — La relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte ; l'Entity est obligatoire, même vide. ⟨type+boot · ✅ · R⟩
 - `D` I46 — `TStructure` (state d'une Entity) est contraint à `TJsonSerializable`. ⟨type · ✅ · R T⟩
-- `D` I97 — `Entity.mutate()` utilise `Immer.produceWithPatches`. ⟨run · ✅ · R⟩
+- `D` I97 — `ctx.mutate()` utilise `Immer.produceWithPatches`. ⟨run · ✅ · R⟩
 - `D` I51 — Les notifications de mutation d'une Entity sont auto-découvertes sur sa Feature (`on<Key>EntityUpdated` / `onAnyEntityUpdated`) — résumé de I96. ⟨boot · ✅ · R⟩
 - `D` I96 — Le dispatch des notifications suit un ordre déterministe (clés changées par ordre alphabétique, puis catch-all) via une souscription unique, avec isolation des erreurs par handler. ⟨boot · ✅ · R⟩
 - `V` I53 — Une clé de handler `on<Key>EntityUpdated` inconnue du state de l'Entity est rejetée au bootstrap. ⟨boot · ✅ · R⟩
-- `D` I98 — Une mutation déclenchée pendant un cycle de notification est mise en file FIFO plutôt qu'exécutée immédiatement, avec une profondeur de ré-entrance bornée. ⟨run · ✅ · R⟩
+- `D` I98 — Une mutation effective notifie sa Feature par un message local différé, délivré après la validation de l'unité, dans sa propre unité ; une mutation faite pendant une notification produit la sienne, et la chaîne est bornée par la borne causale (D9). ⟨run · ✅ · R⟩
 
 ### P10 — Une responsabilité, un rôle
 

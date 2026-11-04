@@ -3,7 +3,7 @@
 | Champ | Valeur |
 | --- | --- |
 | **Statut** | 🟢 Accepted — 1er novembre 2026 |
-| **Livré** | ⚠️ prototype du noyau (`packages/kernel/src/kernel/`, branche `feature/noyau-m1`) : vidage synchrone et mesure des durées ; non branché sur les classes de base |
+| **Livré** | ✅ vidage synchrone et mesure des unités et des vidages longs dans la trace (`longUnitMs`, `long-unit`, `long-drain`), dans `Root` (`@bonsai/kernel`), sur lequel reposent toutes les classes de base depuis les lots M6.1 à M6.3 |
 | **Spec** | [Théorie](../theorie.md) G5, G7, D8, D9, O1, O2, C.3 ; [rapport du prototype M1](../rapports/prototype-noyau-M1-2026-10-31.md), point R3 |
 
 ## Contexte

@@ -1,7 +1,7 @@
 /**
  * @bonsai/kernel - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T06:28:02.746Z
+ * Date: 2026-11-04T10:39:15.936Z
  */
 import { Immer } from '@bonsai/immer';
 
@@ -41,7 +41,7 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
 };
 
 /**
- * Kernel prototype — transport errors (G5, G7, D9).
+ * Execution kernel — transport errors (G5, G7, D9).
  *
  * A transport error is not a business answer: it interrupts the author and
  * propagates to the outermost validation unit, which then fails (G7).
@@ -84,7 +84,7 @@ class ManifestError extends Error {
 }
 
 /**
- * Kernel prototype — capture of transmitted values (G2, C.5, A3.d).
+ * Execution kernel — capture of transmitted values (G2, C.5, A3.d).
  *
  * A value is captured when it is submitted to the transport: a detached deep
  * copy, then deeply frozen. Neither the author nor any recipient keeps a
@@ -154,9 +154,9 @@ function capture(value) {
 }
 
 /**
- * Kernel prototype (migration lot M1) — one Root per model.
+ * Execution kernel (migration lots M1–M6) — one Root per model.
  *
- * Realises, for testing, the guarantees of the communication infrastructure
+ * Realises the guarantees of the communication infrastructure
  * (docs/theorie.md §13 and annex C):
  *
  * - G1  delivery to the Channel owner, to subscription owners, to the author
@@ -176,8 +176,9 @@ function capture(value) {
  *       validates; a synchronous failure closes the resource the effect
  *       aims at (and, for a part, the parts below it), the rest goes on.
  *
- * Out of scope for M1: Entity integration (M2), structural parts and DOM
- * (M3–M4), closed-world qualification of host sources and D18 (M5).
+ * Later lots added the Entity journal and invariants (M2), structural parts
+ * and the host document (M3–M4), closed-world qualification of host sources
+ * and D18 (M5).
  */
 var _Root_instances, _Root_id, _Root_bound, _Root_longMs, _Root_now, _Root_document, _Root_onTrace, _Root_rights, _Root_simulating, _Root_registry, _Root_subscriptions, _Root_components, _Root_resources, _Root_queue, _Root_active, _Root_trace, _Root_counter, _Root_unit, _Root_draining, _Root_state, _Root_record, _Root_runUnit, _Root_checkInvariants, _Root_engage, _Root_drain, _Root_measure, _Root_deliver, _Root_abandon, _Root_unitContext, _Root_readContext, _Root_query, _Root_create, _Root_destroy, _Root_capture, _Root_origin, _Root_child, _Root_nextId, _Root_push;
 Immer.enablePatches();

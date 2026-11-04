@@ -13,7 +13,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 ## Écarts
 
-- `C` I4 — Une View ou un Behavior peut `trigger`, `listen` et `request` uniquement sur les Channels déclarés — jamais `emit()`. ⟨type · ⚠️ · R T⟩
+- `C` I4 — Une View ou un Behavior commande (`ctx.trigger`), écoute et interroge (`ctx.query`) uniquement les Features déclarées dans son contrat — jamais il n'émet. ⟨type · ⚠️ · R T⟩
   > Livré pour la View (capabilities.types, I77) ; le Behavior n'existe pas encore (strate 2b).
 - `C` I30 — Une View et un Behavior ne portent aucun domain state — seul un state local de présentation borné (I42) est toléré. ⟨type · ⚠️ · ·⟩
 - `C` I38 — Les droits de modification de l'interface respectent les parts attribuées et les rôles ; la View projette dans sa part hors contenu des slots, les opérations du Behavior lui sont imputées, la Foundation reste bornée à son élément admis hors parts attribuées, et le Composer ne modifie son contenu que pour la composition définie par I35. ⟨run · ⚠️ · ·⟩
@@ -48,7 +48,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 ### P3 — Sémantique des trois voies
 
-- `C` I4 — Une View ou un Behavior peut `trigger`, `listen` et `request` uniquement sur les Channels déclarés — jamais `emit()`. ⟨type · ⚠️ · R T⟩
+- `C` I4 — Une View ou un Behavior commande (`ctx.trigger`), écoute et interroge (`ctx.query`) uniquement les Features déclarées dans son contrat — jamais il n'émet. ⟨type · ⚠️ · R T⟩
 
 ### P5 — Interface de projection, domaine autonome
 

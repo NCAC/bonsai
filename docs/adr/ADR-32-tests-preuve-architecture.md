@@ -3,7 +3,7 @@
 | Champ | Valeur |
 | --- | --- |
 | **Statut** | 🟢 Accepted |
-| **Livré** | ✅ structure et script `lib/check-adr-tested-status.ts` · ⚠️ le script est informatif (non bloquant) et ne vérifie qu'une citation textuelle `I<N>` ; les tests de type ne sont vérifiés par aucun hook ni job CI (voir Conséquences) |
+| **Livré** | ✅ structure, script `lib/check-adr-tested-status.ts`, tests de type vérifiés par `pnpm tsc:check:tests` (pre-commit et CI) · ⚠️ le script est informatif (non bloquant) et ne vérifie qu'une citation textuelle `I<N>` |
 | **Spec** | [TESTING.md](../guides/TESTING.md) |
 
 ## Contexte
@@ -20,7 +20,9 @@ n'était pas livré.
 
 ```text
 tests/
-├── unit/strate-N/    # un fichier par composant et par point dur
+├── unit/kernel/      # noyau : un fichier par lot ou par garantie
+├── unit/domain/      # un fichier par composant
+├── unit/strate-0/    # gate de régression cumulative (ADR-33)
 ├── types/            # compile-time : @ts-expect-error, sans exécution
 ├── integration/      # scénarios multi-packages
 ├── e2e/              # gates de strate (ADR-31), vrai DOM (jsdom), sans mock

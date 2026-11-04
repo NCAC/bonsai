@@ -1,51 +1,47 @@
-# ADR-19 — `rootElement` : sélecteur CSS fourni par le Composer
+# ADR-19 — Part de la View : attribuée par le Composer, créée par le noyau
 
 | Champ | Valeur |
 | --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Invariants impactés** | I31, I32, I34 |
-| **Livré** | ⚠️ partiel — la View résout son `rootElement` dans tout le document, pas dans le slot ; la création si absent n'existe que pour le slot du Composer ; le parseur ignore la balise et ne garde qu'une classe |
-| **Spec** | [composer.md](../spec/4-couche-concrete/composer.md) · [view.md](../spec/4-couche-concrete/view.md) |
+| **Livré** | ✅ part attribuée, matérialisée après validation, projection du `template` (lot M6.2) · ⚠️ une part n'est matérialisée qu'à son attribution : un élément apparu plus tard n'est pas repris ; adoption d'un élément rendu par le serveur ⏳ (ADR-24) |
+| **Spec** | [view.md](../spec/4-couche-concrete/view.md) · [composer.md](../spec/4-couche-concrete/composer.md) · théorie 6.5, 8.5, C.3, C.7 |
 
 ## Contexte
 
-Une View doit savoir sur quel élément se monter. Déclaré par la View, cet
-emplacement la lie à un contexte unique et entre en conflit avec le Composer
-qui décide où elle va. Accepter à la fois `Element`, `string` et un descripteur
-objet multiplie les chemins, et le cas SSR (élément déjà là) comme SPA (élément
-à créer) doit suivre un seul algorithme.
+Une View doit savoir où elle vit. Déclaré par la View, cet emplacement la lie à
+un contexte unique et entre en conflit avec le Composer qui décide où elle va.
+Choisi par le Composer comme sélecteur dans tout le document, il peut viser un
+élément qui ne lui appartient pas. Il faut un propriétaire unique par nœud et
+un seul algorithme pour l'élément présent ou à créer.
 
 ## Décision
 
-**Le `rootElement` est toujours un sélecteur CSS `string`, fourni exclusivement
-par le Composer** dans `TResolveResult` (I31). La View ne le déclare pas.
+**Une View occupe une part** : une portion du contenu que son Composer a reçu,
+attribuée à la création de la View (I31). La View ne la choisit pas, et les parts
+ne se recouvrent pas (T7, `PORTION_TAKEN`).
+
+- Le noyau **crée l'élément de la part** et y projette le `template` de la View ; cette matérialisation est un effet, engagé après la validation de l'unité qui crée la View (C.3).
+- La View écrit dans sa part par des effets préparés (`getUI`, ADR-16) ; elle ne peut ni la détruire ni la remplacer (I32). Sa destruction restitue la part à son Composer.
+- La Foundation admet un élément de l'hôte (`anchor`, `body` par défaut), jamais une View (I34) ; ses slots sont les premières parts attribuées.
 
 ```ts
-return { view: CartView, rootElement: "aside.CartWidget[data-variant='compact']" };
+get composers() {
+  return { main: { slot: "[data-slot='main']", composer: MainComposer } } as const;
+}
+// le Composer de "main" attribue une part par View de sa composition : { view: "cart", key: "cart" }
 ```
-
-Algorithme au montage, dans le scope du slot du Composer :
-
-1. `querySelector(sélecteur)` trouve un élément → il est réutilisé (SSR, îlots) ;
-2. sinon le framework **parse le sélecteur** et crée l'élément
-   (`"form#login.Auth"` → `<form id="login" class="Auth">`) — le Composer reste
-   décideur pur, il n'écrit rien.
-
-Règles :
-
-- La View peut altérer son `rootElement` en **N1**, jamais le détruire ni le remplacer (I32).
-- Le `rootElement` est un **descendant** de `<body>`, jamais `<body>` lui-même (I34 ; vérifié au `mount()`).
-- La même View se monte dans des contextes différents avec des sélecteurs différents (réutilisation, ADR-21).
 
 ## Alternatives rejetées
 
-- **`rootElement` dans les paramètres de la View** — dualité View/Composer, défaut jamais utilisé.
-- **`Element | string | descripteur { selector, tagName, attrs }`** — trois formes pour une information qu'un sélecteur encode déjà.
-- **Le Composer crée l'élément** — viole I35.
-- **La View crée son élément** — la View ne gère pas son cycle de vie (ADR-16).
-- **Erreur stricte si absent** — interdit le mode SPA sans HTML préalable.
+- **`rootElement` dans les paramètres de la View** — dualité View/Composer.
+- **`rootElement` : sélecteur CSS fourni par le Composer** (strate 0) — résolu dans tout le document, il pouvait prendre l'élément d'un autre composant.
+- **`Element | string | descripteur`** — trois formes pour une attribution que le noyau tient déjà.
+- **Le Composer crée l'élément** — rendu de présentation hors de son rôle (D12).
+- **Erreur stricte si l'élément manque** — interdit le mode SPA sans HTML préalable.
 
 ## Conséquences
 
-- Un seul chemin pour SSR, SPA et hybride.
-- **Écarts livrés** : `View.mount()` fait `document.querySelector(rootSelector)` — un sélecteur qui existe ailleurs dans la page est pris, et un élément absent donne `el = null` puis un `TypeError` (pas une erreur framework), au `mount()` si une clé UI déclare des événements, sinon au premier `getUI()` ; `#createElementFromSelector` crée toujours un `<div>`, garde la première classe seulement.
+- Un composant ne lit ni n'écrit hors de ce qu'on lui a attribué : le périmètre est un fait du noyau, pas une convention.
+- Un échec de matérialisation ne fait pas échouer l'unité : il est rapporté dans la trace ; la View reste vivante, ses effets sont non tentés (view.md §9).
+- L'adoption d'un élément déjà rendu (SSR) reste à concevoir avec l'hydratation (ADR-24).

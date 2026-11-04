@@ -22,7 +22,7 @@ Depuis le tag `v0.1.0-strate-0` (l'historique complet est dans `git log`). Ce ja
 - **Noyau d'exécution `@bonsai/kernel`** (`Root`, lots M1 à M5) : unités de validation et retour arrière (G7), file des messages différés et vidage synchrone (ADR-35), Queries synchrones (G5), capture par copie (G2), contextes causaux (G8) et borne causale (D9), Entity sur le journal d'unité et invariants (A4.a), démarrage depuis un Manifest avec dépendances initiales (C.1), parts et désignations, matérialisation et effets engagés après validation (C.3), admission des faits du DOM, monde fermé et droit de commander (C.4, D18), trace des engagements et sortie console (`reportToConsole`, O2)
 - **Composants sur le noyau** (lot M6) : Feature, Entity et Application (M6.1) ; Foundation, Composer et View (M6.2), dont la composition de plusieurs Views par clé, les slots d'une View (`composers`) et l'annulation déclarée de l'action par défaut (`ui()(events, { cancelDefault })`, D20)
 - **`@bonsai/router`** (M6.3a) : Feature `router` fournie par le framework (D15) et adaptateur d'historique (D7, annexe B) ; gate E2E `tests/e2e/navigation-round-trip.test.ts`
-- **Strate 1a — Entity** : `Immer.produceWithPatches`, `TEntityEvent` enrichi (`patches`, `inversePatches`, `previousState`, `nextState`), file FIFO de ré-entrance bornée par `maxEntityNotificationDepth` (`EntityReentrancyError`, I98), handlers `on<Key>EntityUpdated` / `onAnyEntityUpdated` auto-découverts par la Feature (`BroadcastError` isolée, I96)
+- **Strate 1a — Entity** : `Immer.produceWithPatches`, `TEntityEvent` enrichi (`patches`, `inversePatches`, `previousState`, `nextState`), handlers `on<Key>EntityUpdated` / `onAnyEntityUpdated` auto-découverts par la Feature (I96) ; la notification est un message local différé, délivré dans sa propre unité, et une boucle de notifications est arrêtée par la borne causale (I98, D9)
 - **Contrat Feature `Feature<TEntity, TChannelDef, TSelfNS>`** : namespace porté par le manifest applicatif (`StrictManifest<M>`), `static readonly channel`, `get listens()` / `get queries()` d'instance, `TFeatureCallbacks`, constructeur inerte, phases 0a–0c du bootstrap (ADR-08, ADR-09)
 - **Pattern modulaire de View** : `TFeatureContract` / `TUIContract` / `TUIElements`, `ui<TEl>()(events)`, `TEventsFor<TEl>`, `TViewCallbacks` (ADR-14, ADR-15)
 - **Build** : `__DEV__` défini par la pipeline, bundles `core/dist/bonsai.js` (développement) et `bonsai.prod.js` (production) (ADR-06)
@@ -32,10 +32,14 @@ Depuis le tag `v0.1.0-strate-0` (l'historique complet est dans `git log`). Ce ja
 
 - **`@bonsai/event` renommé `@bonsai/kernel`** : le package ne contient plus que le noyau d'exécution (`Root`) et les types de contrat des Channels ; ADR-28 mis à jour
 - **Contextes de handler** : une Feature mute et émet par son contexte (`ctx.mutate`, `ctx.emit`) ; une View commande depuis le handler d'un fait (`ctx.trigger`) et interroge par `ctx.query` ; un handler d'Event ne commande jamais (D18)
+- **Query** : une valeur synchrone, jamais un `null` de substitution ; une Query en échec fait échouer l'unité de l'auteur (G7, ADR-02) — remplace `request()` → `T | null`
+- **Entity** : l'état est détenu par le noyau et n'est modifiable que par `ctx.mutate` ; `entity.mutate()` et la file de ré-entrance propre à l'Entity sont retirés (ADR-10)
+- **Composition** : le Composer décide par `resolve(ctx)` une composition ordonnée par clé ; la View occupe une part attribuée, créée par le noyau ; `rootElement`, `mount()`, `onAttach()`/`onDetach()` et les getters `html`/`body` de la Foundation sont retirés (ADR-16, ADR-18 à ADR-20)
+- **ADR** réécrits depuis le code livré (ADR-01 à ADR-05, ADR-09, ADR-10, ADR-13, ADR-16, ADR-18 à ADR-20), lignes **Livré** corrigées (ADR-07, ADR-14, ADR-15, ADR-21, ADR-25, ADR-26, ADR-28, ADR-31, ADR-32, ADR-35) ; règle des ADR vivants, réécrits en place, rendue unique (`docs/README.md`, `docs/adr/README.md`)
 - **Seuils de couverture** relevés au niveau mesuré (100 % hors `kernel`, `router` et `view`) ; 416 tests
 - **Versions** : tous les `package.json` du workspace alignés sur `0.2.0`
 - JSDoc et commentaires de `packages/` et `core/` traduits en anglais (ADR-34)
-- Documentation alignée sur le code livré : les écarts connus sont consignés dans la ligne **Livré** de chaque ADR
+- Documentation alignée sur le code livré : les écarts connus sont consignés dans la ligne **Livré** de chaque ADR ; les chapitres de spécification encore non alignés le signalent par leur bandeau, et le registre des invariants reste à requalifier après le noyau
 
 ### Removed
 

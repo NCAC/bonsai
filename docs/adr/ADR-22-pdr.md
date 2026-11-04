@@ -24,7 +24,7 @@ template, mutuellement exclusifs par View :
 | Mode | `get templates()` | Niveau | Usage |
 | --- | --- | --- | --- |
 | A | `null` | N1 | projection via `getUI()` seulement |
-| B | `{ root: binding }` | N3 | template complet du `rootElement` |
+| B | `{ root: binding }` | N3 | template complet de la part |
 | C | `{ [cléUI]?: binding }` | N2 | îlots : fragments sur certaines clés (`root` interdit) |
 
 - Templates écrits en **Pug**, compilés au build en deux fonctions : `setup()` localise les nœuds dynamiques dans un DOM existant (c'est l'hydratation, ADR-24), `create()` les produit quand le DOM est absent. Les boucles `each` imbriquées sont supportées.

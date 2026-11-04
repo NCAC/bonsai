@@ -3,7 +3,7 @@
 | Champ | Valeur |
 | --- | --- |
 | **Statut** | 🟢 Accepted |
-| **Livré** | Strate 0 ✅ (gate E2E vert) · 1a ✅ · 1b, 1c, 1d ⏳ · strate 2 ⏳ — pas encore de test gate strate 1 |
+| **Livré** | Strate 0 ✅ (gate E2E vert) · 1a ✅ · 1b ⚠️ (borne causale et échec par unité livrés par le noyau ; contexte causal exposé ⏳) · 1c ⏳ · 1d ⚠️ (composition par clé, `View.composers` et cascade livrées au lot M6.2 ; gate ⏳) · strate 2 ⏳, sauf le Router (ADR-13) — pas encore de test gate strate 1 |
 | **Spec** | [TESTING.md](../guides/TESTING.md) · [CHANGELOG.md](../../CHANGELOG.md) |
 
 ## Contexte
@@ -22,8 +22,8 @@ commence pas la strate N+1 sans suite verte sur la strate N.
 
 | Strate | Contenu | Gate E2E |
 | --- | --- | --- |
-| **0** — kernel | Noyau (`Root`), Channel tri-lane, Entity `mutate()`, Feature, View N1, Composer 0/1, Foundation, Application | `strate-0.cart-round-trip` : clic → Command → mutation → Event → projection |
-| **1a** | Entity : patches, handlers par clé, ré-entrance FIFO (ADR-10) | — |
+| **0** — kernel | Channels (Commands, Events, Queries), Entity, Feature, View N1, Composer, Foundation, Application ; depuis M6 sur le noyau (`Root`) | `strate-0.cart-round-trip` : clic → Command → mutation → Event → projection |
+| **1a** | Entity : patches, handlers par clé, ré-entrance bornée (ADR-10) | — |
 | **1b** | Metas causales (ADR-04), anti-boucle, isolation des erreurs (ADR-05) | — |
 | **1c** | Rendu PDR : templates N2/N3, selectors (ADR-22, ADR-26) | — |
 | **1d** | Composer N instances, `View.composers`, cascade (ADR-18) | chorégraphie multi-Features avec metas traçables + N instances |
@@ -48,5 +48,6 @@ un élément à la v1 passe par une révision de cet ADR.
 ## Conséquences
 
 - Chaque point dur est isolé dans une sous-strate testable seule.
+- Le noyau d'exécution (lots M1 à M6, théorie V0.9.5) a été livré hors strate : il refond les strates 0 et 1a sur la racine (`Root`), remplace la file de ré-entrance de l'Entity par la file différée, et avance une partie des strates 1b, 1d et 2 (Router).
 - Les ADR ⏳ restent valides : leur ligne **Livré** indique la strate visée.
 - Jalons de version : fin de strate = MINOR (ADR-33).

@@ -24695,12 +24695,12 @@ type TAnyEventPayload = {
 };
 
 /**
- * Kernel prototype (migration lot M1) — public types.
+ * Execution kernel — public types (migration lots M1–M6).
  *
- * This kernel is a prototype written beside the delivered `Channel`/`Radio`,
- * without replacing them. It realises the communication guarantees of the
- * theory (docs/theorie.md §13, annex C) so that they can be tested:
- * G1–G3, G5–G8, D8 and D9.
+ * The kernel realises the communication guarantees of the theory
+ * (docs/theorie.md §13, annex C): G1–G3, G5–G8, D8 and D9. Every component
+ * base class runs on it since lots M6.1–M6.3; the legacy `Channel`/`Radio`
+ * were removed in M6.3b.
  *
  * Vocabulary follows the theory: Command, Query, Event, local message,
  * deferred message (9.12), validation unit (9.13), effect (11.8).
@@ -25011,9 +25011,9 @@ interface TRootOptions {
 }
 
 /**
- * Kernel prototype (migration lot M1) — one Root per model.
+ * Execution kernel (migration lots M1–M6) — one Root per model.
  *
- * Realises, for testing, the guarantees of the communication infrastructure
+ * Realises the guarantees of the communication infrastructure
  * (docs/theorie.md §13 and annex C):
  *
  * - G1  delivery to the Channel owner, to subscription owners, to the author
@@ -25033,8 +25033,9 @@ interface TRootOptions {
  *       validates; a synchronous failure closes the resource the effect
  *       aims at (and, for a part, the parts below it), the rest goes on.
  *
- * Out of scope for M1: Entity integration (M2), structural parts and DOM
- * (M3–M4), closed-world qualification of host sources and D18 (M5).
+ * Later lots added the Entity journal and invariants (M2), structural parts
+ * and the host document (M3–M4), closed-world qualification of host sources
+ * and D18 (M5).
  */
 
 declare class Root {
@@ -25601,10 +25602,10 @@ declare function assertValidNamespace(ns: string, options?: {
  *         (no separate `.channel.ts`) (ADR-14)
  *   I75 — No `any`/`unknown` in the public surface of Channel/Feature/View;
  *         internal casts are documented and contained (ADR-14)
- *   I76 — `Channel.{trigger,emit,request,handle,listen,reply}` are strictly
+ *   I76 — The handler contexts (`emit`, `query`, `mutate`) are strictly
  *         typed by `TDef` — key = `keyof TDef[lane]`, never a free `string`
  *         (ADR-14)
- *   I79 — `Feature.request()` only accepts a typed `TChannelToken`;
+ *   I79 — The Feature's `ctx.query` only accepts a typed `TChannelToken`;
  *         `abstract get listens()`/`abstract get queries()` carry these tokens
  *         as instance declarations (ADR-14, ADR-09 — I93)
  *   I93 — `listens` and `queries` are instance `abstract get` on Feature

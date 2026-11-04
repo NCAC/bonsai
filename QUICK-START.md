@@ -1,7 +1,7 @@
 # 🚀 Guide de Démarrage Rapide - Framework Bonsai
 
 > État du code (`0.2.0`) : strate 0 livrée, strate 1a livrée (Entity : patches, handlers par clé,
-> ré-entrance), noyau d'exécution et navigation livrés. Voir [ADR-31](docs/adr/ADR-31-strates-perimetre-v1.md) pour le périmètre
+> notifications différées), noyau d'exécution et navigation livrés. Voir [ADR-31](docs/adr/ADR-31-strates-perimetre-v1.md) pour le périmètre
 > et la ligne **Livré** de chaque [ADR](docs/adr/README.md) pour l'état réel.
 
 ## Pré-requis

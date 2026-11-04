@@ -5,6 +5,8 @@
 
 [← Retour aux guides](../README.md)
 
+> ⚠️ **Non aligné sur le code livré (lots M6.1 à M6.3, 1er novembre 2026).** Ses exemples utilisent encore l'API de la strate 0 (`this.emit`, `this.entity.mutate`, `this.trigger`, `this.request`, `on{Nom}Request`, `T | null`). L'API livrée passe par le contexte du handler (`ctx.mutate`, `ctx.emit`, `ctx.query`, `ctx.trigger`, `on{Nom}Query`) : voir [feature.md](../spec/3-couche-abstraite/feature.md), [view.md](../spec/4-couche-concrete/view.md) et le [README](../../README.md). En cas d'écart, la [théorie](../theorie.md) prévaut ([règle de confiance](../README.md#règle-de-confiance-et-dalignement)).
+
 > **🔤 Lettrage réaligné sur [ADR-25](../adr/ADR-25-formulaires.md) (audit doc 2026-09-17, décision M5)** —
 > Ce guide documente les **scénarios pratiques** du modèle hybride d'ADR-25 —
 > chaque scénario porte la lettre du pattern ADR-25 dont il découle :

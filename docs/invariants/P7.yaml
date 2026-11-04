@@ -74,9 +74,9 @@
   roles: [Application]
   enonce: Application est dormante au runtime — aucune logique métier ni rôle actif entre le bootstrap et le shutdown.
   pourquoi: >
-    Garder Application hors du flux Command/Event/Request l'empêche de devenir un point de causalité
+    Garder Application hors du flux Command/Event/Query l'empêche de devenir un point de causalité
     caché une fois le bootstrap terminé (ADR-07).
-  # Application n'expose ni handle, ni emit, ni listen, ni request (vérifié par un test runtime).
+  # Application n'expose ni handle, ni emit, ni listen, ni query (vérifié par un test runtime).
   mode: type
   etat: livre
 

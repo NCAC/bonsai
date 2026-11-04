@@ -13,7 +13,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 ## Écarts
 
-- `C` I4 — Une View ou un Behavior peut `trigger`, `listen` et `request` uniquement sur les Channels déclarés — jamais `emit()`. ⟨type · ⚠️ · R T⟩
+- `C` I4 — Une View ou un Behavior commande (`ctx.trigger`), écoute et interroge (`ctx.query`) uniquement les Features déclarées dans son contrat — jamais il n'émet. ⟨type · ⚠️ · R T⟩
   > Livré pour la View (capabilities.types, I77) ; le Behavior n'existe pas encore (strate 2b).
 - `E` I19 — La View ne décide ni de sa création, ni de sa destruction, ni de son remplacement ; son existence appartient exclusivement à son Composer parent, y compris pendant une cascade annulable de destruction. ⟨run · ⚠️ · ·⟩
   > View n'expose que `mount()`, appelé par le Composer ; aucune destruction n'existe encore
@@ -68,7 +68,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 ### P3 — Sémantique des trois voies
 
-- `C` I4 — Une View ou un Behavior peut `trigger`, `listen` et `request` uniquement sur les Channels déclarés — jamais `emit()`. ⟨type · ⚠️ · R T⟩
+- `C` I4 — Une View ou un Behavior commande (`ctx.trigger`), écoute et interroge (`ctx.query`) uniquement les Features déclarées dans son contrat — jamais il n'émet. ⟨type · ⚠️ · R T⟩
 
 ### P5 — Interface de projection, domaine autonome
 
@@ -102,7 +102,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 - `C` I75 — Aucun `any` ni `unknown` dans les signatures publiques de `Channel`, `Feature` ou `View`. ⟨revue · ⚠️ · T⟩
 - `C` I77 — `View.trigger()` n'accepte qu'une clé `"ns:cmd"` validée contre le contrat de la View. ⟨type · ✅ · T⟩
 - `C` I78 — `View.getUI(key)` n'accepte qu'une clé déclarée dans le `TUIContract` de la View. ⟨type · ✅ · T⟩
-- `D` I48 — Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Request`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework. ⟨boot · ✅ · R⟩
+- `D` I48 — Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Query`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework. ⟨boot · ✅ · R⟩
 - `D` I88 — Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis. ⟨type · ✅ · T⟩
 - `D` I82 — `implements TViewCallbacks<TVC>` rend obligatoires les handlers d'Event et les handlers DOM déclarés ; un filet au `mount()` couvre les contournements. ⟨type+boot · ✅ · R⟩
 - `C` I84 — Un élément UI déclaré avec `events` non vide exige ses handlers DOM ; `events` vide déclare un élément non interactif. ⟨type+boot · ✅ · R T⟩

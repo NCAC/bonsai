@@ -37,13 +37,12 @@
   enonce: L'Entity expose des méthodes query pures (lecture seule).
   pourquoi: >
     Séparation commande/requête (CQS) au niveau de l'Entity : une méthode lit ou écrit, jamais
-    les deux. `mutate()` reste l'unique chemin d'écriture, tracé par son intent ; une query ne
-    peut donc pas porter d'effet caché. C'est ce qui garantit, à la source, qu'une Request est
-    sans effet (I17) : un replier n'appelle que des queries (ADR-02), la voie Request n'est sûre
-    que si ce qu'elle appelle l'est.
+    les deux. `ctx.mutate()` reste l'unique chemin d'écriture, tracé par son intent ; une query ne
+    peut donc pas porter d'effet caché. C'est ce qui garantit, à la source, qu'une Query est
+    sans effet (I17) : son handler n'appelle que des méthodes de lecture (ADR-02), et son contexte
+    refuse toute mutation (READ_ONLY, A3.g).
   # Le getter `query` est écrit par l'application (fixture du test), le framework n'impose rien.
-  # Réserve : rien n'empêche une méthode de l'Entity d'appeler `this.mutate()` (le gel Immer
-  # de `state` n'empêche que la mutation directe). À prévenir — règle ESLint envisagée, sur le
-  # modèle de `no-async-in-replier` (ADR-02).
+  # L'Entity n'a pas de `mutate` (M6.1) et son `state` est gelé : une méthode de lecture ne peut
+  # pas écrire. Reste une convention : elle ne doit dépendre que de l'état.
   mode: revue
   etat: convention

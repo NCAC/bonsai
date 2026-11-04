@@ -4,7 +4,7 @@
 | --- | --- |
 | **Statut** | 🟢 Accepted |
 | **Invariants impactés** | I43, I44, I45 |
-| **Livré** | ⏳ strate 2 — ni `Behavior`, ni options de View surchargées par le Composer ; l'auto-discovery UI ne voit pas les handlers hérités (ADR-15), ce qui gêne aussi l'héritage |
+| **Livré** | ⏳ strate 2 — ni `Behavior`, ni options de View surchargées par le Composer |
 | **Spec** | [behavior.md](../spec/4-couche-concrete/behavior.md) · [view.md](../spec/4-couche-concrete/view.md) |
 
 ## Contexte
@@ -20,8 +20,8 @@ règle qui dise lequel employer.
 **Behavior** : plugin UI réutilisable et **aveugle**, attaché à une View hôte.
 
 - Même pattern modulaire que la View (ADR-14) : `features`, `uiEvents`, `uiElements`, handlers auto-découverts (ADR-15), `localState` (ADR-17).
-- Ses propres Channels (`trigger`, `listen`, `request`, jamais `emit`).
-- **Aucun accès à la View hôte** : ni `this.view`, ni son `el`, ni son `getUI()` (I44).
+- Ses propres Features déclarées : il commande (`ctx.trigger`, depuis un fait, D18), écoute et interroge (`ctx.query`), jamais il n'émet.
+- **Aucun accès à la View hôte** : ni `this.view`, ni ses éléments, ni son `getUI()` (I44).
 - Altération **N1 et N2 sur ses propres clés** uniquement, jamais N3 ; pas de `rootElement`, pas de slots (I45).
 - Ses clés UI ne doivent pas entrer en collision avec celles de l'hôte : vérifié au montage (I43).
 

@@ -13,11 +13,11 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `C` I30 — Une View et un Behavior ne portent aucun domain state — seul un state local de présentation borné (I42) est toléré. ↔ P5 ⟨type · ⚠️ · ·⟩
 - `D` I22 — La relation namespace ↔ Feature ↔ Entity est 1:1:1 stricte ; l'Entity est obligatoire, même vide. ↔ P8 ↔ P10 ⟨type+boot · ✅ · R⟩
 - `D` I46 — `TStructure` (state d'une Entity) est contraint à `TJsonSerializable`. ⟨type · ✅ · R T⟩
-- `D` I97 — `Entity.mutate()` utilise `Immer.produceWithPatches`. ⟨run · ✅ · R⟩
+- `D` I97 — `ctx.mutate()` utilise `Immer.produceWithPatches`. ⟨run · ✅ · R⟩
 - `D` I51 — Les notifications de mutation d'une Entity sont auto-découvertes sur sa Feature (`on<Key>EntityUpdated` / `onAnyEntityUpdated`) — résumé de I96. ⟨boot · ✅ · R⟩
   - `D` I96 — Le dispatch des notifications suit un ordre déterministe (clés changées par ordre alphabétique, puis catch-all) via une souscription unique, avec isolation des erreurs par handler. ⟨boot · ✅ · R⟩
     - `V` I53 — Une clé de handler `on<Key>EntityUpdated` inconnue du state de l'Entity est rejetée au bootstrap. ⟨boot · ✅ · R⟩
-  - `D` I98 — Une mutation déclenchée pendant un cycle de notification est mise en file FIFO plutôt qu'exécutée immédiatement, avec une profondeur de ré-entrance bornée. ↔ P4 ↔ I102 ⟨run · ✅ · R⟩
+  - `D` I98 — Une mutation effective notifie sa Feature par un message local différé, délivré après la validation de l'unité, dans sa propre unité ; une mutation faite pendant une notification produit la sienne, et la chaîne est bornée par la borne causale (D9). ↔ P4 ↔ I102 ⟨run · ✅ · R⟩
 
 *Rattachés en second parent :* I101, I63, I52
 
@@ -30,7 +30,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `C` I2 — Une Feature écoute (`listen`) uniquement les Events des Channels externes qu'elle a déclarés. ⟨boot · ✅ · R⟩
 - `C` I15 = I50 — La racine du noyau (`Root`) est une infrastructure interne, non exposée par `@bonsai/core` — un bus ambiant serait un canal non déclaré. ⟨type · ✅ · T⟩
 - `D` I80 — Les composants consommateurs déclarent leurs dépendances via des classes Feature dans `TFeatureContract`, jamais via un `TChannelToken` direct. ⟨type · ⚠️ · T⟩
-- `V` I70 — Toute référence à un namespace externe (`listens`, `queries`, `request`) est validée contre le manifest au bootstrap. ↔ P8 ⟨boot · ✅ · R⟩
+- `V` I70 — Toute référence à un namespace externe (`listens`, `queries`, `dependsOn`) est validée contre le manifest au bootstrap. ↔ P8 ⟨boot · ✅ · R⟩
 
 *Rattachés en second parent :* I4, I17, I77, I79, I89
 
@@ -43,13 +43,13 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `E` I27 — Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé. ⟨run · ⚠️ · ·⟩
 - `C` I1 = I12 = I26 — Une Feature n'émet (`emit`) que sur son propre Channel — aucune émission cross-domain, et seule la Feature propriétaire utilise `emit()`. ⟨type · ✅ · R T⟩
 - `C` I25 — Une Command vise un Channel déclaré dans les limites des parties ; une Feature n'en adresse pas à une autre Feature, mais peut en adresser à un adaptateur du domaine. Le domaine n'adresse rien à un adaptateur de l'interface et n'en reçoit rien. Les Commands de l'interface restent soumises à I13 ; le Behavior agit au nom de sa View, et le Composer n'adresse aucune Command. ↔ P5 ⟨run · ⚠️ · R T⟩
-- `C` I4 — Une View ou un Behavior peut `trigger`, `listen` et `request` uniquement sur les Channels déclarés — jamais `emit()`. ↔ P2 ⟨type · ⚠️ · R T⟩
+- `C` I4 — Une View ou un Behavior commande (`ctx.trigger`), écoute et interroge (`ctx.query`) uniquement les Features déclarées dans son contrat — jamais il n'émet. ↔ P2 ⟨type · ⚠️ · R T⟩
 - `C` I13 — Un composant de l'interface n'adresse une Command que pendant une réaction à un fait admis d'indépendance établie ou une continuation corrélée déjà autorisée à commander, sous réserve des interdictions de son rôle. Event, relais local d'Event, résultat d'effet corrélé à un Event et observation d'antécédent inconnu n'accordent aucune permission. Une Query préalable conserve la permission de son auteur sans l'accorder au traitement consulté, toujours en lecture seule ; sa réponse n'est pas un déclencheur autonome. ↔ P5 ⟨run · ⏳ · ·⟩
-- `C` I3 — Une Feature ne répond (`reply`) que sur son propre Channel. ⟨boot · ✅ · R⟩
-- `C` I17 — Une Feature ne `request` que sur les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect. ↔ P2 ⟨type · ⚠️ · R⟩
-- `C` I29 — Une Query rend synchroniquement une valeur du type de résultat déclaré, sans Promise ; ni l'absence de répondant ni une erreur technique ne sont converties en null. Une valeur null n'est admise que si le contrat métier la prévoit. ⟨run · ⚠️ · ·⟩
-  - `C` I64 — Aucun I/O (`fetch`, `Promise`, `setTimeout`, `async/await`) dans un replier. ⟨revue · 📐 · ·⟩
-  - `C` I55 — L'erreur technique d'une Query se propage à son auteur et entraîne l'échec de l'unité modifiante ou d'initialisation englobante selon G7 ; aucune réponse de substitution ni capture applicative ne peut transformer cet échec en validation réussie. ⟨run · ⏳ · ·⟩
+- `C` I3 — Une Feature ne répond à une Query que sur son propre Channel. ⟨boot · ✅ · R⟩
+- `C` I17 — Une Feature n'interroge (`ctx.query`) que les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect. ↔ P2 ⟨type · ⚠️ · R⟩
+- `C` I29 — Une Query rend synchroniquement une valeur du type de résultat déclaré, sans Promise ; ni l'absence de répondant ni une erreur technique ne sont converties en null. Une valeur null n'est admise que si le contrat métier la prévoit. ⟨run · ✅ · R⟩
+  - `C` I64 — Aucun I/O (`fetch`, `Promise`, `setTimeout`, `async/await`) dans un handler de Query. ⟨revue · 📐 · ·⟩
+  - `C` I55 — L'erreur technique d'une Query se propage à son auteur et entraîne l'échec de l'unité modifiante ou d'initialisation englobante selon G7 ; aucune réponse de substitution ni capture applicative ne peut transformer cet échec en validation réussie. ⟨run · ✅ · R⟩
     - `C` I65 — Toute erreur technique de Query est signalée avec son contexte causal, hors réponse et transport applicatif ; ce signalement ne remplace ni n'empêche la propagation et l'échec de l'unité exigés par I55. ↔ I102 ⟨run · ⏳ · ·⟩
 
 *Rattachés en second parent :* I76
@@ -133,11 +133,11 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 - `E` I102 — Une règle qui ne peut être vérifiée qu'à l'exécution l'est par une garde fail-fast : erreur explicite dès la première violation, avec son contexte, jamais de dégradation silencieuse. ⟨run · ⚠️ · ·⟩
 - `C` I75 — Aucun `any` ni `unknown` dans les signatures publiques de `Channel`, `Feature` ou `View`. ⟨revue · ⚠️ · T⟩
 - `C` I76 — Les méthodes de `Channel` sont typées par `TDef` — un nom de message est une clé de la voie, jamais une `string` libre. ↔ P3 ⟨type · ✅ · T⟩
-  - `D` I103 — Les clés de Commands, d'Events et de Requests d'un `TChannelDefinition` sont en `camelCase` plat, lettres uniquement. ↔ I21 ⟨type · ⏳ · ·⟩
+  - `D` I103 — Les clés de Commands, d'Events et de Queries d'un `TChannelDefinition` sont en `camelCase` plat, lettres uniquement. ↔ I21 ⟨type · ⏳ · ·⟩
 - `C` I77 — `View.trigger()` n'accepte qu'une clé `"ns:cmd"` validée contre le contrat de la View. ↔ P2 ⟨type · ✅ · T⟩
 - `C` I78 — `View.getUI(key)` n'accepte qu'une clé déclarée dans le `TUIContract` de la View. ↔ P6 ⟨type · ✅ · T⟩
-- `C` I79 — `Feature.request()` n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre. ↔ P2 ⟨type · ✅ · T⟩
-- `D` I48 — Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Request`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework. ⟨boot · ✅ · R⟩
+- `C` I79 — Le `ctx.query` d'une Feature n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre. ↔ P2 ⟨type · ✅ · T⟩
+- `D` I48 — Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Query`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework. ⟨boot · ✅ · R⟩
   - `D` I88 — Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis. ⟨type · ✅ · T⟩
     - `D` I92 — Toute Feature concrète `implements TFeatureCallbacks<TDef, TListens>` ; un handler absent ou mal signé est une erreur de compilation. ⟨type · ✅ · T⟩
     - `D` I82 — `implements TViewCallbacks<TVC>` rend obligatoires les handlers d'Event et les handlers DOM déclarés ; un filet au `mount()` couvre les contournements. ⟨type+boot · ✅ · R⟩

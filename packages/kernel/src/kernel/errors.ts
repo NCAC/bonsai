@@ -1,5 +1,5 @@
 /**
- * Kernel prototype — transport errors (G5, G7, D9).
+ * Execution kernel — transport errors (G5, G7, D9).
  *
  * A transport error is not a business answer: it interrupts the author and
  * propagates to the outermost validation unit, which then fails (G7).

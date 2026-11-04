@@ -23,7 +23,7 @@
 | --- | --- | --- | --- |
 | `TJsonSerializable` | Contrainte de type : valeurs serialisables en JSON (ADR-10) | ✅ | [entity.md](../3-couche-abstraite/entity.md) |
 | `TEntityStructure` | Type decrivant la structure de donnees d'une Entity — alias formel de `TStructure`, contraint a `TJsonSerializable` (ADR-10) | ⏳ alias non exporté — `TStructure` est un paramètre de type, pas un alias public | [entity.md](../3-couche-abstraite/entity.md) |
-| `TChannelDefinition` | Type tri-lane : Commands, Events, Requests d'un Channel | ✅ | [communication.md](../2-architecture/communication.md) |
+| `TChannelDefinition` | Contrat à trois voies : `commands`, `events`, `queries` d'un Channel | ✅ | [communication.md](../2-architecture/communication.md) |
 | `TMessageMetas` | Type des metadonnees causales attachees a chaque message (ADR-04). Handlers les reçoivent en parametre `(payload, metas)` | ⏳ cible strate 1b — n'existe pas dans le code livré | [metas.md](../2-architecture/metas.md) |
 | `TApplicationConfig` | Configuration globale de l'application | ⏳ cible — point d'entrée non tranché (application.md §5) | [application.md](../3-couche-abstraite/application.md) |
 | `TMutationParams` | Paramètres de `mutate()` : `{ payload?: unknown; metas?: Record<string, unknown> }` | ✅ livré (strate 1a) | [entity.md](../3-couche-abstraite/entity.md) |
@@ -159,4 +159,4 @@
 
 ## Lecture suivante
 
-→ [Invariants](invariants.md) — les I1-I58 regles non-negociables
+→ [Invariants](invariants.md) — les règles non négociables (I1–I103)

@@ -17,7 +17,7 @@ il suffit de le localiser. Reste le coût d'un second chargement des données.
 
 **Hydratation structurelle par défaut** ; state sérialisé en **option explicite**.
 
-- **H1 — Mode détecté par View, pas par application** : le `rootElement` existe dans le slot → adoption et `setup()` ; absent → création depuis le sélecteur (ADR-19) et `create()`. SSR et SPA coexistent dans la même page.
+- **H1 — Mode détecté par View, pas par application** : l'élément de la part existe déjà dans le slot → adoption et `setup()` ; absent → création par le noyau (ADR-19) et `create()`. SSR et SPA coexistent dans la même page.
 - **H2 — `setup()` est l'hydratation** : il localise les nœuds dynamiques, sans chemin spécial SSR.
 - **H3 — `ProjectionList` adopte les items existants** par leur attribut de clé ; seuls les manquants sont créés (ADR-23).
 - **H4 — Première projection sans effet visuel** : si les données n'ont pas changé, `shallowEqual` évite toute mutation.
@@ -33,7 +33,7 @@ app.start({
 
 - **State sérialisé obligatoire** — lecture ad hoc du DOM par le framework, couplage serveur ↔ structure des Entities, surface XSS en plus.
 - **Islands progressives (`data-bonsai-state` par élément)** — couplage HTML ↔ TypeScript non typé ; le mode C (ADR-22) est déjà une forme d'îlots.
-- **Erreur si le `rootElement` est absent** — interdit le mode SPA (ADR-19).
+- **Erreur si l'élément de la part est absent** — interdit le mode SPA (ADR-19).
 
 ## Conséquences
 

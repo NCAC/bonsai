@@ -1,5 +1,5 @@
 /**
- * Kernel prototype — capture of transmitted values (G2, C.5, A3.d).
+ * Execution kernel — capture of transmitted values (G2, C.5, A3.d).
  *
  * A value is captured when it is submitted to the transport: a detached deep
  * copy, then deeply frozen. Neither the author nor any recipient keeps a

@@ -21,7 +21,7 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 ### P2 — Dépendances déclarées
 
-- `V` I70 — Toute référence à un namespace externe (`listens`, `queries`, `request`) est validée contre le manifest au bootstrap. ⟨boot · ✅ · R⟩
+- `V` I70 — Toute référence à un namespace externe (`listens`, `queries`, `dependsOn`) est validée contre le manifest au bootstrap. ⟨boot · ✅ · R⟩
 
 ### P5 — Interface de projection, domaine autonome
 

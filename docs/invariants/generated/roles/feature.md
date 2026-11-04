@@ -13,8 +13,8 @@ tests : `R` runtime · `T` type · `·` aucun.
 
 ## Écarts
 
-- `C` I17 — Une Feature ne `request` que sur les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect. ⟨type · ⚠️ · R⟩
-  > `Feature.request()` accepte tout token typé, sans contrôle contre `queries` (même écart que I14).
+- `C` I17 — Une Feature n'interroge (`ctx.query`) que les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect. ⟨type · ⚠️ · R⟩
+  > Lecture seule livrée (READ_ONLY, A3.g) ; `ctx.query` accepte tout jeton typé, sans contrôle contre `queries` (même écart que I14).
 - `E` I27 — Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé. ⟨run · ⚠️ · ·⟩
   > Les tests prouvent seulement : Command sans handler → throw, Event sans abonné → ignoré.
   > Aucun mécanisme de refus d'un Command par son handler n'est testé.
@@ -42,9 +42,9 @@ tests : `R` runtime · `T` type · `·` aucun.
 - `E` I10 — Un Command a un seul handler — la Feature propriétaire du Channel. ⟨boot · ✅ · R⟩
 - `E` I27 — Un Command peut être refusé par la Feature qui le traite ; un Event est un fait accompli qui ne peut être refusé. ⟨run · ⚠️ · ·⟩
 - `C` I1 — Une Feature n'émet (`emit`) que sur son propre Channel — aucune émission cross-domain, et seule la Feature propriétaire utilise `emit()`. ⟨type · ✅ · R T⟩
-- `C` I3 — Une Feature ne répond (`reply`) que sur son propre Channel. ⟨boot · ✅ · R⟩
-- `C` I17 — Une Feature ne `request` que sur les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect. ⟨type · ⚠️ · R⟩
-- `C` I64 — Aucun I/O (`fetch`, `Promise`, `setTimeout`, `async/await`) dans un replier. ⟨revue · 📐 · ·⟩
+- `C` I3 — Une Feature ne répond à une Query que sur son propre Channel. ⟨boot · ✅ · R⟩
+- `C` I17 — Une Feature n'interroge (`ctx.query`) que les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect. ⟨type · ⚠️ · R⟩
+- `C` I64 — Aucun I/O (`fetch`, `Promise`, `setTimeout`, `async/await`) dans un handler de Query. ⟨revue · 📐 · ·⟩
 
 ### P7 — Cycle de vie hétéronome
 
@@ -60,8 +60,8 @@ tests : `R` runtime · `T` type · `·` aucun.
 ### P9 — Garantie au plus tôt
 
 - `C` I75 — Aucun `any` ni `unknown` dans les signatures publiques de `Channel`, `Feature` ou `View`. ⟨revue · ⚠️ · T⟩
-- `C` I79 — `Feature.request()` n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre. ⟨type · ✅ · T⟩
-- `D` I48 — Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Request`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework. ⟨boot · ✅ · R⟩
+- `C` I79 — Le `ctx.query` d'une Feature n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre. ⟨type · ✅ · T⟩
+- `D` I48 — Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Query`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework. ⟨boot · ✅ · R⟩
 - `D` I88 — Tout package qui expose un `T{Component}Contract` expose aussi le `T{Component}Callbacks` qui en dérive les handlers requis. ⟨type · ✅ · T⟩
 - `D` I92 — Toute Feature concrète `implements TFeatureCallbacks<TDef, TListens>` ; un handler absent ou mal signé est une erreur de compilation. ⟨type · ✅ · T⟩
 - `D` I73 — Chaque Feature déclare `static readonly channel` — son contrat de communication typé, unique pont entre la classe et son Channel. ⟨type · ✅ · R T⟩

@@ -119,7 +119,7 @@ describe("G5 and D8 — deferred delivery in production order", () => {
 
 // ── G5 Queries ───────────────────────────────────────────────────────────────
 
-describe("G5 — synchronous Queries towards a ready, inactive target", () => {
+describe("G5, I29 — synchronous Queries towards a ready, inactive target", () => {
   it("refuses a Query to oneself and a cycle A → B → A; the author's unit fails", () => {
     let counter = 0;
     const { root, handles } = boot((ctx) => {
@@ -165,7 +165,7 @@ describe("G5 — synchronous Queries towards a ready, inactive target", () => {
 
 // ── G7 ───────────────────────────────────────────────────────────────────────
 
-describe("G7 — a failing unit is rolled back", () => {
+describe("G7, I55 — a failing unit is rolled back", () => {
   it("restores journaled state and drops its deferred messages", () => {
     let lines = 0;
     let notified = false;

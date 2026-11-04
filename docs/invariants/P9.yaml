@@ -56,7 +56,7 @@
   nature: D
   parents: [I76, I21]
   roles: [Channel]
-  enonce: "Les clés de Commands, d'Events et de Requests d'un `TChannelDefinition` sont en `camelCase` plat, lettres uniquement."
+  enonce: "Les clés de Commands, d'Events et de Queries d'un `TChannelDefinition` sont en `camelCase` plat, lettres uniquement."
   pourquoi: >
     Même règle que le namespace (I21), pour les mêmes raisons : une clé de message est réemployée
     dans le token `"ns:clé"` et dans le nom du handler découvert par convention
@@ -90,7 +90,7 @@
   nature: C
   parents: [P9, P2]
   roles: [Feature]
-  enonce: "`Feature.request()` n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre."
+  enonce: "Le `ctx.query` d'une Feature n'accepte qu'un `TChannelToken` typé, jamais un namespace `string` libre."
   mode: type
   etat: livre
 
@@ -98,7 +98,7 @@
   nature: D
   parents: [P9]
   roles: [Feature, View]
-  enonce: Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Request`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework.
+  enonce: Les handlers sont des méthodes nommées par convention (`on<Name>Command`, `on<Name>Query`, `on<Channel><Event>Event`, handlers DOM), découvertes et câblées par le framework.
   pourquoi: >
     Pas de décorateurs ni d'enregistrement manuel : le nom de la méthode est la déclaration, ce qui
     permet au compilateur de dériver les handlers attendus d'un contrat (I88) (ADR-09).

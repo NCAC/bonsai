@@ -1,12 +1,12 @@
 import type { Draft, Patch } from "immer";
 
 /**
- * Kernel prototype (migration lot M1) — public types.
+ * Execution kernel — public types (migration lots M1–M6).
  *
- * This kernel is a prototype written beside the delivered `Channel`/`Radio`,
- * without replacing them. It realises the communication guarantees of the
- * theory (docs/theorie.md §13, annex C) so that they can be tested:
- * G1–G3, G5–G8, D8 and D9.
+ * The kernel realises the communication guarantees of the theory
+ * (docs/theorie.md §13, annex C): G1–G3, G5–G8, D8 and D9. Every component
+ * base class runs on it since lots M6.1–M6.3; the legacy `Channel`/`Radio`
+ * were removed in M6.3b.
  *
  * Vocabulary follows the theory: Command, Query, Event, local message,
  * deferred message (9.12), validation unit (9.13), effect (11.8).

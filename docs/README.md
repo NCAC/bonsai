@@ -40,7 +40,7 @@ La théorie fait autorité sur la spécification, les ADR et le registre : en ca
 | Guides, tests, code et artefacts | Expliquent, vérifient ou réalisent les contrats | Corriger les instructions, assertions et mécanismes incompatibles ; régénérer les sorties depuis leur source. |
 | Rapports historiques et archives | Conservent les faits et décisions de leur époque, sans autorité sur le contrat courant | Conserver leur contenu historique et expliciter leur portée ; ne pas les réécrire pour simuler un alignement passé. |
 
-L’alignement est **obligatoire**, sa réalisation peut être **progressive** : tout écart restant doit être identifié et suivi, sans être présenté comme conforme. Une succession d’ADR trace le remplacement d’une ancienne décision ; elle n’est pas une autorisation préalable pour appliquer une obligation théorique déjà validée. Les choix réellement ouverts portent uniquement sur les mécanismes compatibles avec cette obligation.
+L’alignement est **obligatoire**, sa réalisation peut être **progressive** : tout écart restant doit être identifié et suivi, sans être présenté comme conforme. Un ADR réécrit en place trace le remplacement d’une ancienne décision (l’historique reste dans git) ; il n’est pas une autorisation préalable pour appliquer une obligation théorique déjà validée. Les choix réellement ouverts portent uniquement sur les mécanismes compatibles avec cette obligation.
 
 | Document | Rôle |
 | --- | --- |
@@ -55,7 +55,7 @@ Le socle documentaire courant est **V0.9.5 — 30 octobre 2026** : vocabulaire o
 
 Les contrats transversaux précisent la disponibilité des Queries, la publication des états provisoires, les occurrences de vie, les résultats d’effets, la capture sans alias mutable et les réservations d’abonnements. La causalité garantie est **observable** : une notification non corrélable porte un antécédent inconnu, sans parent inventé ni permission de Command pour l’interface. D9 borne les segments connus, pas les boucles traversant une coupure d’observation.
 
-Les contrats de la spécification, les ADR et le registre opérationnel restent soumis à la théorie ; leur alignement intégral, leurs vues générées et la livraison du runtime ne sont pas présumés réalisés par cette passe. Les scénarios prescrits ne sont pas déclarés exécutés ; aucune preuve formelle de consistance ni note automatique de 10/10 n’en découle. Les décisions des ADR Accepted ne sont pas réécrites par cet amendement : un changement de décision suit leur procédure de supersession. Le protocole général de clic ou déplacement du focus hors d’une View reste ouvert (18.30) ; sans admetteur déjà autorisé, le besoin n’est **pas pris en charge en V1**.
+Le runtime est migré sur la théorie : le noyau d’exécution (`Root`, `@bonsai/kernel`, lots M1 à M5) porte tous les composants depuis les lots M6.1 à M6.3 (1er novembre 2026). L’état de chaque chapitre de la spécification est indiqué par son bandeau (🟢 aligné, 🟠 aligné pour le cœur, ⚠️ non aligné, ⏳ cible) ; ce qui est livré se lit sur la ligne **Livré** de chaque ADR. Le registre opérationnel n’est pas encore requalifié après ces lots : des invariants réalisés par le noyau y restent `cible` ou `partiel`. Les scénarios prescrits par les [gardes](gardes.md) ne sont pas tous déclarés exécutés ; aucune preuve formelle de consistance n’en découle. Le protocole général de clic ou déplacement du focus hors d’une View reste ouvert (18.30) ; sans admetteur déjà autorisé, le besoin n’est **pas pris en charge en V1**.
 
 ## 📐 Spécification — [spec/](spec/README.md)
 
@@ -101,7 +101,7 @@ distribution et build, processus. Chaque ADR porte une ligne **Livré**
 | retrouver une obligation et ses contrôles requis | [Traçabilité](tracabilite.md), puis [Gardes](gardes.md) |
 | comprendre les corrections de la dernière revue | [Suivi V0.9.4](rapports/corrections-V0.9.4-2026-10-30.md) |
 | connaître les réserves avant gel de la théorie | [Relecture de fond V0.9.4](rapports/relecture-V0.9.4-2026-10-30.md) — propositions R1–R4, L1–L7, S1–S3, non appliquées |
-| suivre la migration du registre et du code vers V0.9.4 | [Diagnostic, plan et lots appliqués](rapports/migration-invariants-runtime-V0.9.4-2026-10-30.md) — trois lots documentaires appliqués : Query/Composer, causalité/permissions, propriété/cycle de vie ; runtime non migré |
+| suivre la migration du registre et du code vers V0.9.4 | [Diagnostic, plan et lots appliqués](rapports/migration-invariants-runtime-V0.9.4-2026-10-30.md) (rapport du 30 octobre, avant le noyau) · [Rapport du prototype M1](rapports/prototype-noyau-M1-2026-10-31.md) · runtime migré aux lots M1 à M6 ([CHANGELOG](../CHANGELOG.md)) |
 | comprendre l'architecture | [Philosophie](spec/1-philosophie.md), puis [Architecture](spec/2-architecture/README.md) |
 | connaître les règles non négociables | [Arbre des invariants](invariants/generated/arbre.md) (registre) · [Invariants](spec/reference/invariants.md) (matrice détaillée) |
 | connaître les règles et les écarts d'un composant | [Invariants par rôle](invariants/generated/roles/README.md) (vues générées) |
@@ -118,7 +118,7 @@ distribution et build, processus. Chaque ADR porte une ligne **Livré**
 | --- | --- | --- |
 | **Théorie** | Le socle normatif : vocabulaire, axiomes, garanties et décisions ; prévaut en cas d’écart | Versionnée ; amendements tracés dans les rapports datés |
 | **Spec** (`spec/`) | Le quoi : contrats normatifs, sous l’autorité de la théorie | Vivante |
-| **ADR** | Le pourquoi : une décision, ses alternatives rejetées | Suivi vivant des décisions et de leur livraison ; un changement de décision Accepted exige un ADR de supersession, pas une réécriture rétroactive |
+| **ADR** | Le pourquoi : une décision, ses alternatives rejetées | Vivant : une décision qui évolue est réécrite en place, git garde l’historique ; la ligne **Livré** suit le code ([ADR-32](adr/ADR-32-tests-preuve-architecture.md)) |
 | **Traçabilité et gardes** | Index des obligations, dépendances, contrôles et scénarios requis | Alignées sur la théorie, sans attester la conformité du runtime |
 | **Guide** | Le comment : mode d'emploi | Vivant |
 | **Rapport** | Revue, audit ou suivi daté ; ne fait pas autorité sur la théorie | Constats historiques conservés ; suites documentées séparément |

@@ -12,7 +12,7 @@
 | **Couche** | Interface utilisateur, par imputation à la View |
 | **Statut** | Contrat documentaire V0.9.5 ; API cible ⏳ fixée au §2.0 ; aucun package Behavior livré |
 | **Référence normative** | [Théorie](../../theorie.md), §2.5, C.2–C.6, D10, D11, D13, D16, D18 et §16.5–§16.7 |
-| **Historique** | [ADR-21](../../adr/ADR-21-behavior-reutilisation.md), [ADR-14](../../adr/ADR-14-contrats-types.md), [ADR-15](../../adr/ADR-15-evenements-ui.md), [ADR-17](../../adr/ADR-17-local-state.md), [ADR-25](../../adr/ADR-25-formulaires.md) ; Accepted conservés sans modification |
+| **Décisions** | [ADR-21](../../adr/ADR-21-behavior-reutilisation.md), [ADR-14](../../adr/ADR-14-contrats-types.md), [ADR-15](../../adr/ADR-15-evenements-ui.md), [ADR-17](../../adr/ADR-17-local-state.md), [ADR-25](../../adr/ADR-25-formulaires.md) |
 
 > ## ⏳ Périmètre d'implémentation
 >

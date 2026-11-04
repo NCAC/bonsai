@@ -59,7 +59,7 @@
   nature: C
   parents: [P3, P2]
   roles: [View, Behavior]
-  enonce: Une View ou un Behavior peut `trigger`, `listen` et `request` uniquement sur les Channels déclarés — jamais `emit()`.
+  enonce: Une View ou un Behavior commande (`ctx.trigger`), écoute et interroge (`ctx.query`) uniquement les Features déclarées dans son contrat — jamais il n'émet.
   # Livré pour la View (capabilities.types, I77) ; le Behavior n'existe pas encore (strate 2b).
   mode: type
   etat: partiel
@@ -80,8 +80,8 @@
   nature: C
   parents: [P3]
   roles: [Feature]
-  enonce: Une Feature ne répond (`reply`) que sur son propre Channel.
-  # Les repliers `on<Name>Request` sont enregistrés sur le Channel propre au bootstrap.
+  enonce: Une Feature ne répond à une Query que sur son propre Channel.
+  # Les handlers `on<Name>Query` sont décrits au noyau sur le Channel propre au démarrage.
   mode: boot
   etat: livre
 
@@ -89,8 +89,8 @@
   nature: C
   parents: [P3, P2]
   roles: [Feature]
-  enonce: Une Feature ne `request` que sur les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect.
-  # `Feature.request()` accepte tout token typé, sans contrôle contre `queries` (même écart que I14).
+  enonce: Une Feature n'interroge (`ctx.query`) que les Channels déclarés en `queries`, en lecture seule — sans mutation ni side-effect.
+  # Lecture seule livrée (READ_ONLY, A3.g) ; `ctx.query` accepte tout jeton typé, sans contrôle contre `queries` (même écart que I14).
   mode: type
   etat: partiel
 
@@ -105,16 +105,16 @@
     accessibles, non sur un chargement extérieur ; la disponibilité et l'inactivité de la cible
     restent obligatoires (C.1). Le contrat T | null de l'ADR-02 est historique et doit être remplacé.
   # V0.9.4, 2026-10-30 : livre → partiel ; appel direct livré, contrat complet non réalisé.
-  # Channel.request() retourne encore null sans répondant et après exception ; une Promise est acceptée.
-  # Les citations historiques d'I29 testent l'ancien contrat, pas la conformité du présent énoncé.
+  # M1–M6 : livré par Root ; valeur capturée, Promise refusée (NOT_CAPTURABLE), cible absente,
+  # non prête ou active refusée (tests/unit/kernel/root.test.ts).
   mode: run
-  etat: partiel
+  etat: livre
 
 - id: I64
   nature: C
   parents: [I29]
   roles: [Feature]
-  enonce: Aucun I/O (`fetch`, `Promise`, `setTimeout`, `async/await`) dans un replier.
+  enonce: Aucun I/O (`fetch`, `Promise`, `setTimeout`, `async/await`) dans un handler de Query.
   mode: revue
   etat: convention
 
@@ -129,10 +129,10 @@
     y compris sa structure et ses messages différés, pas l'hôte ni un traitement déjà validé.
     Le confinement par null des ADR-02/ADR-05 est incompatible avec cette obligation.
   # V0.9.4, 2026-10-30 : règle historique inversée ; livre → cible.
-  # Channel.request() absorbe encore l'exception ; aucune unité de rollback englobante n'est livrée.
-  # Les anciens tests citant I55 prouvent le comportement désormais interdit, pas cette cible.
+  # M1–M6 : livré par Root ; l'unité de l'auteur échoue, une récupération locale est refusée
+  # (UNRECOVERABLE, tests/unit/kernel/root.test.ts).
   mode: run
-  etat: cible
+  etat: livre
 
 - id: I65
   nature: C
