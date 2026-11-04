@@ -32,10 +32,11 @@
     À l'exécution, on ne peut plus empêcher la violation, seulement la détecter : échouer tout de
     suite, avec le contexte (intent, correlationId, profondeur), réduit au minimum la distance entre
     la faute et son diagnostic. Une dégradation silencieuse repousserait le symptôme loin de sa cause.
-  # Livré : I98 (EntityReentrancyError) ; erreurs du noyau datées par leur contexte causal (`context`, ADR-04, strate 1b).
-  # Partiel : I65 (console.error, ErrorReporter ⏳).
+  # Réalisé : toute erreur du framework est une `BonsaiError` à code stable, levée à la première violation et datée
+  # par le contexte causal de son unité (`context`, ADR-04, ADR-05) ; I65 : échec signalé dans la trace, hors transport
+  # (composer.test.ts, « ADR-05, I102 » ; root.test.ts, « ADR-04, I54 »).
   mode: run
-  etat: partiel
+  etat: livre
 
 - id: I75
   nature: C

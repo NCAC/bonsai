@@ -14,7 +14,8 @@
   "src": "./src/bonsai-router.ts",
   "dependencies": {
     "@bonsai/entity": "workspace:^",
-    "@bonsai/kernel": "workspace:^",
-    "@bonsai/feature": "workspace:^"
+    "@bonsai/error": "workspace:^",
+    "@bonsai/feature": "workspace:^",
+    "@bonsai/kernel": "workspace:^"
   }
 }

@@ -45,6 +45,7 @@ import type {
   TQueryResultFor
 } from "@bonsai/feature";
 import type { TViewClass } from "@bonsai/view";
+import { BonsaiError } from "@bonsai/error";
 
 // ─── Contract types ──────────────────────────────────────────────────────────
 
@@ -151,9 +152,9 @@ export abstract class Composer<TCC extends TComposerContract = TComposerContract
 
       const keys = new Set<string>();
       for (const entry of composition) {
-        if (keys.has(entry.key)) throw new Error(`[Bonsai Composer] duplicate key "${entry.key}" in a composition (T3)`);
+        if (keys.has(entry.key)) throw new BonsaiError("DUPLICATE_KEY", `duplicate key "${entry.key}" in a composition (T3)`);
         keys.add(entry.key);
-        if (views[entry.view] === undefined) throw new Error(`[Bonsai Composer] View "${entry.view}" is not in the catalogue of ${this.constructor.name}`);
+        if (views[entry.view] === undefined) throw new BonsaiError("UNKNOWN_VIEW", `View "${entry.view}" is not in the catalogue of ${this.constructor.name}`);
       }
 
       // Destroy what disappeared or changed (T3); the previous Views stay until the unit validates.

@@ -45,6 +45,7 @@ import {
   type TUnitContext
 } from "@bonsai/kernel";
 import { canonicalLocation, parseLocation, serializeRoute, type TNavigationMode, type TRoute } from "./location";
+import { BonsaiError } from "@bonsai/error";
 
 /** What the adapter has integrated about the address (C.5). */
 export type THistoryObservation = {
@@ -95,7 +96,7 @@ export class HistoryAdapter {
     const { root, document: doc, signal } = options;
     const timeout = options.traversalTimeoutMs ?? 2000;
     const view = doc.defaultView;
-    if (view === null) throw new Error("[Bonsai HistoryAdapter] the document has no window: the history is not reachable");
+    if (view === null) throw new BonsaiError("HOST_UNAVAILABLE", "the document has no window: the history is not reachable");
     const host = view;
     const canonical = (location: string): string => this.normalize(canonicalLocation(location));
     const readHost = (): string => canonical(host.location.pathname + host.location.search + host.location.hash);

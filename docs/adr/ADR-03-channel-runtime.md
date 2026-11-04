@@ -2,9 +2,9 @@
 
 | Champ | Valeur |
 | --- | --- |
-| **Statut** | 🟢 Accepted |
+| **Statut** | 🔵 Tested |
 | **Invariants impactés** | I10, I11, I27, I65, I66 |
-| **Livré** | ⚠️ partiel — unités, file différée, ordre et retrait des abonnements livrés par `Root` ; `ErrorReporter` (I65) ⏳ : les échecs passent par la trace et `reportToConsole` (O2) |
+| **Livré** | ✅ — unités, file différée, ordre et retrait des abonnements livrés par `Root` ; les échecs passent par la trace, `onTrace` et `reportToConsole` (O2, I65) — pas d'`ErrorReporter` ni d'`onError` (ADR-05) |
 | **Spec** | [communication.md §8](../spec/2-architecture/communication.md#8-sémantique-dexécution) · théorie G5, G7, D8, D9, annexe C |
 
 ## Contexte
@@ -52,4 +52,4 @@ développement, `reportToConsole` signale ceux que personne ne reçoit.
 
 - Un abonné défaillant ne casse ni l'émetteur ni les autres abonnés, et l'échec est visible dans la trace.
 - Les tests restent synchrones : après une admission, toutes les unités qui en découlent sont terminées.
-- L'`ErrorReporter` injectable et le hook `onError()` restent à livrer.
+- Le signalement d'un échec est la trace (`onTrace`) ; un `ErrorReporter` ou un hook `onError()` sont écartés par l'ADR-05.

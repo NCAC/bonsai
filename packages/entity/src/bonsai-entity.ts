@@ -25,6 +25,7 @@
 
 import type { Draft, Patch } from "immer";
 import type { TCausalContext } from "@bonsai/kernel";
+import { BonsaiError } from "@bonsai/error";
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -183,8 +184,8 @@ export abstract class Entity<TStructure extends TJsonSerializable> {
   get state(): TStructure {
     const source = stateSources.get(this);
     if (source === undefined) {
-      throw new Error(
-        `[Bonsai Entity] "${this.constructor.name}".state is readable only inside a handler of its Feature. ` +
+      throw new BonsaiError("OUTSIDE_HANDLER", 
+        `"${this.constructor.name}".state is readable only inside a handler of its Feature. ` +
           "Observe the current state through a Query (G5, I6)."
       );
     }

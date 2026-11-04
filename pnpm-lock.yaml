@@ -216,6 +216,9 @@ importers:
 
   packages/composer:
     dependencies:
+      '@bonsai/error':
+        specifier: workspace:^
+        version: link:../error
       '@bonsai/view':
         specifier: workspace:^
         version: link:../view
@@ -267,6 +270,9 @@ importers:
 
   packages/kernel:
     dependencies:
+      '@bonsai/error':
+        specifier: workspace:^
+        version: link:../error
       '@bonsai/immer':
         specifier: workspace:^
         version: link:../immer
@@ -279,6 +285,9 @@ importers:
       '@bonsai/entity':
         specifier: workspace:^
         version: link:../entity
+      '@bonsai/error':
+        specifier: workspace:^
+        version: link:../error
       '@bonsai/feature':
         specifier: workspace:^
         version: link:../feature
@@ -294,6 +303,9 @@ importers:
 
   packages/view:
     dependencies:
+      '@bonsai/error':
+        specifier: workspace:^
+        version: link:../error
       '@bonsai/kernel':
         specifier: workspace:^
         version: link:../kernel

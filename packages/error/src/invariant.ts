@@ -40,7 +40,7 @@ export function isDev(): boolean {
  *
  * @param condition - When `false`, throws a `BonsaiError`
  * @param message - Descriptive error message
- * @param invariantId - Id of the violated invariant (e.g. "I10")
+ * @param invariantId - Id of the violated invariant (e.g. "I10"), used as the error `code`
  * @param component - Namespace or name of the component involved (optional)
  *
  * @example
@@ -51,12 +51,12 @@ export function isDev(): boolean {
 export function invariant(
   condition: unknown,
   message: string,
-  invariantId: string = "",
+  invariantId: string = "INVARIANT",
   component: string = ""
 ): asserts condition {
   if (isDev()) {
     if (!condition) {
-      throw new BonsaiError(message, invariantId, component);
+      throw new BonsaiError(invariantId, message, { component });
     }
   }
 }
@@ -71,17 +71,17 @@ export function invariant(
  *
  * @param condition - When `false`, throws a `BonsaiError`
  * @param message - Descriptive error message
- * @param invariantId - Id of the violated invariant
+ * @param invariantId - Id of the violated invariant, used as the error `code`
  * @param component - Namespace or name of the component involved (optional)
  */
 export function hardInvariant(
   condition: unknown,
   message: string,
-  invariantId: string = "",
+  invariantId: string = "INVARIANT",
   component: string = ""
 ): asserts condition {
   if (!condition) {
-    throw new BonsaiError(message, invariantId, component);
+    throw new BonsaiError(invariantId, message, { component });
   }
 }
 

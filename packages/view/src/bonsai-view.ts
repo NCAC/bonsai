@@ -66,6 +66,7 @@ import type {
   TChannelHandlerName
 } from "@bonsai/feature";
 import type { TComposerClass } from "@bonsai/composer";
+import { BonsaiError } from "@bonsai/error";
 
 // ─── UI contract module (ADR-14) ───────────────────────────────────────────
 
@@ -515,7 +516,7 @@ const capitalize = (s: string): string => (s.length === 0 ? s : s[0]!.toUpperCas
 function parseNSKey(key: string): { namespace: string; name: string } {
   const idx = key.indexOf(":");
   if (idx <= 0 || idx === key.length - 1) {
-    throw new Error(`[Bonsai View] Malformed namespaced key "${key}". Expected "namespace:name".`);
+    throw new BonsaiError("MALFORMED_KEY", `Malformed namespaced key "${key}". Expected "namespace:name".`);
   }
   return { namespace: key.slice(0, idx), name: key.slice(idx + 1) };
 }
@@ -591,13 +592,13 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
     const c = this.#unit(`getUI("${key}")`);
     const selector = this.#selectors[key];
     if (selector === undefined) {
-      throw new Error(`[Bonsai View] Unknown UI key "${key}". Declared keys: ${Object.keys(this.#selectors).join(", ")}`);
+      throw new BonsaiError("UNKNOWN_UI_KEY", `Unknown UI key "${key}". Declared keys: ${Object.keys(this.#selectors).join(", ")}`);
     }
     const part = c.resolve(c.designation()!);
     const write = (label: string, apply: (el: HTMLElement) => void): void => {
       c.project(part, `${key}.${label}`, (root) => {
         const el = root.querySelector(selector) as HTMLElement | null;
-        if (el === null) throw new Error(`[Bonsai View] UI element "${key}" not found with selector "${selector}" in the part`);
+        if (el === null) throw new BonsaiError("UI_ELEMENT_NOT_FOUND", `UI element "${key}" not found with selector "${selector}" in the part`);
         apply(el);
       });
     };
@@ -628,13 +629,13 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
       if (entry.events.length === 0) continue;
       const selector = selectors[uiKey];
       if (selector === undefined) {
-        throw new Error(`[Bonsai View] UI key "${uiKey}" declared in uiEvents but missing in uiElements.`);
+        throw new BonsaiError("MISSING_UI_ELEMENT", `UI key "${uiKey}" declared in uiEvents but missing in uiElements.`);
       }
       for (const domEvent of entry.events) {
         const handlerName = `on${capitalize(uiKey)}${capitalize(domEvent)}`;
         if (!methods.includes(handlerName)) {
-          throw new Error(
-            `[Bonsai View] Missing handler "${handlerName}" for declared event "${domEvent}" on ui.${uiKey}. ` +
+          throw new BonsaiError("MISSING_HANDLER", 
+            `Missing handler "${handlerName}" for declared event "${domEvent}" on ui.${uiKey}. ` +
               `Add the method or remove "${domEvent}" from uiEvents.${uiKey}.events.`
           );
         }
@@ -645,8 +646,8 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
       // D20 — the default action is cancelled by declaration only, for a declared event.
       for (const domEvent of entry.cancelDefault ?? []) {
         if (!entry.events.includes(domEvent)) {
-          throw new Error(
-            `[Bonsai View] ui.${uiKey} cancels the default action of "${domEvent}", which it does not declare in events (D20).`
+          throw new BonsaiError("UNDECLARED_DEFAULT_CANCEL", 
+            `ui.${uiKey} cancels the default action of "${domEvent}", which it does not declare in events (D20).`
           );
         }
         const keys = cancelled.get(domEvent) ?? [];
@@ -666,8 +667,8 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
       for (const event of entry.listens) {
         const handlerName = `on${capitalize(namespace)}${capitalize(event)}Event`;
         if (typeof self[handlerName] !== "function") {
-          throw new Error(
-            `[Bonsai View] Missing handler "${handlerName}" for declared listen "${namespace}:${event}". ` +
+          throw new BonsaiError("MISSING_HANDLER", 
+            `Missing handler "${handlerName}" for declared listen "${namespace}:${event}". ` +
               `Add the method or remove "${event}" from features.${namespace}.listens.`
           );
         }
@@ -698,7 +699,7 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
           const template = this.template;
           if (template !== "") c.project(part, "template", (el) => { el.innerHTML = template; });
           for (const [key, { slot, composer }] of Object.entries(this.composers)) {
-            if (key in uiEvents) throw new Error(`[Bonsai View] slot key "${key}" collides with a UI key (D13)`);
+            if (key in uiEvents) throw new BonsaiError("SLOT_KEY_COLLISION", `slot key "${key}" collides with a UI key (D13)`);
             const ComposerClass = composer as unknown as new () => object;
             c.create(describeComponent(new ComposerClass()), { part: { resource: part, portion: key, host: slot } });
           }
@@ -711,7 +712,7 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
 
   #unit(operation: string): TUnitContext {
     if (this.#current === null) {
-      throw new Error(`[Bonsai View] ${operation} is usable only inside a handler of the View (C.3)`);
+      throw new BonsaiError("OUTSIDE_HANDLER", `${operation} is usable only inside a handler of the View (C.3)`);
     }
     return this.#current;
   }

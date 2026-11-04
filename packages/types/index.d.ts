@@ -79,5 +79,6 @@ export type {
   TParameters,
   AlwaysParameters
 } from "./src/functions";
+export type { TCausalContext, TOriginKind } from "./src/causal";
 
 export {};

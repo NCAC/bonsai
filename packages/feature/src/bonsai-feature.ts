@@ -69,7 +69,7 @@ import type {
   TReadContext,
   TUnitContext
 } from "@bonsai/kernel";
-import { hardInvariant } from "@bonsai/error";
+import { BonsaiError, hardInvariant } from "@bonsai/error";
 import {
   assertValidNamespace,
   type TFeatureContext,
@@ -265,8 +265,8 @@ export abstract class Feature<
    */
   protected get entity(): TEntity {
     if (this.#entity === null) {
-      throw new Error(
-        `[Bonsai Feature] "${this.#namespace}": the Entity exists only once the Feature is started by its Application (I94).`
+      throw new BonsaiError("NOT_STARTED", 
+        `"${this.#namespace}": the Entity exists only once the Feature is started by its Application (I94).`
       );
     }
     return this.#entity;

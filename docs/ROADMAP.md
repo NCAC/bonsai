@@ -44,7 +44,7 @@ Foundation serait le seul composant à accéder à `document`, `window`,
 - événements globaux déclarés comme une View (contrat UI pré-rempli, auto-discovery) ;
 - lecture de données serveur initiales : `readServerData<T>(id)` ;
 - hook `onShutdown()` pour les tests et le rechargement à chaud ;
-- extensions : `getMedia()`, `onError` global relié au rapport d'erreurs (ADR-05), `getHead()`/`setTitle()` ; `onIdle` plus tard.
+- extensions : `getMedia()`, `getHead()`/`setTitle()` ; `onIdle` plus tard (un `onError` est écarté par l'ADR-05 : les échecs passent par `onTrace`).
 
 À articuler avec `serverState` (ADR-24), qui couvre déjà une partie du besoin
 de données serveur.

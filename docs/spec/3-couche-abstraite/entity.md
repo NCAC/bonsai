@@ -124,7 +124,7 @@ Le noyau ne notifie personne directement. Chaque mutation effective envoie à la
 | `entity.mutate(…)` | `ctx.mutate(…)` |
 | `entity.onAnyEntityUpdated(listener)` | handlers de la Feature, message local différé |
 | File FIFO de ré-entrance et profondeur maximale (I98) | file différée du noyau, borne causale D9 |
-| `MutationError`, `EntityReentrancyError`, `BroadcastError` | l'erreur de la recette ; échec de l'unité ; un handler de notification qui lève échoue seul |
+| `MutationError`, `EntityReentrancyError`, `BroadcastError` (supprimées, ADR-05) | l'erreur de la recette ; échec de l'unité ; un handler de notification qui lève échoue seul |
 
 ## 7. Non livré
 

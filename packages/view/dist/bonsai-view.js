@@ -1,9 +1,10 @@
 /**
  * @bonsai/view - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T20:36:10.808Z
+ * Date: 2026-11-04T20:50:18.704Z
  */
 import { DESCRIBE, describeComponent } from '@bonsai/kernel';
+import { BonsaiError } from '@bonsai/error';
 
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -115,7 +116,7 @@ const capitalize = (s) => (s.length === 0 ? s : s[0].toUpperCase() + s.slice(1))
 function parseNSKey(key) {
     const idx = key.indexOf(":");
     if (idx <= 0 || idx === key.length - 1) {
-        throw new Error(`[Bonsai View] Malformed namespaced key "${key}". Expected "namespace:name".`);
+        throw new BonsaiError("MALFORMED_KEY", `Malformed namespaced key "${key}". Expected "namespace:name".`);
     }
     return { namespace: key.slice(0, idx), name: key.slice(idx + 1) };
 }
@@ -175,14 +176,14 @@ class View {
         const c = __classPrivateFieldGet(this, _View_instances, "m", _View_unit).call(this, `getUI("${key}")`);
         const selector = __classPrivateFieldGet(this, _View_selectors, "f")[key];
         if (selector === undefined) {
-            throw new Error(`[Bonsai View] Unknown UI key "${key}". Declared keys: ${Object.keys(__classPrivateFieldGet(this, _View_selectors, "f")).join(", ")}`);
+            throw new BonsaiError("UNKNOWN_UI_KEY", `Unknown UI key "${key}". Declared keys: ${Object.keys(__classPrivateFieldGet(this, _View_selectors, "f")).join(", ")}`);
         }
         const part = c.resolve(c.designation());
         const write = (label, apply) => {
             c.project(part, `${key}.${label}`, (root) => {
                 const el = root.querySelector(selector);
                 if (el === null)
-                    throw new Error(`[Bonsai View] UI element "${key}" not found with selector "${selector}" in the part`);
+                    throw new BonsaiError("UI_ELEMENT_NOT_FOUND", `UI element "${key}" not found with selector "${selector}" in the part`);
                 apply(el);
             });
         };
@@ -211,12 +212,12 @@ class View {
                 continue;
             const selector = selectors[uiKey];
             if (selector === undefined) {
-                throw new Error(`[Bonsai View] UI key "${uiKey}" declared in uiEvents but missing in uiElements.`);
+                throw new BonsaiError("MISSING_UI_ELEMENT", `UI key "${uiKey}" declared in uiEvents but missing in uiElements.`);
             }
             for (const domEvent of entry.events) {
                 const handlerName = `on${capitalize(uiKey)}${capitalize(domEvent)}`;
                 if (!methods.includes(handlerName)) {
-                    throw new Error(`[Bonsai View] Missing handler "${handlerName}" for declared event "${domEvent}" on ui.${uiKey}. ` +
+                    throw new BonsaiError("MISSING_HANDLER", `Missing handler "${handlerName}" for declared event "${domEvent}" on ui.${uiKey}. ` +
                         `Add the method or remove "${domEvent}" from uiEvents.${uiKey}.events.`);
                 }
                 const keys = domTypes.get(domEvent) ?? {};
@@ -226,7 +227,7 @@ class View {
             // D20 — the default action is cancelled by declaration only, for a declared event.
             for (const domEvent of entry.cancelDefault ?? []) {
                 if (!entry.events.includes(domEvent)) {
-                    throw new Error(`[Bonsai View] ui.${uiKey} cancels the default action of "${domEvent}", which it does not declare in events (D20).`);
+                    throw new BonsaiError("UNDECLARED_DEFAULT_CANCEL", `ui.${uiKey} cancels the default action of "${domEvent}", which it does not declare in events (D20).`);
                 }
                 const keys = cancelled.get(domEvent) ?? [];
                 keys.push(uiKey);
@@ -244,7 +245,7 @@ class View {
             for (const event of entry.listens) {
                 const handlerName = `on${capitalize(namespace)}${capitalize(event)}Event`;
                 if (typeof self[handlerName] !== "function") {
-                    throw new Error(`[Bonsai View] Missing handler "${handlerName}" for declared listen "${namespace}:${event}". ` +
+                    throw new BonsaiError("MISSING_HANDLER", `Missing handler "${handlerName}" for declared listen "${namespace}:${event}". ` +
                         `Add the method or remove "${event}" from features.${namespace}.listens.`);
                 }
                 listens.push({
@@ -276,7 +277,7 @@ class View {
                         c.project(part, "template", (el) => { el.innerHTML = template; });
                     for (const [key, { slot, composer }] of Object.entries(this.composers)) {
                         if (key in uiEvents)
-                            throw new Error(`[Bonsai View] slot key "${key}" collides with a UI key (D13)`);
+                            throw new BonsaiError("SLOT_KEY_COLLISION", `slot key "${key}" collides with a UI key (D13)`);
                         const ComposerClass = composer;
                         c.create(describeComponent(new ComposerClass()), { part: { resource: part, portion: key, host: slot } });
                     }
@@ -287,7 +288,7 @@ class View {
 }
 _a = View, _View_unit = function _View_unit(operation) {
     if (__classPrivateFieldGet(this, _View_current, "f") === null) {
-        throw new Error(`[Bonsai View] ${operation} is usable only inside a handler of the View (C.3)`);
+        throw new BonsaiError("OUTSIDE_HANDLER", `${operation} is usable only inside a handler of the View (C.3)`);
     }
     return __classPrivateFieldGet(this, _View_current, "f");
 }, _View_run = function _View_run(c, fn) {

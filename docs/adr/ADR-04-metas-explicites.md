@@ -4,7 +4,7 @@
 | --- | --- |
 | **Statut** | 🔵 Tested |
 | **Invariants impactés** | I7, I8, I9, I54 |
-| **Livré** | ✅ — `Root` établit le contexte causal de chaque message (qualification de l'origine, parent unique, profondeur, G8) et borne la profondeur (`causalBound`, D9) ; strate 1b : `ctx.cause` dans les contextes de Feature, de View et du Composer (`resolve`), contexte joint au `TEntityEvent` et aux erreurs du noyau, `metas` libre de `ctx.mutate` retiré |
+| **Livré** | ✅ — `Root` établit le contexte causal de chaque message (qualification de l'origine, parent unique, profondeur, G8) et borne la profondeur (`causalBound`, D9) ; strate 1b : `ctx.cause` dans les contextes de Feature, de View et du Composer (`resolve`), contexte joint au `TEntityEvent` et aux erreurs du framework (`BonsaiError`), `metas` libre de `ctx.mutate` retiré |
 | **Spec** | [metas.md](../spec/2-architecture/metas.md) · théorie G8, C.4, D9 |
 
 ## Contexte
@@ -40,8 +40,8 @@ onAddItemCommand(payload: TAddItem, ctx: TFeatureContext<TCartDef, CartEntity>):
 ```
 
 Le contexte est aussi **joint par le noyau** au `TEntityEvent` (`context`) et
-aux erreurs qu'il lève pendant une unité (`TransportError`, `InvariantError` :
-champ `context`, `cause` étant la propriété standard `Error.cause`). Une erreur
+à toute `BonsaiError` levée pendant une unité ou une Query (champ `context`,
+`cause` étant la propriété standard `Error.cause`, ADR-05). Une erreur
 levée par le code applicatif n'est pas modifiée : son contexte figure dans
 l'entrée `unit-failed` de la trace (ADR-05).
 

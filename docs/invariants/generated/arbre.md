@@ -130,7 +130,7 @@ tests : `R` runtime · `T` type · `·` aucun (détection automatique des citati
 **Chaque obligation contrôlable reçoit une garde au niveau le plus précoce possible, à la compilation, au démarrage ou à l'exécution selon les données disponibles ; chaque obligation sémantique non vérifiable reçoit une justification explicite et une revue. La frontière de confiance comprend tous les points d'admission. Les tests de conformité de l'infrastructure ne remplacent ni les gardes applicatives ni une preuve générale.**
 
 - `E` I66 — Le bootstrap est la frontière de confiance — après `app.start()` les garanties sont vérifiées, avant, aucun `trigger`/`emit`/`request` n'est accepté. ⟨boot · ✅ · R⟩
-- `E` I102 — Une règle qui ne peut être vérifiée qu'à l'exécution l'est par une garde fail-fast : erreur explicite dès la première violation, avec son contexte, jamais de dégradation silencieuse. ⟨run · ⚠️ · ·⟩
+- `E` I102 — Une règle qui ne peut être vérifiée qu'à l'exécution l'est par une garde fail-fast : erreur explicite dès la première violation, avec son contexte, jamais de dégradation silencieuse. ⟨run · ✅ · R⟩
 - `C` I75 — Aucun `any` ni `unknown` dans les signatures publiques de `Channel`, `Feature` ou `View`. ⟨revue · ⚠️ · T⟩
 - `C` I76 — Les méthodes de `Channel` sont typées par `TDef` — un nom de message est une clé de la voie, jamais une `string` libre. ↔ P3 ⟨type · ✅ · T⟩
   - `D` I103 — Les clés de Commands, d'Events et de Queries d'un `TChannelDefinition` sont en `camelCase` plat, lettres uniquement. ↔ I21 ⟨type · ⏳ · ·⟩

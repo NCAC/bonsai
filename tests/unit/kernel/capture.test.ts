@@ -69,7 +69,7 @@ describe("Kernel errors and component descriptions", () => {
     const error = new InvariantError("CartEntity", "non-negative total");
     expect(error.name).toBe("InvariantError");
     expect([error.entity, error.invariant]).toEqual(["CartEntity", "non-negative total"]);
-    expect(error.message).toMatch(/Invariant "non-negative total" of entity "CartEntity"/);
+    expect(error.message).toMatch(/^\[INVARIANT_VIOLATED\] CartEntity — invariant "non-negative total" violated/);
   });
 
   it("describeComponent refuses an object that is not a Bonsai component", () => {

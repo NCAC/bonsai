@@ -3,7 +3,7 @@
 | Champ | Valeur |
 | --- | --- |
 | **Statut** | 🟢 Accepted |
-| **Livré** | Strate 0 ✅ (gate E2E vert) · 1a ✅ · 1b ⚠️ (borne causale, échec par unité et contexte causal exposé par `ctx.cause` livrés, ADR-04 ✅ ; reste ADR-05 : hiérarchie `BonsaiError` et hook `onError`) · 1c ⏳ · 1d ⚠️ (composition par clé, `View.composers` et cascade livrées au lot M6.2 ; gate ⏳) · strate 2 ⏳, sauf le Router (ADR-13) — pas encore de test gate strate 1 |
+| **Livré** | Strate 0 ✅ (gate E2E vert) · 1a ✅ · 1b ✅ (borne causale, échec par unité, contexte causal exposé par `ctx.cause` — ADR-04 ; racine unique `BonsaiError`, signalement par la trace — ADR-05) · 1c ⏳ · 1d ⚠️ (composition par clé, `View.composers` et cascade livrées au lot M6.2 ; gate ⏳) · strate 2 ⏳, sauf le Router (ADR-13) — pas encore de test gate strate 1 |
 | **Spec** | [TESTING.md](../guides/TESTING.md) · [CHANGELOG.md](../../CHANGELOG.md) |
 
 ## Contexte

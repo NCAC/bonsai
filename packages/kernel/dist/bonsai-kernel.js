@@ -1,9 +1,10 @@
 /**
  * @bonsai/kernel - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T20:36:03.371Z
+ * Date: 2026-11-04T20:50:11.455Z
  */
 import { Immer } from '@bonsai/immer';
+import { BonsaiError } from '@bonsai/error';
 
 /******************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -46,55 +47,49 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
  * A transport error is not a business answer: it interrupts the author and
  * propagates to the outermost validation unit, which then fails (G7).
  *
- * Errors raised by the kernel during a validation unit or a Query carry the
- * causal context where they were born (`context`, ADR-04). `cause` keeps its
+ * Every kernel error derives from `BonsaiError` (ADR-05): stable `code`, and
+ * the causal context where it was born (`context`, ADR-04). `cause` keeps its
  * standard `Error.cause` meaning: the original error being reported.
  */
-class TransportError extends Error {
+class TransportError extends BonsaiError {
     constructor(code, message, cause) {
-        super(`[${code}] ${message}`);
+        super(code, message, { cause });
         this.name = "TransportError";
-        this.code = code;
-        if (cause !== undefined)
-            this.cause = cause;
     }
 }
 /** Raised by `Root.start()` when the startup unit fails (§2.5, C.1). */
-class StartupError extends Error {
+class StartupError extends BonsaiError {
     constructor(cause) {
-        super("Startup failed: the model under construction was abandoned");
+        super("STARTUP_FAILED", "the model under construction was abandoned (§2.5)", { cause });
         this.name = "StartupError";
-        this.cause = cause;
     }
 }
 /**
  * A business invariant is violated at the end of a validation unit (A4.a).
  * Not a transport error: the unit fails and is rolled back (G7).
  */
-class InvariantError extends Error {
+class InvariantError extends BonsaiError {
     constructor(entity, invariant) {
-        super(`Invariant "${invariant}" of entity "${entity}" violated at the end of the validation unit (A4.a)`);
+        super("INVARIANT_VIOLATED", `invariant "${invariant}" violated at the end of the validation unit (A4.a)`, { component: entity });
         this.name = "InvariantError";
         this.entity = entity;
         this.invariant = invariant;
     }
 }
 /** The Manifest cannot be ordered: unknown or cyclic initial dependency (C.1). */
-class ManifestError extends Error {
-    constructor(message) {
-        super(message);
+class ManifestError extends BonsaiError {
+    constructor(code, message) {
+        super(code, message);
         this.name = "ManifestError";
     }
 }
 /**
- * Attaches the causal context where a kernel error was born (ADR-04). The
+ * Attaches the causal context where a framework error was born (ADR-04). The
  * innermost boundary wins: a context already attached is kept. Errors raised
  * by application code are left untouched — their context is in the trace.
  */
 function attachContext(error, context) {
-    if (!(error instanceof TransportError || error instanceof InvariantError))
-        return;
-    if (error.context !== undefined)
+    if (!(error instanceof BonsaiError) || error.context !== undefined)
         return;
     Object.defineProperty(error, "context", { value: context, enumerable: true, writable: false, configurable: false });
 }
@@ -287,7 +282,7 @@ class Root {
         for (const entry of entries) {
             for (const dependency of entry.dependsOn ?? []) {
                 if (!byNamespace.has(dependency))
-                    throw new ManifestError(`${entry.name} depends on unknown namespace "${dependency}"`);
+                    throw new ManifestError("UNKNOWN_DEPENDENCY", `${entry.name} depends on unknown namespace "${dependency}" (C.1)`);
             }
         }
         const ordered = [];
@@ -296,7 +291,7 @@ class Root {
             const next = entries.find((entry) => !placed.has(entry) && (entry.dependsOn ?? []).every((d) => placed.has(byNamespace.get(d))));
             if (next === undefined) {
                 const blocked = entries.filter((entry) => !placed.has(entry)).map((entry) => entry.name);
-                throw new ManifestError(`cyclic initial dependencies between ${blocked.join(", ")} (C.1)`);
+                throw new ManifestError("CYCLIC_DEPENDENCIES", `cyclic initial dependencies between ${blocked.join(", ")} (C.1)`);
             }
             ordered.push(next);
             placed.add(next);
@@ -665,7 +660,7 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
                     if (!record.alive)
                         return;
                     if (record.element === null)
-                        throw new Error(`${record.handle.label} is not materialized (9.10)`);
+                        throw new BonsaiError("NOT_MATERIALIZED", `${record.handle.label} is not materialized (9.10)`);
                     write(record.element);
                 }
             });
@@ -685,7 +680,7 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
                 run: () => {
                     const element = record.element;
                     if (element === null)
-                        throw new Error(`${record.handle.label} is not materialized (9.10)`);
+                        throw new BonsaiError("NOT_MATERIALIZED", `${record.handle.label} is not materialized (9.10)`);
                     __classPrivateFieldSet(this, _Root_simulating, { element, type, token }, "f");
                     try {
                         // dispatchEvent, not element.click(): the drain may run inside the host's own dispatch of a
@@ -905,13 +900,13 @@ _Root_id = new WeakMap(), _Root_bound = new WeakMap(), _Root_longMs = new WeakMa
                         return;
                     const host = container.element;
                     if (host === null)
-                        throw new Error(`${container.handle.label} is not materialized (9.10)`);
+                        throw new BonsaiError("NOT_MATERIALIZED", `${container.handle.label} is not materialized (9.10)`);
                     let element;
                     if (options.part.host !== undefined) {
                         // A declared slot: exactly one existing element of the container (Foundation §3).
                         const matches = host.querySelectorAll(options.part.host);
                         if (matches.length !== 1)
-                            throw new Error(`slot "${options.part.host}" matches ${matches.length} elements of ${container.handle.label}, expected exactly one`);
+                            throw new BonsaiError("SLOT_NOT_UNIQUE", `slot "${options.part.host}" matches ${matches.length} elements of ${container.handle.label}, expected exactly one`);
                         element = matches[0];
                         element.setAttribute("data-bonsai-part", portion);
                     }
@@ -1183,7 +1178,7 @@ const DESCRIBE = Symbol.for("bonsai.component.describe");
 function describeComponent(instance, options) {
     const describe = instance[DESCRIBE];
     if (typeof describe !== "function") {
-        throw new Error(`[Bonsai] ${instance.constructor.name} is not a Bonsai component and cannot be created by the framework`);
+        throw new BonsaiError("NOT_A_COMPONENT", `[Bonsai] ${instance.constructor.name} is not a Bonsai component and cannot be created by the framework`);
     }
     return describe.call(instance, options);
 }

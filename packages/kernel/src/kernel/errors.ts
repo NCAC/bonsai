@@ -4,11 +4,12 @@
  * A transport error is not a business answer: it interrupts the author and
  * propagates to the outermost validation unit, which then fails (G7).
  *
- * Errors raised by the kernel during a validation unit or a Query carry the
- * causal context where they were born (`context`, ADR-04). `cause` keeps its
+ * Every kernel error derives from `BonsaiError` (ADR-05): stable `code`, and
+ * the causal context where it was born (`context`, ADR-04). `cause` keeps its
  * standard `Error.cause` meaning: the original error being reported.
  */
 
+import { BonsaiError } from "@bonsai/error";
 import type { TCausalContext } from "./types";
 
 export type TTransportErrorCode =
@@ -29,29 +30,23 @@ export type TTransportErrorCode =
   | "NOT_AUTHORIZED"        // a Command of the user interface whose trigger grants no right (D18)
   | "ROOT_ABANDONED";       // the root failed to start
 
-export class TransportError extends Error {
-  readonly code: TTransportErrorCode;
-  /** Original error, when this one reports it (UNRECOVERABLE). */
-  readonly cause?: unknown;
-  /** Causal context where the error was born; absent outside any unit (ADR-04). */
-  readonly context?: TCausalContext;
+export class TransportError extends BonsaiError {
+  override readonly name: string = "TransportError";
+  declare readonly code: TTransportErrorCode;
 
   constructor(code: TTransportErrorCode, message: string, cause?: unknown) {
-    super(`[${code}] ${message}`);
-    this.name = "TransportError";
-    this.code = code;
-    if (cause !== undefined) this.cause = cause;
+    super(code, message, { cause });
   }
 }
 
 /** Raised by `Root.start()` when the startup unit fails (§2.5, C.1). */
-export class StartupError extends Error {
-  readonly cause: unknown;
+export class StartupError extends BonsaiError {
+  override readonly name: string = "StartupError";
+  declare readonly code: "STARTUP_FAILED";
+  declare readonly cause: unknown;
 
   constructor(cause: unknown) {
-    super("Startup failed: the model under construction was abandoned");
-    this.name = "StartupError";
-    this.cause = cause;
+    super("STARTUP_FAILED", "the model under construction was abandoned (§2.5)", { cause });
   }
 }
 
@@ -59,35 +54,39 @@ export class StartupError extends Error {
  * A business invariant is violated at the end of a validation unit (A4.a).
  * Not a transport error: the unit fails and is rolled back (G7).
  */
-export class InvariantError extends Error {
+export class InvariantError extends BonsaiError {
+  override readonly name: string = "InvariantError";
+  declare readonly code: "INVARIANT_VIOLATED";
   readonly entity: string;
   readonly invariant: string;
-  /** Causal context of the failing validation unit (ADR-04). */
-  readonly context?: TCausalContext;
 
   constructor(entity: string, invariant: string) {
-    super(`Invariant "${invariant}" of entity "${entity}" violated at the end of the validation unit (A4.a)`);
-    this.name = "InvariantError";
+    super("INVARIANT_VIOLATED", `invariant "${invariant}" violated at the end of the validation unit (A4.a)`, { component: entity });
     this.entity = entity;
     this.invariant = invariant;
   }
 }
 
+export type TManifestErrorCode =
+  | "UNKNOWN_DEPENDENCY"    // an initial dependency names no namespace of the Manifest (C.1)
+  | "CYCLIC_DEPENDENCIES";  // initial dependencies form a cycle (C.1)
+
 /** The Manifest cannot be ordered: unknown or cyclic initial dependency (C.1). */
-export class ManifestError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ManifestError";
+export class ManifestError extends BonsaiError {
+  override readonly name: string = "ManifestError";
+  declare readonly code: TManifestErrorCode;
+
+  constructor(code: TManifestErrorCode, message: string) {
+    super(code, message);
   }
 }
 
 /**
- * Attaches the causal context where a kernel error was born (ADR-04). The
+ * Attaches the causal context where a framework error was born (ADR-04). The
  * innermost boundary wins: a context already attached is kept. Errors raised
  * by application code are left untouched — their context is in the trace.
  */
 export function attachContext(error: unknown, context: TCausalContext): void {
-  if (!(error instanceof TransportError || error instanceof InvariantError)) return;
-  if (error.context !== undefined) return;
+  if (!(error instanceof BonsaiError) || error.context !== undefined) return;
   Object.defineProperty(error, "context", { value: context, enumerable: true, writable: false, configurable: false });
 }

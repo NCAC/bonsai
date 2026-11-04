@@ -1,19 +1,13 @@
 /**
  * @bonsai/router - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T20:36:08.663Z
+ * Date: 2026-11-04T20:50:16.914Z
  */
 import { Entity } from '@bonsai/entity';
 import { Feature } from '@bonsai/feature';
+import { BonsaiError } from '@bonsai/error';
 import { DESCRIBE } from '@bonsai/kernel';
 
-/**
- * Locations and routes of the navigation (D15).
- *
- * A location is the address inside the application, written as the host
- * writes it: path, query and fragment (`/products/42?tab=2#top`). A route is
- * its parsed form, kept by the Feature of navigation.
- */
 const BASE = "http://bonsai.invalid";
 /**
  * Parses a location of the application.
@@ -22,7 +16,7 @@ const BASE = "http://bonsai.invalid";
  */
 function parseLocation(location) {
     if (typeof location !== "string" || !location.startsWith("/") || location.startsWith("//")) {
-        throw new Error(`[Bonsai Router] "${String(location)}" is not a location of the application (expected "/path?query#hash")`);
+        throw new BonsaiError("INVALID_LOCATION", `"${String(location)}" is not a location of the application (expected "/path?query#hash")`);
     }
     const url = new URL(location, BASE);
     const query = {};
@@ -151,7 +145,7 @@ class HistoryAdapter {
         const timeout = options.traversalTimeoutMs ?? 2000;
         const view = doc.defaultView;
         if (view === null)
-            throw new Error("[Bonsai HistoryAdapter] the document has no window: the history is not reachable");
+            throw new BonsaiError("HOST_UNAVAILABLE", "the document has no window: the history is not reachable");
         const host = view;
         const canonical = (location) => this.normalize(canonicalLocation(location));
         const readHost = () => canonical(host.location.pathname + host.location.search + host.location.hash);

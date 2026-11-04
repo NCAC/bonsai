@@ -12,6 +12,7 @@ import { Feature, type TFeatureCallbacks, type TFeatureContext } from "@bonsai/f
 import type { TCausalContext, TChannelToken } from "@bonsai/kernel";
 import { Composer, type TComposerContract, type TComposeContext, type TComposition } from "@bonsai/composer";
 import { Foundation } from "@bonsai/foundation";
+import { BonsaiError } from "@bonsai/error";
 import { View, type TViewContract } from "@bonsai/view";
 
 // ─── Domain: an ordered list of names, with a "variant" per name ────────────
@@ -161,6 +162,15 @@ describe("Composer on the kernel", () => {
     d.send("list", "set", [{ id: "a", variant: "x" }, { id: "a", variant: "y" }]);
     expect(d.failures().length).toBeGreaterThan(0);
     expect(keys()).toEqual(["a", "b"]);
+  });
+
+  it("ADR-05, I102 — a framework error is a BonsaiError with a stable code, dated by its unit (ADR-04)", () => {
+    const d = setup();
+    d.send("list", "set", [{ id: "a", variant: "x" }, { id: "a", variant: "y" }]);
+    const failure = d.failures().at(-1)!;
+    expect(failure.error).toBeInstanceOf(BonsaiError);
+    expect((failure.error as BonsaiError).code).toBe("DUPLICATE_KEY");
+    expect((failure.error as BonsaiError).context).toBe(failure.context);
   });
 
   it("a View outside the catalogue fails the unit", () => {

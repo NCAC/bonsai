@@ -1,111 +1,49 @@
+import type { TCausalContext } from "@bonsai/types";
+
 /**
- * BonsaiError — base class for all structured framework errors.
+ * Options of a `BonsaiError`, after its code and message.
+ */
+export type TBonsaiErrorOptions = {
+  /** Namespace or name of the component involved. */
+  readonly component?: string;
+  /** Actionable hint for the developer. */
+  readonly suggestion?: string;
+  /** Original error this one reports (standard `Error.cause`). */
+  readonly cause?: unknown;
+};
+
+/**
+ * BonsaiError — root of every error raised by the framework (ADR-05).
  *
- * Every Bonsai error provides:
- * - `invariantId`: id of the violated invariant or ADR (e.g. "I10", "ADR-05")
- * - `component`: namespace or name of the component involved
- * - `suggestion`: actionable message for the developer
+ * `instanceof BonsaiError` separates a violation detected by Bonsai from an
+ * error of application code, which the framework never wraps nor modifies.
  *
- * @see ADR-05 — error propagation (full taxonomy)
+ * - `code`: stable identifier to match on — a symbolic code (`NOT_AUTHORIZED`)
+ *   or the id of the violated invariant (`I96`). Renaming one is a breaking change.
+ * - `component`: namespace or name of the component involved, `""` if none.
+ * - `suggestion`: actionable hint, `""` if none.
+ * - `context`: causal context of the validation unit or Query where the error
+ *   was born, attached by the kernel (ADR-04); absent outside any unit.
  */
 export class BonsaiError extends Error {
   override readonly name: string = "BonsaiError";
+  readonly code: string;
+  readonly component: string;
+  readonly suggestion: string;
+  /** Original error, when this one reports it. */
+  declare readonly cause?: unknown;
+  /** Causal context where the error was born; set once by the kernel (ADR-04). */
+  declare readonly context?: TCausalContext;
 
-  constructor(
-    message: string,
-    readonly invariantId: string,
-    readonly component: string = "",
-    readonly suggestion: string = ""
-  ) {
-    super(
-      `[${invariantId}]${component ? ` ${component}` : ""} — ${message}${suggestion ? `\n  → ${suggestion}` : ""}`
-    );
+  constructor(code: string, message: string, options: TBonsaiErrorOptions = {}) {
+    const component = options.component ?? "";
+    const suggestion = options.suggestion ?? "";
+    super(`[${code}]${component ? ` ${component}` : ""} — ${message}${suggestion ? `\n  → ${suggestion}` : ""}`);
+    this.code = code;
+    this.component = component;
+    this.suggestion = suggestion;
+    if (options.cause !== undefined) {
+      Object.defineProperty(this, "cause", { value: options.cause, enumerable: false, writable: false, configurable: true });
+    }
   }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// Entity Layer (State)
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * The `mutate()` recipe threw → automatic Immer rollback, state intact.
- */
-export class MutationError extends BonsaiError {
-  override readonly name = "MutationError";
-}
-
-/**
- * `mutate()` called during a notification cycle while the re-entrance depth
- * exceeds `maxEntityNotificationDepth` (stratum 1a).
- */
-export class EntityReentrancyError extends BonsaiError {
-  override readonly name = "EntityReentrancyError";
-}
-
-// ═══════════════════════════════════════════════════════════════
-// Feature Layer (Logic)
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * An `onXxxCommand()` handler threw (defined, not raised yet — ADR-05).
- */
-export class CommandError extends BonsaiError {
-  override readonly name = "CommandError";
-}
-
-/**
- * An `onXxxRequest()` handler threw (defined, not raised yet — ADR-05).
- */
-export class RequestError extends BonsaiError {
-  override readonly name = "RequestError";
-}
-
-/**
- * An `onXxxEntityUpdated()` handler threw — state kept, notification continues.
- */
-export class BroadcastError extends BonsaiError {
-  override readonly name = "BroadcastError";
-}
-
-// ═══════════════════════════════════════════════════════════════
-// Channel Layer (Communication)
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * An Event listener threw — error isolated, other listeners still run.
- */
-export class ListenerError extends BonsaiError {
-  override readonly name = "ListenerError";
-}
-
-/**
- * `trigger()` with no registered `handle()` (`request()` without a replier returns `null` instead).
- */
-export class NoHandlerError extends BonsaiError {
-  override readonly name = "NoHandlerError";
-}
-
-/**
- * `handle()` or `reply()` called twice for the same message (I10).
- */
-export class DuplicateHandlerError extends BonsaiError {
-  override readonly name = "DuplicateHandlerError";
-}
-
-// ═══════════════════════════════════════════════════════════════
-// View Layer (UI)
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * A projection or template threw.
- */
-export class RenderError extends BonsaiError {
-  override readonly name = "RenderError";
-}
-
-/**
- * A Behavior threw.
- */
-export class BehaviorError extends BonsaiError {
-  override readonly name = "BehaviorError";
 }

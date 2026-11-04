@@ -107,7 +107,7 @@ La borne limite **la profondeur des segments connus**, pas la largeur, le travai
 
 ## 7. API d'implementation
 
-**Les mécanismes doivent satisfaire les contrats ci-dessus avant d’être présentés comme une API conforme.** Réalisation livrée : `ctx.cause` dans les contextes de handler (ADR-04), `TEntityEvent.context`, champ `context` des erreurs du noyau (`TransportError`, `InvariantError`) — l’erreur la plus interne gagne, une erreur levée par le code applicatif n’est pas modifiée et son contexte figure dans l’entrée `unit-failed` de la trace.
+**Les mécanismes doivent satisfaire les contrats ci-dessus avant d’être présentés comme une API conforme.** Réalisation livrée : `ctx.cause` dans les contextes de handler (ADR-04), `TEntityEvent.context`, champ `context` de toute `BonsaiError` levée pendant une unité ou une Query (ADR-05) — l’erreur la plus interne gagne, une erreur levée par le code applicatif n’est pas modifiée et son contexte figure dans l’entrée `unit-failed` de la trace.
 
 ### 7.1 Création au point d'entree
 

@@ -155,7 +155,8 @@ contexte causal de l'unité (G8), et signalé sur la console en développement
 > où les branches de développement sont éliminées (ADR-06, §3.1).
 >
 > Les assertions vivent dans **`@bonsai/error`** (`packages/error/src/invariant.ts`).
-> Signature : `(condition, message, invariantId?, component?)` ; le message est
+> Signature : `(condition, message, invariantId?, component?)` ; `invariantId`
+> (par défaut `"INVARIANT"`) devient le `code` de la `BonsaiError` ; le message est
 > passé tel quel, sans placeholder `%s`.
 
 ### 3.1 Constante globale `__DEV__`
@@ -194,12 +195,12 @@ export function isDev(): boolean {
 function invariant(
   condition: unknown,
   message: string,
-  invariantId: string = "",
+  invariantId: string = "INVARIANT",
   component: string = ""
 ): asserts condition {
   if (isDev()) {
     if (!condition) {
-      throw new BonsaiError(message, invariantId, component);
+      throw new BonsaiError(invariantId, message, { component });
     }
   }
 }
@@ -235,20 +236,19 @@ function warning(condition: unknown, message: string): void {
 function hardInvariant(
   condition: unknown,
   message: string,
-  invariantId: string = "",
+  invariantId: string = "INVARIANT",
   component: string = ""
 ): asserts condition {
   if (!condition) {
-    throw new BonsaiError(message, invariantId, component);
+    throw new BonsaiError(invariantId, message, { component });
   }
 }
 ```
 
 > Aucune des trois fonctions n'accepte de placeholders `%s`/`...args` — le
-> `message` est passe tel quel a `BonsaiError`, qui le formate avec
-> `invariantId`/`component`/`suggestion` (voir
-> [erreurs.md](../2-architecture/erreurs.md) et [ADR-05](../../adr/ADR-05-propagation-erreurs.md)
-> pour la hiérarchie et ses écarts).
+> `message` est passe tel quel a `BonsaiError`, qui le formate avec son
+> `code` et son `component` : `[I1] cart — …` (voir
+> [erreurs.md](../2-architecture/erreurs.md) et [ADR-05](../../adr/ADR-05-propagation-erreurs.md)).
 
 ### 3.5 Messages d'erreur riches
 

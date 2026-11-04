@@ -18,7 +18,8 @@
   },
   "src": "./src/bonsai-kernel.ts",
   "dependencies": {
-    "@bonsai/types": "workspace:^",
-    "@bonsai/immer": "workspace:^"
+    "@bonsai/error": "workspace:^",
+    "@bonsai/immer": "workspace:^",
+    "@bonsai/types": "workspace:^"
   }
 }
