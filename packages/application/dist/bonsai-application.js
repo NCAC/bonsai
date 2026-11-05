@@ -1,7 +1,7 @@
 /**
  * @bonsai/application - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T22:22:14.565Z
+ * Date: 2026-11-05T11:06:34.166Z
  */
 import { isDev, BonsaiError } from '@bonsai/error';
 import { reportToConsole, Root, describeComponent } from '@bonsai/kernel';

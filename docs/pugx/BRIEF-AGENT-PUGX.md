@@ -76,6 +76,8 @@ Trois exigences que Pug standard ne couvre pas :
 
 ### 2.2 Prototype `tools/pug-to-ts-template` (`@bonsai/pug-ts`)
 
+> **Mise à jour du 5 novembre 2026** : ce prototype est supprimé (consultable dans l'historique git, baseline `v0.1.0`). La strate 1c, lot 4, livre dans Bonsai `tools/pug-compiler` : son lexer et son parser forkés, une génération `create`/`setup`/`project`, un type de données déclaré par `//- @data <type TS>` et vérifié par `tsc`. Le contrat runtime est `TProjectionTemplate`, `ProjectionList` et `ProjectionSwitch` (`@bonsai/view`, [5-rendu §5](../spec/5-rendu.md)).
+
 ~4 600 lignes, jamais évoluées depuis la baseline `v0.1.0`, hors workspace, sans test.
 
 - **Réutilisable comme référence d'architecture** : pipeline `source → lexer → parser → AST → compiler visiteur → writer → Prettier`

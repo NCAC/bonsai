@@ -159,6 +159,9 @@ importers:
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
+      character-parser:
+        specifier: 4.0.0
+        version: 4.0.0
       husky:
         specifier: ^9.1.7
         version: 9.1.7
@@ -1234,6 +1237,9 @@ packages:
   char-regex@1.0.2:
     resolution: {integrity: sha512-kWWXztvZ5SBQV+eRgKFeh8q5sLuZY2+8WUIzlxWVTg+oGwY14qylx1KbKzHd8P6ZYkAg0xyIDU9JMHhyJMZ1jw==}
     engines: {node: '>=10'}
+
+  character-parser@4.0.0:
+    resolution: {integrity: sha512-jWburCrDpd+aPopB7esjh/gLyZoHZS4C2xwwJlkTPyhhJdXG+FCG0P4qCOInvOd9yhiuAEJYlZsUMQ0JSK4ykw==}
 
   chokidar@4.0.3:
     resolution: {integrity: sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==}
@@ -3500,6 +3506,8 @@ snapshots:
   chalk@5.4.1: {}
 
   char-regex@1.0.2: {}
+
+  character-parser@4.0.0: {}
 
   chokidar@4.0.3:
     dependencies:

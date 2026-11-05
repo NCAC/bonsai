@@ -16,8 +16,7 @@ const config: Config = {
   testPathIgnorePatterns: [
     "/node_modules/",
     "/dist/",
-    "/coverage/",
-    "/tools/pug-to-ts-template/test.ts"
+    "/coverage/"
   ],
 
   // Supported file extensions

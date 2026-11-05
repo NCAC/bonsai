@@ -92,13 +92,16 @@ const _ko_on_empty = bind<TC>()({ template: ItemsTemplate, query: "cart:items", 
 // @ts-expect-error — params typed by the Query
 const _ko_params = bind<TC>()({ template: PriceTemplate, query: "cart:price", params: { sku: "x" }, on: ["cart:itemAdded"] });
 
+// @ts-expect-error — the template receives the output of `select`: readonly TItem[] here, not a number
 const _ko_template = bind<TC>()({
   template: ItemsTemplate,
   query: "cart:items",
   on: ["cart:itemAdded"],
-  // @ts-expect-error — the template receives the output of `select`: readonly TItem[] here, not a number
   select: (items) => items.length
 });
+
+// @ts-expect-error — without select, the template receives the result of the Query: readonly TItem[], not number
+const _ko_no_select = bind<TC>()({ template: PriceTemplate, query: "cart:items", on: ["cart:itemAdded"] });
 
 // ─── TViewTemplates ─────────────────────────────────────────────────────────
 
@@ -149,7 +152,7 @@ class BadOptionalHandlerView extends View<TC> implements TViewCallbacks<TC, type
 
 describe("View template bindings — compile-time (ADR-26)", () => {
   it("bind, TViewTemplates and the amended I82 hold at the type level", () => {
-    void [_ok_select, _ok_identity, _ok_params_fn, _ko_query, _ko_on, _ko_on_empty, _ko_params, _ko_template];
+    void [_ok_select, _ok_identity, _ok_params_fn, _ko_query, _ko_on, _ko_on_empty, _ko_params, _ko_template, _ko_no_select];
     void [_keys_ok, _root_ok, _keys_ko];
     void [TemplatedView, MissingHandlerView, OptionalHandlerView, BadOptionalHandlerView];
   });

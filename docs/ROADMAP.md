@@ -14,6 +14,7 @@ Ces sujets ont un ADR accepté ; seule la livraison est reportée.
 | Animations de liste | [ADR-23](adr/ADR-23-listes.md) | Callbacks `onInsert`/`onMove`/`onRemove` de `ProjectionList` ; une sortie animée (Promise) doit s'articuler avec l'engagement des effets (C.3) |
 | FormBehavior complet | [ADR-25](adr/ADR-25-formulaires.md) | Behavior réutilisable de formulaire (dirty tracking, validation Valibot) |
 | Mode ESM modulaire | [ADR-27](adr/ADR-27-mode-esm-modulaire.md) | `BonsaiRegistry`, modules `*.esm.js`, CLI `bonsai build` |
+| Directive `@ui` des templates | [ADR-22](adr/ADR-22-pdr.md) | Vérifier au build que chaque clé UI d'une View a son marqueur `@ui` dans le template, et réciproquement : compiler le template avec le contrat de la View |
 
 ## Pistes à instruire
 
@@ -76,3 +77,4 @@ namespaces en notation pointée proposée pour les plugins contredit ADR-08
 | Rendu serveur Node.js, streaming SSR | la v1 ne fait que l'hydratation côté client (ADR-24) |
 | Plusieurs Applications par page (micro-apps) | Foundation scopée, Router optionnel (la racine du noyau est déjà propre à chaque Application, G6) |
 | Transactions distribuées | hors champ |
+| Compilateur Pug : `case`/`when`, `each … else`, éléments SVG (espace de noms), plugin Rollup/Vite | refusés ou absents au lot 4 de la strate 1c ([5-rendu §8](spec/5-rendu.md)) ; `case` et `each … else` se réécrivent en `if` |

@@ -1,7 +1,7 @@
 /**
  * @bonsai/view - Version 0.2.0
  * Bundled by Bonsai Build System
- * Date: 2026-11-04T22:22:09.639Z
+ * Date: 2026-11-05T11:06:27.792Z
  */
 import { DESCRIBE, describeComponent } from '@bonsai/kernel';
 import { BonsaiError } from '@bonsai/error';
@@ -52,7 +52,7 @@ typeof SuppressedError === "function" ? SuppressedError : function (error, suppr
  *
  * @packageDocumentation
  */
-var _a$1, _ProjectionList_container, _ProjectionList_options, _ProjectionList_entries, _ProjectionList_duplicate;
+var _a$2, _ProjectionList_container, _ProjectionList_options, _ProjectionList_entries, _ProjectionList_duplicate;
 /**
  * Keyed list over the element children of a container. At construction it
  * adopts the children carrying `keyAttr` — those `create()` of the template
@@ -70,7 +70,7 @@ class ProjectionList {
             if (key === null)
                 continue;
             if (__classPrivateFieldGet(this, _ProjectionList_entries, "f").has(key))
-                throw __classPrivateFieldGet(_a$1, _a$1, "m", _ProjectionList_duplicate).call(_a$1, key);
+                throw __classPrivateFieldGet(_a$2, _a$2, "m", _ProjectionList_duplicate).call(_a$2, key);
             const el = child;
             __classPrivateFieldGet(this, _ProjectionList_entries, "f").set(key, { el, nodes: options.setup(el) });
         }
@@ -88,11 +88,11 @@ class ProjectionList {
         items.forEach((item, index) => {
             const k = key(item);
             if (seen.has(k))
-                throw __classPrivateFieldGet(_a$1, _a$1, "m", _ProjectionList_duplicate).call(_a$1, k);
+                throw __classPrivateFieldGet(_a$2, _a$2, "m", _ProjectionList_duplicate).call(_a$2, k);
             seen.add(k);
             let entry = __classPrivateFieldGet(this, _ProjectionList_entries, "f").get(k);
             if (entry === undefined) {
-                const el = create(item);
+                const el = create(item, index);
                 el.setAttribute(keyAttr, k);
                 entry = { el, nodes: setup(el) };
                 __classPrivateFieldGet(this, _ProjectionList_entries, "f").set(k, entry);
@@ -115,10 +115,115 @@ class ProjectionList {
         return __classPrivateFieldGet(this, _ProjectionList_entries, "f").get(key)?.nodes;
     }
 }
-_a$1 = ProjectionList, _ProjectionList_container = new WeakMap(), _ProjectionList_options = new WeakMap(), _ProjectionList_entries = new WeakMap(), _ProjectionList_duplicate = function _ProjectionList_duplicate(key) {
+_a$2 = ProjectionList, _ProjectionList_container = new WeakMap(), _ProjectionList_options = new WeakMap(), _ProjectionList_entries = new WeakMap(), _ProjectionList_duplicate = function _ProjectionList_duplicate(key) {
     return new BonsaiError("DUPLICATE_KEY", `duplicate key "${key}" in a list.`, {
         component: "ProjectionList",
         suggestion: "Each item needs a unique key (key / keyAttr)."
+    });
+};
+
+/**
+ * @bonsai/view — ProjectionSwitch: conditional zone of a template (5-rendu §8.4).
+ *
+ * The compiled form of a Pug `if` / `else if` / `else` chain. The active
+ * branch sits between two comment markers, the start one naming it:
+ *
+ *   <!--bonsai-if:1--> …nodes of branch 1… <!--/bonsai-if-->
+ *
+ * Branch `-1` is "no branch" (an `if` without `else` whose tests all fail).
+ * Like `ProjectionList`, it runs only when the projection is engaged (C.3):
+ * built in `setup()`, switched in `project()`. A branch switch recreates the
+ * nodes of the new branch; keeping the same branch only projects it.
+ *
+ * @packageDocumentation
+ */
+var _ProjectionSwitch_instances, _a$1, _ProjectionSwitch_start, _ProjectionSwitch_end, _ProjectionSwitch_branch, _ProjectionSwitch_nodes, _ProjectionSwitch_first, _ProjectionSwitch_findEnd, _ProjectionSwitch_mismatch;
+const START = /^bonsai-if:(-?\d+)$/;
+const END = "/bonsai-if";
+class ProjectionSwitch {
+    /** Markers and content of a branch, as `create()` of a template inserts them. */
+    static create(branch, content) {
+        const fragment = document.createDocumentFragment();
+        fragment.append(document.createComment(`bonsai-if:${branch}`));
+        if (content !== null)
+            fragment.append(content);
+        fragment.append(document.createComment(END));
+        return fragment;
+    }
+    /**
+     * Adopts the markers starting at `start` and the branch they enclose —
+     * produced by `create()` of the template or by a server rendering (ADR-24).
+     */
+    constructor(start, setup) {
+        _ProjectionSwitch_instances.add(this);
+        _ProjectionSwitch_start.set(this, void 0);
+        _ProjectionSwitch_end.set(this, void 0);
+        _ProjectionSwitch_branch.set(this, void 0);
+        _ProjectionSwitch_nodes.set(this, void 0);
+        const match = start instanceof Comment ? START.exec(start.data) : null;
+        if (match === null)
+            throw __classPrivateFieldGet(_a$1, _a$1, "m", _ProjectionSwitch_mismatch).call(_a$1, "no start marker <!--bonsai-if:N--> where the template expects one");
+        __classPrivateFieldSet(this, _ProjectionSwitch_start, start, "f");
+        __classPrivateFieldSet(this, _ProjectionSwitch_end, __classPrivateFieldGet(_a$1, _a$1, "m", _ProjectionSwitch_findEnd).call(_a$1, __classPrivateFieldGet(this, _ProjectionSwitch_start, "f")), "f");
+        __classPrivateFieldSet(this, _ProjectionSwitch_branch, Number(match[1]), "f");
+        __classPrivateFieldSet(this, _ProjectionSwitch_nodes, setup(__classPrivateFieldGet(this, _ProjectionSwitch_branch, "f"), __classPrivateFieldGet(this, _ProjectionSwitch_instances, "m", _ProjectionSwitch_first).call(this)), "f");
+    }
+    /** Index of the active branch, `-1` for none. */
+    get branch() {
+        return __classPrivateFieldGet(this, _ProjectionSwitch_branch, "f");
+    }
+    /** Nodes of the active branch, as its setup located them. */
+    get nodes() {
+        return __classPrivateFieldGet(this, _ProjectionSwitch_nodes, "f");
+    }
+    /** End marker: the node after it is the next sibling of the zone. */
+    get end() {
+        return __classPrivateFieldGet(this, _ProjectionSwitch_end, "f");
+    }
+    /**
+     * Makes `branch` the active one. Same branch: returns its nodes, untouched.
+     * Another branch: removes the current nodes, inserts the created ones,
+     * renames the start marker and locates the new nodes.
+     */
+    project(branch, create, setup) {
+        if (branch === __classPrivateFieldGet(this, _ProjectionSwitch_branch, "f"))
+            return __classPrivateFieldGet(this, _ProjectionSwitch_nodes, "f");
+        let node = __classPrivateFieldGet(this, _ProjectionSwitch_start, "f").nextSibling;
+        while (node !== __classPrivateFieldGet(this, _ProjectionSwitch_end, "f")) {
+            const next = node.nextSibling;
+            node.remove();
+            node = next;
+        }
+        const content = create(branch);
+        if (content !== null)
+            __classPrivateFieldGet(this, _ProjectionSwitch_end, "f").before(content);
+        __classPrivateFieldGet(this, _ProjectionSwitch_start, "f").data = `bonsai-if:${branch}`;
+        __classPrivateFieldSet(this, _ProjectionSwitch_branch, branch, "f");
+        __classPrivateFieldSet(this, _ProjectionSwitch_nodes, setup(branch, __classPrivateFieldGet(this, _ProjectionSwitch_instances, "m", _ProjectionSwitch_first).call(this)), "f");
+        return __classPrivateFieldGet(this, _ProjectionSwitch_nodes, "f");
+    }
+}
+_a$1 = ProjectionSwitch, _ProjectionSwitch_start = new WeakMap(), _ProjectionSwitch_end = new WeakMap(), _ProjectionSwitch_branch = new WeakMap(), _ProjectionSwitch_nodes = new WeakMap(), _ProjectionSwitch_instances = new WeakSet(), _ProjectionSwitch_first = function _ProjectionSwitch_first() {
+    const first = __classPrivateFieldGet(this, _ProjectionSwitch_start, "f").nextSibling;
+    return first === __classPrivateFieldGet(this, _ProjectionSwitch_end, "f") ? null : first;
+}, _ProjectionSwitch_findEnd = function _ProjectionSwitch_findEnd(start) {
+    let depth = 0;
+    for (let node = start.nextSibling; node !== null; node = node.nextSibling) {
+        if (!(node instanceof Comment))
+            continue;
+        if (START.test(node.data))
+            depth++;
+        else if (node.data === END) {
+            if (depth === 0)
+                return node;
+            depth--;
+        }
+    }
+    throw __classPrivateFieldGet(_a$1, _a$1, "m", _ProjectionSwitch_mismatch).call(_a$1, "start marker <!--bonsai-if:N--> without its end marker <!--/bonsai-if-->");
+}, _ProjectionSwitch_mismatch = function _ProjectionSwitch_mismatch(detail) {
+    return new BonsaiError("TEMPLATE_MISMATCH", `the DOM does not match the template: ${detail}.`, {
+        component: "ProjectionSwitch",
+        suggestion: "The zone must come from create() of the same template, or from a server rendering of it."
     });
 };
 
@@ -621,4 +726,4 @@ _a = View, _View_checkTemplates = function _View_checkTemplates(features, select
     };
 };
 
-export { ProjectionList, View, bind, ui };
+export { ProjectionList, ProjectionSwitch, View, bind, ui };

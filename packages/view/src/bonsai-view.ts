@@ -75,6 +75,7 @@ import type { TComposerClass } from "@bonsai/composer";
 import { BonsaiError } from "@bonsai/error";
 
 export { ProjectionList, type TProjectionListOptions } from "./projection-list";
+export { ProjectionSwitch, type TSwitchCreate, type TSwitchSetup } from "./projection-switch";
 
 // ─── UI contract module (ADR-14) ───────────────────────────────────────────
 
@@ -621,15 +622,23 @@ export type TTemplateEvents<TTemplates> = TTemplates extends null
  * });
  * ```
  */
-export function bind<TVC extends TViewContract>() {
-  return <
-    K extends TFlatQueries<TVC["features"]> & string,
-    const TOn extends TBindingEvents<TVC>,
-    TData = TQueryResultFor<TVC["features"], K>
-  >(
-    binding: TQueryBinding<TVC, K, TData, TOn>
-  ): TQueryBinding<TVC, K, TData, TOn> => binding;
+export function bind<TVC extends TViewContract>(): TBind<TVC> {
+  return (binding: unknown) => binding as never;
 }
+
+/**
+ * Signatures of the helper returned by `bind<TVC>()`: with `select`, the
+ * template receives its output; without, it receives the result of the Query
+ * as is, which must therefore be the data of the template.
+ */
+export type TBind<TVC extends TViewContract> = {
+  <K extends TFlatQueries<TVC["features"]> & string, const TOn extends TBindingEvents<TVC>, TData>(
+    binding: TQueryBinding<TVC, K, TData, TOn> & { readonly select: (result: TQueryResultFor<TVC["features"], K>) => TData }
+  ): TQueryBinding<TVC, K, TData, TOn>;
+  <K extends TFlatQueries<TVC["features"]> & string, const TOn extends TBindingEvents<TVC>>(
+    binding: TQueryBinding<TVC, K, TQueryResultFor<TVC["features"], K>, TOn> & { readonly select?: undefined }
+  ): TQueryBinding<TVC, K, TQueryResultFor<TVC["features"], K>, TOn>;
+};
 
 /**
  * Single `implements` clause of a View (ADR-14, I88): the handlers of the

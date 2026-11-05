@@ -172,7 +172,7 @@ Ce document définit les conventions de codage et les bonnes pratiques à suivre
 
 ## Formatage
 
-- Prettier est utilisé programmatiquement pour le code généré (ex: `tools/pug-to-ts-template`, `gulp-prettier` dans les scripts de build) — ⏳ pas de configuration `.prettierrc` versionnée ni de vérification en pre-commit pour le code écrit à la main
+- Prettier est utilisé programmatiquement pour le code généré (ex: `gulp-prettier` dans les scripts de build ; `tools/pug-compiler` formate lui-même sa sortie) — ⏳ pas de configuration `.prettierrc` versionnée ni de vérification en pre-commit pour le code écrit à la main
 - Indentation de 2 espaces
 - Longueur de ligne maximale de 80 caractères
 - Utiliser des points-virgules (`;`) à la fin des instructions

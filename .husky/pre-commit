@@ -20,6 +20,13 @@ pnpm invariants:check || {
   exit 1
 }
 
+# ── Templates Pug compilés à jour ─────────────────────────
+echo "🔍 Compiled Pug templates (pnpm pug:check)..."
+pnpm pug:check || {
+  echo "❌ Module généré périmé (lancer pnpm pug). Commit annulé."
+  exit 1
+}
+
 # ── Gate de non-régression ────────────────────────────────
 echo "🧪 Running regression tests..."
 pnpm test:regression || {
