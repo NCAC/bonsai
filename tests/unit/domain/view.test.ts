@@ -407,7 +407,7 @@ describe("View on the kernel", () => {
     expect(d.failures()).toEqual([]);
   });
 
-  describe("a View whose element cannot be created stays alive (A1.b, C.3)", () => {
+  describe("a View whose element cannot be created is destroyed by its Composer (D12, C.3)", () => {
     class Probing extends CounterView {
       static reactions = 0;
       onCounterChangedEvent(payload: { n: number }, ctx: TEventContext<TContract>): void {
@@ -435,15 +435,17 @@ describe("View on the kernel", () => {
         t.type === "effects" ? t.report.filter((r) => r.outcome === "failed").map((r) => String((r.error as Error).message)) : []
       );
 
-    it("keeps reacting to Events: no unit fails, only effects do", () => {
+    it("the Composer destroys it on its engagement report; no unit fails", () => {
       Probing.reactions = 0;
       const d = drive({ counter: CounterFeature }, { foundation: TwoSlots, document });
-      expect(failedMessages(d).join()).toMatch(/matches 0 elements/);   // the element was never created
+      expect(failedMessages(d).join()).toMatch(/matches 0 elements/);   // the slot was never found
+      const lines = d.root.trace.flatMap((t) => (t.type === "effects" ? t.report : []));
+      expect(lines.find((l) => l.label === "materialize body/lost/c")).toMatchObject({ outcome: "not-attempted", admitted: true });
       d.send("counter", "inc");
-      expect(Probing.reactions).toBe(2);                                // both Views reacted, the lost one included
+      expect(Probing.reactions).toBe(1);                                // only the View of #main is alive
       d.send("counter", "inc");
-      expect(Probing.reactions).toBe(4);                                // and again: nothing destroyed it
-      expect(d.failures()).toEqual([]);                                 // no unit failed: the projections of the lost View are failed or unattempted effects
+      expect(Probing.reactions).toBe(2);                                // recomposed, created again, destroyed again: never reacts
+      expect(d.failures()).toEqual([]);                                 // effects failed, no unit did
     });
 
     class MainFirst extends Foundation {

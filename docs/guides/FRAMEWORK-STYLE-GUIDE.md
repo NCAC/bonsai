@@ -106,7 +106,7 @@ Bonsai repose sur un pattern universel, applicable à **chaque composant** du fr
 | Composant | Contract | Callbacks | État |
 | --- | --- | --- | --- |
 | **Feature** | `TChannelDefinition` + `listens`/`queries` | `TFeatureCallbacks<TDef, Listens, E>` | ✅ |
-| **View** | `TViewContract<F, U>` | `TViewCallbacks<TVC>` | ✅ |
+| **View** | `TViewContract<F, U, P?>` (P : paramètres de création, ADR-18) | `TViewCallbacks<TVC>` | ✅ |
 | **Composer** | `TComposerContract<F, Views>` | — (un seul point de décision : `resolve(ctx)`, imposé par la classe abstraite) | ✅ |
 | **Foundation** | — (`get composers()` seulement) | — | ✅ |
 | **Behavior** | `TBehaviorContract<F, U>` | `TBehaviorCallbacks<TBC>` | ⏳ strate 2 |

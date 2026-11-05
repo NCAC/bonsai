@@ -24,9 +24,11 @@
  *   I35  — the Composer's structural writes are the attribution of parts
  *   T7   — parts are disjoint
  *
- * Known limit (C.3): a View whose element could not be created is not yet
- * destroyed logically; the failure is reported in the kernel trace (and on
- * the console in development, through `onTrace`).
+ * The materialization of a View's part is an effect of its Composer (D12):
+ * the Composer receives its engagement report (`$effects`, C.3) and destroys
+ * logically every View whose element was not created, its materialization
+ * failed or not attempted. No retry: the next declared Event runs `resolve`
+ * again from the domain's state.
  *
  * @packageDocumentation
  */
@@ -44,7 +46,7 @@ import type {
   TQueryParamsFor,
   TQueryResultFor
 } from "@bonsai/feature";
-import type { TViewClass } from "@bonsai/view";
+import type { TViewClass, TViewParamsOf } from "@bonsai/view";
 import { BonsaiError } from "@bonsai/error";
 
 // ─── Contract types ──────────────────────────────────────────────────────────
@@ -87,16 +89,26 @@ export type TComposeContext<TCC extends TComposerContract> = {
 };
 
 /**
+ * `params` of a composition entry, as the contract of the View declares them
+ * (ADR-18, A3.d): absent when it declares none, optional when none is required.
+ */
+type TComposedParams<P> = [keyof P] extends [never]
+  ? { readonly params?: undefined }
+  : // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    {} extends P
+    ? { readonly params?: Readonly<P> }
+    : { readonly params: Readonly<P> };
+
+/**
  * One View of the composition: which View of the catalogue, under which
- * `key` (unique in the composition), with which creation `params` (values only,
- * A3.d).
+ * `key` (unique in the composition), with the creation `params` its contract
+ * declares (values only, A3.d).
  */
 export type TComposed<TCC extends TComposerContract> = {
   [K in keyof TCC["views"] & string]: {
     readonly view: K;
     readonly key: string;
-    readonly params?: Readonly<Record<string, unknown>>;
-  };
+  } & TComposedParams<TViewParamsOf<TCC["views"][K]>>;
 }[keyof TCC["views"] & string];
 
 /** Ordered composition: the Views of the slot, in display order. */
@@ -112,7 +124,14 @@ type TPresent = {
   readonly handle: ReturnType<TUnitContext["create"]>;
   readonly view: string;
   readonly params: string;
+  /** Label of the effect materializing its part, as the kernel reports it. */
+  readonly materialize: string;
+  /** Message of the unit that created it: its engagement report is a continuation of it. */
+  readonly createdBy: string;
 };
+
+/** One line of an engagement report admitted to its owner (C.3). */
+type TEffectLine = { readonly label: string; readonly outcome: "engaged" | "failed" | "not-attempted" };
 
 const stable = (value: unknown): string => JSON.stringify(value ?? null, (_k, v: unknown) =>
   v !== null && typeof v === "object" && !Array.isArray(v)
@@ -179,7 +198,13 @@ export abstract class Composer<TCC extends TComposerContract = TComposerContract
           params: entry.params,
           part: { resource: slot, portion: entry.key, ...(next === undefined ? {} : { before: next.key }) }
         });
-        const created: TPresent = { handle, view: entry.view, params: stable(entry.params) };
+        const created: TPresent = {
+          handle,
+          view: entry.view,
+          params: stable(entry.params),
+          materialize: `materialize ${slot.label}/${entry.key}`,
+          createdBy: c.cause.id
+        };
         present.set(entry.key, created);
         c.journal(() => { present.delete(entry.key); });
       });
@@ -192,9 +217,25 @@ export abstract class Composer<TCC extends TComposerContract = TComposerContract
       }
     }
 
+    // C.3, D12: a View whose element was not created is destroyed logically, with its
+    // descendants. Only the instance this report is about: a View recreated since
+    // under the same key belongs to a later unit, hence to a later report.
+    const engaged = (lines: unknown, c: TUnitContext): void => {
+      for (const line of lines as readonly TEffectLine[]) {
+        if (line.outcome === "engaged") continue;
+        for (const [key, current] of [...present]) {
+          if (current.materialize !== line.label || current.createdBy !== c.cause.parentId) continue;
+          c.destroy(current.handle);
+          present.delete(key);
+          c.journal(() => { present.set(key, current); });
+        }
+      }
+    };
+
     return {
       name: this.constructor.name,
       listens,
+      locals: { $effects: engaged },
       init: (c) => reconcile(c)
     };
   }

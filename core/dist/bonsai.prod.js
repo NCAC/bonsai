@@ -17089,9 +17089,11 @@ _a = View, _View_checkTemplates = function _View_checkTemplates(features, select
  *   I35  — the Composer's structural writes are the attribution of parts
  *   T7   — parts are disjoint
  *
- * Known limit (C.3): a View whose element could not be created is not yet
- * destroyed logically; the failure is reported in the kernel trace (and on
- * the console in development, through `onTrace`).
+ * The materialization of a View's part is an effect of its Composer (D12):
+ * the Composer receives its engagement report (`$effects`, C.3) and destroys
+ * logically every View whose element was not created, its materialization
+ * failed or not attempted. No retry: the next declared Event runs `resolve`
+ * again from the domain's state.
  *
  * @packageDocumentation
  */
@@ -17144,7 +17146,13 @@ class Composer {
                     params: entry.params,
                     part: { resource: slot, portion: entry.key, ...(next === undefined ? {} : { before: next.key }) }
                 });
-                const created = { handle, view: entry.view, params: stable(entry.params) };
+                const created = {
+                    handle,
+                    view: entry.view,
+                    params: stable(entry.params),
+                    materialize: `materialize ${slot.label}/${entry.key}`,
+                    createdBy: c.cause.id
+                };
                 present.set(entry.key, created);
                 c.journal(() => { present.delete(entry.key); });
             });
@@ -17155,9 +17163,26 @@ class Composer {
                 listens.push({ namespace, event, handler: (_payload, c) => reconcile(c) });
             }
         }
+        // C.3, D12: a View whose element was not created is destroyed logically, with its
+        // descendants. Only the instance this report is about: a View recreated since
+        // under the same key belongs to a later unit, hence to a later report.
+        const engaged = (lines, c) => {
+            for (const line of lines) {
+                if (line.outcome === "engaged")
+                    continue;
+                for (const [key, current] of [...present]) {
+                    if (current.materialize !== line.label || current.createdBy !== c.cause.parentId)
+                        continue;
+                    c.destroy(current.handle);
+                    present.delete(key);
+                    c.journal(() => { present.set(key, current); });
+                }
+            }
+        };
         return {
             name: this.constructor.name,
             listens,
+            locals: { $effects: engaged },
             init: (c) => reconcile(c)
         };
     }

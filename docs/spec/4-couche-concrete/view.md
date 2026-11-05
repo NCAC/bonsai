@@ -63,7 +63,7 @@ class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartVi
 | `template` | non | HTML du contenu initial de la part, projeté à la création ; vide par défaut. Emplacement provisoire du rendu (annexe A) |
 | `composers` | non | Slots de la part (§6) |
 
-Les paramètres de création que le Composer a donnés sont lisibles dans un handler par le getter protégé `params` (copie gelée, A3.d).
+Les paramètres de création que le Composer a donnés sont lisibles dans un handler par le getter protégé `params` (copie gelée, A3.d), typés par le troisième paramètre du contrat (§7).
 
 ## 3. Handlers et contextes
 
@@ -170,7 +170,12 @@ const cartViewUiElements = {
 } satisfies TUIElements<typeof cartViewUiEvents>;
 
 type TCartViewContract = TViewContract<typeof cartViewFeatures, typeof cartViewUiEvents>;
+
+// Paramètres de création (ADR-18, A3.d) : troisième paramètre, facultatif (aucun par défaut)
+type TProductViewContract = TViewContract<typeof productFeatures, typeof productUiEvents, { readonly productId: string }>;
 ```
+
+- **Paramètres de création** : le troisième paramètre `P` de `TViewContract` déclare ce que la View attend de son Composer. `this.params` et la fonction `params` d'un binding de template le reçoivent typé ; le Composer doit le donner exactement : obligatoire si un champ est requis, interdit si la View n'en déclare pas, propriété inconnue ou de mauvais type refusée (`TViewParamsOf<V>`, `TComposition`). Rien n'est vérifié à l'exécution : les params viennent d'un Composer, code typé ; un schéma valibot facultatif est une piste (ROADMAP).
 
 - `TViewCallbacks<TVC>` = `TEventCallbacks<TVC>` & `TUICallbacks<TVC["ui"], TVC>` : les handlers requis, signatures comprises (I88). Un événement non listé dans `TEventsFor<TEl>` est rejeté (I89–I91).
 - `ctx.trigger` et `ctx.query` sont typés par `TFlatTriggers`, `TFlatQueries`, `TCommandPayloadFor`, `TQueryParamsFor`, `TQueryResultFor` : une clé non déclarée, un mauvais payload ou un Event pris pour une Command sont des erreurs de compilation (I77).
@@ -182,9 +187,10 @@ type TCartViewContract = TViewContract<typeof cartViewFeatures, typeof cartViewU
 
 Passif : une View n'a ni `mount()` ni hook de cycle de vie. Elle naît quand son Composer la crée (sa description entre au noyau, son `template` est projeté, ses Composers sont créés dans l'unité du créateur) et meurt quand le Composer la détruit ou que son parent finit. Ses abonnements, ses observateurs d'hôte et sa part prennent fin avec elle ; sa part est restituée à son contenant.
 
+Une View dont l'élément n'a pas pu être créé (matérialisation de sa part en échec ou non tentée) est **détruite par son Composer**, avec sa descendance : la matérialisation est un effet du Composer (D12), qui en reçoit le bilan (`$effects`, C.3) ; la racine ne la détruit pas à sa place (A1.b). Aucune unité n'échoue ; le prochain Event déclaré du Composer relance `resolve`, qui la recrée ([composer.md](composer.md) §2).
+
 ## 9. Limites connues
 
-- Une View dont l'élément n'a pas pu être créé **reste vivante** : seul son parent peut détruire son existence (A1.b), et la racine ne le fait pas à sa place. Elle continue de recevoir ses Events, ses handlers s'exécutent, et ses projections sont des effets en échec ou non tentés, rapportés dans la trace et, en développement, signalés en console (C.3, O2) ; aucune unité n'échoue (`tests/unit/domain/view.test.ts`). Un Composer qui voudrait la retirer le décide à partir du résultat corrélé, par un nouveau message.
 - Une View dont la part n'a pas été matérialisée n'a jamais d'élément : la matérialisation d'une part n'est préparée qu'une fois, à son attribution, et rien ne la reprend si l'élément apparaît plus tard dans le document.
 - **Projections et contenu des slots (I40, I32 partiels)** : `getUI` résout son sélecteur dans toute la part, contenu des slots compris. Une projection peut donc atteindre un élément d'une View enfant, et `text()` sur un ancêtre d'un slot en efface le contenu. Ne déclarer comme clé d'interface aucun élément qui contient un slot.
 - **Valeur d'une saisie** : un fait du DOM ne transporte que `{ type, ui }` ; la valeur d'un champ n'est pas capturée avec lui (théorie C.5, forme non fixée), et la View ne lit pas le DOM (I39). Les formulaires attendent cette capture ([FORMS-GUIDE](../../guides/FORMS-GUIDE.md)).
@@ -223,7 +229,7 @@ Trois modes **mutuellement exclusifs** :
 type TViewTemplateBinding<TData = unknown> = {
   template: TProjectionTemplate<any, TData>;
   query?: string;                      // "ns:query", déclarée dans features[ns].queries
-  params?: unknown;                    // valeur, ou fonction des paramètres de création
+  params?: unknown;                    // valeur, ou fonction des paramètres de création (typés par le contrat)
   on?: readonly string[];              // "ns:event" ⊂ features[ns].listens ; non vide si `query`
   select?: (result: unknown) => TData; // dérivation de présentation pure (A4.d)
 };
@@ -507,7 +513,7 @@ type TLocalKeyHandlers<TLocal extends TJsonSerializable> = {
 
 ### 7.2 Classe View — API localState complète
 
-Titre historique conservé ; **aucune API localState complète n'est livrée**. `TViewContract` possède aujourd'hui deux champs, `features` et `ui`, et `View<TVC>` un seul générique. L'ajout d'un champ `local` au contrat est la proposition historique d'ADR-17 ; son typage final et sa compatibilité ne sont pas validés par ce lot.
+Titre historique conservé ; **aucune API localState complète n'est livrée**. `TViewContract` possède aujourd'hui trois champs, `features`, `ui` et `params`, et `View<TVC>` un seul générique. L'ajout d'un champ `local` au contrat est la proposition historique d'ADR-17 ; son typage final et sa compatibilité ne sont pas validés par ce lot.
 
 | Nom historique proposé | Portée cible, sans signature garantie |
 | --- | --- |

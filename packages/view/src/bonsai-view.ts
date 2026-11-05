@@ -516,17 +516,31 @@ export type TEventCallbacks<TVC extends TViewContract, TOn extends string = neve
 
 // ─── View composition (ADR-14) ─────────────────────────────────────────────
 
+/** Creation parameters of a View: values only (A3.d), given by its Composer. */
+export type TViewParams = Readonly<Record<string, unknown>>;
+
 /**
- * Composite View contract — `features` (channel) + `ui` (DOM).
- * A single generic on the class: `View<TViewContract<F, U>>`.
+ * Composite View contract — `features` (channel) + `ui` (DOM) + creation
+ * `params` (ADR-18). A single generic on the class: `View<TViewContract<F, U, P>>`.
+ * `P` defaults to no parameters: the Composer then gives none.
  */
 export type TViewContract<
   F extends TFeatureContract = TFeatureContract,
-  U extends TUIContract = TUIContract
+  U extends TUIContract = TUIContract,
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  P extends TViewParams = {}
 > = {
   readonly features: F;
   readonly ui: U;
+  readonly params: P;
 };
+
+/** Creation parameters declared by the contract of a View class (ADR-18). */
+export type TViewParamsOf<V extends TViewClass> = 0 extends 1 & V
+  ? TViewParams
+  : InstanceType<V> extends View<infer C>
+    ? C["params"]
+    : never;
 
 // ─── Template bindings (ADR-26, 5-rendu §7) ─────────────────────────────────
 
@@ -563,7 +577,7 @@ export type TQueryBinding<
   /** Parameters of the Query: a value, or a function of the View's creation parameters (A3.d). */
   readonly params?:
     | TQueryParamsFor<TVC["features"], K>
-    | ((viewParams: Readonly<Record<string, unknown>>) => TQueryParamsFor<TVC["features"], K>);
+    | ((viewParams: Readonly<TVC["params"]>) => TQueryParamsFor<TVC["features"], K>);
   /** Events that re-run the Query: declared in `features[ns].listens`, never empty. */
   readonly on: TOn;
   /** Pure presentation derivation of the result, without business authority (A4.d). */
@@ -789,8 +803,8 @@ export abstract class View<TVC extends TViewContract = TViewContract> {
   // ─── Handler-only API ───────────────────────────────────────────────
 
   /** Creation parameters given by the Composer, frozen (6.2). Only inside a handler. */
-  protected get params(): Readonly<Record<string, unknown>> {
-    return (this.#unit("params").params<Record<string, unknown>>() ?? {}) as Readonly<Record<string, unknown>>;
+  protected get params(): Readonly<TVC["params"]> {
+    return (this.#unit("params").params<TVC["params"]>() ?? {}) as Readonly<TVC["params"]>;
   }
 
   /**

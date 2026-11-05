@@ -63,7 +63,7 @@ Modèle : [TEMPLATE.md](TEMPLATE.md). Correspondance avec l'ancienne numérotati
 | --- | --- | --- |
 | [ADR-16](ADR-16-view-scope-projection.md) | View : part exclusive, `getUI`, niveaux N1/N2/N3 | 🟢 ⚠️ |
 | [ADR-17](ADR-17-local-state.md) | `localState` de présentation | 🟢 ⏳ |
-| [ADR-18](ADR-18-composer.md) | Composer : décideur pur, `resolve(ctx)`, composition par clé | 🟢 ⚠️ |
+| [ADR-18](ADR-18-composer.md) | Composer : décideur pur, `resolve(ctx)`, composition par clé | 🔵 ✅ |
 | [ADR-19](ADR-19-root-element.md) | Part de la View : attribuée par le Composer, créée par le noyau | 🟢 ⚠️ |
 | [ADR-20](ADR-20-foundation.md) | Foundation : un élément admis, des slots stables, aucun Channel en V1 | 🟢 ⚠️ |
 | [ADR-21](ADR-21-behavior-reutilisation.md) | Behavior et réutilisation de View | 🟢 ⏳ |

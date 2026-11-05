@@ -97,7 +97,8 @@
 
 | Type | Definition | État | Source |
 | --- | --- | --- | --- |
-| `TViewContract<F, U>` | Composition `{ features: F; ui: U }` (ADR-14). Un seul générique sur la classe : `View<TVC>` | ✅ livré (2 champs) — un 3ᵉ champ `local` est une extension cible strate 2a (view.md §7.2) | [view.md](../4-couche-concrete/view.md) |
+| `TViewContract<F, U, P>` | Composition `{ features: F; ui: U; params: P }` (ADR-14) ; `P` facultatif : paramètres de création (ADR-18). Un seul générique sur la classe : `View<TVC>` | ✅ livré (3 champs) — un champ `local` est une extension cible strate 2a (view.md §7.2) | [view.md](../4-couche-concrete/view.md) |
+| `TViewParamsOf<V>` | Paramètres de création déclarés par le contrat d'une classe de View ; type les `params` d'une composition | ✅ livré (strate 1d) | [composer.md](../4-couche-concrete/composer.md) |
 | `TViewCallbacks<TVC>` | Clause `implements` unique : `TEventCallbacks<TVC> & TUICallbacks<TVC["ui"], TVC>` (I88). Couple imposé : `extends View<TVC>` + `implements TViewCallbacks<TVC>` | ✅ | [view.md](../4-couche-concrete/view.md) |
 | `TViewClass` | `abstract new (...args: any[]) => View<any>` — surface structurelle d'une classe View concrète, indépendante de son contrat. Utilisée par le catalogue du Composer | ✅ | [view.md](../4-couche-concrete/view.md) |
 | `TViewSlotDeclaration` | Entrée de `get composers()` d'une View ou d'une Foundation : `{ slot: string; composer: TComposerClass }` | ✅ | [view.md](../4-couche-concrete/view.md) |
