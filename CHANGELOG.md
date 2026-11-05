@@ -10,6 +10,19 @@ Workflow : [ADR-33](docs/adr/ADR-33-workflow-git-ci.md)
 
 ## [Unreleased]
 
+### Added
+
+- **Strate 1c — rendu PDR** : templates N2/N3 alimentés par une Query déclarée et relancés par les Events de `on` (`get templates()`, `bind<TVC>()`, ADR-26) ; `ProjectionList` et item capturé dans le fait (`ui()(events, { data })`, ADR-23) ; compilateur Pug `tools/pug-compiler` (`pnpm pug`, `pnpm pug:check`) qui produit un `TProjectionTemplate` typé par `//- @data`, et `ProjectionSwitch` pour les `if` (ADR-22)
+
+### Changed
+
+- `bind<TVC>()` : sans `select`, le résultat de la Query doit être le type des données du template
+- `ProjectionList` : `create(item, index)` reçoit l'index de l'item
+
+### Removed
+
+- Prototype `tools/pug-to-ts-template` (compilateur Pug → VDOM), remplacé par `tools/pug-compiler`
+
 ---
 
 ## [0.2.0] — 2026-11-04 — Noyau d'exécution

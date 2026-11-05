@@ -180,7 +180,7 @@ bonsai/
 │   ├── integration/   # scénarios cross-package, bundles dev/prod
 │   └── e2e/           # 🚪 gates (panier, navigation)
 ├── lib/build/         # pipeline de build interne (Rollup + .d.ts)
-├── tools/             # build-bonsai-package, invariants, pug-to-ts-template
+├── tools/             # build-bonsai-package, invariants, pug-compiler
 └── docs/
     ├── theorie.md     # théorie — fait autorité
     ├── spec/          # spécification — les contrats

@@ -182,7 +182,7 @@ bonsai/
 │   ├── integration/   # cross-package scenarios, dev/prod bundles
 │   └── e2e/           # 🚪 gates (cart, navigation)
 ├── lib/build/         # internal build pipeline (Rollup + .d.ts)
-├── tools/             # build-bonsai-package, invariants, pug-to-ts-template
+├── tools/             # build-bonsai-package, invariants, pug-compiler
 └── docs/
     ├── theorie.md     # theory — authoritative (French)
     ├── spec/          # specification — the contracts (French)

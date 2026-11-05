@@ -18,8 +18,8 @@ export type TProjectionListOptions<TItem, TItemNodes> = {
   readonly keyAttr: string;
   /** Unique key of an item. */
   readonly key: (item: TItem) => string;
-  /** Creates the element of a new item; the list sets `keyAttr` on it. */
-  readonly create: (item: TItem) => HTMLElement;
+  /** Creates the element of a new item at `index`; the list sets `keyAttr` on it. */
+  readonly create: (item: TItem, index: number) => HTMLElement;
   /** Locates the dynamic nodes of an item element. */
   readonly setup: (el: HTMLElement) => TItemNodes;
   /**
@@ -70,7 +70,7 @@ export class ProjectionList<TItem, TItemNodes> {
       seen.add(k);
       let entry = this.#entries.get(k);
       if (entry === undefined) {
-        const el = create(item);
+        const el = create(item, index);
         el.setAttribute(keyAttr, k);
         entry = { el, nodes: setup(el) };
         this.#entries.set(k, entry);

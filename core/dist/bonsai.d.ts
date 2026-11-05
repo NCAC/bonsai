@@ -26108,8 +26108,8 @@ type TProjectionListOptions<TItem, TItemNodes> = {
     readonly keyAttr: string;
     /** Unique key of an item. */
     readonly key: (item: TItem) => string;
-    /** Creates the element of a new item; the list sets `keyAttr` on it. */
-    readonly create: (item: TItem) => HTMLElement;
+    /** Creates the element of a new item at `index`; the list sets `keyAttr` on it. */
+    readonly create: (item: TItem, index: number) => HTMLElement;
     /** Locates the dynamic nodes of an item element. */
     readonly setup: (el: HTMLElement) => TItemNodes;
     /**
@@ -26135,6 +26135,48 @@ declare class ProjectionList<TItem, TItemNodes> {
     reconcile(items: readonly TItem[]): void;
     /** Nodes of an item by its key. */
     nodes(key: string): TItemNodes | undefined;
+}
+
+/**
+ * @bonsai/view — ProjectionSwitch: conditional zone of a template (5-rendu §8.4).
+ *
+ * The compiled form of a Pug `if` / `else if` / `else` chain. The active
+ * branch sits between two comment markers, the start one naming it:
+ *
+ *   <!--bonsai-if:1--> …nodes of branch 1… <!--/bonsai-if-->
+ *
+ * Branch `-1` is "no branch" (an `if` without `else` whose tests all fail).
+ * Like `ProjectionList`, it runs only when the projection is engaged (C.3):
+ * built in `setup()`, switched in `project()`. A branch switch recreates the
+ * nodes of the new branch; keeping the same branch only projects it.
+ *
+ * @packageDocumentation
+ */
+/** Locates the dynamic nodes of a branch, from its first node (`null` if empty). */
+type TSwitchSetup<TNodes> = (branch: number, first: ChildNode | null) => TNodes;
+/** Builds the content of a branch, `null` for branch `-1`. */
+type TSwitchCreate = (branch: number) => Node | null;
+declare class ProjectionSwitch<TNodes = unknown> {
+    #private;
+    /** Markers and content of a branch, as `create()` of a template inserts them. */
+    static create(branch: number, content: Node | null): DocumentFragment;
+    /**
+     * Adopts the markers starting at `start` and the branch they enclose —
+     * produced by `create()` of the template or by a server rendering (ADR-24).
+     */
+    constructor(start: ChildNode | null, setup: TSwitchSetup<TNodes>);
+    /** Index of the active branch, `-1` for none. */
+    get branch(): number;
+    /** Nodes of the active branch, as its setup located them. */
+    get nodes(): TNodes;
+    /** End marker: the node after it is the next sibling of the zone. */
+    get end(): Comment;
+    /**
+     * Makes `branch` the active one. Same branch: returns its nodes, untouched.
+     * Another branch: removes the current nodes, inserts the created ones,
+     * renames the start marker and locates the new nodes.
+     */
+    project(branch: number, create: TSwitchCreate, setup: TSwitchSetup<TNodes>): TNodes;
 }
 
 /**
@@ -26487,7 +26529,20 @@ type TTemplateEvents<TTemplates> = TTemplates extends null ? never : {
  * });
  * ```
  */
-declare function bind<TVC extends TViewContract>(): <K extends TFlatQueries<TVC["features"]> & string, const TOn extends TBindingEvents<TVC>, TData = TQueryResultFor<TVC["features"], K>>(binding: TQueryBinding<TVC, K, TData, TOn>) => TQueryBinding<TVC, K, TData, TOn>;
+declare function bind<TVC extends TViewContract>(): TBind<TVC>;
+/**
+ * Signatures of the helper returned by `bind<TVC>()`: with `select`, the
+ * template receives its output; without, it receives the result of the Query
+ * as is, which must therefore be the data of the template.
+ */
+type TBind<TVC extends TViewContract> = {
+    <K extends TFlatQueries<TVC["features"]> & string, const TOn extends TBindingEvents<TVC>, TData>(binding: TQueryBinding<TVC, K, TData, TOn> & {
+        readonly select: (result: TQueryResultFor<TVC["features"], K>) => TData;
+    }): TQueryBinding<TVC, K, TData, TOn>;
+    <K extends TFlatQueries<TVC["features"]> & string, const TOn extends TBindingEvents<TVC>>(binding: TQueryBinding<TVC, K, TQueryResultFor<TVC["features"], K>, TOn> & {
+        readonly select?: undefined;
+    }): TQueryBinding<TVC, K, TQueryResultFor<TVC["features"], K>, TOn>;
+};
 /**
  * Single `implements` clause of a View (ADR-14, I88): the handlers of the
  * Events it listens to and of the host events it declares. With the type of
@@ -26735,5 +26790,5 @@ declare class Application<M extends TFeaturesManifest = TFeaturesManifest> {
     get started(): boolean;
 }
 
-export { Application, BonsaiError, BonsaiNamespaceError, Composer, Entity, Feature, Foundation, HistoryAdapter, Immer, ProjectionList, RESERVED_NAMESPACES, RXJS, RouteEntity, RouterFeature, Valibot, View, assertValidNamespace, bind, bindEntityState, canonicalLocation, describeEntity, describeFeature, hardInvariant, invariant, isCamelCaseNamespace, isDev, isReservedNamespace, parseLocation, serializeRoute, ui, warning };
-export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, CamelCaseNamespace, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractData, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, ReservedNamespace, StrictArrayOfKeys, StrictArrayOfValues, StrictManifest, StringDigit, StringHash, TAdapterClass, TAllLetters, TApplicationOptions, TBindingEvents, TBonsaiErrorOptions, TBonsaiNamespaceErrorCode, TCausalContext, TChannelCallbacks, TChannelDefinition, TChannelHandlerName, TChannelToken, TClass, TCommandCallbacks, TCommandPayloadFor, TComposeContext, TComposed, TComposerClass, TComposerContract, TComposerFeatures, TComposition, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntityEvent, TEntityInvariant, TEntityRecipe, TEntityState, TEntries, TEventCallbacks, TEventContext, TEventPayloadFor, TEventsFor, TExcludeKeys, TExcludeValues, TFact, TFactContext, TFalsy, TFeatureCallbacks, TFeatureClass, TFeatureContext, TFeatureContract, TFeatureQueryContext, TFeatureRef, TFeatureRefForNS, TFeaturesManifest, TFlatListens, TFlatQueries, TFlatTriggers, TFoundationOptions, TFoundationSlots, TFunctionPropertyNames, THistoryAdapterOptions, THistoryObservation, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonSerializable, TJsonValue, TListenCallbacks, TLookup, TLowerLetter, TMapEntry, TMutationParams, TNavigationMode, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TOriginKind, TParameters, TPrimitive, TProjectionListOptions, TProjectionNode, TProjectionTemplate, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TQueryBinding, TQueryCallbacks, TQueryContext, TQueryParamsFor, TQueryResultFor, TRoute, TRouterDef, TSetEntry, TSlotDeclaration, TStaticBinding, TStrictFeatureClass, TTemplateBinding, TTemplateEvents, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIEntryOptions, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewCatalog, TViewClass, TViewContract, TViewSlotDeclaration, TViewTemplates, TuplifyUnion, UnionToIntersection, ValidatedManifest, ValuesType, Whitespace };
+export { Application, BonsaiError, BonsaiNamespaceError, Composer, Entity, Feature, Foundation, HistoryAdapter, Immer, ProjectionList, ProjectionSwitch, RESERVED_NAMESPACES, RXJS, RouteEntity, RouterFeature, Valibot, View, assertValidNamespace, bind, bindEntityState, canonicalLocation, describeEntity, describeFeature, hardInvariant, invariant, isCamelCaseNamespace, isDev, isReservedNamespace, parseLocation, serializeRoute, ui, warning };
+export type { AlwaysParameters, AnyFunction, ArrayEntry, CamelCase, CamelCaseNamespace, ElementType, EmptyObject, Entry, ExcludeOptionalKeys, ExtractData, ExtractEl, HasNoDuplicates, IfEquals, IsEmptyObject, IsEqual, KeysOfUnion, LastOf, MutableKeys, OptionalKeys$1 as OptionalKeys, PickByValue, PickByValueExact, Push, RequiredFieldsOnly, RequiredKeys, ReservedNamespace, StrictArrayOfKeys, StrictArrayOfValues, StrictManifest, StringDigit, StringHash, TAdapterClass, TAllLetters, TApplicationOptions, TBind, TBindingEvents, TBonsaiErrorOptions, TBonsaiNamespaceErrorCode, TCausalContext, TChannelCallbacks, TChannelDefinition, TChannelHandlerName, TChannelToken, TClass, TCommandCallbacks, TCommandPayloadFor, TComposeContext, TComposed, TComposerClass, TComposerContract, TComposerFeatures, TComposition, TConstructor, TDOMEventFor, TDictionary, TDictionaryArray, TDictionaryValue, TEntityEvent, TEntityInvariant, TEntityRecipe, TEntityState, TEntries, TEventCallbacks, TEventContext, TEventPayloadFor, TEventsFor, TExcludeKeys, TExcludeValues, TFact, TFactContext, TFalsy, TFeatureCallbacks, TFeatureClass, TFeatureContext, TFeatureContract, TFeatureQueryContext, TFeatureRef, TFeatureRefForNS, TFeaturesManifest, TFlatListens, TFlatQueries, TFlatTriggers, TFoundationOptions, TFoundationSlots, TFunctionPropertyNames, THistoryAdapterOptions, THistoryObservation, TInstanceOrT, TJsonArray, TJsonDictionary, TJsonObject, TJsonPrimitive, TJsonSerializable, TJsonValue, TListenCallbacks, TLookup, TLowerLetter, TMapEntry, TMutationParams, TNavigationMode, TNonEmptyString, TNonFunctionPropertyNames, TNonUndefined, TNullish, TNumericDictionary, TNumericJsonDictionary, TObjectEntry, TObjectKeys, TOneLetter, TOriginKind, TParameters, TPrimitive, TProjectionListOptions, TProjectionNode, TProjectionTemplate, TPropertyName, TPropertyNameByNotType, TPropertyNameByType, TPropertyNames, TQueryBinding, TQueryCallbacks, TQueryContext, TQueryParamsFor, TQueryResultFor, TRoute, TRouterDef, TSetEntry, TSlotDeclaration, TStaticBinding, TStrictFeatureClass, TSwitchCreate, TSwitchSetup, TTemplateBinding, TTemplateEvents, TTokenDef, TUIAnimationEvents, TUIBaseEvents, TUICallbacks, TUIClipboardEvents, TUIContract, TUIDragEvents, TUIElements, TUIEntry, TUIEntryHandlers, TUIEntryOptions, TUIFocusEvents, TUIFormContainerEvents, TUIFormValueEvents, TUIKeyboardEvents, TUIMediaEvents, TUIPointerEvents, TUIScrollEvents, TUIToggleEvents, TUpperLetter, TViewCallbacks, TViewCatalog, TViewClass, TViewContract, TViewSlotDeclaration, TViewTemplates, TuplifyUnion, UnionToIntersection, ValidatedManifest, ValuesType, Whitespace };

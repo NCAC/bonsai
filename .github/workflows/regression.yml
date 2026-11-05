@@ -55,3 +55,6 @@ jobs:
 
       - name: Invariants registry
         run: pnpm invariants:check
+
+      - name: Compiled Pug templates
+        run: pnpm pug:check

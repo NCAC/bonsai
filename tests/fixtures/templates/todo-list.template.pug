@@ -1,0 +1,15 @@
+//- @data import("./todo.types").TTodoListData
+//- Compiled by `pnpm pug` into todo-list.template.ts (strate 1c, lot 4).
+
+mixin title(todo)
+  span.title= todo.title
+
+ul.Todo-list(data-count=todos.length)
+  each todo in todos
+    li.Todo-item(data-item-id=todo.id data-state=(todo.done ? "done" : "open"))
+      if todo.done
+        s
+          +title(todo)
+      else
+        +title(todo)
+      button.remove(type="button") ×

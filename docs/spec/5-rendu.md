@@ -1,6 +1,6 @@
 # Rendu — PDR, compilateur Pug, ProjectionList
 
-> 🟠 **Conception cible (strate 1c), relue contre la théorie V0.9.5 et l'API livrée (4 novembre 2026).** Seules les primitives N1 de `getUI()` sont livrées ([view.md](4-couche-concrete/view.md)). Les exemples utilisent les contextes de handler livrés (`ctx.trigger`, `ctx.mutate`, `TFact`) ; tout le reste (templates, `ProjectionList`, selectors, hydratation) est cible. Toute réalisation devra respecter trois contraintes de la théorie : une projection, y compris `template.project()`, est un **effet** engagé après la validation de l'unité (C.3) ; la View n'observe le domaine que par les Events qu'elle reçoit et par Query, dans une unité (G5, A5.a) ; elle ne lit jamais le DOM (I39), les données d'un fait étant capturées avec lui (C.5). En cas d'écart, la [théorie](../theorie.md) prévaut ([règle de confiance](../README.md#règle-de-confiance-et-dalignement)).
+> 🟢 **Livré en strate 1c (5 novembre 2026), relu contre la théorie V0.9.5.** Templates alimentés par Query (lot 2, ADR-26), `ProjectionList` et capture (lot 3, ADR-23), compilateur Pug `tools/pug-compiler` et `ProjectionSwitch` (lot 4, ADR-22). Restent cibles : l'hydratation d'un rendu serveur (strate 2c), la directive `@ui`, les animations de liste et `VirtualizedList` ([roadmap](../ROADMAP.md)). Toute réalisation devra respecter trois contraintes de la théorie : une projection, y compris `template.project()`, est un **effet** engagé après la validation de l'unité (C.3) ; la View n'observe le domaine que par les Events qu'elle reçoit et par Query, dans une unité (G5, A5.a) ; elle ne lit jamais le DOM (I39), les données d'un fait étant capturées avec lui (C.5). En cas d'écart, la [théorie](../theorie.md) prévaut ([règle de confiance](../README.md#règle-de-confiance-et-dalignement)).
 
 > ## TL;DR
 >
@@ -15,7 +15,7 @@
 | **Statut** | 🟢 Stable |
 | **Prérequis** | [1-philosophie.md](1-philosophie.md), [view.md §4](4-couche-concrete/view.md#4-projection--getui) |
 | **ADR** | [ADR-22](../adr/ADR-22-pdr.md) PDR · [ADR-23](../adr/ADR-23-listes.md) listes · [ADR-24](../adr/ADR-24-hydratation-ssr.md) hydratation · [ADR-26](../adr/ADR-26-souscription-view.md) souscription (🟡) |
-| **Prototype** | `tools/pug-to-ts-template` génère du VDOM, l'option rejetée par ADR-22 : à réécrire |
+| **Compilateur** | `tools/pug-compiler` — `pnpm pug` compile chaque `*.template.pug` en `*.template.ts` (§5) |
 
 > ### Statut normatif
 >
@@ -26,19 +26,15 @@
 
 ---
 
-> ### ⏳ Périmètre d'implémentation
+> ### Périmètre d'implémentation
 >
-> Ce document décrit le **contrat cible** du rendu. **Aucun mécanisme de ce document n'est encore implémenté**, hormis les primitives N1 de `getUI()` décrites dans [view.md](4-couche-concrete/view.md) :
->
-> | Élément | Strate cible | Sections concernées |
+> | Élément | État | Sections concernées |
 > | --- | --- | --- |
-> | Compilateur Pug → PDR (`setup`/`project`/`create`), `ProjectionList`, réconciliation keyed | Strate 1c | §4, §5, §6, §8 |
-> | Templates réactifs (Query déclarée, `on`, `select`), Render Contract | Strate 1c | §2, §7, §7bis |
-> | Hydratation SSR (H1–H5) | Strate 2c | §7bis.3 |
-> | Callbacks d'animation de liste (ADR-22) | Strate 1c | §11 |
-> | `VirtualizedList` (ADR-23) | Hors v1 ([roadmap](../ROADMAP.md)) | §11 |
->
-> Seul un prototype de compilation existe (`tools/pug-to-ts-template`). Le modèle de données des templates est tranché par l'[ADR-26](../adr/ADR-26-souscription-view.md) : chaque binding déclare la Query qui l'alimente et les Events qui la relancent (§7) ; les handlers granulaires `on{NS}{Event}Event` d'ADR-14 restent.
+> | Templates réactifs (Query déclarée, `on`, `select`), Render Contract | ✅ Strate 1c, lot 2 | §2, §7, §7bis |
+> | `ProjectionList`, réconciliation keyed, capture de l'item | ✅ Strate 1c, lot 3 | §6 |
+> | Compilateur Pug → PDR (`create`/`setup`/`project`), `ProjectionSwitch` | ✅ Strate 1c, lot 4 | §4, §5, §8, §10 |
+> | Hydratation SSR (H1–H5) | ⏳ Strate 2c | §7bis.3 |
+> | Directive `@ui`, callbacks d'animation de liste, `VirtualizedList` | Hors v1 ([roadmap](../ROADMAP.md)) | §8.2, §11 |
 
 ## 1. Résumé exécutif
 
@@ -173,28 +169,18 @@ class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartVi
 | `TProjectionTemplate` type | ✅ Défini | view.md §4 |
 | 3 modes de rendu (A, B, C) | ✅ Défini | view.md §4 |
 
-### 3.2 Ce qui manque
+### 3.2 Ce que la strate 1c a ajouté
 
-| Concept | Statut | Besoin |
+| Concept | Livré | Section |
 | --- | --- | --- |
-| Compilateur Pug → PDR | ❌ | Comment génère-t-on `setup/project/create` ? |
-| `each` → reconcile | ❌ | Comment `each item in items` devient du keyed reconcile ? |
-| `ProjectionList` API | ❌ | Interface complète et algorithme |
-| Auto-réactivité template | ❌ | Comment le template se branche aux Events ? |
+| Compilateur Pug → PDR | ✅ lot 4 | §5, §8 |
+| `each` → reconcile | ✅ lot 4 (`ProjectionList`, lot 3) | §4.3, §8.1 |
+| `if` → zone conditionnelle | ✅ lot 4 (`ProjectionSwitch`) | §8.4 |
+| Auto-réactivité template | ✅ lot 2 | §7 |
 
 ### 3.3 Héritage du prototype Pug → VDOM
 
-Un compilateur Pug → VDOM (Snabbdom) avait été protétypé en amont. L'architecture de pipeline reste pertinente :
-
-```text
-.pug → Lexer → Parser → AST → Compiler → .ts (VDOM functions)
-```
-
-**Ce qui change pour Bonsai** :
-
-- VDOM → PDR (mutations directes, pas de diff d'arbre)
-- `VNode` → `TProjectionNode` / `ProjectionList`
-- Réactivité implicite (pas d'appel manuel à `render()`)
+Un compilateur Pug → VDOM (Snabbdom) avait été prototypé en amont (`tools/pug-to-ts-template`, supprimé au lot 4). Son lexer et son parser, un fork TypeScript de `pug-lexer`/`pug-parser`, sont repris dans `tools/pug-compiler/src/pug/`. La génération est réécrite : elle produit `create`/`setup`/`project` au lieu de VNodes.
 
 ### 3.4 Le edge case des listes longues
 
@@ -263,20 +249,20 @@ Cela garantit :
 
 ### 4.3 Keyed reconcile par défaut pour `each`
 
-Toute boucle `each` **DOIT** avoir une clé explicite ou inférée :
+Toute boucle `each` **DOIT** avoir une clé, portée par l'élément racine de son corps (§8.1) :
 
 ```pug
-//- Clé explicite via data-key
-each product in items
-  li(data-key=product.id) #{product.name}
-
-//- Clé inférée via data-item-id (convention)
+//- Clé par data-item-id (convention, lue aussi par la capture `itemId`, ADR-23)
 each product in items
   li(data-item-id=product.id) #{product.name}
 
-//- ❌ Erreur de compilation si pas de clé
+//- Clé par data-key
 each product in items
-  li #{product.name}  //- Error: List requires a key for reconciliation
+  li(data-key=product.id) #{product.name}
+
+//- ❌ Erreur de compilation PUG:EACH_KEY
+each product in items
+  li #{product.name}
 ```
 
 ### 4.4 Pas d'appel manuel à `project()` — Auto-réactivité
@@ -291,141 +277,77 @@ n'appelle jamais `project()`.
 
 ## 5. Architecture du compilateur
 
-> Inspiré du prototype Pug → VDOM interne, adapté à PDR (pas VDOM).
+> Livré au lot 4 de la strate 1c : `tools/pug-compiler/`. Le compilateur tourne au build, jamais au runtime.
 
 ### 5.1 Pipeline de compilation
 
 ```text
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  .pug file  │────▶│  Pug AST    │────▶│  IR Bonsai  │────▶│  .ts file   │
-└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
-       │                  │                   │                    │
-   Source Pug        pug-lexer           Analyse des          Génération
-   idiomatique       pug-parser          directives           TypeScript
-                                         @listen, @data       setup/project/create
-                                         each, @ui
+.template.pug ──▶ lexer + parser ──▶ AST Pug ──▶ IR (fragments) ──▶ .template.ts
+                  src/pug/ (fork)                 src/ir.ts           src/generate.ts
 ```
 
-**Composants du prototype Pug → VDOM** (à adapter) :
+- `src/pug/` — lexer et parser forkés de Pug (TypeScript), erreurs `PugError` avec code `PUG:*`, position et extrait du source.
+- `src/expression.ts` — analyse des expressions JavaScript avec le parser de TypeScript : identifiants libres et renommage.
+- `src/ir.ts` — AST → représentation intermédiaire, et toutes les vérifications du §10.1.
+- `src/generate.ts` — IR → module TypeScript.
+- `cli.ts` — `pnpm pug [chemins]` écrit `x.template.ts` à côté de chaque `x.template.pug` ; `pnpm pug:check` échoue si un module généré est périmé (pre-commit et CI).
 
-- `lexer.ts` / `lexer.types.ts` — Tokenization
-- `parser.ts` / `token-stream.ts` — AST construction
-- `base-compiler.class.ts` — Visiteur d'AST
-- `template-compiler.class.ts` — Génération de code
-- `writer.class.ts` — Buffer d'écriture de code
-
-**Différences clés avec le prototype VDOM** :
-
-| Aspect | Prototype VDOM | Bonsai |
-| --- | --- | --- |
-| Output | VDOM (Snabbdom `VNode`) | PDR (`TProjectionNode`, `ProjectionList`) |
-| Réactivité | Manuelle (`render()`) | Déclarée dans View (`listen`, `dataPath`) |
-| Diff | Runtime (VDOM diff) | Build-time (keyed reconcile généré) |
-| Events | Dans le template (`VNodeOn`) | Délégation (séparé du template) |
-| Métadonnées | Dans le template | Dans la View (TypeScript typé) |
+Le module généré est versionné à côté de son template et vérifié par `tsc` comme le reste du code : les expressions du template sont typées contre le type déclaré par `//- @data` (§8).
 
 ### 5.2 Représentation intermédiaire (IR)
 
-L'IR Bonsai capture les informations nécessaires à la génération.
-**Note** : l'IR ne contient **pas** de métadonnées de réactivité (elles sont dans la View).
+L'IR découpe le template en **fragments** : la racine, le corps de chaque `each` (un par item) et chaque branche d'un `if`. Un fragment reçoit `$data` et les variables de portée de son parent (variable et index de boucle, paramètres de mixin, renommés en noms uniques).
 
 ```typescript
-type TBonsaiIR = {
-  // Éléments statiques (HTML pur)
-  staticNodes: StaticNode[];
-  
-  // Zones dynamiques (interpolations, bindings)
-  dynamicBindings: DynamicBinding[];
-  
-  // Listes (each)
-  lists: TListDirective[];
-  
-  // Références @ui (optionnel, pour validation)
-  uiRefs: UIRef[];
-}
-
-type TListDirective = {
-  // Variable d'itération
-  itemVar: string;        // 'product'
-  
-  // Expression source
-  sourceExpr: string;     // 'items'
-  
-  // Clé pour reconcile
-  keyExpr: string;        // 'product.id'
-  
-  // Template de l'item
-  itemTemplate: TBonsaiIR;
-}
+type TFragment = {
+  kind: "root" | "item" | "branch";
+  params: TVar[];        // variables reçues du fragment parent
+  locals: TLocal[];      // paramètres des mixins appelés dans ce fragment
+  slots: TSlot[];        // valeurs dynamiques : texte, attribut, test d'un if, source d'un each
+  nodes: TNode[];        // element | text | dyntext | switch | list
+  key: TKey | null;      // pour un item : sa clé, calculée sans l'index
+};
 ```
+
+Les mixins sont **inlinés** à la compilation : leurs paramètres deviennent des locaux du fragment appelant, leur `block` est compilé dans la portée de l'appelant.
 
 ### 5.3 Génération de code
 
-Pour chaque template, le compilateur génère **uniquement** la mécanique de projection
-(pas de métadonnées de réactivité — elles sont dans la View) :
+Pour chaque fragment `F`, le module contient cinq fonctions :
+
+| Fonction | Rôle |
+| --- | --- |
+| `$eF(...)` | évaluateur : toutes les valeurs dynamiques de F, fonction pure de ses paramètres |
+| `$cF(...)` | `create` : construit le DOM de F par l'API DOM (`createElement`, `textContent`, jamais `innerHTML`) |
+| `$sF(…)` | `setup` : localise les nœuds dynamiques de F dans un DOM existant, par parcours des frères |
+| `$pF(n, …)` | `project` : mutations gardées (`if (n.x.textContent !== v) …`) |
+| `$kF(...)` | pour un item : sa clé, sans l'index |
+
+Le type de chaque variable de boucle est **inféré** par TypeScript depuis l'évaluateur du parent (`$Item<ReturnType<typeof $e0>["s1"]>`) : un item imbriqué est typé sans annotation. Extrait généré depuis `tests/fixtures/templates/todo-list.template.pug` :
 
 ```typescript
-// Généré automatiquement depuis cart-items.template.pug
-export const CartItemsTemplate: TProjectionTemplate<CartItemsNodes, CartItem[]> = {
-  /**
-   * Localise les nœuds dynamiques dans le conteneur existant (SSR/hydratation)
-   */
-  setup(container: HTMLElement): CartItemsNodes {
-    return {
-      list: new ProjectionList(container, {
-        keyAttr: 'data-item-id',
-        itemSetup: (el) => ({
-          name: el.querySelector('.name')!,
-          qty: el.querySelector('.qty')!,
-        })
-      })
-    };
-  },
-  
-  /**
-   * Projette les données sur les nœuds (mise à jour)
-   */
-  project(nodes: CartItemsNodes, items: CartItem[]): void {
-    nodes.list.reconcile(items, {
-      key: item => item.id,
-      update: (itemNodes, item) => {
-        if (itemNodes.name.textContent !== item.name) {
-          itemNodes.name.textContent = item.name;
-        }
-        if (itemNodes.qty.textContent !== String(item.quantity)) {
-          itemNodes.qty.textContent = String(item.quantity);
-        }
-      }
-    });
-  },
-  
-  /**
-   * Crée le DOM complet (mode SPA, pas de SSR)
-   */
-  create(items: CartItem[]): HTMLElement {
-    const ul = document.createElement('ul');
-    ul.className = 'Cart-items';
-    
-    for (const item of items) {
-      ul.appendChild(this.createItem(item));
-    }
-    
-    return ul;
-  },
-  
-  // Helper interne pour créer un item
-  createItem(item: CartItem): HTMLElement {
-    const li = document.createElement('li');
-    li.className = 'Cart-item';
-    li.dataset.itemId = item.id;
-    li.innerHTML = `
-      <span class="name">${escapeHtml(item.name)}</span>
-      <span class="qty">${item.quantity}</span>
-    `;
-    return li;
-  }
+export type TTodoListTemplateData = import("./todo.types").TTodoListData;
+
+const $e0 = ($data: TData) => {
+  const { todos } = $data;
+  return { s0: todos.length, s1: todos };
+};
+
+function $p0($n: ReturnType<typeof $s0>, $data: TData): void {
+  const $v = $e0($data);
+  $attr($n.n1, "data-count", $v.s0);
+  $n.l1.$ = [$data];
+  $n.l1.list.reconcile($v.s1);       // ProjectionList, clé data-item-id
+}
+
+export const TodoListTemplate: TProjectionTemplate<TData, ReturnType<typeof $s0>> = {
+  create: (data) => $c0(data),
+  setup: (container) => $s0(container),
+  project: (nodes, data) => $p0(nodes, data)
 };
 ```
+
+Le code généré n'importe que `ProjectionList`, `ProjectionSwitch` et `TProjectionTemplate` de `@bonsai/view` (option `--runtime` pour un autre module) ; il compile en mode `strict`.
 
 ---
 
@@ -596,7 +518,8 @@ class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartVi
 
 ```pug
 //- cart-items.template.pug
-ul.Cart-items(@ui="items")
+//- @data import("./cart.types").TCartItemsData
+ul.Cart-items
   each item in items
     li.Cart-item(data-item-id=item.id)
       img(src=item.imageUrl alt=item.name)
@@ -1100,111 +1023,100 @@ function refreshTemplates(view: View, event: string, ctx: TUnitContext): void {
 
 ---
 
-## 8. Syntaxe Pug (standard)
+## 8. Syntaxe Pug
 
-> Le template Pug reste **100% standard** — aucune extension de syntaxe.
-> La réactivité est déclarée dans la View (TypeScript).
+> Pug standard, réduit à ce qui se projette chirurgicalement, plus une déclaration de type en commentaire.
+> La réactivité (Query, `on`, `select`) est déclarée dans la View (§7) ; le template ne porte que la structure.
 
-### 8.1 Directive `each` avec clé (inférée)
-
-Le compilateur Bonsai **infère la clé** depuis un attribut de l'élément racine de la boucle.
-Cela reste du Pug standard tout en garantissant une réconciliation performante.
-
-**Attributs reconnus** (par ordre de priorité) :
-
-1. `data-item-id` — Convention Bonsai (sémantique)
-2. `data-key` — Alternative générique
-3. `id` — Fallback si unique par item
+**Type des données.** Un commentaire non rendu en tête déclare le type TypeScript des données : la sortie de `select`, ou le résultat de la Query. Les noms libres des expressions sont les champs de ce type (les *locals* de Pug) ; les globales ECMAScript (`Math`, `JSON`, `String`…) restent des globales.
 
 ```pug
-//- ✅ Clé via data-item-id (recommandé)
-each product in items
-  li.Cart-item(data-item-id=product.id)
-    span.name #{product.name}
-
-//- ✅ Clé via data-key (alternative)
-each product in items
-  li.Cart-item(data-key=product.id)
-    span.name #{product.name}
-
-//- ✅ Clé via id (si unique par item)
-each product in items
-  li.Cart-item(id="product-" + product.id)
-    span.name #{product.name}
-
-//- ❌ Erreur de compilation — pas de clé détectable
-each product in items
-  li.Cart-item
-    span.name #{product.name}
-//- Error: List requires a key. Add 'data-item-id' or 'data-key' attribute.
+//- @data import("./cart.types").TCartItemsData
+ul.Cart-items
+  each item in items
+    li(data-item-id=item.id) #{item.name.toUpperCase()}
 ```
 
-> **Note** : Contrairement à d'autres frameworks qui acceptent un `key=` dans la boucle,
-> Bonsai utilise uniquement des attributs HTML standards pour rester compatible Pug.
+Le compilateur recopie ce type dans le module généré (`export type TCartItemsTemplateData`) ; `tsc` vérifie chaque expression contre lui, et `bind<TVC>()` vérifie la sortie de `select` contre lui. Sans `select`, le résultat de la Query doit être ce type (`select` devient obligatoire sinon). Un template sans `@data` ne lit aucune donnée (`PUG:NO_DATA_TYPE` sinon).
 
-### 8.2 Directive `@ui` (obligatoire)
+**Périmètre.**
 
-Chaque élément référencé dans `uiElements` de la View **doit** avoir un attribut `@ui`
-correspondant dans le template. Cela garantit la synchronisation Template ↔ View au build time.
-
-```pug
-//- ✅ Chaque uiElement a son @ui correspondant
-.Cart
-  ul.Cart-items(@ui="items")
-    each product in items
-      li.Cart-item(data-item-id=product.id)
-        span.name #{product.name}
-  
-  span.Cart-total(@ui="total") #{total} €
-```
-
-```typescript
-// La View déclare les mêmes clés dans son contrat UI (ADR-14)
-const cartViewUiEvents = {
-  items: ui<HTMLUListElement>()([]),
-  total: ui<HTMLSpanElement>()([]),
-} satisfies TUIContract;
-
-const cartViewUiElements = {
-  items: '@ui',   // sentinelle : résolu via @ui="items" dans le template
-  total: '@ui',   // sentinelle : résolu via @ui="total" dans le template
-} satisfies TUIElements<typeof cartViewUiEvents>;
-
-class CartView extends View<TCartViewContract> implements TViewCallbacks<TCartViewContract> {
-  get features()   { return cartViewFeatures; }
-  get uiEvents()   { return cartViewUiEvents; }
-  get uiElements() { return cartViewUiElements; }
-}
-```
-
-> **Note** : La valeur `'@ui'` est une **valeur sentinelle** (pas un sélecteur CSS).
-> Elle indique au framework de résoudre l'élément via l'attribut `@ui` correspondant
-> dans le template Pug, plutôt que via `querySelector()`. Les `uiElements` dont la valeur
-> est un sélecteur CSS classique (ex: `'.Cart-total'`) restent valides pour les Views
-> sans template (Mode A, N1).
-
-**Erreurs de compilation** :
-
-| Cas | Message |
+| Construction | Support |
 | --- | --- |
-| `@ui` dans Pug sans `uiElement` | `Error: @ui 'foo' in template but not declared in uiElements` |
-| `uiElement` sans `@ui` dans Pug | `Error: uiElement 'bar' requires @ui="bar" in template` |
+| Tags, `.classe`, `#id`, attributs statiques, texte, `\|`, `#[…]` | ✅ |
+| `= expr`, `#{expr}`, `attr=expr` : expressions JavaScript libres, typées | ✅ |
+| `each x, i in expr` à clé, imbriqué | ✅ §8.1 |
+| `if` / `else if` / `else`, `unless` | ✅ §8.4 |
+| `mixin`, `+appel(args)`, `block` | ✅ §8.5 |
+| Commentaires `//` et `//-` | ignorés (aucun nœud créé) |
+| `class=expr` dynamique | ❌ `PUG:DYNAMIC_CLASS` : une classe est un rôle stable, l'état passe par `data-*` |
+| `!=`, `!{}`, HTML brut dans le texte | ❌ un template projette du texte, jamais du HTML |
+| `- code`, `case`, `while`, `include`, `extends`/`block` nommé, `&attributes`, `each … else`, `svg`/`math` | ❌ erreur de compilation (§10.1) |
 
-> **Philosophie** : Un petit effort de discipline (ajouter `@ui`) pour une garantie forte
-> de synchronisation. Les erreurs de typo/refactoring sont détectées au build, pas en production.
+Une valeur d'attribut contenant des espaces s'écrit entre parenthèses : `data-state=(done ? "done" : "open")`.
 
-### 8.3 Bindings conditionnels
+### 8.1 `each` avec clé
+
+Le corps d'un `each` est **un seul élément**, la racine de l'item, qui porte sa clé dans `data-item-id` (convention, lue aussi par la capture `itemId`, ADR-23) ou `data-key`. La clé dépend de l'item, jamais de l'index. Le `each` est le **seul contenu** de son élément parent (le conteneur de la `ProjectionList`), ou du template entier.
 
 ```pug
-//- Classe conditionnelle
-li.Cart-item(class={'is-selected': product.selected})
+//- ✅
+ul
+  each product, i in items
+    li.Cart-item(data-item-id=product.id data-pos=i)
+      span.name #{product.name}
 
-//- Attribut conditionnel
-button.remove(disabled=product.locked)
+//- ❌ PUG:EACH_KEY — pas de clé
+//- ❌ PUG:KEY_USES_INDEX — data-key=i
+//- ❌ PUG:EACH_SINGLE_ROOT — deux éléments dans le corps
+//- ❌ PUG:EACH_NOT_ALONE — un frère du each dans le même parent
+```
+
+> **Note** : `id` n'est pas une clé d'item : un `id` est un ancrage stable de la page (conventions DOM).
+
+### 8.2 Directive `@ui` (non livrée)
+
+La vérification au build de la correspondance entre les clés UI de la View et des marqueurs `@ui` du template demande de compiler le template avec le contrat de la View. Elle est reportée ([roadmap](../ROADMAP.md)) : les clés UI restent résolues par les sélecteurs de `uiElements`. Un attribut `@ui` est refusé (`PUG:ATTRIBUTE_NAME`).
+
+### 8.3 Attributs
+
+```pug
+//- Attribut d'état : true → présent vide, false/null/undefined → absent, sinon String(valeur)
+li.Cart-item(data-state=product.state disabled=product.locked)
 
 //- Visibilité
 .error-message(hidden=!hasError) #{errorMessage}
 ```
+
+### 8.4 `if` / `else` — zone conditionnelle
+
+Une chaîne `if` / `else if` / `else` devient une `ProjectionSwitch` (`@bonsai/view`) : la branche active est encadrée par deux commentaires, `<!--bonsai-if:N-->` (N = index de la branche, `-1` pour aucune) et `<!--/bonsai-if-->`. Garder la même branche ne fait que la projeter ; en changer recrée les nœuds de la nouvelle branche. `setup()` lit l'index de branche dans le marqueur ; un DOM sans ces marqueurs est une erreur `TEMPLATE_MISMATCH`.
+
+```pug
+if cart.items.length === 0
+  p.empty Panier vide
+else
+  ul
+    each item in cart.items
+      li(data-item-id=item.id)= item.name
+```
+
+Un `each` sous un `if` doit avoir un élément parent dans la branche (`PUG:EACH_IN_BRANCH`).
+
+### 8.5 Mixins
+
+Inlinés à la compilation. Les paramètres sont des noms simples, évalués dans la portée de l'appelant ; `block` insère le contenu de l'appel, compilé dans la portée de l'appelant. Un paramètre peut porter la clé d'un item :
+
+```pug
+mixin row(it)
+  li(data-item-id=it.id)= it.name
+
+ul
+  each item in items
+    +row(item)
+```
+
+Refusés : définition hors du niveau racine, récursion, paramètre par défaut ou *rest*, attributs sur l'appel.
 
 ---
 
@@ -1235,18 +1147,27 @@ if (nodes.name.textContent !== item.name) {
 
 ### 10.1 Erreurs de compilation
 
-| Erreur | Message |
+Toute erreur est une `PugError` : code `PUG:*`, ligne, colonne et extrait du template avec un curseur. Les erreurs de type des expressions sont celles de `tsc` sur le module généré.
+
+| Code | Cause |
 | --- | --- |
-| `each` sans clé | `Error: List directive requires a key. Add 'key=expr' or use 'data-item-id' / 'data-key' attribute.` |
-| @ui non résolu | `Error: @ui 'foo' referenced but not found in uiElements declaration.` |
-| Syntaxe invalide | `Error: Invalid Pug syntax at line X.` |
+| `EACH_KEY` | `each` sans `data-item-id` / `data-key` dynamique sur la racine de l'item |
+| `KEY_USES_INDEX` | clé d'item dépendant de l'index (directement ou par un paramètre de mixin) |
+| `EACH_SINGLE_ROOT` · `EACH_NOT_ALONE` · `EACH_IN_BRANCH` · `EACH_ELSE` | forme d'un `each` (§8.1, §8.4) |
+| `NO_DATA_TYPE` · `DUPLICATE_DATA` · `EMPTY_DATA` | déclaration `//- @data` absente alors que le template lit des données, double, ou vide |
+| `CODE` · `UNESCAPED` · `INLINE_HTML` · `ENTITY` | code non bufferisé, sortie non échappée, HTML brut, entité HTML inconnue |
+| `DYNAMIC_CLASS` · `ATTRIBUTE_NAME` · `DUPLICATE_ATTRIBUTE` · `TAG_NAME` | attributs et balises |
+| `UNKNOWN_MIXIN` · `RECURSIVE_MIXIN` · `DUPLICATE_MIXIN` · `NESTED_MIXIN` · `MIXIN_PARAMS` · `MIXIN_ARGUMENTS` · `MIXIN_ATTRIBUTES` | mixins (§8.5) |
+| `EXPRESSION` | expression JavaScript invalide |
+| `UNSUPPORTED` | construction hors périmètre (`case`, `while`, `include`, `extends`, `doctype`…) |
+| codes du lexer/parser | syntaxe Pug invalide (`UNEXPECTED_TEXT`, `BLOCK_OUTSIDE_MIXIN`…) |
 
 ### 10.2 Erreurs runtime
 
 | Erreur | Cause | Message |
 | --- | --- | --- |
 | Clé dupliquée | Deux items avec la même clé | `[DUPLICATE_KEY] ProjectionList — duplicate key "X"` : erreur d'engagement (C.3) |
-| Élément manquant | DOM modifié hors framework | `Error: Expected element with key 'X' not found.` |
+| DOM non conforme | Zone conditionnelle sans ses marqueurs (DOM modifié hors framework, rendu serveur différent) | `[TEMPLATE_MISMATCH] ProjectionSwitch — the DOM does not match the template` |
 
 ---
 
@@ -1333,7 +1254,7 @@ class CartView extends View {
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│  ul.Cart-items (@ui="items")     ← Conteneur (View.nodes)  │
+│  ul.Cart-items                   ← Conteneur de la liste   │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │  li.Cart-item (data-item-id="1")  ← el dans onInsert│   │
 │  └─────────────────────────────────────────────────────┘   │
@@ -1381,12 +1302,12 @@ onInsert: (el, item: CartItem) => { /* item = { id, name, qty } */ }
 
 ```pug
 //- Liste simple (défaut)
-ul.Cart-items(@ui="items")
+ul.Cart-items
   each item in items
     li.Cart-item(data-item-id=item.id)
 
-//- Liste virtualisée (opt-in)
-ul.Feed-posts(@ui="posts" @virtualized)
+//- Liste virtualisée (opt-in, hors v1 : syntaxe à définir)
+ul.Feed-posts
   each post in posts
     li.Feed-post(data-item-id=post.id)
 ```
@@ -1399,36 +1320,28 @@ Chaque niveau génère une `ProjectionList` imbriquée avec réconciliation keye
 #### Exemple
 
 ```pug
-//- Template avec each imbriqué
+//- @data { categories: readonly TCategory[] }
 each category in categories
   .Product-category(data-item-id=category.id)
     h2 #{category.name}
-    each product in category.products
-      .Product-item(data-item-id=product.id) #{product.name}
+    .Product-items
+      each product in category.products
+        .Product-item(data-item-id=product.id) #{category.name} / #{product.name}
 ```
 
 #### Code généré
 
+Chaque niveau a sa `ProjectionList`, construite dans le `setup` de l'item parent. Ses
+callbacks reçoivent la portée englobante (`$data`, l'item parent) par une cellule que le
+`project` du parent renseigne avant `reconcile` : l'item interne lit l'item externe.
+
 ```typescript
-// Le compilateur génère des ProjectionList imbriquées
-export const CatalogTemplate: TProjectionTemplate<CatalogNodes, Category[]> = {
-  project(nodes, categories) {
-    nodes.categoryList.reconcile(categories, {
-      key: cat => cat.id,
-      update: (catNodes, category) => {
-        catNodes.name.textContent = category.name;
-        
-        // ProjectionList imbriquée pour les produits
-        catNodes.productList.reconcile(category.products, {
-          key: prod => prod.id,
-          update: (prodNodes, product) => {
-            prodNodes.name.textContent = product.name;
-          }
-        });
-      }
-    });
-  }
-};
+function $p1($n: ReturnType<typeof $s1>, $data: TData, category$1: $Item<ReturnType<typeof $e0>["s0"]>, index$2: number): void {
+  const $v = $e1($data, category$1, index$2);
+  if ($n.n1.textContent !== $v.s2) $n.n1.textContent = $v.s2;
+  $n.l3.$ = [$data, category$1, index$2];   // portée transmise aux items internes
+  $n.l3.list.reconcile($v.s3);              // category.products
+}
 ```
 
 #### Contrainte : Clé à chaque niveau
@@ -1440,12 +1353,11 @@ each category in categories
     each product in category.products
       .Product(data-item-id=product.id)
 
-//- ❌ Erreur de compilation — clé manquante au niveau 2
+//- ❌ PUG:EACH_KEY — clé manquante au niveau 2
 each category in categories
   .Category(data-item-id=category.id)
     each product in category.products
       .Product #{product.name}
-//- Error: Nested list requires a key. Add 'data-item-id' or 'data-key' attribute.
 ```
 
 #### Cas d'usage

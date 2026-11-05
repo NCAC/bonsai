@@ -34,7 +34,7 @@ bonsai/
 │   ├── foundation/   view/      router/   error/
 │   └── immer/  rxjs/  valibot/  types/    # wrappers de bibliothèques tierces
 ├── lib/                    # pipeline de build (Rollup + rollup-plugin-dts)
-├── tools/                  # pug-to-ts-template (prototype), build-bonsai-package, invariants
+├── tools/                  # pug-compiler, build-bonsai-package, invariants
 ├── tests/                  # unit/{kernel,domain,error,strate-0}, types, integration, e2e, fixtures, helpers
 ├── docs/                   # theorie.md (fait autorité), spec (le QUOI), adr (le POURQUOI), guides (le COMMENT)
 └── .github/agents/         # agents conversationnels
