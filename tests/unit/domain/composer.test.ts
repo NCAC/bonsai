@@ -4,12 +4,12 @@
  * @jest-environment jsdom
  */
 
-import { describe, it, expect, beforeEach } from "@jest/globals";
+import { describe, it, expect, beforeEach, afterEach, jest } from "@jest/globals";
 import { drive } from "../../helpers/drive";
 import { resetDOM } from "../../helpers/dom-setup";
 import { Entity } from "@bonsai/entity";
 import { Feature, type TFeatureCallbacks, type TFeatureContext } from "@bonsai/feature";
-import type { TCausalContext, TChannelToken } from "@bonsai/kernel";
+import { DESCRIBE, type TCausalContext, type TChannelToken, type TUnitContext } from "@bonsai/kernel";
 import { Composer, type TComposerContract, type TComposeContext, type TComposition } from "@bonsai/composer";
 import { Foundation } from "@bonsai/foundation";
 import { BonsaiError } from "@bonsai/error";
@@ -22,7 +22,7 @@ class ListEntity extends Entity<{ rows: TRow[] }> {
   protected defineInitialState() { return { rows: [{ id: "a", variant: "x" }, { id: "b", variant: "x" }] }; }
 }
 type TListDef = {
-  commands: { set: TRow[] };
+  commands: { set: TRow[]; setTwice: TRow[] };
   events: { changed: null };
   queries: { rows: { params: null; result: TRow[] } };
 };
@@ -39,14 +39,20 @@ class ListFeature
     ctx.mutate("set", (d) => { d.rows = rows; });
     ctx.emit("changed", null);
   }
+  /** Two Events in one unit: both are reserved before the first is delivered (C.6). */
+  onSetTwiceCommand(rows: TRow[], ctx: TFeatureContext<TListDef, ListEntity>): void {
+    ctx.mutate("set", (d) => { d.rows = rows; });
+    ctx.emit("changed", null);
+    ctx.emit("changed", null);
+  }
   onRowsQuery(): TRow[] { return this.entity.state.rows; }
 }
 
 // ─── Views: one element per row, marked with the variant it was created with ─
 
-type TNoContract = TViewContract<Record<string, never>, Record<string, never>>;
+type TRowContract = TViewContract<Record<string, never>, Record<string, never>, Readonly<Record<string, string>>>;
 const created: string[] = [];
-class RowView extends View<TNoContract> {
+class RowView extends View<TRowContract> {
   get features() { return {}; }
   get uiEvents() { return {}; }
   get uiElements() { return {}; }
@@ -222,6 +228,82 @@ describe("Composer on the kernel", () => {
     expect(parts()[0]).toBe(a);
     expect(parts()[1]).toBe(b);
     expect(d.failures()).toEqual([]);
+  });
+
+  describe("C.3, D12 — a View whose element could not be created", () => {
+    /** Makes the next insertion of the part of `key` throw, as a host refusing it would. */
+    const refuseNext = (key: string): void => {
+      const insert = Node.prototype.insertBefore;
+      jest.spyOn(Node.prototype, "insertBefore").mockImplementation(function (this: Node, node, child) {
+        if (node instanceof Element && node.getAttribute("data-bonsai-part") === key) {
+          (Node.prototype.insertBefore as jest.Mock).mockRestore();
+          throw new Error(`host refused ${key}`);
+        }
+        return insert.call(this, node, child) as never;
+      } as typeof Node.prototype.insertBefore);
+    };
+    const lines = (d: ReturnType<typeof setup>, key: string) =>
+      d.root.trace.flatMap((t) => (t.type === "effects" ? t.report : [])).filter((l) => l.label === `materialize body/main/${key}`);
+    afterEach(() => { jest.restoreAllMocks(); });
+
+    it("is destroyed by its Composer, which received the failure; the next declared Event creates it again", () => {
+      const d = setup();
+      refuseNext("c");
+      d.send("list", "set", [{ id: "a", variant: "x" }, { id: "b", variant: "x" }, { id: "c", variant: "x" }]);
+      expect(lines(d, "c")).toEqual([expect.objectContaining({ outcome: "failed", admitted: true })]);
+      expect(keys()).toEqual(["a", "b"]);
+      expect(d.failures()).toEqual([]);
+      // No retry of its own: the composition is recomputed from the domain on the next declared Event.
+      d.send("list", "set", [{ id: "a", variant: "x" }, { id: "b", variant: "x" }, { id: "c", variant: "x" }]);
+      expect(keys()).toEqual(["a", "b", "c"]);
+      expect(lines(d, "c").map((l) => l.outcome)).toEqual(["failed", "engaged"]);
+    });
+
+    it("a late report spares the instance created since under the same key", () => {
+      let round = 0;
+      paramsOf = (r) => ({ variant: r.variant, round: String(r.id === "c" ? round++ : 0) });
+      const d = setup();
+      refuseNext("c");
+      // First Event: c created, its materialization refused. Second Event, already reserved:
+      // c gets other params, so it is destroyed and created again, for real this time.
+      // Only then is the report of the first one admitted to the Composer.
+      d.send("list", "setTwice", [{ id: "a", variant: "x" }, { id: "b", variant: "x" }, { id: "c", variant: "x" }]);
+      expect(lines(d, "c").map((l) => l.outcome)).toEqual(["failed", "engaged"]);
+      expect(keys()).toEqual(["a", "b", "c"]);
+      expect(d.failures()).toEqual([]);
+    });
+    it("G7 — a report unit failing midway restores the bookkeeping it changed", () => {
+      // White box: a unit context that fails the second destruction, as a kernel refusing it would.
+      const spec = new ListComposer()[DESCRIBE]();
+      const rollback: Array<() => void> = [];
+      const destroyed: string[] = [];
+      let refuse = "";
+      const unit = (id: string, parentId: string | null) => ({
+        cause: { id, parentId, originId: "o", originKind: "startup", depth: 0 } as TCausalContext,
+        designation: () => ({}),
+        resolve: () => ({ id: "slot", label: "body/main" }),
+        query: () => [{ id: "a", variant: "x" }, { id: "b", variant: "x" }],
+        create: (_spec: unknown, options: { part: { portion: string } }) => options.part.portion,
+        destroy: (handle: string) => {
+          if (handle === refuse) throw new Error(`cannot destroy ${handle}`);
+          destroyed.push(handle);
+        },
+        journal: (undo: () => void) => { rollback.push(undo); }
+      }) as unknown as TUnitContext;
+      spec.init!(unit("u1", null));
+      const report = [
+        { label: "materialize body/main/a", outcome: "failed" },
+        { label: "materialize body/main/b", outcome: "not-attempted" }
+      ];
+      rollback.length = 0;
+      refuse = "b";
+      expect(() => spec.locals!["$effects"]!(report, unit("r1", "u1"))).toThrow("cannot destroy b");
+      for (const undo of rollback.reverse()) undo();       // the kernel rolls the unit back (G7)
+      destroyed.length = 0;
+      refuse = "";
+      spec.locals!["$effects"]!(report, unit("r2", "u1"));
+      expect(destroyed).toEqual(["a", "b"]);                 // a was known again: the bookkeeping was restored
+    });
   });
 
   it("I35 — has no triggers lane and no emit: a Composer addresses nothing (D12)", () => {

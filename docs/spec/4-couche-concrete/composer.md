@@ -88,9 +88,9 @@ class MainComposer extends Composer<TMainContract> {
 | D12, aucun état propre | `resolve` ne reçoit pas l'Event déclencheur : elle se recalcule à partir des seules Queries. Un même état du domaine donne une même composition, quel que soit l'ordre des Events qui y ont mené. Un champ mutable de sous-classe est un état indépendant, refusé en revue et par lint. |
 | D11, T7 | Le tableau rendu donne les Views et leur ordre dans le slot. Le Composer crée pour chacune un élément et lui en attribue la part, sans recouvrement. |
 | Ordre d'affichage | L'ordre du tableau rendu est l'ordre dans le slot. La réconciliation place chaque View explicitement, avant celle qui la suit dans le tableau ; elle ne se fie jamais à l'ordre historique des attributions. Sans cela, remplacer une View la déplacerait après ses voisines (constat du prototype, lot M4 : le noyau prend une position `before` à chaque attribution). |
-| A3.d | `params` ne contient que des valeurs, typées par le contrat de la View visée. |
+| A3.d | `params` ne contient que des valeurs, typées par le contrat de la View visée (`TViewContract<F, U, P>`) : obligatoires si un champ est requis, absents si la View n'en déclare pas. |
 | T3, réconciliation | Même `key` et même View : instance conservée (optimisation). `params` différents : destruction puis recréation, car ce sont des paramètres de création. `key` absente : destruction, avec sa descendance. Les clés sont uniques dans une composition. |
-| C.3, échec de création | Une View dont l'élément n'a pas pu être créé est détruite logiquement ; l'erreur est signalée avec son contexte causal (G7), sans nouvel essai ni handler applicatif. Le prochain Event déclaré relance `resolve` à partir de l'état du domaine. |
+| C.3, échec de création | La matérialisation de la part d'une View est un effet du Composer (D12), qui en reçoit le bilan d'engagement (`$effects`). Une View dont l'élément n'a pas pu être créé, matérialisation en échec ou non tentée, est détruite logiquement avec sa descendance ; l'erreur figure dans la trace avec son contexte causal (G7), sans nouvel essai ni handler applicatif. Seule l'instance visée par le bilan est détruite : une View recréée depuis sous la même clé relève d'un bilan ultérieur. Le prochain Event déclaré relance `resolve` à partir de l'état du domaine. |
 | Répétition | Une entrée de `composers` correspond à un seul slot ; une recherche qui ne trouve pas exactement un élément est refusée à l'exécution. N zones composées passent par N Views, chacune avec son slot ; une liste purement visuelle relève de la projection de la View. |
 
 **Quand `resolve` est appelée.** Par Bonsai seulement, à deux moments : pendant l'initialisation du Composer, dans l'unité de validation de son créateur (au démarrage pour les Composers de la Foundation) ; puis pendant le traitement de chaque Event déclaré dans `listens`, qui forme sa propre unité de validation. Jamais au retour d'une Query, sur un fait de l'hôte, sur un résultat de composition, ni à la demande du code applicatif.
@@ -186,8 +186,8 @@ De même, les réservations d'Events portent sur les **occurrences d'abonnement 
 | Exécution à l'initialisation et sur chaque Event déclaré | Livré |
 | Composition imbriquée (View → Composer → View) | Livré |
 | Création des parts, restitutions, destruction en cascade, occurrences de vie | Fournis par le noyau (lots M3–M4) |
-| Destruction logique d'une View dont l'élément n'a pas pu être créé | **Non livré** : l'échec est rapporté dans la trace (C.3) |
-| Typage des `params` de composition par le contrat de la View visée | Non livré : `Readonly<Record<string, unknown>>` |
+| Destruction logique d'une View dont l'élément n'a pas pu être créé | Livré (strate 1d) : bilan `$effects` du Composer (tests `composer.test.ts`, `view.test.ts`) |
+| Typage des `params` de composition par le contrat de la View visée | Livré (strate 1d) : troisième paramètre de `TViewContract` ; aucune vérification à l'exécution (`tests/types/strate-0/composer-params.types.test.ts`) |
 | Hooks applicatifs de cycle de vie (`onDetach`, etc.) | Supprimés ; absents par décision (§4.2) |
 | `TResolveResult`, `TComposerOptions`, `attach()`, `performResolve()`, `rootElement` | Supprimés |
 

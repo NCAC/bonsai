@@ -77,4 +77,5 @@ namespaces en notation pointée proposée pour les plugins contredit ADR-08
 | Rendu serveur Node.js, streaming SSR | la v1 ne fait que l'hydratation côté client (ADR-24) |
 | Plusieurs Applications par page (micro-apps) | Foundation scopée, Router optionnel (la racine du noyau est déjà propre à chaque Application, G6) |
 | Transactions distribuées | hors champ |
+| Schéma valibot facultatif des `params` d'une View | les `params` sont typés par le contrat (`TViewContract<F, U, P>`, strate 1d) sans vérification à l'exécution ; un schéma ajouterait des contraintes de forme (longueur, format) sans changer le contrat |
 | Compilateur Pug : `case`/`when`, `each … else`, éléments SVG (espace de noms), plugin Rollup/Vite | refusés ou absents au lot 4 de la strate 1c ([5-rendu §8](spec/5-rendu.md)) ; `case` et `each … else` se réécrivent en `if` |

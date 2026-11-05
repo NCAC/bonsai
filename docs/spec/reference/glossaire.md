@@ -95,7 +95,7 @@ référencée dans toute la documentation.
 | **`TUIEntry<TEl, TEvts>`** | Entrée d'un `TUIContract` : `{ events; cancelDefault?; _el? }`, construite par `ui<TEl>()(events, options?)`. Le phantom `_el?` encode `TEl` (I85) ; `events: []` = entrée non interactive (I86). |
 | **`TViewCallbacks<TVC>`** | Clause `implements` d'une View (ADR-14, I88) : `TEventCallbacks<TVC> & TUICallbacks<TVC["ui"], TVC>`. |
 | **`TViewClass`** | Surface structurelle d'une classe View, indépendante de son contrat : `abstract new (...args: any[]) => View<any>` ; utilisée par le catalogue d'un Composer. |
-| **`TViewContract<F, U>`** | Contrat View composé : `{ features: F; ui: U }` (ADR-14). Un seul générique sur `View<TVC>`. |
+| **`TViewContract<F, U, P>`** | Contrat View composé : `{ features: F; ui: U; params: P }` (ADR-14) ; `P`, paramètres de création donnés par le Composer, est facultatif (aucun par défaut, ADR-18). Un seul générique sur `View<TVC>`. |
 | **Feature-groupé** | (ADR-14) Forme de déclaration où chaque Feature consommée est une clé d'objet portant ses voies (`{ cart: { listens, triggers, queries } }`). |
 | **Helper `ui<TEl>()(events, options?)`** | (I85) Fabrique curryfiée d'une `TUIEntry<TEl, TEvts>` ; `options.cancelDefault` déclare l'annulation de l'action par défaut (D20). |
 | **Module contractuel** | (ADR-14) Brique réutilisable de contrat : `TFeatureContract`, `TUIContract`, `TUIElements<TUI>`. View = features + ui ; Composer = features + views ; Behavior ⏳ = features + ui. |

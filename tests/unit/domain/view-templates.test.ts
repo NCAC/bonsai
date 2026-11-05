@@ -101,7 +101,7 @@ const uiElements = {
   flash: "[data-ui='flash']",
   add: "[data-ui='add']"
 } satisfies TUIElements<typeof uiEvents>;
-type TContract = TViewContract<typeof features, typeof uiEvents>;
+type TContract = TViewContract<typeof features, typeof uiEvents, { upper?: boolean }>;
 
 // ─── Hand-written templates (the Pug compiler comes with lot 4) ──────────────
 
@@ -157,7 +157,7 @@ const templates = {
   title: bind<TContract>()({
     template: TextTemplate("title"),
     query: "list:label",
-    params: (viewParams) => ({ upper: viewParams["upper"] === true }),
+    params: (viewParams) => ({ upper: viewParams.upper === true }),
     on: ["list:renamed", "list:touched"]
   }),
   footer: { template: FooterTemplate }
@@ -193,7 +193,7 @@ class HandledView extends ListView {
 
 // ─── Harness ─────────────────────────────────────────────────────────────────
 
-const mount = (ViewClass: typeof ListView, params: Record<string, unknown> = { upper: true }) => {
+const mount = (ViewClass: typeof ListView, params: { upper?: boolean } = { upper: true }) => {
   const composerFeatures = { list: { feature: ListFeature, listens: [] as const, queries: [] as const } };
   const composerViews = { list: ViewClass };
   type TC = TComposerContract<typeof composerFeatures, typeof composerViews>;

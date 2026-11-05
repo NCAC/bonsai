@@ -2,9 +2,9 @@
 
 | Champ | Valeur |
 | --- | --- |
-| **Statut** | 🟢 Accepted |
+| **Statut** | 🔵 Tested |
 | **Invariants impactés** | I20, I35, I36, I37 |
-| **Livré** | ✅ `resolve(ctx)`, réconciliation par clé, composition imbriquée, cascade de destruction (lot M6.2) · ⚠️ une View dont l'élément n'a pas pu être créé reste vivante ; `params` non typés par la View visée |
+| **Livré** | ✅ `resolve(ctx)`, réconciliation par clé, composition imbriquée, cascade de destruction (lot M6.2) · ✅ destruction d'une View dont l'élément n'a pas pu être créé, `params` typés par le contrat de la View visée (strate 1d) |
 | **Spec** | [composer.md](../spec/4-couche-concrete/composer.md) · théorie D11, D12 |
 
 ## Contexte
@@ -31,7 +31,7 @@ class MainComposer extends Composer<TMainContract> {
 ```
 
 1. **Seuls Foundation et Composers créent, remplacent ou détruisent** (I20) : la Foundation et la View créent des Composers, le Composer crée des Views ; une View ne compose jamais de View (I36, D11).
-2. **`resolve(ctx)` est l'unique décision** : calculée à l'initialisation puis à chaque Event déclaré, à partir des seules Queries. Elle rend la composition ordonnée `{ view, key, params? }[]`, jamais l'Event déclencheur.
+2. **`resolve(ctx)` est l'unique décision** : calculée à l'initialisation puis à chaque Event déclaré, à partir des seules Queries. Elle rend la composition ordonnée `{ view, key, params? }[]`, jamais l'Event déclencheur. `params` est typé par la View visée, qui le déclare en troisième paramètre de son contrat (`TViewContract<F, U, P>`).
 3. **Aucune présentation** (I35, précisé par D12) : il ne modifie son contenu que pour attribuer ou restituer les parts de ses Views ; il n'adresse aucune Command et n'émet rien.
 4. **Réconciliation par le framework, par clé** : même clé et même View → instance conservée ; sinon création ou destruction ; l'ordre suit la composition. Tout cela appartient à l'unité qui la produit (G7).
 5. **Un seul type de Composer, 0..N Views hétérogènes** (I37) ; détruire une View détruit ses descendants de bas en haut et restitue sa part.
@@ -49,4 +49,5 @@ class MainComposer extends Composer<TMainContract> {
 
 - C'est le composant le plus simple à tester : une fonction pure des Queries vers une composition.
 - Les listes homogènes de données relèvent de `ProjectionList` (ADR-23), pas du Composer.
-- Retirer une View dont l'élément n'a pas pu être créé se décide par un nouveau message, à partir du résultat corrélé (C.3).
+- La matérialisation d'une part de View est un effet du Composer (D12) : il en reçoit le bilan (`$effects`, C.3) et détruit la View restée sans élément, sans nouvel essai ; le prochain Event déclaré la recrée.
+- Les `params` ne sont vérifiés qu'à la compilation ; un schéma valibot facultatif est une piste ([ROADMAP](../ROADMAP.md)).

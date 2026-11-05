@@ -13,11 +13,14 @@ Workflow : [ADR-33](docs/adr/ADR-33-workflow-git-ci.md)
 ### Added
 
 - **Strate 1c — rendu PDR** : templates N2/N3 alimentés par une Query déclarée et relancés par les Events de `on` (`get templates()`, `bind<TVC>()`, ADR-26) ; `ProjectionList` et item capturé dans le fait (`ui()(events, { data })`, ADR-23) ; compilateur Pug `tools/pug-compiler` (`pnpm pug`, `pnpm pug:check`) qui produit un `TProjectionTemplate` typé par `//- @data`, et `ProjectionSwitch` pour les `if` (ADR-22)
+- **Strate 1d — composition** : une View déclare ses paramètres de création en troisième paramètre de son contrat (`TViewContract<F, U, P>`) ; le Composer doit les donner exactement (`TViewParamsOf<V>`, ADR-18)
 
 ### Changed
 
 - `bind<TVC>()` : sans `select`, le résultat de la Query doit être le type des données du template
 - `ProjectionList` : `create(item, index)` reçoit l'index de l'item
+- Composer : une View dont l'élément n'a pas pu être créé (matérialisation en échec ou non tentée) est détruite par son Composer, qui reçoit le bilan de ses effets de composition (`$effects`, C.3) ; elle restait vivante
+- `params` d'une composition : refusés à la compilation pour une View qui n'en déclare pas (`Readonly<Record<string, unknown>>` auparavant)
 
 ### Removed
 
