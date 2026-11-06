@@ -100,12 +100,12 @@ Toute erreur levée par Bonsai dérive de `BonsaiError` (`@bonsai/error`) ; une 
 | Aspect | Position v1 |
 | --- | --- |
 | **Slots** | Un slot désigne un élément existant de l'ancre ou du template de la View : il est réutilisé, jamais recréé |
-| **Part d'une View** | Toujours un élément créé par le noyau (`<div data-bonsai-part>`) et rempli par le `template` ; un DOM pré-rendu n'est pas adopté (⏳ strate 1c, [ADR-24](../../adr/ADR-24-hydratation-ssr.md)) |
+| **Part d'une View** | Toujours un élément créé par le noyau (`<div data-bonsai-part>`) et rempli par le `template` ; un DOM pré-rendu n'est pas adopté (⏳ strate 2c, [ADR-24](../../adr/ADR-24-hydratation-ssr.md)) |
 | **Rendu serveur** | Hors scope v1 |
 | **DOM modifié hors framework** | Non garanti : un élément d'interface absent fait échouer sa projection (effet), pas l'unité |
 | **Streaming** | Hors scope v1 |
 
-La doctrine de rendu complète est dans [5-rendu.md](../5-rendu.md) (cible strate 1c).
+La doctrine de rendu complète est dans [5-rendu.md](../5-rendu.md) (livrée en strate 1c ; l’hydratation d’un rendu serveur reste cible de la strate 2c).
 
 ---
 
